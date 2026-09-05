@@ -5,6 +5,7 @@ import { formatDate } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { Avatar, Button, Card, ErrorNotice, SectionTitle } from '../../src/components/ui';
+import { BlockoutForm } from '../../src/components/BlockoutForm';
 import { theme } from '../../src/lib/theme';
 
 export default function ProfileScreen() {
@@ -31,6 +32,10 @@ export default function ProfileScreen() {
     mutationFn: (id: string) => api.deleteBlockout(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['blockouts', organizationId] }),
   });
+
+  const refreshBlockouts = async (): Promise<void> => {
+    await queryClient.invalidateQueries({ queryKey: ['blockouts', organizationId] });
+  };
 
   const organization = user?.memberships.find((m) => m.organization.id === organizationId)?.organization;
 
@@ -71,6 +76,7 @@ export default function ProfileScreen() {
 
       <Card style={styles.card}>
         <SectionTitle>Blockout dates</SectionTitle>
+        <BlockoutForm onCreated={refreshBlockouts} />
         {blockouts.data?.length ? (
           blockouts.data.map((blockout) => (
             <View key={blockout.id} style={styles.blockout}>
@@ -88,7 +94,7 @@ export default function ProfileScreen() {
             </View>
           ))
         ) : (
-          <Text style={styles.muted}>No blockout dates. Add them from the web app.</Text>
+          <Text style={styles.muted}>No blockout dates.</Text>
         )}
       </Card>
 
