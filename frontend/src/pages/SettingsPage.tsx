@@ -27,22 +27,40 @@ export const SettingsPage = () => {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [reason, setReason] = useState('');
+  const [blockoutValidationError, setBlockoutValidationError] = useState<Error | null>(null);
+
+  const blockoutRange = () => {
+    const start = new Date(`${from}T00:00:00`);
+    const end = new Date(`${to}T23:59:59.999`);
+
+    if (!from || !to || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new Error('Choose a start and end date.');
+    }
+    if (end < start) throw new Error('The end date must be on or after the start date.');
+
+    return { starts_at: start.toISOString(), ends_at: end.toISOString() };
+  };
 
   const addBlockout = useMutation({
-    mutationFn: () =>
-      api.createBlockout({
-        starts_at: new Date(from).toISOString(),
-        // A single-day blockout should cover the whole day, not one instant.
-        ends_at: new Date(`${to}T23:59:59`).toISOString(),
-        reason: reason || null,
-      }),
+    mutationFn: () => api.createBlockout({ ...blockoutRange(), reason: reason.trim() || null }),
     onSuccess: async () => {
       await invalidate();
       setFrom('');
       setTo('');
       setReason('');
+      setBlockoutValidationError(null);
     },
   });
+
+  const submitBlockout = () => {
+    try {
+      blockoutRange();
+      setBlockoutValidationError(null);
+      addBlockout.mutate();
+    } catch (error) {
+      setBlockoutValidationError(error instanceof Error ? error : new Error('Invalid blockout dates.'));
+    }
+  };
 
   const removeBlockout = useMutation({
     mutationFn: (id: string) => api.deleteBlockout(id),
@@ -92,7 +110,7 @@ export const SettingsPage = () => {
           className="mb-4 flex flex-wrap items-end gap-3"
           onSubmit={(event: FormEvent) => {
             event.preventDefault();
-            addBlockout.mutate();
+            submitBlockout();
           }}
         >
           <div>
@@ -102,7 +120,10 @@ export const SettingsPage = () => {
               type="date"
               className="input"
               value={from}
-              onChange={(e) => setFrom(e.target.value)}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                if (!to) setTo(e.target.value);
+              }}
               required
             />
           </div>
@@ -126,6 +147,7 @@ export const SettingsPage = () => {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Vacation"
+              maxLength={200}
             />
           </div>
           <Button type="submit" loading={addBlockout.isPending}>
@@ -133,7 +155,7 @@ export const SettingsPage = () => {
           </Button>
         </form>
 
-        <ErrorNotice error={addBlockout.error ?? removeBlockout.error} />
+        <ErrorNotice error={blockoutValidationError ?? addBlockout.error ?? removeBlockout.error} />
 
         {blockouts.isLoading ? (
           <Loading />
