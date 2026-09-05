@@ -11,6 +11,7 @@ export const createOrganizationSchema = z.object({
     .toLowerCase()
     .regex(/^[a-z0-9-]{2,40}$/, 'Use 2–40 lowercase letters, numbers or dashes'),
   timezone: z.string().default('America/Toronto'),
+  logo_url: z.string().url().nullish(),
 });
 
 export const updateOrganizationSchema = createOrganizationSchema.partial().omit({ slug: true });

@@ -5,3 +5,4 @@ export * from './song.js';
 export * from './plan.js';
 export * from './assignment.js';
 export * from './import.js';
+export * from './songbook.js';

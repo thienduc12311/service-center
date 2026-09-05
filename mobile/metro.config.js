@@ -1,6 +1,7 @@
 // Metro needs to be told about the workspace root so it watches
 // packages/shared and resolves hoisted dependencies.
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 const path = require('node:path');
 
 const projectRoot = __dirname;
@@ -17,4 +18,4 @@ config.resolver.disableHierarchicalLookup = true;
 // @service-center/shared is ESM with an "exports" map.
 config.resolver.unstable_enablePackageExports = true;
 
-module.exports = config;
+module.exports = withNativeWind(config, { input: './global.css' });

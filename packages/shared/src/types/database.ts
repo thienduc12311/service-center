@@ -33,8 +33,31 @@ export type OrganizationRow = {
   name: string;
   slug: string;
   timezone: string;
+  logo_url: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type SongbookRow = {
+  id: string;
+  organization_id: string;
+  title: string;
+  description: string | null;
+  source_type: 'manual' | 'document';
+  source_storage_path: string | null;
+  source_filename: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SongbookItemRow = {
+  id: string;
+  songbook_id: string;
+  song_id: string;
+  arrangement_id: string | null;
+  sort_order: number;
+  created_at: string;
 }
 
 export type ProfileRow = {
@@ -256,6 +279,8 @@ export type Database = {
       blockouts: Table<BlockoutRow>;
       attachments: Table<AttachmentRow>;
       chord_sheet_imports: Table<ChordSheetImportRow>;
+      songbooks: Table<SongbookRow>;
+      songbook_items: Table<SongbookItemRow>;
     };
     Views: Record<string, never>;
     Functions: {
