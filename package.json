@@ -1,0 +1,33 @@
+{
+  "name": "service-center",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Service planning & scheduling for worship teams — web, mobile and API.",
+  "engines": { "node": ">=20.11" },
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "frontend",
+    "mobile"
+  ],
+  "scripts": {
+    "build:shared": "npm run build -w @service-center/shared",
+    "dev:shared": "npm run dev -w @service-center/shared",
+    "dev:backend": "npm run build:shared && npm run dev -w @service-center/backend",
+    "dev:web": "npm run build:shared && npm run dev -w @service-center/frontend",
+    "dev:mobile": "npm run build:shared && npm run start -w @service-center/mobile",
+    "dev": "npm run build:shared && concurrently -n api,web -c blue,green \"npm run dev -w @service-center/backend\" \"npm run dev -w @service-center/frontend\"",
+    "build": "npm run build:shared && npm run build -w @service-center/backend && npm run build -w @service-center/frontend",
+    "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present",
+    "test": "npm run build:shared && npm run test --workspaces --if-present",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:diff": "supabase db diff -f",
+    "db:push": "supabase db push"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  }
+}
