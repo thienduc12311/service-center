@@ -26,10 +26,11 @@ export const PlansPage = () => {
   const [status, setStatus] = useState('');
   const [showPast, setShowPast] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [openedAt] = useState(() => new Date().toISOString());
 
   const plans = usePlans({
     ...(status ? { status } : {}),
-    ...(showPast ? { order: 'desc' } : { from: new Date().toISOString(), order: 'asc' }),
+    ...(showPast ? { order: 'desc' } : { from: openedAt, order: 'asc' }),
     per_page: 50,
   });
 

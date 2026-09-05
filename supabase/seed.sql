@@ -22,10 +22,12 @@ begin
   loop
     insert into auth.users (
       instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+      confirmation_token, recovery_token, email_change_token_new, email_change,
       raw_app_meta_data, raw_user_meta_data, created_at, updated_at
     ) values (
       '00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated',
       u.email, crypt('password123', gen_salt('bf')), now(),
+      '', '', '', '',
       '{"provider":"email","providers":["email"]}'::jsonb,
       jsonb_build_object('full_name', u.full_name),
       now(), now()
@@ -143,7 +145,7 @@ begin
       to_char(base_sunday + (i * 7), 'FMMonth FMDD') || ' — Sunday Morning',
       service_start,
       'Main Auditorium',
-      case when i = 0 then 'published' else 'draft' end,
+      (case when i = 0 then 'published' else 'draft' end)::plan_status,
       case when i = 0 then 'Communion Sunday — leave space after the message.' else null end,
       '11111111-1111-4111-8111-111111111111'
     );
@@ -167,8 +169,8 @@ begin
 
     insert into assignments (plan_id, user_id, team_id, position_id, status, notified_at) values
       (plan_id, '11111111-1111-4111-8111-111111111111', 'cccccccc-0000-4000-8000-000000000001', 'dddddddd-0000-4000-8000-000000000001', 'confirmed',   now()),
-      (plan_id, '33333333-3333-4333-8333-333333333333', 'cccccccc-0000-4000-8000-000000000001', 'dddddddd-0000-4000-8000-000000000003', case when i = 0 then 'confirmed' else 'unconfirmed' end, now()),
-      (plan_id, '44444444-4444-4444-8444-444444444444', 'cccccccc-0000-4000-8000-000000000001', 'dddddddd-0000-4000-8000-000000000005', case when i = 1 then 'declined'  else 'unconfirmed' end, now()),
+      (plan_id, '33333333-3333-4333-8333-333333333333', 'cccccccc-0000-4000-8000-000000000001', 'dddddddd-0000-4000-8000-000000000003', (case when i = 0 then 'confirmed' else 'unconfirmed' end)::assignment_status, now()),
+      (plan_id, '44444444-4444-4444-8444-444444444444', 'cccccccc-0000-4000-8000-000000000001', 'dddddddd-0000-4000-8000-000000000005', (case when i = 1 then 'declined'  else 'unconfirmed' end)::assignment_status, now()),
       (plan_id, '55555555-5555-4555-8555-555555555555', 'cccccccc-0000-4000-8000-000000000001', 'dddddddd-0000-4000-8000-000000000006', 'unconfirmed', now()),
       (plan_id, '22222222-2222-4222-8222-222222222222', 'cccccccc-0000-4000-8000-000000000002', 'dddddddd-0000-4000-8000-000000000007', 'confirmed',   now());
   end loop;

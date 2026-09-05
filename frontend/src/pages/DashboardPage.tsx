@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ASSIGNMENT_STATUS_LABELS,
@@ -11,7 +12,8 @@ import { assignmentTone, planTone } from '../lib/format';
 
 export const DashboardPage = () => {
   const { user, canManage } = useAuth();
-  const upcoming = usePlans({ from: new Date().toISOString(), per_page: 5, order: 'asc' });
+  const [openedAt] = useState(() => new Date().toISOString());
+  const upcoming = usePlans({ from: openedAt, per_page: 5, order: 'asc' });
   const mine = useMySchedule();
   const respond = useRespondToAssignment();
 

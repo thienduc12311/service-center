@@ -5,8 +5,9 @@
 
 export const MS_PER_DAY = 86_400_000;
 
+/** Returns a fresh Date so helpers never mutate caller-owned state. */
 export const toDate = (value: string | number | Date): Date =>
-  value instanceof Date ? value : new Date(value);
+  value instanceof Date ? new Date(value.getTime()) : new Date(value);
 
 export const startOfDay = (value: string | number | Date): Date => {
   const d = toDate(value);
