@@ -80,6 +80,53 @@ export type OrganizationMemberRow = {
   updated_at: string;
 }
 
+export type PersonType = 'adult' | 'child';
+export type InvitationChannel = 'email';
+
+export type PersonRow = {
+  id: string;
+  organization_id: string;
+  profile_id: string | null;
+  first_name: string;
+  last_name: string | null;
+  avatar_url: string | null;
+  email: string | null;
+  phone: string | null;
+  phone_carrier: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state_province: string | null;
+  postal_code: string | null;
+  country: string | null;
+  campus: string | null;
+  person_type: PersonType;
+  gender: string | null;
+  birthdate: string | null;
+  marital_status: string | null;
+  anniversary_date: string | null;
+  school: string | null;
+  medical_note: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PersonInvitationRow = {
+  id: string;
+  organization_id: string;
+  person_id: string;
+  email: string;
+  role: OrgRole;
+  channel: InvitationChannel;
+  token_hash: string;
+  expires_at: string;
+  created_by: string | null;
+  created_at: string;
+  accepted_at: string | null;
+  revoked_at: string | null;
+}
+
 export type ServiceTypeRow = {
   id: string;
   organization_id: string;
@@ -266,6 +313,8 @@ export type Database = {
       organizations: Table<OrganizationRow>;
       profiles: Table<ProfileRow>;
       organization_members: Table<OrganizationMemberRow>;
+      people: Table<PersonRow>;
+      person_invitations: Table<PersonInvitationRow>;
       service_types: Table<ServiceTypeRow>;
       teams: Table<TeamRow>;
       team_positions: Table<TeamPositionRow>;
@@ -296,6 +345,10 @@ export type Database = {
           p_user_ids?: string[] | null;
         };
         Returns: SchedulingConflictRow[];
+      };
+      accept_person_invitation: {
+        Args: { p_token_hash: string; p_new_user_id: string };
+        Returns: Array<{ out_organization_id: string; out_person_id: string; out_role: OrgRole }>;
       };
     };
     Enums: {

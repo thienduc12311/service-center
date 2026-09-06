@@ -14,6 +14,7 @@ import { useAuth } from '../providers/AuthProvider';
 export const keys = {
   all: (org: string | null) => ['org', org] as const,
   people: (org: string | null) => [...keys.all(org), 'people'] as const,
+  person: (org: string | null, id: string) => [...keys.people(org), id] as const,
   teams: (org: string | null) => [...keys.all(org), 'teams'] as const,
   serviceTypes: (org: string | null) => [...keys.all(org), 'service-types'] as const,
   songs: (org: string | null, query: unknown) => [...keys.all(org), 'songs', query] as const,
@@ -39,6 +40,15 @@ export const usePeople = (options?: Options<Awaited<ReturnType<typeof api.listPe
     queryFn: () => api.listPeople(),
     enabled: Boolean(org),
     ...options,
+  });
+};
+
+export const usePerson = (id: string | undefined) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.person(org, id ?? ''),
+    queryFn: () => api.getPerson(id!),
+    enabled: Boolean(org && id),
   });
 };
 

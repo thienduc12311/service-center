@@ -16,12 +16,6 @@ export const createOrganizationSchema = z.object({
 
 export const updateOrganizationSchema = createOrganizationSchema.partial().omit({ slug: true });
 
-export const inviteMemberSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
-  full_name: nonEmpty.max(120).optional(),
-  role: orgRoleSchema.default('member'),
-});
-
 export const updateMemberSchema = z.object({
   role: orgRoleSchema.optional(),
   status: z.enum(['invited', 'active', 'inactive']).optional(),
@@ -52,6 +46,5 @@ export const blockoutSchema = z
   });
 
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
-export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type BlockoutInput = z.infer<typeof blockoutSchema>;
