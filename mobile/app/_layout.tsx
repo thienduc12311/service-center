@@ -33,8 +33,11 @@ const RootNavigator = () => {
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
+    // Reachable from an invite link before the user has a session — the
+    // screen itself handles what to show if they're already signed in.
+    const inAcceptInvite = segments[0] === 'accept-invite';
 
-    if (!session && !inAuthGroup) router.replace('/(auth)/login');
+    if (!session && !inAuthGroup && !inAcceptInvite) router.replace('/(auth)/login');
     else if (session && inAuthGroup) router.replace('/(tabs)');
   }, [session, loading, segments, router]);
 
@@ -50,6 +53,7 @@ const RootNavigator = () => {
       }}
     >
       <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+      <Stack.Screen name="accept-invite" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="plan/[id]" options={{ title: 'Plan' }} />
       <Stack.Screen name="song/[id]" options={{ title: 'Song' }} />
