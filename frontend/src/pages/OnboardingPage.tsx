@@ -60,7 +60,7 @@ export const OnboardingPage = () => {
               setName(e.target.value);
               if (!slugEdited) setSlug(slugify(e.target.value));
             }}
-            placeholder="Riverside Community Church"
+            placeholder="Grace Church"
             required
           />
         </div>

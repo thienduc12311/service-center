@@ -34,6 +34,15 @@ export type OrganizationRow = {
   slug: string;
   timezone: string;
   logo_url: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state_province: string | null;
+  postal_code: string | null;
+  country: string | null;
+  denomination: string | null;
+  /** Self-reported congregation size — distinct from the count of people actually in the system. */
+  member_count: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -81,6 +90,7 @@ export type OrganizationMemberRow = {
 }
 
 export type PersonType = 'adult' | 'child';
+export type PersonGender = 'male' | 'female';
 export type InvitationChannel = 'email';
 
 export type PersonRow = {
@@ -101,7 +111,7 @@ export type PersonRow = {
   country: string | null;
   campus: string | null;
   person_type: PersonType;
-  gender: string | null;
+  gender: PersonGender | null;
   birthdate: string | null;
   marital_status: string | null;
   anniversary_date: string | null;

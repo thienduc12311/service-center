@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { formatDate, isAdmin, STORAGE_BUCKETS } from '@service-center/shared';
+import { formatDate, isAdmin, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useBlockouts, useInvalidateOrg } from '../hooks/queries';
@@ -205,13 +205,62 @@ const slugify = (value: string) => value
   .replace(/^-|-$/g, '')
   .slice(0, 40);
 
+/** Editable organization-profile fields — `member_count` stays a string while typed, parsed to a number on submit. */
+interface OrganizationProfileForm {
+  name: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state_province: string;
+  postal_code: string;
+  country: string;
+  denomination: string;
+  member_count: string;
+}
+
+const emptyOrganizationProfileForm: OrganizationProfileForm = {
+  name: '',
+  address_line1: '',
+  address_line2: '',
+  city: '',
+  state_province: '',
+  postal_code: '',
+  country: '',
+  denomination: '',
+  member_count: '',
+};
+
+const organizationProfileFromRow = (organization: OrganizationRow): OrganizationProfileForm => ({
+  name: organization.name,
+  address_line1: organization.address_line1 ?? '',
+  address_line2: organization.address_line2 ?? '',
+  city: organization.city ?? '',
+  state_province: organization.state_province ?? '',
+  postal_code: organization.postal_code ?? '',
+  country: organization.country ?? '',
+  denomination: organization.denomination ?? '',
+  member_count: organization.member_count != null ? String(organization.member_count) : '',
+});
+
+const organizationProfileToInput = (form: OrganizationProfileForm) => ({
+  name: form.name.trim(),
+  address_line1: form.address_line1.trim() || null,
+  address_line2: form.address_line2.trim() || null,
+  city: form.city.trim() || null,
+  state_province: form.state_province.trim() || null,
+  postal_code: form.postal_code.trim() || null,
+  country: form.country.trim() || null,
+  denomination: form.denomination.trim() || null,
+  member_count: form.member_count.trim() ? Number(form.member_count.trim()) : null,
+});
+
 const OrganizationSettings = ({
   organization,
   canEdit,
   onChanged,
   onCreated,
 }: {
-  organization: { id: string; name: string; logo_url: string | null } | undefined;
+  organization: OrganizationRow | undefined;
   canEdit: boolean;
   onChanged: () => Promise<void>;
   onCreated: (id: string) => Promise<void>;
@@ -220,6 +269,21 @@ const OrganizationSettings = ({
   const [name, setName] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<unknown>(null);
+
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profile, setProfile] = useState<OrganizationProfileForm>(emptyOrganizationProfileForm);
+
+  useEffect(() => {
+    if (organization) setProfile(organizationProfileFromRow(organization));
+  }, [organization]);
+
+  const saveProfile = useMutation({
+    mutationFn: () => api.updateOrganization(organization!.id, organizationProfileToInput(profile)),
+    onSuccess: async () => {
+      await onChanged();
+      setEditingProfile(false);
+    },
+  });
 
   const create = async (event: FormEvent) => {
     event.preventDefault();
@@ -271,7 +335,10 @@ const OrganizationSettings = ({
         )}
         <div className="min-w-0 flex-1">
           <h2 className="font-semibold text-slate-900 dark:text-white">{organization?.name ?? 'Organization'}</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Create and switch between every community you administer.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {[organization?.denomination, organization?.city, organization?.country].filter(Boolean).join(' · ') ||
+              'Create and switch between every community you administer.'}
+          </p>
         </div>
         {canEdit && organization && (
           <label className="cursor-pointer rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
@@ -279,16 +346,88 @@ const OrganizationSettings = ({
             <input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={uploadLogo} disabled={uploading} />
           </label>
         )}
+        {canEdit && organization && (
+          <Button variant="secondary" onClick={() => setEditingProfile((value) => !value)}>
+            {editingProfile ? 'Cancel' : 'Edit details'}
+          </Button>
+        )}
         <Button variant="secondary" onClick={() => setCreating((value) => !value)}>
           {creating ? 'Cancel' : 'New organization'}
         </Button>
       </div>
 
+      {editingProfile && organization && (
+        <form
+          onSubmit={(event: FormEvent) => {
+            event.preventDefault();
+            saveProfile.mutate();
+          }}
+          className="mt-5 grid grid-cols-1 gap-3 border-t border-slate-100 pt-5 dark:border-slate-800 sm:grid-cols-2"
+        >
+          <div className="sm:col-span-2">
+            <label className="label" htmlFor="org-profile-name">Organization name</label>
+            <input
+              id="org-profile-name"
+              className="input"
+              value={profile.name}
+              onChange={(e) => setProfile((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Grace Church"
+              required
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="org-address1">Address line 1</label>
+            <input id="org-address1" className="input" value={profile.address_line1} onChange={(e) => setProfile((f) => ({ ...f, address_line1: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label" htmlFor="org-address2">Address line 2</label>
+            <input id="org-address2" className="input" value={profile.address_line2} onChange={(e) => setProfile((f) => ({ ...f, address_line2: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label" htmlFor="org-city">City</label>
+            <input id="org-city" className="input" value={profile.city} onChange={(e) => setProfile((f) => ({ ...f, city: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label" htmlFor="org-state">State / Province</label>
+            <input id="org-state" className="input" value={profile.state_province} onChange={(e) => setProfile((f) => ({ ...f, state_province: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label" htmlFor="org-postal">Postal code</label>
+            <input id="org-postal" className="input" value={profile.postal_code} onChange={(e) => setProfile((f) => ({ ...f, postal_code: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label" htmlFor="org-country">Country</label>
+            <input id="org-country" className="input" value={profile.country} onChange={(e) => setProfile((f) => ({ ...f, country: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label" htmlFor="org-denomination">Denomination</label>
+            <input id="org-denomination" className="input" value={profile.denomination} onChange={(e) => setProfile((f) => ({ ...f, denomination: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label" htmlFor="org-member-count">Congregation size</label>
+            <input
+              id="org-member-count"
+              type="number"
+              min={0}
+              className="input"
+              value={profile.member_count}
+              onChange={(e) => setProfile((f) => ({ ...f, member_count: e.target.value }))}
+            />
+          </div>
+
+          <ErrorNotice error={saveProfile.error} />
+
+          <div className="sm:col-span-2 flex justify-end">
+            <Button type="submit" loading={saveProfile.isPending}>Save details</Button>
+          </div>
+        </form>
+      )}
+
       {creating && (
         <form onSubmit={create} className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-5 dark:border-slate-800 sm:flex-row sm:items-end">
           <div className="flex-1">
             <label className="label" htmlFor="new-org-name">Organization name</label>
-            <input id="new-org-name" className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Grace Community" required />
+            <input id="new-org-name" className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Grace Church" required />
           </div>
           <Button type="submit">Create organization</Button>
         </form>

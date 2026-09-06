@@ -12,6 +12,15 @@ export const createOrganizationSchema = z.object({
     .regex(/^[a-z0-9-]{2,40}$/, 'Use 2–40 lowercase letters, numbers or dashes'),
   timezone: z.string().default('America/Toronto'),
   logo_url: z.string().url().nullish(),
+  address_line1: z.string().trim().max(200).nullish(),
+  address_line2: z.string().trim().max(200).nullish(),
+  city: z.string().trim().max(100).nullish(),
+  state_province: z.string().trim().max(100).nullish(),
+  postal_code: z.string().trim().max(20).nullish(),
+  country: z.string().trim().max(100).nullish(),
+  denomination: z.string().trim().max(120).nullish(),
+  /** Self-reported congregation size — distinct from the count of people actually in the system. */
+  member_count: z.number().int().min(0).nullish(),
 });
 
 export const updateOrganizationSchema = createOrganizationSchema.partial().omit({ slug: true });

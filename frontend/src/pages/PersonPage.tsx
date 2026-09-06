@@ -21,7 +21,7 @@ interface PersonFormState {
   country: string;
   campus: string;
   person_type: 'adult' | 'child';
-  gender: string;
+  gender: '' | 'male' | 'female';
   birthdate: string;
   marital_status: string;
   anniversary_date: string;
@@ -87,7 +87,7 @@ const toInput = (form: PersonFormState): CreatePersonInput => ({
   country: form.country.trim() || null,
   campus: form.campus.trim() || null,
   person_type: form.person_type,
-  gender: form.gender.trim() || null,
+  gender: form.gender === '' ? null : form.gender,
   birthdate: form.birthdate || null,
   marital_status: form.marital_status.trim() || null,
   anniversary_date: form.anniversary_date || null,
@@ -198,7 +198,16 @@ export const PersonPage = () => {
               </select>
             </Field>
             <Field id="gender" label="Gender">
-              <input id="gender" className="input" value={form.gender} onChange={(e) => set('gender', e.target.value)} />
+              <select
+                id="gender"
+                className="input"
+                value={form.gender}
+                onChange={(e) => set('gender', e.target.value as PersonFormState['gender'])}
+              >
+                <option value="">Not set</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
             </Field>
             <Field id="birthdate" label="Birthdate">
               <input
