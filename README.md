@@ -12,8 +12,8 @@ Service Center is a multi-tenant worship-service planning application. Organizat
 
 ## Requirements
 
-- Node.js 20 or newer
-- npm 10 or newer
+- Node.js 26.8.1 or newer
+- npm 11.19.0 or newer
 - Supabase CLI and Docker Desktop for the local database
 - Docker with Compose for the containerized web/API option
 

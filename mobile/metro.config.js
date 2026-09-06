@@ -14,7 +14,6 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules'),
 ];
-config.resolver.disableHierarchicalLookup = true;
 // @service-center/shared is ESM with an "exports" map.
 config.resolver.unstable_enablePackageExports = true;
 

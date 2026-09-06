@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:26.8.1-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -12,7 +12,7 @@ COPY backend backend
 COPY packages/shared packages/shared
 RUN npm run build:shared && npm run build -w @service-center/backend
 
-FROM node:20-alpine AS runtime
+FROM node:26.8.1-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 

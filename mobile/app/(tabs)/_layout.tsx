@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Text, type ColorValue } from 'react-native';
 import { theme } from '../../src/lib/theme';
 import { useColorScheme } from 'nativewind';
 
@@ -8,7 +8,7 @@ import { useColorScheme } from 'nativewind';
  * when you settle on an icon set.
  */
 const icon = (glyph: string) =>
-  ({ color, size }: { color: string; size: number }) => (
+  ({ color, size }: { color: ColorValue; size: number }) => (
     <Text style={{ color, fontSize: size - 4 }}>{glyph}</Text>
   );
 
