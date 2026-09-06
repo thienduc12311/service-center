@@ -21,6 +21,10 @@ import type {
 } from '../types/database.js';
 import type {
   CalendarEvent,
+  AssignmentNotificationSendResult,
+  AssignmentRespondPreview,
+  AssignmentRespondResult,
+  CalendarFeedTokenResponse,
   CurrentUser,
   InvitationPreview,
   MyScheduleEntry,
@@ -243,7 +247,7 @@ export class ServiceCenterApi {
   respondToAssignment = (id: string, body: { status: 'confirmed' | 'declined'; notes?: string | null }) =>
     this.request<AssignmentRow>('POST', `/api/v1/assignments/${id}/respond`, body);
   notifyPlan = (planId: string) =>
-    this.request<{ notified: number }>('POST', `/api/v1/plans/${planId}/notify`, {});
+    this.request<AssignmentNotificationSendResult>('POST', `/api/v1/plans/${planId}/notify`, {});
   checkConflicts = (body: { starts_at: string; ends_at: string; user_ids: string[] }) =>
     this.request<SchedulingConflict[]>('POST', '/api/v1/scheduling/conflicts', body);
 
@@ -253,6 +257,13 @@ export class ServiceCenterApi {
   // ----------------------------------------------------------- calendar --
   calendar = (query: { from: string; to: string; mine?: boolean; team_id?: string; service_type_id?: string; include_rehearsals?: boolean }) =>
     this.request<CalendarEvent[]>('GET', '/api/v1/calendar', undefined, query as Query);
+
+  previewAssignmentResponse = (token: string) =>
+    this.request<AssignmentRespondPreview>('GET', `/api/v1/assignment-responses/${encodeURIComponent(token)}`);
+  respondToAssignmentNotification = (token: string, body: { status: 'confirmed' | 'declined'; notes?: string | null }) =>
+    this.request<AssignmentRespondResult>('POST', `/api/v1/assignment-responses/${encodeURIComponent(token)}/respond`, body);
+  getCalendarFeed = () => this.request<CalendarFeedTokenResponse>('GET', '/api/v1/me/calendar-feed');
+  rotateCalendarFeed = () => this.request<CalendarFeedTokenResponse>('POST', '/api/v1/me/calendar-feed', {});
 
   // ---------------------------------------------------------- blockouts --
   listBlockouts = (query?: Query) =>

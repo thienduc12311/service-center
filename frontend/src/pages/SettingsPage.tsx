@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { formatDate, isAdmin, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { useBlockouts, useInvalidateOrg } from '../hooks/queries';
+import { useBlockouts, useCalendarFeed, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
 
@@ -11,6 +11,9 @@ export const SettingsPage = () => {
   const { user, organizationId, role, refreshUser, switchOrganization } = useAuth();
   const invalidate = useInvalidateOrg();
   const blockouts = useBlockouts({ scope: 'mine' });
+  const calendarFeed = useCalendarFeed();
+  const rotateFeed = useMutation({ mutationFn: () => api.rotateCalendarFeed(), onSuccess: () => calendarFeed.refetch() });
+  const feed = rotateFeed.data ?? calendarFeed.data;
   const organization = user?.memberships.find((membership) => membership.organization.id === organizationId)?.organization;
 
   const [fullName, setFullName] = useState('');
@@ -111,6 +114,21 @@ export const SettingsPage = () => {
           switchOrganization(id);
         }}
       />
+
+      <section className="card p-5">
+        <h2 className="mb-1 font-semibold">Calendar sync</h2>
+        <p className="mb-4 text-sm text-slate-500">Subscribe to your schedule in Google, Apple, or Outlook Calendar. Rotating the link revokes the previous one.</p>
+        {feed?.url ? (
+          <div className="space-y-3">
+            <div className="flex gap-2"><input className="input min-w-0 flex-1" readOnly value={feed.url} /><Button variant="secondary" onClick={() => void navigator.clipboard.writeText(feed.url!)}>Copy</Button></div>
+            <a className="text-sm text-brand-700 underline" href={feed.webcal_url ?? undefined}>Open in calendar app</a>
+            <div><Button variant="ghost" loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>Rotate link</Button></div>
+          </div>
+        ) : (
+          <Button loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>Create calendar link</Button>
+        )}
+        <ErrorNotice error={calendarFeed.error ?? rotateFeed.error} />
+      </section>
 
       <section className="card p-5">
         <h2 className="mb-1 font-semibold">Blockout dates</h2>

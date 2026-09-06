@@ -73,6 +73,37 @@ export interface InvitationPreview {
   expires_at: string;
 }
 
+export interface AssignmentRespondPreview {
+  plan_title: string;
+  service_date: string;
+  service_time: { starts_at: string; ends_at: string } | null;
+  location: string | null;
+  person_first_name: string;
+  assignments: Array<{
+    team_name: string;
+    position_name: string | null;
+    status: AssignmentRow['status'];
+  }>;
+  expires_at: string;
+}
+
+export interface AssignmentRespondResult {
+  status: Extract<AssignmentRow['status'], 'confirmed' | 'declined'>;
+  assignments_updated: number;
+}
+
+export interface CalendarFeedTokenResponse {
+  url: string | null;
+  webcal_url: string | null;
+  token?: string;
+  active?: boolean;
+}
+
+export interface AssignmentNotificationSendResult {
+  notified: number;
+  skipped: string[];
+}
+
 export interface TeamWithPositions extends TeamRow {
   positions: TeamPositionRow[];
   members: Array<{ user_id: string; position_id: string | null; profile: PersonSummary | null }>;

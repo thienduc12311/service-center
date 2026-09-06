@@ -25,6 +25,8 @@ export const respondToAssignmentSchema = z.object({
   notes: z.string().trim().max(1000).nullish(),
 });
 
+export const respondToAssignmentNotificationSchema = respondToAssignmentSchema;
+
 export const updateAssignmentSchema = z.object({
   status: assignmentStatusSchema.optional(),
   position_id: uuid.nullish(),
@@ -39,4 +41,5 @@ export const conflictCheckSchema = z.object({
 
 export type CreateAssignmentsInput = z.infer<typeof createAssignmentsSchema>;
 export type RespondToAssignmentInput = z.infer<typeof respondToAssignmentSchema>;
+export type RespondToAssignmentNotificationInput = z.infer<typeof respondToAssignmentNotificationSchema>;
 export type ConflictCheckInput = z.infer<typeof conflictCheckSchema>;

@@ -24,6 +24,7 @@ export const keys = {
   calendar: (org: string | null, query: unknown) => [...keys.all(org), 'calendar', query] as const,
   mySchedule: (org: string | null, query: unknown) => [...keys.all(org), 'my-schedule', query] as const,
   blockouts: (org: string | null, query: unknown) => [...keys.all(org), 'blockouts', query] as const,
+  calendarFeed: (org: string | null) => [...keys.all(org), 'calendar-feed'] as const,
   imports: (org: string | null) => [...keys.all(org), 'imports'] as const,
   songbooks: (org: string | null) => [...keys.all(org), 'songbooks'] as const,
   songbook: (org: string | null, id: string) => [...keys.songbooks(org), id] as const,
@@ -130,6 +131,11 @@ export const useBlockouts = (query: { scope?: 'mine' | 'organization' } = {}) =>
     queryFn: () => api.listBlockouts(query),
     enabled: Boolean(org),
   });
+};
+
+export const useCalendarFeed = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.calendarFeed(org), queryFn: () => api.getCalendarFeed(), enabled: Boolean(org) });
 };
 
 export const useImports = (options?: { refetchInterval?: number | false }) => {

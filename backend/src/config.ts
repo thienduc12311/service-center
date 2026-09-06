@@ -11,9 +11,13 @@ const envSchema = z.object({
 
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
   APP_URL: z.string().url().default('http://localhost:5173'),
+  API_URL: z.string().url().default('http://localhost:4000'),
 
   OCR_PROVIDER: z.enum(['stub', 'anthropic']).default('stub'),
   ANTHROPIC_API_KEY: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
+  MAIL_FROM_ADDRESS: z.string().email().default('notifications@example.com'),
+  MAIL_FROM_NAME: z.string().default('Service Center'),
 });
 
 const parsed = envSchema.safeParse(process.env);

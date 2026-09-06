@@ -23,6 +23,7 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "morgan": "^1.10.0",
+    "resend": "^6.26.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

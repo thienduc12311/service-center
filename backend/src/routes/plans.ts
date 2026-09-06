@@ -25,6 +25,7 @@ import {
   reorderPlanItems,
   shapePlanSummary,
 } from '../services/plans.js';
+import { notifyConfirmedAssignmentsForPlan } from './assignments.js';
 
 export const plansRouter: Router = Router();
 
@@ -94,6 +95,10 @@ plansRouter.post('/', requireManager, validateBody(createPlanSchema), async (req
 
 plansRouter.patch('/:id', requireManager, validateBody(updatePlanSchema), async (req, res) => {
   const { times, ...plan } = req.body as UpdatePlanInput;
+  const existingPlan = await unwrapOne(req.db.from('plans').select('id, location, organization_id').eq('id', param(req, 'id')).eq('organization_id', req.orgId).single());
+  const existingTimes = times
+    ? (await unwrap(req.db.from('plan_times').select('id, starts_at, ends_at').eq('plan_id', param(req, 'id')).order('starts_at'))) ?? []
+    : [];
 
   if (Object.keys(plan).length > 0) {
     const updated = await unwrap(
@@ -108,14 +113,29 @@ plansRouter.patch('/:id', requireManager, validateBody(updatePlanSchema), async 
     if (!updated) throw HttpError.notFound('Plan not found');
   }
 
-  // Times are replaced wholesale — the editor always sends the complete set.
+  // The editor sends the complete set; update by position so event UIDs remain stable.
   if (times) {
-    await unwrap(req.db.from('plan_times').delete().eq('plan_id', param(req, 'id')));
-    if (times.length) {
-      await unwrap(
-        req.db.from('plan_times').insert(times.map((t) => ({ ...t, plan_id: param(req, 'id') })) as never),
-      );
+    for (const [index, time] of times.entries()) {
+      const existing = existingTimes[index];
+      if (existing) {
+        await unwrap(req.db.from('plan_times').update(time).eq('id', existing.id).eq('plan_id', param(req, 'id')));
+      } else {
+        await unwrap(req.db.from('plan_times').insert({ ...time, plan_id: param(req, 'id') } as never));
+      }
     }
+    for (const stale of existingTimes.slice(times.length)) {
+      await unwrap(req.db.from('plan_times').delete().eq('id', stale.id).eq('plan_id', param(req, 'id')));
+    }
+  }
+
+  const timesChanged = times
+    ? times.length !== existingTimes.length || times.some((time, index) => {
+        const previous = existingTimes[index];
+        return !previous || previous.starts_at !== time.starts_at || previous.ends_at !== time.ends_at;
+      })
+    : false;
+  if (timesChanged || (plan.location !== undefined && plan.location !== existingPlan.location)) {
+    await notifyConfirmedAssignmentsForPlan({ db: req.db, orgId: req.orgId, authUserId: req.auth.userId, planId: existingPlan.id });
   }
 
   res.json(await fetchPlanDetail(req.db, req.orgId, param(req, 'id')));
