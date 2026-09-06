@@ -15,6 +15,7 @@ import type {
   ProfileRow,
   ServiceTypeRow,
   SongRow,
+  SongbookRow,
   TeamPositionRow,
   TeamRow,
 } from '../types/database.js';
@@ -28,6 +29,7 @@ import type {
   PlanSummary,
   SchedulingConflict,
   SongWithArrangements,
+  SongbookDetail,
   TeamWithPositions,
 } from '../types/domain.js';
 
@@ -123,7 +125,7 @@ export class ServiceCenterApi {
       'GET',
       '/api/v1/organizations',
     );
-  createOrganization = (body: { name: string; slug: string; timezone?: string }) =>
+  createOrganization = (body: { name: string; slug: string; timezone?: string; logo_url?: string | null }) =>
     this.request<OrganizationRow>('POST', '/api/v1/organizations', body);
   updateOrganization = (id: string, body: Partial<OrganizationRow>) =>
     this.request<OrganizationRow>('PATCH', `/api/v1/organizations/${id}`, body);
@@ -237,6 +239,13 @@ export class ServiceCenterApi {
   createBlockout = (body: { starts_at: string; ends_at: string; reason?: string | null }) =>
     this.request<BlockoutRow>('POST', '/api/v1/blockouts', body);
   deleteBlockout = (id: string) => this.request<void>('DELETE', `/api/v1/blockouts/${id}`);
+
+  // ----------------------------------------------------------- songbooks --
+  listSongbooks = () => this.request<SongbookRow[]>('GET', '/api/v1/songbooks');
+  getSongbook = (id: string) => this.request<SongbookDetail>('GET', `/api/v1/songbooks/${id}`);
+  createSongbook = (body: Record<string, unknown>) =>
+    this.request<SongbookDetail>('POST', '/api/v1/songbooks', body);
+  deleteSongbook = (id: string) => this.request<void>('DELETE', `/api/v1/songbooks/${id}`);
 
   // ------------------------------------------------- phase 2: OCR import --
   listImports = () => this.request<ChordSheetImportRow[]>('GET', '/api/v1/imports');

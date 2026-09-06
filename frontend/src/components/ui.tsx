@@ -5,8 +5,8 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600',
-  secondary: 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50',
-  ghost: 'text-slate-600 hover:bg-slate-100',
+  secondary: 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800',
+  ghost: 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
   danger: 'bg-rose-600 text-white hover:bg-rose-700',
 };
 
@@ -75,8 +75,8 @@ export const PageHeader = ({
 }) => (
   <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
-      {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+      <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{title}</h1>
+      {subtitle && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
     </div>
     {actions && <div className="flex items-center gap-2">{actions}</div>}
   </header>

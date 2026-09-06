@@ -11,6 +11,7 @@ import type {
   SchedulingConflictRow,
   ServiceTypeRow,
   SongRow,
+  SongbookRow,
   TeamPositionRow,
   TeamRow,
 } from './database.js';
@@ -40,6 +41,16 @@ export interface TeamWithPositions extends TeamRow {
 
 export interface SongWithArrangements extends SongRow {
   arrangements: ArrangementRow[];
+}
+
+export interface SongbookDetail extends SongbookRow {
+  document_url?: string | null;
+  items: Array<{
+    id: string;
+    sort_order: number;
+    song: Pick<SongRow, 'id' | 'title' | 'author' | 'copyright' | 'default_key'>;
+    arrangement: Pick<ArrangementRow, 'id' | 'name' | 'song_key' | 'chord_chart'> | null;
+  }>;
 }
 
 export interface PlanItemDetail extends PlanItemRow {

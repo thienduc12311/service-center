@@ -24,6 +24,8 @@ export const keys = {
   mySchedule: (org: string | null, query: unknown) => [...keys.all(org), 'my-schedule', query] as const,
   blockouts: (org: string | null, query: unknown) => [...keys.all(org), 'blockouts', query] as const,
   imports: (org: string | null) => [...keys.all(org), 'imports'] as const,
+  songbooks: (org: string | null) => [...keys.all(org), 'songbooks'] as const,
+  songbook: (org: string | null, id: string) => [...keys.songbooks(org), id] as const,
 };
 
 const useOrg = () => useAuth().organizationId;
@@ -127,6 +129,24 @@ export const useImports = (options?: { refetchInterval?: number | false }) => {
     queryFn: () => api.listImports(),
     enabled: Boolean(org),
     ...options,
+  });
+};
+
+export const useSongbooks = () => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.songbooks(org),
+    queryFn: () => api.listSongbooks(),
+    enabled: Boolean(org),
+  });
+};
+
+export const useSongbook = (id: string | undefined) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.songbook(org, id ?? ''),
+    queryFn: () => api.getSongbook(id!),
+    enabled: Boolean(org && id),
   });
 };
 

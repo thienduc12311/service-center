@@ -36,4 +36,6 @@ export const MUSICAL_KEYS = [
 export const STORAGE_BUCKETS = {
   attachments: 'attachments',
   chordSheets: 'chord-sheets',
+  organizationLogos: 'organization-logos',
+  songbooks: 'songbooks',
 } as const;

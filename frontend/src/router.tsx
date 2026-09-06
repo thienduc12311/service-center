@@ -16,6 +16,8 @@ import { PeoplePage } from './pages/PeoplePage';
 import { MySchedulePage } from './pages/MySchedulePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ImportsPage } from './pages/ImportsPage';
+import { SongbooksPage } from './pages/SongbooksPage';
+import { SongbookPage } from './pages/SongbookPage';
 
 /**
  * Gate for every authenticated route. Anyone signed in but not yet in an
@@ -48,6 +50,8 @@ export const router = createBrowserRouter([
           { path: '/plans/:planId', element: <PlanDetailPage /> },
           { path: '/songs', element: <SongsPage /> },
           { path: '/songs/:songId', element: <SongDetailPage /> },
+          { path: '/songbooks', element: <SongbooksPage /> },
+          { path: '/songbooks/:songbookId', element: <SongbookPage /> },
           { path: '/teams', element: <TeamsPage /> },
           { path: '/people', element: <PeoplePage /> },
           { path: '/my-schedule', element: <MySchedulePage /> },

@@ -7,6 +7,8 @@ import { ApiError } from '@service-center/shared';
 import { AuthProvider, useAuth } from '../src/providers/AuthProvider';
 import { Loading } from '../src/components/ui';
 import { theme } from '../src/lib/theme';
+import '../global.css';
+import { useColorScheme } from 'nativewind';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +27,8 @@ const RootNavigator = () => {
   const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const dark = colorScheme === 'dark';
 
   useEffect(() => {
     if (loading) return;
@@ -39,10 +43,10 @@ const RootNavigator = () => {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.surface },
-        headerTintColor: theme.colors.text,
+        headerStyle: { backgroundColor: dark ? '#0f172a' : theme.colors.surface },
+        headerTintColor: dark ? '#f8fafc' : theme.colors.text,
         headerTitleStyle: { fontWeight: '600' },
-        contentStyle: { backgroundColor: theme.colors.background },
+        contentStyle: { backgroundColor: dark ? '#020617' : theme.colors.background },
       }}
     >
       <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
@@ -50,6 +54,8 @@ const RootNavigator = () => {
       <Stack.Screen name="plan/[id]" options={{ title: 'Plan' }} />
       <Stack.Screen name="song/[id]" options={{ title: 'Song' }} />
       <Stack.Screen name="scan" options={{ title: 'Import chord sheet', presentation: 'modal' }} />
+      <Stack.Screen name="songbooks/index" options={{ title: 'Song books' }} />
+      <Stack.Screen name="songbooks/[id]" options={{ title: 'Song book' }} />
     </Stack>
   );
 };
@@ -59,7 +65,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <StatusBar style="dark" />
+          <StatusBar style="auto" />
           <RootNavigator />
         </AuthProvider>
       </QueryClientProvider>

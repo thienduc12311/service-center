@@ -1,15 +1,17 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { formatDate } from '@service-center/shared';
+import { formatDate, isAdmin, STORAGE_BUCKETS } from '@service-center/shared';
 import { api } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { useBlockouts, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
 
 export const SettingsPage = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, organizationId, role, refreshUser, switchOrganization } = useAuth();
   const invalidate = useInvalidateOrg();
   const blockouts = useBlockouts({ scope: 'mine' });
+  const organization = user?.memberships.find((membership) => membership.organization.id === organizationId)?.organization;
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -68,8 +70,8 @@ export const SettingsPage = () => {
   });
 
   return (
-    <div className="max-w-2xl space-y-8">
-      <PageHeader title="Settings" subtitle="Your profile and availability." />
+    <div className="max-w-3xl space-y-8">
+      <PageHeader title="Settings" subtitle="Your profile, organizations, appearance and availability." />
 
       <section className="card p-5">
         <h2 className="mb-4 font-semibold">Profile</h2>
@@ -99,6 +101,16 @@ export const SettingsPage = () => {
           </div>
         </form>
       </section>
+
+      <OrganizationSettings
+        organization={organization}
+        canEdit={isAdmin(role)}
+        onChanged={refreshUser}
+        onCreated={async (id) => {
+          await refreshUser();
+          switchOrganization(id);
+        }}
+      />
 
       <section className="card p-5">
         <h2 className="mb-1 font-semibold">Blockout dates</h2>
@@ -184,5 +196,104 @@ export const SettingsPage = () => {
         )}
       </section>
     </div>
+  );
+};
+
+const slugify = (value: string) => value
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '')
+  .slice(0, 40);
+
+const OrganizationSettings = ({
+  organization,
+  canEdit,
+  onChanged,
+  onCreated,
+}: {
+  organization: { id: string; name: string; logo_url: string | null } | undefined;
+  canEdit: boolean;
+  onChanged: () => Promise<void>;
+  onCreated: (id: string) => Promise<void>;
+}) => {
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  const create = async (event: FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    try {
+      const created = await api.createOrganization({
+        name,
+        slug: `${slugify(name).slice(0, 35)}-${Date.now().toString(36).slice(-4)}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      setName('');
+      setCreating(false);
+      await onCreated(created.id);
+    } catch (reason) {
+      setError(reason);
+    }
+  };
+
+  const uploadLogo = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !organization) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png';
+      const path = `${organization.id}/logo-${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKETS.organizationLogos)
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from(STORAGE_BUCKETS.organizationLogos).getPublicUrl(path);
+      await api.updateOrganization(organization.id, { logo_url: data.publicUrl });
+      await onChanged();
+    } catch (reason) {
+      setError(reason);
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  return (
+    <section className="card overflow-hidden p-5">
+      <div className="flex flex-wrap items-center gap-4">
+        {organization?.logo_url ? (
+          <img src={organization.logo_url} alt={`${organization.name} logo`} className="size-16 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+        ) : (
+          <div className="grid size-16 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-violet-700 text-xl font-bold text-white">SC</div>
+        )}
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold text-slate-900 dark:text-white">{organization?.name ?? 'Organization'}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Create and switch between every community you administer.</p>
+        </div>
+        {canEdit && organization && (
+          <label className="cursor-pointer rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+            {uploading ? 'Uploading…' : 'Update logo'}
+            <input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={uploadLogo} disabled={uploading} />
+          </label>
+        )}
+        <Button variant="secondary" onClick={() => setCreating((value) => !value)}>
+          {creating ? 'Cancel' : 'New organization'}
+        </Button>
+      </div>
+
+      {creating && (
+        <form onSubmit={create} className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-5 dark:border-slate-800 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <label className="label" htmlFor="new-org-name">Organization name</label>
+            <input id="new-org-name" className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Grace Community" required />
+          </div>
+          <Button type="submit">Create organization</Button>
+        </form>
+      )}
+      <ErrorNotice error={error} />
+    </section>
   );
 };
