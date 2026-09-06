@@ -94,6 +94,147 @@ const parseJsonResponse = (text: string): Record<string, unknown> => {
   }
 };
 
+const TRANSCRIPTION_TEMPERATURE = 0;
+
+/** Narrows the parsed transcription payload into an `OcrResult`. */
+const toOcrResult = (text: string, providerName: string): OcrResult => {
+  const parsed = parseJsonResponse(text);
+  const confidence = Number(parsed.confidence);
+  return {
+    rawText: String(parsed.text ?? ''),
+    title: typeof parsed.title === 'string' ? parsed.title : null,
+    key: typeof parsed.key === 'string' ? parsed.key : null,
+    confidence: Number.isFinite(confidence) ? Math.min(Math.max(confidence, 0), 1) : null,
+    provider: providerName,
+  };
+};
+
+/** Reads an error body without letting a huge HTML page into the log. */
+const describeHttpFailure = async (provider: string, response: Response): Promise<HttpError> => {
+  const body = (await response.text().catch(() => '')).slice(0, 500);
+  return new HttpError(502, `The ${provider} transcription request failed (${response.status}): ${body}`);
+};
+
+// ---------------------------------------------------------------- gemini ---
+interface GeminiPart {
+  text?: string;
+}
+interface GeminiCandidate {
+  content?: { parts?: GeminiPart[] };
+}
+interface GeminiResponse {
+  candidates?: GeminiCandidate[];
+  promptFeedback?: { blockReason?: string };
+}
+
+/**
+ * Google AI Studio. The free tier is what makes this the default real
+ * provider; the REST endpoint keeps it dependency-free.
+ */
+const createGeminiProvider = (): OcrProvider => ({
+  name: 'gemini',
+  async recognise(image) {
+    if (!config.GEMINI_API_KEY) {
+      throw new HttpError(500, 'OCR_PROVIDER is "gemini" but GEMINI_API_KEY is not set');
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${config.GEMINI_MODEL}:generateContent`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': config.GEMINI_API_KEY },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { inline_data: { mime_type: image.mimeType, data: image.base64 } },
+                { text: TRANSCRIPTION_PROMPT },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: TRANSCRIPTION_TEMPERATURE,
+            responseMimeType: 'application/json',
+          },
+        }),
+      },
+    );
+
+    if (response.status === 429) {
+      throw new HttpError(429, 'The transcription provider is rate limiting; try again shortly');
+    }
+    if (!response.ok) throw await describeHttpFailure('Gemini', response);
+
+    const body = (await response.json()) as GeminiResponse;
+    if (body.promptFeedback?.blockReason) {
+      throw new HttpError(422, `The transcription request was declined (${body.promptFeedback.blockReason})`);
+    }
+
+    const text = (body.candidates?.[0]?.content?.parts ?? [])
+      .map((part) => part.text ?? '')
+      .join('\n')
+      .trim();
+
+    if (!text) throw new HttpError(502, 'Gemini returned an empty transcription');
+    return toOcrResult(text, 'gemini');
+  },
+});
+
+// ---------------------------------------------------------------- openai ---
+interface OpenAiResponse {
+  choices?: Array<{ message?: { content?: string | null }; finish_reason?: string }>;
+  error?: { message?: string };
+}
+
+const createOpenAiProvider = (): OcrProvider => ({
+  name: 'openai',
+  async recognise(image) {
+    if (!config.OPENAI_API_KEY) {
+      throw new HttpError(500, 'OCR_PROVIDER is "openai" but OPENAI_API_KEY is not set');
+    }
+    if (image.mimeType === 'application/pdf') {
+      throw new HttpError(422, 'The OpenAI provider reads images, not PDFs — upload a photo or a PNG');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${config.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: config.OPENAI_MODEL,
+        temperature: TRANSCRIPTION_TEMPERATURE,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: TRANSCRIPTION_PROMPT },
+              {
+                type: 'image_url',
+                image_url: { url: `data:${image.mimeType};base64,${image.base64}` },
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (response.status === 429) {
+      throw new HttpError(429, 'The transcription provider is rate limiting; try again shortly');
+    }
+    if (!response.ok) throw await describeHttpFailure('OpenAI', response);
+
+    const body = (await response.json()) as OpenAiResponse;
+    const text = body.choices?.[0]?.message?.content?.trim() ?? '';
+    if (!text) throw new HttpError(502, 'OpenAI returned an empty transcription');
+    return toOcrResult(text, 'openai');
+  },
+});
+
+// ------------------------------------------------------------- anthropic ---
 const createAnthropicProvider = (): OcrProvider => ({
   name: 'anthropic',
   async recognise(image) {
@@ -139,23 +280,21 @@ const createAnthropicProvider = (): OcrProvider => ({
       .map((block) => block.text)
       .join('\n');
 
-    const parsed = parseJsonResponse(text);
-    const confidence = Number(parsed.confidence);
-
-    return {
-      rawText: String(parsed.text ?? ''),
-      title: typeof parsed.title === 'string' ? parsed.title : null,
-      key: typeof parsed.key === 'string' ? parsed.key : null,
-      confidence: Number.isFinite(confidence) ? Math.min(Math.max(confidence, 0), 1) : null,
-      provider: 'anthropic',
-    };
+    return toOcrResult(text, 'anthropic');
   },
 });
 
 let provider: OcrProvider | null = null;
 
+const PROVIDER_FACTORIES: Record<typeof config.OCR_PROVIDER, () => OcrProvider> = {
+  stub: () => stubProvider,
+  gemini: createGeminiProvider,
+  openai: createOpenAiProvider,
+  anthropic: createAnthropicProvider,
+};
+
 export const ocrProvider = (): OcrProvider => {
-  provider ??= config.OCR_PROVIDER === 'anthropic' ? createAnthropicProvider() : stubProvider;
+  provider ??= PROVIDER_FACTORIES[config.OCR_PROVIDER]();
   return provider;
 };
 

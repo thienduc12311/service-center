@@ -8,7 +8,7 @@ import { Button, EmptyState, ErrorNotice, Loading } from '../../src/components/u
 import { theme } from '../../src/lib/theme';
 
 export default function SongsScreen() {
-  const { organizationId, canManage } = useAuth();
+  const { organizationId, isAdmin } = useAuth();
   const router = useRouter();
   const [query, setQuery] = useState('');
 
@@ -29,7 +29,7 @@ export default function SongsScreen() {
           autoCapitalize="none"
           placeholderTextColor={theme.colors.textFaint}
         />
-        {canManage && (
+        {isAdmin && (
           <Button title="Import" variant="secondary" onPress={() => router.push('/scan')} />
         )}
       </View>

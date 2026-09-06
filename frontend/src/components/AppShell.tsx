@@ -16,7 +16,7 @@ const NAV = [
 ];
 
 export const AppShell = () => {
-  const { user, organizationId, role, switchOrganization, signOut } = useAuth();
+  const { user, organizationId, role, isAdmin, switchOrganization, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { resolved, setMode } = useTheme();
@@ -111,13 +111,15 @@ export const AppShell = () => {
                   >
                     Settings
                   </NavLink>
-                  <NavLink
-                    to="/imports"
-                    onClick={() => setMenuOpen(false)}
-                    className="block px-4 py-2 text-slate-700 hover:bg-slate-50"
-                  >
-                    Import chord sheet
-                  </NavLink>
+                  {isAdmin && (
+                    <NavLink
+                      to="/imports"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-4 py-2 text-slate-700 hover:bg-slate-50"
+                    >
+                      Import chord sheet
+                    </NavLink>
+                  )}
                   <button
                     onClick={() => void signOut()}
                     className="block w-full px-4 py-2 text-left text-rose-600 hover:bg-rose-50"

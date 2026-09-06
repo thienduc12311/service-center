@@ -333,6 +333,26 @@ export type ChordSheetImportRow = {
   updated_at: string;
 }
 
+export type AiImportUsageRow = {
+  organization_id: string;
+  user_id: string;
+  /** The organization's local date the counter belongs to. */
+  usage_date: string;
+  import_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** One row back from `ai_import_quota_status` / `consume_ai_import_quota`. */
+export type ImportQuotaRow = {
+  allowed: boolean;
+  used: number;
+  remaining: number;
+  quota_limit: number;
+  usage_date: string;
+  resets_at: string;
+}
+
 export type SchedulingConflictRow = {
   user_id: string;
   conflict_type: 'blockout' | 'double_booked';
@@ -367,6 +387,7 @@ export type Database = {
       chord_sheet_imports: Table<ChordSheetImportRow>;
       songbooks: Table<SongbookRow>;
       songbook_items: Table<SongbookItemRow>;
+      ai_import_usage: Table<AiImportUsageRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -386,6 +407,14 @@ export type Database = {
       accept_person_invitation: {
         Args: { p_token_hash: string; p_new_user_id: string };
         Returns: Array<{ out_organization_id: string; out_person_id: string; out_role: OrgRole }>;
+      };
+      ai_import_quota_status: {
+        Args: { p_organization_id: string; p_limit: number };
+        Returns: ImportQuotaRow[];
+      };
+      consume_ai_import_quota: {
+        Args: { p_organization_id: string; p_limit: number };
+        Returns: ImportQuotaRow[];
       };
     };
     Enums: {

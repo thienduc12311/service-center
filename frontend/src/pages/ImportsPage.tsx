@@ -1,10 +1,10 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { STORAGE_BUCKETS, type ChordSheetImportRow } from '@service-center/shared';
+import { STORAGE_BUCKETS, type ChordSheetImportRow, type ImportQuota } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { useImports, useInvalidateOrg } from '../hooks/queries';
+import { useImportQuota, useImports, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { ChordChart } from '../components/ChordChart';
@@ -16,8 +16,22 @@ const statusTone: Record<ChordSheetImportRow['status'], string> = {
   failed: 'bg-rose-50 text-rose-700 ring-rose-600/20',
 };
 
+/** Reads as "3 of 10 left today", with the reset time once it runs out. */
+const QuotaNotice = ({ quota }: { quota: ImportQuota }) => {
+  const exhausted = quota.remaining === 0;
+  return (
+    <p className={`text-xs ${exhausted ? 'text-amber-700' : 'text-slate-500'}`}>
+      {exhausted
+        ? `Daily limit reached (${quota.limit}). More imports at ${new Date(
+            quota.resets_at,
+          ).toLocaleString()}.`
+        : `${quota.remaining} of ${quota.limit} imports left today.`}
+    </p>
+  );
+};
+
 export const ImportsPage = () => {
-  const { canManage, organizationId } = useAuth();
+  const { isAdmin, organizationId } = useAuth();
   const invalidate = useInvalidateOrg();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<unknown>(null);
@@ -25,6 +39,8 @@ export const ImportsPage = () => {
 
   // Poll while anything is still being worked on.
   const imports = useImports({ refetchInterval: 3000 });
+  const quota = useImportQuota(isAdmin);
+  const outOfQuota = quota.data?.remaining === 0;
   const anyRunning = (imports.data ?? []).some(
     (record) => record.status === 'pending' || record.status === 'processing',
   );
@@ -64,24 +80,43 @@ export const ImportsPage = () => {
     }
   };
 
+  if (!isAdmin) {
+    return (
+      <div>
+        <PageHeader title="Import a chord sheet" />
+        <EmptyState
+          title="Admins only"
+          description="Importing a chord sheet runs it through an AI transcription service, so it is limited to organization owners and admins."
+        />
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
         title="Import a chord sheet"
         subtitle="Phase 2 — photograph or scan a chart and turn it into an editable song."
         actions={
-          canManage && (
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700">
+          <div className="flex flex-col items-end gap-1">
+            <label
+              className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium text-white ${
+                outOfQuota
+                  ? 'cursor-not-allowed bg-slate-300'
+                  : 'cursor-pointer bg-brand-600 hover:bg-brand-700'
+              }`}
+            >
               {uploading ? 'Uploading…' : 'Upload image'}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/heic,application/pdf"
                 className="sr-only"
                 onChange={upload}
-                disabled={uploading}
+                disabled={uploading || outOfQuota}
               />
             </label>
-          )
+            {quota.data && <QuotaNotice quota={quota.data} />}
+          </div>
         }
       />
 
@@ -126,7 +161,7 @@ export const ImportsPage = () => {
 
         <section className="lg:col-span-3">
           {selected ? (
-            <ImportDetail record={selected} onDone={() => void invalidate()} />
+            <ImportDetail record={selected} canRerun={!outOfQuota} onDone={() => void invalidate()} />
           ) : (
             <div className="card p-6 text-sm text-slate-500">
               <h2 className="mb-2 font-semibold text-slate-800">How it works</h2>
@@ -148,7 +183,14 @@ export const ImportsPage = () => {
   );
 };
 
-const ImportDetail = ({ record, onDone }: { record: ChordSheetImportRow; onDone: () => void }) => {
+interface ImportDetailProps {
+  record: ChordSheetImportRow;
+  /** Re-running the transcription spends another import. */
+  canRerun: boolean;
+  onDone: () => void;
+}
+
+const ImportDetail = ({ record, canRerun, onDone }: ImportDetailProps) => {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [chordpro, setChordpro] = useState('');
@@ -185,9 +227,12 @@ const ImportDetail = ({ record, onDone }: { record: ChordSheetImportRow; onDone:
       <div className="card space-y-3 p-6">
         <h2 className="font-semibold text-rose-700">Import failed</h2>
         <p className="text-sm text-slate-600">{record.error_message ?? 'Unknown error'}</p>
-        <Button loading={retry.isPending} onClick={() => retry.mutate()}>
+        <Button loading={retry.isPending} disabled={!canRerun} onClick={() => retry.mutate()}>
           Try again
         </Button>
+        {!canRerun && (
+          <p className="text-xs text-amber-700">You have used today’s imports.</p>
+        )}
         <ErrorNotice error={retry.error} />
       </div>
     );
@@ -217,7 +262,12 @@ const ImportDetail = ({ record, onDone }: { record: ChordSheetImportRow; onDone:
           <Button variant="secondary" onClick={() => setPreview((value) => !value)}>
             {preview ? 'Edit source' : 'Preview'}
           </Button>
-          <Button variant="secondary" loading={retry.isPending} onClick={() => retry.mutate()}>
+          <Button
+            variant="secondary"
+            loading={retry.isPending}
+            disabled={!canRerun}
+            onClick={() => retry.mutate()}
+          >
             Re-run
           </Button>
         </div>

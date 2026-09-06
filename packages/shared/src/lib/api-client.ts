@@ -26,6 +26,8 @@ import type {
   AssignmentRespondResult,
   CalendarFeedTokenResponse,
   CurrentUser,
+  ImportQuota,
+  ImportWithQuota,
   InvitationPreview,
   MyScheduleEntry,
   Paginated,
@@ -281,11 +283,12 @@ export class ServiceCenterApi {
 
   // ------------------------------------------------- phase 2: OCR import --
   listImports = () => this.request<ChordSheetImportRow[]>('GET', '/api/v1/imports');
+  getImportQuota = () => this.request<ImportQuota>('GET', '/api/v1/imports/quota');
   getImport = (id: string) => this.request<ChordSheetImportRow>('GET', `/api/v1/imports/${id}`);
   createImport = (body: { storage_path: string; original_filename?: string | null }) =>
-    this.request<ChordSheetImportRow>('POST', '/api/v1/imports', body);
+    this.request<ImportWithQuota>('POST', '/api/v1/imports', body);
   retryImport = (id: string) =>
-    this.request<ChordSheetImportRow>('POST', `/api/v1/imports/${id}/retry`, {});
+    this.request<ImportWithQuota>('POST', `/api/v1/imports/${id}/retry`, {});
   acceptImport = (id: string, body: Record<string, unknown>) =>
     this.request<{ song: SongRow; arrangement: ArrangementRow }>(
       'POST',

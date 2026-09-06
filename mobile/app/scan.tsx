@@ -21,7 +21,7 @@ import { theme } from '../src/lib/theme';
  * correct the result and save it as a song.
  */
 export default function ScanScreen() {
-  const { organizationId } = useAuth();
+  const { organizationId, isAdmin } = useAuth();
   const router = useRouter();
   const [preview, setPreview] = useState<string | null>(null);
   const [importId, setImportId] = useState<string | null>(null);
@@ -29,6 +29,14 @@ export default function ScanScreen() {
   const [chordpro, setChordpro] = useState('');
   const [uploadError, setUploadError] = useState<unknown>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Today's allowance. Admin-only, so it is only asked for when it applies.
+  const quota = useQuery({
+    queryKey: ['import-quota', organizationId],
+    queryFn: () => api.getImportQuota(),
+    enabled: Boolean(organizationId) && isAdmin,
+  });
+  const outOfQuota = quota.data?.remaining === 0;
 
   // Poll until the OCR job settles.
   const record = useQuery({
@@ -64,7 +72,7 @@ export default function ScanScreen() {
   });
 
   const pick = async (source: 'camera' | 'library') => {
-    if (!organizationId) return;
+    if (!organizationId || outOfQuota) return;
 
     const permission =
       source === 'camera'
@@ -104,6 +112,7 @@ export default function ScanScreen() {
         original_filename: asset.fileName ?? 'chord-sheet.jpg',
       });
       setImportId(created.id);
+      await quota.refetch();
     } catch (error) {
       setUploadError(error);
     } finally {
@@ -114,6 +123,20 @@ export default function ScanScreen() {
   const parsed = chordpro ? parseChordPro(chordpro) : null;
   const status = record.data?.status;
 
+  if (!isAdmin) {
+    return (
+      <ScrollView contentContainerStyle={styles.container}>
+        <Card style={styles.card}>
+          <SectionTitle>Admins only</SectionTitle>
+          <Text style={styles.muted}>
+            Importing a chord sheet runs it through an AI transcription service, so it is limited to
+            organization owners and admins.
+          </Text>
+        </Card>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {!importId && (
@@ -123,13 +146,28 @@ export default function ScanScreen() {
             Take a photo of a chart, or pick one from your library. It’s transcribed and converted
             into a transposable chord chart.
           </Text>
-          <Button title="Take a photo" onPress={() => void pick('camera')} loading={uploading} />
+          <Button
+            title="Take a photo"
+            onPress={() => void pick('camera')}
+            loading={uploading}
+            disabled={outOfQuota}
+          />
           <Button
             title="Choose from library"
             variant="secondary"
             onPress={() => void pick('library')}
             loading={uploading}
+            disabled={outOfQuota}
           />
+          {quota.data && (
+            <Text style={outOfQuota ? styles.quotaSpent : styles.muted}>
+              {outOfQuota
+                ? `Daily limit reached (${quota.data.limit}). More imports at ${new Date(
+                    quota.data.resets_at,
+                  ).toLocaleString()}.`
+                : `${quota.data.remaining} of ${quota.data.limit} imports left today.`}
+            </Text>
+          )}
           <ErrorNotice error={uploadError} />
         </Card>
       )}
@@ -227,6 +265,7 @@ const styles = StyleSheet.create({
   card: { gap: 10 },
   muted: { color: theme.colors.textMuted, fontSize: 14 },
   failed: { color: theme.colors.danger, fontSize: 14 },
+  quotaSpent: { color: theme.colors.danger, fontSize: 14 },
   preview: { width: '100%', height: 220, borderRadius: theme.radius.md, backgroundColor: '#000' },
   input: {
     borderWidth: 1,

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { canManage, type CurrentUser, type OrgRole } from '@service-center/shared';
+import { canManage, isAdmin, type CurrentUser, type OrgRole } from '@service-center/shared';
 import { supabase } from '../lib/supabase';
 import { api, getOrganizationId, hydrateOrganizationId, setOrganizationId } from '../lib/api';
 
@@ -11,6 +11,8 @@ interface AuthContextValue {
   organizationId: string | null;
   role: OrgRole | null;
   canManage: boolean;
+  /** Owners and admins: membership, org settings and AI chord sheet imports. */
+  isAdmin: boolean;
   loading: boolean;
   refreshUser: () => Promise<void>;
   switchOrganization: (id: string) => Promise<void>;
@@ -89,6 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       organizationId,
       role,
       canManage: canManage(role),
+      isAdmin: isAdmin(role),
       loading,
       refreshUser: loadUser,
       switchOrganization: async (id: string) => {
