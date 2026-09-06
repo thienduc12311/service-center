@@ -3,6 +3,7 @@ import { nonEmpty } from './common.js';
 import { orgRoleSchema } from './organization.js';
 
 export const personTypeSchema = z.enum(['adult', 'child']);
+export const genderSchema = z.enum(['male', 'female']);
 
 export const createPersonSchema = z.object({
   first_name: nonEmpty.max(80),
@@ -22,7 +23,7 @@ export const createPersonSchema = z.object({
 
   campus: z.string().trim().max(120).nullish(),
   person_type: personTypeSchema.default('adult'),
-  gender: z.string().trim().max(40).nullish(),
+  gender: genderSchema.nullish(),
   birthdate: z.string().date().nullish(),
   marital_status: z.string().trim().max(40).nullish(),
   anniversary_date: z.string().date().nullish(),
