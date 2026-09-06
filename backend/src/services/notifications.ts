@@ -48,3 +48,34 @@ export const sendScheduleNotifications = async (
 
 export const respondUrlFor = (planId: string, assignmentId: string): string =>
   `${config.APP_URL}/plans/${planId}?respond=${assignmentId}`;
+
+export interface PersonInvitationNotification {
+  to: string;
+  personName: string;
+  organizationName: string;
+  acceptUrl: string;
+}
+
+/** Same pluggable-transport shape as schedule notifications, see above. */
+export interface PersonInvitationTransport {
+  send(notification: PersonInvitationNotification): Promise<void>;
+}
+
+const consolePersonInvitationTransport: PersonInvitationTransport = {
+  async send(notification) {
+    if (config.isTest) return;
+    console.info(
+      `[invite] ${notification.to} — join ${notification.organizationName} as ` +
+        `${notification.personName} → ${notification.acceptUrl}`,
+    );
+  },
+};
+
+let personInvitationTransport: PersonInvitationTransport = consolePersonInvitationTransport;
+
+export const setPersonInvitationTransport = (next: PersonInvitationTransport): void => {
+  personInvitationTransport = next;
+};
+
+export const sendPersonInvitation = (notification: PersonInvitationNotification): Promise<void> =>
+  personInvitationTransport.send(notification);

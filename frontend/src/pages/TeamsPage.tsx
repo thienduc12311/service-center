@@ -165,8 +165,13 @@ export const TeamsPage = () => {
       </Modal>
 
       <Modal open={Boolean(addingTo)} title={`Add to ${activeTeam?.name ?? 'team'}`} onClose={() => setAddingTo(null)}>
+        <p className="mb-2 text-xs text-slate-400">
+          Only people with a login can be scheduled — invite someone from the People page first.
+        </p>
         <ul className="max-h-80 space-y-1 overflow-y-auto">
-          {(people.data ?? []).map((person) => (
+          {/* team_memberships references a real login (profiles.id), so a no-login
+              roster entry can't be scheduled until they accept an invitation. */}
+          {(people.data ?? []).filter((person) => person.has_login).map((person) => (
             <li key={person.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
               <Avatar name={person.full_name ?? person.email} url={person.avatar_url} size="sm" />
               <span className="flex-1 text-sm">{person.full_name ?? person.email}</span>

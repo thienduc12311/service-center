@@ -4,6 +4,7 @@ import { Loading } from './components/ui';
 import { useAuth } from './providers/AuthProvider';
 
 import { LoginPage } from './pages/LoginPage';
+import { AcceptInvitePage } from './pages/AcceptInvitePage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CalendarPage } from './pages/CalendarPage';
@@ -13,6 +14,7 @@ import { SongsPage } from './pages/SongsPage';
 import { SongDetailPage } from './pages/SongDetailPage';
 import { TeamsPage } from './pages/TeamsPage';
 import { PeoplePage } from './pages/PeoplePage';
+import { PersonPage } from './pages/PersonPage';
 import { MySchedulePage } from './pages/MySchedulePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ImportsPage } from './pages/ImportsPage';
@@ -37,6 +39,7 @@ const RequireAuth = () => {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/accept-invite', element: <AcceptInvitePage /> },
   {
     element: <RequireAuth />,
     children: [
@@ -54,6 +57,8 @@ export const router = createBrowserRouter([
           { path: '/songbooks/:songbookId', element: <SongbookPage /> },
           { path: '/teams', element: <TeamsPage /> },
           { path: '/people', element: <PeoplePage /> },
+          { path: '/people/new', element: <PersonPage /> },
+          { path: '/people/:personId', element: <PersonPage /> },
           { path: '/my-schedule', element: <MySchedulePage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/imports', element: <ImportsPage /> },

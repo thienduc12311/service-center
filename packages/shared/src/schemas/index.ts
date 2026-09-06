@@ -1,5 +1,6 @@
 export * from './common.js';
 export * from './organization.js';
+export * from './people.js';
 export * from './team.js';
 export * from './song.js';
 export * from './plan.js';

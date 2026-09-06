@@ -611,8 +611,10 @@ const SchedulePeopleModal = ({
     );
 
   // Members of the chosen team come first — they're who you usually want.
+  // Only people with a login can be scheduled (assignments reference a real
+  // account), so no-login roster entries are excluded here.
   const candidates = useMemo(() => {
-    const all = people.data ?? [];
+    const all = (people.data ?? []).filter((person) => person.has_login);
     if (!team) return all;
     const onTeam = new Set(team.members.map((m) => m.user_id));
     return [...all].sort((a, b) => Number(onTeam.has(b.id)) - Number(onTeam.has(a.id)));

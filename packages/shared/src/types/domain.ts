@@ -2,8 +2,12 @@ import type {
   ArrangementRow,
   AssignmentRow,
   BlockoutRow,
+  MemberStatus,
   OrgRole,
+  OrganizationMemberRow,
   OrganizationRow,
+  PersonInvitationRow,
+  PersonRow,
   PlanItemRow,
   PlanRow,
   PlanTimeRow,
@@ -32,6 +36,41 @@ export interface PersonSummary {
   avatar_url: string | null;
   phone: string | null;
   role: OrgRole;
+}
+
+/**
+ * One row in the People list. Unifies real (has-login) members with roster
+ * entries that don't have a login yet — `id` is the profile id in the
+ * former case and the `people` row id in the latter, so it's always usable
+ * as a stable list/react key.
+ */
+export interface RosterPerson {
+  id: string;
+  person_id: string | null;
+  profile_id: string | null;
+  has_login: boolean;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  role: OrgRole | null;
+  status: MemberStatus | 'no_account';
+  campus: string | null;
+  invite_pending: boolean;
+}
+
+export interface PersonDetail extends PersonRow {
+  profile: ProfileRow | null;
+  membership: Pick<OrganizationMemberRow, 'role' | 'status'> | null;
+  pending_invitation: Pick<PersonInvitationRow, 'id' | 'email' | 'role' | 'expires_at'> | null;
+}
+
+export interface InvitationPreview {
+  organization_name: string;
+  person_first_name: string;
+  email: string;
+  role: OrgRole;
+  expires_at: string;
 }
 
 export interface TeamWithPositions extends TeamRow {

@@ -22,16 +22,19 @@ import type {
 import type {
   CalendarEvent,
   CurrentUser,
+  InvitationPreview,
   MyScheduleEntry,
   Paginated,
-  PersonSummary,
+  PersonDetail,
   PlanDetail,
   PlanSummary,
+  RosterPerson,
   SchedulingConflict,
   SongWithArrangements,
   SongbookDetail,
   TeamWithPositions,
 } from '../types/domain.js';
+import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
 
 export class ApiError extends Error {
   constructor(
@@ -130,16 +133,34 @@ export class ServiceCenterApi {
   updateOrganization = (id: string, body: Partial<OrganizationRow>) =>
     this.request<OrganizationRow>('PATCH', `/api/v1/organizations/${id}`, body);
 
-  listPeople = () => this.request<PersonSummary[]>('GET', '/api/v1/people');
-  inviteMember = (body: { email: string; full_name?: string; role?: string }) =>
-    this.request<{ member: OrganizationMemberRow; invited: boolean }>(
+  listPeople = () => this.request<RosterPerson[]>('GET', '/api/v1/people');
+  getPerson = (personId: string) => this.request<PersonDetail>('GET', `/api/v1/people/${personId}`);
+  createPerson = (body: CreatePersonInput) => this.request<PersonDetail>('POST', '/api/v1/people', body);
+  updatePerson = (personId: string, body: UpdatePersonInput) =>
+    this.request<PersonDetail>('PATCH', `/api/v1/people/${personId}`, body);
+  deletePerson = (personId: string) => this.request<void>('DELETE', `/api/v1/people/${personId}`);
+  /** Gives an existing has-login member a full roster record. */
+  convertMember = (userId: string) =>
+    this.request<PersonDetail>('POST', `/api/v1/people/from-member/${userId}`);
+  invitePerson = (personId: string, body: { email?: string; role?: string }) =>
+    this.request<
+      | { linked: true; invited: false }
+      | { linked: false; invited: true; invite_url: string }
+    >('POST', `/api/v1/people/${personId}/invitations`, body);
+
+  updateMember = (userId: string, body: { role?: string; status?: string }) =>
+    this.request<OrganizationMemberRow>('PATCH', `/api/v1/people/members/${userId}`, body);
+  removeMember = (userId: string) => this.request<void>('DELETE', `/api/v1/people/members/${userId}`);
+
+  // -------------------------------------------------- invitation acceptance
+  previewInvitation = (token: string) =>
+    this.request<InvitationPreview>('GET', `/api/v1/invitations/${token}`);
+  acceptInvitation = (token: string, body: { password: string }) =>
+    this.request<{ email: string; linked_existing_account: boolean }>(
       'POST',
-      '/api/v1/people/invitations',
+      `/api/v1/invitations/${token}/accept`,
       body,
     );
-  updateMember = (userId: string, body: { role?: string; status?: string }) =>
-    this.request<OrganizationMemberRow>('PATCH', `/api/v1/people/${userId}`, body);
-  removeMember = (userId: string) => this.request<void>('DELETE', `/api/v1/people/${userId}`);
 
   // ------------------------------------------------------ service types --
   listServiceTypes = () => this.request<ServiceTypeRow[]>('GET', '/api/v1/service-types');
