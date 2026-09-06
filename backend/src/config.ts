@@ -13,8 +13,16 @@ const envSchema = z.object({
   APP_URL: z.string().url().default('http://localhost:5173'),
   API_URL: z.string().url().default('http://localhost:4000'),
 
-  OCR_PROVIDER: z.enum(['stub', 'anthropic']).default('stub'),
+  OCR_PROVIDER: z.enum(['stub', 'gemini', 'openai', 'anthropic']).default('stub'),
   ANTHROPIC_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+
+  /** Chord sheet imports allowed per admin per day. 0 disables importing. */
+  AI_IMPORT_DAILY_LIMIT: z.coerce.number().int().min(0).default(10),
+
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM_ADDRESS: z.string().email().default('notifications@example.com'),
   MAIL_FROM_NAME: z.string().default('Service Center'),

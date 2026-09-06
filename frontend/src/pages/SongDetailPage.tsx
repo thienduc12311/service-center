@@ -10,7 +10,7 @@ import { ChordChart } from '../components/ChordChart';
 
 export const SongDetailPage = () => {
   const { songId } = useParams<{ songId: string }>();
-  const { canManage } = useAuth();
+  const { canManage, isAdmin } = useAuth();
   const invalidate = useInvalidateOrg();
   const song = useSong(songId);
 
@@ -158,9 +158,11 @@ export const SongDetailPage = () => {
             title="No chord chart yet"
             description="Paste one in ChordPro format, or import it from a photo."
             action={
-              <Link to="/imports">
-                <Button variant="secondary">Import from image</Button>
-              </Link>
+              isAdmin ? (
+                <Link to="/imports">
+                  <Button variant="secondary">Import from image</Button>
+                </Link>
+              ) : undefined
             }
           />
         )}

@@ -2,6 +2,7 @@ import type {
   ArrangementRow,
   AssignmentRow,
   BlockoutRow,
+  ChordSheetImportRow,
   MemberStatus,
   OrgRole,
   OrganizationMemberRow,
@@ -187,4 +188,23 @@ export interface Paginated<T> {
   page: number;
   per_page: number;
   total: number;
+}
+
+/**
+ * How much of today's AI chord-sheet-import allowance an admin has left.
+ * Returned by `GET /api/v1/imports/quota` and echoed in the 429 body when the
+ * allowance runs out.
+ */
+export interface ImportQuota {
+  /** Imports allowed per admin per day. */
+  limit: number;
+  used: number;
+  remaining: number;
+  /** ISO timestamp of the next reset — midnight in the organization's timezone. */
+  resets_at: string;
+}
+
+/** An import row returned by a call that also charged the quota. */
+export interface ImportWithQuota extends ChordSheetImportRow {
+  quota: ImportQuota;
 }

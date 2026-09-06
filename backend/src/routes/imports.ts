@@ -2,12 +2,26 @@ import { Router } from 'express';
 import { param } from '../lib/params.js';
 import { acceptImportSchema, createImportSchema, detectKey } from '@service-center/shared';
 import { validateBody } from '../lib/validate.js';
-import { requireManager } from '../middleware/organization.js';
+import { requireAdmin } from '../middleware/organization.js';
 import { unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { processImport } from '../services/chord-import.js';
+import { consumeImportQuota, readImportQuota, toImportQuota } from '../services/import-quota.js';
 
 export const importsRouter: Router = Router();
+
+/**
+ * Importing spends a call to an external vision model on every run, so the
+ * whole feature — including reading past imports — is admin-only. Schedulers
+ * still edit chord charts by hand through /songs.
+ */
+importsRouter.use(requireAdmin);
+
+/** Today's remaining allowance, for the upload button to render against. */
+importsRouter.get('/quota', async (req, res) => {
+  const quota = await readImportQuota(req.db, req.orgId);
+  res.json(toImportQuota(quota));
+});
 
 importsRouter.get('/', async (req, res) => {
   const rows = await unwrap(
@@ -39,7 +53,7 @@ importsRouter.get('/:id', async (req, res) => {
  * through this server) and then registers the object here. OCR runs in the
  * background; the client polls or subscribes to the row for the result.
  */
-importsRouter.post('/', requireManager, validateBody(createImportSchema), async (req, res) => {
+importsRouter.post('/', validateBody(createImportSchema), async (req, res) => {
   const { storage_path, original_filename } = req.body as {
     storage_path: string;
     original_filename?: string | null;
@@ -50,6 +64,10 @@ importsRouter.post('/', requireManager, validateBody(createImportSchema), async 
   if (owner !== req.orgId) {
     throw HttpError.badRequest('Upload the file under your organization’s folder');
   }
+
+  // Charged before the OCR job starts; a failed transcription still costs the
+  // provider call, so `retry` below charges again rather than being free.
+  const quota = await consumeImportQuota(req.db, req.orgId);
 
   const created = await unwrapOne(
     req.db
@@ -68,10 +86,10 @@ importsRouter.post('/', requireManager, validateBody(createImportSchema), async 
   // Fire and forget — the row carries the outcome either way.
   void processImport(created.id);
 
-  res.status(202).json(created);
+  res.status(202).json({ ...created, quota: toImportQuota(quota) });
 });
 
-importsRouter.post('/:id/retry', requireManager, async (req, res) => {
+importsRouter.post('/:id/retry', async (req, res) => {
   const record = await unwrap(
     req.db
       .from('chord_sheet_imports')
@@ -83,15 +101,17 @@ importsRouter.post('/:id/retry', requireManager, async (req, res) => {
   if (!record) throw HttpError.notFound('Import not found');
   if (record.status === 'processing') throw HttpError.conflict('That import is already running');
 
+  const quota = await consumeImportQuota(req.db, req.orgId);
+
   void processImport(record.id);
-  res.status(202).json({ ...record, status: 'pending' });
+  res.status(202).json({ ...record, status: 'pending', quota: toImportQuota(quota) });
 });
 
 /**
  * Accepts the (possibly hand-corrected) result and turns it into a real song
  * or a new arrangement of an existing one.
  */
-importsRouter.post('/:id/accept', requireManager, validateBody(acceptImportSchema), async (req, res) => {
+importsRouter.post('/:id/accept', validateBody(acceptImportSchema), async (req, res) => {
   const { title, author, song_key, chordpro, song_id, arrangement_name } = req.body as {
     title: string;
     author?: string | null;
