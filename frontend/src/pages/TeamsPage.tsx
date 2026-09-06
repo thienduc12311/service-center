@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { usePeople, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Avatar, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
+import { TeamEditor } from '../components/TeamEditor';
 
 export const TeamsPage = () => {
   const { canManage } = useAuth();
@@ -12,8 +13,10 @@ export const TeamsPage = () => {
   const people = usePeople();
   const [creating, setCreating] = useState(false);
   const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
 
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [positions, setPositions] = useState('');
   const [color, setColor] = useState('#6366f1');
 
@@ -21,6 +24,7 @@ export const TeamsPage = () => {
     mutationFn: () =>
       api.createTeam({
         name,
+        description: description.trim() || null,
         color,
         positions: positions
           .split(',')
@@ -31,6 +35,7 @@ export const TeamsPage = () => {
       await invalidate();
       setCreating(false);
       setName('');
+      setDescription('');
       setPositions('');
     },
   });
@@ -50,6 +55,9 @@ export const TeamsPage = () => {
   };
 
   const activeTeam = teams.data?.find((t) => t.id === addingTo);
+  // Read the team back out of the query cache so the editor re-renders with the
+  // roles it just changed.
+  const editingTeam = teams.data?.find((t) => t.id === editingTeamId);
 
   return (
     <div>
@@ -67,10 +75,24 @@ export const TeamsPage = () => {
         <div className="grid gap-4 md:grid-cols-2">
           {teams.data.map((team) => (
             <div key={team.id} className="card overflow-hidden">
-              <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
-                <span className="size-3 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
-                <h2 className="font-semibold">{team.name}</h2>
-                <span className="ml-auto text-xs text-slate-400">{team.members.length} people</span>
+              <div className="border-b border-slate-100 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="size-3 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
+                  <h2 className="font-semibold">{team.name}</h2>
+                  <span className="ml-auto text-xs text-slate-400">{team.members.length} people</span>
+                  {canManage && (
+                    <Button
+                      variant="ghost"
+                      className="!px-2 text-xs"
+                      onClick={() => setEditingTeamId(team.id)}
+                    >
+                      Edit
+                    </Button>
+                  )}
+                </div>
+                {team.description && (
+                  <p className="mt-1 text-sm text-slate-500">{team.description}</p>
+                )}
               </div>
 
               {team.positions.length > 0 && (
@@ -123,11 +145,25 @@ export const TeamsPage = () => {
         />
       )}
 
+      {editingTeam && <TeamEditor team={editingTeam} onClose={() => setEditingTeamId(null)} />}
+
       <Modal open={creating} title="New team" onClose={() => setCreating(false)}>
         <form onSubmit={submit} className="space-y-4">
           <div>
             <label className="label" htmlFor="team-name">Name</label>
             <input id="team-name" className="input" value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+          <div>
+            <label className="label" htmlFor="team-description">Description</label>
+            <textarea
+              id="team-description"
+              className="input"
+              rows={2}
+              maxLength={500}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What this team does, and anything people should know before serving."
+            />
           </div>
           <div>
             <label className="label" htmlFor="team-positions">Positions</label>

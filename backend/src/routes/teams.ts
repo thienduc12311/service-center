@@ -4,6 +4,7 @@ import {
   createPositionSchema,
   createTeamSchema,
   teamMembershipSchema,
+  updatePositionSchema,
   updateTeamSchema,
   type TeamWithPositions,
 } from '@service-center/shared';
@@ -135,6 +136,25 @@ teamsRouter.post('/:id/positions', requireManager, validateBody(createPositionSc
   );
   res.status(201).json(created);
 });
+
+teamsRouter.patch(
+  '/:id/positions/:positionId',
+  requireManager,
+  validateBody(updatePositionSchema),
+  async (req, res) => {
+    const updated = await unwrap(
+      req.db
+        .from('team_positions')
+        .update(req.body)
+        .eq('id', param(req, 'positionId'))
+        .eq('team_id', param(req, 'id'))
+        .select('*')
+        .maybeSingle(),
+    );
+    if (!updated) throw HttpError.notFound('Position not found');
+    res.json(updated);
+  },
+);
 
 teamsRouter.delete('/:id/positions/:positionId', requireManager, async (req, res) => {
   await unwrap(

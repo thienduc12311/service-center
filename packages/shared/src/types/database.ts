@@ -152,6 +152,7 @@ export type TeamRow = {
   organization_id: string;
   service_type_id: string | null;
   name: string;
+  description: string | null;
   color: string;
   sort_order: number;
   created_at: string;

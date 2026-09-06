@@ -41,6 +41,12 @@ import type {
   TeamWithPositions,
 } from '../types/domain.js';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
+import type {
+  CreatePositionPayload,
+  CreateTeamPayload,
+  UpdatePositionPayload,
+  UpdateTeamPayload,
+} from '../schemas/team.js';
 
 export class ApiError extends Error {
   constructor(
@@ -176,13 +182,15 @@ export class ServiceCenterApi {
   // -------------------------------------------------------------- teams --
   listTeams = () => this.request<TeamWithPositions[]>('GET', '/api/v1/teams');
   getTeam = (id: string) => this.request<TeamWithPositions>('GET', `/api/v1/teams/${id}`);
-  createTeam = (body: Record<string, unknown>) =>
+  createTeam = (body: CreateTeamPayload) =>
     this.request<TeamWithPositions>('POST', '/api/v1/teams', body);
-  updateTeam = (id: string, body: Record<string, unknown>) =>
+  updateTeam = (id: string, body: UpdateTeamPayload) =>
     this.request<TeamRow>('PATCH', `/api/v1/teams/${id}`, body);
   deleteTeam = (id: string) => this.request<void>('DELETE', `/api/v1/teams/${id}`);
-  addPosition = (teamId: string, body: { name: string; sort_order?: number }) =>
+  addPosition = (teamId: string, body: CreatePositionPayload) =>
     this.request<TeamPositionRow>('POST', `/api/v1/teams/${teamId}/positions`, body);
+  updatePosition = (teamId: string, positionId: string, body: UpdatePositionPayload) =>
+    this.request<TeamPositionRow>('PATCH', `/api/v1/teams/${teamId}/positions/${positionId}`, body);
   deletePosition = (teamId: string, positionId: string) =>
     this.request<void>('DELETE', `/api/v1/teams/${teamId}/positions/${positionId}`);
   addTeamMember = (teamId: string, body: { user_id: string; position_id?: string | null }) =>
