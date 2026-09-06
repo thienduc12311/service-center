@@ -111,7 +111,7 @@ export const PlanDetailPage = () => {
           canManage && (
             <>
               <Button variant="secondary" loading={notify.isPending} onClick={() => notify.mutate()}>
-                Send invites
+                Send notifications
               </Button>
               <Button
                 loading={publish.isPending}
@@ -127,7 +127,8 @@ export const PlanDetailPage = () => {
       <ErrorNotice error={notify.error ?? publish.error ?? reorder.error ?? respond.error} />
       {notify.isSuccess && (
         <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-          Sent {notify.data.notified} invitation{notify.data.notified === 1 ? '' : 's'}.
+          Sent {notify.data.notified} notification{notify.data.notified === 1 ? '' : 's'}.
+          {notify.data.skipped.length > 0 && ` ${notify.data.skipped.length} person${notify.data.skipped.length === 1 ? '' : 's'} could not be reached because no email address is available.`}
         </p>
       )}
 
@@ -251,9 +252,7 @@ export const PlanDetailPage = () => {
                             </Button>
                           </div>
                         ) : (
-                          <Badge tone={assignmentTone[assignment.status]}>
-                            {ASSIGNMENT_STATUS_LABELS[assignment.status]}
-                          </Badge>
+                          <div className="text-right"><Badge tone={assignmentTone[assignment.status]}>{ASSIGNMENT_STATUS_LABELS[assignment.status]}</Badge>{assignment.notified_at && <p className="mt-1 text-[10px] text-slate-400">Notified</p>}{assignment.responded_at && <p className="text-[10px] text-slate-400">Answered</p>}</div>
                         )}
 
                         {canManage && (

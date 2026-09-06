@@ -8,6 +8,10 @@ export interface ScheduleNotification {
   teamName: string | null;
   positionName: string | null;
   respondUrl: string;
+  organizationName?: string;
+  schedulerEmail?: string | null;
+  assignments?: Array<{ teamName: string | null; positionName: string | null }>;
+  ics?: string;
 }
 
 /**
@@ -22,10 +26,7 @@ export interface NotificationTransport {
 const consoleTransport: NotificationTransport = {
   async send(notification) {
     if (config.isTest) return;
-    console.info(
-      `[notify] ${notification.to} — "${notification.planTitle}" on ${notification.serviceDate}` +
-        `${notification.positionName ? ` (${notification.positionName})` : ''} → ${notification.respondUrl}`,
-    );
+    console.info(`[notify] schedule notification prepared for "${notification.planTitle}" on ${notification.serviceDate}`);
   },
 };
 
@@ -46,8 +47,7 @@ export const sendScheduleNotifications = async (
   return results.length - failures.length;
 };
 
-export const respondUrlFor = (planId: string, assignmentId: string): string =>
-  `${config.APP_URL}/plans/${planId}?respond=${assignmentId}`;
+export const respondUrlFor = (token: string): string => `${config.APP_URL}/respond?token=${encodeURIComponent(token)}`;
 
 export interface PersonInvitationNotification {
   to: string;
@@ -64,10 +64,7 @@ export interface PersonInvitationTransport {
 const consolePersonInvitationTransport: PersonInvitationTransport = {
   async send(notification) {
     if (config.isTest) return;
-    console.info(
-      `[invite] ${notification.to} — join ${notification.organizationName} as ` +
-        `${notification.personName} → ${notification.acceptUrl}`,
-    );
+    console.info(`[invite] organization invitation prepared for ${notification.organizationName}`);
   },
 };
 

@@ -5,6 +5,7 @@ import { useAuth } from './providers/AuthProvider';
 
 import { LoginPage } from './pages/LoginPage';
 import { AcceptInvitePage } from './pages/AcceptInvitePage';
+import { RespondAssignmentPage } from './pages/RespondAssignmentPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CalendarPage } from './pages/CalendarPage';
@@ -40,6 +41,7 @@ const RequireAuth = () => {
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/accept-invite', element: <AcceptInvitePage /> },
+  { path: '/respond', element: <RespondAssignmentPage /> },
   {
     element: <RequireAuth />,
     children: [

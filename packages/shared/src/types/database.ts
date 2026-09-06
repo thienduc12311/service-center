@@ -229,6 +229,7 @@ export type PlanTimeRow = {
   name: string | null;
   starts_at: string;
   ends_at: string;
+  ics_sequence: number;
   created_at: string;
 }
 
@@ -260,6 +261,30 @@ export type AssignmentRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type AssignmentNotificationRow = {
+  id: string;
+  organization_id: string;
+  plan_id: string;
+  user_id: string;
+  email: string;
+  token_hash: string;
+  expires_at: string;
+  sent_at: string | null;
+  responded_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type CalendarFeedTokenRow = {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  token_hash: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
 }
 
 export type BlockoutRow = {
@@ -335,6 +360,8 @@ export type Database = {
       plan_times: Table<PlanTimeRow>;
       plan_items: Table<PlanItemRow>;
       assignments: Table<AssignmentRow>;
+      assignment_notifications: Table<AssignmentNotificationRow>;
+      calendar_feed_tokens: Table<CalendarFeedTokenRow>;
       blockouts: Table<BlockoutRow>;
       attachments: Table<AttachmentRow>;
       chord_sheet_imports: Table<ChordSheetImportRow>;

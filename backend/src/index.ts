@@ -1,5 +1,13 @@
 import { createApp } from './app.js';
 import { config } from './config.js';
+import { ResendTransport } from './services/email/resend-transport.js';
+import { setNotificationTransport, setPersonInvitationTransport } from './services/notifications.js';
+
+if (config.RESEND_API_KEY) {
+  const resendTransport = new ResendTransport(config.RESEND_API_KEY);
+  setNotificationTransport(resendTransport);
+  setPersonInvitationTransport(resendTransport);
+}
 
 const app = createApp();
 

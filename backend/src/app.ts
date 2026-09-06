@@ -13,6 +13,8 @@ import { meRouter } from './routes/me.js';
 import { organizationsRouter } from './routes/organizations.js';
 import { peopleRouter } from './routes/people.js';
 import { invitationAcceptRouter } from './routes/invitation-accept.js';
+import { assignmentRespondRouter } from './routes/assignment-respond.js';
+import { calendarFeedRouter } from './routes/calendar-feed.js';
 import { serviceTypesRouter } from './routes/service-types.js';
 import { teamsRouter } from './routes/teams.js';
 import { songsRouter, arrangementsRouter } from './routes/songs.js';
@@ -68,6 +70,8 @@ export const createApp = (): Express => {
   // Fully public: the caller isn't signed in yet — a valid token is the
   // entire authorisation for this route (see invitation-accept.ts).
   app.use('/api/v1/invitations', invitationAcceptRouter);
+  app.use('/api/v1/assignment-responses', assignmentRespondRouter);
+  app.use('/api/v1/calendar-feed', calendarFeedRouter);
 
   const scoped = [requireAuth, withOrganization];
   app.use('/api/v1/people', scoped, peopleRouter);
