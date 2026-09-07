@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { theme } from '../lib/theme';
-import { Button, ErrorNotice } from './ui';
+import type { Theme } from '../lib/theme';
+import { useThemedStyles } from '../lib/useTheme';
+import { Button, ErrorNotice, Field } from './ui';
 
 interface BlockoutFormProps {
   onCreated: () => Promise<void>;
@@ -38,6 +39,7 @@ const blockoutRange = (from: string, to: string): BlockoutRange => {
 };
 
 export const BlockoutForm = ({ onCreated }: BlockoutFormProps) => {
+  const styles = useThemedStyles(makeStyles);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [reason, setReason] = useState('');
@@ -61,7 +63,7 @@ export const BlockoutForm = ({ onCreated }: BlockoutFormProps) => {
     },
   });
 
-  const submit = () => {
+  const submit = (): void => {
     try {
       blockoutRange(from, to);
       setValidationError(null);
@@ -74,66 +76,62 @@ export const BlockoutForm = ({ onCreated }: BlockoutFormProps) => {
   return (
     <View style={styles.form}>
       <Text style={styles.description}>
-        Dates you can’t serve. Schedulers are warned before assigning you.
+        Dates you can&apos;t serve. Schedulers are warned before they assign you.
       </Text>
+
       <View style={styles.dateRow}>
-        <View style={styles.dateField}>
-          <Text style={styles.label}>From</Text>
-          <TextInput
-            accessibilityLabel="Blockout start date"
-            style={styles.input}
-            value={from}
-            onChangeText={setFrom}
-            placeholder="YYYY-MM-DD"
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={10}
-            placeholderTextColor={theme.colors.textFaint}
-          />
-        </View>
-        <View style={styles.dateField}>
-          <Text style={styles.label}>To</Text>
-          <TextInput
-            accessibilityLabel="Blockout end date"
-            style={styles.input}
-            value={to}
-            onChangeText={setTo}
-            placeholder="YYYY-MM-DD"
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={10}
-            placeholderTextColor={theme.colors.textFaint}
-          />
-        </View>
+        <Field
+          label="From"
+          accessibilityLabel="Blockout start date"
+          value={from}
+          onChangeText={setFrom}
+          placeholder="YYYY-MM-DD"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={10}
+          style={styles.dateInput}
+          containerStyle={styles.flex}
+        />
+        <Field
+          label="To"
+          accessibilityLabel="Blockout end date"
+          value={to}
+          onChangeText={setTo}
+          placeholder="YYYY-MM-DD"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={10}
+          style={styles.dateInput}
+          containerStyle={styles.flex}
+        />
       </View>
-      <Text style={styles.label}>Reason (optional)</Text>
-      <TextInput
+
+      <Field
+        label="Reason"
         accessibilityLabel="Blockout reason"
-        style={styles.input}
         value={reason}
         onChangeText={setReason}
-        placeholder="Vacation"
+        placeholder="Away for a wedding"
         maxLength={200}
-        placeholderTextColor={theme.colors.textFaint}
       />
+
       <ErrorNotice error={validationError ?? createBlockout.error} />
-      <Button title="Add blockout" onPress={submit} loading={createBlockout.isPending} />
+      <Button
+        title="Add blockout"
+        icon="plus"
+        variant="secondary"
+        onPress={submit}
+        loading={createBlockout.isPending}
+      />
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  form: { gap: 10 },
-  description: { color: theme.colors.textMuted, fontSize: 14, lineHeight: 20 },
-  dateRow: { flexDirection: 'row', gap: 10 },
-  dateField: { flex: 1, gap: 6 },
-  label: { color: theme.colors.textMuted, fontSize: 12, fontWeight: '600' },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: theme.colors.text,
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    form: { gap: theme.space.lg },
+    description: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    dateRow: { flexDirection: 'row', gap: theme.space.md },
+    dateInput: { fontFamily: theme.type.numeric.fontFamily, fontSize: 14 },
+  });

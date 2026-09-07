@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, SectionList, StyleSheet, Switch, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -13,18 +13,47 @@ import {
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { Badge, EmptyState, ErrorNotice, Loading } from '../../src/components/ui';
-import { statusColors, theme } from '../../src/lib/theme';
+import {
+  Card,
+  Divider,
+  EmptyState,
+  ErrorNotice,
+  IconButton,
+  Loading,
+  Screen,
+  SegmentedControl,
+  Tag,
+  screenPadding,
+  type SegmentOption,
+} from '../../src/components/ui';
+import { Reveal } from '../../src/components/motion';
+import { statusAccent, type Theme } from '../../src/lib/theme';
+import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
+
+type CalendarScope = 'all' | 'mine';
+
+const SCOPES: readonly SegmentOption<CalendarScope>[] = [
+  { value: 'all', label: 'Everyone' },
+  { value: 'mine', label: 'Only me' },
+];
+
+/** One day, and everything happening on it. */
+interface AgendaDay {
+  isoDate: string;
+  events: CalendarEvent[];
+}
 
 /**
  * An agenda grouped by day reads far better on a phone than a month grid, so
- * mobile shows the same data in list form.
+ * mobile shows the same data as a run of dated cards.
  */
 export default function CalendarScreen() {
   const { organizationId } = useAuth();
   const router = useRouter();
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
-  const [mineOnly, setMineOnly] = useState(false);
+  const [scope, setScope] = useState<CalendarScope>('all');
 
   const range = useMemo(
     () => ({ from: startOfMonth(cursor).toISOString(), to: endOfMonth(cursor).toISOString() }),
@@ -32,12 +61,12 @@ export default function CalendarScreen() {
   );
 
   const calendar = useQuery({
-    queryKey: ['calendar', organizationId, range, mineOnly],
-    queryFn: () => api.calendar({ ...range, ...(mineOnly ? { mine: true } : {}) }),
+    queryKey: ['calendar', organizationId, range, scope],
+    queryFn: () => api.calendar({ ...range, ...(scope === 'mine' ? { mine: true } : {}) }),
     enabled: Boolean(organizationId),
   });
 
-  const sections = useMemo(() => {
+  const days = useMemo<AgendaDay[]>(() => {
     const groups = new Map<string, CalendarEvent[]>();
     for (const event of calendar.data ?? []) {
       const key = toISODate(event.starts_at);
@@ -47,112 +76,146 @@ export default function CalendarScreen() {
     }
     return [...groups.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, data]) => ({ title: date, data }));
+      .map(([isoDate, events]) => ({ isoDate, events }));
   }, [calendar.data]);
 
   return (
-    <View style={styles.flex}>
-      <View style={styles.header}>
-        <Pressable onPress={() => setCursor(startOfMonth(addMonths(cursor, -1)))} style={styles.navButton}>
-          <Text style={styles.navText}>‹</Text>
-        </Pressable>
-        <Text style={styles.month}>{formatDate(cursor, { month: 'long', year: 'numeric' })}</Text>
-        <Pressable onPress={() => setCursor(startOfMonth(addMonths(cursor, 1)))} style={styles.navButton}>
-          <Text style={styles.navText}>›</Text>
-        </Pressable>
-        <View style={styles.mineToggle}>
-          <Text style={styles.mineLabel}>Mine</Text>
-          <Switch value={mineOnly} onValueChange={setMineOnly} />
+    <Screen safeTop>
+      <View style={styles.toolbar}>
+        <View style={styles.monthRow}>
+          <View style={styles.monthLabel}>
+            <Text style={styles.monthName}>{formatDate(cursor, { month: 'long' })}</Text>
+            <Text style={styles.monthYear}>{formatDate(cursor, { year: 'numeric' })}</Text>
+          </View>
+          <IconButton
+            name="chevronLeft"
+            accessibilityLabel="Previous month"
+            onPress={() => setCursor(startOfMonth(addMonths(cursor, -1)))}
+          />
+          <IconButton
+            name="chevronRight"
+            accessibilityLabel="Next month"
+            onPress={() => setCursor(startOfMonth(addMonths(cursor, 1)))}
+          />
         </View>
+        <SegmentedControl options={SCOPES} value={scope} onChange={setScope} />
       </View>
 
-      <ErrorNotice error={calendar.error} />
-
-      {calendar.isLoading ? (
-        <Loading />
-      ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(event) => event.id}
-          contentContainerStyle={styles.list}
-          stickySectionHeadersEnabled={false}
-          ListEmptyComponent={<EmptyState title="Nothing scheduled this month" />}
-          renderSectionHeader={({ section }) => (
-            <Text style={styles.sectionHeader}>
-              {formatDate(`${section.title}T12:00:00`, {
-                weekday: 'long',
-                month: 'short',
-                day: 'numeric',
-              })}
-            </Text>
-          )}
-          renderItem={({ item }) => (
-            <Pressable style={styles.event} onPress={() => router.push(`/plan/${item.plan_id}`)}>
-              <View
-                style={[
-                  styles.kindBar,
-                  { backgroundColor: item.kind === 'service' ? theme.colors.brand : theme.colors.warning },
-                ]}
-              />
-              <View style={styles.flex}>
-                <Text style={styles.eventTitle}>{item.title}</Text>
-                <Text style={styles.eventTime}>
-                  {formatTime(item.starts_at)} – {formatTime(item.ends_at)}
-                  {item.location ? ` · ${item.location}` : ''}
-                </Text>
-              </View>
-              {item.my_assignment_status && (
-                <Badge
-                  label={item.my_assignment_status}
-                  bg={statusColors[item.my_assignment_status].bg}
-                  fg={statusColors[item.my_assignment_status].fg}
-                />
-              )}
-            </Pressable>
-          )}
-        />
-      )}
-    </View>
+      <FlatList
+        data={days}
+        keyExtractor={(day) => day.isoDate}
+        contentContainerStyle={screenPadding(theme)}
+        ListHeaderComponent={<ErrorNotice error={calendar.error} />}
+        ListEmptyComponent={
+          calendar.isLoading ? (
+            <Loading />
+          ) : (
+            <EmptyState
+              title="An open month"
+              description={`Nothing is on the calendar for ${formatDate(cursor, { month: 'long', year: 'numeric' })}.`}
+            />
+          )
+        }
+        renderItem={({ item, index }) => (
+          <Reveal index={index}>
+            <AgendaDayCard day={item} onOpen={(planId) => router.push(`/plan/${planId}`)} />
+          </Reveal>
+        )}
+      />
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  navButton: { paddingHorizontal: 10, paddingVertical: 4 },
-  navText: { fontSize: 22, color: theme.colors.brand, lineHeight: 24 },
-  month: { fontSize: 16, fontWeight: '600', color: theme.colors.text },
-  mineToggle: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6 },
-  mineLabel: { fontSize: 13, color: theme.colors.textMuted },
-  list: { padding: 16, paddingBottom: 32 },
-  sectionHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: theme.colors.textMuted,
-    marginTop: 16,
-    marginBottom: 6,
-  },
-  event: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: 12,
-    marginBottom: 8,
-  },
-  kindBar: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
-  eventTitle: { fontSize: 15, fontWeight: '600', color: theme.colors.text },
-  eventTime: { fontSize: 13, color: theme.colors.textMuted, marginTop: 2 },
-});
+interface AgendaDayCardProps {
+  day: AgendaDay;
+  onOpen: (planId: string) => void;
+}
+
+const AgendaDayCard = ({ day, onOpen }: AgendaDayCardProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const date = `${day.isoDate}T12:00:00`;
+
+  return (
+    <Card>
+      <View style={styles.dayHeader}>
+        <Text style={styles.dayNumber}>{formatDate(date, { day: 'numeric' })}</Text>
+        <View>
+          <Text style={styles.dayWeekday}>
+            {formatDate(date, { weekday: 'long' }).toUpperCase()}
+          </Text>
+          <Text style={styles.dayMonth}>{formatDate(date, { month: 'long' })}</Text>
+        </View>
+      </View>
+
+      <View>
+        {day.events.map((event, index) => (
+          <View key={event.id}>
+            {index > 0 ? <Divider /> : null}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => onOpen(event.plan_id)}
+              style={({ pressed }) => [styles.event, pressed ? { opacity: 0.6 } : null]}
+            >
+              <View
+                style={[
+                  styles.kindBar,
+                  {
+                    backgroundColor:
+                      event.kind === 'service' ? theme.color.ink : theme.accent.yellow.fg,
+                  },
+                ]}
+              />
+              <View style={styles.flex}>
+                <Text style={styles.eventTitle}>{event.title}</Text>
+                <Text style={styles.eventTime}>
+                  {formatTime(event.starts_at)} – {formatTime(event.ends_at)}
+                  {event.location ? `  ${event.location}` : ''}
+                </Text>
+              </View>
+              {event.my_assignment_status ? (
+                <Tag
+                  label={event.my_assignment_status}
+                  accent={statusAccent(theme, event.my_assignment_status)}
+                />
+              ) : null}
+            </Pressable>
+          </View>
+        ))}
+      </View>
+    </Card>
+  );
+};
+
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+
+    toolbar: {
+      gap: theme.space.lg,
+      paddingHorizontal: theme.space.xl,
+      paddingTop: theme.space.xl,
+      paddingBottom: theme.space.lg,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.color.border,
+    },
+    monthRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    monthLabel: { flex: 1 },
+    monthName: { ...theme.type.display, fontSize: 30, lineHeight: 34, color: theme.color.ink },
+    monthYear: { ...theme.type.label, color: theme.color.inkFaint },
+
+    dayHeader: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    dayNumber: { ...theme.type.display, fontSize: 40, lineHeight: 42, color: theme.color.ink },
+    dayWeekday: { ...theme.type.label, color: theme.color.ink },
+    dayMonth: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+
+    event: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.space.md,
+      paddingVertical: theme.space.md,
+    },
+    kindBar: { width: 2, alignSelf: 'stretch', borderRadius: 1 },
+    eventTitle: { ...theme.type.heading, color: theme.color.ink },
+    eventTime: { ...theme.type.numeric, color: theme.color.inkMuted, marginTop: 3 },
+  });

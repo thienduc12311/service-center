@@ -1,28 +1,45 @@
-import { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   STORAGE_BUCKETS,
   parseChordPro,
-  renderLineAsText,
   type ChordSheetImportRow,
 } from '@service-center/shared';
 import { api } from '../src/lib/api';
 import { supabase } from '../src/lib/supabase';
 import { base64ToBytes } from '../src/lib/base64';
 import { useAuth } from '../src/providers/AuthProvider';
-import { Button, Card, ErrorNotice, Loading, SectionTitle } from '../src/components/ui';
-import { theme } from '../src/lib/theme';
+import {
+  Button,
+  Card,
+  ErrorNotice,
+  Field,
+  Label,
+  Loading,
+  Screen,
+  Tag,
+  screenPadding,
+} from '../src/components/ui';
+import { ChordChart } from '../src/components/ChordChart';
+import { Reveal } from '../src/components/motion';
+import type { Theme } from '../src/lib/theme';
+import { useTheme, useThemedStyles } from '../src/lib/useTheme';
+
+type CaptureSource = 'camera' | 'library';
 
 /**
- * Phase 2 on mobile: photograph a chord sheet, upload it, watch it transcribe,
- * correct the result and save it as a song.
+ * Photograph a printed chord sheet, watch it transcribe, correct the result
+ * and save it as a song.
  */
 export default function ScanScreen() {
   const { organizationId, isAdmin } = useAuth();
   const router = useRouter();
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+
   const [preview, setPreview] = useState<string | null>(null);
   const [importId, setImportId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -66,12 +83,10 @@ export default function ScanScreen() {
         song_key: record.data?.detected_key ?? null,
         arrangement_name: 'Imported Arrangement',
       }),
-    onSuccess: (result) => {
-      router.replace(`/song/${result.song.id}`);
-    },
+    onSuccess: (result) => router.replace(`/song/${result.song.id}`),
   });
 
-  const pick = async (source: 'camera' | 'library') => {
+  const capture = async (source: CaptureSource): Promise<void> => {
     if (!organizationId || outOfQuota) return;
 
     const permission =
@@ -120,170 +135,182 @@ export default function ScanScreen() {
     }
   };
 
-  const parsed = chordpro ? parseChordPro(chordpro) : null;
+  const chart = useMemo(() => (chordpro ? parseChordPro(chordpro) : null), [chordpro]);
   const status = record.data?.status;
+  const confidence = record.data?.confidence;
 
   if (!isAdmin) {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
-        <Card style={styles.card}>
-          <SectionTitle>Admins only</SectionTitle>
-          <Text style={styles.muted}>
-            Importing a chord sheet runs it through an AI transcription service, so it is limited to
-            organization owners and admins.
-          </Text>
-        </Card>
-      </ScrollView>
+      <Screen>
+        <ScrollView contentContainerStyle={screenPadding(theme)}>
+          <Reveal>
+            <Card>
+              <Label>Owners and admins only</Label>
+              <Text style={styles.body}>
+                Importing a chart runs it through an AI transcription service, so it is limited to
+                organization owners and admins.
+              </Text>
+            </Card>
+          </Reveal>
+        </ScrollView>
+      </Screen>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {!importId && (
-        <Card style={styles.card}>
-          <SectionTitle>Import a chord sheet</SectionTitle>
-          <Text style={styles.muted}>
-            Take a photo of a chart, or pick one from your library. It’s transcribed and converted
-            into a transposable chord chart.
-          </Text>
-          <Button
-            title="Take a photo"
-            onPress={() => void pick('camera')}
-            loading={uploading}
-            disabled={outOfQuota}
-          />
-          <Button
-            title="Choose from library"
-            variant="secondary"
-            onPress={() => void pick('library')}
-            loading={uploading}
-            disabled={outOfQuota}
-          />
-          {quota.data && (
-            <Text style={outOfQuota ? styles.quotaSpent : styles.muted}>
-              {outOfQuota
-                ? `Daily limit reached (${quota.data.limit}). More imports at ${new Date(
-                    quota.data.resets_at,
-                  ).toLocaleString()}.`
-                : `${quota.data.remaining} of ${quota.data.limit} imports left today.`}
-            </Text>
-          )}
-          <ErrorNotice error={uploadError} />
-        </Card>
-      )}
-
-      {preview && <Image source={{ uri: preview }} style={styles.preview} resizeMode="contain" />}
-
-      {(status === 'pending' || status === 'processing') && (
-        <Card style={styles.card}>
-          <Loading label="Transcribing the chart…" />
-        </Card>
-      )}
-
-      {status === 'failed' && (
-        <Card style={styles.card}>
-          <Text style={styles.failed}>{record.data?.error_message ?? 'The import failed.'}</Text>
-          <Button
-            title="Try again"
-            onPress={() => {
-              setImportId(null);
-              setPreview(null);
-            }}
-          />
-        </Card>
-      )}
-
-      {status === 'succeeded' && (
-        <>
-          <Card style={styles.card}>
-            <SectionTitle>Song title</SectionTitle>
-            <TextInput
-              style={styles.input}
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Song title"
-              placeholderTextColor={theme.colors.textFaint}
-            />
-            {record.data?.confidence !== null && record.data?.confidence !== undefined && (
-              <Text style={styles.muted}>
-                {Math.round(record.data.confidence * 100)}% confidence
-                {record.data.confidence < 0.8 ? ' — check the chords before saving.' : ''}
+    <Screen>
+      <ScrollView contentContainerStyle={screenPadding(theme)} keyboardShouldPersistTaps="handled">
+        {!importId ? (
+          <Reveal>
+            <View style={styles.hero}>
+              <Text style={styles.title}>Turn a printed chart into a transposable one.</Text>
+              <Text style={styles.body}>
+                Photograph a chord sheet and it comes back as text you can change key on, correct
+                by hand, and save into the library.
               </Text>
-            )}
-          </Card>
 
-          <Card style={styles.card}>
-            <SectionTitle>Preview</SectionTitle>
-            <ScrollView horizontal showsHorizontalScrollIndicator>
-              <View>
-                {parsed?.sections.map((section, sectionIndex) => (
-                  <View key={sectionIndex} style={styles.section}>
-                    {(section.label || section.type !== 'none') && (
-                      <Text style={styles.sectionLabel}>{section.label ?? section.type}</Text>
-                    )}
-                    {section.lines.map((line, lineIndex) => {
-                      const { chordRow, lyricRow } = renderLineAsText(line);
-                      return (
-                        <View key={lineIndex}>
-                          {chordRow ? <Text style={styles.chordRow}>{chordRow}</Text> : null}
-                          <Text style={styles.lyricRow}>{lyricRow || ' '}</Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                ))}
+              <View style={styles.captureActions}>
+                <Button
+                  title="Take a photo"
+                  icon="camera"
+                  onPress={() => void capture('camera')}
+                  loading={uploading}
+                  disabled={outOfQuota}
+                />
+                <Button
+                  title="Choose from your library"
+                  icon="image"
+                  variant="secondary"
+                  onPress={() => void capture('library')}
+                  loading={uploading}
+                  disabled={outOfQuota}
+                />
               </View>
-            </ScrollView>
-          </Card>
 
-          <Card style={styles.card}>
-            <SectionTitle>ChordPro source</SectionTitle>
-            <TextInput
-              style={[styles.input, styles.source]}
-              value={chordpro}
-              onChangeText={setChordpro}
-              multiline
-              textAlignVertical="top"
+              {quota.data ? (
+                <Tag
+                  label={
+                    outOfQuota
+                      ? `Daily limit of ${quota.data.limit} reached`
+                      : `${quota.data.remaining} of ${quota.data.limit} left today`
+                  }
+                  accent={outOfQuota ? theme.accent.red : theme.accent.neutral}
+                />
+              ) : null}
+              {outOfQuota && quota.data ? (
+                <Text style={styles.body}>
+                  {`More imports at ${new Date(quota.data.resets_at).toLocaleString()}.`}
+                </Text>
+              ) : null}
+
+              <ErrorNotice error={uploadError} />
+            </View>
+          </Reveal>
+        ) : null}
+
+        {preview ? (
+          <Reveal index={1}>
+            <Image source={{ uri: preview }} style={styles.preview} resizeMode="cover" />
+          </Reveal>
+        ) : null}
+
+        {status === 'pending' || status === 'processing' ? (
+          <Card>
+            <Loading label="Reading the chart" />
+          </Card>
+        ) : null}
+
+        {status === 'failed' ? (
+          <Card>
+            <ErrorNotice error={new Error(record.data?.error_message ?? 'The import failed.')} />
+            <Button
+              title="Try another photo"
+              onPress={() => {
+                setImportId(null);
+                setPreview(null);
+              }}
             />
           </Card>
+        ) : null}
 
-          <ErrorNotice error={accept.error} />
-          <Button
-            title="Save as song"
-            onPress={() => accept.mutate()}
-            loading={accept.isPending}
-            disabled={!title || !chordpro}
-          />
-        </>
-      )}
-    </ScrollView>
+        {status === 'succeeded' ? (
+          <>
+            <Reveal index={2}>
+              <Card>
+                <Field label="Song title" value={title} onChangeText={setTitle} placeholder="Song title" />
+                {typeof confidence === 'number' ? (
+                  <View style={styles.confidenceRow}>
+                    <Tag
+                      label={`${Math.round(confidence * 100)}% confident`}
+                      accent={confidence < 0.8 ? theme.accent.yellow : theme.accent.green}
+                    />
+                    {confidence < 0.8 ? (
+                      <Text style={styles.body}>Check the chords before you save.</Text>
+                    ) : null}
+                  </View>
+                ) : null}
+              </Card>
+            </Reveal>
+
+            {chart ? (
+              <Reveal index={3}>
+                <View style={styles.previewBlock}>
+                  <Label>How it will read</Label>
+                  <ChordChart chart={chart} />
+                </View>
+              </Reveal>
+            ) : null}
+
+            <Reveal index={4}>
+              <Card>
+                <Label>ChordPro source</Label>
+                <Field
+                  value={chordpro}
+                  onChangeText={setChordpro}
+                  multiline
+                  textAlignVertical="top"
+                  style={styles.source}
+                />
+              </Card>
+            </Reveal>
+
+            <Reveal index={5}>
+              <View style={styles.saveBlock}>
+                <ErrorNotice error={accept.error} />
+                <Button
+                  title="Save to the library"
+                  icon="check"
+                  onPress={() => accept.mutate()}
+                  loading={accept.isPending}
+                  disabled={!title || !chordpro}
+                />
+              </View>
+            </Reveal>
+          </>
+        ) : null}
+      </ScrollView>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: 16, gap: 16, paddingBottom: 48 },
-  card: { gap: 10 },
-  muted: { color: theme.colors.textMuted, fontSize: 14 },
-  failed: { color: theme.colors.danger, fontSize: 14 },
-  quotaSpent: { color: theme.colors.danger, fontSize: 14 },
-  preview: { width: '100%', height: 220, borderRadius: theme.radius.md, backgroundColor: '#000' },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: theme.colors.text,
-  },
-  source: { minHeight: 200, fontFamily: 'Courier', fontSize: 13 },
-  section: { marginBottom: 14 },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    color: theme.colors.brand,
-    marginBottom: 4,
-  },
-  chordRow: { fontFamily: 'Courier', fontSize: 14, color: theme.colors.brand, fontWeight: '700' },
-  lyricRow: { fontFamily: 'Courier', fontSize: 14, color: theme.colors.text },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    hero: { gap: theme.space.lg },
+    title: { ...theme.type.display, fontSize: 32, lineHeight: 36, color: theme.color.ink },
+    body: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    captureActions: { gap: theme.space.md, marginTop: theme.space.sm },
+
+    preview: {
+      width: '100%',
+      height: 240,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      backgroundColor: theme.color.surfaceInset,
+    },
+
+    confidenceRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, flexWrap: 'wrap' },
+    previewBlock: { gap: theme.space.md },
+    source: { ...theme.type.code, minHeight: 220 },
+    saveBlock: { gap: theme.space.md },
+  });

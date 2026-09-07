@@ -27,7 +27,7 @@ const config = {
   },
   android: {
     package: 'com.servicecenter.app',
-    adaptiveIcon: { backgroundColor: '#4f46e5' },
+    adaptiveIcon: { backgroundColor: '#FBFBFA' },
     ...(webAppDomain
       ? {
           intentFilters: [
@@ -44,7 +44,7 @@ const config = {
   plugins: [
     'expo-router',
     'expo-status-bar',
-    ['expo-splash-screen', { backgroundColor: '#4f46e5', dark: { backgroundColor: '#020617' } }],
+    ['expo-splash-screen', { backgroundColor: '#FBFBFA', dark: { backgroundColor: '#151513' } }],
   ],
   experiments: { typedRoutes: false },
   extra: {

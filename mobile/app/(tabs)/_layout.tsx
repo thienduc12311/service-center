@@ -1,40 +1,37 @@
 import { Tabs } from 'expo-router';
-import { Text, type ColorValue } from 'react-native';
-import { theme } from '../../src/lib/theme';
-import { useColorScheme } from 'nativewind';
+import { StyleSheet, type ColorValue } from 'react-native';
+import { Icon, type IconName } from '../../src/components/icons';
+import { fonts } from '../../src/lib/theme';
+import { useTheme } from '../../src/lib/useTheme';
 
-/**
- * Text glyphs keep the scaffold icon-library-free; swap in @expo/vector-icons
- * when you settle on an icon set.
- */
-const icon = (glyph: string) =>
-  ({ color, size }: { color: ColorValue; size: number }) => (
-    <Text style={{ color, fontSize: size - 4 }}>{glyph}</Text>
-  );
+/** Every tab renders its own editorial header, so the nav bar stays out of it. */
+const tabIcon =
+  (name: IconName) =>
+  ({ color }: { color: ColorValue }) => <Icon name={name} size={22} color={color} />;
 
 export default function TabsLayout() {
-  const { colorScheme } = useColorScheme();
-  const dark = colorScheme === 'dark';
+  const theme = useTheme();
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: theme.colors.brand,
-        tabBarInactiveTintColor: theme.colors.textFaint,
-        headerStyle: { backgroundColor: dark ? '#0f172a' : theme.colors.surface },
-        headerTintColor: dark ? '#f8fafc' : theme.colors.text,
-        headerTitleStyle: { fontWeight: '600' },
-        sceneStyle: { backgroundColor: dark ? '#020617' : theme.colors.background },
-        tabBarStyle: { backgroundColor: dark ? '#0f172a' : '#ffffff', borderTopColor: dark ? '#1e293b' : '#e2e8f0' },
+        headerShown: false,
+        sceneStyle: { backgroundColor: theme.color.canvas },
+        tabBarActiveTintColor: theme.color.ink,
+        tabBarInactiveTintColor: theme.color.inkFaint,
+        tabBarLabelStyle: { fontFamily: fonts.sansMedium, fontSize: 10.5, letterSpacing: 0.1 },
+        tabBarStyle: {
+          backgroundColor: theme.color.surface,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: theme.color.border,
+          elevation: 0,
+        },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{ title: 'My Schedule', tabBarIcon: icon('✓') }}
-      />
-      <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: icon('▦') }} />
-      <Tabs.Screen name="songs" options={{ title: 'Songs', tabBarIcon: icon('♪') }} />
-      <Tabs.Screen name="songbooks" options={{ title: 'Books', tabBarIcon: icon('♫') }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: icon('☺') }} />
+      <Tabs.Screen name="index" options={{ title: 'Schedule', tabBarIcon: tabIcon('schedule') }} />
+      <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: tabIcon('calendar') }} />
+      <Tabs.Screen name="songs" options={{ title: 'Songs', tabBarIcon: tabIcon('music') }} />
+      <Tabs.Screen name="songbooks" options={{ title: 'Books', tabBarIcon: tabIcon('book') }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person') }} />
     </Tabs>
   );
 }
