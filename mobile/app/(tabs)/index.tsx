@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,12 +10,33 @@ import {
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { Badge, Button, Card, EmptyState, ErrorNotice, Loading } from '../../src/components/ui';
-import { statusColors, theme } from '../../src/lib/theme';
+import {
+  Button,
+  Card,
+  Divider,
+  EmptyState,
+  ErrorNotice,
+  Loading,
+  Screen,
+  ScreenHeader,
+  Tag,
+  screenPadding,
+} from '../../src/components/ui';
+import { Reveal } from '../../src/components/motion';
+import { statusAccent, type Theme } from '../../src/lib/theme';
+import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
+
+type ResponseStatus = 'confirmed' | 'declined';
+
+interface RespondInput {
+  assignmentId: string;
+  status: ResponseStatus;
+}
 
 export default function MyScheduleScreen() {
   const { organizationId } = useAuth();
   const router = useRouter();
+  const theme = useTheme();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -26,8 +47,8 @@ export default function MyScheduleScreen() {
   });
 
   const respond = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'confirmed' | 'declined' }) =>
-      api.respondToAssignment(id, { status }),
+    mutationFn: ({ assignmentId, status }: RespondInput) =>
+      api.respondToAssignment(assignmentId, { status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedule', organizationId] }),
   });
 
@@ -37,107 +58,162 @@ export default function MyScheduleScreen() {
     setRefreshing(false);
   }, [schedule]);
 
-  if (schedule.isLoading) return <Loading label="Loading your schedule…" />;
+  const entries = useMemo(() => schedule.data ?? [], [schedule.data]);
+  const awaiting = entries.filter((entry) => entry.assignment.status === 'unconfirmed').length;
+
+  const summary = entries.length
+    ? `${entries.length} upcoming${awaiting ? ` · ${awaiting} awaiting your reply` : ''}`
+    : undefined;
 
   return (
-    <FlatList
-      data={schedule.data ?? []}
-      keyExtractor={(entry) => entry.assignment.id}
-      contentContainerStyle={styles.list}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
-      ListHeaderComponent={<ErrorNotice error={schedule.error ?? respond.error} />}
-      ListEmptyComponent={
-        <EmptyState
-          title="Nothing scheduled"
-          description="When someone schedules you, it shows up here and you can accept or decline."
-        />
-      }
-      renderItem={({ item }) => (
-        <ScheduleCard
-          entry={item}
-          onOpen={() => router.push(`/plan/${item.plan.id}`)}
-          onRespond={(status) => respond.mutate({ id: item.assignment.id, status })}
-          busy={respond.isPending}
-        />
-      )}
-    />
+    <Screen safeTop>
+      <FlatList
+        data={entries}
+        keyExtractor={(entry) => entry.assignment.id}
+        contentContainerStyle={screenPadding(theme)}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            tintColor={theme.color.inkFaint}
+          />
+        }
+        ListHeaderComponent={
+          <View>
+            <ScreenHeader
+              eyebrow={summary}
+              title="Where you're serving"
+              description="Everything you have been scheduled for, newest first."
+            />
+            <ErrorNotice error={schedule.error ?? respond.error} />
+          </View>
+        }
+        ListEmptyComponent={
+          schedule.isLoading ? (
+            <Loading label="Loading your schedule" />
+          ) : (
+            <EmptyState
+              title="Nothing scheduled"
+              description="When someone puts you on a plan it lands here, and you can accept or decline without leaving this screen."
+            />
+          )
+        }
+        renderItem={({ item, index }) => (
+          <Reveal index={index}>
+            <ScheduleCard
+              entry={item}
+              onOpen={() => router.push(`/plan/${item.plan.id}`)}
+              onRespond={(status) =>
+                respond.mutate({ assignmentId: item.assignment.id, status })
+              }
+              busy={respond.isPending}
+            />
+          </Reveal>
+        )}
+      />
+    </Screen>
   );
 }
 
-const ScheduleCard = ({
-  entry,
-  onOpen,
-  onRespond,
-  busy,
-}: {
+interface ScheduleCardProps {
   entry: MyScheduleEntry;
   onOpen: () => void;
-  onRespond: (status: 'confirmed' | 'declined') => void;
+  onRespond: (status: ResponseStatus) => void;
   busy: boolean;
-}) => {
-  const tone = statusColors[entry.assignment.status];
+}
+
+const ScheduleCard = ({ entry, onOpen, onRespond, busy }: ScheduleCardProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const accent = statusAccent(theme, entry.assignment.status);
   const rehearsal = entry.times.find((time) => time.kind === 'rehearsal');
+  const needsReply = entry.assignment.status === 'unconfirmed';
+
+  const details = [entry.position?.name, entry.plan.location].filter(Boolean).join(' · ');
 
   return (
-    <Card style={styles.card}>
-      <Pressable onPress={onOpen}>
-        <View style={styles.row}>
-          <View style={styles.flex}>
-            <Text style={styles.title}>{entry.plan.title}</Text>
-            <Text style={styles.subtitle}>{formatDateTime(entry.plan.service_date)}</Text>
-          </View>
-          <Badge label={ASSIGNMENT_STATUS_LABELS[entry.assignment.status]} bg={tone.bg} fg={tone.fg} />
+    <Card>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onOpen}
+        style={({ pressed }) => (pressed ? { opacity: 0.65 } : null)}
+      >
+        <View style={styles.topRow}>
+          <Text style={styles.date}>{formatDateTime(entry.plan.service_date).toUpperCase()}</Text>
+          <Tag label={ASSIGNMENT_STATUS_LABELS[entry.assignment.status]} accent={accent} />
         </View>
 
+        <Text style={styles.title}>{entry.plan.title}</Text>
+
         <View style={styles.metaRow}>
-          {entry.team && (
+          {entry.team ? (
             <View style={styles.teamChip}>
               <View style={[styles.dot, { backgroundColor: entry.team.color }]} />
               <Text style={styles.meta}>{entry.team.name}</Text>
             </View>
-          )}
-          {entry.position && <Text style={styles.meta}>{entry.position.name}</Text>}
-          {entry.plan.location && <Text style={styles.meta}>{entry.plan.location}</Text>}
+          ) : null}
+          {details ? <Text style={styles.meta}>{details}</Text> : null}
         </View>
 
-        {rehearsal && (
+        {rehearsal ? (
           <Text style={styles.rehearsal}>
-            Rehearsal · {formatDate(rehearsal.starts_at)}{' '}
+            Rehearsal {formatDate(rehearsal.starts_at)},{' '}
             {new Date(rehearsal.starts_at).toLocaleTimeString('en-US', {
               hour: 'numeric',
               minute: '2-digit',
             })}
           </Text>
-        )}
+        ) : null}
       </Pressable>
 
-      {entry.assignment.status === 'unconfirmed' && (
+      {needsReply ? (
         <View style={styles.actions}>
-          <Button
-            title="Decline"
-            variant="secondary"
-            onPress={() => onRespond('declined')}
-            loading={busy}
-            style={styles.flex}
-          />
-          <Button title="Accept" onPress={() => onRespond('confirmed')} loading={busy} style={styles.flex} />
+          <Divider bleed={theme.space.xl} />
+          <View style={styles.actionRow}>
+            <Button
+              title="Decline"
+              variant="secondary"
+              onPress={() => onRespond('declined')}
+              loading={busy}
+              style={styles.flex}
+            />
+            <Button
+              title="Accept"
+              icon="check"
+              onPress={() => onRespond('confirmed')}
+              loading={busy}
+              style={styles.flex}
+            />
+          </View>
         </View>
-      )}
+      ) : null}
     </Card>
   );
 };
 
-const styles = StyleSheet.create({
-  list: { padding: 16, gap: 12 },
-  card: { gap: 10 },
-  flex: { flex: 1 },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  title: { fontSize: 16, fontWeight: '600', color: theme.colors.text },
-  subtitle: { fontSize: 14, color: theme.colors.textMuted, marginTop: 2 },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
-  teamChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  meta: { fontSize: 13, color: theme.colors.textMuted },
-  rehearsal: { fontSize: 13, color: theme.colors.warning },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    topRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.space.md,
+      marginBottom: theme.space.md,
+    },
+    date: { ...theme.type.label, color: theme.color.inkMuted, flex: 1 },
+    title: { ...theme.type.title, color: theme.color.ink },
+    metaRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: theme.space.md,
+      marginTop: theme.space.md,
+    },
+    teamChip: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    dot: { width: 7, height: 7, borderRadius: theme.radius.pill },
+    meta: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    rehearsal: { ...theme.type.bodySmall, color: theme.accent.yellow.fg, marginTop: theme.space.sm },
+    actions: { gap: theme.space.lg },
+    actionRow: { flexDirection: 'row', gap: theme.space.md },
+  });

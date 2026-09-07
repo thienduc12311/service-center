@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ApiError, type InvitationPreview } from '@service-center/shared';
 import { api } from '../src/lib/api';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/providers/AuthProvider';
-import { Button, ErrorNotice, Loading } from '../src/components/ui';
-import { theme } from '../src/lib/theme';
+import {
+  Button,
+  Card,
+  ErrorNotice,
+  Field,
+  Label,
+  Loading,
+  RuledField,
+  Screen,
+} from '../src/components/ui';
+import { Reveal } from '../src/components/motion';
+import type { Theme } from '../src/lib/theme';
+import { useThemedStyles } from '../src/lib/useTheme';
 
 type Stage =
   | 'loading'
@@ -39,6 +42,7 @@ const STAGE_MESSAGE: Partial<Record<Stage, string>> = {
 export default function AcceptInviteScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
   const { token } = useLocalSearchParams<{ token?: string }>();
 
   const [stage, setStage] = useState<Stage>('loading');
@@ -50,7 +54,7 @@ export default function AcceptInviteScreen() {
   useEffect(() => {
     let active = true;
 
-    const load = async () => {
+    const load = async (): Promise<void> => {
       if (session) {
         setStage('already-signed-in');
         return;
@@ -78,7 +82,7 @@ export default function AcceptInviteScreen() {
     };
   }, [session, token]);
 
-  const submit = async () => {
+  const submit = async (): Promise<void> => {
     if (!token) return;
     setBusy(true);
     setError(null);
@@ -102,92 +106,92 @@ export default function AcceptInviteScreen() {
     }
   };
 
+  const headline =
+    stage === 'preview' && preview
+      ? `${preview.person_first_name}, you're invited`
+      : 'Set up your account';
+
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>SC</Text>
-        </View>
-        <Text style={styles.title}>Set up your account</Text>
+    <Screen>
+      <RuledField height={300} />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <Reveal>
+            <View style={styles.masthead}>
+              <Label>Service Center</Label>
+              <Text style={styles.title}>{headline}</Text>
+            </View>
+          </Reveal>
 
-        {stage === 'loading' && <Loading />}
+          {stage === 'loading' ? <Loading label="Checking your invitation" /> : null}
 
-        {(stage === 'invalid' || stage === 'expired' || stage === 'already-used') && (
-          <View style={styles.card}>
-            <Text style={styles.body}>{STAGE_MESSAGE[stage]}</Text>
-          </View>
-        )}
+          {stage === 'invalid' || stage === 'expired' || stage === 'already-used' ? (
+            <Reveal index={1}>
+              <Card>
+                <Text style={styles.body}>{STAGE_MESSAGE[stage]}</Text>
+              </Card>
+            </Reveal>
+          ) : null}
 
-        {stage === 'already-signed-in' && (
-          <View style={styles.card}>
-            <Text style={styles.body}>You&apos;re already signed in.</Text>
-            <Button title="Go to the app" onPress={() => router.replace('/(tabs)')} />
-          </View>
-        )}
+          {stage === 'already-signed-in' ? (
+            <Reveal index={1}>
+              <Card>
+                <Text style={styles.body}>You&apos;re already signed in.</Text>
+                <Button title="Go to the app" onPress={() => router.replace('/(tabs)')} />
+              </Card>
+            </Reveal>
+          ) : null}
 
-        {stage === 'existing-account' && (
-          <View style={styles.card}>
-            <Text style={styles.body}>
-              An account with this email already exists — sign in with your existing password instead.
-            </Text>
-            <Button title="Go to sign in" onPress={() => router.replace('/(auth)/login')} />
-          </View>
-        )}
+          {stage === 'existing-account' ? (
+            <Reveal index={1}>
+              <Card>
+                <Text style={styles.body}>
+                  An account with this email already exists — sign in with your existing password
+                  instead.
+                </Text>
+                <Button title="Go to sign in" onPress={() => router.replace('/(auth)/login')} />
+              </Card>
+            </Reveal>
+          ) : null}
 
-        {stage === 'preview' && preview && (
-          <View style={styles.card}>
-            <Text style={styles.body}>
-              {preview.person_first_name}, you&apos;ve been invited to join {preview.organization_name} as a{' '}
-              {preview.role}. Choose a password for {preview.email} to finish.
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="new-password"
-              placeholderTextColor={theme.colors.textFaint}
-            />
-            <ErrorNotice error={error} />
-            <Button title="Create my account" onPress={() => void submit()} loading={busy} />
-          </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {stage === 'preview' && preview ? (
+            <Reveal index={1}>
+              <Card>
+                <Text style={styles.body}>
+                  {`You've been invited to join ${preview.organization_name} as a ${preview.role}. Choose a password for ${preview.email} to finish.`}
+                </Text>
+                <Field
+                  label="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••••"
+                  secureTextEntry
+                  autoComplete="new-password"
+                />
+                <ErrorNotice error={error} />
+                <Button title="Create my account" onPress={() => void submit()} loading={busy} />
+              </Card>
+            </Reveal>
+          ) : null}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.background },
-  container: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  logo: {
-    alignSelf: 'center',
-    width: 56,
-    height: 56,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  title: { textAlign: 'center', fontSize: 24, fontWeight: '700', marginTop: 16, marginBottom: 24, color: theme.colors.text },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: 16,
-    gap: 12,
-  },
-  body: { fontSize: 14, color: theme.colors.textMuted, lineHeight: 20 },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: theme.colors.text,
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    container: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: theme.space.xl,
+      gap: theme.space.xxl,
+    },
+    masthead: { gap: theme.space.md },
+    title: { ...theme.type.display, color: theme.color.ink },
+    body: { ...theme.type.body, color: theme.color.inkMuted },
+  });

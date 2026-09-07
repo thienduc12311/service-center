@@ -1,20 +1,31 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from '../../src/lib/supabase';
-import { Button, ErrorNotice } from '../../src/components/ui';
-import { theme } from '../../src/lib/theme';
+import {
+  Button,
+  Card,
+  ErrorNotice,
+  Field,
+  Label,
+  RuledField,
+  Screen,
+  SegmentedControl,
+  type SegmentOption,
+} from '../../src/components/ui';
+import { Reveal } from '../../src/components/motion';
+import type { Theme } from '../../src/lib/theme';
+import { useThemedStyles } from '../../src/lib/useTheme';
+
+type AuthMode = 'sign-in' | 'sign-up';
+
+const MODES: readonly SegmentOption<AuthMode>[] = [
+  { value: 'sign-in', label: 'Sign in' },
+  { value: 'sign-up', label: 'Create account' },
+];
 
 export default function LoginScreen() {
-  const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
+  const styles = useThemedStyles(makeStyles);
+  const [mode, setMode] = useState<AuthMode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -22,21 +33,24 @@ export default function LoginScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const submit = async () => {
+  const submit = async (): Promise<void> => {
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       if (mode === 'sign-in') {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        if (error) throw error;
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (signInError) throw signInError;
       } else {
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: { data: { full_name: fullName } },
         });
-        if (error) throw error;
+        if (signUpError) throw signUpError;
         if (!data.session) setNotice('Check your email to confirm your account.');
       }
     } catch (err) {
@@ -46,109 +60,114 @@ export default function LoginScreen() {
     }
   };
 
+  const switchMode = (next: AuthMode): void => {
+    setMode(next);
+    setError(null);
+    setNotice(null);
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>SC</Text>
-        </View>
-        <Text style={styles.title}>Service Center</Text>
-        <Text style={styles.subtitle}>Plan services. Schedule your team.</Text>
+    <Screen>
+      <RuledField height={340} />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <Reveal>
+            <View style={styles.masthead}>
+              <Label>Service Center</Label>
+              <Text style={styles.title}>Plan the service. Call the team.</Text>
+              <Text style={styles.subtitle}>
+                Orders of service, chord charts and who is playing what — in one place your whole
+                team can open on a Sunday morning.
+              </Text>
+            </View>
+          </Reveal>
 
-        <View style={styles.form}>
-          {mode === 'sign-up' && (
-            <TextInput
-              style={styles.input}
-              placeholder="Full name"
-              value={fullName}
-              onChangeText={setFullName}
-              autoComplete="name"
-              placeholderTextColor={theme.colors.textFaint}
-            />
-          )}
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoComplete="email"
-            placeholderTextColor={theme.colors.textFaint}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholderTextColor={theme.colors.textFaint}
-          />
+          <Reveal index={1}>
+            <Card>
+              <SegmentedControl options={MODES} value={mode} onChange={switchMode} />
 
-          <ErrorNotice error={error} />
-          {notice && <Text style={styles.notice}>{notice}</Text>}
+              {mode === 'sign-up' ? (
+                <Field
+                  label="Full name"
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder="Your name"
+                  autoComplete="name"
+                />
+              ) : null}
 
-          <Button
-            title={mode === 'sign-in' ? 'Sign in' : 'Create account'}
-            onPress={submit}
-            loading={busy}
-          />
+              <Field
+                label="Email"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@church.org"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+              />
+              <Field
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••••"
+                secureTextEntry
+                autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+              />
 
-          <Pressable
-            onPress={() => {
-              setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in');
-              setError(null);
-              setNotice(null);
-            }}
-          >
-            <Text style={styles.switch}>
-              {mode === 'sign-in' ? 'Need an account? Sign up' : 'Have an account? Sign in'}
-            </Text>
-          </Pressable>
-        </View>
+              <ErrorNotice error={error} />
+              {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
-        <Text style={styles.hint}>Demo: avery@example.com · password123</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+              <Button
+                title={mode === 'sign-in' ? 'Sign in' : 'Create account'}
+                onPress={() => void submit()}
+                loading={busy}
+              />
+            </Card>
+          </Reveal>
+
+          <Reveal index={2}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => switchMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}
+            >
+              <Text style={styles.switch}>
+                {mode === 'sign-in'
+                  ? 'New here? Create an account'
+                  : 'Already have an account? Sign in'}
+              </Text>
+            </Pressable>
+          </Reveal>
+
+          <Text style={styles.seedHint}>
+            Seeded local account — avery@example.com / password123
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.background },
-  container: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  logo: {
-    alignSelf: 'center',
-    width: 56,
-    height: 56,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  title: { textAlign: 'center', fontSize: 24, fontWeight: '700', marginTop: 16, color: theme.colors.text },
-  subtitle: { textAlign: 'center', color: theme.colors.textMuted, marginTop: 4, marginBottom: 24 },
-  form: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: 16,
-    gap: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: theme.colors.text,
-  },
-  notice: { color: theme.colors.success, fontSize: 14 },
-  switch: { textAlign: 'center', color: theme.colors.brand, fontWeight: '600', paddingTop: 4 },
-  hint: { textAlign: 'center', color: theme.colors.textFaint, fontSize: 12, marginTop: 24 },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    container: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: theme.space.xl,
+      gap: theme.space.xxl,
+    },
+    masthead: { gap: theme.space.md, paddingTop: theme.space.xxl },
+    title: { ...theme.type.display, color: theme.color.ink },
+    subtitle: { ...theme.type.body, color: theme.color.inkMuted },
+    notice: { ...theme.type.bodySmall, color: theme.accent.green.fg },
+    switch: { ...theme.type.bodySmall, color: theme.color.inkMuted, textAlign: 'center' },
+    seedHint: {
+      ...theme.type.numeric,
+      fontSize: 11,
+      color: theme.color.inkFaint,
+      textAlign: 'center',
+    },
+  });
