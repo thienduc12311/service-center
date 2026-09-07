@@ -22,6 +22,7 @@ import {
   Tag,
   screenPadding,
 } from '../../src/components/ui';
+import { NotificationBell } from '../../src/components/NotificationBell';
 import { Reveal } from '../../src/components/motion';
 import { statusAccent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
@@ -67,6 +68,7 @@ export default function MyScheduleScreen() {
 
   return (
     <Screen safeTop>
+      <NotificationBell />
       <FlatList
         data={entries}
         keyExtractor={(entry) => entry.assignment.id}

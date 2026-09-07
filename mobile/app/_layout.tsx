@@ -16,6 +16,7 @@ import { GeistMono_500Medium } from '@expo-google-fonts/geist-mono/500Medium';
 import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif/400Regular';
 import { ApiError } from '@service-center/shared';
 import { AuthProvider, useAuth } from '../src/providers/AuthProvider';
+import { NotificationsProvider } from '../src/providers/NotificationsProvider';
 import { Loading } from '../src/components/ui';
 import { fonts } from '../src/lib/theme';
 import { useTheme } from '../src/lib/useTheme';
@@ -77,6 +78,7 @@ const RootNavigator = () => {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="plan/[id]" options={{ title: 'Plan' }} />
       <Stack.Screen name="song/[id]" options={{ title: 'Song' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="scan" options={{ title: 'Import chord sheet', presentation: 'modal' }} />
       <Stack.Screen name="songbooks/[id]" options={{ title: 'Song book' }} />
     </Stack>
@@ -109,8 +111,10 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <StatusBar style="auto" />
-          <RootNavigator />
+          <NotificationsProvider>
+            <StatusBar style="auto" />
+            <RootNavigator />
+          </NotificationsProvider>
         </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

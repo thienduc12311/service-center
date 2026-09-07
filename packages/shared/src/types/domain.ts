@@ -4,6 +4,7 @@ import type {
   BlockoutRow,
   ChordSheetImportRow,
   MemberStatus,
+  NotificationRow,
   OrgRole,
   OrganizationMemberRow,
   OrganizationRow,
@@ -207,4 +208,28 @@ export interface ImportQuota {
 /** An import row returned by a call that also charged the quota. */
 export interface ImportWithQuota extends ChordSheetImportRow {
   quota: ImportQuota;
+}
+
+/**
+ * One entry in the notification centre behind the bell icon. The plan title is
+ * denormalised into `title`/`body` when the row is written, so the feed renders
+ * without a join — `plan_id` is only there to make the row tappable.
+ */
+export interface NotificationFeedItem extends NotificationRow {
+  /** Null when the plan has since been deleted. */
+  plan: Pick<PlanRow, 'id' | 'title' | 'service_date'> | null;
+}
+
+/** `GET /api/v1/notifications` — newest first, with the badge count alongside. */
+export interface NotificationFeed {
+  items: NotificationFeedItem[];
+  /** Unread across the whole organization, not just this page. */
+  unread: number;
+  /** `created_at` of the oldest row returned; pass as `before` for the next page. */
+  next_cursor: string | null;
+}
+
+/** `GET /api/v1/notifications/unread-count` — cheap enough to poll for the badge. */
+export interface UnreadNotificationCount {
+  unread: number;
 }

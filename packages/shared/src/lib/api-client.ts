@@ -8,6 +8,7 @@ import type {
   AssignmentRow,
   BlockoutRow,
   ChordSheetImportRow,
+  DevicePushTokenRow,
   OrganizationMemberRow,
   OrganizationRow,
   PlanItemRow,
@@ -30,6 +31,7 @@ import type {
   ImportWithQuota,
   InvitationPreview,
   MyScheduleEntry,
+  NotificationFeed,
   Paginated,
   PersonDetail,
   PlanDetail,
@@ -39,8 +41,14 @@ import type {
   SongWithArrangements,
   SongbookDetail,
   TeamWithPositions,
+  UnreadNotificationCount,
 } from '../types/domain.js';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
+import type {
+  ListNotificationsQuery,
+  MarkNotificationsReadInput,
+  RegisterDeviceInput,
+} from '../schemas/notification.js';
 import type {
   CreatePositionPayload,
   CreateTeamPayload,
@@ -303,6 +311,21 @@ export class ServiceCenterApi {
       `/api/v1/imports/${id}/accept`,
       body,
     );
+
+  // ------------------------------------------------------- notifications --
+  listNotifications = (query?: Partial<ListNotificationsQuery>) =>
+    this.request<NotificationFeed>('GET', '/api/v1/notifications', undefined, query);
+  unreadNotificationCount = () =>
+    this.request<UnreadNotificationCount>('GET', '/api/v1/notifications/unread-count');
+  /** Omit `ids` to mark everything in the active organization as read. */
+  markNotificationsRead = (body: MarkNotificationsReadInput = {}) =>
+    this.request<UnreadNotificationCount>('POST', '/api/v1/notifications/read', body);
+
+  /** Registers this device for push. Not organization-scoped. */
+  registerDevice = (body: RegisterDeviceInput) =>
+    this.request<DevicePushTokenRow>('POST', '/api/v1/me/devices', body);
+  unregisterDevice = (token: string) =>
+    this.request<void>('DELETE', `/api/v1/me/devices/${encodeURIComponent(token)}`);
 
   health = () => this.request<{ status: string; version: string }>('GET', '/health');
 }

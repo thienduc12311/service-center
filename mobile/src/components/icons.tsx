@@ -25,6 +25,7 @@ export type IconName =
   | 'document'
   | 'search'
   | 'alert'
+  | 'bell'
   | 'trash'
   | 'signOut'
   | 'sun'
@@ -127,6 +128,12 @@ const paths: Record<IconName, (stroke: number) => ReactElement> = {
       <Path d="M12 3.5L21.5 20H2.5z" strokeWidth={w} />
       <Line x1={12} y1={9.5} x2={12} y2={14} strokeWidth={w} />
       <Line x1={12} y1={16.8} x2={12} y2={17} strokeWidth={w} />
+    </>
+  ),
+  bell: (w) => (
+    <>
+      <Path d="M6 10a6 6 0 0 1 12 0c0 4 1.2 5.4 2 6.4H4c.8-1 2-2.4 2-6.4Z" strokeWidth={w} />
+      <Path d="M10 19.4a2.2 2.2 0 0 0 4 0" strokeWidth={w} />
     </>
   ),
   trash: (w) => (
