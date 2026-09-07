@@ -23,6 +23,11 @@ const envSchema = z.object({
   /** Chord sheet imports allowed per admin per day. 0 disables importing. */
   AI_IMPORT_DAILY_LIMIT: z.coerce.number().int().min(0).default(10),
 
+  /** Send real push notifications through Expo. Off by default: local runs log instead. */
+  PUSH_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  /** Only needed once push security is enabled on the Expo project. */
+  EXPO_ACCESS_TOKEN: z.string().optional(),
+
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM_ADDRESS: z.string().email().default('notifications@example.com'),
   MAIL_FROM_NAME: z.string().default('Service Center'),

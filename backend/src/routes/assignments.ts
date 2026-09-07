@@ -5,7 +5,9 @@ import {
   createAssignmentsSchema,
   respondToAssignmentSchema,
   updateAssignmentSchema,
+  formatDate,
   type MyScheduleEntry,
+  type NotificationType,
   type SchedulingConflict,
 } from '@service-center/shared';
 import { z } from 'zod';
@@ -15,6 +17,8 @@ import { adminDb, raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { respondUrlFor, sendScheduleNotifications, type ScheduleNotification } from '../services/notifications.js';
 import { generateAssignmentToken } from '../services/assignment-tokens.js';
+import { createNotifications } from '../services/notification-center.js';
+import type { NotificationDraft } from '../model/notification.model.js';
 import { renderIcs, type IcsEvent } from '../lib/ics.js';
 import { config } from '../config.js';
 
@@ -174,7 +178,12 @@ planNotifyRouter.post('/', requireManager, async (req, res) => {
     req.db.from('assignments').select('id').eq('plan_id', plan.id).eq('status', 'unconfirmed'),
   );
 
-  const result = await notifyAssignments({ db: req.db, orgId: req.orgId, authUserId: req.auth.userId }, plan, (pending ?? []).map((a) => a.id));
+  const result = await notifyAssignments(
+    { db: req.db, orgId: req.orgId, authUserId: req.auth.userId },
+    plan,
+    (pending ?? []).map((a) => a.id),
+    'assignment_reminder',
+  );
   res.json(result);
 });
 
@@ -209,6 +218,8 @@ export const notifyAssignments = async (
   req: AssignmentNotificationInput,
   plan: AssignmentNotificationPlan,
   assignmentIds: string[],
+  /** Distinguishes a first-time schedule from a nudge in the in-app feed. */
+  notificationType: NotificationType = 'assignment_scheduled',
 ): Promise<NotifyAssignmentsResult> => {
   if (assignmentIds.length === 0) return { notified: 0, skipped: [] };
 
@@ -275,6 +286,26 @@ export const notifyAssignments = async (
     sentUserIds.push(userId);
   }
 
+  // The in-app feed doesn't depend on the person having an email address, so
+  // it covers everyone on the plan — including anyone skipped above.
+  const feedRows: NotificationDraft[] = rows.map((row) => {
+    const role = [row.team?.name, row.position?.name].filter(Boolean).join(' · ');
+    return {
+      organizationId: plan.organization_id ?? req.orgId,
+      userId: row.user_id,
+      type: notificationType,
+      title:
+        notificationType === 'assignment_reminder'
+          ? `Reminder: ${plan.title}`
+          : `You're scheduled for ${plan.title}`,
+      body: [role, formatDate(plan.service_date)].filter(Boolean).join(' — '),
+      planId: plan.id,
+      assignmentId: row.id,
+      createdBy: req.authUserId,
+    };
+  });
+  await createNotifications(feedRows);
+
   const sent = await sendScheduleNotifications(notifications);
 
   if (sentUserIds.length) {
@@ -340,12 +371,28 @@ assignmentsRouter.post('/:id/respond', validateBody(respondToAssignmentSchema), 
       .select('*')
       .single(),
   );
-  if (req.body.status === 'declined' && assignment.created_by) {
-    const [scheduler, plan] = await Promise.all([
+  if (assignment.created_by && assignment.created_by !== req.auth.userId) {
+    const [scheduler, plan, responder] = await Promise.all([
       unwrap(req.db.from('profiles').select('email').eq('id', assignment.created_by).maybeSingle()),
       unwrapOne(req.db.from('plans').select('title, service_date').eq('id', assignment.plan_id).single()),
+      unwrap(req.db.from('profiles').select('full_name').eq('id', req.auth.userId).maybeSingle()),
     ]);
-    if (scheduler?.email) {
+
+    // Whoever scheduled this person sees the answer in their own feed.
+    await createNotifications([
+      {
+        organizationId: req.orgId,
+        userId: assignment.created_by,
+        type: 'assignment_response',
+        title: `${responder?.full_name ?? 'Someone'} ${req.body.status} ${plan.title}`,
+        body: formatDate(plan.service_date),
+        planId: assignment.plan_id,
+        assignmentId: assignment.id,
+        createdBy: req.auth.userId,
+      },
+    ]);
+
+    if (req.body.status === 'declined' && scheduler?.email) {
       await sendScheduleNotifications([{
         to: scheduler.email,
         personName: null,

@@ -24,6 +24,7 @@ import {
   screenPadding,
   type SegmentOption,
 } from '../../src/components/ui';
+import { NotificationBell } from '../../src/components/NotificationBell';
 import { Icon } from '../../src/components/icons';
 import { Reveal } from '../../src/components/motion';
 import type { Theme } from '../../src/lib/theme';
@@ -70,6 +71,7 @@ export default function SongbooksScreen() {
 
   return (
     <Screen safeTop>
+      <NotificationBell />
       <FlatList
         data={books.data ?? []}
         keyExtractor={(book) => book.id}

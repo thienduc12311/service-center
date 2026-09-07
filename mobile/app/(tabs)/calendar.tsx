@@ -26,6 +26,7 @@ import {
   screenPadding,
   type SegmentOption,
 } from '../../src/components/ui';
+import { NotificationBell } from '../../src/components/NotificationBell';
 import { Reveal } from '../../src/components/motion';
 import { statusAccent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
@@ -81,6 +82,7 @@ export default function CalendarScreen() {
 
   return (
     <Screen safeTop>
+      <NotificationBell />
       <View style={styles.toolbar}>
         <View style={styles.monthRow}>
           <View style={styles.monthLabel}>

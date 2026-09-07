@@ -18,6 +18,7 @@ import {
   ScreenHeader,
   screenPadding,
 } from '../../src/components/ui';
+import { NotificationBell } from '../../src/components/NotificationBell';
 import { Icon } from '../../src/components/icons';
 import { Reveal } from '../../src/components/motion';
 import type { Theme } from '../../src/lib/theme';
@@ -40,6 +41,7 @@ export default function SongsScreen() {
 
   return (
     <Screen safeTop>
+      <NotificationBell />
       <FlatList
         data={results.length ? [results] : []}
         keyExtractor={() => 'catalogue'}

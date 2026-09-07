@@ -43,6 +43,9 @@ const config = {
   },
   plugins: [
     'expo-router',
+    // The notification icon/colour only apply to a native build; in Expo Go
+    // the default OS presentation is used.
+    ['expo-notifications', { color: '#191918' }],
     'expo-status-bar',
     ['expo-splash-screen', { backgroundColor: '#FBFBFA', dark: { backgroundColor: '#151513' } }],
   ],

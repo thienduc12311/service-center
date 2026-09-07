@@ -30,6 +30,7 @@ import { calendarRouter } from './routes/calendar.js';
 import { blockoutsRouter } from './routes/blockouts.js';
 import { importsRouter } from './routes/imports.js';
 import { songbooksRouter } from './routes/songbooks.js';
+import { devicesRouter, notificationsRouter } from './routes/notifications.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -65,6 +66,8 @@ export const createApp = (): Express => {
 
   // /me and /organizations work before an organization is chosen; every other
   // route resolves and authorises one first.
+  // Devices are per-person, not per-organization, so they sit beside /me.
+  app.use('/api/v1/me/devices', requireAuth, devicesRouter);
   app.use('/api/v1/me', requireAuth, meRouter);
   app.use('/api/v1/organizations', requireAuth, organizationsRouter);
   // Fully public: the caller isn't signed in yet — a valid token is the
@@ -89,6 +92,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/blockouts', scoped, blockoutsRouter);
   app.use('/api/v1/imports', scoped, importsRouter);
   app.use('/api/v1/songbooks', scoped, songbooksRouter);
+  app.use('/api/v1/notifications', scoped, notificationsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -27,6 +27,12 @@ export type PlanTimeKind = 'service' | 'rehearsal' | 'other';
 export type PlanItemType = 'song' | 'header' | 'item';
 export type AssignmentStatus = 'unconfirmed' | 'confirmed' | 'declined';
 export type ImportStatus = 'pending' | 'processing' | 'succeeded' | 'failed';
+export type NotificationType =
+  | 'assignment_scheduled'
+  | 'assignment_reminder'
+  | 'assignment_response'
+  | 'plan_updated';
+export type DevicePlatform = 'ios' | 'android' | 'web';
 
 export type OrganizationRow = {
   id: string;
@@ -278,6 +284,31 @@ export type AssignmentNotificationRow = {
   created_at: string;
 }
 
+export type NotificationRow = {
+  id: string;
+  organization_id: string;
+  /** The recipient, not whoever caused the event. */
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  plan_id: string | null;
+  assignment_id: string | null;
+  read_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type DevicePushTokenRow = {
+  id: string;
+  user_id: string;
+  token: string;
+  platform: DevicePlatform;
+  device_name: string | null;
+  created_at: string;
+  last_seen_at: string;
+}
+
 export type CalendarFeedTokenRow = {
   id: string;
   organization_id: string;
@@ -383,6 +414,8 @@ export type Database = {
       assignments: Table<AssignmentRow>;
       assignment_notifications: Table<AssignmentNotificationRow>;
       calendar_feed_tokens: Table<CalendarFeedTokenRow>;
+      notifications: Table<NotificationRow>;
+      device_push_tokens: Table<DevicePushTokenRow>;
       blockouts: Table<BlockoutRow>;
       attachments: Table<AttachmentRow>;
       chord_sheet_imports: Table<ChordSheetImportRow>;
@@ -426,6 +459,7 @@ export type Database = {
       plan_item_type: PlanItemType;
       assignment_status: AssignmentStatus;
       import_status: ImportStatus;
+      notification_type: NotificationType;
     };
     CompositeTypes: Record<string, never>;
   };

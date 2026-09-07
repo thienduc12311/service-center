@@ -22,6 +22,7 @@ import {
   ErrorNotice,
   type SegmentOption,
 } from '../../src/components/ui';
+import { NotificationBell } from '../../src/components/NotificationBell';
 import { BlockoutForm } from '../../src/components/BlockoutForm';
 import { Reveal } from '../../src/components/motion';
 import type { ColorSchemeName, Theme } from '../../src/lib/theme';
@@ -135,6 +136,7 @@ export default function ProfileScreen() {
 
   return (
     <Screen safeTop>
+      <NotificationBell />
       <ScrollView contentContainerStyle={screenPadding(theme)} keyboardShouldPersistTaps="handled">
         <Reveal>
           <View style={styles.identity}>
