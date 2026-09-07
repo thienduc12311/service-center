@@ -65,6 +65,21 @@ const serviceWindow = async (
   };
 };
 
+/** A row we're about to insert into `assignments`. */
+type NewAssignmentRow = {
+  plan_id: string;
+  user_id: string;
+  team_id: string;
+  position_id: string | null;
+  notes: string | null;
+  status: 'unconfirmed';
+  created_by: string;
+};
+
+/** Identity of an assignment, matching the two partial unique indexes on the table. */
+const assignmentKey = (a: { user_id: string; team_id: string; position_id: string | null }): string =>
+  `${a.user_id}:${a.team_id}:${a.position_id ?? ''}`;
+
 // ---------------------------------------------- schedule people onto a plan --
 planAssignmentsRouter.post('/', requireManager, validateBody(createAssignmentsSchema), async (req, res) => {
   const planId = param(req, 'planId');
@@ -101,23 +116,39 @@ planAssignmentsRouter.post('/', requireManager, validateBody(createAssignmentsSc
     );
   }
 
-  const created = await unwrap(
+  // The uniqueness rules for an assignment live in two *partial* indexes
+  // (one for rows with a position, one for rows without), which Postgres can't
+  // infer from a plain `ON CONFLICT (columns)` clause — so skip existing rows
+  // here instead of upserting.
+  const existing = await unwrap(
     req.db
       .from('assignments')
-      .upsert(
-        assignments.map((a) => ({
-          plan_id: plan.id,
-          user_id: a.user_id,
-          team_id: a.team_id,
-          position_id: a.position_id ?? null,
-          notes: a.notes ?? null,
-          status: 'unconfirmed' as const,
-          created_by: req.auth.userId,
-        })),
-        { onConflict: 'plan_id,user_id,team_id,position_id', ignoreDuplicates: true },
-      )
-      .select('*'),
+      .select('user_id, team_id, position_id')
+      .eq('plan_id', plan.id)
+      .in('user_id', assignments.map((a) => a.user_id)),
   );
+  const seen = new Set((existing ?? []).map((a) => assignmentKey(a)));
+
+  const toInsert: NewAssignmentRow[] = [];
+  for (const a of assignments) {
+    const row: NewAssignmentRow = {
+      plan_id: plan.id,
+      user_id: a.user_id,
+      team_id: a.team_id,
+      position_id: a.position_id ?? null,
+      notes: a.notes ?? null,
+      status: 'unconfirmed',
+      created_by: req.auth.userId,
+    };
+    const key = assignmentKey(row);
+    if (seen.has(key)) continue; // already scheduled, or duplicated in this request
+    seen.add(key);
+    toInsert.push(row);
+  }
+
+  const created = toInsert.length
+    ? await unwrap(req.db.from('assignments').insert(toInsert).select('*'))
+    : [];
 
   if (notify && created?.length) {
     await notifyAssignments({ db: req.db, orgId: req.orgId, authUserId: req.auth.userId }, plan, created.map((a) => a.id));
