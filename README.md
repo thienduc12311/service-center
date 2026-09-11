@@ -72,6 +72,119 @@ docker build -f frontend/Dockerfile \
   -t service-center-frontend .
 ```
 
+## Deploy to Vercel and Supabase
+
+The deployment is three pieces: a hosted Supabase project, a Vercel project for the static
+web client, and a second Vercel project that runs the Express API as a serverless function.
+The API gets its own project so it can have its own domain, region and function limits, and
+so an API deploy does not rebuild the web bundle.
+
+### 1. Supabase
+
+Link the repository to a hosted project and apply the migrations:
+
+```bash
+supabase link --project-ref your-project-ref
+npm run db:push
+```
+
+`db:push` applies migrations only; it never runs `supabase/seed.sql`, which is local
+fixture data. Never run `supabase db reset` against a linked project — it drops the
+database. Watch the output for the storage policies in `20260101000100_rls.sql` and
+`20260905000100_branding_and_songbooks.sql`: those create buckets and policies on
+`storage.objects`, and are the one step that occasionally has to be finished in the
+dashboard.
+
+`supabase/config.toml` configures the **local** stack only. The hosted project needs the
+same values set under **Authentication → URL Configuration**:
+
+- Site URL: `https://app.yourdomain.com`
+- Redirect URLs: `https://app.yourdomain.com/**`, `https://*-your-team.vercel.app/**` for
+  preview deployments, and `servicecenter://auth-callback` for the mobile app.
+
+Take the project URL and the `anon` and `service_role` keys from **Settings → API**.
+
+### 2. Web client project
+
+| Setting | Value |
+|---|---|
+| Root Directory | `frontend` |
+| Include source files outside the Root Directory | enabled |
+| Build & install commands | from `frontend/vercel.json` |
+
+The root directory has to be `frontend` so Vercel reads `frontend/vercel.json`; the
+include-outside-root option is what makes `packages/shared` and the workspace lockfile
+available to the build. The rewrite in that file is the SPA fallback — without it a hard
+refresh on a nested route returns 404.
+
+Environment variables (Production and Preview):
+
+```
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_API_URL=https://api.yourdomain.com
+```
+
+Vite embeds these at build time, so changing one requires a redeploy.
+
+### 3. API project
+
+| Setting | Value |
+|---|---|
+| Root Directory | `backend` |
+| Include source files outside the Root Directory | enabled |
+| Function region | the region hosting your Supabase project |
+
+`backend/vercel.json` compiles the API and routes every path to `backend/api/index.js`,
+which exports the Express app from `createApp()`. `backend/src/index.ts` — the
+`listen()`-based entrypoint used by Docker and local development — is not executed on
+Vercel, so anything it wires up at boot is duplicated in `api/index.js`.
+
+Set the function region close to Supabase. Every authenticated request opens an RLS-scoped
+Postgres connection, so a cross-continent hop is paid on each one.
+
+Environment variables mirror `backend/.env.example`, with the split domains:
+
+```
+NODE_ENV=production
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+CORS_ORIGINS=https://app.yourdomain.com
+APP_URL=https://app.yourdomain.com
+API_URL=https://api.yourdomain.com
+```
+
+`APP_URL` is the host in invitation and assignment-response links; `API_URL` is the host in
+the ICS calendar subscription feed. They are different hosts in this topology — do not set
+them to the same value.
+
+### Preview deployments and CORS
+
+`backend/src/app.ts` matches origins exactly, and every preview deployment of the web client
+gets a new hostname. Set `CORS_ALLOW_VERCEL_PREVIEWS=true` on the API project's **Preview**
+environment to allow `*.vercel.app` origins. Leave it unset in production, where the origin
+is known and should stay pinned.
+
+Cross-origin cookies are not a concern here: the client authenticates with a bearer token
+taken from the Supabase session, so no cookie crosses between the two domains.
+
+### Serverless caveats
+
+A Vercel function is frozen as soon as it flushes a response. Background work therefore goes
+through `runAfterResponse` in `backend/src/lib/background.ts`, which hands the promise to
+Vercel's `waitUntil`; on a long-lived server the same call is a no-op and the promise simply
+keeps running. Chord-sheet OCR is the one user of this. Enable Fluid compute on the API
+project so those runs have room to finish within the `maxDuration` set in
+`backend/vercel.json`.
+
+The rate limiter in `backend/src/app.ts` uses an in-memory store, so each function instance
+counts independently and the effective limit is higher than the configured one. Use Vercel's
+firewall rate limiting if you need a hard ceiling.
+
+Finally, check that the Node version selected in each project satisfies the `engines` range
+in the root `package.json`, or installation fails before the build starts.
+
 ## Database workflow
 
 ```bash

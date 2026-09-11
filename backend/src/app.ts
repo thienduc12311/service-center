@@ -32,6 +32,9 @@ import { importsRouter } from './routes/imports.js';
 import { songbooksRouter } from './routes/songbooks.js';
 import { devicesRouter, notificationsRouter } from './routes/notifications.js';
 
+/** Preview deployments are `<project>-<hash>-<team>.vercel.app`. */
+const VERCEL_PREVIEW_ORIGIN = /^https:\/\/[a-z0-9-]+\.vercel\.app$/;
+
 export const createApp = (): Express => {
   const app = express();
 
@@ -43,6 +46,9 @@ export const createApp = (): Express => {
       origin: (origin, callback) => {
         // Native apps and server-to-server calls send no Origin header.
         if (!origin || config.corsOrigins.includes(origin)) return callback(null, true);
+        if (config.CORS_ALLOW_VERCEL_PREVIEWS && VERCEL_PREVIEW_ORIGIN.test(origin)) {
+          return callback(null, true);
+        }
         callback(new Error(`Origin ${origin} is not allowed`));
       },
       credentials: true,
