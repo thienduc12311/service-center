@@ -6,7 +6,7 @@ const required = (name: string, value: string | undefined): string => {
 };
 
 export const env = {
-  supabaseUrl: required('SUPABASE_URL', import.meta.env.SUPABASE_URL),
-  supabaseAnonKey: required('SUPABASE_ANON_KEY', import.meta.env.SUPABASE_ANON_KEY),
-  apiUrl: import.meta.env.API_URL ?? 'http://localhost:4000',
+  supabaseUrl: required('VITE_SUPABASE_URL', import.meta.env.VITE_SUPABASE_URL),
+  supabaseAnonKey: required('VITE_SUPABASE_ANON_KEY', import.meta.env.VITE_SUPABASE_ANON_KEY),
+  apiUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:4000',
 };
