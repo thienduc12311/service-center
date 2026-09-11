@@ -16,6 +16,7 @@
     "@anthropic-ai/sdk": "^0.68.0",
     "@service-center/shared": "*",
     "@supabase/supabase-js": "^2.48.1",
+    "@vercel/functions": "^3.9.7",
     "compression": "^1.7.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

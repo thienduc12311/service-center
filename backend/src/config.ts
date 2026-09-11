@@ -10,6 +10,15 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
 
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
+  /**
+   * Allow any *.vercel.app origin. Preview deployments get a fresh hostname
+   * on every push, so they can never be listed in CORS_ORIGINS. Set this on
+   * the preview environment only — never in production.
+   */
+  CORS_ALLOW_VERCEL_PREVIEWS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
   APP_URL: z.string().url().default('http://localhost:5173'),
   API_URL: z.string().url().default('http://localhost:4000'),
 

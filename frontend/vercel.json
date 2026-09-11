@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd .. && npm ci",
+  "buildCommand": "cd .. && npm run build:shared && npm run build -w @service-center/frontend",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [{ "source": "/:path*", "destination": "/index.html" }]
+}

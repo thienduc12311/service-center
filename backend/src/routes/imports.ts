@@ -6,6 +6,7 @@ import { requireAdmin } from '../middleware/organization.js';
 import { unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { processImport } from '../services/chord-import.js';
+import { runAfterResponse } from '../lib/background.js';
 import { consumeImportQuota, readImportQuota, toImportQuota } from '../services/import-quota.js';
 
 export const importsRouter: Router = Router();
@@ -84,7 +85,7 @@ importsRouter.post('/', validateBody(createImportSchema), async (req, res) => {
   );
 
   // Fire and forget — the row carries the outcome either way.
-  void processImport(created.id);
+  runAfterResponse(`import ${created.id}`, processImport(created.id));
 
   res.status(202).json({ ...created, quota: toImportQuota(quota) });
 });
@@ -103,7 +104,7 @@ importsRouter.post('/:id/retry', async (req, res) => {
 
   const quota = await consumeImportQuota(req.db, req.orgId);
 
-  void processImport(record.id);
+  runAfterResponse(`import ${record.id}`, processImport(record.id));
   res.status(202).json({ ...record, status: 'pending', quota: toImportQuota(quota) });
 });
 
