@@ -52,8 +52,8 @@ npm run dev:mobile
 Start local Supabase first. In `backend/.env`, use `http://host.docker.internal:54321` for `SUPABASE_URL` so the API container can reach the host service. Then export the public frontend build values and start the containers:
 
 ```bash
-export VITE_SUPABASE_URL=http://127.0.0.1:54321
-export VITE_SUPABASE_ANON_KEY=your-local-anon-key
+export SUPABASE_URL=http://127.0.0.1:54321
+export SUPABASE_ANON_KEY=your-local-anon-key
 docker compose up --build
 ```
 
@@ -66,9 +66,9 @@ Individual images can also be built from the repository root:
 ```bash
 docker build -f backend/Dockerfile -t service-center-backend .
 docker build -f frontend/Dockerfile \
-  --build-arg VITE_SUPABASE_URL=http://127.0.0.1:54321 \
-  --build-arg VITE_SUPABASE_ANON_KEY=your-local-anon-key \
-  --build-arg VITE_API_URL=http://localhost:4000 \
+  --build-arg SUPABASE_URL=http://127.0.0.1:54321 \
+  --build-arg SUPABASE_ANON_KEY=your-local-anon-key \
+  --build-arg API_URL=http://localhost:4000 \
   -t service-center-frontend .
 ```
 
@@ -120,9 +120,9 @@ refresh on a nested route returns 404.
 Environment variables (Production and Preview):
 
 ```
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_API_URL=https://api.yourdomain.com
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+API_URL=https://api.yourdomain.com
 ```
 
 Vite embeds these at build time, so changing one requires a redeploy.
