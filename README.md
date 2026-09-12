@@ -169,6 +169,14 @@ is known and should stay pinned.
 Cross-origin cookies are not a concern here: the client authenticates with a bearer token
 taken from the Supabase session, so no cookie crosses between the two domains.
 
+### Build-time dependencies
+
+Both projects install with `npm ci --include=dev`. Vercel sets `NODE_ENV=production` for
+the build, and npm's `omit` setting defaults to `dev` whenever it sees that, so a plain
+`npm ci` skips every devDependency — including `typescript` and `vite`, which are exactly
+what the build needs. The symptom is `sh: line 1: tsc: command not found` and an exit code
+of 127 while building `@service-center/shared`. The flag forces them back in.
+
 ### Serverless caveats
 
 A Vercel function is frozen as soon as it flushes a response. Background work therefore goes
