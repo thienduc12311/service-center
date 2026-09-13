@@ -4,6 +4,7 @@ import type {
   PlanDetail,
   PlanItemDetail,
   PlanItemRow,
+  PlanPositionNeed,
   PlanSummary,
 } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
@@ -16,7 +17,7 @@ import { HttpError } from '../lib/errors.js';
  */
 export const PLAN_DETAIL_SELECT = `
   *,
-  service_type:service_types(id, name),
+  service_type:service_types(id, name, recurrence),
   times:plan_times(*),
   items:plan_items(
     *,
@@ -28,22 +29,48 @@ export const PLAN_DETAIL_SELECT = `
     team:teams(id, name, color),
     position:team_positions(id, name),
     person:profiles!assignments_user_id_fkey(id, full_name, email, avatar_url, phone)
+  ),
+  position_needs:plan_position_needs(
+    needed,
+    position:team_positions(id, team_id)
   )
 `;
 
 export const PLAN_SUMMARY_SELECT = `
   *,
-  service_type:service_types(id, name),
+  service_type:service_types(id, name, recurrence),
   times:plan_times(*),
   items:plan_items(id, item_type),
   assignments:assignments(id, status)
 `;
 
+type RawPositionNeed = {
+  needed: number;
+  position: { id: string; team_id: string } | null;
+};
+
 type RawPlan = Record<string, unknown> & {
   items?: Array<{ item_type?: string }>;
   assignments?: Array<{ status?: string }>;
   times?: Array<Record<string, unknown>>;
+  position_needs?: RawPositionNeed[];
 };
+
+/**
+ * The team is read back off the joined position rather than stored on the need
+ * row, so a need can never claim a team the position doesn't belong to. A need
+ * whose position has been deleted is dropped.
+ */
+export const shapePositionNeeds = (rows: readonly RawPositionNeed[] = []): PlanPositionNeed[] =>
+  rows
+    .filter((row): row is RawPositionNeed & { position: { id: string; team_id: string } } =>
+      Boolean(row.position),
+    )
+    .map((row) => ({
+      position_id: row.position.id,
+      team_id: row.position.team_id,
+      needed: row.needed,
+    }));
 
 const byKind = (times: RawPlan['times'] = []) =>
   [...times].sort(
@@ -82,6 +109,7 @@ export const shapePlanDetail = (row: RawPlan): PlanDetail => {
     ...summary,
     items,
     assignments,
+    position_needs: shapePositionNeeds(row.position_needs),
     total_length_seconds: items.reduce((sum, item) => sum + (item.length_seconds ?? 0), 0),
   };
 };
@@ -179,4 +207,92 @@ export const reorderPlanItems = async (input: ReorderPlanItemsInput): Promise<Pl
   return (await unwrap(
     input.db.from('plan_items').select('*').eq('plan_id', input.planId).order('sort_order'),
   )) ?? [];
+};
+
+export interface ApplyPositionNeedsInput {
+  db: Db;
+  orgId: string;
+  planId: string;
+  needs: ReadonlyArray<{ position_id: string; needed: number }>;
+}
+
+/** Last value wins when the editor sends the same position twice. */
+export const dedupePositionNeeds = (
+  needs: ReadonlyArray<{ position_id: string; needed: number }>,
+): Array<{ position_id: string; needed: number }> => [
+  ...new Map(needs.map((need) => [need.position_id, need])).values(),
+];
+
+/**
+ * Applies the "needed positions" editor. A need of 0 is the absence of a need,
+ * so those rows are deleted rather than stored — the table then only ever
+ * holds positions somebody actually asked for.
+ */
+export const setPlanPositionNeeds = async (
+  input: ApplyPositionNeedsInput,
+): Promise<PlanPositionNeed[]> => {
+  const plan = await unwrap(
+    input.db
+      .from('plans')
+      .select('id')
+      .eq('id', input.planId)
+      .eq('organization_id', input.orgId)
+      .maybeSingle(),
+  );
+  if (!plan) throw HttpError.notFound('Plan not found');
+
+  const needs = dedupePositionNeeds(input.needs);
+
+  if (needs.length) {
+    // RLS on plan_position_needs only checks the plan's organization, so the
+    // positions have to be checked against this org explicitly.
+    const known = await unwrap(
+      raw(input.db)
+        .from('team_positions')
+        .select('id, teams!inner(organization_id)')
+        .in('id', needs.map((need) => need.position_id))
+        .eq('teams.organization_id', input.orgId),
+    );
+    const knownIds = new Set(((known ?? []) as Array<{ id: string }>).map((row) => row.id));
+    const unknown = needs.filter((need) => !knownIds.has(need.position_id));
+    if (unknown.length) {
+      throw HttpError.badRequest('Some positions do not belong to this organization', {
+        unknown: unknown.map((need) => need.position_id),
+      });
+    }
+  }
+
+  const cleared = needs.filter((need) => need.needed === 0).map((need) => need.position_id);
+  if (cleared.length) {
+    await unwrap(
+      input.db
+        .from('plan_position_needs')
+        .delete()
+        .eq('plan_id', input.planId)
+        .in('position_id', cleared),
+    );
+  }
+
+  const wanted = needs.filter((need) => need.needed > 0);
+  if (wanted.length) {
+    await unwrap(
+      input.db.from('plan_position_needs').upsert(
+        wanted.map((need) => ({
+          plan_id: input.planId,
+          position_id: need.position_id,
+          needed: need.needed,
+        })),
+        { onConflict: 'plan_id,position_id' },
+      ),
+    );
+  }
+
+  const rows = await unwrap(
+    raw(input.db)
+      .from('plan_position_needs')
+      .select('needed, position:team_positions(id, team_id)')
+      .eq('plan_id', input.planId),
+  );
+  // `raw()` is untyped, so PostgREST's to-one embed is inferred as an array.
+  return shapePositionNeeds((rows ?? []) as unknown as RawPositionNeed[]);
 };

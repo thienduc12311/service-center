@@ -3,6 +3,8 @@
  * the package stays usable from the Express server and from Metro.
  */
 
+import type { PlanRecurrence } from '../types/database.js';
+
 export const MS_PER_DAY = 86_400_000;
 
 /** Returns a fresh Date so helpers never mutate caller-owned state. */
@@ -94,6 +96,27 @@ export const parseDuration = (input: string): number | null => {
   const parts = trimmed.split(':').map((p) => Number(p));
   if (parts.some((p) => Number.isNaN(p))) return null;
   return parts.reduce((acc, part) => acc * 60 + part, 0);
+};
+
+/**
+ * The date a service type's next plan would fall on. `occasionally` has no
+ * rhythm to follow, so it just offers the following week — a scheduler picking
+ * "occasionally" is going to set the date by hand anyway.
+ */
+export const nextOccurrence = (
+  value: string | number | Date,
+  recurrence: PlanRecurrence,
+): Date => {
+  switch (recurrence) {
+    case 'weekly':
+      return addDays(value, 7);
+    case 'biweekly':
+      return addDays(value, 14);
+    case 'monthly':
+      return addMonths(value, 1);
+    case 'occasionally':
+      return addDays(value, 7);
+  }
 };
 
 export const overlaps = (

@@ -8,7 +8,7 @@ vi.hoisted(() => {
 });
 
 import { HttpError } from '../lib/errors.js';
-import { validatePlanItemOrder } from './plans.js';
+import { dedupePositionNeeds, shapePositionNeeds, validatePlanItemOrder } from './plans.js';
 
 describe('validatePlanItemOrder', () => {
   const knownIds = new Set(['first', 'second', 'third']);
@@ -27,5 +27,36 @@ describe('validatePlanItemOrder', () => {
   it('rejects missing or duplicate ids', () => {
     expect(() => validatePlanItemOrder(knownIds, ['first', 'second'])).toThrowError(HttpError);
     expect(() => validatePlanItemOrder(knownIds, ['first', 'second', 'second'])).toThrowError(HttpError);
+  });
+});
+
+describe('shapePositionNeeds', () => {
+  it('reads the team off the joined position', () => {
+    expect(
+      shapePositionNeeds([{ needed: 2, position: { id: 'guitar', team_id: 'band' } }]),
+    ).toEqual([{ position_id: 'guitar', team_id: 'band', needed: 2 }]);
+  });
+
+  it('drops a need whose position has been deleted', () => {
+    expect(shapePositionNeeds([{ needed: 2, position: null }])).toEqual([]);
+  });
+
+  it('treats a missing embed as no needs at all', () => {
+    expect(shapePositionNeeds()).toEqual([]);
+  });
+});
+
+describe('dedupePositionNeeds', () => {
+  it('keeps the last value sent for a position', () => {
+    expect(
+      dedupePositionNeeds([
+        { position_id: 'drums', needed: 1 },
+        { position_id: 'keys', needed: 2 },
+        { position_id: 'drums', needed: 3 },
+      ]),
+    ).toEqual([
+      { position_id: 'drums', needed: 3 },
+      { position_id: 'keys', needed: 2 },
+    ]);
   });
 });

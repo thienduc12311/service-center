@@ -25,6 +25,8 @@ export type MemberStatus = 'invited' | 'active' | 'inactive';
 export type PlanStatus = 'draft' | 'published' | 'archived';
 export type PlanTimeKind = 'service' | 'rehearsal' | 'other';
 export type PlanItemType = 'song' | 'header' | 'item';
+/** How often plans for a service type come round. Drives the suggested next service date. */
+export type PlanRecurrence = 'weekly' | 'biweekly' | 'monthly' | 'occasionally';
 export type AssignmentStatus = 'unconfirmed' | 'confirmed' | 'declined';
 export type ImportStatus = 'pending' | 'processing' | 'succeeded' | 'failed';
 export type NotificationType =
@@ -148,6 +150,7 @@ export type ServiceTypeRow = {
   organization_id: string;
   name: string;
   description: string | null;
+  recurrence: PlanRecurrence;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -251,6 +254,16 @@ export type PlanItemRow = {
   length_seconds: number;
   description: string | null;
   sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** How many people one plan needs in a given team position. */
+export type PlanPositionNeedRow = {
+  id: string;
+  plan_id: string;
+  position_id: string;
+  needed: number;
   created_at: string;
   updated_at: string;
 }
@@ -411,6 +424,7 @@ export type Database = {
       plans: Table<PlanRow>;
       plan_times: Table<PlanTimeRow>;
       plan_items: Table<PlanItemRow>;
+      plan_position_needs: Table<PlanPositionNeedRow>;
       assignments: Table<AssignmentRow>;
       assignment_notifications: Table<AssignmentNotificationRow>;
       calendar_feed_tokens: Table<CalendarFeedTokenRow>;

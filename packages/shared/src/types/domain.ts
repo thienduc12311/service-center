@@ -136,8 +136,18 @@ export interface AssignmentDetail extends AssignmentRow {
   position: Pick<TeamPositionRow, 'id' | 'name'> | null;
 }
 
+/**
+ * One position's staffing need on a plan. `team_id` is resolved from the
+ * position rather than stored, so it can never disagree with the position.
+ */
+export interface PlanPositionNeed {
+  position_id: string;
+  team_id: string;
+  needed: number;
+}
+
 export interface PlanSummary extends PlanRow {
-  service_type: Pick<ServiceTypeRow, 'id' | 'name'> | null;
+  service_type: Pick<ServiceTypeRow, 'id' | 'name' | 'recurrence'> | null;
   times: PlanTimeRow[];
   counts: {
     items: number;
@@ -151,7 +161,27 @@ export interface PlanSummary extends PlanRow {
 export interface PlanDetail extends PlanSummary {
   items: PlanItemDetail[];
   assignments: AssignmentDetail[];
+  /** Only positions a manager has actually asked for; absent means "none needed". */
+  position_needs: PlanPositionNeed[];
   total_length_seconds: number;
+}
+
+/** One of the ready-made teams the "add teams you lead" step offers. */
+export type TeamTemplateCategory = 'music' | 'technical' | 'kids' | 'hospitality' | 'other';
+
+export interface TeamTemplate {
+  category: TeamTemplateCategory;
+  name: string;
+  color: string;
+  /** Seeded as the team's positions; every one of them is editable afterwards. */
+  positions: readonly string[];
+}
+
+/** What `POST /api/v1/service-types/setup` hands back once the wizard finishes. */
+export interface ServiceTypeSetupResult {
+  service_type: ServiceTypeRow;
+  plan: PlanDetail;
+  teams: TeamRow[];
 }
 
 /** One entry in the calendar — a service or rehearsal block. */

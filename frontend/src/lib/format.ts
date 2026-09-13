@@ -12,6 +12,13 @@ export const assignmentTone: Record<AssignmentStatus, string> = {
   unconfirmed: 'bg-amber-50 text-amber-700 ring-amber-600/20',
 };
 
+/** Solid dots for dense lists, where the pale badge tones disappear. */
+export const assignmentDot: Record<AssignmentStatus, string> = {
+  confirmed: 'bg-emerald-500',
+  declined: 'bg-rose-500',
+  unconfirmed: 'bg-amber-400',
+};
+
 export const planTone: Record<PlanStatus, string> = {
   draft: 'bg-slate-100 text-slate-600 ring-slate-500/20',
   published: 'bg-brand-50 text-brand-700 ring-brand-600/20',

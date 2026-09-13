@@ -5,12 +5,14 @@ import {
   createPlanSchema,
   listPlansQuerySchema,
   reorderPlanItemsSchema,
+  setPlanPositionNeedsSchema,
   updatePlanItemSchema,
   updatePlanSchema,
   type CreatePlanInput,
   type ListPlansQuery,
   type Paginated,
   type PlanSummary,
+  type SetPlanPositionNeedsInput,
   type UpdatePlanInput,
 } from '@service-center/shared';
 import { z } from 'zod';
@@ -23,6 +25,7 @@ import {
   copyPlanContents,
   fetchPlanDetail,
   reorderPlanItems,
+  setPlanPositionNeeds,
   shapePlanSummary,
 } from '../services/plans.js';
 import { notifyConfirmedAssignmentsForPlan } from './assignments.js';
@@ -256,6 +259,26 @@ plansRouter.delete('/:id/items/:itemId', requireManager, async (req, res) => {
   );
   res.status(204).end();
 });
+
+// ----------------------------------------------------- needed positions ----
+/** Drives the "Edit needed positions" panel on the plan's Teams tab. */
+plansRouter.put(
+  '/:id/position-needs',
+  requireManager,
+  validateBody(setPlanPositionNeedsSchema),
+  async (req, res) => {
+    const { needs } = req.body as SetPlanPositionNeedsInput;
+
+    res.json(
+      await setPlanPositionNeeds({
+        db: req.db,
+        orgId: req.orgId,
+        planId: param(req, 'id'),
+        needs,
+      }),
+    );
+  },
+);
 
 /** Persists a drag-and-drop reorder: the ids arrive in their new order. */
 plansRouter.put('/:id/items/order', requireManager, validateBody(reorderPlanItemsSchema), async (req, res) => {

@@ -35,15 +35,20 @@ import type {
   Paginated,
   PersonDetail,
   PlanDetail,
+  PlanPositionNeed,
   PlanSummary,
   RosterPerson,
   SchedulingConflict,
+  ServiceTypeSetupResult,
   SongWithArrangements,
   SongbookDetail,
   TeamWithPositions,
   UnreadNotificationCount,
 } from '../types/domain.js';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
+import type { ServiceTypePayload } from '../schemas/organization.js';
+import type { ServiceTypeSetupPayload } from '../schemas/service-type.js';
+import type { SetPlanPositionNeedsInput } from '../schemas/plan.js';
 import type {
   ListNotificationsQuery,
   MarkNotificationsReadInput,
@@ -184,8 +189,14 @@ export class ServiceCenterApi {
 
   // ------------------------------------------------------ service types --
   listServiceTypes = () => this.request<ServiceTypeRow[]>('GET', '/api/v1/service-types');
-  createServiceType = (body: { name: string; description?: string | null; sort_order?: number }) =>
+  createServiceType = (body: ServiceTypePayload) =>
     this.request<ServiceTypeRow>('POST', '/api/v1/service-types', body);
+  updateServiceType = (id: string, body: Partial<ServiceTypePayload>) =>
+    this.request<ServiceTypeRow>('PATCH', `/api/v1/service-types/${id}`, body);
+  deleteServiceType = (id: string) => this.request<void>('DELETE', `/api/v1/service-types/${id}`);
+  /** The three-step setup wizard: service type + first plan + its teams, in one call. */
+  setUpServiceType = (body: ServiceTypeSetupPayload) =>
+    this.request<ServiceTypeSetupResult>('POST', '/api/v1/service-types/setup', body);
 
   // -------------------------------------------------------------- teams --
   listTeams = () => this.request<TeamWithPositions[]>('GET', '/api/v1/teams');
@@ -247,6 +258,9 @@ export class ServiceCenterApi {
     this.request<PlanItemRow>('PATCH', `/api/v1/plans/${planId}/items/${itemId}`, body);
   deletePlanItem = (planId: string, itemId: string) =>
     this.request<void>('DELETE', `/api/v1/plans/${planId}/items/${itemId}`);
+  /** Replaces the staffing need for every position sent; others are left alone. */
+  setPlanPositionNeeds = (planId: string, body: SetPlanPositionNeedsInput) =>
+    this.request<PlanPositionNeed[]>('PUT', `/api/v1/plans/${planId}/position-needs`, body);
   reorderPlanItems = (planId: string, itemIds: string[]) =>
     this.request<PlanItemRow[]>('PUT', `/api/v1/plans/${planId}/items/order`, {
       item_ids: itemIds,

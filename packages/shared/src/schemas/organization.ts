@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { nonEmpty, uuid } from './common.js';
+import { planRecurrenceSchema } from './service-type.js';
 
 export const orgRoleSchema = z.enum(['owner', 'admin', 'scheduler', 'member']);
 
@@ -39,8 +40,12 @@ export const updateProfileSchema = z.object({
 export const serviceTypeSchema = z.object({
   name: nonEmpty.max(120),
   description: z.string().trim().max(500).nullish(),
+  recurrence: planRecurrenceSchema.default('weekly'),
   sort_order: z.number().int().min(0).default(0),
 });
+
+export type ServiceTypeInput = z.infer<typeof serviceTypeSchema>;
+export type ServiceTypePayload = z.input<typeof serviceTypeSchema>;
 
 export const blockoutSchema = z
   .object({
