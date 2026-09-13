@@ -68,6 +68,21 @@ export const reorderPlanItemsSchema = z.object({
   item_ids: z.array(uuid).min(1).max(500),
 });
 
+/**
+ * How many people a plan needs per team position. The editor sends the full
+ * set it is showing; positions left out keep whatever they already had.
+ */
+export const setPlanPositionNeedsSchema = z.object({
+  needs: z
+    .array(
+      z.object({
+        position_id: uuid,
+        needed: z.number().int().min(0).max(99),
+      }),
+    )
+    .max(500),
+});
+
 export const listPlansQuerySchema = paginationSchema.extend({
   status: planStatusSchema.optional(),
   service_type_id: uuid.optional(),
@@ -95,5 +110,6 @@ export const calendarQuerySchema = z.object({
 export type CreatePlanInput = z.infer<typeof createPlanSchema>;
 export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
 export type CreatePlanItemInput = z.infer<typeof createPlanItemSchema>;
+export type SetPlanPositionNeedsInput = z.infer<typeof setPlanPositionNeedsSchema>;
 export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
 export type ListPlansQuery = z.infer<typeof listPlansQuerySchema>;

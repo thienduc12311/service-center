@@ -11,6 +11,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { PlansPage } from './pages/PlansPage';
 import { PlanDetailPage } from './pages/PlanDetailPage';
+import { ServiceTypeWizardPage } from './pages/ServiceTypeWizardPage';
 import { SongsPage } from './pages/SongsPage';
 import { SongDetailPage } from './pages/SongDetailPage';
 import { TeamsPage } from './pages/TeamsPage';
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
           { path: '/calendar', element: <CalendarPage /> },
           { path: '/plans', element: <PlansPage /> },
           { path: '/plans/:planId', element: <PlanDetailPage /> },
+          { path: '/service-types/new', element: <ServiceTypeWizardPage /> },
           { path: '/songs', element: <SongsPage /> },
           { path: '/songs/:songId', element: <SongDetailPage /> },
           { path: '/songbooks', element: <SongbooksPage /> },

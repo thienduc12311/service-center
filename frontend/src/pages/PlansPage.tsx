@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { formatDateTime, PLAN_STATUS_LABELS } from '@service-center/shared';
+import { formatDateTime, PLAN_RECURRENCE_LABELS, PLAN_STATUS_LABELS } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePlans, useServiceTypes, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
@@ -21,6 +21,7 @@ const defaultServiceDate = () => {
 
 export const PlansPage = () => {
   const { canManage } = useAuth();
+  const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
   const serviceTypes = useServiceTypes();
   const [status, setStatus] = useState('');
@@ -95,7 +96,14 @@ export const PlansPage = () => {
               />
               Past
             </label>
-            {canManage && <Button onClick={() => setCreating(true)}>New plan</Button>}
+            {canManage && (
+              <>
+                <Button variant="secondary" onClick={() => navigate('/service-types/new')}>
+                  New service type
+                </Button>
+                <Button onClick={() => setCreating(true)}>New plan</Button>
+              </>
+            )}
           </div>
         }
       />
@@ -114,7 +122,10 @@ export const PlansPage = () => {
                     <span className="font-medium">{plan.title}</span>
                     <Badge tone={planTone[plan.status]}>{PLAN_STATUS_LABELS[plan.status]}</Badge>
                     {plan.service_type && (
-                      <span className="text-xs text-slate-400">{plan.service_type.name}</span>
+                      <span className="text-xs text-slate-400">
+                        {plan.service_type.name} ·{' '}
+                        {PLAN_RECURRENCE_LABELS[plan.service_type.recurrence].toLowerCase()}
+                      </span>
                     )}
                   </div>
                   <p className="mt-0.5 text-sm text-slate-500">
@@ -139,8 +150,17 @@ export const PlansPage = () => {
       ) : (
         <EmptyState
           title="No plans yet"
-          description="A plan holds one service: its running order, its songs and the people serving."
-          action={canManage ? <Button onClick={() => setCreating(true)}>Create the first plan</Button> : undefined}
+          description="Start with a Service Type — it names the service, how often it recurs, and the teams that run it, then creates your first plan."
+          action={
+            canManage ? (
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={() => navigate('/service-types/new')}>Add a Service Type</Button>
+                <Button variant="secondary" onClick={() => setCreating(true)}>
+                  Create a single plan
+                </Button>
+              </div>
+            ) : undefined
+          }
         />
       )}
 

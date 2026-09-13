@@ -1,9 +1,14 @@
 import { Router } from 'express';
 import { param } from '../lib/params.js';
-import { serviceTypeSchema } from '@service-center/shared';
+import {
+  serviceTypeSchema,
+  serviceTypeSetupSchema,
+  type ServiceTypeSetupInput,
+} from '@service-center/shared';
 import { validateBody } from '../lib/validate.js';
 import { requireManager } from '../middleware/organization.js';
 import { unwrap, unwrapOne } from '../lib/supabase.js';
+import { setUpServiceType } from '../services/service-type-setup.js';
 
 export const serviceTypesRouter: Router = Router();
 
@@ -29,6 +34,27 @@ serviceTypesRouter.post('/', requireManager, validateBody(serviceTypeSchema), as
   );
   res.status(201).json(created);
 });
+
+/**
+ * The "Add a Service Type" wizard. Creates the service type, its first plan
+ * with the service times, and the teams that run it in one call, so a half-
+ * finished wizard can't leave an organization with a service type that has
+ * nothing to plan against.
+ */
+serviceTypesRouter.post(
+  '/setup',
+  requireManager,
+  validateBody(serviceTypeSetupSchema),
+  async (req, res) => {
+    const result = await setUpServiceType({
+      db: req.db,
+      orgId: req.orgId,
+      userId: req.auth.userId,
+      input: req.body as ServiceTypeSetupInput,
+    });
+    res.status(201).json(result);
+  },
+);
 
 serviceTypesRouter.patch('/:id', requireManager, validateBody(serviceTypeSchema.partial()), async (req, res) => {
   const updated = await unwrapOne(

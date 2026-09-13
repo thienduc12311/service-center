@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { avatarColor, initials } from '../lib/format';
 
@@ -145,3 +146,80 @@ export const Modal = ({
     </div>
   );
 };
+
+/**
+ * A small click-to-open menu. The invisible backdrop is what closes it, so a
+ * click anywhere else dismisses the menu without every caller wiring up its
+ * own document listener.
+ */
+export const Menu = ({
+  label,
+  children,
+  align = 'right',
+}: {
+  label: ReactNode;
+  children: (close: () => void) => ReactNode;
+  align?: 'left' | 'right';
+}) => {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700
+          ring-1 ring-slate-300 transition hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700"
+      >
+        {label}
+        <span aria-hidden="true" className="text-xs text-slate-400">▾</span>
+      </button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu"
+            className="fixed inset-0 z-40 cursor-default"
+            onClick={close}
+          />
+          <div
+            role="menu"
+            className={`card absolute z-50 mt-1 w-56 overflow-hidden py-1 text-sm ${
+              align === 'right' ? 'right-0' : 'left-0'
+            }`}
+          >
+            {children(close)}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export const MenuItem = ({
+  onClick,
+  disabled = false,
+  tone = 'default',
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  tone?: 'default' | 'danger';
+  children: ReactNode;
+}) => (
+  <button
+    type="button"
+    role="menuitem"
+    disabled={disabled}
+    onClick={onClick}
+    className={`block w-full px-4 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
+      tone === 'danger' ? 'text-rose-600 hover:bg-rose-50' : 'text-slate-700 hover:bg-slate-50'
+    }`}
+  >
+    {children}
+  </button>
+);

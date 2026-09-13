@@ -4,6 +4,7 @@ export * from './people.js';
 export * from './team.js';
 export * from './song.js';
 export * from './plan.js';
+export * from './service-type.js';
 export * from './assignment.js';
 export * from './import.js';
 export * from './songbook.js';

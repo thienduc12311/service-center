@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addMonths, monthGrid, startOfMonth, toISODate } from './dates.js';
+import { addMonths, monthGrid, nextOccurrence, startOfMonth, toISODate } from './dates.js';
 
 describe('date helpers', () => {
   it('do not mutate caller-owned Date instances', () => {
@@ -23,5 +23,15 @@ describe('date helpers', () => {
     expect(toISODate(days.at(-1)!)).toBe('2026-10-10');
     expect(new Set(days.map((day) => day.getTime())).size).toBe(42);
     expect(cursor.getTime()).toBe(timestamp);
+  });
+
+  it('steps a service date forward by its recurrence', () => {
+    const sunday = new Date(2026, 8, 13);
+
+    expect(toISODate(nextOccurrence(sunday, 'weekly'))).toBe('2026-09-20');
+    expect(toISODate(nextOccurrence(sunday, 'biweekly'))).toBe('2026-09-27');
+    expect(toISODate(nextOccurrence(sunday, 'monthly'))).toBe('2026-10-13');
+    // No fixed rhythm, so it still offers a sensible next date to edit.
+    expect(toISODate(nextOccurrence(sunday, 'occasionally'))).toBe('2026-09-20');
   });
 });
