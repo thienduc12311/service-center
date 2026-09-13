@@ -19,6 +19,8 @@ export const keys = {
   serviceTypes: (org: string | null) => [...keys.all(org), 'service-types'] as const,
   songs: (org: string | null, query: unknown) => [...keys.all(org), 'songs', query] as const,
   song: (org: string | null, id: string) => [...keys.all(org), 'song', id] as const,
+  songSchedule: (org: string | null, id: string, query: unknown) =>
+    [...keys.song(org, id), 'schedule', query] as const,
   plans: (org: string | null, query: unknown) => [...keys.all(org), 'plans', query] as const,
   plan: (org: string | null, id: string) => [...keys.all(org), 'plan', id] as const,
   calendar: (org: string | null, query: unknown) => [...keys.all(org), 'calendar', query] as const,
@@ -82,6 +84,20 @@ export const useSong = (id: string | undefined) => {
     queryKey: keys.song(org, id ?? ''),
     queryFn: () => api.getSong(id!),
     enabled: Boolean(org && id),
+  });
+};
+
+/** The services a song was scheduled in — the song page's Schedule panel. */
+export const useSongSchedule = (
+  id: string | undefined,
+  query: { limit: number; arrangement_id?: string },
+) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.songSchedule(org, id ?? '', query),
+    queryFn: () => api.getSongSchedule(id!, query),
+    enabled: Boolean(org && id),
+    placeholderData: (previous) => previous,
   });
 };
 

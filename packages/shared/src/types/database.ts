@@ -191,6 +191,8 @@ export type SongRow = {
   author: string | null;
   ccli_number: string | null;
   copyright: string | null;
+  /** Publisher the copyright is administered through, e.g. "Capitol CMG". */
+  administration: string | null;
   default_key: string | null;
   default_bpm: number | null;
   meter: string | null;

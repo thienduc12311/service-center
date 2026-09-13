@@ -9,7 +9,7 @@ vi.hoisted(() => {
 
 import type { ArrangementRow, SongWithArrangements } from '@service-center/shared';
 import type { Db } from '../lib/supabase.js';
-import { attachLastScheduled, loadArrangementChart } from './songs.js';
+import { attachLastScheduled, loadArrangementChart, loadSongSchedule } from './songs.js';
 
 const song = (id: string): SongWithArrangements => ({
   id,
@@ -18,6 +18,7 @@ const song = (id: string): SongWithArrangements => ({
   author: null,
   ccli_number: null,
   copyright: null,
+  administration: null,
   default_key: 'G',
   default_bpm: null,
   meter: null,
@@ -38,7 +39,7 @@ const fakeDb = <T>(result: T): Db => {
     then: (resolve: (value: { data: T; error: null }) => unknown) =>
       Promise.resolve({ data: result, error: null }).then(resolve),
   };
-  for (const method of ['from', 'select', 'in', 'eq', 'maybeSingle']) {
+  for (const method of ['from', 'select', 'in', 'eq', 'order', 'limit', 'maybeSingle']) {
     builder[method] = () => builder;
   }
   return builder as unknown as Db;
@@ -64,6 +65,63 @@ describe('attachLastScheduled', () => {
   it('skips the query entirely for an empty page', async () => {
     const db = fakeDb(null);
     await expect(attachLastScheduled(db, [])).resolves.toEqual([]);
+  });
+});
+
+describe('loadSongSchedule', () => {
+  it('maps each plan to one entry, preferring the key the plan was played in', async () => {
+    const db = fakeDb([
+      {
+        id: 'plan-1',
+        title: 'Sunday Service',
+        service_date: '2026-06-14T10:00:00.000Z',
+        service_type: { name: 'Sunday Service' },
+        items: [
+          {
+            arrangement_id: 'arr-1',
+            key_override: 'D',
+            arrangement: { id: 'arr-1', name: 'Citipointe Worship', song_key: 'G' },
+          },
+        ],
+      },
+    ]);
+
+    await expect(loadSongSchedule(db, 'song-1', 'org', { limit: 3 })).resolves.toEqual([
+      {
+        plan_id: 'plan-1',
+        plan_title: 'Sunday Service',
+        service_date: '2026-06-14T10:00:00.000Z',
+        service_type_name: 'Sunday Service',
+        arrangement_id: 'arr-1',
+        arrangement_name: 'Citipointe Worship',
+        key: 'D',
+      },
+    ]);
+  });
+
+  it('falls back to the arrangement key, and tolerates a plan item with no arrangement', async () => {
+    const db = fakeDb([
+      {
+        id: 'plan-2',
+        title: 'Christmas Eve',
+        service_date: '2026-12-24T18:00:00.000Z',
+        service_type: null,
+        items: [{ arrangement_id: null, key_override: null, arrangement: null }],
+      },
+    ]);
+
+    const [entry] = await loadSongSchedule(db, 'song-1', 'org', { limit: 3 });
+
+    expect(entry).toMatchObject({
+      service_type_name: null,
+      arrangement_id: null,
+      arrangement_name: null,
+      key: null,
+    });
+  });
+
+  it('answers with an empty list when the song has never been scheduled', async () => {
+    await expect(loadSongSchedule(fakeDb(null), 'song-1', 'org', { limit: 3 })).resolves.toEqual([]);
   });
 });
 

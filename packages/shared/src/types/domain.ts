@@ -124,6 +124,23 @@ export interface SongListItem extends SongWithArrangements {
   last_scheduled_at: string | null;
 }
 
+/**
+ * One service a song was scheduled in, newest first — what the Schedule panel
+ * on the song page lists. Aggregated per request from `plan_items`, so it
+ * follows a plan being re-dated or deleted without any denormalised state.
+ */
+export interface SongScheduleEntry {
+  plan_id: string;
+  plan_title: string;
+  service_date: string;
+  service_type_name: string | null;
+  /** The arrangement that was scheduled, when the plan item named one. */
+  arrangement_id: string | null;
+  arrangement_name: string | null;
+  /** The key it was played in: the plan's override, else the arrangement's. */
+  key: string | null;
+}
+
 /** `GET /api/v1/arrangements/:id/chart` — transposed and/or converted. */
 export interface SongChart {
   chordpro: string;
