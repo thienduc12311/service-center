@@ -6,7 +6,6 @@ import type { SongWithArrangements } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
-  Button,
   Card,
   Divider,
   EmptyState,
@@ -25,7 +24,7 @@ import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
 export default function SongsScreen() {
-  const { organizationId, isAdmin } = useAuth();
+  const { organizationId } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -53,16 +52,6 @@ export default function SongsScreen() {
               eyebrow={results.length ? `${results.length} in the library` : undefined}
               title="Song library"
               description="Search the catalogue, then open a chart to transpose it on stage."
-              action={
-                isAdmin ? (
-                  <Button
-                    title="Import a chart"
-                    icon="camera"
-                    variant="secondary"
-                    onPress={() => router.push('/scan')}
-                  />
-                ) : undefined
-              }
             />
 
             <View style={styles.search}>
@@ -91,7 +80,7 @@ export default function SongsScreen() {
               description={
                 query
                   ? `Nothing in the catalogue matches "${query}".`
-                  : 'Add songs from the web app, or photograph a chart to import one.'
+                  : 'Add songs from the web app to fill the catalogue.'
               }
             />
           )

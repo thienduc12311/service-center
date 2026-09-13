@@ -1,6 +1,6 @@
 # Service Center
 
-Service Center is a multi-tenant worship-service planning application. Organizations can build reusable service plans, arrange songs and chord charts, schedule teams, track responses and conflicts, manage blockouts, and import chord sheets. The repository contains a React web app, an Express API, an Expo mobile app, shared TypeScript contracts, and a Supabase/Postgres schema with row-level security.
+Service Center is a multi-tenant worship-service planning application. Organizations can build reusable service plans, arrange songs and chord charts, schedule teams, track responses and conflicts, and manage blockouts. The repository contains a React web app, an Express API, an Expo mobile app, shared TypeScript contracts, and a Supabase/Postgres schema with row-level security.
 
 ## Architecture
 
@@ -179,12 +179,9 @@ of 127 while building `@service-center/shared`. The flag forces them back in.
 
 ### Serverless caveats
 
-A Vercel function is frozen as soon as it flushes a response. Background work therefore goes
-through `runAfterResponse` in `backend/src/lib/background.ts`, which hands the promise to
-Vercel's `waitUntil`; on a long-lived server the same call is a no-op and the promise simply
-keeps running. Chord-sheet OCR is the one user of this. Enable Fluid compute on the API
-project so those runs have room to finish within the `maxDuration` set in
-`backend/vercel.json`.
+A Vercel function is frozen as soon as it flushes a response, so anything that has to outlive
+a response needs Vercel's `waitUntil` and Fluid compute enabled on the API project. Nothing in
+the API does that today — every route finishes its work before it replies.
 
 The rate limiter in `backend/src/app.ts` uses an in-memory store, so each function instance
 counts independently and the effective limit is higher than the configured one. Use Vercel's

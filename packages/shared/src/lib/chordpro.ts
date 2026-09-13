@@ -1,9 +1,9 @@
 /**
  * ChordPro parsing, transposition and rendering.
  *
- * Phase 1 uses this to display and transpose chord charts on both clients.
- * Phase 2 reuses `chordLinesToChordPro` to turn OCR output — which comes back
- * as chords on one line and lyrics on the next — into inline ChordPro.
+ * Used to display, transpose and renotate chord charts on both clients, and to
+ * normalise a pasted chart — which usually arrives as chords on one line and
+ * lyrics on the next — into inline ChordPro.
  */
 
 import { FLAT_KEYS, SHARP_KEYS } from './constants.js';
@@ -199,7 +199,7 @@ export const renderLineAsText = (line: ChordProLine): { chordRow: string; lyricR
   return { chordRow, lyricRow: line.lyrics };
 };
 
-// ---------------------------------------------------------------- Phase 2 --
+// ------------------------------------------------------- pasted charts ----
 
 /**
  * A line is treated as a chord line when every meaningful token on it parses
@@ -221,8 +221,8 @@ const SECTION_HEADING_RE =
   /^\s*\[?\s*((?:intro|verse|pre[- ]?chorus|chorus|bridge|tag|outro|instrumental|interlude|refrain|ending|turnaround)\s*\d*)\s*\]?\s*:?\s*$/i;
 
 /**
- * Converts a plain "chords above lyrics" chart — the shape OCR gives us — into
- * inline ChordPro, preserving the horizontal position of each chord.
+ * Converts a plain "chords above lyrics" chart — the shape most charts are
+ * copied from — into inline ChordPro, preserving each chord's column.
  */
 export const chordLinesToChordPro = (
   rawText: string,
@@ -317,6 +317,20 @@ export const mergeChordAndLyricLine = (chordLine: string, lyricLine: string): st
   return result;
 };
 
+/**
+ * Normalises whatever was pasted into ChordPro.
+ *
+ * Text that already has inline `[chords]` is left exactly as typed; anything
+ * else is run through `chordLinesToChordPro`, so a chart copied from a hymnal
+ * or a lyrics site lands in the same format as one written by hand.
+ */
+export const toChordPro = (input: string): string => {
+  const text = input.trim();
+  if (!text) return '';
+  if (/\[[^\]]+\]/.test(text)) return text;
+  return text.split(/\r?\n/).some(isChordLine) ? chordLinesToChordPro(text) : text;
+};
+
 /** Best-effort key detection: the first chord usually names the key. */
 export const detectKey = (chordproOrText: string): string | null => {
   const inline = /\[([^\]]+)\]/.exec(chordproOrText);
@@ -325,4 +339,197 @@ export const detectKey = (chordproOrText: string): string | null => {
   const parsed = parseChord(token);
   if (!parsed) return null;
   return /^m(?!aj)/.test(parsed.suffix) ? `${parsed.root}m` : parsed.root;
+};
+
+// ------------------------------------------------------- chart notation ----
+
+/**
+ * How a chart is written out. `chords` is the literal chart; `numbers` and
+ * `numerals` are the two key-independent systems worship teams read from
+ * (Nashville numbers and Roman numerals); `lyrics` drops the chords entirely.
+ */
+export type ChartNotation = 'chords' | 'numbers' | 'numerals' | 'lyrics';
+
+export interface ParsedKey {
+  /** Natural or accidental root, e.g. `Bb`. */
+  root: string;
+  minor: boolean;
+}
+
+/** Degree of each semitone above the tonic, non-diatonic steps spelled flat. */
+const NUMBER_DEGREES = ['1', 'b2', '2', 'b3', '3', '4', 'b5', '5', 'b6', '6', 'b7', '7'] as const;
+const NUMERAL_DEGREES = ['I', 'bII', 'II', 'bIII', 'III', 'IV', 'bV', 'V', 'bVI', 'VI', 'bVII', 'VII'] as const;
+
+/** Keys conventionally written with flats, so transposing into them looks right. */
+const FLAT_KEY_ROOTS = new Set(['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb']);
+
+/** Splits `Bbm` into its root and quality; null when the key is unreadable. */
+export const parseKey = (key: string): ParsedKey | null => {
+  const trimmed = key.trim();
+  const rootMatch = ROOT_RE.exec(trimmed);
+  if (!rootMatch) return null;
+  const root = rootMatch[0];
+  const rest = trimmed.slice(root.length);
+  return { root, minor: /^m(in)?$/i.test(rest) };
+};
+
+/** True when a chord's quality is minor (or diminished) rather than major. */
+const isMinorQuality = (suffix: string): boolean =>
+  /^m(?!aj)/.test(suffix) || /^(dim|°|ø)/i.test(suffix);
+
+/** Sharps or flats, whichever the target key is normally written with. */
+export const preferredAccidental = (key: string | null | undefined): 'sharps' | 'flats' => {
+  if (!key) return 'sharps';
+  const parsed = parseKey(key);
+  if (!parsed) return 'sharps';
+  if (parsed.root.includes('b')) return 'flats';
+  // A minor key borrows the accidental of its relative major (Dm → F → flats).
+  const relative = parsed.minor ? shiftNote(parsed.root, 3, 'flats') : parsed.root;
+  return FLAT_KEY_ROOTS.has(relative) ? 'flats' : 'sharps';
+};
+
+/** Transposes a key label, keeping its major/minor quality. */
+export const transposeKey = (
+  key: string,
+  semitones: number,
+  prefer: 'sharps' | 'flats' = 'sharps',
+): string => {
+  const parsed = parseKey(key);
+  if (!parsed) return key;
+  return `${shiftNote(parsed.root, semitones, prefer)}${parsed.minor ? 'm' : ''}`;
+};
+
+const degreeOf = (note: string, tonic: string): number | null => {
+  const noteIdx = noteIndex(note);
+  const tonicIdx = noteIndex(tonic);
+  if (noteIdx < 0 || tonicIdx < 0) return null;
+  return (((noteIdx - tonicIdx) % 12) + 12) % 12;
+};
+
+/**
+ * Nashville number for one chord, e.g. `Am` in the key of C is `6m`. The tonic
+ * is always `1` — a minor key counts from its own root, so Am in A minor is
+ * `1m` and the C in that key is `b3`.
+ */
+export const chordToNumber = (token: string, key: string): string => {
+  const chord = parseChord(token);
+  const tonic = parseKey(key);
+  if (!chord || !tonic) return token;
+
+  const degree = degreeOf(chord.root, tonic.root);
+  if (degree === null) return token;
+
+  const bassDegree = chord.bass ? degreeOf(chord.bass, tonic.root) : null;
+  const bass = bassDegree === null ? '' : `/${NUMBER_DEGREES[bassDegree]}`;
+  return `${NUMBER_DEGREES[degree]}${chord.suffix}${bass}`;
+};
+
+/**
+ * Roman numeral for one chord, e.g. `Am` in the key of C is `vi`. Case carries
+ * the quality, so the redundant `m` is dropped from the suffix.
+ */
+export const chordToNumeral = (token: string, key: string): string => {
+  const chord = parseChord(token);
+  const tonic = parseKey(key);
+  if (!chord || !tonic) return token;
+
+  const degree = degreeOf(chord.root, tonic.root);
+  if (degree === null) return token;
+
+  const minor = isMinorQuality(chord.suffix);
+  const base = NUMERAL_DEGREES[degree] ?? token;
+  const numeral = minor ? base.toLowerCase() : base;
+  const suffix = minor ? chord.suffix.replace(/^m(?!aj)(in)?/, '') : chord.suffix;
+
+  const bassDegree = chord.bass ? degreeOf(chord.bass, tonic.root) : null;
+  const bass = bassDegree === null ? '' : `/${NUMBER_DEGREES[bassDegree]}`;
+  return `${numeral}${suffix}${bass}`;
+};
+
+/** Removes every `[chord]` from a document, leaving the lyrics and directives. */
+export const stripChords = (source: string): string =>
+  source
+    .split(/\r?\n/)
+    .map((line) => (/^\s*\{.*\}\s*$/.test(line) ? line : line.replace(/\[[^\]]*\]/g, '')))
+    .join('\n');
+
+/** Rewrites every `[chord]` into the requested notation. */
+export const convertChordProNotation = (
+  source: string,
+  key: string,
+  notation: ChartNotation,
+): string => {
+  if (notation === 'chords') return source;
+  if (notation === 'lyrics') return stripChords(source);
+  const convert = notation === 'numbers' ? chordToNumber : chordToNumeral;
+  return source.replace(/\[([^\]]+)\]/g, (match, token: string) => {
+    const converted = convert(token, key);
+    return converted === token ? match : `[${converted}]`;
+  });
+};
+
+/** Applies the source key's major/minor quality to a bare target root. */
+const keepQuality = (sourceKey: string | null, targetKey: string | null): string | null => {
+  if (!targetKey || !sourceKey) return targetKey;
+  const source = parseKey(sourceKey);
+  const target = parseKey(targetKey);
+  if (!source?.minor || !target || target.minor) return targetKey;
+  return `${target.root}m`;
+};
+
+export interface ChartRenderOptions {
+  /** The key the chart is written in. Required for `numbers` / `numerals`. */
+  sourceKey?: string | null;
+  /** Transpose to this key first. Ignored when it matches the source key. */
+  targetKey?: string | null;
+  /** Explicit shift, used when no target key is given. */
+  semitones?: number;
+  notation?: ChartNotation;
+}
+
+export interface RenderedChart {
+  chordpro: string;
+  /** The key the returned chart is in; null once it is key-independent. */
+  key: string | null;
+  semitones: number;
+  notation: ChartNotation;
+}
+
+/**
+ * The single entry point both clients and the API use: transpose, then convert
+ * notation, so a chart rendered anywhere comes out byte-for-byte identical.
+ */
+export const renderChordProChart = (
+  source: string,
+  { sourceKey = null, targetKey: requestedKey = null, semitones = 0, notation = 'chords' }: ChartRenderOptions = {},
+): RenderedChart => {
+  // A key picker offers roots, not qualities, so "A" asked of a song in Am
+  // means A minor — otherwise the chart would come back labelled as major.
+  const targetKey = keepQuality(sourceKey, requestedKey);
+
+  let shift = semitones;
+  if (targetKey && sourceKey) shift = semitonesBetween(sourceKey, targetKey) ?? 0;
+
+  const prefer = preferredAccidental(targetKey ?? sourceKey);
+  const transposed = transposeChordPro(source, shift, prefer);
+  const key = targetKey ?? (sourceKey && shift !== 0 ? transposeKey(sourceKey, shift, prefer) : sourceKey);
+
+  if (notation === 'chords' || notation === 'lyrics') {
+    return {
+      chordpro: convertChordProNotation(transposed, key ?? '', notation),
+      key: notation === 'lyrics' ? null : key,
+      semitones: shift,
+      notation,
+    };
+  }
+
+  // Numbers and numerals are relative to the key, so transposing first would
+  // be a no-op — read them off the source key instead.
+  if (!sourceKey) return { chordpro: source, key: null, semitones: 0, notation };
+  return {
+    chordpro: convertChordProNotation(source, sourceKey, notation),
+    key: null,
+    semitones: 0,
+    notation,
+  };
 };

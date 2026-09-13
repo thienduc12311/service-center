@@ -1,5 +1,6 @@
 import type { AssignmentStatus, OrgRole, PlanRecurrence, PlanStatus } from '../types/database.js';
 import type { TeamTemplate, TeamTemplateCategory } from '../types/domain.js';
+import type { ChartNotation } from './chordpro.js';
 
 export const ORG_ROLES: readonly OrgRole[] = ['owner', 'admin', 'scheduler', 'member'];
 
@@ -34,9 +35,68 @@ export const MUSICAL_KEYS = [
   'Cm', 'C#m', 'Dm', 'D#m', 'Ebm', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'A#m', 'Bbm', 'Bm',
 ] as const;
 
+// ------------------------------------------------------------- songs ------
+
+/**
+ * The key picker's layout: one row per letter, columns [flat, natural, sharp].
+ * The blanks are the spellings nobody writes (B#, Cb, E#, Fb), kept as holes
+ * so the grid stays aligned.
+ */
+export const KEY_GRID: readonly (readonly [string | null, string, string | null])[] = [
+  ['Ab', 'A', 'A#'],
+  ['Bb', 'B', null],
+  [null, 'C', 'C#'],
+  ['Db', 'D', 'D#'],
+  ['Eb', 'E', null],
+  [null, 'F', 'F#'],
+  ['Gb', 'G', 'G#'],
+];
+
+export type KeyQuality = 'major' | 'minor';
+
+/** The same grid, suffixed for minor keys — `Ab` becomes `Abm`. */
+export const keyGridFor = (
+  quality: KeyQuality,
+): readonly (readonly (string | null)[])[] =>
+  KEY_GRID.map((row) => row.map((key) => (key === null ? null : quality === 'minor' ? `${key}m` : key)));
+
+/** Capo positions offered on an arrangement. `null` is "no capo". */
+export const CAPO_POSITIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+
+/** Tag vocabularies for the Add Song form. A song may carry several types. */
+export const SONG_TYPES: readonly string[] = [
+  'Hymn',
+  'Chorus',
+  'Praise',
+  'Worship',
+  'Communion',
+  'Offering',
+  'Response',
+  'Christmas',
+  'Easter',
+  'Special',
+];
+
+export const SONG_STYLES: readonly string[] = [
+  'Traditional',
+  'Contemporary',
+  'Gospel',
+  'Modern',
+  'Acoustic',
+  'Classical',
+];
+
+export const SONG_SPEEDS: readonly string[] = ['Fast', 'Medium', 'Slow'];
+
+export const CHART_NOTATION_LABELS: Record<ChartNotation, string> = {
+  chords: 'Chords',
+  numbers: 'Numbers',
+  numerals: 'Numerals',
+  lyrics: 'Lyrics',
+};
+
 export const STORAGE_BUCKETS = {
   attachments: 'attachments',
-  chordSheets: 'chord-sheets',
   organizationLogos: 'organization-logos',
   songbooks: 'songbooks',
 } as const;

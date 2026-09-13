@@ -28,7 +28,6 @@ export type PlanItemType = 'song' | 'header' | 'item';
 /** How often plans for a service type come round. Drives the suggested next service date. */
 export type PlanRecurrence = 'weekly' | 'biweekly' | 'monthly' | 'occasionally';
 export type AssignmentStatus = 'unconfirmed' | 'confirmed' | 'declined';
-export type ImportStatus = 'pending' | 'processing' | 'succeeded' | 'failed';
 export type NotificationType =
   | 'assignment_scheduled'
   | 'assignment_reminder'
@@ -196,6 +195,10 @@ export type SongRow = {
   default_bpm: number | null;
   meter: string | null;
   themes: string[];
+  /** Free-form tag vocabularies from the Add Song form. */
+  song_types: string[];
+  style: string | null;
+  speed: string | null;
   notes: string | null;
   created_by: string | null;
   created_at: string;
@@ -207,6 +210,8 @@ export type ArrangementRow = {
   song_id: string;
   name: string;
   song_key: string | null;
+  /** Fret the capo sits on; null when the arrangement is played open. */
+  capo: number | null;
   bpm: number | null;
   meter: string | null;
   length_seconds: number | null;
@@ -356,48 +361,6 @@ export type AttachmentRow = {
   created_at: string;
 }
 
-export type ChordSheetImportRow = {
-  id: string;
-  organization_id: string;
-  created_by: string | null;
-  storage_path: string;
-  original_filename: string | null;
-  status: ImportStatus;
-  provider: string | null;
-  raw_text: string | null;
-  parsed_chordpro: string | null;
-  detected_title: string | null;
-  detected_key: string | null;
-  confidence: number | null;
-  error_message: string | null;
-  song_id: string | null;
-  arrangement_id: string | null;
-  processing_started_at: string | null;
-  processing_finished_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export type AiImportUsageRow = {
-  organization_id: string;
-  user_id: string;
-  /** The organization's local date the counter belongs to. */
-  usage_date: string;
-  import_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
-/** One row back from `ai_import_quota_status` / `consume_ai_import_quota`. */
-export type ImportQuotaRow = {
-  allowed: boolean;
-  used: number;
-  remaining: number;
-  quota_limit: number;
-  usage_date: string;
-  resets_at: string;
-}
-
 export type SchedulingConflictRow = {
   user_id: string;
   conflict_type: 'blockout' | 'double_booked';
@@ -432,10 +395,8 @@ export type Database = {
       device_push_tokens: Table<DevicePushTokenRow>;
       blockouts: Table<BlockoutRow>;
       attachments: Table<AttachmentRow>;
-      chord_sheet_imports: Table<ChordSheetImportRow>;
       songbooks: Table<SongbookRow>;
       songbook_items: Table<SongbookItemRow>;
-      ai_import_usage: Table<AiImportUsageRow>;
     };
     Views: Record<string, never>;
     Functions: {
@@ -456,14 +417,6 @@ export type Database = {
         Args: { p_token_hash: string; p_new_user_id: string };
         Returns: Array<{ out_organization_id: string; out_person_id: string; out_role: OrgRole }>;
       };
-      ai_import_quota_status: {
-        Args: { p_organization_id: string; p_limit: number };
-        Returns: ImportQuotaRow[];
-      };
-      consume_ai_import_quota: {
-        Args: { p_organization_id: string; p_limit: number };
-        Returns: ImportQuotaRow[];
-      };
     };
     Enums: {
       org_role: OrgRole;
@@ -472,7 +425,6 @@ export type Database = {
       plan_time_kind: PlanTimeKind;
       plan_item_type: PlanItemType;
       assignment_status: AssignmentStatus;
-      import_status: ImportStatus;
       notification_type: NotificationType;
     };
     CompositeTypes: Record<string, never>;

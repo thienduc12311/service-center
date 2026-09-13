@@ -22,7 +22,7 @@ const realtime: RealtimeClientOptions = {
 /**
  * Service-role client. Bypasses RLS entirely — only use it for work the user
  * genuinely cannot do themselves (inviting people, sending notifications,
- * background OCR). Every such call must check org membership first.
+ * notifications). Every such call must check org membership first.
  */
 export const adminDb: Db = createClient<Database, 'public'>(
   config.SUPABASE_URL,

@@ -2,7 +2,6 @@ import type {
   ArrangementRow,
   AssignmentRow,
   BlockoutRow,
-  ChordSheetImportRow,
   MemberStatus,
   NotificationRow,
   OrgRole,
@@ -21,6 +20,7 @@ import type {
   TeamPositionRow,
   TeamRow,
 } from './database.js';
+import type { ChartNotation } from '../lib/chordpro.js';
 
 /** The signed-in user plus every organization they belong to. */
 export interface CurrentUser {
@@ -113,6 +113,24 @@ export interface TeamWithPositions extends TeamRow {
 
 export interface SongWithArrangements extends SongRow {
   arrangements: ArrangementRow[];
+}
+
+/**
+ * A row of the song library table. `last_scheduled_at` is the service date of
+ * the most recent plan the song appeared in — it is aggregated per page rather
+ * than stored, so it never goes stale.
+ */
+export interface SongListItem extends SongWithArrangements {
+  last_scheduled_at: string | null;
+}
+
+/** `GET /api/v1/arrangements/:id/chart` — transposed and/or converted. */
+export interface SongChart {
+  chordpro: string;
+  /** Null once the chart is key-independent (numbers, numerals, lyrics). */
+  key: string | null;
+  semitones: number;
+  notation: ChartNotation;
 }
 
 export interface SongbookDetail extends SongbookRow {
@@ -219,25 +237,6 @@ export interface Paginated<T> {
   page: number;
   per_page: number;
   total: number;
-}
-
-/**
- * How much of today's AI chord-sheet-import allowance an admin has left.
- * Returned by `GET /api/v1/imports/quota` and echoed in the 429 body when the
- * allowance runs out.
- */
-export interface ImportQuota {
-  /** Imports allowed per admin per day. */
-  limit: number;
-  used: number;
-  remaining: number;
-  /** ISO timestamp of the next reset — midnight in the organization's timezone. */
-  resets_at: string;
-}
-
-/** An import row returned by a call that also charged the quota. */
-export interface ImportWithQuota extends ChordSheetImportRow {
-  quota: ImportQuota;
 }
 
 /**

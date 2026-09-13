@@ -79,7 +79,6 @@ const RootNavigator = () => {
       <Stack.Screen name="plan/[id]" options={{ title: 'Plan' }} />
       <Stack.Screen name="song/[id]" options={{ title: 'Song' }} />
       <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
-      <Stack.Screen name="scan" options={{ title: 'Import chord sheet', presentation: 'modal' }} />
       <Stack.Screen name="songbooks/[id]" options={{ title: 'Song book' }} />
     </Stack>
   );

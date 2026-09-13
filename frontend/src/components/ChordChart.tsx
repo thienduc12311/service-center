@@ -1,22 +1,36 @@
 import { useMemo } from 'react';
-import { parseChordPro, renderLineAsText, transposeChordPro } from '@service-center/shared';
+import {
+  parseChordPro,
+  renderChordProChart,
+  renderLineAsText,
+  type ChartNotation,
+} from '@service-center/shared';
+
+export interface ChordChartProps {
+  chordpro: string;
+  /** The key the stored chart is written in. Needed to transpose or convert. */
+  sourceKey?: string | null;
+  /** Transpose into this key. Null renders the original. */
+  targetKey?: string | null;
+  notation?: ChartNotation;
+}
 
 /**
  * Renders ChordPro as chords-above-lyrics. Column alignment is what makes a
  * chart readable on stage, so each line is emitted as two monospace rows.
+ *
+ * Transposition and notation go through the same shared renderer the API uses,
+ * so what is shown here matches what `GET /arrangements/:id/chart` returns.
  */
 export const ChordChart = ({
   chordpro,
-  semitones = 0,
-  prefer = 'sharps',
-}: {
-  chordpro: string;
-  semitones?: number;
-  prefer?: 'sharps' | 'flats';
-}) => {
+  sourceKey = null,
+  targetKey = null,
+  notation = 'chords',
+}: ChordChartProps) => {
   const song = useMemo(
-    () => parseChordPro(transposeChordPro(chordpro, semitones, prefer)),
-    [chordpro, semitones, prefer],
+    () => parseChordPro(renderChordProChart(chordpro, { sourceKey, targetKey, notation }).chordpro),
+    [chordpro, sourceKey, targetKey, notation],
   );
 
   if (song.sections.length === 0) {
@@ -38,7 +52,7 @@ export const ChordChart = ({
               return (
                 <div key={lineIndex}>
                   {chordRow && <div className="font-semibold text-brand-700">{chordRow}</div>}
-                  <div className="text-slate-800">{lyricRow || ' '}</div>
+                  <div className="text-slate-800">{lyricRow || ' '}</div>
                 </div>
               );
             })}

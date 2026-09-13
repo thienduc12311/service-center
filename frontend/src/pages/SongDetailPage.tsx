@@ -1,32 +1,37 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { MUSICAL_KEYS, semitonesBetween } from '@service-center/shared';
+import { renderChordProChart, toChordPro } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useSong, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { ChordChart } from '../components/ChordChart';
+import {
+  ChartNotationSelect,
+  ORIGINAL_KEY_VIEW,
+  type ChartView,
+} from '../components/ChartNotationSelect';
 
 export const SongDetailPage = () => {
   const { songId } = useParams<{ songId: string }>();
-  const { canManage, isAdmin } = useAuth();
+  const { canManage } = useAuth();
   const invalidate = useInvalidateOrg();
   const song = useSong(songId);
 
   const [arrangementId, setArrangementId] = useState<string | null>(null);
-  const [displayKey, setDisplayKey] = useState<string>('');
+  const [view, setView] = useState<ChartView>(ORIGINAL_KEY_VIEW);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
 
   const arrangements = song.data?.arrangements ?? [];
   const arrangement =
-    arrangements.find((a) => a.id === arrangementId) ??
-    arrangements.find((a) => a.is_default) ??
+    arrangements.find((candidate) => candidate.id === arrangementId) ??
+    arrangements.find((candidate) => candidate.is_default) ??
     arrangements[0];
 
   const saveChart = useMutation({
-    mutationFn: () => api.updateArrangement(arrangement!.id, { chord_chart: draft }),
+    mutationFn: () => api.updateArrangement(arrangement!.id, { chord_chart: toChordPro(draft) }),
     onSuccess: async () => {
       await invalidate();
       setEditing(false);
@@ -37,10 +42,16 @@ export const SongDetailPage = () => {
   if (song.error) return <ErrorNotice error={song.error} />;
   if (!song.data) return <EmptyState title="Song not found" />;
 
-  const baseKey = arrangement?.song_key ?? song.data.default_key ?? null;
-  const semitones =
-    displayKey && baseKey ? (semitonesBetween(baseKey, displayKey) ?? 0) : 0;
-  const prefer = displayKey.includes('b') ? 'flats' : 'sharps';
+  const sourceKey = arrangement?.song_key ?? song.data.default_key ?? null;
+  // Ask the shared renderer what this view resolves to, so the readout and the
+  // chart below it can never disagree.
+  const rendered = renderChordProChart(arrangement?.chord_chart ?? '', {
+    sourceKey,
+    targetKey: view.targetKey,
+    notation: view.notation,
+  });
+
+  const tags = [...song.data.song_types, ...song.data.themes];
 
   return (
     <div>
@@ -52,16 +63,18 @@ export const SongDetailPage = () => {
             {song.data.ccli_number && <span>· CCLI {song.data.ccli_number}</span>}
             {song.data.default_bpm && <span>· {song.data.default_bpm} bpm</span>}
             {song.data.meter && <span>· {song.data.meter}</span>}
+            {song.data.style && <span>· {song.data.style}</span>}
+            {song.data.speed && <span>· {song.data.speed}</span>}
           </span>
         }
         actions={<Link to="/songs"><Button variant="secondary">All songs</Button></Link>}
       />
 
-      {song.data.themes.length > 0 && (
+      {tags.length > 0 && (
         <div className="mb-6 flex flex-wrap gap-2">
-          {song.data.themes.map((theme) => (
-            <Badge key={theme} tone="bg-slate-100 text-slate-600 ring-slate-500/20">
-              {theme}
+          {tags.map((tag) => (
+            <Badge key={tag} tone="bg-slate-100 text-slate-600 ring-slate-500/20">
+              {tag}
             </Badge>
           ))}
         </div>
@@ -73,37 +86,27 @@ export const SongDetailPage = () => {
             aria-label="Arrangement"
             className="input w-56"
             value={arrangement?.id ?? ''}
-            onChange={(e) => setArrangementId(e.target.value)}
+            onChange={(event) => setArrangementId(event.target.value)}
           >
-            {arrangements.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-                {a.is_default ? ' (default)' : ''}
+            {arrangements.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.name}
+                {candidate.is_default ? ' (default)' : ''}
               </option>
             ))}
           </select>
         )}
 
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          Key
-          <select
-            aria-label="Transpose to key"
-            className="input w-24"
-            value={displayKey}
-            onChange={(e) => setDisplayKey(e.target.value)}
-          >
-            <option value="">{baseKey ?? 'Original'}</option>
-            {MUSICAL_KEYS.map((key) => (
-              <option key={key} value={key}>
-                {key}
-              </option>
-            ))}
-          </select>
-        </label>
+        <span className="text-sm text-slate-500">
+          Original Key <span className="font-medium text-slate-700">{sourceKey ?? '—'}</span>
+          {arrangement?.capo ? ` · Capo ${arrangement.capo}` : ''}
+        </span>
 
-        {semitones !== 0 && (
+        <ChartNotationSelect value={view} onChange={setView} />
+
+        {rendered.semitones !== 0 && (
           <span className="text-xs text-slate-400">
-            transposed {semitones > 6 ? semitones - 12 : semitones} semitones
+            transposed {rendered.semitones > 6 ? rendered.semitones - 12 : rendered.semitones} semitones
           </span>
         )}
 
@@ -131,14 +134,15 @@ export const SongDetailPage = () => {
         {editing ? (
           <div className="space-y-3">
             <p className="text-xs text-slate-500">
-              ChordPro format — put chords in square brackets, e.g.{' '}
-              <code className="rounded bg-slate-100 px-1">A[G]mazing grace</code>
+              Paste chords above lyrics, or write ChordPro with the chords in square brackets —{' '}
+              <code className="rounded bg-slate-100 px-1">A[G]mazing grace</code>. Either is saved
+              as ChordPro.
             </p>
             <textarea
               className="input font-mono"
               rows={20}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(event) => setDraft(event.target.value)}
               aria-label="Chord chart source"
             />
             <ErrorNotice error={saveChart.error} />
@@ -152,16 +156,27 @@ export const SongDetailPage = () => {
             </div>
           </div>
         ) : arrangement?.chord_chart ? (
-          <ChordChart chordpro={arrangement.chord_chart} semitones={semitones} prefer={prefer} />
+          <ChordChart
+            chordpro={arrangement.chord_chart}
+            sourceKey={sourceKey}
+            targetKey={view.targetKey}
+            notation={view.notation}
+          />
         ) : (
           <EmptyState
             title="No chord chart yet"
-            description="Paste one in ChordPro format, or import it from a photo."
+            description="Paste one in ChordPro format to transpose it and read it as numbers or numerals."
             action={
-              isAdmin ? (
-                <Link to="/imports">
-                  <Button variant="secondary">Import from image</Button>
-                </Link>
+              canManage ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setDraft('');
+                    setEditing(true);
+                  }}
+                >
+                  Add chart
+                </Button>
               ) : undefined
             }
           />
