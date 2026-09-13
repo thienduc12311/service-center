@@ -19,7 +19,6 @@ import { PeoplePage } from './pages/PeoplePage';
 import { PersonPage } from './pages/PersonPage';
 import { MySchedulePage } from './pages/MySchedulePage';
 import { SettingsPage } from './pages/SettingsPage';
-import { ImportsPage } from './pages/ImportsPage';
 import { SongbooksPage } from './pages/SongbooksPage';
 import { SongbookPage } from './pages/SongbookPage';
 
@@ -65,7 +64,6 @@ export const router = createBrowserRouter([
           { path: '/people/:personId', element: <PersonPage /> },
           { path: '/my-schedule', element: <MySchedulePage /> },
           { path: '/settings', element: <SettingsPage /> },
-          { path: '/imports', element: <ImportsPage /> },
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       },

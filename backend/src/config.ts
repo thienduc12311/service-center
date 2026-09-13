@@ -22,16 +22,6 @@ const envSchema = z.object({
   APP_URL: z.string().url().default('http://localhost:5173'),
   API_URL: z.string().url().default('http://localhost:4000'),
 
-  OCR_PROVIDER: z.enum(['stub', 'gemini', 'openai', 'anthropic']).default('stub'),
-  ANTHROPIC_API_KEY: z.string().optional(),
-  GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
-  OPENAI_API_KEY: z.string().optional(),
-  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
-
-  /** Chord sheet imports allowed per admin per day. 0 disables importing. */
-  AI_IMPORT_DAILY_LIMIT: z.coerce.number().int().min(0).default(10),
-
   /** Send real push notifications through Expo. Off by default: local runs log instead. */
   PUSH_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   /** Only needed once push security is enabled on the Expo project. */

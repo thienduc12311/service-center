@@ -25,8 +25,6 @@ export const keys = {
   mySchedule: (org: string | null, query: unknown) => [...keys.all(org), 'my-schedule', query] as const,
   blockouts: (org: string | null, query: unknown) => [...keys.all(org), 'blockouts', query] as const,
   calendarFeed: (org: string | null) => [...keys.all(org), 'calendar-feed'] as const,
-  imports: (org: string | null) => [...keys.all(org), 'imports'] as const,
-  importQuota: (org: string | null) => [...keys.all(org), 'imports', 'quota'] as const,
   songbooks: (org: string | null) => [...keys.all(org), 'songbooks'] as const,
   songbook: (org: string | null, id: string) => [...keys.songbooks(org), id] as const,
 };
@@ -137,26 +135,6 @@ export const useBlockouts = (query: { scope?: 'mine' | 'organization' } = {}) =>
 export const useCalendarFeed = () => {
   const org = useOrg();
   return useQuery({ queryKey: keys.calendarFeed(org), queryFn: () => api.getCalendarFeed(), enabled: Boolean(org) });
-};
-
-export const useImports = (options?: { refetchInterval?: number | false }) => {
-  const org = useOrg();
-  return useQuery({
-    queryKey: keys.imports(org),
-    queryFn: () => api.listImports(),
-    enabled: Boolean(org),
-    ...options,
-  });
-};
-
-/** Today's remaining AI import allowance. Admin-only — the API answers 403 otherwise. */
-export const useImportQuota = (enabled = true) => {
-  const org = useOrg();
-  return useQuery({
-    queryKey: keys.importQuota(org),
-    queryFn: () => api.getImportQuota(),
-    enabled: Boolean(org) && enabled,
-  });
 };
 
 export const useSongbooks = () => {

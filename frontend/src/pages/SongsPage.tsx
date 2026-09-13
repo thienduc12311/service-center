@@ -1,39 +1,32 @@
-import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { api } from '../lib/api';
-import { useSongs, useInvalidateOrg } from '../hooks/queries';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { formatDate, type SongListItem } from '@service-center/shared';
+import { useSongs } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
+import { AddSongModal } from '../components/AddSongModal';
+
+const DAY = { month: 'short', day: 'numeric', year: 'numeric' } as const;
+
+/** The keys a song is actually played in — its arrangements, not just the default. */
+const songKeys = (song: SongListItem): string => {
+  const keys = song.arrangements.map((arrangement) => arrangement.song_key).filter(Boolean);
+  const unique = [...new Set(keys.length ? keys : [song.default_key])].filter(Boolean);
+  return unique.join(', ');
+};
+
+const songBpm = (song: SongListItem): number | null =>
+  song.default_bpm ?? song.arrangements.find((arrangement) => arrangement.bpm)?.bpm ?? null;
 
 export const SongsPage = () => {
   const { canManage } = useAuth();
-  const invalidate = useInvalidateOrg();
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<'title' | 'recent'>('title');
-  const [creating, setCreating] = useState(false);
+  const [adding, setAdding] = useState(false);
   const songs = useSongs({ q: query || undefined, sort, per_page: 100 });
 
-  const [title, setTitle] = useState('');
-  const [author, setAuthor] = useState('');
-  const [key, setKey] = useState('');
-
-  const create = useMutation({
-    mutationFn: () =>
-      api.createSong({ title, author: author || null, default_key: key || null }),
-    onSuccess: async () => {
-      await invalidate();
-      setCreating(false);
-      setTitle('');
-      setAuthor('');
-      setKey('');
-    },
-  });
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    create.mutate();
-  };
+  const rows = songs.data?.data ?? [];
 
   return (
     <div>
@@ -46,93 +39,80 @@ export const SongsPage = () => {
               aria-label="Sort songs"
               className="input w-36"
               value={sort}
-              onChange={(e) => setSort(e.target.value as 'title' | 'recent')}
+              onChange={(event) => setSort(event.target.value as 'title' | 'recent')}
             >
               <option value="title">A–Z</option>
               <option value="recent">Recently updated</option>
             </select>
-            {canManage && <Button onClick={() => setCreating(true)}>Add song</Button>}
+            {canManage && <Button onClick={() => setAdding(true)}>Add a song</Button>}
           </div>
         }
       />
 
-      <input
-        className="input mb-4 max-w-sm"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search songs…"
-        aria-label="Search songs"
-      />
+      <div className="card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
+        <input
+          className="input max-w-sm"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Add text filter"
+          aria-label="Search songs"
+        />
+        {songs.data && (
+          <span className="text-sm text-slate-500">
+            {songs.data.total} song{songs.data.total === 1 ? '' : 's'}
+          </span>
+        )}
+      </div>
 
       <ErrorNotice error={songs.error} />
 
       {songs.isLoading ? (
         <Loading />
-      ) : songs.data?.data.length ? (
-        <ul className="card divide-y divide-slate-100">
-          {songs.data.data.map((song) => (
-            <li key={song.id}>
-              <Link to={`/songs/${song.id}`} className="flex items-center gap-4 px-4 py-3 hover:bg-slate-50">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium">{song.title}</p>
-                  <p className="text-sm text-slate-500">
-                    {song.author ?? 'Unknown author'}
-                    {song.themes.length > 0 && ` · ${song.themes.join(', ')}`}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-3 text-sm text-slate-400">
-                  {song.default_key && <span className="font-medium text-slate-600">{song.default_key}</span>}
-                  {song.default_bpm && <span>{song.default_bpm} bpm</span>}
-                  <span>
-                    {song.arrangements.length} arrangement{song.arrangements.length === 1 ? '' : 's'}
-                  </span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+      ) : rows.length ? (
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                <th scope="col" className="px-4 py-3 font-medium">Title</th>
+                <th scope="col" className="px-4 py-3 font-medium">BPM</th>
+                <th scope="col" className="px-4 py-3 font-medium">Keys</th>
+                <th scope="col" className="px-4 py-3 font-medium">Last scheduled</th>
+                <th scope="col" className="px-4 py-3 font-medium">Created</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((song) => (
+                <tr key={song.id} className="transition hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    <Link to={`/songs/${song.id}`} className="font-medium text-slate-900 hover:text-brand-700">
+                      {song.title}
+                    </Link>
+                    {song.author && <p className="text-xs text-slate-500">{song.author}</p>}
+                  </td>
+                  <td className="px-4 py-3 tabular-nums text-slate-600">{songBpm(song) ?? ''}</td>
+                  <td className="px-4 py-3 font-medium text-slate-700">{songKeys(song)}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {song.last_scheduled_at ? formatDate(song.last_scheduled_at, DAY) : ''}
+                  </td>
+                  <td className="px-4 py-3 text-slate-500">{formatDate(song.created_at, DAY)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <EmptyState
           title={query ? 'No songs match that search' : 'No songs yet'}
           description="Add songs to build the library your plans draw from."
-          action={canManage ? <Button onClick={() => setCreating(true)}>Add a song</Button> : undefined}
+          action={canManage ? <Button onClick={() => setAdding(true)}>Add a song</Button> : undefined}
         />
       )}
 
-      <Modal open={creating} title="Add song" onClose={() => setCreating(false)}>
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="label" htmlFor="song-title">Title</label>
-            <input id="song-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} required />
-          </div>
-          <div>
-            <label className="label" htmlFor="song-author">Author</label>
-            <input id="song-author" className="input" value={author} onChange={(e) => setAuthor(e.target.value)} />
-          </div>
-          <div>
-            <label className="label" htmlFor="song-key">Default key</label>
-            <input
-              id="song-key"
-              className="input"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="G"
-              maxLength={8}
-            />
-          </div>
-
-          <ErrorNotice error={create.error} />
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setCreating(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={create.isPending}>
-              Add song
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <AddSongModal
+        open={adding}
+        onClose={() => setAdding(false)}
+        onCreated={(song) => navigate(`/songs/${song.id}`)}
+      />
     </div>
   );
 };

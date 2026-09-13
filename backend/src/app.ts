@@ -28,7 +28,6 @@ import {
 } from './routes/assignments.js';
 import { calendarRouter } from './routes/calendar.js';
 import { blockoutsRouter } from './routes/blockouts.js';
-import { importsRouter } from './routes/imports.js';
 import { songbooksRouter } from './routes/songbooks.js';
 import { devicesRouter, notificationsRouter } from './routes/notifications.js';
 
@@ -96,7 +95,6 @@ export const createApp = (): Express => {
   app.use('/api/v1/scheduling', scoped, schedulingRouter);
   app.use('/api/v1/calendar', scoped, calendarRouter);
   app.use('/api/v1/blockouts', scoped, blockoutsRouter);
-  app.use('/api/v1/imports', scoped, importsRouter);
   app.use('/api/v1/songbooks', scoped, songbooksRouter);
   app.use('/api/v1/notifications', scoped, notificationsRouter);
 

@@ -7,7 +7,6 @@ import type {
   ArrangementRow,
   AssignmentRow,
   BlockoutRow,
-  ChordSheetImportRow,
   DevicePushTokenRow,
   OrganizationMemberRow,
   OrganizationRow,
@@ -27,8 +26,6 @@ import type {
   AssignmentRespondResult,
   CalendarFeedTokenResponse,
   CurrentUser,
-  ImportQuota,
-  ImportWithQuota,
   InvitationPreview,
   MyScheduleEntry,
   NotificationFeed,
@@ -40,12 +37,21 @@ import type {
   RosterPerson,
   SchedulingConflict,
   ServiceTypeSetupResult,
+  SongChart,
+  SongListItem,
   SongWithArrangements,
   SongbookDetail,
   TeamWithPositions,
   UnreadNotificationCount,
 } from '../types/domain.js';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
+import type {
+  ChartQuery,
+  CreateArrangementInput,
+  CreateSongInput,
+  UpdateArrangementInput,
+  UpdateSongInput,
+} from '../schemas/song.js';
 import type { ServiceTypePayload } from '../schemas/organization.js';
 import type { ServiceTypeSetupPayload } from '../schemas/service-type.js';
 import type { SetPlanPositionNeedsInput } from '../schemas/plan.js';
@@ -219,25 +225,29 @@ export class ServiceCenterApi {
 
   // -------------------------------------------------------------- songs --
   listSongs = (query?: Query) =>
-    this.request<Paginated<SongWithArrangements>>('GET', '/api/v1/songs', undefined, query);
+    this.request<Paginated<SongListItem>>('GET', '/api/v1/songs', undefined, query);
   getSong = (id: string) => this.request<SongWithArrangements>('GET', `/api/v1/songs/${id}`);
-  createSong = (body: Record<string, unknown>) =>
+  /** Creates the song and its first arrangement in one call. */
+  createSong = (body: CreateSongInput) =>
     this.request<SongWithArrangements>('POST', '/api/v1/songs', body);
-  updateSong = (id: string, body: Record<string, unknown>) =>
+  updateSong = (id: string, body: UpdateSongInput) =>
     this.request<SongRow>('PATCH', `/api/v1/songs/${id}`, body);
   deleteSong = (id: string) => this.request<void>('DELETE', `/api/v1/songs/${id}`);
-  createArrangement = (songId: string, body: Record<string, unknown>) =>
+  createArrangement = (songId: string, body: CreateArrangementInput) =>
     this.request<ArrangementRow>('POST', `/api/v1/songs/${songId}/arrangements`, body);
-  updateArrangement = (id: string, body: Record<string, unknown>) =>
+  updateArrangement = (id: string, body: UpdateArrangementInput) =>
     this.request<ArrangementRow>('PATCH', `/api/v1/arrangements/${id}`, body);
   deleteArrangement = (id: string) => this.request<void>('DELETE', `/api/v1/arrangements/${id}`);
-  /** Server-side transposition, so web and native render identical charts. */
-  getChart = (arrangementId: string, query?: { to?: string; semitones?: number; prefer?: string }) =>
-    this.request<{ chordpro: string; key: string | null; semitones: number }>(
+  /**
+   * Transposes and/or converts the chart server-side, so web and native render
+   * identical output for the same request.
+   */
+  getChart = (arrangementId: string, query?: Partial<ChartQuery>) =>
+    this.request<SongChart>(
       'GET',
       `/api/v1/arrangements/${arrangementId}/chart`,
       undefined,
-      query,
+      query as Query,
     );
 
   // -------------------------------------------------------------- plans --
@@ -310,21 +320,6 @@ export class ServiceCenterApi {
   createSongbook = (body: Record<string, unknown>) =>
     this.request<SongbookDetail>('POST', '/api/v1/songbooks', body);
   deleteSongbook = (id: string) => this.request<void>('DELETE', `/api/v1/songbooks/${id}`);
-
-  // ------------------------------------------------- phase 2: OCR import --
-  listImports = () => this.request<ChordSheetImportRow[]>('GET', '/api/v1/imports');
-  getImportQuota = () => this.request<ImportQuota>('GET', '/api/v1/imports/quota');
-  getImport = (id: string) => this.request<ChordSheetImportRow>('GET', `/api/v1/imports/${id}`);
-  createImport = (body: { storage_path: string; original_filename?: string | null }) =>
-    this.request<ImportWithQuota>('POST', '/api/v1/imports', body);
-  retryImport = (id: string) =>
-    this.request<ImportWithQuota>('POST', `/api/v1/imports/${id}/retry`, {});
-  acceptImport = (id: string, body: Record<string, unknown>) =>
-    this.request<{ song: SongRow; arrangement: ArrangementRow }>(
-      'POST',
-      `/api/v1/imports/${id}/accept`,
-      body,
-    );
 
   // ------------------------------------------------------- notifications --
   listNotifications = (query?: Partial<ListNotificationsQuery>) =>
