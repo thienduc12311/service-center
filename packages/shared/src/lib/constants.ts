@@ -60,6 +60,50 @@ export const keyGridFor = (
 ): readonly (readonly (string | null)[])[] =>
   KEY_GRID.map((row) => row.map((key) => (key === null ? null : quality === 'minor' ? `${key}m` : key)));
 
+/**
+ * The section labels the sequence editor offers, grouped the way the dialog
+ * lists them: the three that make up most songs, then the book-ends, then the
+ * instrumental sections, the repeats, and the rest. An organization can type
+ * its own label as well — this is the starting vocabulary, not a closed set.
+ */
+export const SEQUENCE_LABEL_GROUPS: readonly (readonly string[])[] = [
+  ['Verse', 'Chorus', 'Bridge'],
+  ['Intro', 'Outro', 'Ending'],
+  ['Instrumental', 'Interlude'],
+  ['Tag', 'Turnaround', 'Vamp', 'Refrain'],
+  ['PreChorus', 'Post-Chorus', 'Breakdown'],
+];
+
+/** One choice in the Formatting dialog — a display name and the CSS it writes. */
+export interface ChartStyleOption {
+  label: string;
+  /** Stored verbatim on the arrangement and dropped into the chart template. */
+  value: string;
+}
+
+/**
+ * Fonts offered for a printed chart. Monospace is first and is the default —
+ * chords only line up over their syllables in a fixed-width font — but a
+ * lyrics-only sheet reads better set in a proportional face.
+ */
+export const CHART_FONT_OPTIONS: readonly ChartStyleOption[] = [
+  { label: 'Courier, Monospace', value: "'Courier New', Courier, monospace" },
+  { label: 'Menlo, Monospace', value: "Menlo, Consolas, 'Liberation Mono', monospace" },
+  { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
+  { label: 'Georgia', value: "Georgia, 'Times New Roman', serif" },
+];
+
+export const CHART_FONT_SIZES: readonly number[] = [8, 9, 10, 11, 12, 14, 16, 18, 20];
+
+/** Chord colours, as the hex values the chart template prints directly. */
+export const CHART_CHORD_COLORS: readonly ChartStyleOption[] = [
+  { label: 'Black', value: '#000000' },
+  { label: 'Blue', value: '#1d4ed8' },
+  { label: 'Red', value: '#b91c1c' },
+  { label: 'Green', value: '#15803d' },
+  { label: 'Grey', value: '#525252' },
+];
+
 /** Capo positions offered on an arrangement. `null` is "no capo". */
 export const CAPO_POSITIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 

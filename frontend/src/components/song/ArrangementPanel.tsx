@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
+  chartFormattingFromRow,
   formatDuration,
+  renderChartHtml,
   renderChordProChart,
-  toChordPro,
   type ArrangementRow,
   type SongWithArrangements,
 } from '@service-center/shared';
-import { api } from '../../lib/api';
-import { useInvalidateOrg } from '../../hooks/queries';
-import { Badge, Button, EmptyState, ErrorNotice } from '../ui';
+import { openChartInNewTab, printChart } from '../../lib/chart-print';
+import { Badge, Button, EmptyState } from '../ui';
 import { ChordChart } from '../ChordChart';
 import { ChartNotationSelect, ORIGINAL_KEY_VIEW, type ChartView } from '../ChartNotationSelect';
 
@@ -32,7 +32,8 @@ const ICON_BUTTON =
 
 /**
  * One arrangement: its tempo and section order, and the chart itself, which
- * can be read in any key or notation and edited in place.
+ * can be read in any key or notation here, opened as a printable page, or
+ * taken into the chart editor to be rewritten.
  */
 export const ArrangementPanel = ({
   song,
@@ -41,24 +42,7 @@ export const ArrangementPanel = ({
   onEdit,
   onDelete,
 }: ArrangementPanelProps) => {
-  const invalidate = useInvalidateOrg();
   const [view, setView] = useState<ChartView>(ORIGINAL_KEY_VIEW);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-
-  const saveChart = useMutation({
-    mutationFn: () => api.updateArrangement(arrangement.id, { chord_chart: toChordPro(draft) }),
-    onSuccess: async () => {
-      await invalidate();
-      setEditing(false);
-    },
-  });
-
-  const startEditing = () => {
-    setDraft(arrangement.chord_chart ?? '');
-    saveChart.reset();
-    setEditing(true);
-  };
 
   const sourceKey = arrangement.song_key ?? song.default_key ?? null;
   // Ask the shared renderer what this view resolves to, so the readout and the
@@ -68,6 +52,21 @@ export const ArrangementPanel = ({
     targetKey: view.targetKey,
     notation: view.notation,
   });
+
+  const chartEditorPath = `/songs/${song.id}/arrangements/${arrangement.id}/chart`;
+
+  /** The printable document, exactly as the chart editor's preview renders it. */
+  const documentHtml = () =>
+    renderChartHtml({
+      title: song.title,
+      key: rendered.key,
+      arrangementName: arrangement.name,
+      author: song.author,
+      sequence: arrangement.sequence,
+      copyright: song.copyright,
+      chordpro: rendered.chordpro,
+      formatting: chartFormattingFromRow(arrangement),
+    });
 
   return (
     <div className="space-y-4">
@@ -129,39 +128,29 @@ export const ArrangementPanel = ({
           </span>
         )}
 
-        {canManage && !editing && (
-          <Button variant="secondary" className="ml-auto" onClick={startEditing}>
-            {arrangement.chord_chart ? 'Edit chart' : 'Add chart'}
-          </Button>
-        )}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {arrangement.chord_chart && (
+            <>
+              <Button variant="secondary" onClick={() => openChartInNewTab(documentHtml())}>
+                View page
+              </Button>
+              <Button variant="secondary" onClick={() => printChart(documentHtml())}>
+                Download PDF
+              </Button>
+            </>
+          )}
+          {canManage && (
+            <Link to={chartEditorPath}>
+              <Button variant="secondary">
+                {arrangement.chord_chart ? 'Lyrics & Chords' : 'Add chart'}
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="card p-5">
-        {editing ? (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-500">
-              Paste chords above lyrics, or write ChordPro with the chords in square brackets —{' '}
-              <code className="rounded bg-slate-100 px-1">A[G]mazing grace</code>. Either is saved
-              as ChordPro.
-            </p>
-            <textarea
-              className="input font-mono"
-              rows={20}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              aria-label="Chord chart source"
-            />
-            <ErrorNotice error={saveChart.error} />
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setEditing(false)}>
-                Cancel
-              </Button>
-              <Button loading={saveChart.isPending} onClick={() => saveChart.mutate()}>
-                Save chart
-              </Button>
-            </div>
-          </div>
-        ) : arrangement.chord_chart ? (
+        {arrangement.chord_chart ? (
           <ChordChart
             chordpro={arrangement.chord_chart}
             sourceKey={sourceKey}
@@ -171,12 +160,12 @@ export const ArrangementPanel = ({
         ) : (
           <EmptyState
             title="No chord chart yet"
-            description="Paste one in ChordPro format to transpose it and read it as numbers or numerals."
+            description="Write one in the chart editor to transpose it, print it, and read it as numbers or numerals."
             action={
               canManage ? (
-                <Button variant="secondary" onClick={startEditing}>
-                  Add chart
-                </Button>
+                <Link to={chartEditorPath}>
+                  <Button variant="secondary">Add chart</Button>
+                </Link>
               ) : undefined
             }
           />

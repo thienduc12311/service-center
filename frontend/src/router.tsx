@@ -14,6 +14,7 @@ import { PlanDetailPage } from './pages/PlanDetailPage';
 import { ServiceTypeWizardPage } from './pages/ServiceTypeWizardPage';
 import { SongsPage } from './pages/SongsPage';
 import { SongDetailPage } from './pages/SongDetailPage';
+import { ChartEditorPage } from './pages/ChartEditorPage';
 import { TeamsPage } from './pages/TeamsPage';
 import { PeoplePage } from './pages/PeoplePage';
 import { PersonPage } from './pages/PersonPage';
@@ -46,6 +47,12 @@ export const router = createBrowserRouter([
     element: <RequireAuth />,
     children: [
       { path: '/welcome', element: <OnboardingPage /> },
+      // The chart editor is its own full-height workspace: the split screen
+      // needs the whole viewport, so it sits outside the app shell.
+      {
+        path: '/songs/:songId/arrangements/:arrangementId/chart',
+        element: <ChartEditorPage />,
+      },
       {
         element: <AppShell />,
         children: [
