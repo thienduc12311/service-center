@@ -3,12 +3,17 @@
 --
 -- Charts are now typed or pasted directly into an arrangement, so the import
 -- pipeline (upload → vision model → accept) and the daily AI quota that
--- rationed it are gone. This drops their tables, functions and storage bucket.
+-- rationed it are gone. This drops their tables and functions and removes the
+-- obsolete bucket from the application-facing storage policies.
 --
--- DESTRUCTIVE: every `chord_sheet_imports` row and every object in the
--- `chord-sheets` bucket is deleted. Songs and arrangements created from past
--- imports are untouched — they are ordinary rows in `songs`/`arrangements`
--- and only referenced *from* the import table, never the other way round.
+-- DESTRUCTIVE: every `chord_sheet_imports` row is deleted. Songs and
+-- arrangements created from past imports are untouched — they are ordinary
+-- rows in `songs`/`arrangements` and only referenced *from* the import table,
+-- never the other way round.
+--
+-- Supabase requires objects and buckets to be deleted through the Storage API;
+-- direct SQL deletion only removes metadata and is rejected on hosted projects.
+-- Empty and delete the `chord-sheets` bucket separately after this migration.
 -- ============================================================================
 
 drop table if exists public.chord_sheet_imports;
@@ -49,6 +54,3 @@ create policy "org managers delete attachments" on storage.objects
     bucket_id = 'attachments'
     and public.can_manage_org(((storage.foldername(name))[1])::uuid)
   );
-
-delete from storage.objects where bucket_id = 'chord-sheets';
-delete from storage.buckets where id = 'chord-sheets';
