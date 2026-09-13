@@ -5,12 +5,14 @@ import {
   createArrangementSchema,
   createSongSchema,
   listSongsQuerySchema,
+  songScheduleQuerySchema,
   updateArrangementSchema,
   updateSongSchema,
   type ChartQuery,
   type ListSongsQuery,
   type Paginated,
   type SongListItem,
+  type SongScheduleQuery,
   type SongWithArrangements,
 } from '@service-center/shared';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
@@ -22,6 +24,7 @@ import {
   attachLastScheduled,
   createSongWithArrangement,
   loadArrangementChart,
+  loadSongSchedule,
 } from '../services/songs.js';
 
 export const songsRouter: Router = Router();
@@ -67,6 +70,17 @@ songsRouter.get('/:id', async (req, res) => {
   );
   if (!song) throw HttpError.notFound('Song not found');
   res.json(song);
+});
+
+/** The services this song was scheduled in — the song page's Schedule panel. */
+songsRouter.get('/:id/schedule', validateQuery(songScheduleQuerySchema), async (req, res) => {
+  const schedule = await loadSongSchedule(
+    req.db,
+    param(req, 'id'),
+    req.orgId,
+    parsedQuery<SongScheduleQuery>(res),
+  );
+  res.json(schedule);
 });
 
 songsRouter.post('/', requireManager, validateBody(createSongSchema), async (req, res) => {

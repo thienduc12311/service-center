@@ -39,6 +39,7 @@ import type {
   ServiceTypeSetupResult,
   SongChart,
   SongListItem,
+  SongScheduleEntry,
   SongWithArrangements,
   SongbookDetail,
   TeamWithPositions,
@@ -49,6 +50,7 @@ import type {
   ChartQuery,
   CreateArrangementInput,
   CreateSongInput,
+  SongScheduleQuery,
   UpdateArrangementInput,
   UpdateSongInput,
 } from '../schemas/song.js';
@@ -233,6 +235,12 @@ export class ServiceCenterApi {
   updateSong = (id: string, body: UpdateSongInput) =>
     this.request<SongRow>('PATCH', `/api/v1/songs/${id}`, body);
   deleteSong = (id: string) => this.request<void>('DELETE', `/api/v1/songs/${id}`);
+  /** The most recent services the song was scheduled in, newest first. */
+  getSongSchedule = (id: string, query?: Partial<SongScheduleQuery>) =>
+    this.request<SongScheduleEntry[]>('GET', `/api/v1/songs/${id}/schedule`, undefined, {
+      limit: query?.limit,
+      arrangement_id: query?.arrangement_id,
+    });
   createArrangement = (songId: string, body: CreateArrangementInput) =>
     this.request<ArrangementRow>('POST', `/api/v1/songs/${songId}/arrangements`, body);
   updateArrangement = (id: string, body: UpdateArrangementInput) =>

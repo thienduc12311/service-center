@@ -4,6 +4,8 @@ import {
   type CreateSongInput,
   type SongChart,
   type SongListItem,
+  type SongScheduleEntry,
+  type SongScheduleQuery,
   type SongWithArrangements,
 } from '@service-center/shared';
 import { raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
@@ -96,6 +98,73 @@ export const attachLastScheduled = async (
   }
 
   return songs.map((song) => ({ ...song, last_scheduled_at: latest.get(song.id) ?? null }));
+};
+
+/**
+ * One plan the song appears in, with the matching `plan_items` rows embedded.
+ * `!inner` plus the `song_id` filter narrows `items` to this song only, so the
+ * array holds every slot the song fills in that service — usually exactly one.
+ */
+interface ScheduledPlanRow {
+  id: string;
+  title: string;
+  service_date: string;
+  service_type: { name: string } | null;
+  items: Array<{
+    arrangement_id: string | null;
+    key_override: string | null;
+    arrangement: { id: string; name: string; song_key: string | null } | null;
+  }>;
+}
+
+const SONG_SCHEDULE_SELECT =
+  'id, title, service_date,' +
+  ' service_type:service_types(name),' +
+  ' items:plan_items!inner(arrangement_id, key_override, arrangement:arrangements(id, name, song_key))';
+
+const mapScheduledPlanRowToEntry = (row: ScheduledPlanRow): SongScheduleEntry => {
+  // A song listed twice in one service is still one line of history, so the
+  // first slot is the one that names the arrangement and key.
+  const item = row.items[0];
+
+  return {
+    plan_id: row.id,
+    plan_title: row.title,
+    service_date: row.service_date,
+    service_type_name: row.service_type?.name ?? null,
+    arrangement_id: item?.arrangement?.id ?? item?.arrangement_id ?? null,
+    arrangement_name: item?.arrangement?.name ?? null,
+    // The plan's own key wins: it is what was actually played that day.
+    key: item?.key_override ?? item?.arrangement?.song_key ?? null,
+  };
+};
+
+/**
+ * The services a song was scheduled in, most recent first.
+ *
+ * Queried from `plans` rather than `plan_items` so the `limit` counts services
+ * — "the last 3 times we played it" — and so the ordering runs on the indexed
+ * `plans (organization_id, service_date)` rather than on a joined column.
+ */
+export const loadSongSchedule = async (
+  db: Db,
+  songId: string,
+  organizationId: string,
+  { limit, arrangement_id }: SongScheduleQuery,
+): Promise<SongScheduleEntry[]> => {
+  let query = raw(db)
+    .from('plans')
+    .select(SONG_SCHEDULE_SELECT)
+    .eq('organization_id', organizationId)
+    .eq('items.song_id', songId);
+
+  if (arrangement_id) query = query.eq('items.arrangement_id', arrangement_id);
+
+  const rows = (await unwrap(
+    query.order('service_date', { ascending: false }).limit(limit),
+  )) as ScheduledPlanRow[] | null;
+
+  return (rows ?? []).map(mapScheduledPlanRowToEntry);
 };
 
 /**

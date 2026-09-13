@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { musicalKey, nonEmpty, paginationSchema } from './common.js';
+import { musicalKey, nonEmpty, paginationSchema, uuid } from './common.js';
 
 /** One entry in any of the song's tag vocabularies (themes, types). */
 export const songTag = nonEmpty.max(40);
@@ -26,6 +26,7 @@ export const songFieldsSchema = z.object({
   author: z.string().trim().max(200).nullish(),
   ccli_number: z.string().trim().max(40).nullish(),
   copyright: z.string().trim().max(300).nullish(),
+  administration: z.string().trim().max(300).nullish(),
   default_key: musicalKey.nullish(),
   default_bpm: z.number().int().min(20).max(300).nullish(),
   meter: z.string().trim().max(20).nullish(),
@@ -52,6 +53,17 @@ export const listSongsQuerySchema = paginationSchema.extend({
   sort: z.enum(['title', 'recent']).default('title'),
 });
 
+/**
+ * How far back the Schedule panel looks. Counted in plans rather than days so
+ * "the last 3 times we played it" reads the same for a weekly song and one
+ * that only comes out at Christmas.
+ */
+export const songScheduleQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(3),
+  /** Narrows the history to the arrangement that was actually scheduled. */
+  arrangement_id: uuid.optional(),
+});
+
 export const chartNotationSchema = z.enum(['chords', 'numbers', 'numerals', 'lyrics']);
 
 export const chartQuerySchema = z.object({
@@ -66,4 +78,5 @@ export type SongFields = z.infer<typeof songFieldsSchema>;
 export type CreateArrangementInput = z.infer<typeof createArrangementSchema>;
 export type UpdateArrangementInput = z.infer<typeof updateArrangementSchema>;
 export type ListSongsQuery = z.infer<typeof listSongsQuerySchema>;
+export type SongScheduleQuery = z.infer<typeof songScheduleQuerySchema>;
 export type ChartQuery = z.infer<typeof chartQuerySchema>;
