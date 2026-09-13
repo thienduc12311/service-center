@@ -116,18 +116,28 @@ export const Loading = ({ label = 'Loading…' }: { label?: string }) => (
   </div>
 );
 
+/** How wide the dialog is. `wide` is for the two-pane dialogs, e.g. Sequence. */
+type ModalSize = 'default' | 'wide';
+
+const MODAL_WIDTHS: Record<ModalSize, string> = {
+  default: 'max-w-lg',
+  wide: 'max-w-3xl',
+};
+
 export const Modal = ({
   open,
   title,
   onClose,
   children,
   footer,
+  size = 'default',
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  size?: ModalSize;
 }) => {
   if (!open) return null;
   return (
@@ -137,7 +147,7 @@ export const Modal = ({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="card relative z-10 max-h-[85vh] w-full max-w-lg overflow-y-auto p-6"
+        className={`card relative z-10 max-h-[85vh] w-full overflow-y-auto p-6 ${MODAL_WIDTHS[size]}`}
       >
         <h2 className="mb-4 text-lg font-semibold text-slate-900">{title}</h2>
         {children}

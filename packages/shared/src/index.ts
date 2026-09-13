@@ -4,4 +4,5 @@ export * from './schemas/index.js';
 export * from './lib/constants.js';
 export * from './lib/dates.js';
 export * from './lib/chordpro.js';
+export * from './lib/chart-html.js';
 export * from './lib/api-client.js';

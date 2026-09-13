@@ -34,6 +34,8 @@ export type NotificationType =
   | 'assignment_response'
   | 'plan_updated';
 export type DevicePlatform = 'ios' | 'android' | 'web';
+/** Column layout a printed chord chart uses. Constrained in the database too. */
+export type ChartColumns = 1 | 2;
 
 export type OrganizationRow = {
   id: string;
@@ -220,6 +222,12 @@ export type ArrangementRow = {
   sequence: string[];
   chord_chart: string | null;
   chord_chart_format: string;
+  /** Columns the printed chart is laid out in: 1 or 2. */
+  chart_columns: ChartColumns;
+  /** Null on any of these means "use the chart template's default". */
+  chart_font: string | null;
+  chart_font_size: number | null;
+  chart_chord_color: string | null;
   is_default: boolean;
   created_at: string;
   updated_at: string;

@@ -4,6 +4,15 @@ import { musicalKey, nonEmpty, paginationSchema, uuid } from './common.js';
 /** One entry in any of the song's tag vocabularies (themes, types). */
 export const songTag = nonEmpty.max(40);
 
+/** Column layout of the printed chart; mirrored by a database check constraint. */
+export const chartColumnsSchema = z.union([z.literal(1), z.literal(2)]);
+
+/** A CSS hex colour, the only form the chart template can print directly. */
+export const hexColor = z
+  .string()
+  .trim()
+  .regex(/^#[0-9a-fA-F]{6}$/, 'Expected a hex colour such as #1d4ed8');
+
 export const createArrangementSchema = z.object({
   name: nonEmpty.max(120).default('Default Arrangement'),
   song_key: musicalKey.nullish(),
@@ -15,6 +24,15 @@ export const createArrangementSchema = z.object({
   sequence: z.array(nonEmpty.max(20)).max(60).default([]),
   chord_chart: z.string().max(100_000).nullish(),
   chord_chart_format: z.enum(['chordpro', 'text']).default('chordpro'),
+  /**
+   * How the chart is laid out when it is rendered to HTML or printed. Left out
+   * entirely, the database default (one column) stands; null on the other three
+   * means "use the chart template's default".
+   */
+  chart_columns: chartColumnsSchema.optional(),
+  chart_font: z.string().trim().max(120).nullish(),
+  chart_font_size: z.number().int().min(6).max(48).nullish(),
+  chart_chord_color: hexColor.nullish(),
   is_default: z.boolean().default(false),
 });
 
