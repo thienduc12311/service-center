@@ -37,6 +37,36 @@ export const KeyGrid = ({ quality, value, onSelect }: KeyGridProps) => (
   </div>
 );
 
+export interface KeyQualityTabsProps {
+  value: KeyQuality;
+  onChange: (quality: KeyQuality) => void;
+}
+
+/**
+ * The Major / Minor switch that decides which twelve keys the grid below it
+ * offers. Shared by the key field and the chart's key picker so the two can
+ * never drift apart.
+ */
+export const KeyQualityTabs = ({ value, onChange }: KeyQualityTabsProps) => (
+  <div className="flex gap-1 p-2">
+    {(['major', 'minor'] as const).map((option) => (
+      <button
+        key={option}
+        type="button"
+        onClick={() => onChange(option)}
+        aria-pressed={value === option}
+        className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition ${
+          value === option
+            ? 'bg-brand-600 text-white'
+            : 'text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
+        }`}
+      >
+        {option}
+      </button>
+    ))}
+  </div>
+);
+
 export interface KeySelectProps {
   value: string | null;
   onChange: (key: string | null) => void;
@@ -105,23 +135,7 @@ export const KeySelect = ({
               </button>
             )}
 
-            <div className="flex gap-1 p-2">
-              {(['major', 'minor'] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setQuality(option)}
-                  aria-pressed={quality === option}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition ${
-                    quality === option
-                      ? 'bg-brand-600 text-white'
-                      : 'text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
+            <KeyQualityTabs value={quality} onChange={setQuality} />
 
             <KeyGrid
               quality={quality}
