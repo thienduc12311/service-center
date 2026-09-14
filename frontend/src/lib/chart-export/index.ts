@@ -37,6 +37,19 @@ export const openChartInNewTab = (chart: ChartDocument): boolean => {
 };
 
 /**
+ * Starts fetching the PDF writer without waiting for it.
+ *
+ * The writer is a few hundred kilobytes and is wanted the moment somebody
+ * reaches a chart, not the moment the app opens — so a screen with a Download
+ * button calls this as it mounts and the click finds the chunk already there.
+ */
+export const prefetchChartPdfWriter = (): void => {
+  // A prefetch that fails is not an error: the export will import it again
+  // and report the failure then, when there is something to report it to.
+  void import('./pdf').catch(() => undefined);
+};
+
+/**
  * Builds the chart's PDF and hands it to the browser as a download.
  *
  * The filename is the chart's own heading — `Nothing Is Impossible [C].pdf` —
