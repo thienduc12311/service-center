@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { canManage, isAdmin, type CurrentUser, type OrgRole } from '@service-center/shared';
@@ -26,19 +34,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(getStoredOrganizationId());
   const [loading, setLoading] = useState(true);
+  /** Whether a user has loaded at least once, so revalidation can stay quiet. */
+  const loadedOnce = useRef(false);
+
+  /**
+   * Supabase re-emits `SIGNED_IN` every time the tab becomes visible again,
+   * handing back a fresh object that carries the same token. Storing that as a
+   * new session would restart the load below and throw the whole authenticated
+   * tree back to the sign-in spinner, so only a genuine change of token or
+   * signed-in user counts as a new session.
+   */
+  const applySession = useCallback((next: Session | null) => {
+    setSession((current) =>
+      current?.access_token === next?.access_token && current?.user.id === next?.user.id
+        ? current
+        : next,
+    );
+  }, []);
 
   useEffect(() => {
     let active = true;
 
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      setSession(data.session);
+      applySession(data.session);
       if (!data.session) setLoading(false);
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next);
+      applySession(next);
       if (!next) {
+        loadedOnce.current = false;
         setUser(null);
         setOrganizationId(null);
         setStoredOrganizationId(null);
@@ -50,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       active = false;
       subscription.subscription.unsubscribe();
     };
-  }, []);
+  }, [applySession]);
 
   const loadUser = useCallback(async () => {
     const current = await api.me();
@@ -70,8 +96,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!session) return;
     let active = true;
 
-    setLoading(true);
+    // Only the first load blocks the UI. When the token is later refreshed the
+    // user is revalidated in the background, so a mid-session refresh does not
+    // blank the page the person is working on.
+    if (!loadedOnce.current) setLoading(true);
+
     loadUser()
+      .then(() => {
+        loadedOnce.current = true;
+      })
       .catch((error) => {
         console.error('Could not load the current user', error);
       })
