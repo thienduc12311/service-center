@@ -3,9 +3,10 @@
  *
  * One function renders the whole document, and everything that shows a chart
  * outside the app's own UI goes through it: the live preview in the editor, the
- * "open in a new tab" view, and the PDF (which is this same HTML sent to the
- * browser's print pipeline). Keeping a single template is what makes the PDF
- * match the preview — there is only ever one layout to get right.
+ * "open in a new tab" view, and the PDF (which the client writes by measuring
+ * this same HTML — see `chart-export/layout.ts`). Keeping a single template is
+ * what makes the PDF match the preview — there is only ever one layout to get
+ * right.
  *
  * The document lays itself out as a stack of real, fixed-size paper pages and
  * flows the chart across them, so the preview shows the same page breaks,
@@ -97,6 +98,107 @@ const byline = ({ arrangementName, author }: ChartDocument): string | null => {
   return parts.length ? parts.join(' ') : null;
 };
 
+/** One line of a chart: chords on top, the words they sit over underneath. */
+export interface ChartLineRows {
+  chordRow: string;
+  lyricRow: string;
+}
+
+/**
+ * The width of one character, as a fraction of the font size.
+ *
+ * The two monospace options advance by 0.6em (Courier New by a whisker more),
+ * and the proportional ones average well under it, so this over-estimates on
+ * purpose: a line breaks a shade early rather than a shade late, and the
+ * stylesheet never has to wrap one itself.
+ */
+const CHARACTER_ADVANCE_RATIO = 0.61;
+
+/** Below this a "column" is too narrow to lay a chart out in at all. */
+const MIN_COLUMN_CHARACTERS = 8;
+
+/**
+ * How many characters of the chart's font fit across one of its columns.
+ *
+ * This is what the chart is wrapped to. Measuring it from the page rather than
+ * leaving it to CSS is the whole point: see `wrapChartLine`.
+ */
+export const chartColumnCharacters = (formatting: ChartFormatting): number => {
+  const size = formatting.fontSize ?? DEFAULT_CHART_FONT_SIZE;
+  const { widthIn, marginIn, columnGapIn } = CHART_PAGE;
+  const { columns } = formatting;
+
+  const contentIn = widthIn - marginIn * 2 - columnGapIn * (columns - 1);
+  const columnPt = (contentIn / columns) * 72;
+
+  return Math.max(
+    MIN_COLUMN_CHARACTERS,
+    Math.floor(columnPt / (size * CHARACTER_ADVANCE_RATIO)),
+  );
+};
+
+const leadingSpaces = (row: string): number => row.length - row.trimStart().length;
+
+/** True when breaking here would cut a chord name in half. */
+const splitsAChord = (chordRow: string, at: number): boolean =>
+  at < chordRow.length && chordRow[at - 1] !== ' ' && chordRow[at] !== ' ';
+
+/** True when the words allow a break here — that is, one of them ends here. */
+const endsAWord = (lyricRow: string, at: number): boolean =>
+  at >= lyricRow.length || lyricRow[at - 1] === ' ' || lyricRow[at] === ' ';
+
+/** The last column at or before the limit that both rows can be cut at. */
+const breakColumn = (line: ChartLineRows, limit: number): number => {
+  const longest = Math.max(line.chordRow.length, line.lyricRow.length);
+
+  for (let at = Math.min(limit, longest); at > 0; at -= 1) {
+    if (!splitsAChord(line.chordRow, at) && endsAWord(line.lyricRow, at)) return at;
+  }
+
+  // One word wider than the whole column. Cutting it is the lesser evil.
+  return limit;
+};
+
+/**
+ * Breaks a line too wide for its column into as many lines as it needs.
+ *
+ * The chord row and the lyric row are two separate boxes on the page, and left
+ * to itself CSS wraps each of them where *it* happens to run out of room. The
+ * two break in different places, the chords slide out from over their
+ * syllables, and a chord that sits past the end of the words drops onto a line
+ * of its own. So the break is made here instead, at one column through both
+ * rows at once, which is the only way the chords can stay put.
+ *
+ * The column chosen ends a word and never lands inside a chord name, and each
+ * continuation gives up the indentation it inherited from the middle of the
+ * line it was cut out of.
+ */
+export const wrapChartLine = (line: ChartLineRows, maxCharacters: number): ChartLineRows[] => {
+  const wrapped: ChartLineRows[] = [];
+  let { chordRow, lyricRow } = line;
+
+  const overflows = (): boolean =>
+    Math.max(chordRow.trimEnd().length, lyricRow.trimEnd().length) > maxCharacters;
+
+  while (overflows()) {
+    const at = breakColumn({ chordRow, lyricRow }, maxCharacters);
+    wrapped.push({ chordRow: chordRow.slice(0, at).trimEnd(), lyricRow: lyricRow.slice(0, at).trimEnd() });
+
+    chordRow = chordRow.slice(at);
+    lyricRow = lyricRow.slice(at);
+
+    // Shared indentation only: a chord standing over a word that has moved to
+    // the front of the line has to move with it, and no further.
+    const indents = [chordRow, lyricRow].filter((row) => row.trim()).map(leadingSpaces);
+    const indent = indents.length ? Math.min(...indents) : 0;
+    chordRow = chordRow.slice(indent);
+    lyricRow = lyricRow.slice(indent);
+  }
+
+  wrapped.push({ chordRow: chordRow.trimEnd(), lyricRow: lyricRow.trimEnd() });
+  return wrapped;
+};
+
 /**
  * A section becomes a heading plus its lines, each line a chord row above a
  * lyric row. Column alignment is the whole point of a chart, so both rows are
@@ -105,13 +207,13 @@ const byline = ({ arrangementName, author }: ChartDocument): string | null => {
  * The two rows of a line are wrapped together so that pagination can move a
  * line to the next column without ever stranding chords away from their words.
  */
-const renderSection = (section: ChordProSection): string => {
+const renderSection = (section: ChordProSection, maxCharacters: number): string => {
   const heading =
     section.label ?? (section.type === 'none' ? null : section.type.replace(/_/g, ' '));
 
   const lines = section.lines
-    .map((line) => {
-      const { chordRow, lyricRow } = renderLineAsText(line);
+    .flatMap((line) => wrapChartLine(renderLineAsText(line), maxCharacters))
+    .map(({ chordRow, lyricRow }) => {
       const chords = chordRow ? `<div class="chords">${escapeHtml(chordRow)}</div>` : '';
       // A blank lyric row still occupies a line: it is the gap the writer typed.
       return `<div class="row">${chords}<div class="lyrics">${escapeHtml(lyricRow) || '&nbsp;'}</div></div>`;
@@ -442,8 +544,8 @@ const paginationScript = (columns: number): string => `
 /**
  * Renders one chart as a complete, standalone HTML document.
  *
- * The `<title>` doubles as the filename the browser suggests when the document
- * is printed to PDF, so it carries the same `Title [Key]` the heading shows.
+ * The `<title>` carries the same `Title [Key]` the heading shows: it names the
+ * tab the chart is opened in, and the file it is exported as.
  */
 export const renderChartHtml = (doc: ChartDocument): string => {
   const song = parseChordPro(doc.chordpro);
@@ -451,9 +553,10 @@ export const renderChartHtml = (doc: ChartDocument): string => {
   const credit = byline(doc);
   const sequence = doc.sequence.filter(Boolean).join(', ');
 
+  const maxCharacters = chartColumnCharacters(doc.formatting);
   const body =
     song.sections.length > 0
-      ? song.sections.map(renderSection).join('\n      ')
+      ? song.sections.map((section) => renderSection(section, maxCharacters)).join('\n      ')
       : '<section class="chart-section"><div class="row"><div class="lyrics">&nbsp;</div></div></section>';
 
   return `<!doctype html>

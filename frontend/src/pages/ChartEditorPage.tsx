@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { renderChartHtml, type ChartFormatting } from '@service-center/shared';
+import { renderChartHtml, type ChartDocument, type ChartFormatting } from '@service-center/shared';
 import { api } from '../lib/api';
-import { openChartInNewTab, printChart } from '../lib/chart-print';
+import { openChartInNewTab } from '../lib/chart-export';
+import { useChartPdfExport } from '../hooks/chart-export';
 import { useInvalidateOrg, useSong } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, EmptyState, ErrorNotice, Loading } from '../components/ui';
@@ -29,8 +30,8 @@ type ChartDialog = 'sequence' | 'formatting';
  * as on the right.
  *
  * Edit → live preview → choose a layout → download. The preview, the new tab
- * and the PDF are all the same HTML from the shared template, so the page the
- * band gets is the page that was on screen.
+ * and the PDF are all the same document from the shared template, so the page
+ * the band gets is the page that was on screen.
  */
 export const ChartEditorPage = () => {
   const { songId, arrangementId } = useParams<{ songId: string; arrangementId: string }>();
@@ -38,6 +39,7 @@ export const ChartEditorPage = () => {
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
   const song = useSong(songId);
+  const pdf = useChartPdfExport();
 
   const arrangement = song.data?.arrangements.find((candidate) => candidate.id === arrangementId);
 
@@ -58,10 +60,14 @@ export const ChartEditorPage = () => {
     setForm((current) => current ?? values);
   }, [song.data, arrangement]);
 
-  const html = useMemo(() => {
-    if (!form || !song.data) return '';
-    return renderChartHtml(chartDocumentFrom({ values: form, song: song.data, view }));
+  // The document both the preview and the PDF are made of. Held as the
+  // document rather than as its HTML so the export can name the file after it.
+  const chart = useMemo<ChartDocument | null>(() => {
+    if (!form || !song.data) return null;
+    return chartDocumentFrom({ values: form, song: song.data, view });
   }, [form, song.data, view]);
+
+  const html = useMemo(() => (chart ? renderChartHtml(chart) : ''), [chart]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -103,7 +109,9 @@ export const ChartEditorPage = () => {
     navigate(`/songs/${songId}`);
   };
 
-  const openInTab = () => setPopupBlocked(!openChartInNewTab(html));
+  const openInTab = () => {
+    if (chart) setPopupBlocked(!openChartInNewTab(chart));
+  };
 
   return (
     <div className="flex h-dvh flex-col bg-slate-100 dark:bg-slate-950">
@@ -131,7 +139,11 @@ export const ChartEditorPage = () => {
           <Button variant="secondary" onClick={openInTab}>
             Open in new tab
           </Button>
-          <Button variant="secondary" onClick={() => printChart(html)}>
+          <Button
+            variant="secondary"
+            onClick={() => chart && pdf.download(chart)}
+            loading={pdf.isExporting}
+          >
             Download PDF
           </Button>
           {canManage && (
@@ -146,9 +158,10 @@ export const ChartEditorPage = () => {
         </div>
       </header>
 
-      {(save.error || popupBlocked) && (
-        <div className="px-4 pt-3">
+      {(save.error || pdf.error || popupBlocked) && (
+        <div className="space-y-2 px-4 pt-3">
           <ErrorNotice error={save.error} />
+          <ErrorNotice error={pdf.error} />
           {popupBlocked && (
             <div role="alert" className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
               Your browser blocked the new tab. Allow pop-ups for this site, or use Download PDF.

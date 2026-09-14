@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_CHART_FORMATTING,
+  chartColumnCharacters,
   chartDocumentTitle,
   chartFormattingFromRow,
   escapeHtml,
   renderChartHtml,
+  wrapChartLine,
   type ChartDocument,
 } from './chart-html.js';
 
@@ -174,5 +176,88 @@ describe('chartFormattingFromRow', () => {
 
   it('falls back to the defaults for a row that was never formatted', () => {
     expect(chartFormattingFromRow({})).toEqual(DEFAULT_CHART_FORMATTING);
+  });
+});
+
+describe('chartColumnCharacters', () => {
+  it('fits a full-width line across a single column', () => {
+    expect(chartColumnCharacters(DEFAULT_CHART_FORMATTING)).toBe(73);
+  });
+
+  it('halves the line when the chart is set in two columns', () => {
+    expect(chartColumnCharacters({ ...DEFAULT_CHART_FORMATTING, columns: 2 })).toBe(35);
+  });
+
+  it('fits fewer characters as the type gets bigger', () => {
+    const small = chartColumnCharacters({ ...DEFAULT_CHART_FORMATTING, fontSize: 8 });
+    const large = chartColumnCharacters({ ...DEFAULT_CHART_FORMATTING, fontSize: 20 });
+    expect(small).toBeGreaterThan(large);
+  });
+});
+
+describe('wrapChartLine', () => {
+  it('leaves a line that fits alone', () => {
+    const line = { chordRow: 'G      C', lyricRow: 'Amazing grace' };
+    expect(wrapChartLine(line, 40)).toEqual([line]);
+  });
+
+  it('breaks the chords at the same column as the words', () => {
+    // C stands two columns before "grace", D two before "sweet".
+    const chordRow = 'G       C           D';
+    const lyricRow = 'Amazing grace how sweet';
+
+    expect(wrapChartLine({ chordRow, lyricRow }, 14)).toEqual([
+      { chordRow: 'G       C', lyricRow: 'Amazing grace' },
+      { chordRow: '      D', lyricRow: 'how sweet' },
+    ]);
+  });
+
+  it('never cuts a chord name in half', () => {
+    const chordRow = '             Bmaj7';
+    const lyricRow: string = 'Amazing grace how sweet the sound';
+
+    for (const part of wrapChartLine({ chordRow, lyricRow }, 16)) {
+      expect(part.chordRow).not.toMatch(/\bBma?j?$/);
+    }
+  });
+
+  it('keeps a chord over its own syllable once the line is broken', () => {
+    //                             the chord sits over "sweet"
+    const chordRow = '                  D';
+    const lyricRow = 'Amazing grace how sweet';
+
+    const [, continuation] = wrapChartLine({ chordRow, lyricRow }, 14);
+    expect(continuation?.lyricRow).toBe('how sweet');
+    expect(continuation?.chordRow.indexOf('D')).toBe(continuation?.lyricRow.indexOf('sweet'));
+  });
+
+  it('carries a chord that sits past the end of the words onto the next line', () => {
+    const chordRow = '                        Em';
+    const lyricRow = 'Amazing grace how sweet';
+
+    expect(wrapChartLine({ chordRow, lyricRow }, 23)).toEqual([
+      { chordRow: '', lyricRow: 'Amazing grace how sweet' },
+      { chordRow: 'Em', lyricRow: '' },
+    ]);
+  });
+
+  it('breaks a word wider than the column rather than running off the page', () => {
+    const parts = wrapChartLine({ chordRow: '', lyricRow: 'Supercalifragilistic' }, 8);
+
+    expect(parts.map((part) => part.lyricRow)).toEqual(['Supercal', 'ifragili', 'stic']);
+  });
+
+  it('gives every line it produces to the chart', () => {
+    const html = renderChartHtml(
+      doc({
+        chordpro:
+          '[G]Amazing grace how sweet the sound that saved a wretch like me, I [C]once was lost',
+        formatting: { ...DEFAULT_CHART_FORMATTING, columns: 2 },
+      }),
+    );
+
+    // Two columns at 12pt hold 35 characters, so this line cannot be one row.
+    expect(html.match(/class="row"/g)?.length).toBeGreaterThan(1);
+    expect(html).not.toContain('sound that saved a wretch like me');
   });
 });
