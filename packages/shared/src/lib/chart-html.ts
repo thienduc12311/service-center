@@ -3,9 +3,10 @@
  *
  * One function renders the whole document, and everything that shows a chart
  * outside the app's own UI goes through it: the live preview in the editor, the
- * "open in a new tab" view, and the PDF (which is this same HTML sent to the
- * browser's print pipeline). Keeping a single template is what makes the PDF
- * match the preview — there is only ever one layout to get right.
+ * "open in a new tab" view, and the PDF (which the client writes by measuring
+ * this same HTML — see `chart-export/layout.ts`). Keeping a single template is
+ * what makes the PDF match the preview — there is only ever one layout to get
+ * right.
  *
  * The document lays itself out as a stack of real, fixed-size paper pages and
  * flows the chart across them, so the preview shows the same page breaks,
@@ -442,8 +443,8 @@ const paginationScript = (columns: number): string => `
 /**
  * Renders one chart as a complete, standalone HTML document.
  *
- * The `<title>` doubles as the filename the browser suggests when the document
- * is printed to PDF, so it carries the same `Title [Key]` the heading shows.
+ * The `<title>` carries the same `Title [Key]` the heading shows: it names the
+ * tab the chart is opened in, and the file it is exported as.
  */
 export const renderChartHtml = (doc: ChartDocument): string => {
   const song = parseChordPro(doc.chordpro);

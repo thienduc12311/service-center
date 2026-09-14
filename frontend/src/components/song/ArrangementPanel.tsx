@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import {
   chartFormattingFromRow,
   formatDuration,
-  renderChartHtml,
   renderChordProChart,
   type ArrangementRow,
+  type ChartDocument,
   type SongWithArrangements,
 } from '@service-center/shared';
-import { openChartInNewTab, printChart } from '../../lib/chart-print';
-import { Badge, Button, EmptyState } from '../ui';
+import { openChartInNewTab } from '../../lib/chart-export';
+import { useChartPdfExport } from '../../hooks/chart-export';
+import { Badge, Button, EmptyState, ErrorNotice } from '../ui';
 import { ChordChart } from '../ChordChart';
 import { ChartNotationSelect, ORIGINAL_KEY_VIEW, type ChartView } from '../ChartNotationSelect';
 
@@ -32,8 +33,8 @@ const ICON_BUTTON =
 
 /**
  * One arrangement: its tempo and section order, and the chart itself, which
- * can be read in any key or notation here, opened as a printable page, or
- * taken into the chart editor to be rewritten.
+ * can be read in any key or notation here, opened as a standalone page or a
+ * PDF, or taken into the chart editor to be rewritten.
  */
 export const ArrangementPanel = ({
   song,
@@ -43,6 +44,7 @@ export const ArrangementPanel = ({
   onDelete,
 }: ArrangementPanelProps) => {
   const [view, setView] = useState<ChartView>(ORIGINAL_KEY_VIEW);
+  const pdf = useChartPdfExport();
 
   const sourceKey = arrangement.song_key ?? song.default_key ?? null;
   // Ask the shared renderer what this view resolves to, so the readout and the
@@ -55,18 +57,17 @@ export const ArrangementPanel = ({
 
   const chartEditorPath = `/songs/${song.id}/arrangements/${arrangement.id}/chart`;
 
-  /** The printable document, exactly as the chart editor's preview renders it. */
-  const documentHtml = () =>
-    renderChartHtml({
-      title: song.title,
-      key: rendered.key,
-      arrangementName: arrangement.name,
-      author: song.author,
-      sequence: arrangement.sequence,
-      copyright: song.copyright,
-      chordpro: rendered.chordpro,
-      formatting: chartFormattingFromRow(arrangement),
-    });
+  /** The chart's document, exactly as the chart editor's preview renders it. */
+  const chartDocument = (): ChartDocument => ({
+    title: song.title,
+    key: rendered.key,
+    arrangementName: arrangement.name,
+    author: song.author,
+    sequence: arrangement.sequence,
+    copyright: song.copyright,
+    chordpro: rendered.chordpro,
+    formatting: chartFormattingFromRow(arrangement),
+  });
 
   return (
     <div className="space-y-4">
@@ -131,10 +132,14 @@ export const ArrangementPanel = ({
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {arrangement.chord_chart && (
             <>
-              <Button variant="secondary" onClick={() => openChartInNewTab(documentHtml())}>
+              <Button variant="secondary" onClick={() => openChartInNewTab(chartDocument())}>
                 View page
               </Button>
-              <Button variant="secondary" onClick={() => printChart(documentHtml())}>
+              <Button
+                variant="secondary"
+                onClick={() => pdf.download(chartDocument())}
+                loading={pdf.isExporting}
+              >
                 Download PDF
               </Button>
             </>
@@ -149,6 +154,8 @@ export const ArrangementPanel = ({
         </div>
       </div>
 
+      <ErrorNotice error={pdf.error} />
+
       <div className="card p-5">
         {arrangement.chord_chart ? (
           <ChordChart
@@ -160,7 +167,7 @@ export const ArrangementPanel = ({
         ) : (
           <EmptyState
             title="No chord chart yet"
-            description="Write one in the chart editor to transpose it, print it, and read it as numbers or numerals."
+            description="Write one in the chart editor to transpose it, export it, and read it as numbers or numerals."
             action={
               canManage ? (
                 <Link to={chartEditorPath}>
