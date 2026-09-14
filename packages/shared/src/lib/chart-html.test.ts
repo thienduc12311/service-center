@@ -47,9 +47,11 @@ describe('renderChartHtml', () => {
     expect(html.startsWith('<!doctype html>')).toBe(true);
     expect(html).toContain('<title>Nothing Is Impossible [C]</title>');
     expect(html).toContain('<h1 class="chart-title">Nothing Is Impossible [C]</h1>');
-    // No stylesheet, font or script to fetch — the tab and the PDF get the same bytes.
+    // Nothing to fetch — the tab and the PDF get the same bytes. The one
+    // script the document carries is inline, and paginates it.
     expect(html).not.toContain('<link');
-    expect(html).not.toContain('<script');
+    expect(html).not.toContain('src=');
+    expect(html).not.toContain('@import');
   });
 
   it('prints the byline and the sequence under the title', () => {
@@ -89,8 +91,46 @@ describe('renderChartHtml', () => {
       doc({ formatting: { ...DEFAULT_CHART_FORMATTING, columns: 2 } }),
     );
 
-    expect(one).toContain('column-count: 1');
-    expect(two).toContain('column-count: 2');
+    expect(one).toContain('data-columns="1"');
+    expect(two).toContain('data-columns="2"');
+    expect(one).toContain('var COLUMNS = 1;');
+    expect(two).toContain('var COLUMNS = 2;');
+  });
+
+  it('separates two columns by a gap alone, with no rule between them', () => {
+    const two = renderChartHtml(
+      doc({ formatting: { ...DEFAULT_CHART_FORMATTING, columns: 2 } }),
+    );
+
+    expect(two).toContain('gap: 0.35in');
+    expect(two).not.toContain('column-rule');
+  });
+
+  it('lays the chart out on US Letter paper, margins included in the page box', () => {
+    const html = renderChartHtml(doc());
+
+    expect(html).toContain('@page { size: 8.5in 11in; margin: 0; }');
+    expect(html).toContain('width: 8.5in');
+    expect(html).toContain('height: 11in');
+    expect(html).toContain('padding: 0.5in');
+  });
+
+  it('carries what the extra pages need: a continuation header and a page footer', () => {
+    const html = renderChartHtml(doc());
+
+    // The continuation band repeats the song so a later page is identifiable.
+    expect(html).toContain('<h2 class="chart-title-cont">Nothing Is Impossible [C]</h2>');
+    expect(html).toContain('class="page-number"');
+    expect(html).toContain('break-after: page');
+  });
+
+  it('wraps an over-long line instead of letting it leave the page', () => {
+    const html = renderChartHtml(doc());
+
+    expect(html).toContain('white-space: pre-wrap');
+    expect(html).toContain('overflow-wrap: break-word');
+    // The page itself clips anything that somehow still escapes.
+    expect(html).toContain('overflow: hidden');
   });
 
   it('applies the font, size and chord colour it is given', () => {
