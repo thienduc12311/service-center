@@ -7,8 +7,16 @@
  * browser's print pipeline). Keeping a single template is what makes the PDF
  * match the preview — there is only ever one layout to get right.
  *
- * The output is a self-contained HTML document: no external stylesheet, no
- * script, nothing that needs the app to be running to render.
+ * The document lays itself out as a stack of real, fixed-size paper pages and
+ * flows the chart across them, so the preview shows the same page breaks,
+ * columns and continuation headers the PDF will have. On screen the stack is
+ * scaled down with a transform, which is a purely visual scale: nothing
+ * reflows, so a page that is full in the preview is full in print too.
+ *
+ * The output is self-contained: no external stylesheet, no font to fetch and
+ * nothing that needs the app to be running. It does carry one inline script,
+ * which is what does the pagination; without it the chart still renders, just
+ * as a single unbroken column.
  */
 
 import type { ChartColumns } from '../types/database.js';
@@ -35,6 +43,20 @@ export const DEFAULT_CHART_FORMATTING: ChartFormatting = {
   fontSize: null,
   chordColor: null,
 };
+
+/**
+ * The paper every chart is laid out on, in inches. US Letter — the same size
+ * the `@page` rule asks the printer for, so the preview and the PDF agree.
+ *
+ * Inches rather than the 612x792 pt the PDF itself uses: CSS `in` is exact in
+ * both media, whereas 612 CSS px would come out as 6.375in on paper.
+ */
+export const CHART_PAGE = {
+  widthIn: 8.5,
+  heightIn: 11,
+  marginIn: 0.5,
+  columnGapIn: 0.35,
+} as const;
 
 /** Everything the template prints, already resolved into display values. */
 export interface ChartDocument {
@@ -76,9 +98,12 @@ const byline = ({ arrangementName, author }: ChartDocument): string | null => {
 };
 
 /**
- * A section becomes a heading plus its lines, each line as a chord row above a
+ * A section becomes a heading plus its lines, each line a chord row above a
  * lyric row. Column alignment is the whole point of a chart, so both rows are
- * `white-space: pre` in the same monospace font.
+ * the same monospace font and preserve their spacing.
+ *
+ * The two rows of a line are wrapped together so that pagination can move a
+ * line to the next column without ever stranding chords away from their words.
  */
 const renderSection = (section: ChordProSection): string => {
   const heading =
@@ -89,7 +114,7 @@ const renderSection = (section: ChordProSection): string => {
       const { chordRow, lyricRow } = renderLineAsText(line);
       const chords = chordRow ? `<div class="chords">${escapeHtml(chordRow)}</div>` : '';
       // A blank lyric row still occupies a line: it is the gap the writer typed.
-      return `${chords}<div class="lyrics">${escapeHtml(lyricRow) || '&nbsp;'}</div>`;
+      return `<div class="row">${chords}<div class="lyrics">${escapeHtml(lyricRow) || '&nbsp;'}</div></div>`;
     })
     .join('\n        ');
 
@@ -102,16 +127,19 @@ const styles = (formatting: ChartFormatting): string => {
   const font = formatting.fontFamily || DEFAULT_CHART_FONT;
   const size = formatting.fontSize ?? DEFAULT_CHART_FONT_SIZE;
   const chordColor = formatting.chordColor || DEFAULT_CHART_CHORD_COLOR;
+  const { widthIn, heightIn, marginIn, columnGapIn } = CHART_PAGE;
 
   return `
-    @page { size: letter portrait; margin: 0.5in; }
+    /* Margin lives on the page element so one box describes the paper in both
+       media; the sheet the printer produces is the element, edge to edge. */
+    @page { size: ${widthIn}in ${heightIn}in; margin: 0; }
 
     * { box-sizing: border-box; }
 
     html, body {
       margin: 0;
       padding: 0;
-      background: #ffffff;
+      background: #525252;
       color: #000000;
     }
 
@@ -119,14 +147,51 @@ const styles = (formatting: ChartFormatting): string => {
       font-family: ${font};
       font-size: ${size}pt;
       line-height: 1.35;
-      padding: 0.5in;
+      display: flex;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    /* Holds the space the scaled-down stack actually occupies, so the page
+       scrolls by the size it looks, not the size it is laid out at. */
+    .chart-stage { flex: none; }
+
+    .chart-pages {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      /* Keep the stack at its true paper width: the stage around it is sized
+         to the scaled-down result, and a block child would shrink to match. */
+      width: max-content;
+      transform: scale(var(--preview-scale, 1));
+      transform-origin: top left;
+    }
+
+    .page {
+      position: relative;
+      width: ${widthIn}in;
+      height: ${heightIn}in;
+      flex: none;
+      padding: ${marginIn}in;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      /* The last line of defence: nothing leaves the paper. */
+      overflow: hidden;
     }
 
     header.chart-header {
+      flex: none;
       background: #e5e5e5;
       padding: 0.28in 0.3in;
       margin-bottom: 0.22in;
     }
+
+    /* Continuation pages get a slim band with just the song, so it is obvious
+       the page belongs to the chart that started earlier. */
+    header.chart-header-cont { padding: 0.12in 0.3in; }
 
     h1.chart-title {
       font-family: Arial, Helvetica, sans-serif;
@@ -134,6 +199,14 @@ const styles = (formatting: ChartFormatting): string => {
       font-weight: 700;
       margin: 0;
       line-height: 1.15;
+    }
+
+    h2.chart-title-cont {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: ${Math.round(size * 1.1)}pt;
+      font-weight: 700;
+      margin: 0;
+      line-height: 1.2;
     }
 
     p.chart-byline,
@@ -146,19 +219,22 @@ const styles = (formatting: ChartFormatting): string => {
     p.chart-byline { font-size: ${Math.round(size * 0.95)}pt; }
     p.chart-sequence { font-size: ${Math.round(size * 1.35)}pt; }
 
-    main.chart-body {
-      column-count: ${formatting.columns};
-      column-gap: 0.4in;
-      /* A rule between the columns is what keeps a two-column chart readable. */
-      column-rule: ${formatting.columns > 1 ? '1px solid #d4d4d4' : 'none'};
+    /* Columns are flex tracks, not CSS columns: pagination fills them itself,
+       and the space between them is the gap alone — no rule. */
+    .chart-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      gap: ${columnGapIn}in;
+      align-items: stretch;
     }
 
-    .chart-section {
-      /* Never split a section across a column or a page if it fits whole. */
-      break-inside: avoid;
-      page-break-inside: avoid;
-      margin-bottom: 0.14in;
+    .chart-column {
+      flex: 1 1 0;
+      min-width: 0;
     }
+
+    .chart-section { margin-bottom: 0.14in; }
 
     .section-label {
       font-family: Arial, Helvetica, sans-serif;
@@ -169,8 +245,11 @@ const styles = (formatting: ChartFormatting): string => {
       margin: 0 0 0.04in;
     }
 
+    /* Preserved whitespace keeps a chart aligned, but a line wider than its
+       column still wraps rather than running off the page. */
     .chords, .lyrics {
-      white-space: pre;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
       margin: 0;
     }
 
@@ -179,23 +258,186 @@ const styles = (formatting: ChartFormatting): string => {
       color: ${chordColor};
     }
 
-    footer.chart-footer {
-      margin-top: 0.3in;
+    footer.page-footer {
+      flex: none;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.2in;
       padding-top: 0.1in;
-      border-top: 1px solid #e5e5e5;
       font-family: Arial, Helvetica, sans-serif;
       font-size: ${Math.round(size * 0.72)}pt;
-      text-align: center;
       color: #525252;
     }
 
+    .page-copyright { min-width: 0; }
+    .page-number { flex: none; }
+
     @media print {
-      body { padding: 0; }
-      /* The browser's own print dialog adds the page numbers. */
-      footer.chart-footer { border-top: none; }
+      html, body { background: #ffffff; }
+      body { display: block; padding: 0; }
+      .chart-stage { width: auto !important; height: auto !important; }
+      .chart-pages { transform: none; gap: 0; display: block; }
+      .page { box-shadow: none; break-after: page; page-break-after: always; }
+      .page:last-child { break-after: auto; page-break-after: auto; }
     }
   `;
 };
+
+/**
+ * Flows the chart across pages, in the document itself.
+ *
+ * It measures rather than estimates: a block is appended to the column it is
+ * destined for and kept only if the column still fits the page. That is what
+ * lets the preview and the PDF break in the same places — both are this same
+ * DOM, laid out at the same size.
+ */
+const paginationScript = (columns: number): string => `
+(function () {
+  var stage = document.querySelector('.chart-stage');
+  var pages = document.getElementById('chart-pages');
+  var source = document.getElementById('chart-source');
+  var contTemplate = document.getElementById('chart-cont-header');
+  var footerTemplate = document.getElementById('chart-page-footer');
+  if (!stage || !pages || !source || !footerTemplate) return;
+
+  var COLUMNS = ${columns};
+
+  var firstHeader = source.querySelector('header.chart-header');
+  var blocks = [];
+  var child = source.firstElementChild;
+  while (child) {
+    if (child !== firstHeader) blocks.push(child);
+    child = child.nextElementSibling;
+  }
+  source.parentNode.removeChild(source);
+
+  var pageCount = 0;
+  var columnsOnPage = [];
+  var columnIndex = 0;
+  var limit = 0;
+
+  function addPage() {
+    pageCount += 1;
+    var page = document.createElement('article');
+    page.className = 'page';
+
+    var header = pageCount === 1
+      ? firstHeader
+      : (contTemplate ? contTemplate.content.firstElementChild.cloneNode(true) : null);
+    if (header) page.appendChild(header);
+
+    var body = document.createElement('div');
+    body.className = 'chart-body';
+    for (var i = 0; i < COLUMNS; i += 1) {
+      var column = document.createElement('div');
+      column.className = 'chart-column';
+      body.appendChild(column);
+    }
+    page.appendChild(body);
+
+    var footer = footerTemplate.content.firstElementChild.cloneNode(true);
+    var number = footer.querySelector('.page-number');
+    if (number) number.textContent = String(pageCount);
+    page.appendChild(footer);
+
+    pages.appendChild(page);
+    columnsOnPage = [].slice.call(body.querySelectorAll('.chart-column'));
+    columnIndex = 0;
+    limit = body.clientHeight;
+  }
+
+  /** Moves on to the next column, starting a new page after the last one. */
+  function advance() {
+    if (columnIndex + 1 < columnsOnPage.length) columnIndex += 1;
+    else addPage();
+  }
+
+  function overflows(column) {
+    return column.scrollHeight > limit;
+  }
+
+  /**
+   * Spreads one section that is taller than a column across as many as it
+   * needs, breaking between lines and never between a label and its first line.
+   */
+  function splitSection(section) {
+    var parts = [].slice.call(section.childNodes);
+    var shell = section.cloneNode(false);
+    columnsOnPage[columnIndex].appendChild(shell);
+
+    for (var i = 0; i < parts.length; i += 1) {
+      shell.appendChild(parts[i]);
+      if (!overflows(columnsOnPage[columnIndex])) continue;
+
+      shell.removeChild(parts[i]);
+
+      // A single line taller than a whole column: keep it rather than spin.
+      if (!shell.firstChild) {
+        shell.appendChild(parts[i]);
+        continue;
+      }
+
+      // Do not leave a section label stranded at the foot of a column.
+      var orphan = null;
+      if (shell.childNodes.length === 1 && shell.firstChild.nodeName === 'H2') {
+        orphan = shell.firstChild;
+        shell.parentNode.removeChild(shell);
+      }
+
+      advance();
+      shell = section.cloneNode(false);
+      columnsOnPage[columnIndex].appendChild(shell);
+      if (orphan) shell.appendChild(orphan);
+      shell.appendChild(parts[i]);
+    }
+  }
+
+  function place(block) {
+    for (;;) {
+      var column = columnsOnPage[columnIndex];
+      column.appendChild(block);
+      if (!overflows(column)) return;
+
+      column.removeChild(block);
+      if (!column.firstChild) {
+        splitSection(block);
+        return;
+      }
+      advance();
+    }
+  }
+
+  addPage();
+  for (var b = 0; b < blocks.length; b += 1) place(blocks[b]);
+
+  /**
+   * Scales the stack to the width available. A transform, so the layout above
+   * is untouched and the preview stays an honest picture of the paper.
+   */
+  function rescale() {
+    var page = pages.firstElementChild;
+    if (!page) return;
+    var width = page.offsetWidth;
+    var height = pages.scrollHeight;
+    if (!width) return;
+
+    // No room measured yet: the frame has not been laid out (the off-screen
+    // print frame is 0x0, for one). Leave the scale alone rather than compute
+    // a negative one, which would draw the preview mirrored.
+    var room = document.documentElement.clientWidth - 32;
+    if (room <= 0) return;
+    var factor = Math.min(1, room / width);
+
+    document.documentElement.style.setProperty('--preview-scale', String(factor));
+    stage.style.width = width * factor + 'px';
+    stage.style.height = height * factor + 'px';
+  }
+
+  rescale();
+  window.addEventListener('resize', rescale);
+})();
+`;
 
 /**
  * Renders one chart as a complete, standalone HTML document.
@@ -212,7 +454,7 @@ export const renderChartHtml = (doc: ChartDocument): string => {
   const body =
     song.sections.length > 0
       ? song.sections.map(renderSection).join('\n      ')
-      : '<p class="lyrics">&nbsp;</p>';
+      : '<section class="chart-section"><div class="row"><div class="lyrics">&nbsp;</div></div></section>';
 
   return `<!doctype html>
 <html lang="en">
@@ -222,17 +464,22 @@ export const renderChartHtml = (doc: ChartDocument): string => {
     <title>${escapeHtml(heading)}</title>
     <style>${styles(doc.formatting)}</style>
   </head>
-  <body>
-    <header class="chart-header">
-      <h1 class="chart-title">${escapeHtml(heading)}</h1>
-      ${credit ? `<p class="chart-byline">${escapeHtml(credit)}</p>` : ''}
-      ${sequence ? `<p class="chart-sequence">${escapeHtml(sequence)}</p>` : ''}
-    </header>
+  <body data-columns="${doc.formatting.columns}">
+    <div class="chart-stage"><div id="chart-pages" class="chart-pages"></div></div>
 
-    <main class="chart-body">
+    <template id="chart-cont-header"><header class="chart-header chart-header-cont"><h2 class="chart-title-cont">${escapeHtml(heading)}</h2></header></template>
+    <template id="chart-page-footer"><footer class="page-footer"><span class="page-copyright">${doc.copyright ? escapeHtml(doc.copyright) : ''}</span><span class="page-number"></span></footer></template>
+
+    <div id="chart-source">
+      <header class="chart-header">
+        <h1 class="chart-title">${escapeHtml(heading)}</h1>
+        ${credit ? `<p class="chart-byline">${escapeHtml(credit)}</p>` : ''}
+        ${sequence ? `<p class="chart-sequence">${escapeHtml(sequence)}</p>` : ''}
+      </header>
       ${body}
-    </main>
-    ${doc.copyright ? `\n    <footer class="chart-footer">${escapeHtml(doc.copyright)}</footer>` : ''}
+    </div>
+
+    <script>${paginationScript(doc.formatting.columns)}</script>
   </body>
 </html>
 `;

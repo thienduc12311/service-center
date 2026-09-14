@@ -17,9 +17,9 @@ const REFRESH_DELAY_MS = 300;
  * The live preview: the printable document itself, in an iframe.
  *
  * An iframe rather than inlined markup because the template carries its own
- * `@page`, fonts and colours — rendering it inside the app's document would
- * leave Tailwind's reset fighting the print stylesheet, and the preview would
- * stop being an honest picture of the PDF.
+ * `@page`, fonts and colours, and paginates itself — rendering it inside the
+ * app's document would leave Tailwind's reset fighting the print stylesheet,
+ * and the preview would stop being an honest picture of the PDF.
  */
 export const ChartPreview = ({ html, autoRefresh }: ChartPreviewProps) => {
   const [rendered, setRendered] = useState(html);
@@ -38,14 +38,13 @@ export const ChartPreview = ({ html, autoRefresh }: ChartPreviewProps) => {
     if (autoRefresh) setRendered(latest.current);
   }, [autoRefresh]);
 
+  // The document paints its own paper, gutter and page stack, and scrolls
+  // itself, so the frame is just a window onto it at whatever size the pane is.
   return (
-    <div className="h-full overflow-auto rounded-xl bg-slate-200/70 p-4 dark:bg-slate-800">
-      <iframe
-        title="Chord chart preview"
-        srcDoc={rendered}
-        // 8.5in is the template's page width, so the preview is a page.
-        className="mx-auto block h-full min-h-[11in] w-full max-w-[8.5in] rounded-md border-0 bg-white shadow-lg"
-      />
-    </div>
+    <iframe
+      title="Chord chart preview"
+      srcDoc={rendered}
+      className="block h-full w-full rounded-xl border-0 bg-slate-600"
+    />
   );
 };
