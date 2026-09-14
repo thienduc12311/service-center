@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { CHART_NOTATION_LABELS, type ChartNotation } from '@service-center/shared';
-import { KeyGrid } from './KeySelect';
+import { CHART_NOTATION_LABELS, type ChartNotation, type KeyQuality } from '@service-center/shared';
+import { KeyGrid, KeyQualityTabs } from './KeySelect';
 
 /** How the chart is currently being shown: a key, or a key-independent system. */
 export interface ChartView {
@@ -25,6 +25,11 @@ const viewLabel = ({ targetKey, notation }: ChartView): string =>
  */
 export const ChartNotationSelect = ({ value, onChange }: ChartNotationSelectProps) => {
   const [open, setOpen] = useState(false);
+  // A chart transposed into a minor key opens on the minor grid, so the key it
+  // is currently in is the one highlighted.
+  const [quality, setQuality] = useState<KeyQuality>(
+    value.targetKey?.endsWith('m') ? 'minor' : 'major',
+  );
 
   const choose = (view: ChartView) => {
     onChange(view);
@@ -69,8 +74,10 @@ export const ChartNotationSelect = ({ value, onChange }: ChartNotationSelectProp
               </button>
             </div>
 
+            <KeyQualityTabs value={quality} onChange={setQuality} />
+
             <KeyGrid
-              quality="major"
+              quality={quality}
               value={value.notation === 'chords' ? value.targetKey : null}
               onSelect={(key) => choose({ targetKey: key, notation: 'chords' })}
             />
