@@ -12,6 +12,7 @@ export interface PlanWorkspaceHeaderProps {
   nextPlanId: string | null;
   creatingNextPlan: boolean;
   onCreateNextPlan: () => void;
+  onExportSongBook: () => void;
   onTogglePublished: () => void;
   onNotify: () => void;
   onDelete: () => void;
@@ -28,6 +29,7 @@ export const PlanWorkspaceHeader = ({
   nextPlanId,
   creatingNextPlan,
   onCreateNextPlan,
+  onExportSongBook,
   onTogglePublished,
   onNotify,
   onDelete,
@@ -41,8 +43,15 @@ export const PlanWorkspaceHeader = ({
         </h1>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Badge tone={planTone[plan.status]}>{PLAN_STATUS_LABELS[plan.status]}</Badge>
+        <button
+          type="button"
+          onClick={onExportSongBook}
+          className="inline-flex items-center rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-300 transition hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700"
+        >
+          Export song book
+        </button>
         <button
           type="button"
           onClick={() => window.print()}
