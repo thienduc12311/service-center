@@ -8,20 +8,17 @@
  */
 
 import type { PlanDetail } from '../types/domain.js';
-import type { ChartFormatting } from './chart-html.js';
+import type { ChartDocument, ChartFormatting } from './chart-html.js';
 import {
   DEFAULT_CHART_CHORD_COLOR,
   DEFAULT_CHART_FONT,
   DEFAULT_CHART_FONT_SIZE,
+  chartDocumentMarkup,
   chartFormattingFromRow,
+  chartPageStyles,
   escapeHtml,
 } from './chart-html.js';
-import {
-  parseChordPro,
-  renderChordProChart,
-  renderLineAsText,
-  type ChordProSection,
-} from './chordpro.js';
+import { renderChordProChart } from './chordpro.js';
 import { formatDate, formatDuration } from './dates.js';
 
 const SONGS_PER_COVER_PAGE = 7;
@@ -109,32 +106,6 @@ const chunks = <T>(values: readonly T[], size: number): T[][] => {
   return result;
 };
 
-const chartTitle = (song: ServiceSongBookSong): string =>
-  song.key ? `${song.title} [${song.key}]` : song.title;
-
-const chartByline = (song: ServiceSongBookSong): string | null => {
-  const parts: string[] = [];
-  if (song.arrangementName) parts.push(`[${song.arrangementName}]`);
-  if (song.author) parts.push(parts.length ? `by ${song.author}` : song.author);
-  return parts.length ? parts.join(' ') : null;
-};
-
-const renderSection = (section: ChordProSection): string => {
-  const heading =
-    section.label ?? (section.type === 'none' ? null : section.type.replace(/_/g, ' '));
-  const lines = section.lines
-    .map((line) => {
-      const { chordRow, lyricRow } = renderLineAsText(line);
-      const chords = chordRow ? `<div class="chords">${escapeHtml(chordRow)}</div>` : '';
-      return `<div class="row">${chords}<div class="lyrics">${escapeHtml(lyricRow) || '&nbsp;'}</div></div>`;
-    })
-    .join('\n        ');
-
-  return `<section class="chart-section">
-        ${heading ? `<h2 class="section-label">${escapeHtml(heading)}</h2>\n        ` : ''}${lines}
-      </section>`;
-};
-
 const coverMetadata = (song: ServiceSongBookSong): string => {
   const values: string[] = [];
   if (song.arrangementName) values.push(song.arrangementName);
@@ -177,25 +148,28 @@ const renderCoverPage = (
 };
 
 const renderChartSource = (song: ServiceSongBookSong): string => {
-  const parsed = parseChordPro(song.chordpro);
-  const heading = chartTitle(song);
-  const credit = chartByline(song);
-  const sequence = song.sequence.filter(Boolean).join(', ');
-  const body = song.hasChart && parsed.sections.length > 0
-    ? parsed.sections.map(renderSection).join('\n      ')
+  const chart: ChartDocument = {
+    title: song.title,
+    key: song.key,
+    arrangementName: song.arrangementName,
+    author: song.author,
+    sequence: song.sequence,
+    copyright: song.copyright,
+    chordpro: song.chordpro,
+    formatting: song.formatting,
+  };
+  const markup = chartDocumentMarkup(chart);
+  const body = song.hasChart
+    ? markup.body
     : '<section class="chart-empty"><p>No chord chart has been added for this song.</p></section>';
   const font = song.formatting.fontFamily || DEFAULT_CHART_FONT;
   const fontSize = song.formatting.fontSize ?? DEFAULT_CHART_FONT_SIZE;
   const chordColor = song.formatting.chordColor || DEFAULT_CHART_CHORD_COLOR;
 
   return `<div class="chart-source" data-columns="${song.formatting.columns}" data-font="${escapeHtml(font)}" data-font-size="${fontSize}" data-chord-color="${escapeHtml(chordColor)}">
-      <template class="chart-cont-header"><header class="chart-header chart-header-cont"><h2 class="chart-title-cont">${escapeHtml(heading)}</h2></header></template>
-      <template class="chart-page-footer"><footer class="page-footer"><span class="page-copyright">${song.copyright ? escapeHtml(song.copyright) : ''}</span><span class="page-number"></span></footer></template>
-      <header class="chart-header">
-        <h1 class="chart-title">${escapeHtml(heading)}</h1>
-        ${credit ? `<p class="chart-byline">${escapeHtml(credit)}</p>` : ''}
-        ${sequence ? `<p class="chart-sequence">${escapeHtml(sequence)}</p>` : ''}
-      </header>
+      <template class="chart-cont-header">${markup.continuationHeader}</template>
+      <template class="chart-page-footer">${markup.footer}</template>
+      ${markup.header}
       ${body}
     </div>`;
 };
@@ -232,8 +206,7 @@ const styles = (): string => `
       transform-origin: top left;
     }
 
-    .cover-page,
-    .chart-page {
+    .cover-page {
       position: relative;
       flex: none;
       overflow: hidden;
@@ -346,84 +319,15 @@ const styles = (): string => `
       text-align: center;
     }
 
+    ${chartPageStyles()}
+
     .chart-page {
       page: chart;
-      width: 8.5in;
-      height: 11in;
-      padding: 0.5in;
-      display: flex;
-      flex-direction: column;
-      font-family: var(--chart-font);
-      font-size: var(--chart-font-size);
-      line-height: 1.35;
       break-after: page;
       page-break-after: always;
     }
 
     .chart-page:last-child { break-after: auto; page-break-after: auto; }
-
-    header.chart-header {
-      flex: none;
-      margin-bottom: 0.22in;
-      padding: 0.28in 0.3in;
-      background: #e5e5e5;
-    }
-
-    header.chart-header-cont { padding: 0.12in 0.3in; }
-
-    h1.chart-title {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: var(--chart-title-size);
-      font-weight: 700;
-      line-height: 1.15;
-    }
-
-    h2.chart-title-cont {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: var(--chart-cont-title-size);
-      font-weight: 700;
-      line-height: 1.2;
-    }
-
-    p.chart-byline,
-    p.chart-sequence {
-      margin: 0.08in 0 0;
-      font-family: Arial, Helvetica, sans-serif;
-      font-weight: 700;
-    }
-
-    p.chart-byline { font-size: var(--chart-byline-size); }
-    p.chart-sequence { font-size: var(--chart-sequence-size); }
-
-    .chart-body {
-      flex: 1 1 auto;
-      min-height: 0;
-      display: flex;
-      align-items: stretch;
-      gap: 0.35in;
-    }
-
-    .chart-column { flex: 1 1 0; min-width: 0; }
-    .chart-section { margin-bottom: 0.14in; }
-
-    .section-label {
-      margin: 0 0 0.04in;
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: var(--chart-section-size);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .chords, .lyrics {
-      margin: 0;
-      white-space: pre-wrap;
-      overflow-wrap: break-word;
-    }
-
-    .chords { color: var(--chart-chord-color); font-weight: 700; }
 
     .chart-empty {
       display: grid;
@@ -433,21 +337,6 @@ const styles = (): string => `
       font-family: Arial, Helvetica, sans-serif;
       font-size: 11pt;
     }
-
-    footer.page-footer {
-      flex: none;
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 0.2in;
-      padding-top: 0.1in;
-      color: #525252;
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: var(--chart-footer-size);
-    }
-
-    .page-copyright { min-width: 0; }
-    .page-number { flex: none; }
 
     @media print {
       html, body { background: #ffffff; }
