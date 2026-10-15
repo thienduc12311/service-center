@@ -5,6 +5,7 @@ export * from './lib/constants.js';
 export * from './lib/dates.js';
 export * from './lib/chordpro.js';
 export * from './lib/chart-html.js';
+export * from './lib/chart-context.js';
 export * from './lib/service-song-book.js';
 export * from './lib/api-client.js';
 export * from './lib/design-tokens.js';

@@ -74,6 +74,15 @@ export default function PlanScreen() {
     return [...groups.entries()].map(([name, assignments]) => ({ name, assignments }));
   }, [detail?.assignments]);
 
+  // Headers divide the order but aren't items in it, so they take no number.
+  const ordinals = useMemo(() => {
+    const numbers = new Map<string, number>();
+    for (const item of detail?.items ?? []) {
+      if (item.item_type !== 'header') numbers.set(item.id, numbers.size + 1);
+    }
+    return numbers;
+  }, [detail?.items]);
+
   if (plan.isLoading) {
     return (
       <Screen>
@@ -171,12 +180,18 @@ export default function PlanScreen() {
                       {index > 0 ? <Divider /> : null}
                       <PressableScale
                         disabled={!item.song}
-                        onPress={() => item.song && router.push(`/song/${item.song.id}`)}
+                        onPress={() =>
+                          item.song &&
+                          router.push({
+                            pathname: '/song/[id]',
+                            params: { id: item.song.id, planId: detail.id, itemId: item.id },
+                          })
+                        }
                         pressedOpacity={0.6}
                         style={styles.orderItem}
                       >
                         <Text style={styles.ordinal}>
-                          {String(index + 1).padStart(2, '0')}
+                          {String(ordinals.get(item.id) ?? index + 1).padStart(2, '0')}
                         </Text>
                         <View style={styles.flex}>
                           <Text style={[styles.itemTitle, item.song ? styles.itemLink : null]}>
@@ -284,7 +299,7 @@ const makeStyles = (theme: Theme) =>
     itemTitle: { ...theme.type.body, color: theme.color.ink },
     itemLink: { fontWeight: '600' },
     itemNote: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: 2 },
-    itemLength: { ...theme.type.numeric, color: theme.color.inkFaint, width: 46, textAlign: 'right' },
+    itemLength: { ...theme.type.numeric, color: theme.color.inkFaint, minWidth: 46, textAlign: 'right' },
 
     teamGroup: { gap: theme.space.md },
     teamName: { ...theme.type.heading, color: theme.color.ink },
