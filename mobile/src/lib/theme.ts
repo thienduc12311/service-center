@@ -1,6 +1,8 @@
 import { Platform, type TextStyle } from 'react-native';
 import {
+  ASSIGNMENT_STATUS_ACCENTS,
   serviceCenterDesignTokens,
+  type AssignmentStatus,
   type ServiceCenterAccent,
   type ServiceCenterAccents,
   type ServiceCenterPalette,
@@ -89,7 +91,5 @@ export const darkTheme: Theme = {
 
 export const themes: Record<ColorSchemeName, Theme> = { light: lightTheme, dark: darkTheme };
 
-export type AssignmentStatus = 'confirmed' | 'declined' | 'unconfirmed';
-
 export const statusAccent = (theme: Theme, status: AssignmentStatus): Accent =>
-  ({ confirmed: theme.accent.green, declined: theme.accent.red, unconfirmed: theme.accent.yellow })[status];
+  theme.accent[ASSIGNMENT_STATUS_ACCENTS[status]];

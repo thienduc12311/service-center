@@ -1,4 +1,4 @@
-import { serviceCenterDesignTokens } from '@service-center/shared';
+import { ASSIGNMENT_STATUS_ACCENTS, serviceCenterDesignTokens } from '@service-center/shared';
 
 const cssName = (name: string): string => name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 
@@ -16,6 +16,11 @@ export const applyDesignTokens = (): void => {
       style.setProperty(`--app-${scheme}-${name}-bg`, accent.bg);
       style.setProperty(`--app-${scheme}-${name}-fg`, accent.fg);
     }
+  }
+  // Indirect through the scheme-switched accent variables, so `.dark` still applies.
+  for (const [status, accent] of Object.entries(ASSIGNMENT_STATUS_ACCENTS)) {
+    style.setProperty(`--app-status-${status}-bg`, `var(--app-${accent}-bg)`);
+    style.setProperty(`--app-status-${status}-fg`, `var(--app-${accent}-fg)`);
   }
   for (const [name, radius] of Object.entries(serviceCenterDesignTokens.radius)) {
     style.setProperty(`--app-radius-${name}`, `${radius}px`);

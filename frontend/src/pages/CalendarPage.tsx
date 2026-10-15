@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  ASSIGNMENT_STATUS_LABELS,
   addMonths,
   endOfMonth,
   formatDate,
@@ -207,7 +208,7 @@ export const CalendarPage = () => {
                 <Badge tone={kindStyles[event.kind]}>{event.kind}</Badge>
                 {event.my_assignment_status && (
                   <Badge tone={assignmentTone[event.my_assignment_status]}>
-                    {event.my_assignment_status}
+                    {ASSIGNMENT_STATUS_LABELS[event.my_assignment_status]}
                   </Badge>
                 )}
               </div>

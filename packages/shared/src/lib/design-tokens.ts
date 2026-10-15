@@ -1,3 +1,5 @@
+import type { AssignmentStatus } from '../types/database.js';
+
 /** Product colors and component dimensions shared by the website and native app. */
 export interface ServiceCenterPalette {
   canvas: string;
@@ -31,6 +33,8 @@ export interface ServiceCenterAccents {
   yellow: ServiceCenterAccent;
   neutral: ServiceCenterAccent;
 }
+
+export type ServiceCenterAccentName = keyof ServiceCenterAccents;
 
 export interface ServiceCenterColorScheme {
   color: ServiceCenterPalette;
@@ -87,4 +91,14 @@ export const serviceCenterDesignTokens: ServiceCenterDesignTokens = {
     },
   },
   radius: { small: 4, control: 8, input: 12, card: 16 },
+};
+
+/**
+ * The semantic accent each assignment status uses on both clients. Color only
+ * reinforces the status: always render it with ASSIGNMENT_STATUS_LABELS.
+ */
+export const ASSIGNMENT_STATUS_ACCENTS: Record<AssignmentStatus, ServiceCenterAccentName> = {
+  confirmed: 'green',
+  declined: 'red',
+  unconfirmed: 'yellow',
 };

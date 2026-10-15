@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDateTime, type NotificationFeedItem } from '@service-center/shared';
@@ -17,7 +17,7 @@ import {
   ScreenHeader,
   screenPadding,
 } from '../src/components/ui';
-import { Reveal } from '../src/components/motion';
+import { PressableScale, Reveal } from '../src/components/motion';
 import type { Theme } from '../src/lib/theme';
 import { useTheme, useThemedStyles } from '../src/lib/useTheme';
 
@@ -134,10 +134,11 @@ const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
   const unread = !item.read_at;
 
   return (
-    <Pressable
-      accessibilityRole="button"
+    <PressableScale
+      accessibilityLabel={`${unread ? 'Unread: ' : ''}${item.title}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      pressedOpacity={0.6}
+      style={styles.row}
     >
       {/* The only marker of unread state: a dot in the left margin. */}
       <View style={[styles.dot, unread ? styles.dotUnread : null]} />
@@ -146,7 +147,7 @@ const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
         {item.body ? <Text style={styles.detail}>{item.body}</Text> : null}
         <Text style={styles.time}>{formatDateTime(item.created_at)}</Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 };
 
@@ -157,7 +158,6 @@ const makeStyles = (theme: Theme) =>
       gap: theme.space.md,
       paddingVertical: theme.space.lg,
     },
-    rowPressed: { opacity: 0.6 },
     dot: {
       width: 7,
       height: 7,

@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import {
+  ASSIGNMENT_STATUS_LABELS,
   addMonths,
   endOfMonth,
   formatDate,
@@ -27,7 +28,7 @@ import {
   type SegmentOption,
 } from '../../src/components/ui';
 import { NotificationBell } from '../../src/components/NotificationBell';
-import { Reveal } from '../../src/components/motion';
+import { PressableScale, Reveal } from '../../src/components/motion';
 import { statusAccent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
@@ -154,10 +155,10 @@ const AgendaDayCard = ({ day, onOpen }: AgendaDayCardProps) => {
         {day.events.map((event, index) => (
           <View key={event.id}>
             {index > 0 ? <Divider /> : null}
-            <Pressable
-              accessibilityRole="button"
+            <PressableScale
               onPress={() => onOpen(event.plan_id)}
-              style={({ pressed }) => [styles.event, pressed ? { opacity: 0.6 } : null]}
+              pressedOpacity={0.6}
+              style={styles.event}
             >
               <View
                 style={[
@@ -172,16 +173,16 @@ const AgendaDayCard = ({ day, onOpen }: AgendaDayCardProps) => {
                 <Text style={styles.eventTitle}>{event.title}</Text>
                 <Text style={styles.eventTime}>
                   {formatTime(event.starts_at)} – {formatTime(event.ends_at)}
-                  {event.location ? `  ${event.location}` : ''}
+                  {event.location ? ` · ${event.location}` : ''}
                 </Text>
               </View>
               {event.my_assignment_status ? (
                 <Tag
-                  label={event.my_assignment_status}
+                  label={ASSIGNMENT_STATUS_LABELS[event.my_assignment_status]}
                   accent={statusAccent(theme, event.my_assignment_status)}
                 />
               ) : null}
-            </Pressable>
+            </PressableScale>
           </View>
         ))}
       </View>

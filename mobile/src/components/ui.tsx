@@ -230,7 +230,11 @@ export function SegmentedControl<T extends string>({
             onPress={() => onChange(option.value)}
             style={[styles.segment, active && styles.segmentActive]}
           >
-            <Text style={[styles.segmentLabel, active && styles.segmentLabelActive]}>
+            {/* Capped so two labels share a row without breaking words mid-way. */}
+            <Text
+              maxFontSizeMultiplier={1.5}
+              style={[styles.segmentLabel, active && styles.segmentLabelActive]}
+            >
               {option.label}
             </Text>
           </Pressable>
@@ -373,13 +377,9 @@ export const ListRow = ({ children, onPress, divided = false, showChevron = fals
 
   if (!onPress) return content;
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
-    >
+    <PressableScale onPress={onPress} pressedOpacity={0.6}>
       {content}
-    </Pressable>
+    </PressableScale>
   );
 };
 
@@ -537,7 +537,7 @@ const makeStyles = (theme: Theme) =>
       borderRadius: theme.radius.sm,
     },
     segmentActive: { backgroundColor: theme.accent.blue.bg },
-    segmentLabel: { fontFamily: fonts.sans, fontSize: 13.5, color: theme.color.inkMuted },
+    segmentLabel: { fontFamily: fonts.sans, fontSize: 13.5, color: theme.color.inkMuted, textAlign: 'center' },
     segmentLabelActive: { fontFamily: fonts.sansMedium, fontWeight: '600', color: theme.color.brandText },
 
     tag: {

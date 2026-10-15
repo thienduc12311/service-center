@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
@@ -26,7 +26,7 @@ import {
 } from '../../src/components/ui';
 import { NotificationBell } from '../../src/components/NotificationBell';
 import { Icon } from '../../src/components/icons';
-import { Reveal } from '../../src/components/motion';
+import { PressableScale, Reveal } from '../../src/components/motion';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
@@ -205,7 +205,11 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
 
   return (
     <Screen safeTop>
-      <ScrollView contentContainerStyle={screenPadding(theme)} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={screenPadding(theme)}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
         <ScreenHeader
           title="A new song book"
           description="Give it a name, then either pick the charts it holds or attach the document you already have."
@@ -230,7 +234,7 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
                   return (
                     <View key={song.id}>
                       {index > 0 ? <Divider /> : null}
-                      <Pressable
+                      <PressableScale
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: active }}
                         onPress={() =>
@@ -240,7 +244,8 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
                               : [...current, song.id],
                           )
                         }
-                        style={({ pressed }) => [styles.pickRow, pressed ? { opacity: 0.6 } : null]}
+                        pressedOpacity={0.6}
+                        style={styles.pickRow}
                       >
                         <View style={[styles.checkbox, active && styles.checkboxActive]}>
                           {active ? (
@@ -249,21 +254,21 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
                         </View>
                         <Text style={styles.pickTitle}>{song.title}</Text>
                         <Text style={styles.pickKey}>{song.default_key ?? ''}</Text>
-                      </Pressable>
+                      </PressableScale>
                     </View>
                   );
                 })}
               </View>
             ) : (
-              <Pressable
-                accessibilityRole="button"
+              <PressableScale
                 onPress={() => void chooseDocument()}
-                style={({ pressed }) => [styles.dropZone, pressed ? { opacity: 0.6 } : null]}
+                pressedOpacity={0.6}
+                style={styles.dropZone}
               >
                 <Icon name="upload" size={26} color={theme.color.inkMuted} />
                 <Text style={styles.dropTitle}>{document?.name ?? 'Choose a document'}</Text>
                 <Text style={styles.dropHint}>PDF, DOCX or plain text</Text>
-              </Pressable>
+              </PressableScale>
             )}
 
             <ErrorNotice error={create.error} />

@@ -35,7 +35,7 @@ export const NotificationBell = ({ bar = true }: NotificationBellProps) => {
       <Icon name="bell" size={19} color={theme.color.ink} />
       {unread > 0 ? (
         <View style={styles.badge}>
-          <Text style={styles.badgeLabel} numberOfLines={1}>
+          <Text style={styles.badgeLabel} numberOfLines={1} maxFontSizeMultiplier={1.4}>
             {label}
           </Text>
         </View>
@@ -66,7 +66,7 @@ const makeStyles = (theme: Theme) =>
       top: 2,
       right: 1,
       minWidth: 16,
-      height: 16,
+      minHeight: 16,
       paddingHorizontal: 4,
       borderRadius: theme.radius.pill,
       alignItems: 'center',
