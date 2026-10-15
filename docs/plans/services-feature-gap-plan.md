@@ -4,6 +4,8 @@ Assessed: **2026-10-15** · Code baseline: `7f682d34a3643b635192bc20f53820885805
 
 Mobile-specific follow-up: [native feature comparison and tasks](mobile-feature-tasks.md), [mobile implementation/UI specification](../specs/mobile-feature-specification.md), and [mobile-only source research](../research/planning-center-services-mobile-reference.md). These distinguish native functionality from web-only and optional capabilities.
 
+Implementation instructions: [missing Services capabilities prompts, F00–F17](../prompts/services-capabilities/README.md), with separate core/extension passes, shared execution rules and mobile dependency links. See the [prompt index](../prompts/README.md) for both mobile ranges and usage examples. These instructions do not change implementation status.
+
 ## Recommendation
 
 Service Center already implements the core single-plan workflow. The highest-value next increment is reliable, person-first scheduling: scoped leadership, scheduling before login, accurate assigned-time conflicts, prepared/released requests, and automated reminders. Build reusable planning and multi-plan staffing on that foundation; then complete preparation materials, collaboration, service execution, and reporting.

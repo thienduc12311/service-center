@@ -6,6 +6,8 @@ Read with the [mobile specification](../specs/mobile-feature-specification.md) a
 
 Step-by-step implementation prompts for **MOB-001 through MOB-010** are in the [first ten mobile tasks prompt pack](../prompts/mobile-first-10/README.md). Use one task or bounded pass per model invocation; MOB-001 starts with verification of the existing theme work.
 
+The [remaining mobile prompt pack](../prompts/mobile-remaining/README.md) covers **MOB-011 through MOB-033**. Shared backend/web prerequisites are covered by the separate [missing Services capabilities prompt pack](../prompts/services-capabilities/README.md); both packs reuse the same implementation and progress evidence.
+
 ## Findings and immediate result
 
 The current native app supports authentication, organization invitations/switching, personal assignment cards with individual responses, a month-bounded agenda, song search, default-arrangement chart reading/transposition/notation, manual/document songbooks, profile edits, one-off date-range blockouts, notifications and optional Expo push. It does not yet expose the website's plan/team/people editing workflows. Some missing mobile experiences can use existing APIs; others need shared backend capabilities that are missing on both clients.

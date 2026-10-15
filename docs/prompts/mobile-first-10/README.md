@@ -70,3 +70,5 @@ End each invocation with: selected task/pass; behavior delivered; files changed;
 - Existing token/calendar decisions: `docs/adr/0001-tokenized-assignment-respond-links.md`, `0002-ics-attachment-and-subscription-feed.md`, `0003-publish-not-request-for-calendar-invites.md`; read when modifying responses, feeds or scheduling notifications.
 
 MOB-011 onward is outside this prompt pack. Necessary shared infrastructure and small web compatibility changes for these ten tasks are included; a new Plans browser, full directory, household delegation, chat, player, offline packs and broad web redesign are separate tasks.
+
+Continue with the [remaining mobile prompts, MOB-011–MOB-033](../mobile-remaining/README.md). The [Services prompts, F00–F17](../services-capabilities/README.md) cover shared/backend/web work; reuse completed foundations rather than implementing them twice. The [prompt index](../README.md) links all three packs.
