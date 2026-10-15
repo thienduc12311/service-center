@@ -2,19 +2,63 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-400: #818cf8;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
+  --color-brand-50: var(--app-brand-50);
+  --color-brand-100: var(--app-brand-100);
+  --color-brand-200: var(--app-brand-200);
+  --color-brand-400: var(--app-brand-400);
+  --color-brand-500: var(--app-brand-500);
+  --color-brand-600: var(--app-brand-600);
+  --color-brand-700: var(--app-brand-700);
+  --color-app-canvas: var(--app-canvas);
+  --color-app-surface: var(--app-surface);
+  --color-app-border: var(--app-border);
+  --color-app-ink: var(--app-ink);
+  --color-app-danger: var(--app-light-danger);
+  --color-app-danger-pressed: var(--app-light-danger-pressed);
 
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', monospace;
 }
 
 @layer base {
+  :root {
+    --app-canvas: var(--app-light-canvas);
+    --app-surface: var(--app-light-surface);
+    --app-field: var(--app-light-field);
+    --app-border: var(--app-light-border);
+    --app-border-strong: var(--app-light-border-strong);
+    --app-ink: var(--app-light-ink);
+    --app-ink-muted: var(--app-light-ink-muted);
+    --app-brand-text: var(--app-light-brand-text);
+    --app-red-bg: var(--app-light-red-bg);
+    --app-red-fg: var(--app-light-red-fg);
+    --app-blue-bg: var(--app-light-blue-bg);
+    --app-blue-fg: var(--app-light-blue-fg);
+    --app-green-bg: var(--app-light-green-bg);
+    --app-green-fg: var(--app-light-green-fg);
+    --app-yellow-bg: var(--app-light-yellow-bg);
+    --app-yellow-fg: var(--app-light-yellow-fg);
+  }
+
+  .dark {
+    --app-canvas: var(--app-dark-canvas);
+    --app-surface: var(--app-dark-surface);
+    --app-field: var(--app-dark-field);
+    --app-border: var(--app-dark-border);
+    --app-border-strong: var(--app-dark-border-strong);
+    --app-ink: var(--app-dark-ink);
+    --app-ink-muted: var(--app-dark-ink-muted);
+    --app-brand-text: var(--app-dark-brand-text);
+    --app-red-bg: var(--app-dark-red-bg);
+    --app-red-fg: var(--app-dark-red-fg);
+    --app-blue-bg: var(--app-dark-blue-bg);
+    --app-blue-fg: var(--app-dark-blue-fg);
+    --app-green-bg: var(--app-dark-green-bg);
+    --app-green-fg: var(--app-dark-green-fg);
+    --app-yellow-bg: var(--app-dark-yellow-bg);
+    --app-yellow-fg: var(--app-dark-yellow-fg);
+  }
+
   html,
   body,
   #root {
@@ -22,7 +66,7 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased transition-colors dark:bg-slate-950 dark:text-slate-100;
+    @apply bg-app-canvas text-app-ink antialiased transition-colors;
   }
 
   /* Chord charts rely on column alignment, so they must never wrap. */
@@ -33,18 +77,31 @@
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40 dark:border-slate-800 dark:bg-slate-900 dark:shadow-black/20;
+    @apply border border-app-border bg-app-surface shadow-sm shadow-slate-200/40 dark:shadow-black/20;
+    border-radius: var(--app-radius-card);
   }
 
   .input {
     @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
            outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100
            dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-brand-500/20;
+    border-radius: var(--app-radius-input);
+    border-color: var(--app-border-strong);
+    background-color: var(--app-field);
   }
 
   .label {
     @apply mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300;
   }
+
+  .button {
+    border-radius: var(--app-radius-control);
+  }
+
+  .status-confirmed { background-color: var(--app-green-bg); color: var(--app-green-fg); }
+  .status-declined { background-color: var(--app-red-bg); color: var(--app-red-fg); }
+  .status-unconfirmed { background-color: var(--app-yellow-bg); color: var(--app-yellow-fg); }
+  .status-published { background-color: var(--app-blue-bg); color: var(--app-blue-fg); }
 }
 
 /* Legacy screens inherit the new dark palette while they are progressively

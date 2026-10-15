@@ -11,7 +11,6 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import Svg, { Line as SvgLine } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fonts, type Accent, type Theme } from '../lib/theme';
 import { useTheme, useThemedStyles } from '../lib/useTheme';
@@ -29,7 +28,7 @@ export interface ScreenProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** The page ground. Every screen sits on the warm canvas, never on white. */
+/** Product canvas shared with the website. */
 export const Screen = ({ children, safeTop = false, style }: ScreenProps) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -46,56 +45,16 @@ export const Screen = ({ children, safeTop = false, style }: ScreenProps) => {
   );
 };
 
-/** Standard content insets: generous side margins, macro space at the foot. */
+/** Native screen insets keep operational lists compact and readable. */
 export const screenPadding = (theme: Theme): ViewStyle => ({
-  paddingHorizontal: theme.space.xl,
+  paddingHorizontal: theme.space.lg,
   paddingTop: theme.space.lg,
   paddingBottom: theme.space.hero,
-  gap: theme.space.xxl,
+  gap: theme.space.lg,
 });
 
-export interface RuledFieldProps {
-  height?: number;
-}
-
-/**
- * A faint set of vertical rules behind a screen's opening block. It gives the
- * header depth without a gradient, a photograph, or any colour at all.
- */
-export const RuledField = ({ height = 220 }: RuledFieldProps) => {
-  const theme = useTheme();
-  const columns = [0.14, 0.32, 0.5, 0.68, 0.86];
-  return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { height, overflow: 'hidden' }]}>
-      <Svg width="100%" height={height}>
-        {columns.map((fraction) => (
-          <SvgLine
-            key={fraction}
-            x1={`${fraction * 100}%`}
-            y1={0}
-            x2={`${fraction * 100}%`}
-            y2={height}
-            stroke={theme.color.border}
-            strokeWidth={1}
-            opacity={0.55}
-          />
-        ))}
-        <SvgLine
-          x1="0"
-          y1={height - 1}
-          x2="100%"
-          y2={height - 1}
-          stroke={theme.color.border}
-          strokeWidth={1}
-          opacity={0.4}
-        />
-      </Svg>
-    </View>
-  );
-};
-
 export interface ScreenHeaderProps {
-  /** Small mono label above the title. Never a numbered "section" tag. */
+  /** Optional supporting context above the title. */
   eyebrow?: string;
   title: string;
   description?: string;
@@ -103,14 +62,14 @@ export interface ScreenHeaderProps {
   action?: ReactNode;
 }
 
-/** The editorial opening of a screen: serif headline, macro whitespace. */
+/** Sans-serif page heading matching the website hierarchy. */
 export const ScreenHeader = ({ eyebrow, title, description, action }: ScreenHeaderProps) => {
   const styles = useThemedStyles(makeStyles);
   return (
     <Reveal>
       <View style={styles.header}>
-        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow.toUpperCase()}</Text> : null}
-        <Text style={styles.headerTitle}>{title}</Text>
+        {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+        <Text accessibilityRole="header" style={styles.headerTitle}>{title}</Text>
         {description ? <Text style={styles.headerDescription}>{description}</Text> : null}
         {action ? <View style={styles.headerAction}>{action}</View> : null}
       </View>
@@ -123,10 +82,10 @@ export interface LabelProps {
   style?: StyleProp<TextStyle>;
 }
 
-/** Mono, uppercase, wide-tracked. Names a block of content — nothing more. */
+/** Form and section label using the shared sans-serif hierarchy. */
 export const Label = ({ children, style }: LabelProps) => {
   const styles = useThemedStyles(makeStyles);
-  return <Text style={[styles.label, style]}>{children.toUpperCase()}</Text>;
+  return <Text style={[styles.label, style]}>{children}</Text>;
 };
 
 export interface CardProps {
@@ -136,7 +95,7 @@ export interface CardProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** One hairline, one crisp radius, generous padding. No shadow, ever. */
+/** Bordered surface with the same radius and subtle elevation as web cards. */
 export const Card = ({ children, compact = false, style }: CardProps) => {
   const styles = useThemedStyles(makeStyles);
   return <View style={[styles.card, compact && styles.cardCompact, style]}>{children}</View>;
@@ -190,16 +149,16 @@ export const Button = ({
   const isDisabled = disabled || loading;
 
   const surface: Record<ButtonVariant, ViewStyle> = {
-    primary: { backgroundColor: theme.color.inkSolid },
-    secondary: { backgroundColor: theme.color.surface, borderWidth: 1, borderColor: theme.color.border },
+    primary: { backgroundColor: theme.color.brand },
+    secondary: { backgroundColor: theme.color.surface, borderWidth: 1, borderColor: theme.color.borderStrong },
     quiet: { backgroundColor: 'transparent' },
-    danger: { backgroundColor: theme.accent.red.bg, borderWidth: 1, borderColor: 'transparent' },
+    danger: { backgroundColor: theme.color.danger },
   };
   const label: Record<ButtonVariant, string> = {
-    primary: theme.color.onInk,
+    primary: theme.color.onBrand,
     secondary: theme.color.ink,
     quiet: theme.color.inkMuted,
-    danger: theme.accent.red.fg,
+    danger: theme.color.onBrand,
   };
 
   return (
@@ -267,6 +226,7 @@ export function SegmentedControl<T extends string>({
           <Pressable
             key={option.value}
             accessibilityRole="button"
+            accessibilityState={{ selected: active }}
             onPress={() => onChange(option.value)}
             style={[styles.segment, active && styles.segmentActive]}
           >
@@ -289,12 +249,12 @@ export interface TagProps {
   accent: Accent;
 }
 
-/** The one place a pill shape is allowed. */
+/** Compact status badge, consistent with website badges. */
 export const Tag = ({ label, accent }: TagProps) => {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.tag, { backgroundColor: accent.bg }]}>
-      <Text style={[styles.tagLabel, { color: accent.fg }]}>{label.toUpperCase()}</Text>
+      <Text style={[styles.tagLabel, { color: accent.fg }]}>{label}</Text>
     </View>
   );
 };
@@ -305,7 +265,7 @@ export interface IconWellProps {
   size?: number;
 }
 
-/** A muted pastel square holding one icon — the only filled colour blocks. */
+/** Semantic icon surface. */
 export const IconWell = ({ name, accent, size = 40 }: IconWellProps) => {
   const theme = useTheme();
   return (
@@ -354,7 +314,8 @@ export const Avatar = ({ name, size = 36 }: AvatarProps) => {
     >
       <Text
         style={{
-          fontFamily: fonts.monoMedium,
+          fontFamily: fonts.sansSemiBold,
+          fontWeight: '600',
           fontSize: size * 0.34,
           letterSpacing: 0.3,
           color: theme.color.inkMuted,
@@ -399,7 +360,7 @@ export interface ListRowProps {
   showChevron?: boolean;
 }
 
-/** A tappable row separated only by a hairline — no nested boxes. */
+/** Accessible row for a card or list. */
 export const ListRow = ({ children, onPress, divided = false, showChevron = false }: ListRowProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -520,15 +481,20 @@ const makeStyles = (theme: Theme) =>
     headerDescription: { ...theme.type.body, color: theme.color.inkMuted, maxWidth: 420 },
     headerAction: { marginTop: theme.space.md, alignSelf: 'flex-start' },
 
-    label: { ...theme.type.label, color: theme.color.inkFaint },
+    label: { ...theme.type.label, color: theme.color.inkMuted },
 
     card: {
       backgroundColor: theme.color.surface,
       borderWidth: 1,
       borderColor: theme.color.border,
       borderRadius: theme.radius.lg,
-      padding: theme.space.xl,
+      padding: theme.space.lg,
       gap: theme.space.lg,
+      shadowColor: theme.color.ink,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 1,
     },
     cardCompact: { padding: theme.space.md, gap: 0 },
 
@@ -541,12 +507,12 @@ const makeStyles = (theme: Theme) =>
       paddingHorizontal: theme.space.lg,
       minHeight: 46,
     },
-    buttonDisabled: { opacity: 0.4 },
-    buttonLabel: { fontFamily: fonts.sansMedium, fontSize: 14.5, letterSpacing: -0.1 },
+    buttonDisabled: { opacity: 0.5 },
+    buttonLabel: { fontFamily: fonts.sansMedium, fontWeight: '500', fontSize: 14 },
 
     iconButton: {
-      width: 42,
-      height: 42,
+      width: 44,
+      height: 44,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: theme.radius.sm,
@@ -564,14 +530,15 @@ const makeStyles = (theme: Theme) =>
     },
     segment: {
       flex: 1,
+      minHeight: 44,
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: theme.space.sm,
       borderRadius: theme.radius.sm,
     },
-    segmentActive: { backgroundColor: theme.color.surface },
+    segmentActive: { backgroundColor: theme.accent.blue.bg },
     segmentLabel: { fontFamily: fonts.sans, fontSize: 13.5, color: theme.color.inkMuted },
-    segmentLabelActive: { fontFamily: fonts.sansMedium, color: theme.color.ink },
+    segmentLabelActive: { fontFamily: fonts.sansMedium, fontWeight: '600', color: theme.color.brandText },
 
     tag: {
       alignSelf: 'flex-start',
@@ -579,7 +546,7 @@ const makeStyles = (theme: Theme) =>
       paddingHorizontal: 9,
       paddingVertical: 4,
     },
-    tagLabel: { ...theme.type.label, fontSize: 9.5 },
+    tagLabel: { ...theme.type.label, fontSize: 12, lineHeight: 16 },
 
     keyCap: {
       minWidth: 30,
@@ -596,6 +563,7 @@ const makeStyles = (theme: Theme) =>
     meta: { ...theme.type.bodySmall, color: theme.color.inkMuted },
 
     listRow: {
+      minHeight: 48,
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.space.md,
@@ -611,9 +579,10 @@ const makeStyles = (theme: Theme) =>
       ...theme.type.body,
       color: theme.color.ink,
       borderWidth: 1,
-      borderColor: theme.color.border,
-      borderRadius: theme.radius.sm,
-      backgroundColor: theme.color.surface,
+      borderColor: theme.color.borderStrong,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.color.field,
+      minHeight: 44,
       paddingHorizontal: theme.space.md,
       paddingVertical: theme.space.md,
     },

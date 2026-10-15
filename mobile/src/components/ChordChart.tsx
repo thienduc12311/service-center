@@ -44,14 +44,14 @@ export const ChordChart = ({ chart }: ChordChartProps) => {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     paper: {
-      backgroundColor: theme.color.surfaceInset,
+      backgroundColor: theme.color.surface,
       borderRadius: theme.radius.md,
       borderWidth: 1,
       borderColor: theme.color.border,
     },
     sheet: { padding: theme.space.lg },
     section: { marginBottom: theme.space.lg },
-    sectionLabel: { ...theme.type.label, color: theme.color.inkFaint, marginBottom: theme.space.sm },
-    chordRow: { ...theme.type.code, color: theme.color.inkMuted },
+    sectionLabel: { ...theme.type.label, color: theme.color.brandText, marginBottom: theme.space.sm },
+    chordRow: { ...theme.type.code, color: theme.color.brandText },
     lyricRow: { ...theme.type.code, color: theme.color.ink },
   });

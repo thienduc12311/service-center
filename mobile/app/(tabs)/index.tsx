@@ -84,8 +84,8 @@ export default function MyScheduleScreen() {
           <View>
             <ScreenHeader
               eyebrow={summary}
-              title="Where you're serving"
-              description="Everything you have been scheduled for, newest first."
+              title="My Schedule"
+              description="Your upcoming assignments and requests."
             />
             <ErrorNotice error={schedule.error ?? respond.error} />
           </View>
@@ -141,7 +141,7 @@ const ScheduleCard = ({ entry, onOpen, onRespond, busy }: ScheduleCardProps) => 
         style={({ pressed }) => (pressed ? { opacity: 0.65 } : null)}
       >
         <View style={styles.topRow}>
-          <Text style={styles.date}>{formatDateTime(entry.plan.service_date).toUpperCase()}</Text>
+          <Text style={styles.date}>{formatDateTime(entry.plan.service_date)}</Text>
           <Tag label={ASSIGNMENT_STATUS_LABELS[entry.assignment.status]} accent={accent} />
         </View>
 
@@ -170,7 +170,7 @@ const ScheduleCard = ({ entry, onOpen, onRespond, busy }: ScheduleCardProps) => 
 
       {needsReply ? (
         <View style={styles.actions}>
-          <Divider bleed={theme.space.xl} />
+          <Divider bleed={theme.space.lg} />
           <View style={styles.actionRow}>
             <Button
               title="Decline"

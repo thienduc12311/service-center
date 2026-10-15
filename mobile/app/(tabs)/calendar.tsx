@@ -144,7 +144,7 @@ const AgendaDayCard = ({ day, onOpen }: AgendaDayCardProps) => {
         <Text style={styles.dayNumber}>{formatDate(date, { day: 'numeric' })}</Text>
         <View>
           <Text style={styles.dayWeekday}>
-            {formatDate(date, { weekday: 'long' }).toUpperCase()}
+            {formatDate(date, { weekday: 'long' })}
           </Text>
           <Text style={styles.dayMonth}>{formatDate(date, { month: 'long' })}</Text>
         </View>
@@ -164,7 +164,7 @@ const AgendaDayCard = ({ day, onOpen }: AgendaDayCardProps) => {
                   styles.kindBar,
                   {
                     backgroundColor:
-                      event.kind === 'service' ? theme.color.ink : theme.accent.yellow.fg,
+                      event.kind === 'service' ? theme.color.brand : theme.accent.yellow.fg,
                   },
                 ]}
               />

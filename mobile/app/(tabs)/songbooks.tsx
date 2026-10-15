@@ -244,7 +244,7 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
                       >
                         <View style={[styles.checkbox, active && styles.checkboxActive]}>
                           {active ? (
-                            <Icon name="check" size={12} color={theme.color.onInk} strokeWidth={2.4} />
+                            <Icon name="check" size={12} color={theme.color.onBrand} strokeWidth={2.4} />
                           ) : null}
                         </View>
                         <Text style={styles.pickTitle}>{song.title}</Text>
@@ -307,7 +307,7 @@ const makeStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    checkboxActive: { backgroundColor: theme.color.inkSolid, borderColor: theme.color.inkSolid },
+    checkboxActive: { backgroundColor: theme.color.brand, borderColor: theme.color.brand },
     pickTitle: { ...theme.type.body, flex: 1, color: theme.color.ink },
     pickKey: { ...theme.type.numeric, color: theme.color.inkFaint },
 

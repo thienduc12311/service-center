@@ -12,7 +12,6 @@ import {
   Field,
   Label,
   Loading,
-  RuledField,
   Screen,
 } from '../src/components/ui';
 import { Reveal } from '../src/components/motion';
@@ -113,7 +112,6 @@ export default function AcceptInviteScreen() {
 
   return (
     <Screen>
-      <RuledField height={300} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

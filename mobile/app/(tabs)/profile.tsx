@@ -149,7 +149,7 @@ export default function ProfileScreen() {
             <Text style={styles.email}>{user?.profile.email}</Text>
             {organization ? (
               <Text style={styles.membership}>
-                {`${organization.name}${role ? ` · ${role}` : ''}`.toUpperCase()}
+                {`${organization.name}${role ? ` · ${role}` : ''}`}
               </Text>
             ) : null}
           </View>

@@ -6,7 +6,10 @@ import { ApiError } from '@service-center/shared';
 import { AuthProvider } from './providers/AuthProvider';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { router } from './router';
+import { applyDesignTokens } from './lib/design-tokens';
 import './index.css';
+
+applyDesignTokens();
 
 const queryClient = new QueryClient({
   defaultOptions: {
