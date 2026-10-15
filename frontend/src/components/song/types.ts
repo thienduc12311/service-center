@@ -27,6 +27,7 @@ const textOrNull = (value: string): string | null => value.trim() || null;
 /** The Song Information dialog, before it is turned into a request body. */
 export interface SongInformationFormValues {
   title: string;
+  defaultKey: string | null;
   ccliNumber: string;
   authors: string;
   copyright: string;
@@ -39,6 +40,7 @@ export const songInformationFormFrom = (
   song: SongWithArrangements,
 ): SongInformationFormValues => ({
   title: song.title,
+  defaultKey: song.default_key,
   ccliNumber: song.ccli_number ?? '',
   authors: song.author ?? '',
   copyright: song.copyright ?? '',
@@ -49,6 +51,7 @@ export const songInformationFormFrom = (
 
 export const toUpdateSongInput = (values: SongInformationFormValues): UpdateSongInput => ({
   title: values.title.trim(),
+  default_key: values.defaultKey,
   author: textOrNull(values.authors),
   ccli_number: textOrNull(values.ccliNumber),
   copyright: textOrNull(values.copyright),

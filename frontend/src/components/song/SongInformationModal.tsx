@@ -4,6 +4,7 @@ import type { SongWithArrangements } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useInvalidateOrg } from '../../hooks/queries';
 import { Button, ErrorNotice, Modal } from '../ui';
+import { KeySelect } from '../KeySelect';
 import { TagInput } from '../TagSelect';
 import {
   songInformationFormFrom,
@@ -84,14 +85,25 @@ export const SongInformationModal = ({ open, song, onClose }: SongInformationMod
           </div>
         </div>
 
-        <div>
-          <label className="label" htmlFor="song-info-authors">Authors</label>
-          <input
-            id="song-info-authors"
-            className="input"
-            value={form.authors}
-            onChange={(event) => update('authors', event.target.value)}
-          />
+        <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+          <div>
+            <label className="label" htmlFor="song-info-authors">Authors</label>
+            <input
+              id="song-info-authors"
+              className="input"
+              value={form.authors}
+              onChange={(event) => update('authors', event.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="song-info-default-key">Default key</label>
+            <KeySelect
+              id="song-info-default-key"
+              value={form.defaultKey}
+              onChange={(key) => update('defaultKey', key)}
+              resetLabel="No default key"
+            />
+          </div>
         </div>
 
         <div>
