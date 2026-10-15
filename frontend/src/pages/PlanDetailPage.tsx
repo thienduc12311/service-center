@@ -1,8 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { nextOccurrence, type PlanSummary } from '@service-center/shared';
+import {
+  nextOccurrence,
+  renderServiceSongBookHtml,
+  serviceSongBookDocumentFromPlan,
+  type PlanSummary,
+} from '@service-center/shared';
 import { api } from '../lib/api';
+import { printChart } from '../lib/chart-print';
 import { usePlan, usePlans, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { EmptyState, ErrorNotice, Loading } from '../components/ui';
@@ -180,6 +186,14 @@ export const PlanDetailPage = () => {
     setEditingNeeds(true);
   };
 
+  const exportSongBook = () => {
+    const songBook = serviceSongBookDocumentFromPlan({
+      plan: detail,
+      organizationName,
+    });
+    printChart(renderServiceSongBookHtml(songBook));
+  };
+
   return (
     <div>
       <PlanWorkspaceHeader
@@ -190,6 +204,7 @@ export const PlanDetailPage = () => {
         nextPlanId={neighbours.next}
         creatingNextPlan={addNextPlan.isPending}
         onCreateNextPlan={() => addNextPlan.mutate()}
+        onExportSongBook={exportSongBook}
         onTogglePublished={() =>
           publish.mutate(detail.status === 'published' ? 'draft' : 'published')
         }

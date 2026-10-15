@@ -161,8 +161,23 @@ export interface SongbookDetail extends SongbookRow {
 }
 
 export interface PlanItemDetail extends PlanItemRow {
-  song: Pick<SongRow, 'id' | 'title' | 'author' | 'default_key'> | null;
-  arrangement: Pick<ArrangementRow, 'id' | 'name' | 'song_key' | 'bpm' | 'chord_chart'> | null;
+  song: Pick<
+    SongRow,
+    'id' | 'title' | 'author' | 'copyright' | 'default_key' | 'default_bpm'
+  > | null;
+  arrangement: Pick<
+    ArrangementRow,
+    | 'id'
+    | 'name'
+    | 'song_key'
+    | 'bpm'
+    | 'sequence'
+    | 'chord_chart'
+    | 'chart_columns'
+    | 'chart_font'
+    | 'chart_font_size'
+    | 'chart_chord_color'
+  > | null;
 }
 
 export interface AssignmentDetail extends AssignmentRow {

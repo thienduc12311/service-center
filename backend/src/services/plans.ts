@@ -21,8 +21,11 @@ export const PLAN_DETAIL_SELECT = `
   times:plan_times(*),
   items:plan_items(
     *,
-    song:songs(id, title, author, default_key),
-    arrangement:arrangements(id, name, song_key, bpm, chord_chart)
+    song:songs(id, title, author, copyright, default_key, default_bpm),
+    arrangement:arrangements(
+      id, name, song_key, bpm, sequence, chord_chart,
+      chart_columns, chart_font, chart_font_size, chart_chord_color
+    )
   ),
   assignments:assignments(
     *,
