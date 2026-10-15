@@ -8,7 +8,7 @@ import {
   type PlanSummary,
 } from '@service-center/shared';
 import { api } from '../lib/api';
-import { printChart } from '../lib/chart-print';
+import { printDocument } from '../lib/print-document';
 import { usePlan, usePlans, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { EmptyState, ErrorNotice, Loading } from '../components/ui';
@@ -191,7 +191,7 @@ export const PlanDetailPage = () => {
       plan: detail,
       organizationName,
     });
-    printChart(renderServiceSongBookHtml(songBook));
+    printDocument(renderServiceSongBookHtml(songBook), 'Service song book print preview');
   };
 
   return (
