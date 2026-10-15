@@ -73,7 +73,10 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <Reveal>
             <View style={styles.masthead}>
-              <View style={styles.brandMark}><Text style={styles.brandLetters}>SC</Text></View>
+              <View style={styles.brandMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                {/* A fixed-size logo glyph; the heading below carries the name at any text size. */}
+                <Text style={styles.brandLetters} maxFontSizeMultiplier={1}>SC</Text>
+              </View>
               <Text accessibilityRole="header" style={styles.title}>Service Center</Text>
               <Text style={styles.subtitle}>Plan services. Schedule your team.</Text>
             </View>
@@ -126,6 +129,7 @@ export default function LoginScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => switchMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}
+              style={styles.switchTarget}
             >
               <Text style={styles.switch}>
                 {mode === 'sign-in'
@@ -150,6 +154,10 @@ const makeStyles = (theme: Theme) =>
     container: {
       flexGrow: 1,
       justifyContent: 'center',
+      // Keeps the form a readable column on tablets instead of edge to edge.
+      width: '100%',
+      maxWidth: 520,
+      alignSelf: 'center',
       padding: theme.space.xl,
       gap: theme.space.xxl,
     },
@@ -163,6 +171,7 @@ const makeStyles = (theme: Theme) =>
     title: { ...theme.type.display, fontSize: 24, color: theme.color.ink },
     subtitle: { ...theme.type.bodySmall, color: theme.color.inkMuted, textAlign: 'center' },
     notice: { ...theme.type.bodySmall, color: theme.accent.green.fg },
+    switchTarget: { minHeight: 44, justifyContent: 'center' },
     switch: { ...theme.type.bodySmall, color: theme.color.inkMuted, textAlign: 'center' },
     seedHint: {
       ...theme.type.numeric,

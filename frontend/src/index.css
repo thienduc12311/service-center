@@ -98,9 +98,9 @@
     border-radius: var(--app-radius-control);
   }
 
-  .status-confirmed { background-color: var(--app-green-bg); color: var(--app-green-fg); }
-  .status-declined { background-color: var(--app-red-bg); color: var(--app-red-fg); }
-  .status-unconfirmed { background-color: var(--app-yellow-bg); color: var(--app-yellow-fg); }
+  .status-confirmed { background-color: var(--app-status-confirmed-bg); color: var(--app-status-confirmed-fg); }
+  .status-declined { background-color: var(--app-status-declined-bg); color: var(--app-status-declined-fg); }
+  .status-unconfirmed { background-color: var(--app-status-unconfirmed-bg); color: var(--app-status-unconfirmed-fg); }
   .status-published { background-color: var(--app-blue-bg); color: var(--app-blue-fg); }
 }
 

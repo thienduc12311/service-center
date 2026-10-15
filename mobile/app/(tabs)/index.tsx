@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,7 +23,7 @@ import {
   screenPadding,
 } from '../../src/components/ui';
 import { NotificationBell } from '../../src/components/NotificationBell';
-import { Reveal } from '../../src/components/motion';
+import { PressableScale, Reveal } from '../../src/components/motion';
 import { statusAccent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
@@ -135,10 +135,9 @@ const ScheduleCard = ({ entry, onOpen, onRespond, busy }: ScheduleCardProps) => 
 
   return (
     <Card>
-      <Pressable
-        accessibilityRole="button"
+      <PressableScale
         onPress={onOpen}
-        style={({ pressed }) => (pressed ? { opacity: 0.65 } : null)}
+        pressedOpacity={0.65}
       >
         <View style={styles.topRow}>
           <Text style={styles.date}>{formatDateTime(entry.plan.service_date)}</Text>
@@ -166,7 +165,7 @@ const ScheduleCard = ({ entry, onOpen, onRespond, busy }: ScheduleCardProps) => 
             })}
           </Text>
         ) : null}
-      </Pressable>
+      </PressableScale>
 
       {needsReply ? (
         <View style={styles.actions}>

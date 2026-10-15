@@ -137,7 +137,11 @@ export default function ProfileScreen() {
   return (
     <Screen safeTop>
       <NotificationBell />
-      <ScrollView contentContainerStyle={screenPadding(theme)} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={screenPadding(theme)}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
         <Reveal>
           <View style={styles.identity}>
             {organization?.logo_url ? (

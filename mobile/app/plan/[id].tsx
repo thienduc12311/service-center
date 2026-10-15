@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,7 +23,7 @@ import {
   Tag,
   screenPadding,
 } from '../../src/components/ui';
-import { Reveal } from '../../src/components/motion';
+import { PressableScale, Reveal } from '../../src/components/motion';
 import { statusAccent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
@@ -169,14 +169,11 @@ export default function PlanScreen() {
                   ) : (
                     <View key={item.id}>
                       {index > 0 ? <Divider /> : null}
-                      <Pressable
-                        accessibilityRole="button"
+                      <PressableScale
                         disabled={!item.song}
                         onPress={() => item.song && router.push(`/song/${item.song.id}`)}
-                        style={({ pressed }) => [
-                          styles.orderItem,
-                          pressed ? { opacity: 0.6 } : null,
-                        ]}
+                        pressedOpacity={0.6}
+                        style={styles.orderItem}
                       >
                         <Text style={styles.ordinal}>
                           {String(index + 1).padStart(2, '0')}
@@ -198,7 +195,7 @@ export default function PlanScreen() {
                           </KeyCap>
                         ) : null}
                         <Text style={styles.itemLength}>{formatDuration(item.length_seconds)}</Text>
-                      </Pressable>
+                      </PressableScale>
                     </View>
                   ),
                 )}
@@ -285,7 +282,7 @@ const makeStyles = (theme: Theme) =>
     },
     ordinal: { ...theme.type.numeric, color: theme.color.inkFaint },
     itemTitle: { ...theme.type.body, color: theme.color.ink },
-    itemLink: { fontFamily: theme.type.heading.fontFamily },
+    itemLink: { fontWeight: '600' },
     itemNote: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: 2 },
     itemLength: { ...theme.type.numeric, color: theme.color.inkFaint, width: 46, textAlign: 'right' },
 
