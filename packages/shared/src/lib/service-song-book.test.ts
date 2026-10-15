@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { PlanDetail, PlanItemDetail } from '../types/domain.js';
 import {
+  chartDocumentMarkup,
+  chartPageStyles,
+  renderChartHtml,
+  type ChartDocument,
+} from './chart-html.js';
+import {
   renderServiceSongBookHtml,
   serviceSongBookDocumentFromPlan,
   type ServiceSongBookDocument,
@@ -139,6 +145,37 @@ describe('renderServiceSongBookHtml', () => {
     expect(html).toContain('<h1 class="chart-title">Amazing Grace [D]</h1>');
     expect(html).not.toContain('<link');
     expect(html).not.toContain('src=');
+  });
+
+  it('uses the same chart markup and page styles as the standalone chart renderer', () => {
+    const songBook = document();
+    const song = songBook.songs[0]!;
+    const chart: ChartDocument = {
+      title: song.title,
+      key: song.key,
+      arrangementName: song.arrangementName,
+      author: song.author,
+      sequence: song.sequence,
+      copyright: song.copyright,
+      chordpro: `${song.chordpro} with a deliberately long lyric line that needs the shared wrapping rules to stay aligned with its chords`,
+      formatting: { ...song.formatting, columns: 2 },
+    };
+    songBook.songs = [{ ...song, chordpro: chart.chordpro, formatting: chart.formatting }];
+
+    const html = renderServiceSongBookHtml(songBook);
+    const standaloneHtml = renderChartHtml(chart);
+    const markup = chartDocumentMarkup(chart);
+
+    for (const sharedFragment of [
+      chartPageStyles(),
+      markup.header,
+      markup.continuationHeader,
+      markup.footer,
+      markup.body,
+    ]) {
+      expect(standaloneHtml).toContain(sharedFragment);
+      expect(html).toContain(sharedFragment);
+    }
   });
 
   it('prints a visible missing-chart page rather than silently dropping a song', () => {

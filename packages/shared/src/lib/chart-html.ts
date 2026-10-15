@@ -75,6 +75,15 @@ export interface ChartDocument {
   formatting: ChartFormatting;
 }
 
+/** The reusable pieces of a chart document after its display text is resolved. */
+export interface ChartDocumentMarkup {
+  heading: string;
+  header: string;
+  continuationHeader: string;
+  footer: string;
+  body: string;
+}
+
 const ESCAPES: Record<string, string> = {
   '&': '&amp;',
   '<': '&lt;',
@@ -225,11 +234,151 @@ const renderSection = (section: ChordProSection, maxCharacters: number): string 
       </section>`;
 };
 
+/**
+ * Resolves the exact chart markup shared by the standalone page, its PDF and
+ * every chart inside a service song book.
+ */
+export const chartDocumentMarkup = (doc: ChartDocument): ChartDocumentMarkup => {
+  const song = parseChordPro(doc.chordpro);
+  const heading = chartDocumentTitle(doc);
+  const credit = byline(doc);
+  const sequence = doc.sequence.filter(Boolean).join(', ');
+  const maxCharacters = chartColumnCharacters(doc.formatting);
+  const body =
+    song.sections.length > 0
+      ? song.sections.map((section) => renderSection(section, maxCharacters)).join('\n      ')
+      : '<section class="chart-section"><div class="row"><div class="lyrics">&nbsp;</div></div></section>';
+
+  return {
+    heading,
+    header: `<header class="chart-header">
+        <h1 class="chart-title">${escapeHtml(heading)}</h1>
+        ${credit ? `<p class="chart-byline">${escapeHtml(credit)}</p>` : ''}
+        ${sequence ? `<p class="chart-sequence">${escapeHtml(sequence)}</p>` : ''}
+      </header>`,
+    continuationHeader: `<header class="chart-header chart-header-cont"><h2 class="chart-title-cont">${escapeHtml(heading)}</h2></header>`,
+    footer: `<footer class="page-footer"><span class="page-copyright">${doc.copyright ? escapeHtml(doc.copyright) : ''}</span><span class="page-number"></span></footer>`,
+    body,
+  };
+};
+
+/**
+ * Page and chart-content rules shared by every printable chart surface.
+ * Formatting is supplied through CSS variables so one song book can contain
+ * arrangements with different fonts, sizes, colours and column counts.
+ */
+export const chartPageStyles = (): string => {
+  const { widthIn, heightIn, marginIn, columnGapIn } = CHART_PAGE;
+
+  return `
+    .chart-page {
+      position: relative;
+      width: ${widthIn}in;
+      height: ${heightIn}in;
+      flex: none;
+      padding: ${marginIn}in;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-family: var(--chart-font);
+      font-size: var(--chart-font-size);
+      line-height: 1.35;
+    }
+
+    header.chart-header {
+      flex: none;
+      background: #e5e5e5;
+      padding: 0.28in 0.3in;
+      margin-bottom: 0.22in;
+    }
+
+    header.chart-header-cont { padding: 0.12in 0.3in; }
+
+    h1.chart-title {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: var(--chart-title-size);
+      font-weight: 700;
+      margin: 0;
+      line-height: 1.15;
+    }
+
+    h2.chart-title-cont {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: var(--chart-cont-title-size);
+      font-weight: 700;
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    p.chart-byline,
+    p.chart-sequence {
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: 700;
+      margin: 0.08in 0 0;
+    }
+
+    p.chart-byline { font-size: var(--chart-byline-size); }
+    p.chart-sequence { font-size: var(--chart-sequence-size); }
+
+    .chart-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      gap: ${columnGapIn}in;
+      align-items: stretch;
+    }
+
+    .chart-column {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .chart-section { margin-bottom: 0.14in; }
+
+    .section-label {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: var(--chart-section-size);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin: 0 0 0.04in;
+    }
+
+    .chords, .lyrics {
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+      margin: 0;
+    }
+
+    .chords {
+      font-weight: 700;
+      color: var(--chart-chord-color);
+    }
+
+    footer.page-footer {
+      flex: none;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.2in;
+      padding-top: 0.1in;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: var(--chart-footer-size);
+      color: #525252;
+    }
+
+    .page-copyright { min-width: 0; }
+    .page-number { flex: none; }
+  `;
+};
+
 const styles = (formatting: ChartFormatting): string => {
   const font = formatting.fontFamily || DEFAULT_CHART_FONT;
   const size = formatting.fontSize ?? DEFAULT_CHART_FONT_SIZE;
   const chordColor = formatting.chordColor || DEFAULT_CHART_CHORD_COLOR;
-  const { widthIn, heightIn, marginIn, columnGapIn } = CHART_PAGE;
+  const { widthIn, heightIn } = CHART_PAGE;
 
   return `
     /* Margin lives on the page element so one box describes the paper in both
@@ -246,8 +395,17 @@ const styles = (formatting: ChartFormatting): string => {
     }
 
     body {
-      font-family: ${font};
-      font-size: ${size}pt;
+      --chart-font: ${font};
+      --chart-font-size: ${size}pt;
+      --chart-chord-color: ${chordColor};
+      --chart-title-size: ${Math.round(size * 2)}pt;
+      --chart-cont-title-size: ${Math.round(size * 1.1)}pt;
+      --chart-byline-size: ${Math.round(size * 0.95)}pt;
+      --chart-sequence-size: ${Math.round(size * 1.35)}pt;
+      --chart-section-size: ${Math.round(size * 0.85)}pt;
+      --chart-footer-size: ${Math.round(size * 0.72)}pt;
+      font-family: var(--chart-font);
+      font-size: var(--chart-font-size);
       line-height: 1.35;
       display: flex;
       justify-content: center;
@@ -270,118 +428,15 @@ const styles = (formatting: ChartFormatting): string => {
       transform-origin: top left;
     }
 
-    .page {
-      position: relative;
-      width: ${widthIn}in;
-      height: ${heightIn}in;
-      flex: none;
-      padding: ${marginIn}in;
-      background: #ffffff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-      display: flex;
-      flex-direction: column;
-      /* The last line of defence: nothing leaves the paper. */
-      overflow: hidden;
-    }
-
-    header.chart-header {
-      flex: none;
-      background: #e5e5e5;
-      padding: 0.28in 0.3in;
-      margin-bottom: 0.22in;
-    }
-
-    /* Continuation pages get a slim band with just the song, so it is obvious
-       the page belongs to the chart that started earlier. */
-    header.chart-header-cont { padding: 0.12in 0.3in; }
-
-    h1.chart-title {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: ${Math.round(size * 2)}pt;
-      font-weight: 700;
-      margin: 0;
-      line-height: 1.15;
-    }
-
-    h2.chart-title-cont {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: ${Math.round(size * 1.1)}pt;
-      font-weight: 700;
-      margin: 0;
-      line-height: 1.2;
-    }
-
-    p.chart-byline,
-    p.chart-sequence {
-      font-family: Arial, Helvetica, sans-serif;
-      font-weight: 700;
-      margin: 0.08in 0 0;
-    }
-
-    p.chart-byline { font-size: ${Math.round(size * 0.95)}pt; }
-    p.chart-sequence { font-size: ${Math.round(size * 1.35)}pt; }
-
-    /* Columns are flex tracks, not CSS columns: pagination fills them itself,
-       and the space between them is the gap alone — no rule. */
-    .chart-body {
-      flex: 1 1 auto;
-      min-height: 0;
-      display: flex;
-      gap: ${columnGapIn}in;
-      align-items: stretch;
-    }
-
-    .chart-column {
-      flex: 1 1 0;
-      min-width: 0;
-    }
-
-    .chart-section { margin-bottom: 0.14in; }
-
-    .section-label {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: ${Math.round(size * 0.85)}pt;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin: 0 0 0.04in;
-    }
-
-    /* Preserved whitespace keeps a chart aligned, but a line wider than its
-       column still wraps rather than running off the page. */
-    .chords, .lyrics {
-      white-space: pre-wrap;
-      overflow-wrap: break-word;
-      margin: 0;
-    }
-
-    .chords {
-      font-weight: 700;
-      color: ${chordColor};
-    }
-
-    footer.page-footer {
-      flex: none;
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 0.2in;
-      padding-top: 0.1in;
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: ${Math.round(size * 0.72)}pt;
-      color: #525252;
-    }
-
-    .page-copyright { min-width: 0; }
-    .page-number { flex: none; }
+    ${chartPageStyles()}
 
     @media print {
       html, body { background: #ffffff; }
       body { display: block; padding: 0; }
       .chart-stage { width: auto !important; height: auto !important; }
       .chart-pages { transform: none; gap: 0; display: block; }
-      .page { box-shadow: none; break-after: page; page-break-after: always; }
-      .page:last-child { break-after: auto; page-break-after: auto; }
+      .chart-page { box-shadow: none; break-after: page; page-break-after: always; }
+      .chart-page:last-child { break-after: auto; page-break-after: auto; }
     }
   `;
 };
@@ -422,7 +477,7 @@ const paginationScript = (columns: number): string => `
   function addPage() {
     pageCount += 1;
     var page = document.createElement('article');
-    page.className = 'page';
+    page.className = 'page chart-page';
 
     var header = pageCount === 1
       ? firstHeader
@@ -548,38 +603,25 @@ const paginationScript = (columns: number): string => `
  * tab the chart is opened in, and the file it is exported as.
  */
 export const renderChartHtml = (doc: ChartDocument): string => {
-  const song = parseChordPro(doc.chordpro);
-  const heading = chartDocumentTitle(doc);
-  const credit = byline(doc);
-  const sequence = doc.sequence.filter(Boolean).join(', ');
-
-  const maxCharacters = chartColumnCharacters(doc.formatting);
-  const body =
-    song.sections.length > 0
-      ? song.sections.map((section) => renderSection(section, maxCharacters)).join('\n      ')
-      : '<section class="chart-section"><div class="row"><div class="lyrics">&nbsp;</div></div></section>';
+  const markup = chartDocumentMarkup(doc);
 
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(heading)}</title>
+    <title>${escapeHtml(markup.heading)}</title>
     <style>${styles(doc.formatting)}</style>
   </head>
   <body data-columns="${doc.formatting.columns}">
     <div class="chart-stage"><div id="chart-pages" class="chart-pages"></div></div>
 
-    <template id="chart-cont-header"><header class="chart-header chart-header-cont"><h2 class="chart-title-cont">${escapeHtml(heading)}</h2></header></template>
-    <template id="chart-page-footer"><footer class="page-footer"><span class="page-copyright">${doc.copyright ? escapeHtml(doc.copyright) : ''}</span><span class="page-number"></span></footer></template>
+    <template id="chart-cont-header">${markup.continuationHeader}</template>
+    <template id="chart-page-footer">${markup.footer}</template>
 
     <div id="chart-source">
-      <header class="chart-header">
-        <h1 class="chart-title">${escapeHtml(heading)}</h1>
-        ${credit ? `<p class="chart-byline">${escapeHtml(credit)}</p>` : ''}
-        ${sequence ? `<p class="chart-sequence">${escapeHtml(sequence)}</p>` : ''}
-      </header>
-      ${body}
+      ${markup.header}
+      ${markup.body}
     </div>
 
     <script>${paginationScript(doc.formatting.columns)}</script>
