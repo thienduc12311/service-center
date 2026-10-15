@@ -101,7 +101,7 @@ export default function PlanScreen() {
         <Reveal>
           <View style={styles.hero}>
             <Text style={styles.heroDate}>
-              {formatDateTime(detail.service_date).toUpperCase()}
+              {formatDateTime(detail.service_date)}
             </Text>
             <Text style={styles.heroTitle}>{detail.title}</Text>
             <Text style={styles.heroMeta}>

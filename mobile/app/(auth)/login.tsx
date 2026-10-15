@@ -6,8 +6,6 @@ import {
   Card,
   ErrorNotice,
   Field,
-  Label,
-  RuledField,
   Screen,
   SegmentedControl,
   type SegmentOption,
@@ -68,7 +66,6 @@ export default function LoginScreen() {
 
   return (
     <Screen>
-      <RuledField height={340} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -76,12 +73,9 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <Reveal>
             <View style={styles.masthead}>
-              <Label>Service Center</Label>
-              <Text style={styles.title}>Plan the service. Call the team.</Text>
-              <Text style={styles.subtitle}>
-                Orders of service, chord charts and who is playing what — in one place your whole
-                team can open on a Sunday morning.
-              </Text>
+              <View style={styles.brandMark}><Text style={styles.brandLetters}>SC</Text></View>
+              <Text accessibilityRole="header" style={styles.title}>Service Center</Text>
+              <Text style={styles.subtitle}>Plan services. Schedule your team.</Text>
             </View>
           </Reveal>
 
@@ -159,9 +153,15 @@ const makeStyles = (theme: Theme) =>
       padding: theme.space.xl,
       gap: theme.space.xxl,
     },
-    masthead: { gap: theme.space.md, paddingTop: theme.space.xxl },
-    title: { ...theme.type.display, color: theme.color.ink },
-    subtitle: { ...theme.type.body, color: theme.color.inkMuted },
+    masthead: { alignItems: 'center', gap: theme.space.sm, paddingTop: theme.space.lg },
+    brandMark: {
+      width: 48, height: 48, borderRadius: theme.radius.md,
+      backgroundColor: theme.color.brand, alignItems: 'center', justifyContent: 'center',
+      marginBottom: theme.space.sm,
+    },
+    brandLetters: { ...theme.type.heading, fontSize: 18, color: theme.color.onBrand },
+    title: { ...theme.type.display, fontSize: 24, color: theme.color.ink },
+    subtitle: { ...theme.type.bodySmall, color: theme.color.inkMuted, textAlign: 'center' },
     notice: { ...theme.type.bodySmall, color: theme.accent.green.fg },
     switch: { ...theme.type.bodySmall, color: theme.color.inkMuted, textAlign: 'center' },
     seedHint: {

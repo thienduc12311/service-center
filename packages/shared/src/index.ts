@@ -7,3 +7,4 @@ export * from './lib/chordpro.js';
 export * from './lib/chart-html.js';
 export * from './lib/service-song-book.js';
 export * from './lib/api-client.js';
+export * from './lib/design-tokens.js';

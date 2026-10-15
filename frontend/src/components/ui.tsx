@@ -8,7 +8,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600',
   secondary: 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800',
   ghost: 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
-  danger: 'bg-rose-600 text-white hover:bg-rose-700',
+  danger: 'bg-app-danger text-white hover:bg-app-danger-pressed',
 };
 
 export const Button = ({
@@ -21,7 +21,7 @@ export const Button = ({
   <button
     {...props}
     disabled={props.disabled || loading}
-    className={`inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
+    className={`button inline-flex items-center justify-center gap-2 px-3.5 py-2 text-sm font-medium
       transition disabled:cursor-not-allowed disabled:opacity-50 ${VARIANTS[variant]} ${className}`}
   >
     {loading && <Spinner className="size-4" />}

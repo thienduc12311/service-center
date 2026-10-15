@@ -27,7 +27,7 @@ const config = {
   },
   android: {
     package: 'com.servicecenter.app',
-    adaptiveIcon: { backgroundColor: '#FBFBFA' },
+    adaptiveIcon: { backgroundColor: '#f8fafc' },
     ...(webAppDomain
       ? {
           intentFilters: [
@@ -45,9 +45,9 @@ const config = {
     'expo-router',
     // The notification icon/colour only apply to a native build; in Expo Go
     // the default OS presentation is used.
-    ['expo-notifications', { color: '#191918' }],
+    ['expo-notifications', { color: '#4f46e5' }],
     'expo-status-bar',
-    ['expo-splash-screen', { backgroundColor: '#FBFBFA', dark: { backgroundColor: '#151513' } }],
+    ['expo-splash-screen', { backgroundColor: '#f8fafc', dark: { backgroundColor: '#020617' } }],
   ],
   experiments: { typedRoutes: false },
   extra: {

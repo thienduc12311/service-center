@@ -4,7 +4,7 @@ import { Icon, type IconName } from '../../src/components/icons';
 import { fonts } from '../../src/lib/theme';
 import { useTheme } from '../../src/lib/useTheme';
 
-/** Every tab renders its own editorial header, so the nav bar stays out of it. */
+/** Tabs keep native navigation while using the website product colors. */
 const tabIcon =
   (name: IconName) =>
   ({ color }: { color: ColorValue }) => <Icon name={name} size={22} color={color} />;
@@ -16,9 +16,9 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: theme.color.canvas },
-        tabBarActiveTintColor: theme.color.ink,
+        tabBarActiveTintColor: theme.color.brandText,
         tabBarInactiveTintColor: theme.color.inkFaint,
-        tabBarLabelStyle: { fontFamily: fonts.sansMedium, fontSize: 10.5, letterSpacing: 0.1 },
+        tabBarLabelStyle: { fontFamily: fonts.sansMedium, fontWeight: '500', fontSize: 11 },
         tabBarStyle: {
           backgroundColor: theme.color.surface,
           borderTopWidth: StyleSheet.hairlineWidth,
@@ -27,11 +27,11 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Schedule', tabBarIcon: tabIcon('schedule') }} />
+      <Tabs.Screen name="index" options={{ title: 'My Schedule', tabBarIcon: tabIcon('schedule') }} />
       <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: tabIcon('calendar') }} />
       <Tabs.Screen name="songs" options={{ title: 'Songs', tabBarIcon: tabIcon('music') }} />
-      <Tabs.Screen name="songbooks" options={{ title: 'Books', tabBarIcon: tabIcon('book') }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person') }} />
+      <Tabs.Screen name="songbooks" options={{ title: 'Song books', tabBarIcon: tabIcon('book') }} />
+      <Tabs.Screen name="profile" options={{ title: 'Settings', tabBarIcon: tabIcon('person') }} />
     </Tabs>
   );
 }

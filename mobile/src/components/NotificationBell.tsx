@@ -15,11 +15,7 @@ export interface NotificationBellProps {
 /** Past this the badge stops counting and starts hinting. */
 const BADGE_CAP = 99;
 
-/**
- * The bell that sits at the top of every tab. Small on purpose — it is a
- * status light, not a call to action — with the unread count as the only
- * colour on the strip.
- */
+/** Notification access uses a 44-point touch target on every tab. */
 export const NotificationBell = ({ bar = true }: NotificationBellProps) => {
   const { unread } = useNotifications();
   const theme = useTheme();
@@ -60,8 +56,8 @@ const makeStyles = (theme: Theme) =>
       paddingTop: theme.space.sm,
     },
     button: {
-      width: 36,
-      height: 36,
+      width: 44,
+      height: 44,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -80,9 +76,10 @@ const makeStyles = (theme: Theme) =>
       borderColor: theme.color.canvas,
     },
     badgeLabel: {
-      fontFamily: fonts.monoMedium,
+      fontFamily: fonts.sansMedium,
+      fontWeight: '600',
       fontSize: 9,
       lineHeight: 12,
-      color: theme.color.onInk,
+      color: theme.color.onBrand,
     },
   });

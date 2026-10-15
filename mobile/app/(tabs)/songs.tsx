@@ -50,7 +50,7 @@ export default function SongsScreen() {
           <View style={styles.head}>
             <ScreenHeader
               eyebrow={results.length ? `${results.length} in the library` : undefined}
-              title="Song library"
+              title="Songs"
               description="Search the catalogue, then open a chart to transpose it on stage."
             />
 
@@ -58,7 +58,7 @@ export default function SongsScreen() {
               <Icon name="search" size={18} color={theme.color.inkFaint} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Title or author"
+                placeholder="Search by title"
                 placeholderTextColor={theme.color.inkFaint}
                 value={query}
                 onChangeText={setQuery}

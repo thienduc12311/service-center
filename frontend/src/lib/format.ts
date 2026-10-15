@@ -7,9 +7,9 @@ export const initials = (name: string | null | undefined, fallback = '?'): strin
 };
 
 export const assignmentTone: Record<AssignmentStatus, string> = {
-  confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  declined: 'bg-rose-50 text-rose-700 ring-rose-600/20',
-  unconfirmed: 'bg-amber-50 text-amber-700 ring-amber-600/20',
+  confirmed: 'status-confirmed ring-emerald-600/20',
+  declined: 'status-declined ring-rose-600/20',
+  unconfirmed: 'status-unconfirmed ring-amber-600/20',
 };
 
 /** Solid dots for dense lists, where the pale badge tones disappear. */
@@ -21,7 +21,7 @@ export const assignmentDot: Record<AssignmentStatus, string> = {
 
 export const planTone: Record<PlanStatus, string> = {
   draft: 'bg-slate-100 text-slate-600 ring-slate-500/20',
-  published: 'bg-brand-50 text-brand-700 ring-brand-600/20',
+  published: 'status-published ring-brand-600/20',
   archived: 'bg-slate-100 text-slate-400 ring-slate-400/20',
 };
 

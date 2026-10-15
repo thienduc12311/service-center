@@ -98,7 +98,7 @@ export default function SongScreen() {
         <Reveal>
           <View style={styles.hero}>
             {song.data.author ? (
-              <Text style={styles.author}>{song.data.author.toUpperCase()}</Text>
+              <Text style={styles.author}>{song.data.author}</Text>
             ) : null}
             <Text style={styles.title}>{song.data.title}</Text>
             {meta ? <Text style={styles.meta}>{meta}</Text> : null}
