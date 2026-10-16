@@ -3,24 +3,34 @@ import { param } from '../lib/params.js';
 import {
   createPositionSchema,
   createTeamSchema,
+  relatedTeamsSchema,
+  replaceScopeGrantsSchema,
   teamMembershipSchema,
+  teamTagRulesSchema,
   updatePositionSchema,
   updateTeamSchema,
+  type RelatedTeamsInput,
+  type ReplaceScopeGrantsInput,
+  type TeamPolicySettings,
+  type TeamTagRulesInput,
   type TeamWithPositions,
 } from '@service-center/shared';
 import { validateBody } from '../lib/validate.js';
-import { requireManager } from '../middleware/organization.js';
+import { requireAdmin, requireCapability, requireManager } from '../middleware/organization.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
+import { loadScopeAccess, replaceScopeAccess } from '../services/access.js';
+import { NO_CONTACT, contactsFor, type MemberContact } from '../services/contacts.js';
 
 export const teamsRouter: Router = Router();
 
+// Contact details come from `member_contacts`, never from the join.
 const TEAM_SELECT = `
   *,
   positions:team_positions(*),
   memberships:team_memberships(
     id, user_id, position_id,
-    profile:profiles(id, full_name, email, avatar_url, phone)
+    profile:profiles(id, full_name, avatar_url)
   )
 `;
 
@@ -30,7 +40,11 @@ type RawTeam = Record<string, unknown> & {
 };
 
 /** Roles live on organization_members, so they are stitched in separately. */
-const shapeTeam = (team: RawTeam, roles: Map<string, string>): TeamWithPositions => {
+const shapeTeam = (
+  team: RawTeam,
+  roles: Map<string, string>,
+  contacts: Map<string, MemberContact>,
+): TeamWithPositions => {
   const positions = [...(team.positions ?? [])].sort(
     (a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
   );
@@ -39,7 +53,7 @@ const shapeTeam = (team: RawTeam, roles: Map<string, string>): TeamWithPositions
     position_id: m.position_id,
     membership_id: m.id,
     profile: m.profile
-      ? { ...(m.profile as object), role: roles.get(m.user_id) ?? 'member' }
+      ? { ...(m.profile as object), ...(contacts.get(m.user_id) ?? NO_CONTACT), role: roles.get(m.user_id) ?? 'member' }
       : null,
   }));
   const { memberships: _ignored, ...rest } = team;
@@ -54,33 +68,34 @@ const roleMap = async (req: Request): Promise<Map<string, string>> => {
   return new Map((rows ?? []).map((r) => [r.user_id, r.role as string]));
 };
 
+const shapeTeams = async (req: Request, teams: RawTeam[]): Promise<TeamWithPositions[]> => {
+  const userIds = teams.flatMap((team) => (team.memberships ?? []).map((m) => m.user_id));
+  const [roles, contacts] = await Promise.all([roleMap(req), contactsFor(req.db, req.orgId, userIds)]);
+  return teams.map((team) => shapeTeam(team, roles, contacts));
+};
+
+const loadTeam = async (req: Request, id: string): Promise<TeamWithPositions> => {
+  const team = (await unwrap(
+    raw(req.db).from('teams').select(TEAM_SELECT).eq('id', id).eq('organization_id', req.orgId).maybeSingle(),
+  )) as RawTeam | null;
+  if (!team) throw HttpError.notFound('Team not found');
+  const [shaped] = await shapeTeams(req, [team]);
+  if (!shaped) throw HttpError.notFound('Team not found');
+  return shaped;
+};
+
 teamsRouter.get('/', async (req, res) => {
-  const [teams, roles] = await Promise.all([
-    unwrap(
-      raw(req.db).from('teams').select(TEAM_SELECT).eq('organization_id', req.orgId).order('sort_order'),
-    ) as Promise<RawTeam[]>,
-    roleMap(req),
-  ]);
-  res.json(teams.map((t) => shapeTeam(t, roles)));
+  const teams = (await unwrap(
+    raw(req.db).from('teams').select(TEAM_SELECT).eq('organization_id', req.orgId).order('sort_order'),
+  )) as RawTeam[];
+  res.json(await shapeTeams(req, teams));
 });
 
 teamsRouter.get('/:id', async (req, res) => {
-  const [team, roles] = await Promise.all([
-    unwrap(
-      raw(req.db)
-        .from('teams')
-        .select(TEAM_SELECT)
-        .eq('id', param(req, 'id'))
-        .eq('organization_id', req.orgId)
-        .maybeSingle(),
-    ) as Promise<RawTeam | null>,
-    roleMap(req),
-  ]);
-  if (!team) throw HttpError.notFound('Team not found');
-  res.json(shapeTeam(team, roles));
+  res.json(await loadTeam(req, param(req, 'id')));
 });
 
-teamsRouter.post('/', requireManager, validateBody(createTeamSchema), async (req, res) => {
+teamsRouter.post('/', requireCapability('teams.manage'), validateBody(createTeamSchema), async (req, res) => {
   const { positions, ...team } = req.body as { positions?: string[] } & Record<string, unknown>;
 
   const created = await unwrapOne(
@@ -99,14 +114,10 @@ teamsRouter.post('/', requireManager, validateBody(createTeamSchema), async (req
     );
   }
 
-  const [team_, roles] = await Promise.all([
-    unwrapOne(raw(req.db).from('teams').select(TEAM_SELECT).eq('id', created.id).single()) as Promise<RawTeam>,
-    roleMap(req),
-  ]);
-  res.status(201).json(shapeTeam(team_, roles));
+  res.status(201).json(await loadTeam(req, created.id));
 });
 
-teamsRouter.patch('/:id', requireManager, validateBody(updateTeamSchema), async (req, res) => {
+teamsRouter.patch('/:id', requireCapability('teams.manage'), validateBody(updateTeamSchema), async (req, res) => {
   const updated = await unwrap(
     req.db
       .from('teams')
@@ -120,13 +131,13 @@ teamsRouter.patch('/:id', requireManager, validateBody(updateTeamSchema), async 
   res.json(updated);
 });
 
-teamsRouter.delete('/:id', requireManager, async (req, res) => {
+teamsRouter.delete('/:id', requireCapability('teams.manage'), async (req, res) => {
   await unwrap(req.db.from('teams').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId));
   res.status(204).end();
 });
 
 // ----------------------------------------------------------- positions ----
-teamsRouter.post('/:id/positions', requireManager, validateBody(createPositionSchema), async (req, res) => {
+teamsRouter.post('/:id/positions', requireCapability('teams.manage'), validateBody(createPositionSchema), async (req, res) => {
   const created = await unwrapOne(
     req.db
       .from('team_positions')
@@ -139,7 +150,7 @@ teamsRouter.post('/:id/positions', requireManager, validateBody(createPositionSc
 
 teamsRouter.patch(
   '/:id/positions/:positionId',
-  requireManager,
+  requireCapability('teams.manage'),
   validateBody(updatePositionSchema),
   async (req, res) => {
     const updated = await unwrap(
@@ -156,7 +167,7 @@ teamsRouter.patch(
   },
 );
 
-teamsRouter.delete('/:id/positions/:positionId', requireManager, async (req, res) => {
+teamsRouter.delete('/:id/positions/:positionId', requireCapability('teams.manage'), async (req, res) => {
   await unwrap(
     req.db
       .from('team_positions')
@@ -168,7 +179,7 @@ teamsRouter.delete('/:id/positions/:positionId', requireManager, async (req, res
 });
 
 // ------------------------------------------------------------- members ----
-teamsRouter.post('/:id/members', requireManager, validateBody(teamMembershipSchema), async (req, res) => {
+teamsRouter.post('/:id/members', requireCapability('teams.manage'), validateBody(teamMembershipSchema), async (req, res) => {
   const { user_id, position_id } = req.body as { user_id: string; position_id?: string | null };
 
   // Guard against adding someone who isn't in the organization at all.
@@ -192,7 +203,7 @@ teamsRouter.post('/:id/members', requireManager, validateBody(teamMembershipSche
   res.status(201).json(created);
 });
 
-teamsRouter.delete('/:id/members/:membershipId', requireManager, async (req, res) => {
+teamsRouter.delete('/:id/members/:membershipId', requireCapability('teams.manage'), async (req, res) => {
   await unwrap(
     req.db
       .from('team_memberships')
@@ -201,4 +212,87 @@ teamsRouter.delete('/:id/members/:membershipId', requireManager, async (req, res
       .eq('team_id', param(req, 'id')),
   );
   res.status(204).end();
+});
+
+// -------------------------------------------------------------- access ----
+/** Who leads this team (team-scoped grants). Administrators only. */
+teamsRouter.get('/:id/access', requireAdmin, async (req, res) => {
+  res.json(await loadScopeAccess({ db: req.db, orgId: req.orgId, scopeType: 'team', scopeId: param(req, 'id') }));
+});
+
+teamsRouter.put('/:id/access', requireAdmin, validateBody(replaceScopeGrantsSchema), async (req, res) => {
+  res.json(
+    await replaceScopeAccess({
+      db: req.db,
+      orgId: req.orgId,
+      scopeType: 'team',
+      scopeId: param(req, 'id'),
+      input: req.body as ReplaceScopeGrantsInput,
+    }),
+  );
+});
+
+// ------------------------------------------------------------- policies ----
+const loadPolicies = async (req: Request, teamId: string): Promise<TeamPolicySettings> => {
+  const team = await unwrap(
+    req.db.from('teams').select('id').eq('id', teamId).eq('organization_id', req.orgId).maybeSingle(),
+  );
+  if (!team) throw HttpError.notFound('Team not found');
+  const [rules, related, serviceTypes] = await Promise.all([
+    unwrap(req.db.from('team_tag_rules').select('tag').eq('team_id', teamId).order('tag')),
+    unwrap(req.db.from('team_related_visibility').select('team_id').eq('related_team_id', teamId)),
+    unwrap(req.db.from('service_type_teams').select('service_type_id').eq('team_id', teamId)),
+  ]);
+  return {
+    team_id: teamId,
+    tag_rules: (rules ?? []).map((row) => row.tag),
+    related_team_ids: (related ?? []).map((row) => row.team_id),
+    service_type_ids: (serviceTypes ?? []).map((row) => row.service_type_id),
+  };
+};
+
+teamsRouter.get('/:id/policies', async (req, res) => {
+  res.json(await loadPolicies(req, param(req, 'id')));
+});
+
+/** People carrying any of these tags become candidates; computed on read. */
+teamsRouter.put('/:id/tag-rules', requireCapability('teams.manage'), validateBody(teamTagRulesSchema), async (req, res) => {
+  const teamId = param(req, 'id');
+  const tags = [...new Set((req.body as TeamTagRulesInput).tags.map((tag) => tag.toLowerCase()))];
+  await loadPolicies(req, teamId);
+  await unwrap(req.db.from('team_tag_rules').delete().eq('team_id', teamId));
+  if (tags.length) {
+    await unwrap(
+      req.db.from('team_tag_rules').insert(tags.map((tag) => ({ team_id: teamId, organization_id: req.orgId, tag }))),
+    );
+  }
+  res.json(await loadPolicies(req, teamId));
+});
+
+/**
+ * The teams whose members may see this team's roster when the organization
+ * restricts rosters to teams. Stored as (viewer team → this team), and only
+ * this team's managers may open it up.
+ */
+teamsRouter.put('/:id/related-teams', requireCapability('teams.manage'), validateBody(relatedTeamsSchema), async (req, res) => {
+  const teamId = param(req, 'id');
+  const viewers = [...new Set((req.body as RelatedTeamsInput).team_ids)].filter((id) => id !== teamId);
+  await loadPolicies(req, teamId);
+  await unwrap(req.db.from('team_related_visibility').delete().eq('related_team_id', teamId));
+  if (viewers.length) {
+    await unwrap(
+      req.db
+        .from('team_related_visibility')
+        .insert(viewers.map((viewer) => ({ team_id: viewer, related_team_id: teamId, organization_id: req.orgId }))),
+    );
+  }
+  res.json(await loadPolicies(req, teamId));
+});
+
+teamsRouter.get('/:id/candidates', requireManager, async (req, res) => {
+  res.json((await unwrap(req.db.rpc('team_candidates', { p_team: param(req, 'id') }))) ?? []);
+});
+
+teamsRouter.get('/:id/eligibility', requireManager, async (req, res) => {
+  res.json((await unwrap(req.db.rpc('team_eligibility_status', { p_team: param(req, 'id') }))) ?? []);
 });

@@ -31,7 +31,10 @@ export interface PlanTeamView {
   unpositioned: AssignmentDetail[];
   confirmed: number;
   declined: number;
+  /** Released and awaiting a reply. */
   pending: number;
+  /** Prepared privately; only this team's schedulers see these. */
+  prepared: AssignmentDetail[];
 }
 
 export interface BuildPlanTeamsInput {
@@ -82,7 +85,10 @@ export const buildPlanTeams = ({
         unpositioned: scheduled.filter((assignment) => assignment.position_id === null),
         confirmed: scheduled.filter((assignment) => assignment.status === 'confirmed').length,
         declined: scheduled.filter((assignment) => assignment.status === 'declined').length,
-        pending: scheduled.filter((assignment) => assignment.status === 'unconfirmed').length,
+        pending: scheduled.filter(
+          (assignment) => assignment.status === 'unconfirmed' && assignment.visibility === 'released',
+        ).length,
+        prepared: scheduled.filter((assignment) => assignment.visibility === 'prepared'),
       };
     });
 };

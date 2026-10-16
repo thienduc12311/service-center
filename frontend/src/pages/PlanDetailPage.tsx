@@ -31,7 +31,7 @@ type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'edit-notes' |
 
 export const PlanDetailPage = () => {
   const { planId } = useParams<{ planId: string }>();
-  const { canManage, user, organizationId, role } = useAuth();
+  const { can, user, organizationId, role } = useAuth();
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
 
@@ -80,6 +80,13 @@ export const PlanDetailPage = () => {
 
   const removeItem = useMutation({
     mutationFn: (itemId: string) => api.deletePlanItem(planId!, itemId),
+    onSuccess: invalidate,
+  });
+
+  // Exactly the reviewed ids; a repeated click is a no-op on the server.
+  const release = useMutation({
+    mutationFn: (assignmentIds: string[]) =>
+      api.releaseAssignments(planId!, { assignment_ids: assignmentIds, notify: true, idempotency_key: crypto.randomUUID() }),
     onSuccess: invalidate,
   });
 
@@ -173,6 +180,10 @@ export const PlanDetailPage = () => {
   if (!plan.data || !planId) return <EmptyState title="Plan not found" />;
 
   const detail = plan.data;
+  const target = { serviceTypeId: detail.service_type_id };
+  const canEditPlan = can('plans.edit', target);
+  const canScheduleTeam = (teamId: string): boolean => can('scheduling.manage', { ...target, teamId });
+  const canSchedule = can('scheduling.manage', target) || (teams.data ?? []).some((team) => canScheduleTeam(team.id));
   const organizationName =
     user?.memberships.find((membership) => membership.organization.id === organizationId)
       ?.organization.name ?? 'Service Center';
@@ -203,7 +214,8 @@ export const PlanDetailPage = () => {
       <PlanWorkspaceHeader
         plan={detail}
         organizationName={organizationName}
-        canManage={canManage}
+        canManage={canEditPlan}
+        canNotify={canSchedule}
         previousPlanId={neighbours.previous}
         nextPlanId={neighbours.next}
         creatingNextPlan={addNextPlan.isPending}
@@ -227,6 +239,7 @@ export const PlanDetailPage = () => {
             notify.error ??
             reorder.error ??
             respond.error ??
+            release.error ??
             setNeed.error ??
             addNextPlan.error ??
             removePlan.error
@@ -238,7 +251,8 @@ export const PlanDetailPage = () => {
       <div className="mt-6 grid gap-8 lg:grid-cols-[16rem_1fr]">
         <PlanSidebar
           plan={detail}
-          canManage={canManage}
+          canEditPlan={canEditPlan}
+          canSchedule={canSchedule}
           myTeams={myTeams}
           everyTeam={everyTeam}
           showAllTeams={showAllTeams}
@@ -272,7 +286,7 @@ export const PlanDetailPage = () => {
           {tab === 'order' && (
             <OrderTab
               plan={detail}
-              canManage={canManage}
+              canManage={canEditPlan}
               onAddItem={() => setDialog('add-item')}
               onMoveItem={move}
               onRemoveItem={(itemId) => removeItem.mutate(itemId)}
@@ -282,9 +296,12 @@ export const PlanDetailPage = () => {
           {tab === 'teams' && (
             <TeamsTab
               teams={showAllTeams ? everyTeam : serviceTeams}
-              canManage={canManage}
+              canScheduleTeam={canScheduleTeam}
+              canEditPlan={canEditPlan}
+              onRelease={(ids) => release.mutate(ids)}
+              releasing={release.isPending}
               currentUserId={user?.profile.id ?? null}
-              editingNeeds={editingNeeds && canManage}
+              editingNeeds={editingNeeds && (canEditPlan || canSchedule)}
               onEditingNeedsChange={setEditingNeeds}
               onNeedChange={(positionId, needed) => setNeed.mutate({ positionId, needed })}
               onAddPeople={() => setDialog('schedule-people')}
@@ -307,6 +324,7 @@ export const PlanDetailPage = () => {
       <SchedulePeopleModal
         open={dialog === 'schedule-people'}
         planId={planId}
+        serviceTypeId={detail.service_type_id}
         onClose={() => setDialog(null)}
       />
       <EditTimesModal

@@ -35,7 +35,9 @@ type ChartDialog = 'sequence' | 'formatting';
  */
 export const ChartEditorPage = () => {
   const { songId, arrangementId } = useParams<{ songId: string; arrangementId: string }>();
-  const { canManage } = useAuth();
+  const { canAnywhere } = useAuth();
+  // The song library is organization-wide; leading a team never implies it.
+  const canManage = canAnywhere('songs.manage');
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
   const song = useSong(songId);

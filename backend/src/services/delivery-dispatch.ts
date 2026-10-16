@@ -3,7 +3,6 @@ import {
   type DeliveryEffectRow,
   type EmailTransportMode,
   type NotificationType,
-  type OrgRole,
   type PushTransportMode,
 } from '@service-center/shared';
 import { adminDb, raw, unwrap } from '../lib/supabase.js';
@@ -24,8 +23,6 @@ import { pushTransport, type PushTicketResult } from './expo-push.js';
 import { activeDeviceTokens } from './device-registrations.js';
 import { generateAssignmentToken } from './assignment-tokens.js';
 
-const SCHEDULER_ROLES: readonly OrgRole[] = ['owner', 'admin', 'scheduler'];
-
 /**
  * Called by the dispatcher immediately before contacting a provider. Returns
  * false when the worker lost its lease, in which case nothing is sent.
@@ -44,6 +41,8 @@ interface RecipientAssignment {
   id: string;
   plan_id: string;
   status: 'unconfirmed' | 'confirmed' | 'declined';
+  visibility: 'prepared' | 'released';
+  response_owner_id: string | null;
   team: { name: string } | null;
   position: { name: string } | null;
 }
@@ -127,17 +126,31 @@ const loadPlan = async (planId: string | null): Promise<DispatchPlan | null> => 
   );
 };
 
-const memberRole = async (orgId: string, userId: string): Promise<OrgRole | null> => {
+const isActiveMember = async (orgId: string, userId: string): Promise<boolean> => {
   const membership = await unwrap(
     adminDb
       .from('organization_members')
-      .select('role')
+      .select('user_id')
       .eq('organization_id', orgId)
       .eq('user_id', userId)
       .eq('status', 'active')
       .maybeSingle(),
   );
-  return membership?.role ?? null;
+  return Boolean(membership);
+};
+
+/**
+ * A response update goes only to someone who still schedules at least one of
+ * the answered positions (F01 scope, not just a role), so a revoked leader or
+ * a reassigned owner no longer receives it.
+ */
+const stillSchedulesAny = async (userId: string, assignmentIds: readonly string[]): Promise<boolean> => {
+  for (const assignmentId of assignmentIds) {
+    if (await unwrap(adminDb.rpc('user_can_schedule_assignment', { p_user: userId, p_assignment: assignmentId }))) {
+      return true;
+    }
+  }
+  return false;
 };
 
 /** The recipient's positions this effect is still about, re-read at dispatch. */
@@ -146,13 +159,15 @@ const eligibleAssignments = async (effect: DeliveryEffect, recipientId: string):
   const rows = (await unwrap(
     raw(adminDb)
       .from('assignments')
-      .select('id, plan_id, status, team:teams(name), position:team_positions(name)')
+      .select('id, plan_id, status, visibility, response_owner_id, team:teams(name), position:team_positions(name)')
       .in('id', effect.assignmentIds)
       .eq('user_id', recipientId)
-      .eq('plan_id', effect.planId),
+      .eq('plan_id', effect.planId)
+      .eq('visibility', 'released'),
   )) as unknown as RecipientAssignment[];
   // A reminder is only for positions still waiting for an answer; a request
-  // is never sent for a position the person has already declined.
+  // is never sent for a position the person has already declined. Prepared
+  // positions are never sent (filtered above as well as at enqueue).
   return rows.filter((row) =>
     effect.template === 'assignment_reminder' ? row.status === 'unconfirmed' : row.status !== 'declined',
   );
@@ -271,10 +286,12 @@ const requestEmail = async (
   const { email, name } = await recipientEmail(plan.organization_id, job.recipientId);
   if (!email) return finished('skipped', 'no_email_address');
 
+  // Replies go to whoever owns these answers, falling back to the sender.
+  const replyTo = rows.find((row) => row.response_owner_id)?.response_owner_id ?? effect.createdBy;
   const [organization, scheduler, times] = await Promise.all([
     unwrap(adminDb.from('organizations').select('name').eq('id', plan.organization_id).maybeSingle()),
-    effect.createdBy
-      ? unwrap(adminDb.from('profiles').select('email').eq('id', effect.createdBy).maybeSingle())
+    replyTo
+      ? unwrap(adminDb.from('profiles').select('email').eq('id', replyTo).maybeSingle())
       : Promise.resolve(null),
     unwrap(
       adminDb.from('plan_times').select('id, kind, name, starts_at, ends_at, ics_sequence').eq('plan_id', plan.id),
@@ -363,7 +380,8 @@ const responseEmail = async (
 /**
  * Performs one leased delivery. Everything is re-read here rather than
  * trusted from enqueue time: the plan may be gone, the person removed from
- * it or from the organization, or the scheduler no longer a scheduler.
+ * it or from the organization, or the response owner may no longer schedule
+ * those positions.
  * Returns null when the lease was lost before the provider call.
  */
 export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCall): Promise<DispatchResult | null> => {
@@ -372,10 +390,12 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
   const plan = await loadPlan(effect.planId);
   if (!plan) return finished('cancelled', 'plan_missing');
 
-  const role = await memberRole(plan.organization_id, job.recipientId);
+  const member = await isActiveMember(plan.organization_id, job.recipientId);
 
   if (effect.template === 'scheduler_response') {
-    if (!role || !SCHEDULER_ROLES.includes(role)) return finished('cancelled', 'scheduler_not_active');
+    if (!member || !(await stillSchedulesAny(job.recipientId, effect.assignmentIds))) {
+      return finished('cancelled', 'scheduler_not_active');
+    }
     if (job.channel === 'email') return responseEmail(effect, plan, job, begin);
     const drafts = await responseDrafts(effect, plan, job.recipientId);
     if (job.channel === 'in_app') {
@@ -385,7 +405,7 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
     return sendPush(job, drafts, begin);
   }
 
-  if (!role) return finished('cancelled', 'recipient_not_eligible');
+  if (!member) return finished('cancelled', 'recipient_not_eligible');
   const rows = await eligibleAssignments(effect, job.recipientId);
   if (rows.length === 0) return finished('cancelled', 'recipient_not_eligible');
 

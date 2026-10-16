@@ -68,6 +68,7 @@ const plan = (items: PlanItemDetail[]): PlanDetail => ({
     confirmed: 0,
     unconfirmed: 0,
     declined: 0,
+    prepared: 0,
   },
   items,
   assignments: [],

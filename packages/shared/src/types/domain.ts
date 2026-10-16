@@ -1,4 +1,9 @@
 import type {
+  AccessCapability,
+  AccessGrantRow,
+  AccessMode,
+  AccessMoveChangeRow,
+  AccessScopeType,
   ArrangementRow,
   AssignmentRow,
   BlockoutRow,
@@ -18,6 +23,7 @@ import type {
   PlanTimeRow,
   ProfileRow,
   SchedulingConflictRow,
+  ServiceTypeFolderRow,
   ServiceTypeRow,
   SongRow,
   SongbookRow,
@@ -26,13 +32,110 @@ import type {
 } from './database.js';
 import type { ChartNotation } from '../lib/chordpro.js';
 
+/** One rule of effective access: a capability at a scope, and where it comes from. */
+export interface EffectiveAccessEntry {
+  capability: AccessCapability;
+  /** Folder grants are also listed expanded to each service type beneath them. */
+  scope_type: AccessScopeType;
+  scope_id: string | null;
+  source: 'role:owner' | 'role:admin' | 'role:scheduler_legacy' | 'grant' | 'grant:folder';
+  grant_id: string | null;
+}
+
+/** What one member may do in one organization, as resolved by the database. */
+export interface EffectiveAccess {
+  organization_id: string;
+  user_id: string;
+  role: OrgRole;
+  access_mode: AccessMode;
+  /** Only owners/admins review and change access; no grant confers this. */
+  can_administer_access: boolean;
+  entries: EffectiveAccessEntry[];
+}
+
+export interface CurrentUserMembership {
+  organization: OrganizationRow;
+  role: OrgRole;
+  access: EffectiveAccess;
+}
+
 /** The signed-in user plus every organization they belong to. */
 export interface CurrentUser {
   profile: ProfileRow;
-  memberships: Array<{
-    organization: OrganizationRow;
-    role: OrgRole;
-  }>;
+  memberships: CurrentUserMembership[];
+}
+
+export type CapabilityDenial =
+  | 'not_a_member'
+  | 'membership_inactive'
+  | 'scoped_scheduler_without_grant'
+  | 'grant_outside_scope'
+  | 'no_matching_grant';
+
+/** Why a member is allowed or denied one capability at one scope. */
+export interface CapabilityExplanation {
+  allowed: boolean;
+  capability: AccessCapability;
+  role: OrgRole | null;
+  access_mode: AccessMode | null;
+  reasons: Array<Pick<EffectiveAccessEntry, 'source' | 'scope_type' | 'scope_id' | 'grant_id'>>;
+  denial: CapabilityDenial | null;
+}
+
+/** One member in the administrator's access review. */
+export interface AccessMember {
+  user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  role: OrgRole;
+  access_mode: AccessMode;
+  grants: AccessGrantRow[];
+}
+
+/** The grants held at one service type, team, folder or the organization. */
+export interface ScopeAccess {
+  scope_type: AccessScopeType;
+  scope_id: string | null;
+  grants: Array<Pick<AccessGrantRow, 'id' | 'user_id' | 'capability' | 'created_at'> & { full_name: string | null }>;
+}
+
+export type AccessMoveChange = AccessMoveChangeRow;
+
+export interface ServiceTypeFolderNode extends ServiceTypeFolderRow {
+  children: ServiceTypeFolderNode[];
+  service_type_ids: string[];
+}
+
+export interface FolderTree {
+  folders: ServiceTypeFolderNode[];
+  /** Service types not in any folder. */
+  unfiled_service_type_ids: string[];
+  landing_folder_id: string | null;
+}
+
+export interface TeamCandidate {
+  person_id: string | null;
+  profile_id: string | null;
+  display_name: string | null;
+  source: 'membership' | 'tag';
+  /** False on a secure team without current eligibility evidence. */
+  eligible: boolean;
+}
+
+export interface TeamEligibilityEntry {
+  user_id: string;
+  eligible: boolean;
+  status: 'clear' | 'not_clear' | 'pending' | null;
+  expires_at: string | null;
+}
+
+/** The team settings that drive F01 policies, for the team settings view. */
+export interface TeamPolicySettings {
+  team_id: string;
+  tag_rules: string[];
+  /** Teams whose members may see this team's roster when rosters are restricted to teams. */
+  related_team_ids: string[];
+  service_type_ids: string[];
 }
 
 /** Returned once per device registration; keep the revocation secret in memory only. */
@@ -271,6 +374,8 @@ export interface PlanItemDetail extends PlanItemRow {
 
 export interface AssignmentDetail extends AssignmentRow {
   person: PersonSummary | null;
+  /** Who hears this request's answer. */
+  response_owner: Pick<ProfileRow, 'id' | 'full_name'> | null;
   team: Pick<TeamRow, 'id' | 'name' | 'color'> | null;
   position: Pick<TeamPositionRow, 'id' | 'name'> | null;
 }
@@ -294,6 +399,8 @@ export interface PlanSummary extends PlanRow {
     confirmed: number;
     unconfirmed: number;
     declined: number;
+    /** Prepared requests the caller can see as a scheduler; never sent yet. */
+    prepared: number;
   };
 }
 

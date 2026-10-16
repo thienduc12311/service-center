@@ -7,6 +7,7 @@ import { useBlockouts, useCalendarFeed, useInvalidateOrg } from '../hooks/querie
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { DeliverySettings } from '../components/settings/DeliverySettings';
+import { AccessSettings } from '../components/settings/AccessSettings';
 
 export const SettingsPage = () => {
   const { user, organizationId, role, refreshUser, switchOrganization } = useAuth();
@@ -115,6 +116,8 @@ export const SettingsPage = () => {
           switchOrganization(id);
         }}
       />
+
+      {isAdmin(role) && <AccessSettings organization={organization ?? null} />}
 
       {isAdmin(role) && <DeliverySettings />}
 

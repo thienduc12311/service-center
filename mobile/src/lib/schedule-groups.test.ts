@@ -40,6 +40,10 @@ const entry = (fixture: EntryFixture): MyScheduleEntry => ({
     notified_at: null,
     responded_at: null,
     created_by: 'scheduler',
+    visibility: 'released',
+    released_at: '2026-10-01T00:00:00.000Z',
+    released_by: 'scheduler',
+    response_owner_id: 'scheduler',
     created_at: '2026-10-01T00:00:00.000Z',
     updated_at: '2026-10-01T00:00:00.000Z',
   },
@@ -183,6 +187,7 @@ describe('planResponsibilities', () => {
     ...entry({ id, planId: 'p1', status, team, position: null }).assignment,
     user_id: userId,
     person: null,
+    response_owner: null,
     team: { id: `team-${team}`, name: team, color: '#000000' },
     position: null,
   });

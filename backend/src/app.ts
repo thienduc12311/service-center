@@ -23,12 +23,15 @@ import {
   assignmentsRouter,
   planAssignmentsRouter,
   planNotifyRouter,
+  planReleaseRouter,
   scheduleRouter,
   schedulingRouter,
 } from './routes/assignments.js';
 import { calendarRouter } from './routes/calendar.js';
 import { deliveriesRouter, deliveryWorkerRouter } from './routes/deliveries.js';
 import { blockoutsRouter } from './routes/blockouts.js';
+import { accessRouter } from './routes/access.js';
+import { foldersRouter } from './routes/folders.js';
 import { songbooksRouter } from './routes/songbooks.js';
 import {
   deviceRevocationsRouter,
@@ -96,6 +99,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/arrangements', scoped, arrangementsRouter);
   app.use('/api/v1/plans/:planId/assignments', scoped, planAssignmentsRouter);
   app.use('/api/v1/plans/:planId/notify', scoped, planNotifyRouter);
+  app.use('/api/v1/plans/:planId/release', scoped, planReleaseRouter);
   app.use('/api/v1/plans', scoped, plansRouter);
   app.use('/api/v1/assignments', scoped, assignmentsRouter);
   app.use('/api/v1/schedule', scoped, scheduleRouter);
@@ -105,6 +109,8 @@ export const createApp = (): Express => {
   app.use('/api/v1/songbooks', scoped, songbooksRouter);
   app.use('/api/v1/notifications', scoped, notificationsRouter);
   app.use('/api/v1/deliveries', scoped, deliveriesRouter);
+  app.use('/api/v1/access', scoped, accessRouter);
+  app.use('/api/v1/folders', scoped, foldersRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -9,6 +9,26 @@ import type {
   RosterPerson,
 } from '@service-center/shared';
 
+/**
+ * The roster fields `mergeRoster` reads. A caller without people.view_private
+ * gets these from the `people_directory` projection, with contact fields null.
+ */
+export type RosterPersonRecord = Pick<
+  PersonRow,
+  'id' | 'profile_id' | 'first_name' | 'last_name' | 'avatar_url' | 'email' | 'phone' | 'campus'
+>;
+
+/** Every column of `people` an API role may select (the medical note is not one). */
+export const PERSON_COLUMNS = [
+  'id', 'organization_id', 'profile_id', 'first_name', 'last_name', 'avatar_url',
+  'email', 'phone', 'phone_carrier', 'address_line1', 'address_line2', 'city', 'state_province',
+  'postal_code', 'country', 'campus', 'person_type', 'gender', 'birthdate', 'marital_status',
+  'anniversary_date', 'school', 'created_by', 'created_at', 'updated_at',
+].join(', ');
+
+/** Profile columns an API role may select; contact comes from `member_contacts`. */
+export const PUBLIC_PROFILE_COLUMNS = 'id, full_name, avatar_url, created_at, updated_at';
+
 /** An active `organization_members` row joined to its `profiles` row. */
 export interface ActiveMemberRow {
   role: OrgRole;
@@ -28,11 +48,11 @@ export const personDisplayName = (person: Pick<PersonRow, 'first_name' | 'last_n
  */
 export const mergeRoster = (
   members: ActiveMemberRow[],
-  people: PersonRow[],
+  people: RosterPersonRecord[],
   pendingInvitations: Array<Pick<PersonInvitationRow, 'person_id'>>,
 ): RosterPerson[] => {
   const peopleByProfileId = new Map(
-    people.filter((p): p is PersonRow & { profile_id: string } => p.profile_id !== null).map((p) => [p.profile_id, p]),
+    people.filter((p): p is RosterPersonRecord & { profile_id: string } => p.profile_id !== null).map((p) => [p.profile_id, p]),
   );
   const pendingPersonIds = new Set(pendingInvitations.map((invitation) => invitation.person_id));
 

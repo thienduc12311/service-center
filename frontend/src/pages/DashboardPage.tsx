@@ -11,7 +11,8 @@ import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../
 import { assignmentTone, planTone } from '../lib/format';
 
 export const DashboardPage = () => {
-  const { user, canManage } = useAuth();
+  const { user, canAnywhere } = useAuth();
+  const canManage = canAnywhere('plans.edit');
   const [openedAt] = useState(() => new Date().toISOString());
   const upcoming = usePlans({ from: openedAt, per_page: 5, order: 'asc' });
   const mine = useMySchedule();

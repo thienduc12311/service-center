@@ -30,6 +30,10 @@ export const keys = {
   calendarFeed: (org: string | null) => [...keys.all(org), 'calendar-feed'] as const,
   deliveryStatus: (org: string | null) => [...keys.all(org), 'delivery-status'] as const,
   deliveries: (org: string | null, query: unknown) => [...keys.all(org), 'deliveries', query] as const,
+  accessMembers: (org: string | null) => [...keys.all(org), 'access', 'members'] as const,
+  scopeAccess: (org: string | null, scope: string, id: string | null) =>
+    [...keys.all(org), 'access', 'scope', scope, id] as const,
+  folders: (org: string | null) => [...keys.all(org), 'folders'] as const,
   songbooks: (org: string | null) => [...keys.all(org), 'songbooks'] as const,
   songbook: (org: string | null, id: string) => [...keys.songbooks(org), id] as const,
 };
@@ -202,4 +206,14 @@ export const useRespondToAssignment = () => {
       api.respondToAssignment(id, { status }),
     onSuccess: invalidate,
   });
+};
+
+export const useAccessMembers = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.accessMembers(org), queryFn: () => api.listAccessMembers(), enabled: Boolean(org) });
+};
+
+export const useFolderTree = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.folders(org), queryFn: () => api.folderTree(), enabled: Boolean(org) });
 };

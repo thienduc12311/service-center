@@ -11,11 +11,14 @@ import type {
 } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
+import { NO_CONTACT, contactsFor } from './contacts.js';
 
 /**
  * `person:profiles!assignments_user_id_fkey` is spelled out because
- * `assignments` has two foreign keys into `profiles` (user_id and created_by),
- * which PostgREST cannot disambiguate on its own.
+ * `assignments` has several foreign keys into `profiles`, which PostgREST
+ * cannot disambiguate on its own. Contact details are merged in afterwards
+ * from `member_contacts` (people.view_private only). Prepared assignments are
+ * present only for callers who schedule that team (RLS).
  */
 export const PLAN_DETAIL_SELECT = `
   *,
@@ -33,7 +36,8 @@ export const PLAN_DETAIL_SELECT = `
     *,
     team:teams(id, name, color),
     position:team_positions(id, name),
-    person:profiles!assignments_user_id_fkey(id, full_name, email, avatar_url, phone)
+    person:profiles!assignments_user_id_fkey(id, full_name, avatar_url),
+    response_owner:profiles!assignments_response_owner_id_fkey(id, full_name)
   ),
   position_needs:plan_position_needs(
     needed,
@@ -46,7 +50,7 @@ export const PLAN_SUMMARY_SELECT = `
   service_type:service_types(id, name, recurrence),
   times:plan_times(*),
   items:plan_items(id, item_type),
-  assignments:assignments(id, status)
+  assignments:assignments(id, status, visibility)
 `;
 
 type RawPositionNeed = {
@@ -56,7 +60,7 @@ type RawPositionNeed = {
 
 type RawPlan = Record<string, unknown> & {
   items?: Array<{ item_type?: string }>;
-  assignments?: Array<{ status?: string }>;
+  assignments?: Array<{ status?: string; visibility?: string }>;
   times?: Array<Record<string, unknown>>;
   position_needs?: RawPositionNeed[];
 };
@@ -84,7 +88,10 @@ const byKind = (times: RawPlan['times'] = []) =>
 
 export const shapePlanSummary = (row: RawPlan): PlanSummary => {
   const items = row.items ?? [];
-  const assignments = row.assignments ?? [];
+  // Prepared rows (visible to their schedulers only) are counted apart, so
+  // "awaiting reply" never includes requests nobody has received.
+  const all = row.assignments ?? [];
+  const assignments = all.filter((a) => a.visibility !== 'prepared');
   return {
     ...(row as object),
     times: byKind(row.times),
@@ -94,6 +101,7 @@ export const shapePlanSummary = (row: RawPlan): PlanSummary => {
       confirmed: assignments.filter((a) => a.status === 'confirmed').length,
       unconfirmed: assignments.filter((a) => a.status === 'unconfirmed').length,
       declined: assignments.filter((a) => a.status === 'declined').length,
+      prepared: all.length - assignments.length,
     },
   } as unknown as PlanSummary;
 };
@@ -130,7 +138,17 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
   )) as RawPlan | null;
 
   if (!row) throw HttpError.notFound('Plan not found');
-  return shapePlanDetail(row);
+  const detail = shapePlanDetail(row);
+  const contacts = await contactsFor(db, orgId, detail.assignments.map((a) => a.user_id));
+  return {
+    ...detail,
+    assignments: detail.assignments.map((assignment) => ({
+      ...assignment,
+      person: assignment.person
+        ? { ...assignment.person, ...(contacts.get(assignment.user_id) ?? NO_CONTACT) }
+        : null,
+    })),
+  };
 };
 
 /** The plan id a create/copy function returned. */

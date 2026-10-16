@@ -35,13 +35,16 @@ calendarFeedRouter.get('/:token.ics', async (req, res) => {
   const token = await unwrap(adminDb.from('calendar_feed_tokens').select('id, organization_id, user_id, revoked_at').eq('token_hash', hashInviteToken(req.params.token)).maybeSingle());
   if (!token || (token as FeedTokenRecord).revoked_at) throw HttpError.notFound('Calendar feed not found');
   const feedToken = token as FeedTokenRecord;
+  // Service-role read: re-check the subscriber is still an active member.
+  const membership = await unwrap(adminDb.from('organization_members').select('status').eq('organization_id', feedToken.organization_id).eq('user_id', feedToken.user_id).maybeSingle());
+  if (membership?.status !== 'active') throw HttpError.notFound('Calendar feed not found');
   const now = new Date();
   const from = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const to = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
   const times = (await unwrap(raw(adminDb).from('plan_times').select('id, kind, name, starts_at, ends_at, ics_sequence, plan:plans!inner(id, title, location, organization_id)').eq('plan.organization_id', feedToken.organization_id).gte('starts_at', from).lte('starts_at', to))) as unknown as FeedPlanTime[];
   const planIds = [...new Set(times.map((time) => time.plan?.id).filter((id): id is string => Boolean(id)))];
   const assignments = planIds.length
-    ? (await unwrap(adminDb.from('assignments').select('plan_id, status').eq('user_id', feedToken.user_id).in('plan_id', planIds))) as FeedAssignment[]
+    ? (await unwrap(adminDb.from('assignments').select('plan_id, status').eq('user_id', feedToken.user_id).eq('visibility', 'released').in('plan_id', planIds))) as FeedAssignment[]
     : [];
   const statusByPlan = new Map(assignments.filter((assignment) => assignment.status !== 'declined').map((assignment) => [assignment.plan_id, assignment.status]));
   const events: IcsEvent[] = times.flatMap((time) => {

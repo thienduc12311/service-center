@@ -6,7 +6,10 @@ import type { PlanTeamView } from './types';
 
 export interface PlanSidebarProps {
   plan: PlanDetail;
-  canManage: boolean;
+  /** plans.edit on this plan's service type: times, notes, imports. */
+  canEditPlan: boolean;
+  /** scheduling.manage for at least one team on this plan. */
+  canSchedule: boolean;
   /** Teams the signed-in person is on, or is scheduled for on this plan. */
   myTeams: PlanTeamView[];
   everyTeam: PlanTeamView[];
@@ -39,7 +42,8 @@ const SectionHeading = ({
 
 export const PlanSidebar = ({
   plan,
-  canManage,
+  canEditPlan,
+  canSchedule,
   myTeams,
   everyTeam,
   showAllTeams,
@@ -64,7 +68,7 @@ export const PlanSidebar = ({
           icon="◷"
           title="Times"
           action={
-            canManage && (
+            canEditPlan && (
               <Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={onEditTimes}>
                 Edit
               </Button>
@@ -108,14 +112,18 @@ export const PlanSidebar = ({
                   scheduled for this plan.
                 </p>
               )}
-              {canManage && (
+              {(canEditPlan || canSchedule) && (
                 <div className="flex flex-col items-stretch gap-1.5">
-                  <Button variant="secondary" className="!py-1 text-xs" onClick={onImportTemplate}>
-                    Import Template
-                  </Button>
-                  <Button variant="secondary" className="!py-1 text-xs" onClick={onAddPeople}>
-                    Add People
-                  </Button>
+                  {canEditPlan && (
+                    <Button variant="secondary" className="!py-1 text-xs" onClick={onImportTemplate}>
+                      Import Template
+                    </Button>
+                  )}
+                  {canSchedule && (
+                    <Button variant="secondary" className="!py-1 text-xs" onClick={onAddPeople}>
+                      Add People
+                    </Button>
+                  )}
                   <Button
                     variant="secondary"
                     className="!py-1 text-xs"
@@ -186,7 +194,7 @@ export const PlanSidebar = ({
           icon="🗒"
           title="Notes"
           action={
-            canManage && (
+            canEditPlan && (
               <Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={onEditNotes}>
                 {plan.notes ? 'Edit' : 'Add'}
               </Button>

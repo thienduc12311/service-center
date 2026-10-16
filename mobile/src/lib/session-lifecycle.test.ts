@@ -36,6 +36,8 @@ const organization = (id: string): OrganizationRow => ({
   country: null,
   denomination: null,
   member_count: null,
+  default_folder_id: null,
+  assignment_visibility: 'organization',
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z',
 });
@@ -52,7 +54,18 @@ const currentUser = (userId: string, organizationIds: string[]): CurrentUser => 
   };
   return {
     profile,
-    memberships: organizationIds.map((id) => ({ organization: organization(id), role: 'member' })),
+    memberships: organizationIds.map((id) => ({
+      organization: organization(id),
+      role: 'member',
+      access: {
+        organization_id: id,
+        user_id: userId,
+        role: 'member',
+        access_mode: 'legacy',
+        can_administer_access: false,
+        entries: [],
+      },
+    })),
   };
 };
 

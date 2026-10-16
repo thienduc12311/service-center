@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
+import type { EffectiveAccess } from '@service-center/shared';
 import { adminDb, userDb, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 
@@ -12,6 +13,8 @@ declare global {
       /** Set by `withOrganization`. */
       orgId: string;
       orgRole: 'owner' | 'admin' | 'scheduler' | 'member';
+      /** Set by `withOrganization`: the caller's F01 effective access. */
+      access: EffectiveAccess;
     }
   }
 }

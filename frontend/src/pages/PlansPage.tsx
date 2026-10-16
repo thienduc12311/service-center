@@ -20,7 +20,8 @@ const defaultServiceDate = () => {
 };
 
 export const PlansPage = () => {
-  const { canManage } = useAuth();
+  const { canAnywhere } = useAuth();
+  const canManage = canAnywhere('plans.edit');
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
   const serviceTypes = useServiceTypes();

@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ApiError, type SchedulingConflict } from '@service-center/shared';
+import { ApiError, type AssignmentVisibility, type SchedulingConflict } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { usePeople, useTeams, useInvalidateOrg } from '../../hooks/queries';
+import { useAuth } from '../../providers/AuthProvider';
 import { Avatar, Button, ErrorNotice, Modal } from '../ui';
 
 export interface SchedulePeopleModalProps {
   open: boolean;
   planId: string;
+  /** The plan's service type: scheduling rights can be granted per service type. */
+  serviceTypeId: string | null;
   /** Pre-selects the team the scheduler was already looking at. */
   initialTeamId?: string | null;
   onClose: () => void;
@@ -16,18 +19,28 @@ export interface SchedulePeopleModalProps {
 export const SchedulePeopleModal = ({
   open,
   planId,
+  serviceTypeId,
   initialTeamId,
   onClose,
 }: SchedulePeopleModalProps) => {
   const invalidate = useInvalidateOrg();
-  const teams = useTeams();
+  const { can } = useAuth();
+  const allTeams = useTeams();
+  // Only the teams this person may schedule on this plan; the server refuses the rest.
+  const teams = {
+    ...allTeams,
+    data: allTeams.data?.filter((t) => can('scheduling.manage', { serviceTypeId, teamId: t.id })),
+  };
   const people = usePeople();
   const [teamId, setTeamId] = useState(initialTeamId ?? '');
   const [positionId, setPositionId] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [conflicts, setConflicts] = useState<SchedulingConflict[]>([]);
+  /** Null follows the team's default. */
+  const [visibilityChoice, setVisibilityChoice] = useState<AssignmentVisibility | null>(null);
 
   const team = teams.data?.find((t) => t.id === teamId);
+  const visibility: AssignmentVisibility = visibilityChoice ?? team?.default_visibility ?? 'released';
 
   const schedule = useMutation({
     mutationFn: (ignoreConflicts: boolean) =>
@@ -39,11 +52,13 @@ export const SchedulePeopleModal = ({
         })),
         ignore_conflicts: ignoreConflicts,
         notify: true,
+        visibility,
       }),
     onSuccess: async () => {
       await invalidate();
       setSelected([]);
       setConflicts([]);
+      setVisibilityChoice(null);
       onClose();
     },
     onError: (error) => {
@@ -141,6 +156,21 @@ export const SchedulePeopleModal = ({
           </div>
         </div>
 
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 rounded border-slate-300"
+            checked={visibility === 'prepared'}
+            onChange={(e) => setVisibilityChoice(e.target.checked ? 'prepared' : 'released')}
+          />
+          <span>
+            Prepare privately
+            <span className="block text-xs text-slate-500">
+              Only this team’s schedulers see these requests until you release them. Nobody is notified yet.
+            </span>
+          </span>
+        </label>
+
         {conflicts.length > 0 && (
           <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
             <p className="font-medium">Scheduling conflicts</p>
@@ -172,7 +202,9 @@ export const SchedulePeopleModal = ({
             disabled={!teamId || selected.length === 0}
             onClick={() => schedule.mutate(conflicts.length > 0)}
           >
-            {conflicts.length > 0 ? 'Schedule anyway' : `Schedule ${selected.length || ''}`.trim()}
+            {conflicts.length > 0
+              ? 'Schedule anyway'
+              : `${visibility === 'prepared' ? 'Prepare' : 'Schedule'} ${selected.length || ''}`.trim()}
           </Button>
         </div>
       </div>
