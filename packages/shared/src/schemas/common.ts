@@ -4,6 +4,11 @@ export const uuid = z.string().uuid();
 export const isoDateTime = z.string().datetime({ offset: true }).or(z.string().datetime());
 export const nonEmpty = z.string().trim().min(1);
 export const musicalKey = z.string().trim().max(8);
+/**
+ * A client-generated key that makes a create/copy/notify request safe to
+ * retry: the server returns the first result instead of acting twice.
+ */
+export const idempotencyKey = z.string().trim().min(8).max(200);
 
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

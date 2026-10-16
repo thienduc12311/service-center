@@ -28,6 +28,14 @@ const envSchema = z.object({
   EXPO_ACCESS_TOKEN: z.string().optional(),
 
   RESEND_API_KEY: z.string().optional(),
+
+  /**
+   * Bearer secret for the delivery worker entry point
+   * (`/api/v1/internal/deliveries/run`). Vercel Cron sends it automatically
+   * when set under this name. Unset: the entry point answers 404 and only
+   * deliveries kicked by API requests (and `npm run worker`) are processed.
+   */
+  CRON_SECRET: z.string().min(16).optional(),
   MAIL_FROM_ADDRESS: z.string().email().default('notifications@example.com'),
   MAIL_FROM_NAME: z.string().default('Service Center'),
 });

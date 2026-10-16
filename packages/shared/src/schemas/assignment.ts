@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { uuid } from './common.js';
+import { idempotencyKey, uuid } from './common.js';
 
 export const assignmentStatusSchema = z.enum(['unconfirmed', 'confirmed', 'declined']);
 
@@ -18,6 +18,8 @@ export const createAssignmentsSchema = z.object({
   /** Schedule anyway when the person is blocked out or double booked. */
   ignore_conflicts: z.boolean().default(false),
   notify: z.boolean().default(true),
+  /** Retrying with the same key never enqueues a second notification. */
+  idempotency_key: idempotencyKey.optional(),
 });
 
 /** Matches the `assignments_response_note_length` database constraint. */

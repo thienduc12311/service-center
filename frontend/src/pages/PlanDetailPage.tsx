@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import {
+  isAdmin,
   nextOccurrence,
   renderServiceSongBookHtml,
   serviceSongBookDocumentFromPlan,
@@ -22,6 +23,7 @@ import { SchedulePeopleModal } from '../components/plan/SchedulePeopleModal';
 import { EditTimesModal } from '../components/plan/EditTimesModal';
 import { EditNotesModal } from '../components/plan/EditNotesModal';
 import { ImportTemplateModal } from '../components/plan/ImportTemplateModal';
+import { DeliveryOutcomeNotice } from '../components/plan/DeliveryOutcomeNotice';
 import { PLAN_TABS, PLAN_TAB_LABELS, buildPlanTeams, type PlanTab } from '../components/plan/types';
 
 /** Which dialog, if any, is on top of the workspace. */
@@ -29,7 +31,7 @@ type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'edit-notes' |
 
 export const PlanDetailPage = () => {
   const { planId } = useParams<{ planId: string }>();
-  const { canManage, user, organizationId } = useAuth();
+  const { canManage, user, organizationId, role } = useAuth();
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
 
@@ -64,8 +66,10 @@ export const PlanDetailPage = () => {
     onSuccess: invalidate,
   });
 
+  // The key travels with the request, so a retried request is answered with
+  // the first one's outcomes instead of notifying everyone twice.
   const notify = useMutation({
-    mutationFn: () => api.notifyPlan(planId!),
+    mutationFn: (idempotencyKey: string) => api.notifyPlan(planId!, { idempotency_key: idempotencyKey }),
     onSuccess: invalidate,
   });
 
@@ -208,7 +212,7 @@ export const PlanDetailPage = () => {
         onTogglePublished={() =>
           publish.mutate(detail.status === 'published' ? 'draft' : 'published')
         }
-        onNotify={() => notify.mutate()}
+        onNotify={() => notify.mutate(crypto.randomUUID())}
         onDelete={() => {
           if (window.confirm(`Delete “${detail.title}”? This cannot be undone.`)) {
             removePlan.mutate();
@@ -228,13 +232,7 @@ export const PlanDetailPage = () => {
             removePlan.error
           }
         />
-        {notify.isSuccess && (
-          <p className="rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-            Sent {notify.data.notified} notification{notify.data.notified === 1 ? '' : 's'}.
-            {notify.data.skipped.length > 0 &&
-              ` ${notify.data.skipped.length} could not be reached because no email address is available.`}
-          </p>
-        )}
+        {notify.isSuccess && <DeliveryOutcomeNotice result={notify.data} canRetry={isAdmin(role)} />}
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[16rem_1fr]">

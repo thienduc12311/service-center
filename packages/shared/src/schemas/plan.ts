@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { musicalKey, nonEmpty, paginationSchema, uuid } from './common.js';
+import { idempotencyKey, musicalKey, nonEmpty, paginationSchema, uuid } from './common.js';
 
 export const planStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const planTimeKindSchema = z.enum(['service', 'rehearsal', 'other']);
@@ -28,11 +28,39 @@ export const createPlanSchema = z.object({
   /** Copy items and (optionally) the team from an existing plan. */
   copy_from_plan_id: uuid.optional(),
   copy_assignments: z.boolean().default(false),
+  idempotency_key: idempotencyKey.optional(),
 });
 
 export const updatePlanSchema = createPlanSchema
   .partial()
-  .omit({ copy_from_plan_id: true, copy_assignments: true });
+  .omit({ copy_from_plan_id: true, copy_assignments: true, idempotency_key: true });
+
+/** "Same as last week": a new draft plan copied from an existing one. */
+export const duplicatePlanSchema = z.object({
+  service_date: z.string(),
+  title: z.string().trim().min(1).max(200).optional(),
+  copy_assignments: z.boolean().default(true),
+  idempotency_key: idempotencyKey.optional(),
+});
+
+/**
+ * Copies another plan's order, needs and/or team into an existing plan in one
+ * transaction. Nothing already on the plan is removed. `expected_revision` is
+ * the plan's `content_revision` when it was read; a newer one is a 409.
+ */
+export const importPlanContentsSchema = z
+  .object({
+    source_plan_id: uuid,
+    items: z.boolean().default(true),
+    position_needs: z.boolean().default(false),
+    assignments: z.boolean().default(false),
+    expected_revision: z.number().int().min(0).optional(),
+    idempotency_key: idempotencyKey.optional(),
+  })
+  .refine((v) => v.items || v.position_needs || v.assignments, {
+    message: 'Choose at least one thing to import',
+    path: ['items'],
+  });
 
 export const createPlanItemSchema = z
   .object({
@@ -113,3 +141,8 @@ export type CreatePlanItemInput = z.infer<typeof createPlanItemSchema>;
 export type SetPlanPositionNeedsInput = z.infer<typeof setPlanPositionNeedsSchema>;
 export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
 export type ListPlansQuery = z.infer<typeof listPlansQuerySchema>;
+export type DuplicatePlanInput = z.infer<typeof duplicatePlanSchema>;
+/** What a client sends; defaults are applied by the server. */
+export type DuplicatePlanRequest = z.input<typeof duplicatePlanSchema>;
+export type ImportPlanContentsInput = z.infer<typeof importPlanContentsSchema>;
+export type ImportPlanContentsRequest = z.input<typeof importPlanContentsSchema>;

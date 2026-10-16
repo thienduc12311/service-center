@@ -1,6 +1,8 @@
 import type {
   AssignmentDetail,
-  AssignmentRow,
+  CreatePlanInput,
+  DuplicatePlanInput,
+  ImportPlanContentsInput,
   PlanDetail,
   PlanItemDetail,
   PlanItemRow,
@@ -8,7 +10,7 @@ import type {
   PlanSummary,
 } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
-import { HttpError } from '../lib/errors.js';
+import { HttpError, fromPostgrestError } from '../lib/errors.js';
 
 /**
  * `person:profiles!assignments_user_id_fkey` is spelled out because
@@ -131,50 +133,91 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
   return shapePlanDetail(row);
 };
 
-export interface CopyPlanContentsInput {
+/** The plan id a create/copy function returned. */
+const requireId = async (query: PromiseLike<{ data: string | null; error: { code?: string; message: string; details?: string | null } | null }>): Promise<string> => {
+  const id = await unwrap(query);
+  if (!id) throw HttpError.notFound('Plan not found');
+  return id;
+};
+
+export interface CreatePlanAtomicallyInput {
   db: Db;
-  sourcePlanId: string;
-  targetPlanId: string;
-  createdBy: string;
-  withAssignments: boolean;
+  orgId: string;
+  input: CreatePlanInput;
 }
 
-export const copyPlanContents = async (input: CopyPlanContentsInput): Promise<void> => {
-  const items = await unwrap(
-    input.db.from('plan_items').select('*').eq('plan_id', input.sourcePlanId).order('sort_order'),
+/** Plan, times and optional copy in one transaction (`create_plan`). */
+export const createPlanAtomically = async ({ db, orgId, input }: CreatePlanAtomicallyInput): Promise<string> => {
+  const { times, copy_from_plan_id, copy_assignments, idempotency_key, ...plan } = input;
+  return requireId(
+    db.rpc('create_plan', {
+      p_organization_id: orgId,
+      p_plan: plan,
+      p_times: times.map((time) => ({ kind: time.kind, name: time.name ?? null, starts_at: time.starts_at, ends_at: time.ends_at })),
+      p_copy_from: copy_from_plan_id ?? null,
+      p_copy_assignments: copy_assignments,
+      p_idempotency_key: idempotency_key ?? null,
+    }),
+  );
+};
+
+export interface DuplicatePlanAtomicallyInput {
+  db: Db;
+  sourcePlanId: string;
+  input: DuplicatePlanInput;
+}
+
+/** New draft plan from an existing one in one transaction (`duplicate_plan`). */
+export const duplicatePlanAtomically = async ({ db, sourcePlanId, input }: DuplicatePlanAtomicallyInput): Promise<string> =>
+  requireId(
+    db.rpc('duplicate_plan', {
+      p_source_plan_id: sourcePlanId,
+      p_service_date: input.service_date,
+      p_title: input.title ?? null,
+      p_copy_assignments: input.copy_assignments,
+      p_idempotency_key: input.idempotency_key ?? null,
+    }),
   );
 
-  if (items?.length) {
-    await unwrap(
-      input.db.from('plan_items').insert(
-        items.map(({ id: _id, plan_id: _planId, created_at: _createdAt, updated_at: _updatedAt, ...item }) => ({
-          ...item,
-          plan_id: input.targetPlanId,
-        })),
-      ),
-    );
-  }
+export const STALE_PLAN_CODE = 'plan_revision_stale';
 
-  if (!input.withAssignments) return;
+export interface ImportPlanContentsServiceInput {
+  db: Db;
+  orgId: string;
+  targetPlanId: string;
+  input: ImportPlanContentsInput;
+}
 
-  const assignments = await unwrap(
-    input.db.from('assignments').select('*').eq('plan_id', input.sourcePlanId),
+/**
+ * Another plan's order/needs/team into this plan in one transaction
+ * (`import_plan_contents`). Returns the plan's new content revision; a stale
+ * `expected_revision` is a 409 the client resolves by re-reading the plan.
+ */
+export const importPlanContents = async ({
+  db,
+  orgId,
+  targetPlanId,
+  input,
+}: ImportPlanContentsServiceInput): Promise<number> => {
+  const target = await unwrap(
+    db.from('plans').select('id').eq('id', targetPlanId).eq('organization_id', orgId).maybeSingle(),
   );
+  if (!target) throw HttpError.notFound('Plan not found');
 
-  if (assignments?.length) {
-    await unwrap(
-      input.db.from('assignments').insert(
-        assignments.map((assignment: AssignmentRow) => ({
-          plan_id: input.targetPlanId,
-          user_id: assignment.user_id,
-          team_id: assignment.team_id,
-          position_id: assignment.position_id,
-          status: 'unconfirmed' as const,
-          created_by: input.createdBy,
-        })),
-      ),
-    );
+  const { data, error } = await db.rpc('import_plan_contents', {
+    p_target_plan_id: targetPlanId,
+    p_source_plan_id: input.source_plan_id,
+    p_items: input.items,
+    p_needs: input.position_needs,
+    p_assignments: input.assignments,
+    p_expected_revision: input.expected_revision ?? null,
+    p_idempotency_key: input.idempotency_key ?? null,
+  });
+  if (error?.code === 'PT409') {
+    throw new HttpError(409, 'This plan changed since you opened it. Review it and import again.', STALE_PLAN_CODE);
   }
+  if (error) throw fromPostgrestError(error);
+  return data;
 };
 
 export interface ReorderPlanItemsInput {

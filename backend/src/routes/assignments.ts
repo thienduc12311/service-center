@@ -1,32 +1,31 @@
 import { Router } from 'express';
 import { param } from '../lib/params.js';
+import { randomUUID } from 'node:crypto';
 import {
   conflictCheckSchema,
   createAssignmentsSchema,
+  notifyPlanSchema,
   respondToAssignmentSchema,
+  type AssignmentNotificationSendResult,
+  type CreateAssignmentsInput,
+  type NotifyPlanInput,
   type RespondToAssignmentInput,
   updateAssignmentSchema,
-  formatDate,
   type MyScheduleEntry,
-  type NotificationType,
   type SchedulingConflict,
 } from '@service-center/shared';
 import { z } from 'zod';
 import { validateBody, validateQuery, parsedQuery } from '../lib/validate.js';
 import { requireManager } from '../middleware/organization.js';
-import { adminDb, raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { adminDb, raw, unwrap } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
-import { respondUrlFor, sendScheduleNotifications, type ScheduleNotification } from '../services/notifications.js';
-import { generateAssignmentToken } from '../services/assignment-tokens.js';
-import { createNotifications } from '../services/notification-center.js';
+import { latestDeclineReasons, respondToOwnAssignment } from '../services/assignment-responses.js';
 import {
-  latestDeclineReasons,
-  notifySchedulerOfResponse,
-  respondToOwnAssignment,
-} from '../services/assignment-responses.js';
-import type { NotificationDraft } from '../model/notification.model.js';
-import { renderIcs, type IcsEvent } from '../lib/ics.js';
-import { config } from '../config.js';
+  effectIdForKey,
+  latestResponseEffectId,
+  notifyPlanAssignments,
+} from '../services/deliveries.js';
+import { deliverEffectNow } from '../services/delivery-worker.js';
 
 export const planAssignmentsRouter: Router = Router({ mergeParams: true });
 export const planNotifyRouter: Router = Router({ mergeParams: true });
@@ -75,29 +74,10 @@ const serviceWindow = async (
   };
 };
 
-/** A row we're about to insert into `assignments`. */
-type NewAssignmentRow = {
-  plan_id: string;
-  user_id: string;
-  team_id: string;
-  position_id: string | null;
-  notes: string | null;
-  status: 'unconfirmed';
-  created_by: string;
-};
-
-/** Identity of an assignment, matching the two partial unique indexes on the table. */
-const assignmentKey = (a: { user_id: string; team_id: string; position_id: string | null }): string =>
-  `${a.user_id}:${a.team_id}:${a.position_id ?? ''}`;
-
 // ---------------------------------------------- schedule people onto a plan --
 planAssignmentsRouter.post('/', requireManager, validateBody(createAssignmentsSchema), async (req, res) => {
   const planId = param(req, 'planId');
-  const { assignments, ignore_conflicts, notify } = req.body as {
-    assignments: Array<{ user_id: string; team_id: string; position_id?: string | null; notes?: string | null }>;
-    ignore_conflicts: boolean;
-    notify: boolean;
-  };
+  const { assignments, ignore_conflicts, notify, idempotency_key } = req.body as CreateAssignmentsInput;
 
   const plan = await unwrap(
     req.db
@@ -126,57 +106,34 @@ planAssignmentsRouter.post('/', requireManager, validateBody(createAssignmentsSc
     );
   }
 
-  // The uniqueness rules for an assignment live in two *partial* indexes
-  // (one for rows with a position, one for rows without), which Postgres can't
-  // infer from a plain `ON CONFLICT (columns)` clause — so skip existing rows
-  // here instead of upserting.
-  const existing = await unwrap(
-    req.db
-      .from('assignments')
-      .select('user_id, team_id, position_id')
-      .eq('plan_id', plan.id)
-      .in('user_id', assignments.map((a) => a.user_id)),
+  // One transaction: same-organization checks, the inserts (people already
+  // on the plan are skipped) and, when notifying, the request effect.
+  const effectKey = `assignments:${plan.id}:${idempotency_key ?? randomUUID()}`;
+  const created = await unwrap(
+    req.db.rpc('schedule_plan_assignments', {
+      p_plan_id: plan.id,
+      p_assignments: assignments.map((a) => ({
+        user_id: a.user_id,
+        team_id: a.team_id,
+        position_id: a.position_id ?? null,
+        notes: a.notes ?? null,
+      })),
+      p_notify: notify,
+      p_effect_key: effectKey,
+    }),
   );
-  const seen = new Set((existing ?? []).map((a) => assignmentKey(a)));
 
-  const toInsert: NewAssignmentRow[] = [];
-  for (const a of assignments) {
-    const row: NewAssignmentRow = {
-      plan_id: plan.id,
-      user_id: a.user_id,
-      team_id: a.team_id,
-      position_id: a.position_id ?? null,
-      notes: a.notes ?? null,
-      status: 'unconfirmed',
-      created_by: req.auth.userId,
-    };
-    const key = assignmentKey(row);
-    if (seen.has(key)) continue; // already scheduled, or duplicated in this request
-    seen.add(key);
-    toInsert.push(row);
-  }
-
-  const created = toInsert.length
-    ? await unwrap(req.db.from('assignments').insert(toInsert).select('*'))
-    : [];
-
-  if (notify && created?.length) {
-    await notifyAssignments({ db: req.db, orgId: req.orgId, authUserId: req.auth.userId }, plan, created.map((a) => a.id));
-  }
+  if (notify) await deliverEffectNow(await effectIdForKey(req.db, req.orgId, effectKey));
 
   res.status(201).json({ created: created ?? [], conflicts: blocking });
 });
 
 /** Re-sends notifications for everyone on the plan who hasn't replied. */
-planNotifyRouter.post('/', requireManager, async (req, res) => {
+planNotifyRouter.post('/', requireManager, validateBody(notifyPlanSchema), async (req, res) => {
   const planId = param(req, 'planId');
+  const { idempotency_key } = req.body as NotifyPlanInput;
   const plan = await unwrap(
-    req.db
-      .from('plans')
-      .select('id, title, service_date')
-      .eq('id', planId)
-      .eq('organization_id', req.orgId)
-      .maybeSingle(),
+    req.db.from('plans').select('id').eq('id', planId).eq('organization_id', req.orgId).maybeSingle(),
   );
   if (!plan) throw HttpError.notFound('Plan not found');
 
@@ -184,162 +141,45 @@ planNotifyRouter.post('/', requireManager, async (req, res) => {
     req.db.from('assignments').select('id').eq('plan_id', plan.id).eq('status', 'unconfirmed'),
   );
 
-  const result = await notifyAssignments(
-    { db: req.db, orgId: req.orgId, authUserId: req.auth.userId },
-    plan,
-    (pending ?? []).map((a) => a.id),
-    'assignment_reminder',
-  );
+  const result: AssignmentNotificationSendResult = await notifyPlanAssignments({
+    db: req.db,
+    orgId: req.orgId,
+    planId: plan.id,
+    template: 'assignment_reminder',
+    assignmentIds: (pending ?? []).map((a) => a.id),
+    idempotencyKey: idempotency_key,
+    reason: 'notify',
+  });
   res.json(result);
 });
-
-interface AssignmentNotificationInput {
-  db: import('../lib/supabase.js').Db;
-  orgId: string;
-  authUserId: string;
-}
-
-interface AssignmentNotificationPlan {
-  id: string;
-  title: string;
-  service_date: string;
-  location?: string | null;
-  organization_id?: string;
-  created_by?: string | null;
-}
-
-interface NotifyAssignmentsResult {
-  notified: number;
-  skipped: string[];
-}
-
-interface AssignmentNotificationAssignment {
-  id: string;
-  user_id: string;
-  team: { name: string } | null;
-  position: { name: string } | null;
-}
-
-export const notifyAssignments = async (
-  req: AssignmentNotificationInput,
-  plan: AssignmentNotificationPlan,
-  assignmentIds: string[],
-  /** Distinguishes a first-time schedule from a nudge in the in-app feed. */
-  notificationType: NotificationType = 'assignment_scheduled',
-): Promise<NotifyAssignmentsResult> => {
-  if (assignmentIds.length === 0) return { notified: 0, skipped: [] };
-
-  const rows = (await unwrap(
-    raw(req.db)
-      .from('assignments')
-      .select('id, user_id, team:teams(name), position:team_positions(name)')
-      .in('id', assignmentIds),
-  )) as unknown as AssignmentNotificationAssignment[];
-  const planRecord = await unwrap(req.db.from('plans').select('organization_id, created_by').eq('id', plan.id).eq('organization_id', req.orgId).single());
-  const scheduler = planRecord?.created_by
-    ? await unwrap(req.db.from('profiles').select('email').eq('id', planRecord.created_by).maybeSingle())
-    : null;
-  const organization = await unwrapOne(req.db.from('organizations').select('name').eq('id', planRecord?.organization_id ?? req.orgId).single());
-  const userIds = [...new Set(rows.map((row) => row.user_id))];
-  const profiles = (await unwrap(raw(req.db).from('profiles').select('id, full_name, email').in('id', userIds))) as Array<{ id: string; full_name: string | null; email: string | null }>;
-  const people = (await unwrap(raw(req.db).from('people').select('profile_id, first_name, last_name, email').in('profile_id', userIds))) as Array<{ profile_id: string | null; first_name: string; last_name: string | null; email: string | null }>;
-  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
-  const personByProfileId = new Map(people.filter((person) => person.profile_id).map((person) => [person.profile_id!, person]));
-  const times = (await unwrap(raw(req.db).from('plan_times').select('id, kind, name, starts_at, ends_at, ics_sequence').eq('plan_id', plan.id))) as Array<{ id: string; kind: string; name: string | null; starts_at: string; ends_at: string; ics_sequence: number }>;
-  const host = new URL(config.API_URL).host;
-  const events: IcsEvent[] = times.map((time) => ({
-    uid: `plan-time-${time.id}@${host}`,
-    summary: time.name ? `${plan.title} · ${time.name}` : plan.title,
-    startsAt: time.starts_at,
-    endsAt: time.ends_at,
-    sequence: time.ics_sequence,
-    location: plan.location,
-  }));
-  const ics = renderIcs(events, { calendarName: plan.title, productId: `-//${host}//Service Center//EN` });
-  const notifications: ScheduleNotification[] = [];
-  const skipped: string[] = [];
-  const sentUserIds: string[] = [];
-
-  for (const userId of userIds) {
-    const profile = profileById.get(userId);
-    const person = personByProfileId.get(userId);
-    const email = profile?.email ?? person?.email;
-    const userRows = rows.filter((row) => row.user_id === userId);
-    if (!email) {
-      skipped.push(profile?.full_name ?? `${person?.first_name ?? 'Unknown person'} ${person?.last_name ?? ''}`.trim());
-      continue;
-    }
-    const token = generateAssignmentToken(plan.service_date);
-    const existing = await unwrap(adminDb.from('assignment_notifications').select('id').eq('plan_id', plan.id).eq('user_id', userId).is('responded_at', null).maybeSingle());
-    if (existing) {
-      await unwrap(adminDb.from('assignment_notifications').update({ token_hash: token.tokenHash, email, expires_at: token.expiresAt.toISOString(), sent_at: null, created_by: req.authUserId }).eq('id', existing.id));
-    } else {
-      await unwrap(adminDb.from('assignment_notifications').insert({ organization_id: plan.organization_id ?? req.orgId, plan_id: plan.id, user_id: userId, email, token_hash: token.tokenHash, expires_at: token.expiresAt.toISOString(), created_by: req.authUserId }));
-    }
-    notifications.push({
-      to: email,
-      personName: profile?.full_name ?? person?.first_name ?? null,
-      planTitle: plan.title,
-      serviceDate: plan.service_date,
-      teamName: userRows[0]?.team?.name ?? null,
-      positionName: userRows[0]?.position?.name ?? null,
-      assignments: userRows.map((row) => ({ teamName: row.team?.name ?? null, positionName: row.position?.name ?? null })),
-      respondUrl: respondUrlFor(token.token),
-      schedulerEmail: scheduler?.email ?? null,
-      organizationName: organization.name,
-      ics,
-    });
-    sentUserIds.push(userId);
-  }
-
-  // The in-app feed doesn't depend on the person having an email address, so
-  // it covers everyone on the plan — including anyone skipped above.
-  const feedRows: NotificationDraft[] = rows.map((row) => {
-    const role = [row.team?.name, row.position?.name].filter(Boolean).join(' · ');
-    return {
-      organizationId: plan.organization_id ?? req.orgId,
-      userId: row.user_id,
-      type: notificationType,
-      title:
-        notificationType === 'assignment_reminder'
-          ? `Reminder: ${plan.title}`
-          : `You're scheduled for ${plan.title}`,
-      body: [role, formatDate(plan.service_date)].filter(Boolean).join(' — '),
-      planId: plan.id,
-      assignmentId: row.id,
-      createdBy: req.authUserId,
-    };
-  });
-  await createNotifications(feedRows);
-
-  const sent = await sendScheduleNotifications(notifications);
-
-  if (sentUserIds.length) {
-    const sentAt = new Date().toISOString();
-    await unwrap(adminDb.from('assignment_notifications').update({ sent_at: sentAt }).eq('plan_id', plan.id).in('user_id', sentUserIds).is('responded_at', null));
-    await unwrap(req.db.from('assignments').update({ notified_at: sentAt }).in('id', rows.filter((row) => sentUserIds.includes(row.user_id)).map((row) => row.id)));
-  }
-  return { notified: sent, skipped };
-}
 
 export interface ConfirmedAssignmentNotificationInput {
   db: import('../lib/supabase.js').Db;
   orgId: string;
-  authUserId: string;
   planId: string;
 }
 
+/** After a plan's time or location changes, tell the people who confirmed. */
 export const notifyConfirmedAssignmentsForPlan = async (
   input: ConfirmedAssignmentNotificationInput,
-): Promise<NotifyAssignmentsResult> => {
-  const plan = await unwrapOne(
-    input.db.from('plans').select('id, title, service_date, location, organization_id').eq('id', input.planId).eq('organization_id', input.orgId).single(),
-  );
+): Promise<AssignmentNotificationSendResult> => {
   const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
   const assignments = await unwrap(
-    input.db.from('assignments').select('id').eq('plan_id', input.planId).eq('status', 'confirmed').or(`notified_at.is.null,notified_at.lt.${cutoff}`),
+    input.db
+      .from('assignments')
+      .select('id')
+      .eq('plan_id', input.planId)
+      .eq('status', 'confirmed')
+      .or(`notified_at.is.null,notified_at.lt.${cutoff}`),
   );
-  return notifyAssignments(input, plan, (assignments ?? []).map((assignment) => assignment.id));
+  return notifyPlanAssignments({
+    db: input.db,
+    orgId: input.orgId,
+    planId: input.planId,
+    template: 'assignment_request',
+    assignmentIds: (assignments ?? []).map((assignment) => assignment.id),
+    reason: 'plan-changed',
+  });
 };
 
 // -------------------------------------------------- single assignment ------
@@ -372,7 +212,11 @@ assignmentsRouter.post('/:id/respond', validateBody(respondToAssignmentSchema), 
     reason: body.reason,
     expectedStatus: body.expected_status,
   });
-  await notifySchedulerOfResponse(req.orgId, req.auth.userId, outcome);
+  // The scheduler update was recorded with the answer; deliver it now. A
+  // delivery problem never turns a committed answer into an error.
+  if (outcome.transition !== 'unchanged') {
+    await deliverEffectNow(await latestResponseEffectId(adminDb, outcome.assignment.id));
+  }
   res.json(outcome.assignment);
 });
 

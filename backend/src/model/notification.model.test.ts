@@ -20,6 +20,7 @@ describe('toNotificationInsert', () => {
       plan_id: null,
       assignment_id: null,
       created_by: null,
+      dedupe_key: null,
     });
   });
 
@@ -53,6 +54,7 @@ describe('toPushMessage', () => {
     read_at: null,
     created_by: 'user-2',
     created_at: '2026-09-06T10:00:00.000Z',
+    dedupe_key: null,
   };
 
   it('keeps private schedule wording off the lock screen', () => {

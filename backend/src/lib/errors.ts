@@ -40,6 +40,11 @@ export const fromPostgrestError = (error: { code?: string; message: string; deta
       return HttpError.badRequest('A value failed a database constraint', error.details);
     case '42501':
       return HttpError.forbidden();
+    // Raised by our own database functions with a message written for people.
+    case 'P0002':
+      return HttpError.notFound(error.message);
+    case '22023':
+      return HttpError.badRequest(error.message);
     // Raised by guard triggers when a row is not in a state that allows the
     // change; PostgREST also answers direct table calls with 409 for it.
     case 'PT409':

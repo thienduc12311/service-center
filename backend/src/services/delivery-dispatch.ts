@@ -1,0 +1,399 @@
+import {
+  formatDate,
+  type DeliveryEffectRow,
+  type EmailTransportMode,
+  type NotificationType,
+  type OrgRole,
+  type PushTransportMode,
+} from '@service-center/shared';
+import { adminDb, raw, unwrap } from '../lib/supabase.js';
+import { renderIcs, type IcsEvent } from '../lib/ics.js';
+import { config } from '../config.js';
+import {
+  DeliveryError,
+  type DeliveryEffect,
+  type DeliveryErrorCode,
+  type DeliveryJob,
+  type DispatchResult,
+} from '../model/delivery.model.js';
+import type { NotificationDraft, PushMessage } from '../model/notification.model.js';
+import { toPushMessage } from '../model/notification.model.js';
+import { ensureFeedRows, unreadCount } from './notification-center.js';
+import { emailTransport, respondUrlFor, type ScheduleNotification } from './notifications.js';
+import { pushTransport, type PushTicketResult } from './expo-push.js';
+import { activeDeviceTokens } from './device-registrations.js';
+import { generateAssignmentToken } from './assignment-tokens.js';
+
+const SCHEDULER_ROLES: readonly OrgRole[] = ['owner', 'admin', 'scheduler'];
+
+/**
+ * Called by the dispatcher immediately before contacting a provider. Returns
+ * false when the worker lost its lease, in which case nothing is sent.
+ */
+export type BeginProviderCall = () => Promise<boolean>;
+
+interface DispatchPlan {
+  id: string;
+  organization_id: string;
+  title: string;
+  service_date: string;
+  location: string | null;
+}
+
+interface RecipientAssignment {
+  id: string;
+  plan_id: string;
+  status: 'unconfirmed' | 'confirmed' | 'declined';
+  team: { name: string } | null;
+  position: { name: string } | null;
+}
+
+const mapEffect = (row: DeliveryEffectRow): DeliveryEffect => ({
+  id: row.id,
+  organizationId: row.organization_id,
+  template: row.template,
+  planId: row.plan_id,
+  assignmentIds: row.assignment_ids,
+  responderId: row.responder_id,
+  responseStatus: row.response_status,
+  responseTransition: row.response_transition,
+  createdBy: row.created_by,
+});
+
+const finished = (status: DispatchResult['status'], errorCode?: DeliveryErrorCode): DispatchResult => ({
+  status,
+  ...(errorCode ? { errorCode } : {}),
+});
+
+/** Exponential backoff, at least what the provider asked for, at most an hour. */
+export const retryDelaySeconds = (attempts: number, providerHint?: number): number =>
+  Math.max(providerHint ?? 0, Math.min(30 * 2 ** Math.max(attempts - 1, 0), 60 * 60));
+
+/** Turns a provider failure into the outcome the worker records. */
+export const resultFromError = (error: unknown, attempts: number, providerCalled: boolean): DispatchResult => {
+  if (error instanceof DeliveryError) {
+    if (error.disposition === 'ambiguous') return finished('ambiguous', error.code);
+    if (error.disposition === 'fail') return finished('failed', error.code);
+    return { status: 'queued', errorCode: error.code, retryAfterSeconds: retryDelaySeconds(attempts, error.retryAfterSeconds) };
+  }
+  // Unexpected: before the provider call it is safe to try again; after it,
+  // we cannot know whether the message went out.
+  return providerCalled
+    ? finished('ambiguous', 'internal_error')
+    : { status: 'queued', errorCode: 'internal_error', retryAfterSeconds: retryDelaySeconds(attempts) };
+};
+
+/**
+ * One recipient's push outcome across all their devices. Any accepted ticket
+ * counts as accepted; devices Expo no longer knows are reported for cleanup.
+ */
+export const pushOutcome = (
+  mode: PushTransportMode,
+  tickets: readonly PushTicketResult[],
+  attempts: number,
+): { result: DispatchResult; invalidTokens: string[] } => {
+  const invalidTokens = tickets.filter((t) => t.error === 'DeviceNotRegistered').map((t) => t.token);
+  if (mode === 'simulated') return { result: finished('simulated'), invalidTokens };
+  const accepted = tickets.find((t) => t.accepted);
+  if (accepted) {
+    return { result: { status: 'provider_accepted', providerMessageId: accepted.ticketId }, invalidTokens };
+  }
+  if (tickets.length > 0 && invalidTokens.length === tickets.length) {
+    return { result: finished('skipped', 'no_active_device'), invalidTokens };
+  }
+  if (tickets.some((t) => t.error === 'MessageRateExceeded')) {
+    return {
+      result: { status: 'queued', errorCode: 'provider_rate_limited', retryAfterSeconds: retryDelaySeconds(attempts, 60) },
+      invalidTokens,
+    };
+  }
+  return { result: finished('failed', 'provider_rejected'), invalidTokens };
+};
+
+export const emailOutcome = (mode: EmailTransportMode, providerMessageId: string | null): DispatchResult =>
+  mode === 'simulated'
+    ? finished('simulated')
+    : { status: 'provider_accepted', providerMessageId };
+
+const loadEffect = async (effectId: string): Promise<DeliveryEffect | null> => {
+  const row = await unwrap(adminDb.from('delivery_effects').select('*').eq('id', effectId).maybeSingle());
+  return row ? mapEffect(row) : null;
+};
+
+const loadPlan = async (planId: string | null): Promise<DispatchPlan | null> => {
+  if (!planId) return null;
+  return unwrap(
+    adminDb.from('plans').select('id, organization_id, title, service_date, location').eq('id', planId).maybeSingle(),
+  );
+};
+
+const memberRole = async (orgId: string, userId: string): Promise<OrgRole | null> => {
+  const membership = await unwrap(
+    adminDb
+      .from('organization_members')
+      .select('role')
+      .eq('organization_id', orgId)
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .maybeSingle(),
+  );
+  return membership?.role ?? null;
+};
+
+/** The recipient's positions this effect is still about, re-read at dispatch. */
+const eligibleAssignments = async (effect: DeliveryEffect, recipientId: string): Promise<RecipientAssignment[]> => {
+  if (effect.assignmentIds.length === 0) return [];
+  const rows = (await unwrap(
+    raw(adminDb)
+      .from('assignments')
+      .select('id, plan_id, status, team:teams(name), position:team_positions(name)')
+      .in('id', effect.assignmentIds)
+      .eq('user_id', recipientId)
+      .eq('plan_id', effect.planId),
+  )) as unknown as RecipientAssignment[];
+  // A reminder is only for positions still waiting for an answer; a request
+  // is never sent for a position the person has already declined.
+  return rows.filter((row) =>
+    effect.template === 'assignment_reminder' ? row.status === 'unconfirmed' : row.status !== 'declined',
+  );
+};
+
+const roleLabel = (row: RecipientAssignment): string =>
+  [row.team?.name, row.position?.name].filter(Boolean).join(' · ');
+
+const requestDrafts = (
+  effect: DeliveryEffect,
+  plan: DispatchPlan,
+  recipientId: string,
+  rows: readonly RecipientAssignment[],
+): Array<NotificationDraft & { dedupeKey: string }> => {
+  const type: NotificationType = effect.template === 'assignment_reminder' ? 'assignment_reminder' : 'assignment_scheduled';
+  return rows.map((row) => ({
+    organizationId: plan.organization_id,
+    userId: recipientId,
+    type,
+    title: type === 'assignment_reminder' ? `Reminder: ${plan.title}` : `You're scheduled for ${plan.title}`,
+    body: [roleLabel(row), formatDate(plan.service_date)].filter(Boolean).join(' — '),
+    planId: plan.id,
+    assignmentId: row.id,
+    createdBy: effect.createdBy,
+    dedupeKey: `${effect.id}:${row.id}`,
+  }));
+};
+
+const responseVerb = (effect: DeliveryEffect): string =>
+  effect.responseTransition === 'withdrawal'
+    ? 'withdrew from'
+    : effect.responseStatus === 'confirmed'
+      ? 'confirmed'
+      : 'declined';
+
+const responseDrafts = async (
+  effect: DeliveryEffect,
+  plan: DispatchPlan,
+  recipientId: string,
+): Promise<Array<NotificationDraft & { dedupeKey: string }>> => {
+  const responder = effect.responderId
+    ? await unwrap(adminDb.from('profiles').select('full_name').eq('id', effect.responderId).maybeSingle())
+    : null;
+  return [
+    {
+      organizationId: plan.organization_id,
+      userId: recipientId,
+      type: 'assignment_response',
+      // No decline reason here: the feed and push never carry it.
+      title: `${responder?.full_name ?? 'Someone'} ${responseVerb(effect)} ${plan.title}`,
+      body: formatDate(plan.service_date),
+      planId: plan.id,
+      assignmentId: effect.assignmentIds[0] ?? null,
+      createdBy: effect.responderId,
+      dedupeKey: `${effect.id}:${recipientId}`,
+    },
+  ];
+};
+
+const sendPush = async (
+  job: DeliveryJob,
+  drafts: ReadonlyArray<NotificationDraft & { dedupeKey: string }>,
+  begin: BeginProviderCall,
+): Promise<DispatchResult | null> => {
+  const rows = await ensureFeedRows(drafts);
+  const newest = rows[0];
+  if (!newest) return finished('skipped', 'recipient_not_eligible');
+
+  const devices = await activeDeviceTokens(adminDb, [job.recipientId]);
+  if (devices.length === 0) return finished('skipped', 'no_active_device');
+
+  const badge = await unreadCount(job.recipientId);
+  // One push per recipient per action, however many positions it covers.
+  const messages: PushMessage[] = devices.map((device) => toPushMessage(newest, device.token, badge));
+  const transport = pushTransport();
+  if (!(await begin())) return null;
+  const tickets = await transport.send(messages);
+  const { result, invalidTokens } = pushOutcome(transport.mode, tickets, job.attempts);
+  if (invalidTokens.length) {
+    // The app was uninstalled or the token was rotated; keep the table clean.
+    await unwrap(adminDb.from('device_push_tokens').delete().in('token', invalidTokens));
+  }
+  return result;
+};
+
+const sendEmail = async (notification: ScheduleNotification, begin: BeginProviderCall): Promise<DispatchResult | null> => {
+  const transport = emailTransport();
+  if (!(await begin())) return null;
+  const receipt = await transport.send(notification);
+  return emailOutcome(transport.mode, receipt.providerMessageId);
+};
+
+const recipientEmail = async (orgId: string, userId: string): Promise<{ email: string | null; name: string | null }> => {
+  const [profile, person] = await Promise.all([
+    unwrap(adminDb.from('profiles').select('full_name, email').eq('id', userId).maybeSingle()),
+    unwrap(
+      adminDb
+        .from('people')
+        .select('first_name, email')
+        .eq('profile_id', userId)
+        .eq('organization_id', orgId)
+        .maybeSingle(),
+    ),
+  ]);
+  return { email: profile?.email ?? person?.email ?? null, name: profile?.full_name ?? person?.first_name ?? null };
+};
+
+/** The request email: a fresh respond link, the positions and the calendar file. */
+const requestEmail = async (
+  effect: DeliveryEffect,
+  plan: DispatchPlan,
+  job: DeliveryJob,
+  rows: readonly RecipientAssignment[],
+  begin: BeginProviderCall,
+): Promise<DispatchResult | null> => {
+  const { email, name } = await recipientEmail(plan.organization_id, job.recipientId);
+  if (!email) return finished('skipped', 'no_email_address');
+
+  const [organization, scheduler, times] = await Promise.all([
+    unwrap(adminDb.from('organizations').select('name').eq('id', plan.organization_id).maybeSingle()),
+    effect.createdBy
+      ? unwrap(adminDb.from('profiles').select('email').eq('id', effect.createdBy).maybeSingle())
+      : Promise.resolve(null),
+    unwrap(
+      adminDb.from('plan_times').select('id, kind, name, starts_at, ends_at, ics_sequence').eq('plan_id', plan.id),
+    ),
+  ]);
+
+  const host = new URL(config.API_URL).host;
+  const events: IcsEvent[] = (times ?? []).map((time) => ({
+    uid: `plan-time-${time.id}@${host}`,
+    summary: time.name ? `${plan.title} · ${time.name}` : plan.title,
+    startsAt: time.starts_at,
+    endsAt: time.ends_at,
+    sequence: time.ics_sequence,
+    location: plan.location,
+  }));
+
+  // The raw token exists only in this email; each attempt mints a new one, so
+  // a link from an earlier, uncertain attempt stops working.
+  const token = generateAssignmentToken(plan.service_date);
+  const live = await unwrap(
+    adminDb
+      .from('assignment_notifications')
+      .select('id')
+      .eq('plan_id', plan.id)
+      .eq('user_id', job.recipientId)
+      .is('responded_at', null)
+      .maybeSingle(),
+  );
+  const link = {
+    token_hash: token.tokenHash,
+    email,
+    expires_at: token.expiresAt.toISOString(),
+    sent_at: null,
+    created_by: effect.createdBy,
+  };
+  if (live) {
+    await unwrap(adminDb.from('assignment_notifications').update(link).eq('id', live.id));
+  } else {
+    await unwrap(
+      adminDb
+        .from('assignment_notifications')
+        .insert({ ...link, organization_id: plan.organization_id, plan_id: plan.id, user_id: job.recipientId }),
+    );
+  }
+
+  return sendEmail(
+    {
+      to: email,
+      personName: name,
+      planTitle: plan.title,
+      serviceDate: plan.service_date,
+      teamName: rows[0]?.team?.name ?? null,
+      positionName: rows[0]?.position?.name ?? null,
+      assignments: rows.map((row) => ({ teamName: row.team?.name ?? null, positionName: row.position?.name ?? null })),
+      respondUrl: respondUrlFor(token.token),
+      schedulerEmail: scheduler?.email ?? null,
+      organizationName: organization?.name,
+      ics: renderIcs(events, { calendarName: plan.title, productId: `-//${host}//Service Center//EN` }),
+    },
+    begin,
+  );
+};
+
+const responseEmail = async (
+  effect: DeliveryEffect,
+  plan: DispatchPlan,
+  job: DeliveryJob,
+  begin: BeginProviderCall,
+): Promise<DispatchResult | null> => {
+  const scheduler = await unwrap(adminDb.from('profiles').select('email').eq('id', job.recipientId).maybeSingle());
+  if (!scheduler?.email) return finished('skipped', 'no_email_address');
+  return sendEmail(
+    {
+      to: scheduler.email,
+      personName: null,
+      planTitle: `${plan.title} — ${effect.responseTransition === 'withdrawal' ? 'confirmation withdrawn' : 'assignment declined'}`,
+      serviceDate: plan.service_date,
+      teamName: null,
+      positionName: null,
+      respondUrl: `${config.APP_URL}/plans/${plan.id}`,
+    },
+    begin,
+  );
+};
+
+/**
+ * Performs one leased delivery. Everything is re-read here rather than
+ * trusted from enqueue time: the plan may be gone, the person removed from
+ * it or from the organization, or the scheduler no longer a scheduler.
+ * Returns null when the lease was lost before the provider call.
+ */
+export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCall): Promise<DispatchResult | null> => {
+  const effect = await loadEffect(job.effectId);
+  if (!effect) return finished('cancelled', 'plan_missing');
+  const plan = await loadPlan(effect.planId);
+  if (!plan) return finished('cancelled', 'plan_missing');
+
+  const role = await memberRole(plan.organization_id, job.recipientId);
+
+  if (effect.template === 'scheduler_response') {
+    if (!role || !SCHEDULER_ROLES.includes(role)) return finished('cancelled', 'scheduler_not_active');
+    if (job.channel === 'email') return responseEmail(effect, plan, job, begin);
+    const drafts = await responseDrafts(effect, plan, job.recipientId);
+    if (job.channel === 'in_app') {
+      await ensureFeedRows(drafts);
+      return finished('delivered');
+    }
+    return sendPush(job, drafts, begin);
+  }
+
+  if (!role) return finished('cancelled', 'recipient_not_eligible');
+  const rows = await eligibleAssignments(effect, job.recipientId);
+  if (rows.length === 0) return finished('cancelled', 'recipient_not_eligible');
+
+  if (job.channel === 'email') return requestEmail(effect, plan, job, rows, begin);
+  const drafts = requestDrafts(effect, plan, job.recipientId, rows);
+  if (job.channel === 'in_app') {
+    await ensureFeedRows(drafts);
+    return finished('delivered');
+  }
+  return sendPush(job, drafts, begin);
+};

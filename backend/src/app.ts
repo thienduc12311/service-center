@@ -27,6 +27,7 @@ import {
   schedulingRouter,
 } from './routes/assignments.js';
 import { calendarRouter } from './routes/calendar.js';
+import { deliveriesRouter, deliveryWorkerRouter } from './routes/deliveries.js';
 import { blockoutsRouter } from './routes/blockouts.js';
 import { songbooksRouter } from './routes/songbooks.js';
 import {
@@ -85,6 +86,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/invitations', invitationAcceptRouter);
   app.use('/api/v1/assignment-responses', assignmentRespondRouter);
   app.use('/api/v1/calendar-feed', calendarFeedRouter);
+  app.use('/api/v1/internal/deliveries', deliveryWorkerRouter);
 
   const scoped = [requireAuth, withOrganization];
   app.use('/api/v1/people', scoped, peopleRouter);
@@ -102,6 +104,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/blockouts', scoped, blockoutsRouter);
   app.use('/api/v1/songbooks', scoped, songbooksRouter);
   app.use('/api/v1/notifications', scoped, notificationsRouter);
+  app.use('/api/v1/deliveries', scoped, deliveriesRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

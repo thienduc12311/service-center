@@ -3,27 +3,33 @@ import { param } from '../lib/params.js';
 import {
   createPlanItemSchema,
   createPlanSchema,
+  duplicatePlanSchema,
+  importPlanContentsSchema,
   listPlansQuerySchema,
   reorderPlanItemsSchema,
   setPlanPositionNeedsSchema,
   updatePlanItemSchema,
   updatePlanSchema,
   type CreatePlanInput,
+  type DuplicatePlanInput,
+  type ImportPlanContentsInput,
+  type ImportPlanContentsResult,
   type ListPlansQuery,
   type Paginated,
   type PlanSummary,
   type SetPlanPositionNeedsInput,
   type UpdatePlanInput,
 } from '@service-center/shared';
-import { z } from 'zod';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireManager } from '../middleware/organization.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import {
   PLAN_SUMMARY_SELECT,
-  copyPlanContents,
+  createPlanAtomically,
+  duplicatePlanAtomically,
   fetchPlanDetail,
+  importPlanContents,
   reorderPlanItems,
   setPlanPositionNeeds,
   shapePlanSummary,
@@ -66,34 +72,17 @@ plansRouter.get('/:id', async (req, res) => {
   res.json(await fetchPlanDetail(req.db, req.orgId, param(req, 'id')));
 });
 
+/**
+ * Creates the plan, its times and anything copied from another plan in one
+ * transaction; a retry with the same idempotency key returns the same plan.
+ */
 plansRouter.post('/', requireManager, validateBody(createPlanSchema), async (req, res) => {
-  const { times, copy_from_plan_id, copy_assignments, ...plan } = req.body as CreatePlanInput;
-
-  const created = await unwrapOne(
-    req.db
-      .from('plans')
-      .insert({ ...plan, organization_id: req.orgId, created_by: req.auth.userId })
-      .select('*')
-      .single(),
-  );
-
-  if (times.length) {
-    await unwrap(
-      req.db.from('plan_times').insert(times.map((t) => ({ ...t, plan_id: created.id })) as never),
-    );
-  }
-
-  if (copy_from_plan_id) {
-    await copyPlanContents({
-      db: req.db,
-      sourcePlanId: copy_from_plan_id,
-      targetPlanId: created.id,
-      createdBy: req.auth.userId,
-      withAssignments: copy_assignments,
-    });
-  }
-
-  res.status(201).json(await fetchPlanDetail(req.db, req.orgId, created.id));
+  const planId = await createPlanAtomically({
+    db: req.db,
+    orgId: req.orgId,
+    input: req.body as CreatePlanInput,
+  });
+  res.status(201).json(await fetchPlanDetail(req.db, req.orgId, planId));
 });
 
 plansRouter.patch('/:id', requireManager, validateBody(updatePlanSchema), async (req, res) => {
@@ -138,7 +127,7 @@ plansRouter.patch('/:id', requireManager, validateBody(updatePlanSchema), async 
       })
     : false;
   if (timesChanged || (plan.location !== undefined && plan.location !== existingPlan.location)) {
-    await notifyConfirmedAssignmentsForPlan({ db: req.db, orgId: req.orgId, authUserId: req.auth.userId, planId: existingPlan.id });
+    await notifyConfirmedAssignmentsForPlan({ db: req.db, orgId: req.orgId, planId: existingPlan.id });
   }
 
   res.json(await fetchPlanDetail(req.db, req.orgId, param(req, 'id')));
@@ -149,60 +138,37 @@ plansRouter.delete('/:id', requireManager, async (req, res) => {
   res.status(204).end();
 });
 
-const duplicateSchema = z.object({
-  service_date: z.string(),
-  title: z.string().trim().min(1).max(200).optional(),
-  copy_assignments: z.boolean().default(true),
+/**
+ * "Same as last week" — the single most-used action in a scheduling tool.
+ * One transaction: order, times (shifted by the date change), needs and,
+ * optionally, the team as fresh unconfirmed requests. Nobody is notified.
+ */
+plansRouter.post('/:id/duplicate', requireManager, validateBody(duplicatePlanSchema), async (req, res) => {
+  const planId = await duplicatePlanAtomically({
+    db: req.db,
+    sourcePlanId: param(req, 'id'),
+    input: req.body as DuplicatePlanInput,
+  });
+  res.status(201).json(await fetchPlanDetail(req.db, req.orgId, planId));
 });
 
-/** "Same as last week" — the single most-used action in a scheduling tool. */
-plansRouter.post('/:id/duplicate', requireManager, validateBody(duplicateSchema), async (req, res) => {
-  const { service_date, title, copy_assignments } = req.body as z.infer<typeof duplicateSchema>;
-
-  const source = await fetchPlanDetail(req.db, req.orgId, param(req, 'id'));
-  const offsetMs = new Date(service_date).getTime() - new Date(source.service_date).getTime();
-
-  const created = await unwrapOne(
-    req.db
-      .from('plans')
-      .insert({
-        organization_id: req.orgId,
-        service_type_id: source.service_type_id,
-        title: title ?? source.title,
-        service_date,
-        location: source.location,
-        status: 'draft',
-        notes: source.notes,
-        created_by: req.auth.userId,
-      })
-      .select('*')
-      .single(),
-  );
-
-  // Shift every rehearsal/service time by the same delta as the service date,
-  // so a plan moved a week later keeps its Friday rehearsal.
-  if (source.times.length) {
-    await unwrap(
-      req.db.from('plan_times').insert(
-        source.times.map((t) => ({
-          plan_id: created.id,
-          kind: t.kind,
-          name: t.name,
-          starts_at: new Date(new Date(t.starts_at).getTime() + offsetMs).toISOString(),
-          ends_at: new Date(new Date(t.ends_at).getTime() + offsetMs).toISOString(),
-        })),
-      ),
-    );
-  }
-
-  await copyPlanContents({
+/**
+ * Copies another plan's order, needs and/or team into this plan in one
+ * transaction. Nothing already on the plan is removed and nobody is notified.
+ */
+plansRouter.post('/:id/import', requireManager, validateBody(importPlanContentsSchema), async (req, res) => {
+  const targetPlanId = param(req, 'id');
+  const contentRevision = await importPlanContents({
     db: req.db,
-    sourcePlanId: source.id,
-    targetPlanId: created.id,
-    createdBy: req.auth.userId,
-    withAssignments: copy_assignments,
+    orgId: req.orgId,
+    targetPlanId,
+    input: req.body as ImportPlanContentsInput,
   });
-  res.status(201).json(await fetchPlanDetail(req.db, req.orgId, created.id));
+  const result: ImportPlanContentsResult = {
+    plan: await fetchPlanDetail(req.db, req.orgId, targetPlanId),
+    content_revision: contentRevision,
+  };
+  res.json(result);
 });
 
 // --------------------------------------------------------------- items ----

@@ -13,15 +13,18 @@ export interface ImportTemplateModalProps {
 
 /**
  * Copies a previous plan of the same service type into this one — the order of
- * service, the scheduled team, or both. It reuses the ordinary item and
- * assignment endpoints rather than a bespoke one, so everything it creates is
- * exactly what a scheduler would have created by hand.
+ * service, the scheduled team, or both — in one server transaction: either all
+ * of it lands or none of it does. Copied people are fresh, unconfirmed
+ * requests and nobody is notified. If the plan changed since it was opened,
+ * the import is refused and the plan reloaded.
  */
 export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModalProps) => {
   const invalidate = useInvalidateOrg();
   const [sourceId, setSourceId] = useState('');
+  const [attemptKey, setAttemptKey] = useState(() => crypto.randomUUID());
   const [withOrder, setWithOrder] = useState(true);
   const [withTeam, setWithTeam] = useState(true);
+  const [withNeeds, setWithNeeds] = useState(true);
 
   const candidates = usePlans({
     ...(plan.service_type_id ? { service_type_id: plan.service_type_id } : {}),
@@ -32,47 +35,29 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
     (candidate) => candidate.id !== plan.id,
   );
 
+  // One key per import attempt: a retry after a timeout is answered with the
+  // first result rather than copying the order twice.
   const runImport = useMutation({
-    mutationFn: async () => {
-      const source = await api.getPlan(sourceId);
-
-      if (withOrder) {
-        // Sequential: the API appends each item to the end of the order, so
-        // parallel calls would land in an arbitrary order.
-        for (const item of source.items) {
-          await api.addPlanItem(plan.id, {
-            item_type: item.item_type,
-            title: item.title,
-            song_id: item.song_id,
-            arrangement_id: item.arrangement_id,
-            key_override: item.key_override,
-            length_seconds: item.length_seconds,
-            description: item.description,
-          });
-        }
-      }
-
-      if (withTeam && source.assignments.length) {
-        await api.createAssignments(plan.id, {
-          assignments: source.assignments.map((assignment) => ({
-            user_id: assignment.user_id,
-            team_id: assignment.team_id,
-            position_id: assignment.position_id,
-          })),
-          // A template import is a starting point, not a commitment — schedule
-          // everyone and let the scheduler resolve clashes before notifying.
-          ignore_conflicts: true,
-          notify: false,
-        });
-      }
-    },
+    mutationFn: (idempotencyKey: string) =>
+      api.importPlanContents(plan.id, {
+        source_plan_id: sourceId,
+        items: withOrder,
+        position_needs: withNeeds,
+        assignments: withTeam,
+        expected_revision: plan.content_revision,
+        idempotency_key: idempotencyKey,
+      }),
     onSuccess: async () => {
       await invalidate();
       setSourceId('');
+      setAttemptKey(crypto.randomUUID());
       onClose();
     },
+    // A stale plan is refreshed so the next attempt sees the latest content.
+    onError: async () => {
+      await invalidate();
+    },
   });
-
   return (
     <Modal open={open} title="Import from another plan" onClose={onClose}>
       <div className="space-y-4">
@@ -96,7 +81,10 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
               <button
                 key={source.id}
                 type="button"
-                onClick={() => setSourceId(source.id)}
+                onClick={() => {
+                  setSourceId(source.id);
+                  setAttemptKey(crypto.randomUUID());
+                }}
                 className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
                   sourceId === source.id ? 'bg-brand-50 ring-1 ring-brand-200' : 'hover:bg-slate-50'
                 }`}
@@ -119,7 +107,10 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
               type="checkbox"
               className="size-4 rounded border-slate-300"
               checked={withOrder}
-              onChange={(event) => setWithOrder(event.target.checked)}
+              onChange={(event) => {
+                setWithOrder(event.target.checked);
+                setAttemptKey(crypto.randomUUID());
+              }}
             />
             Order of service
           </label>
@@ -128,9 +119,24 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
               type="checkbox"
               className="size-4 rounded border-slate-300"
               checked={withTeam}
-              onChange={(event) => setWithTeam(event.target.checked)}
+              onChange={(event) => {
+                setWithTeam(event.target.checked);
+                setAttemptKey(crypto.randomUUID());
+              }}
             />
             Scheduled team
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 rounded border-slate-300"
+              checked={withNeeds}
+              onChange={(event) => {
+                setWithNeeds(event.target.checked);
+                setAttemptKey(crypto.randomUUID());
+              }}
+            />
+            Needed positions (kept where this plan already sets them)
           </label>
         </div>
 
@@ -142,8 +148,8 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
           </Button>
           <Button
             loading={runImport.isPending}
-            disabled={!sourceId || (!withOrder && !withTeam)}
-            onClick={() => runImport.mutate()}
+            disabled={!sourceId || (!withOrder && !withTeam && !withNeeds)}
+            onClick={() => runImport.mutate(attemptKey)}
           >
             Import
           </Button>

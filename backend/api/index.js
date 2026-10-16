@@ -10,18 +10,9 @@
  * so this file is never fed through `tsc`.
  */
 import { createApp } from '../dist/app.js';
-import { config } from '../dist/config.js';
-import { ResendTransport } from '../dist/services/email/resend-transport.js';
-import {
-  setNotificationTransport,
-  setPersonInvitationTransport,
-} from '../dist/services/notifications.js';
+import { configureTransports } from '../dist/lib/transports.js';
 
-if (config.RESEND_API_KEY) {
-  const resendTransport = new ResendTransport(config.RESEND_API_KEY);
-  setNotificationTransport(resendTransport);
-  setPersonInvitationTransport(resendTransport);
-}
+configureTransports();
 
 // An Express app is itself an (req, res) handler, which is what Vercel expects.
 export default createApp();

@@ -4,6 +4,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query';
+import type { ListDeliveriesRequest } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 
@@ -27,6 +28,8 @@ export const keys = {
   mySchedule: (org: string | null, query: unknown) => [...keys.all(org), 'my-schedule', query] as const,
   blockouts: (org: string | null, query: unknown) => [...keys.all(org), 'blockouts', query] as const,
   calendarFeed: (org: string | null) => [...keys.all(org), 'calendar-feed'] as const,
+  deliveryStatus: (org: string | null) => [...keys.all(org), 'delivery-status'] as const,
+  deliveries: (org: string | null, query: unknown) => [...keys.all(org), 'deliveries', query] as const,
   songbooks: (org: string | null) => [...keys.all(org), 'songbooks'] as const,
   songbook: (org: string | null, id: string) => [...keys.songbooks(org), id] as const,
 };
@@ -151,6 +154,20 @@ export const useBlockouts = (query: { scope?: 'mine' | 'organization' } = {}) =>
 export const useCalendarFeed = () => {
   const org = useOrg();
   return useQuery({ queryKey: keys.calendarFeed(org), queryFn: () => api.getCalendarFeed(), enabled: Boolean(org) });
+};
+
+export const useDeliveryStatus = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.deliveryStatus(org), queryFn: () => api.deliveryStatus(), enabled: Boolean(org) });
+};
+
+export const useDeliveries = (query: ListDeliveriesRequest) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.deliveries(org, query),
+    queryFn: () => api.listDeliveries(query),
+    enabled: Boolean(org),
+  });
 };
 
 export const useSongbooks = () => {
