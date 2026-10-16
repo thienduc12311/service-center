@@ -15,6 +15,8 @@ export interface NotificationDraft {
   assignmentId?: string | null;
   /** Whoever triggered the event, for attribution. */
   createdBy?: string | null;
+  /** Identifies the row a delivery writes, so a retry never adds a second one. */
+  dedupeKey?: string | null;
 }
 
 /** The `notifications` insert payload. */
@@ -27,6 +29,7 @@ export type NotificationInsert = {
   plan_id: string | null;
   assignment_id: string | null;
   created_by: string | null;
+  dedupe_key: string | null;
 };
 
 export const toNotificationInsert = (draft: NotificationDraft): NotificationInsert => ({
@@ -38,6 +41,7 @@ export const toNotificationInsert = (draft: NotificationDraft): NotificationInse
   plan_id: draft.planId ?? null,
   assignment_id: draft.assignmentId ?? null,
   created_by: draft.createdBy ?? null,
+  dedupe_key: draft.dedupeKey ?? null,
 });
 
 /** What a push notification carries to the device. */

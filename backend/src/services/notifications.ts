@@ -1,3 +1,4 @@
+import type { EmailTransportMode } from '@service-center/shared';
 import { config } from '../config.js';
 
 export interface ScheduleNotification {
@@ -14,19 +15,30 @@ export interface ScheduleNotification {
   ics?: string;
 }
 
+/** What a provider told us after accepting an email. */
+export interface EmailSendReceipt {
+  providerMessageId: string | null;
+}
+
 /**
- * Delivery is intentionally pluggable. The default transport logs, which keeps
- * local development and tests free of external dependencies; swap in Resend,
- * Postmark or Supabase Auth emails by replacing `send`.
+ * Delivery is intentionally pluggable. The default transport only logs, which
+ * keeps local development and tests free of external dependencies; its mode
+ * is `simulated`, so nothing reports a logged email as sent. A transport
+ * signals failure by throwing a `DeliveryError` that says whether a retry can
+ * help; anything else it throws is treated as an unexpected failure.
  */
 export interface NotificationTransport {
-  send(notification: ScheduleNotification): Promise<void>;
+  readonly mode: EmailTransportMode;
+  send(notification: ScheduleNotification): Promise<EmailSendReceipt>;
 }
 
 const consoleTransport: NotificationTransport = {
+  mode: 'simulated',
   async send(notification) {
-    if (config.isTest) return;
-    console.info(`[notify] schedule notification prepared for "${notification.planTitle}" on ${notification.serviceDate}`);
+    if (!config.isTest) {
+      console.info(`[notify] simulated email for "${notification.planTitle}" on ${notification.serviceDate}`);
+    }
+    return { providerMessageId: null };
   },
 };
 
@@ -36,16 +48,7 @@ export const setNotificationTransport = (next: NotificationTransport): void => {
   transport = next;
 };
 
-export const sendScheduleNotifications = async (
-  notifications: ScheduleNotification[],
-): Promise<number> => {
-  const results = await Promise.allSettled(notifications.map((n) => transport.send(n)));
-  const failures = results.filter((r) => r.status === 'rejected');
-  if (failures.length && !config.isTest) {
-    console.warn(`[notify] ${failures.length} of ${notifications.length} notifications failed`);
-  }
-  return results.length - failures.length;
-};
+export const emailTransport = (): NotificationTransport => transport;
 
 export const respondUrlFor = (token: string): string => `${config.APP_URL}/respond?token=${encodeURIComponent(token)}`;
 
@@ -58,7 +61,7 @@ export interface PersonInvitationNotification {
 
 /** Same pluggable-transport shape as schedule notifications, see above. */
 export interface PersonInvitationTransport {
-  send(notification: PersonInvitationNotification): Promise<void>;
+  send(notification: PersonInvitationNotification): Promise<EmailSendReceipt | void>;
 }
 
 const consolePersonInvitationTransport: PersonInvitationTransport = {
@@ -74,5 +77,6 @@ export const setPersonInvitationTransport = (next: PersonInvitationTransport): v
   personInvitationTransport = next;
 };
 
-export const sendPersonInvitation = (notification: PersonInvitationNotification): Promise<void> =>
-  personInvitationTransport.send(notification);
+export const sendPersonInvitation = async (notification: PersonInvitationNotification): Promise<void> => {
+  await personInvitationTransport.send(notification);
+};

@@ -34,6 +34,25 @@ export type NotificationType =
   | 'assignment_response'
   | 'plan_updated';
 export type DevicePlatform = 'ios' | 'android' | 'web';
+/** Where a delivery goes: the in-app feed, a device push, or email. */
+export type DeliveryChannel = 'in_app' | 'push' | 'email';
+/**
+ * A delivery's outcome. `simulated` (no provider configured) and
+ * `provider_accepted` are distinct; neither means the person saw it.
+ * `ambiguous` means the provider call may or may not have landed.
+ */
+export type DeliveryStatus =
+  | 'queued'
+  | 'sending'
+  | 'simulated'
+  | 'provider_accepted'
+  | 'delivered'
+  | 'failed'
+  | 'ambiguous'
+  | 'skipped'
+  | 'cancelled';
+export type DeliveryTemplate = 'assignment_request' | 'assignment_reminder' | 'scheduler_response';
+export type ResponseTransition = 'response' | 'withdrawal';
 /** Column layout a printed chord chart uses. Constrained in the database too. */
 export type ChartColumns = 1 | 2;
 
@@ -242,6 +261,8 @@ export type PlanRow = {
   location: string | null;
   status: PlanStatus;
   notes: string | null;
+  /** Bumped by every change to the plan's items, times or needs. */
+  content_revision: number;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -344,6 +365,47 @@ export type NotificationRow = {
   read_at: string | null;
   created_by: string | null;
   created_at: string;
+  /** Set when a delivery wrote the row, so a retry never adds a second copy. */
+  dedupe_key: string | null;
+}
+
+/** One logical side effect of an action, unique per organization by effect_key. */
+export type DeliveryEffectRow = {
+  id: string;
+  organization_id: string;
+  effect_key: string;
+  template: DeliveryTemplate;
+  plan_id: string | null;
+  assignment_ids: string[];
+  responder_id: string | null;
+  response_status: AssignmentStatus | null;
+  response_transition: ResponseTransition | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** Outbox row: one per effect recipient and channel. */
+export type DeliveryRow = {
+  id: string;
+  organization_id: string;
+  effect_id: string;
+  recipient_id: string;
+  channel: DeliveryChannel;
+  status: DeliveryStatus;
+  attempts: number;
+  max_attempts: number;
+  next_attempt_at: string;
+  lease_owner: string | null;
+  lease_expires_at: string | null;
+  provider_call_started_at: string | null;
+  provider_message_id: string | null;
+  accepted_at: string | null;
+  delivered_at: string | null;
+  completed_at: string | null;
+  last_error_code: string | null;
+  manual_retries: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export type DevicePushTokenRow = {
@@ -426,6 +488,8 @@ export type Database = {
       assignment_notifications: Table<AssignmentNotificationRow>;
       calendar_feed_tokens: Table<CalendarFeedTokenRow>;
       notifications: Table<NotificationRow>;
+      delivery_effects: Table<DeliveryEffectRow>;
+      deliveries: Table<DeliveryRow>;
       device_push_tokens: Table<DevicePushTokenRow>;
       blockouts: Table<BlockoutRow>;
       attachments: Table<AttachmentRow>;
@@ -446,6 +510,91 @@ export type Database = {
           p_reason?: string | null;
         };
         Returns: AssignmentRow[];
+      };
+      schedule_plan_assignments: {
+        Args: {
+          p_plan_id: string;
+          p_assignments: Array<{ user_id: string; team_id: string; position_id: string | null; notes: string | null }>;
+          p_notify: boolean;
+          p_effect_key?: string | null;
+        };
+        Returns: AssignmentRow[];
+      };
+      enqueue_plan_notifications: {
+        Args: {
+          p_plan_id: string;
+          p_template: DeliveryTemplate;
+          p_assignment_ids: string[];
+          p_effect_key: string;
+        };
+        Returns: string;
+      };
+      respond_via_assignment_link: {
+        Args: { p_token_hash: string; p_status: AssignmentStatus };
+        Returns: Array<{ outcome: 'ok' | 'not_found' | 'used' | 'expired'; assignments_updated: number; effect_id: string | null }>;
+      };
+      claim_deliveries: {
+        Args: { p_worker: string; p_limit: number; p_lease_seconds: number; p_effect_id?: string | null };
+        Returns: DeliveryRow[];
+      };
+      begin_delivery_provider_call: {
+        Args: { p_delivery_id: string; p_worker: string };
+        Returns: boolean;
+      };
+      complete_delivery: {
+        Args: {
+          p_delivery_id: string;
+          p_worker: string;
+          p_status: DeliveryStatus;
+          p_error_code?: string | null;
+          p_provider_message_id?: string | null;
+          p_retry_after_seconds?: number | null;
+        };
+        Returns: DeliveryRow | null;
+      };
+      retry_delivery: {
+        Args: { p_delivery_id: string };
+        Returns: DeliveryRow;
+      };
+      duplicate_plan: {
+        Args: {
+          p_source_plan_id: string;
+          p_service_date: string;
+          p_title?: string | null;
+          p_copy_assignments?: boolean;
+          p_idempotency_key?: string | null;
+        };
+        Returns: string;
+      };
+      create_plan: {
+        Args: {
+          p_organization_id: string;
+          p_plan: {
+            title: string;
+            service_type_id?: string | null;
+            service_date: string;
+            location?: string | null;
+            status?: PlanStatus;
+            notes?: string | null;
+          };
+          p_times?: Array<{ kind: PlanTimeKind; name?: string | null; starts_at: string; ends_at: string }>;
+          p_copy_from?: string | null;
+          p_copy_assignments?: boolean;
+          p_idempotency_key?: string | null;
+        };
+        Returns: string;
+      };
+      import_plan_contents: {
+        Args: {
+          p_target_plan_id: string;
+          p_source_plan_id: string;
+          p_items: boolean;
+          p_needs: boolean;
+          p_assignments: boolean;
+          p_expected_revision?: number | null;
+          p_idempotency_key?: string | null;
+        };
+        Returns: number;
       };
       scheduling_conflicts: {
         Args: {
@@ -469,6 +618,9 @@ export type Database = {
       plan_item_type: PlanItemType;
       assignment_status: AssignmentStatus;
       notification_type: NotificationType;
+      delivery_channel: DeliveryChannel;
+      delivery_status: DeliveryStatus;
+      delivery_template: DeliveryTemplate;
     };
     CompositeTypes: Record<string, never>;
   };

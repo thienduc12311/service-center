@@ -25,7 +25,11 @@ import type {
   AssignmentRespondResult,
   CalendarFeedTokenResponse,
   CurrentUser,
+  DeliveryList,
+  DeliveryListItem,
+  DeliveryTransportStatus,
   DeviceRegistration,
+  ImportPlanContentsResult,
   InvitationPreview,
   MyScheduleEntry,
   NotificationFeed,
@@ -57,7 +61,12 @@ import type {
 } from '../schemas/song.js';
 import type { ServiceTypePayload } from '../schemas/organization.js';
 import type { ServiceTypeSetupPayload } from '../schemas/service-type.js';
-import type { SetPlanPositionNeedsInput } from '../schemas/plan.js';
+import type {
+  DuplicatePlanRequest,
+  ImportPlanContentsRequest,
+  SetPlanPositionNeedsInput,
+} from '../schemas/plan.js';
+import type { ListDeliveriesRequest, NotifyPlanInput } from '../schemas/delivery.js';
 import type { RespondToAssignmentNotificationRequest, RespondToAssignmentRequest } from '../schemas/assignment.js';
 import type {
   ListNotificationsQuery,
@@ -298,8 +307,11 @@ export class ServiceCenterApi {
   updatePlan = (id: string, body: Record<string, unknown>) =>
     this.request<PlanRow>('PATCH', `/api/v1/plans/${id}`, body);
   deletePlan = (id: string) => this.request<void>('DELETE', `/api/v1/plans/${id}`);
-  duplicatePlan = (id: string, body: { service_date: string; title?: string; copy_assignments?: boolean }) =>
+  duplicatePlan = (id: string, body: DuplicatePlanRequest) =>
     this.request<PlanDetail>('POST', `/api/v1/plans/${id}/duplicate`, body);
+  /** Copies another plan's order/needs/team into this one in one transaction. */
+  importPlanContents = (planId: string, body: ImportPlanContentsRequest) =>
+    this.request<ImportPlanContentsResult>('POST', `/api/v1/plans/${planId}/import`, body);
 
   addPlanItem = (planId: string, body: Record<string, unknown>) =>
     this.request<PlanItemRow>('POST', `/api/v1/plans/${planId}/items`, body);
@@ -327,8 +339,16 @@ export class ServiceCenterApi {
   deleteAssignment = (id: string) => this.request<void>('DELETE', `/api/v1/assignments/${id}`);
   respondToAssignment = (id: string, body: RespondToAssignmentRequest) =>
     this.request<AssignmentRow>('POST', `/api/v1/assignments/${id}/respond`, body);
-  notifyPlan = (planId: string) =>
-    this.request<AssignmentNotificationSendResult>('POST', `/api/v1/plans/${planId}/notify`, {});
+  notifyPlan = (planId: string, body: NotifyPlanInput = {}) =>
+    this.request<AssignmentNotificationSendResult>('POST', `/api/v1/plans/${planId}/notify`, body);
+
+  // --------------------------------------------------------- deliveries --
+  deliveryStatus = () => this.request<DeliveryTransportStatus>('GET', '/api/v1/deliveries/status');
+  listDeliveries = (query?: ListDeliveriesRequest) =>
+    this.request<DeliveryList>('GET', '/api/v1/deliveries', undefined, query as Query);
+  /** Re-queues a failed or uncertain delivery (administrators only). */
+  retryDelivery = (id: string) =>
+    this.request<DeliveryListItem>('POST', `/api/v1/deliveries/${id}/retry`, {});
   checkConflicts = (body: { starts_at: string; ends_at: string; user_ids: string[] }) =>
     this.request<SchedulingConflict[]>('POST', '/api/v1/scheduling/conflicts', body);
 

@@ -1,20 +1,10 @@
-import {
-  formatDate,
-  selfResponseTransition,
-  type AssignmentRow,
-  type OrgRole,
-} from '@service-center/shared';
-import { adminDb, raw, unwrap, type Db } from '../lib/supabase.js';
+import { selfResponseTransition, type AssignmentRow } from '@service-center/shared';
+import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
-import { createNotifications } from './notification-center.js';
-import { sendScheduleNotifications } from './notifications.js';
 import type {
   RespondToOwnAssignmentInput,
   SelfResponseOutcome,
 } from '../model/assignment-response.model.js';
-import { config } from '../config.js';
-
-const SCHEDULER_ROLES: readonly OrgRole[] = ['owner', 'admin', 'scheduler'];
 
 export const STALE_RESPONSE_CODE = 'assignment_response_stale';
 export const FORBIDDEN_RESPONSE_CODE = 'assignment_response_forbidden';
@@ -32,6 +22,8 @@ const staleResponse = (current: AssignmentRow['status']): HttpError =>
  * scheduler) is reported as stale rather than overwritten. The database
  * trigger enforces the same transition rule for direct table access and
  * writes the response history row, which is where a decline reason is kept.
+ * The same transaction records the scheduler update (F00 outbox), which the
+ * route delivers once the answer has committed.
  */
 export const respondToOwnAssignment = async (
   input: RespondToOwnAssignmentInput,
@@ -85,80 +77,6 @@ export const respondToOwnAssignment = async (
   }
 
   return { assignment: updated, previousStatus: current.status, transition };
-};
-
-/** Only someone who can still schedule in this organization hears about it. */
-const isActiveScheduler = async (orgId: string, userId: string): Promise<boolean> => {
-  const membership = await unwrap(
-    adminDb
-      .from('organization_members')
-      .select('role')
-      .eq('organization_id', orgId)
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .maybeSingle(),
-  );
-  return Boolean(membership && SCHEDULER_ROLES.includes(membership.role));
-};
-
-/**
- * Tell whoever scheduled the person. Runs after the answer has committed, so a
- * delivery failure is logged rather than reported as a failed answer — the
- * client would otherwise retry something that already succeeded.
- */
-export const notifySchedulerOfResponse = async (
-  orgId: string,
-  responderId: string,
-  outcome: SelfResponseOutcome,
-): Promise<void> => {
-  const { assignment, transition } = outcome;
-  if (transition === 'unchanged') return;
-  const schedulerId = assignment.created_by;
-  if (!schedulerId || schedulerId === responderId) return;
-
-  try {
-    if (!(await isActiveScheduler(orgId, schedulerId))) return;
-
-    const [scheduler, plan, responder] = await Promise.all([
-      unwrap(adminDb.from('profiles').select('email').eq('id', schedulerId).maybeSingle()),
-      unwrap(adminDb.from('plans').select('title, service_date').eq('id', assignment.plan_id).maybeSingle()),
-      unwrap(adminDb.from('profiles').select('full_name').eq('id', responderId).maybeSingle()),
-    ]);
-    if (!plan) return;
-
-    const who = responder?.full_name ?? 'Someone';
-    const action =
-      transition === 'withdrawal' ? 'withdrew from' : assignment.status === 'confirmed' ? 'confirmed' : 'declined';
-
-    await createNotifications([
-      {
-        organizationId: orgId,
-        userId: schedulerId,
-        type: 'assignment_response',
-        title: `${who} ${action} ${plan.title}`,
-        body: formatDate(plan.service_date),
-        planId: assignment.plan_id,
-        assignmentId: assignment.id,
-        createdBy: responderId,
-      },
-    ]);
-
-    if (assignment.status === 'declined' && scheduler?.email) {
-      await sendScheduleNotifications([
-        {
-          to: scheduler.email,
-          personName: null,
-          planTitle: `${plan.title} — ${transition === 'withdrawal' ? 'confirmation withdrawn' : 'assignment declined'}`,
-          serviceDate: plan.service_date,
-          teamName: null,
-          positionName: null,
-          respondUrl: `${config.APP_URL}/plans/${assignment.plan_id}`,
-        },
-      ]);
-    }
-  } catch (error) {
-    console.warn('[assignments] could not notify the scheduler of a response', error);
-  }
 };
 
 /**

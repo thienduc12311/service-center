@@ -7,6 +7,7 @@ process.env.SUPABASE_URL ||= 'http://127.0.0.1:54321';
 process.env.SUPABASE_ANON_KEY ||= 'test-anon-key-that-is-long-enough';
 process.env.SUPABASE_SERVICE_ROLE_KEY ||= 'test-service-role-key-long-enough';
 process.env.CORS_ORIGINS ||= 'http://localhost:5173';
+process.env.CRON_SECRET ||= 'test-worker-secret-long-enough';
 
 describe('app', () => {
   let app: Express;
@@ -14,6 +15,22 @@ describe('app', () => {
   beforeAll(async () => {
     const { createApp } = await import('../app.js');
     app = createApp();
+  });
+
+  it('keeps the delivery worker behind its shared secret', async () => {
+    const missing = await request(app).get('/api/v1/internal/deliveries/run');
+    expect(missing.status).toBe(401);
+    const wrong = await request(app)
+      .post('/api/v1/internal/deliveries/run')
+      .set('Authorization', 'Bearer not-the-worker-secret-at-all');
+    expect(wrong.status).toBe(401);
+  });
+
+  it('rejects an out-of-range worker batch before touching the queue', async () => {
+    const res = await request(app)
+      .get('/api/v1/internal/deliveries/run?limit=5000')
+      .set('Authorization', 'Bearer test-worker-secret-long-enough');
+    expect(res.status).toBe(422);
   });
 
   it('serves health without authentication', async () => {

@@ -1,31 +1,81 @@
-import { Resend } from 'resend';
-import type { NotificationTransport, PersonInvitationNotification, PersonInvitationTransport, ScheduleNotification } from '../notifications.js';
+import { Resend, type ErrorResponse } from 'resend';
+import type {
+  EmailSendReceipt,
+  NotificationTransport,
+  PersonInvitationNotification,
+  PersonInvitationTransport,
+  ScheduleNotification,
+} from '../notifications.js';
 import { config } from '../../config.js';
+import { DeliveryError } from '../../model/delivery.model.js';
 import { invitationEmail } from './templates/invitation.js';
 import { scheduleEmail } from './templates/schedule.js';
 
+/** How long to wait for Resend before treating the outcome as unknown. */
+const SEND_TIMEOUT_MS = 15_000;
+
+/**
+ * Maps a Resend error to what the worker should do. A response without a
+ * status code means the request never got an answer, so the email may or may
+ * not have been sent.
+ */
+export const classifyResendError = (error: Pick<ErrorResponse, 'name' | 'statusCode'>): DeliveryError => {
+  if (error.statusCode === null) return new DeliveryError('provider_timeout', 'ambiguous');
+  switch (error.name) {
+    case 'rate_limit_exceeded':
+    case 'concurrent_idempotent_requests':
+      return new DeliveryError('provider_rate_limited', 'retry', 60);
+    case 'daily_quota_exceeded':
+      return new DeliveryError('provider_rate_limited', 'retry', 60 * 60);
+    case 'application_error':
+    case 'internal_server_error':
+      return new DeliveryError('provider_unavailable', 'retry', 120);
+    case 'missing_api_key':
+    case 'invalid_api_key':
+    case 'restricted_api_key':
+    case 'invalid_from_address':
+    case 'invalid_access':
+    case 'invalid_region':
+    case 'security_error':
+    case 'monthly_quota_exceeded':
+      return new DeliveryError('provider_misconfigured', 'fail');
+    default:
+      return new DeliveryError('provider_rejected', 'fail');
+  }
+};
+
+const timeout = (ms: number): Promise<never> =>
+  new Promise((_, reject) => {
+    setTimeout(() => reject(new DeliveryError('provider_timeout', 'ambiguous')), ms).unref?.();
+  });
+
 export class ResendTransport implements NotificationTransport, PersonInvitationTransport {
+  readonly mode = 'resend' as const;
   private readonly client: Resend;
 
   constructor(apiKey: string = config.RESEND_API_KEY ?? '') {
     this.client = new Resend(apiKey);
   }
 
-  async send(notification: ScheduleNotification | PersonInvitationNotification): Promise<void> {
+  async send(notification: ScheduleNotification | PersonInvitationNotification): Promise<EmailSendReceipt> {
     const content = 'respondUrl' in notification ? scheduleEmail(notification) : invitationEmail(notification);
     const replyTo = 'respondUrl' in notification ? notification.schedulerEmail ?? undefined : undefined;
     const attachments = 'respondUrl' in notification && notification.ics
       ? [{ filename: 'assignment.ics', content: Buffer.from(notification.ics).toString('base64') }]
       : undefined;
-    const { error } = await this.client.emails.send({
-      from: `${'respondUrl' in notification ? notification.organizationName ?? config.MAIL_FROM_NAME : config.MAIL_FROM_NAME} <${config.MAIL_FROM_ADDRESS}>`,
-      to: notification.to,
-      subject: content.subject,
-      html: content.html,
-      text: content.text,
-      ...(replyTo ? { replyTo } : {}),
-      ...(attachments ? { attachments } : {}),
-    });
-    if (error) throw new Error(`Email delivery failed: ${error.message}`);
+    const { data, error } = await Promise.race([
+      this.client.emails.send({
+        from: `${'respondUrl' in notification ? notification.organizationName ?? config.MAIL_FROM_NAME : config.MAIL_FROM_NAME} <${config.MAIL_FROM_ADDRESS}>`,
+        to: notification.to,
+        subject: content.subject,
+        html: content.html,
+        text: content.text,
+        ...(replyTo ? { replyTo } : {}),
+        ...(attachments ? { attachments } : {}),
+      }),
+      timeout(SEND_TIMEOUT_MS),
+    ]);
+    if (error) throw classifyResendError(error);
+    return { providerMessageId: data?.id ?? null };
   }
 }

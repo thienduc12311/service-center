@@ -2,6 +2,9 @@ import type {
   ArrangementRow,
   AssignmentRow,
   BlockoutRow,
+  DeliveryChannel,
+  DeliveryStatus,
+  DeliveryTemplate,
   DevicePlatform,
   MemberStatus,
   NotificationRow,
@@ -111,9 +114,85 @@ export interface CalendarFeedTokenResponse {
   active?: boolean;
 }
 
+/** How this server's transports are configured. */
+export type EmailTransportMode = 'resend' | 'simulated';
+export type PushTransportMode = 'expo' | 'simulated';
+
+/** Per-recipient, per-channel outcome of one delivery. */
+export interface DeliveryOutcome {
+  id: string;
+  recipient_id: string;
+  recipient_name: string | null;
+  channel: DeliveryChannel;
+  status: DeliveryStatus;
+  attempts: number;
+  /** Short machine code, e.g. `no_email_address`; never provider text. */
+  error_code: string | null;
+  /** Set only once a provider accepted the message (or the feed row exists). */
+  accepted_at: string | null;
+  delivered_at: string | null;
+  completed_at: string | null;
+  /** When a queued delivery will next be tried. */
+  next_attempt_at: string | null;
+  /** True when an administrator may retry it now (failed or ambiguous). */
+  retryable: boolean;
+}
+
+/** Counts of outcomes for one channel. */
+export type DeliveryStatusCounts = Partial<Record<DeliveryStatus, number>>;
+
+export interface DeliveryOutcomeSummary {
+  in_app: DeliveryStatusCounts;
+  push: DeliveryStatusCounts;
+  email: DeliveryStatusCounts;
+}
+
+/** A row in the administrator's delivery list. */
+export interface DeliveryListItem extends DeliveryOutcome {
+  template: DeliveryTemplate;
+  plan_id: string | null;
+  plan_title: string | null;
+  created_at: string;
+}
+
+export interface DeliveryList {
+  data: DeliveryListItem[];
+  /** Pass as `before` to load the next page; null when there is no more. */
+  next_before: string | null;
+}
+
+/** Transport configuration and queue health, for administrators. */
+export interface DeliveryTransportStatus {
+  email: EmailTransportMode;
+  push: PushTransportMode;
+  /** True when the authenticated worker entry point is configured. */
+  worker_configured: boolean;
+  /** This organization's deliveries waiting for (or held by) a worker. */
+  pending: number;
+  /** This organization's failed or ambiguous deliveries. */
+  needs_attention: number;
+}
+
 export interface AssignmentNotificationSendResult {
+  /**
+   * People whose email a provider accepted. Kept for older clients; a
+   * simulated send is not counted. Prefer `outcomes`/`summary`.
+   */
   notified: number;
+  /** Names of people with no email address on file. */
   skipped: string[];
+  /** The logical action every outcome below belongs to; null when nobody was due. */
+  effect_id: string | null;
+  email_mode: EmailTransportMode;
+  outcomes: DeliveryOutcome[];
+  summary: DeliveryOutcomeSummary;
+}
+
+/** Result of importing another plan's contents into a plan. */
+export interface ImportPlanContentsResult {
+  plan: PlanDetail;
+  /** The plan's content revision after the import. */
+  content_revision: number;
 }
 
 export interface TeamWithPositions extends TeamRow {

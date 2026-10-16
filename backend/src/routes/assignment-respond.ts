@@ -3,7 +3,6 @@ import rateLimit from 'express-rate-limit';
 import {
   type AssignmentRespondPreview,
   type AssignmentRespondResult,
-  type AssignmentStatus,
   type RespondToAssignmentNotificationInput,
   respondToAssignmentNotificationSchema,
 } from '@service-center/shared';
@@ -12,7 +11,7 @@ import { validateBody } from '../lib/validate.js';
 import { adminDb, raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { hashInviteToken } from '../services/invitations.js';
-import { sendScheduleNotifications } from '../services/notifications.js';
+import { deliverEffectNow } from '../services/delivery-worker.js';
 import { config } from '../config.js';
 
 export const assignmentRespondRouter: Router = Router();
@@ -70,37 +69,31 @@ assignmentRespondRouter.get('/:token', async (req, res) => {
   res.json(preview);
 });
 
+/**
+ * Answer from the emailed link. Verifying the link, answering every position
+ * that may still take the answer, using up the link and recording the
+ * scheduler update all happen in one transaction (the same scheduler-update
+ * rule as a signed-in answer); the update is delivered after it commits.
+ */
 assignmentRespondRouter.post('/:token/respond', validateBody(respondToAssignmentNotificationSchema), async (req, res) => {
-  const token = param(req, 'token');
-  const notification = await loadNotification(token);
-  const respondedAt = new Date().toISOString();
   const body = req.body as RespondToAssignmentNotificationInput;
-  // Only positions that may still take this answer: a declined one is never
-  // re-accepted from a link (the database guard refuses it too), and a
-  // repeated answer writes nothing.
-  const answerable: AssignmentStatus[] = body.status === 'confirmed' ? ['unconfirmed'] : ['unconfirmed', 'confirmed'];
-  const updated = await unwrap(
-    adminDb
-      .from('assignments')
-      .update({ status: body.status, responded_at: respondedAt })
-      .eq('plan_id', notification.plan_id)
-      .eq('user_id', notification.user_id)
-      .in('status', answerable)
-      .select('id'),
+  const rows = await unwrap(
+    adminDb.rpc('respond_via_assignment_link', {
+      p_token_hash: hashInviteToken(param(req, 'token')),
+      p_status: body.status,
+    }),
   );
-  await unwrap(adminDb.from('assignment_notifications').update({ responded_at: respondedAt }).eq('id', notification.id));
-
-  if (body.status === 'declined' && (updated?.length ?? 0) > 0) {
-    const assignment = await unwrap(adminDb.from('assignments').select('created_by').eq('plan_id', notification.plan_id).eq('user_id', notification.user_id).limit(1).maybeSingle());
-    if (assignment?.created_by) {
-      const scheduler = await unwrap(adminDb.from('profiles').select('email').eq('id', assignment.created_by).maybeSingle());
-      const plan = await unwrapOne(adminDb.from('plans').select('title, service_date').eq('id', notification.plan_id).single());
-      if (scheduler?.email) {
-        await sendScheduleNotifications([{ to: scheduler.email, personName: null, planTitle: `${plan.title} — assignment declined`, serviceDate: plan.service_date, teamName: null, positionName: null, respondUrl: `${config.APP_URL}/plans/${notification.plan_id}` }]);
-      }
-    }
+  const answer = rows?.[0];
+  if (!answer || answer.outcome === 'not_found') throw HttpError.notFound('That assignment response link is not valid');
+  if (answer.outcome === 'used') {
+    throw new HttpError(410, 'This assignment response link has already been used', 'assignment_notification_used');
+  }
+  if (answer.outcome === 'expired') {
+    throw new HttpError(410, 'This assignment response link has expired', 'assignment_notification_expired');
   }
 
-  const result: AssignmentRespondResult = { status: body.status, assignments_updated: updated?.length ?? 0 };
+  await deliverEffectNow(answer.effect_id);
+
+  const result: AssignmentRespondResult = { status: body.status, assignments_updated: answer.assignments_updated };
   res.json(result);
 });

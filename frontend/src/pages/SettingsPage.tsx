@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useBlockouts, useCalendarFeed, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
+import { DeliverySettings } from '../components/settings/DeliverySettings';
 
 export const SettingsPage = () => {
   const { user, organizationId, role, refreshUser, switchOrganization } = useAuth();
@@ -114,6 +115,8 @@ export const SettingsPage = () => {
           switchOrganization(id);
         }}
       />
+
+      {isAdmin(role) && <DeliverySettings />}
 
       <section className="card p-5">
         <h2 className="mb-1 font-semibold">Calendar sync</h2>

@@ -1,83 +1,47 @@
 import type { NotificationRow } from '@service-center/shared';
 import { adminDb, unwrap } from '../lib/supabase.js';
-import {
-  toNotificationInsert,
-  toPushMessage,
-  type NotificationDraft,
-  type PushMessage,
-} from '../model/notification.model.js';
-import { sendPushMessages } from './expo-push.js';
-import { activeDeviceTokens } from './device-registrations.js';
+import { toNotificationInsert, type NotificationDraft } from '../model/notification.model.js';
 
 /**
- * Writes the in-app feed rows behind the bell icon and pushes them to every
- * device the recipients have registered.
+ * Writes the in-app feed rows behind the bell icon.
  *
  * Uses the service role deliberately: the person who triggers the event (a
  * scheduler adding someone to a plan) has no rights to insert a row owned by
  * the recipient, and there is no RLS insert policy on `notifications` for that
- * reason. Callers must already have established that the actor may act in the
- * organization — every current caller runs behind `requireManager`, or writes
- * only to itself.
+ * reason. Only the delivery worker calls this, after re-checking that the
+ * recipient may still see the event.
+ *
+ * Every draft carries a dedupe key, so running the same delivery twice (a
+ * retry, a second worker) returns the rows already written instead of adding
+ * copies.
  */
-export const createNotifications = async (
-  drafts: NotificationDraft[],
+export const ensureFeedRows = async (
+  drafts: ReadonlyArray<NotificationDraft & { dedupeKey: string }>,
 ): Promise<NotificationRow[]> => {
   if (drafts.length === 0) return [];
-
-  const rows = await unwrap(
-    adminDb.from('notifications').insert(drafts.map(toNotificationInsert)).select('*'),
+  await unwrap(
+    adminDb
+      .from('notifications')
+      .upsert(drafts.map(toNotificationInsert), { onConflict: 'dedupe_key', ignoreDuplicates: true }),
   );
-  const created = rows ?? [];
-
-  // Delivery must never fail the action that caused the notification — the row
-  // is already stored, and the app shows it on next refresh.
-  try {
-    await pushToDevices(created);
-  } catch (error) {
-    console.warn('[push] could not deliver push notifications', error);
-  }
-
-  return created;
+  return (
+    (await unwrap(
+      adminDb
+        .from('notifications')
+        .select('*')
+        .in('dedupe_key', drafts.map((draft) => draft.dedupeKey))
+        .order('created_at', { ascending: false }),
+    )) ?? []
+  );
 };
 
-/** Unread count per recipient, used for the iOS badge. */
-const unreadCounts = async (userIds: string[]): Promise<Map<string, number>> => {
-  const rows = await unwrap(
-    adminDb.from('notifications').select('user_id').in('user_id', userIds).is('read_at', null),
-  );
-  const counts = new Map<string, number>();
-  for (const row of rows ?? []) {
-    counts.set(row.user_id, (counts.get(row.user_id) ?? 0) + 1);
-  }
-  return counts;
-};
-
-const pushToDevices = async (notifications: NotificationRow[]): Promise<void> => {
-  if (notifications.length === 0) return;
-  const userIds = [...new Set(notifications.map((n) => n.user_id))];
-
-  const devices = await activeDeviceTokens(adminDb, userIds);
-  if (!devices?.length) return;
-
-  const tokensByUser = new Map<string, string[]>();
-  for (const device of devices) {
-    const list = tokensByUser.get(device.user_id);
-    if (list) list.push(device.token);
-    else tokensByUser.set(device.user_id, [device.token]);
-  }
-
-  const badges = await unreadCounts(userIds);
-  const messages: PushMessage[] = [];
-  for (const notification of notifications) {
-    for (const token of tokensByUser.get(notification.user_id) ?? []) {
-      messages.push(toPushMessage(notification, token, badges.get(notification.user_id)));
-    }
-  }
-
-  const { invalidTokens } = await sendPushMessages(messages);
-  if (invalidTokens.length) {
-    // The app was uninstalled or the token was rotated; keep the table clean.
-    await unwrap(adminDb.from('device_push_tokens').delete().in('token', invalidTokens));
-  }
+/** Unread count for one recipient across their organizations, used for the iOS badge. */
+export const unreadCount = async (userId: string): Promise<number> => {
+  const { count, error } = await adminDb
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .is('read_at', null);
+  if (error) throw new Error(`Could not count unread notifications: ${error.message}`);
+  return count ?? 0;
 };

@@ -1,23 +1,34 @@
+import type { PushTransportMode } from '@service-center/shared';
 import { config } from '../config.js';
 import type { PushMessage } from '../model/notification.model.js';
+import { DeliveryError } from '../model/delivery.model.js';
+
+/** Expo's verdict on one message: accepted for delivery, or why not. */
+export interface PushTicketResult {
+  token: string;
+  accepted: boolean;
+  /** Expo's ticket id, when accepted. */
+  ticketId: string | null;
+  /** Expo's error name when refused, e.g. `DeviceNotRegistered`. */
+  error: string | null;
+}
 
 /**
  * Delivery to Expo's push service. Pluggable for the same reason the email
  * transport is: tests and local development must not reach the network.
+ * A ticket only means Expo accepted the message; whether the device showed
+ * it is a later receipt this server does not poll.
  */
 export interface PushTransport {
-  send(messages: PushMessage[]): Promise<PushDeliveryResult>;
-}
-
-export interface PushDeliveryResult {
-  sent: number;
-  /** Tokens Expo reported as no longer registered — safe to delete. */
-  invalidTokens: string[];
+  readonly mode: PushTransportMode;
+  /** Throws a `DeliveryError` when Expo could not be asked at all. */
+  send(messages: PushMessage[]): Promise<PushTicketResult[]>;
 }
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 /** Expo accepts at most 100 messages per request. */
 const CHUNK_SIZE = 100;
+const REQUEST_TIMEOUT_MS = 10_000;
 
 /** The subset of Expo's response we act on. */
 interface ExpoTicket {
@@ -40,9 +51,21 @@ const chunk = <T>(items: T[], size: number): T[][] => {
   return chunks;
 };
 
+/** An HTTP failure from Expo, mapped to what the worker should do. */
+export const classifyExpoHttpStatus = (status: number): DeliveryError => {
+  if (status === 429) return new DeliveryError('provider_rate_limited', 'retry', 60);
+  if (status >= 500) return new DeliveryError('provider_unavailable', 'retry', 120);
+  if (status === 401 || status === 403) return new DeliveryError('provider_misconfigured', 'fail');
+  return new DeliveryError('provider_rejected', 'fail');
+};
+
+const isExpoResponse = (value: unknown): value is ExpoResponse =>
+  typeof value === 'object' && value !== null && (!('data' in value) || Array.isArray(value.data));
+
 export const expoPushTransport: PushTransport = {
+  mode: 'expo',
   async send(messages) {
-    const result: PushDeliveryResult = { sent: 0, invalidTokens: [] };
+    const results: PushTicketResult[] = [];
 
     for (const batch of chunk(messages, CHUNK_SIZE)) {
       const headers: Record<string, string> = {
@@ -53,43 +76,43 @@ export const expoPushTransport: PushTransport = {
         headers.Authorization = `Bearer ${config.EXPO_ACCESS_TOKEN}`;
       }
 
-      const response = await fetch(EXPO_PUSH_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(batch),
+      let response: Response;
+      try {
+        response = await fetch(EXPO_PUSH_URL, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(batch),
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+      } catch {
+        // No answer: Expo may or may not have queued these.
+        throw new DeliveryError('provider_timeout', 'ambiguous');
+      }
+      if (!response.ok) throw classifyExpoHttpStatus(response.status);
+
+      const payload: unknown = await response.json();
+      const tickets = isExpoResponse(payload) ? payload.data ?? [] : [];
+      batch.forEach((message, index) => {
+        const ticket = tickets[index];
+        results.push({
+          token: message.to,
+          accepted: ticket?.status === 'ok',
+          ticketId: ticket?.status === 'ok' ? ticket.id ?? null : null,
+          error: ticket?.status === 'ok' ? null : ticket?.details?.error ?? 'MissingTicket',
+        });
       });
-
-      if (!response.ok) {
-        // A push that doesn't arrive must never fail the request that caused
-        // it — the in-app notification is already stored either way.
-        console.warn(`[push] Expo rejected a batch of ${batch.length} (HTTP ${response.status})`);
-        continue;
-      }
-
-      const payload = (await response.json()) as ExpoResponse;
-      for (const [index, ticket] of (payload.data ?? []).entries()) {
-        if (ticket.status === 'ok') {
-          result.sent += 1;
-          continue;
-        }
-        if (ticket.details?.error === 'DeviceNotRegistered') {
-          const token = batch[index]?.to;
-          if (token) result.invalidTokens.push(token);
-        } else {
-          console.warn(`[push] Expo ticket error: ${ticket.details?.error ?? ticket.message ?? 'unknown'}`);
-        }
-      }
     }
 
-    return result;
+    return results;
   },
 };
 
 /** Logs instead of sending. The default outside production. */
 const consolePushTransport: PushTransport = {
+  mode: 'simulated',
   async send(messages) {
-    if (!config.isTest) console.info(`[push] ${messages.length} push notification(s) prepared`);
-    return { sent: messages.length, invalidTokens: [] };
+    if (!config.isTest) console.info(`[push] ${messages.length} simulated push notification(s)`);
+    return messages.map((message) => ({ token: message.to, accepted: true, ticketId: null, error: null }));
   },
 };
 
@@ -99,5 +122,4 @@ export const setPushTransport = (next: PushTransport): void => {
   transport = next;
 };
 
-export const sendPushMessages = (messages: PushMessage[]): Promise<PushDeliveryResult> =>
-  messages.length ? transport.send(messages) : Promise.resolve({ sent: 0, invalidTokens: [] });
+export const pushTransport = (): PushTransport => transport;
