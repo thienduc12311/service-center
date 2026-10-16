@@ -12,8 +12,14 @@ export const queryKeys = {
   privateRoot,
   organization: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'organization'] as const,
+  /** Prefix for every schedule window; invalidate this after an answer. */
   schedule: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'schedule'] as const,
+  scheduleWindow: (scope: ProtectedQueryScope | null, window: 'upcoming' | 'history') =>
+    [...privateRoot(scope), 'schedule', window] as const,
+  /** Prefix for every calendar range. */
+  calendarAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'calendar'] as const,
   plan: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'plan', planId ?? null] as const,
   song: (scope: ProtectedQueryScope | null, songId: string | null | undefined) =>

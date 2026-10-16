@@ -1,18 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ASSIGNMENT_STATUS_LABELS,
-  formatDate,
-  formatDateTime,
-  type MyScheduleEntry,
-} from '@service-center/shared';
+import { useQuery } from '@tanstack/react-query';
+import { formatDateTime } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
-  Button,
   Card,
   Divider,
   EmptyState,
@@ -20,41 +14,67 @@ import {
   Loading,
   Screen,
   ScreenHeader,
-  Tag,
+  SegmentedControl,
   screenPadding,
+  type SegmentOption,
 } from '../../src/components/ui';
 import { NotificationBell } from '../../src/components/NotificationBell';
 import { PressableScale, Reveal } from '../../src/components/motion';
-import { statusAccent, type Theme } from '../../src/lib/theme';
+import {
+  GroupStatusTag,
+  ResponsibilityList,
+  ScheduleTimes,
+} from '../../src/components/AssignmentResponses';
+import {
+  filterScheduleGroups,
+  groupSchedule,
+  scheduleWindowQuery,
+  type ScheduleFilter,
+  type SchedulePlanGroup,
+  type ScheduleWindow,
+} from '../../src/lib/schedule-groups';
+import {
+  useAssignmentResponses,
+  type AssignmentResponses,
+} from '../../src/lib/useAssignmentResponses';
+import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
-type ResponseStatus = 'confirmed' | 'declined';
+const WINDOW_OPTIONS: readonly SegmentOption<ScheduleWindow>[] = [
+  { value: 'upcoming', label: 'Upcoming' },
+  { value: 'history', label: 'History' },
+];
 
-interface RespondInput {
-  assignmentId: string;
-  status: ResponseStatus;
-}
+const FILTER_OPTIONS: readonly SegmentOption<ScheduleFilter>[] = [
+  { value: 'all', label: 'All' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'declined', label: 'Declined' },
+];
+
+const EMPTY_FILTER_COPY: Record<ScheduleFilter, string> = {
+  all: '',
+  pending: 'Nothing is waiting for your reply.',
+  confirmed: 'You have not confirmed any positions here.',
+  declined: 'You have not declined any positions here.',
+};
 
 export default function MyScheduleScreen() {
   const { queryScope, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
   const theme = useTheme();
-  const queryClient = useQueryClient();
+  const styles = useThemedStyles(makeStyles);
+  const responses = useAssignmentResponses();
   const [refreshing, setRefreshing] = useState(false);
+  const [scheduleWindow, setScheduleWindow] = useState<ScheduleWindow>('upcoming');
+  const [filter, setFilter] = useState<ScheduleFilter>('all');
 
   const schedule = useQuery({
-    queryKey: queryKeys.schedule(queryScope),
-    queryFn: () => api.mySchedule(),
+    queryKey: queryKeys.scheduleWindow(queryScope, scheduleWindow),
+    // Every status is fetched so a card always shows all of its positions;
+    // the status filter is applied per plan below.
+    queryFn: () => api.mySchedule(scheduleWindowQuery(scheduleWindow, new Date())),
     enabled: Boolean(queryScope),
-  });
-
-  const respond = useMutation({
-    mutationFn: ({ assignmentId, status }: RespondInput) =>
-      api.respondToAssignment(assignmentId, { status }),
-    onSuccess: () => {
-      if (!isCurrentGeneration(generation)) return;
-      return queryClient.invalidateQueries({ queryKey: queryKeys.schedule(queryScope) });
-    },
   });
 
   const refresh = useCallback(async () => {
@@ -63,20 +83,26 @@ export default function MyScheduleScreen() {
     if (isCurrentGeneration(generation)) setRefreshing(false);
   }, [generation, isCurrentGeneration, schedule]);
 
-  const entries = useMemo(() => schedule.data ?? [], [schedule.data]);
-  const awaiting = entries.filter((entry) => entry.assignment.status === 'unconfirmed').length;
+  const groups = useMemo(
+    () => groupSchedule(schedule.data ?? [], queryScope?.organizationId ?? '', scheduleWindow),
+    [queryScope?.organizationId, schedule.data, scheduleWindow],
+  );
+  const visible = useMemo(() => filterScheduleGroups(groups, filter), [filter, groups]);
+  const awaiting = groups.reduce((total, group) => total + group.pendingCount, 0);
 
-  const summary = entries.length
-    ? `${entries.length} upcoming${awaiting ? ` · ${awaiting} awaiting your reply` : ''}`
-    : undefined;
+  const summary =
+    scheduleWindow === 'upcoming' && groups.length
+      ? `${groups.length} upcoming${awaiting ? ` · ${awaiting} awaiting your reply` : ''}`
+      : undefined;
 
   return (
     <Screen safeTop>
       <NotificationBell />
       <FlatList
-        data={entries}
-        keyExtractor={(entry) => entry.assignment.id}
+        data={visible}
+        keyExtractor={(group) => group.key}
         contentContainerStyle={screenPadding(theme)}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -85,18 +111,27 @@ export default function MyScheduleScreen() {
           />
         }
         ListHeaderComponent={
-          <View>
+          <View style={styles.header}>
             <ScreenHeader
               eyebrow={summary}
               title="My Schedule"
-              description="Your upcoming assignments and requests."
+              description="Every plan you're on, with each of your positions."
             />
-            <ErrorNotice error={schedule.error ?? respond.error} />
+            <SegmentedControl options={WINDOW_OPTIONS} value={scheduleWindow} onChange={setScheduleWindow} />
+            <SegmentedControl options={FILTER_OPTIONS} value={filter} onChange={setFilter} />
+            <ErrorNotice error={schedule.error} />
           </View>
         }
         ListEmptyComponent={
           schedule.isLoading ? (
             <Loading label="Loading your schedule" />
+          ) : schedule.error ? null : groups.length && filter !== 'all' ? (
+            <EmptyState title="No matching plans" description={EMPTY_FILTER_COPY[filter]} />
+          ) : scheduleWindow === 'history' ? (
+            <EmptyState
+              title="No past plans"
+              description="Plans you served on in the last year show up here."
+            />
           ) : (
             <EmptyState
               title="Nothing scheduled"
@@ -106,13 +141,11 @@ export default function MyScheduleScreen() {
         }
         renderItem={({ item, index }) => (
           <Reveal index={index}>
-            <ScheduleCard
-              entry={item}
+            <PlanGroupCard
+              group={item}
+              responses={responses}
+              canRespond={scheduleWindow === 'upcoming'}
               onOpen={() => router.push(`/plan/${item.plan.id}`)}
-              onRespond={(status) =>
-                respond.mutate({ assignmentId: item.assignment.id, status })
-              }
-              busy={respond.isPending}
             />
           </Reveal>
         )}
@@ -121,84 +154,52 @@ export default function MyScheduleScreen() {
   );
 }
 
-interface ScheduleCardProps {
-  entry: MyScheduleEntry;
+interface PlanGroupCardProps {
+  group: SchedulePlanGroup;
+  responses: AssignmentResponses;
+  canRespond: boolean;
   onOpen: () => void;
-  onRespond: (status: ResponseStatus) => void;
-  busy: boolean;
 }
 
-const ScheduleCard = ({ entry, onOpen, onRespond, busy }: ScheduleCardProps) => {
+const PlanGroupCard = ({ group, responses, canRespond, onOpen }: PlanGroupCardProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const accent = statusAccent(theme, entry.assignment.status);
-  const rehearsal = entry.times.find((time) => time.kind === 'rehearsal');
-  const needsReply = entry.assignment.status === 'unconfirmed';
-
-  const details = [entry.position?.name, entry.plan.location].filter(Boolean).join(' · ');
+  const count = group.responsibilities.length;
 
   return (
     <Card>
       <PressableScale
         onPress={onOpen}
         pressedOpacity={0.65}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${group.plan.title}`}
       >
         <View style={styles.topRow}>
-          <Text style={styles.date}>{formatDateTime(entry.plan.service_date)}</Text>
-          <Tag label={ASSIGNMENT_STATUS_LABELS[entry.assignment.status]} accent={accent} />
+          <Text style={styles.date}>{formatDateTime(group.startsAt)}</Text>
+          <GroupStatusTag status={group.status} />
         </View>
-
-        <Text style={styles.title}>{entry.plan.title}</Text>
-
-        <View style={styles.metaRow}>
-          {entry.team ? (
-            <View style={styles.teamChip}>
-              <View style={[styles.dot, { backgroundColor: entry.team.color }]} />
-              <Text style={styles.meta}>{entry.team.name}</Text>
-            </View>
-          ) : null}
-          {details ? <Text style={styles.meta}>{details}</Text> : null}
+        <Text style={styles.title}>{group.plan.title}</Text>
+        <Text style={styles.meta}>
+          {[group.plan.location, count > 1 ? `${count} positions` : null].filter(Boolean).join(' · ')}
+        </Text>
+        <View style={styles.times}>
+          <ScheduleTimes times={group.times} responsibilities={group.responsibilities} />
         </View>
-
-        {rehearsal ? (
-          <Text style={styles.rehearsal}>
-            Rehearsal {formatDate(rehearsal.starts_at)},{' '}
-            {new Date(rehearsal.starts_at).toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
-          </Text>
-        ) : null}
       </PressableScale>
 
-      {needsReply ? (
-        <View style={styles.actions}>
-          <Divider bleed={theme.space.lg} />
-          <View style={styles.actionRow}>
-            <Button
-              title="Decline"
-              variant="secondary"
-              onPress={() => onRespond('declined')}
-              loading={busy}
-              style={styles.flex}
-            />
-            <Button
-              title="Accept"
-              icon="check"
-              onPress={() => onRespond('confirmed')}
-              loading={busy}
-              style={styles.flex}
-            />
-          </View>
-        </View>
-      ) : null}
+      <Divider bleed={theme.space.lg} />
+      <ResponsibilityList
+        responsibilities={group.responsibilities}
+        responses={responses}
+        canRespond={canRespond}
+      />
     </Card>
   );
 };
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    flex: { flex: 1 },
+    header: { gap: theme.space.md, marginBottom: theme.space.md },
     topRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -208,17 +209,6 @@ const makeStyles = (theme: Theme) =>
     },
     date: { ...theme.type.label, color: theme.color.inkMuted, flex: 1 },
     title: { ...theme.type.title, color: theme.color.ink },
-    metaRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: theme.space.md,
-      marginTop: theme.space.md,
-    },
-    teamChip: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    dot: { width: 7, height: 7, borderRadius: theme.radius.pill },
-    meta: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-    rehearsal: { ...theme.type.bodySmall, color: theme.accent.yellow.fg, marginTop: theme.space.sm },
-    actions: { gap: theme.space.lg },
-    actionRow: { flexDirection: 'row', gap: theme.space.md },
+    meta: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: theme.space.xs },
+    times: { marginTop: theme.space.md },
   });

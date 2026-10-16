@@ -10,7 +10,41 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 | MOB-003 Pass A — query and session lifecycle | implemented; QA pending | `codex/mob-003-session-lifecycle` | Signed-in device transition matrix (below) |
 | MOB-003 Pass B — device registration lifecycle | implemented; QA pending | `codex/mob-003-session-lifecycle` | Physical push/sign-out matrix and EAS delivery gate (below) |
 | MOB-003 Pass C — validated navigation + public responses | not started | — | **Next task/pass** |
-| MOB-004 – MOB-010 | not started | — | Per README order |
+| MOB-004 — individual responses, grouped schedule | implemented; QA pending | `codex/mob-004-personal-schedule` (uncommitted) | Signed-in device check (below); grouped atomic answers wait on MOB-005 |
+| MOB-005 – MOB-010 | not started | — | Per README order; MOB-003 Pass C also still open |
+
+## MOB-004 — 2026-10-16
+
+**Implementation note / baseline:** Native schedule rendered one card per assignment and the plan screen used `.find()` for the first personal assignment. `POST /assignments/:id/respond` overwrote the scheduler-authored `notes` with the response, had no transition rules (a declined position could be re-accepted, from the app or directly through PostgREST under `assignments_update`), no history and no org check on the read. The respond link updated every assignment for the plan/person, including declined ones. The Supabase skill (RLS basics/performance, privileges, constraints) guided the schema: append-only history with indexed FKs, `(select auth.uid())` policies, no client write grants, security-invoker guard so RLS still applies.
+
+**Response transitions supported** (shared `selfResponseTransition`, mirrored by DB trigger `guard_assignment_self_response`): unconfirmed→confirmed, unconfirmed→declined, confirmed→declined (*withdrawal*, deliberate review in the app). Repeating the current answer is a no-op success (retry after a lost response). declined→anything and anything→unconfirmed are scheduler-only (re-request/reassign); the assignee also cannot change plan/person/team/position/notes/bookkeeping columns. Applies to API roles (`authenticated`, `anon`, `service_role`); migrations/maintenance roles are exempt.
+
+**Grouped actions:** not available. Each position is answered individually; nothing is presented as "respond to all". Grouped atomic answers depend on MOB-005's versioned snapshot endpoint.
+
+**Delivered**
+
+- Migration `20261016000100_assignment_response_history.sql`: `assignment_responses` history (trigger-written for every status change by anyone, actor recorded, readable only by the assignee and org schedulers); guard trigger; `respond_to_own_assignment()` RPC = compare-and-set on the status the client saw + reason recorded in the same transaction. Decline reasons live only in history because every org member can read `assignments`. PostgREST returns 409 (`PT409`) for a refused direct transition.
+- Shared: `respondToAssignmentSchema` now `{ status, reason?, expected_status? }` (reason ≤ 500, decline-only, blank → none); respond-link schema is status-only; `selfResponseTransition`/`allowedSelfResponses`; `AssignmentResponseRow`; `MyScheduleEntry.response_note` (own latest decline reason).
+- Backend: `services/assignment-responses.ts` (org-scoped read, stale → 409 `assignment_response_stale`, forbidden → 409 `assignment_response_forbidden`, scheduler notified after commit only if `created_by` is still an active owner/admin/scheduler; notification failure is logged, not reported as a failed answer; "withdrew from" wording; no reason text in push/feed). Respond link no longer clobbers `notes` or resurrects declined positions.
+- Native: `schedule-groups.ts` (one card per org/person/plan, every position kept, times deduped by ID with `requiredBy`, ordered by actual service time, history newest first, filters match when *any* position matches, `Mixed replies` status); Upcoming/History (past 365 days via `include_past/from/to`) and All/Pending/Confirmed/Declined controls; `AssignmentResponses.tsx` per-position controls (Accept, Decline with optional reason, `Withdraw…` review, declined guidance); `useAssignmentResponses` tracks pending/error/draft/request per assignment ID, ignores duplicate taps, keeps reason + exact request on failure, "Try again" resends the same request, refreshes schedule/plan/calendar/notifications in the active scope, resets on generation change. Plan screen shows all of the person's positions and times.
+
+**Changed files:** `supabase/migrations/20261016000100_assignment_response_history.sql`, `supabase/tests/assignment-response-history.sql`, `packages/shared/src/{index.ts,lib/api-client.ts,lib/assignment-responses.ts,lib/assignment-responses.test.ts,schemas/assignment.ts,types/database.ts,types/domain.ts}`, `backend/src/{lib/errors.ts,model/assignment-response.model.ts,routes/assignment-respond.ts,routes/assignments.ts,services/assignment-responses.ts,services/assignment-responses.test.ts}`, `mobile/app/(tabs)/index.tsx`, `mobile/app/plan/[id].tsx`, `mobile/src/components/AssignmentResponses.tsx`, `mobile/src/lib/{assignment-response-drafts.ts,assignment-response-drafts.test.ts,query-keys.ts,schedule-groups.ts,schedule-groups.test.ts,useAssignmentResponses.ts}`.
+
+**Checks (Node v20.20.1 locally — manifests ask for ≥26.8.1; all passed regardless)**
+
+- `npm run build:shared`, `npm run typecheck`, `npm run build` — pass.
+- `npm test` — shared 105, backend 64 (incl. 9 response-service tests), mobile 41 (incl. 11 grouping/filter + 9 draft/retry tests) — pass.
+- `npx supabase migration up --local` — applied. Final migration text also re-applied from scratch inside a rolled-back transaction — pass.
+- `docker exec -i supabase_db_service-center psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/assignment-response-history.sql` — pass and rollback: stale CAS no-op, confirm, withdrawal with reason + actor, re-accept refused (RPC and direct), reset refused, team/notes edits refused, 501-char reason refused, forged history refused, other member cannot read history or answer, scheduler reads + re-requests (recorded), service-role re-accept refused.
+- Live API against local Supabase as seeded Sam (temporary `created_by` = Jordan, restored afterwards): stale 409, accept 200, retry 200, reason-on-accept 422, withdrawal 200, own schedule shows reason, Riley sees `[]` history and no reason column, re-accept 409, direct PostgREST PATCH 409 `PT409`, history rows correct, Jordan's feed got "confirmed" then "withdrew from".
+- `EXPO_OFFLINE=1 CI=1 ../node_modules/.bin/expo export --platform ios --platform android --output-dir /private/tmp/service-center-mob004-final-…` — both bundles exported.
+
+**Remaining gates**
+
+- Signed-in device check (iOS + Android, light/dark, largest accessible text, keyboard over the reason field): two-position plan card, filters, History, decline with reason, withdrawal review, airplane-mode failure keeps the reason and Try again resends, stale answer after changing it on web.
+- Respond-link reason entry and per-time answers are not offered (link is status-only).
+- Website still offers an unreviewed Decline on a confirmed assignment (`frontend/src/pages/MySchedulePage.tsx`) and sends no `expected_status`; it now gets the server rules and history but not the review UI — web parity task.
+- Shared response service for app + link paths, versioned grouped answers and prepared/released visibility: MOB-005.
 
 ## MOB-003 Pass B — 2026-10-16
 
