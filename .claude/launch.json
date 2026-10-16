@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api-simulated-delivery",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd backend && RESEND_API_KEY= EXPO_ACCESS_TOKEN= PORT=4000 npx tsx src/index.ts"],
+      "port": 4000
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "-w", "@service-center/frontend"],
+      "port": 5173
+    }
+  ]
+}
