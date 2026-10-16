@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ApiError, type InvitationPreview } from '@service-center/shared';
+import {
+  ApiError,
+  externalLinkTokenSchema,
+  type InvitationPreview,
+} from '@service-center/shared';
 import { api } from '../src/lib/api';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/providers/AuthProvider';
@@ -42,7 +46,9 @@ export default function AcceptInviteScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const styles = useThemedStyles(makeStyles);
-  const { token } = useLocalSearchParams<{ token?: string }>();
+  const params = useLocalSearchParams<{ token?: string | string[] }>();
+  const parsedToken = externalLinkTokenSchema.safeParse(params.token);
+  const token = parsedToken.success ? parsedToken.data : null;
 
   const [stage, setStage] = useState<Stage>('loading');
   const [preview, setPreview] = useState<InvitationPreview | null>(null);

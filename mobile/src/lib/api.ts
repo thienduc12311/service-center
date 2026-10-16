@@ -1,37 +1,43 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ServiceCenterApi } from '@service-center/shared';
-import { supabase } from './supabase';
+import { ServiceCenterApi, type ApiRequestContext } from '@service-center/shared';
 import { env } from './env';
 
-const ORG_KEY = 'service-center.organization-id';
+export interface NativeRequestMetadata extends Readonly<Record<string, unknown>> {
+  generation: number;
+  userId: string | null;
+}
 
-/**
- * AsyncStorage is async but the API client needs the org id synchronously, so
- * it is mirrored in memory and hydrated once at startup.
- */
-let organizationId: string | null = null;
+export interface NativeApiRequestContext extends ApiRequestContext {
+  metadata: NativeRequestMetadata;
+}
 
-export const hydrateOrganizationId = async (): Promise<string | null> => {
-  organizationId = await AsyncStorage.getItem(ORG_KEY);
-  return organizationId;
+type UnauthorizedHandler = (context: NativeApiRequestContext) => void;
+
+let requestContext: NativeApiRequestContext = {
+  accessToken: null,
+  organizationId: null,
+  metadata: { generation: 0, userId: null },
+};
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+/** Replace the complete request identity in one synchronous write. */
+export const setApiRequestContext = (context: NativeApiRequestContext): void => {
+  requestContext = context;
 };
 
-export const setOrganizationId = async (id: string | null): Promise<void> => {
-  organizationId = id;
-  if (id) await AsyncStorage.setItem(ORG_KEY, id);
-  else await AsyncStorage.removeItem(ORG_KEY);
-};
+/** Each API call receives its own immutable snapshot. */
+export const getApiRequestContext = (): NativeApiRequestContext => ({
+  ...requestContext,
+  metadata: { ...requestContext.metadata },
+});
 
-export const getOrganizationId = (): string | null => organizationId;
+export const setUnauthorizedHandler = (handler: UnauthorizedHandler | null): void => {
+  unauthorizedHandler = handler;
+};
 
 export const api = new ServiceCenterApi({
   baseUrl: env.apiUrl,
-  getAccessToken: async () => {
-    const { data } = await supabase.auth.getSession();
-    return data.session?.access_token ?? null;
-  },
-  getOrganizationId,
-  onUnauthorized: () => {
-    void supabase.auth.signOut();
+  getRequestContext: getApiRequestContext,
+  onUnauthorized: (context) => {
+    unauthorizedHandler?.(context as NativeApiRequestContext);
   },
 });

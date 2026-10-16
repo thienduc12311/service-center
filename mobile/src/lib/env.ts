@@ -13,4 +13,5 @@ export const env = {
   supabaseUrl: read(process.env.EXPO_PUBLIC_SUPABASE_URL, 'supabaseUrl'),
   supabaseAnonKey: read(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, 'supabaseAnonKey'),
   apiUrl: read(process.env.EXPO_PUBLIC_API_URL, 'apiUrl', 'http://localhost:4000'),
+  webAppDomain: read(process.env.EXPO_PUBLIC_WEB_APP_DOMAIN, 'webAppDomain'),
 };

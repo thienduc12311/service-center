@@ -9,6 +9,7 @@ import {
   type AssignmentDetail,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
+import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Avatar,
@@ -42,24 +43,25 @@ interface TeamGroup {
 
 export default function PlanScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, organizationId } = useAuth();
+  const { user, queryScope, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const queryClient = useQueryClient();
 
   const plan = useQuery({
-    queryKey: ['plan', organizationId, id],
+    queryKey: queryKeys.plan(queryScope, id),
     queryFn: () => api.getPlan(id!),
-    enabled: Boolean(id && organizationId),
+    enabled: Boolean(id && queryScope),
   });
 
   const respond = useMutation({
     mutationFn: ({ assignmentId, status }: RespondInput) =>
       api.respondToAssignment(assignmentId, { status }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['plan', organizationId, id] });
-      void queryClient.invalidateQueries({ queryKey: ['schedule', organizationId] });
+      if (!isCurrentGeneration(generation)) return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.plan(queryScope, id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.schedule(queryScope) });
     },
   });
 

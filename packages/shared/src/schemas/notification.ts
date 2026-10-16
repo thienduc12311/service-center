@@ -32,6 +32,12 @@ export const registerDeviceSchema = z.object({
   device_name: z.string().trim().max(120).nullish(),
 });
 
+export const revokeDeviceRegistrationSchema = z.object({
+  token: z.string().trim().min(10).max(255),
+  revocation_secret: z.string().trim().min(32).max(128),
+});
+
 export type ListNotificationsQuery = z.infer<typeof listNotificationsQuerySchema>;
 export type MarkNotificationsReadInput = z.infer<typeof markNotificationsReadSchema>;
 export type RegisterDeviceInput = z.infer<typeof registerDeviceSchema>;
+export type RevokeDeviceRegistrationInput = z.infer<typeof revokeDeviceRegistrationSchema>;

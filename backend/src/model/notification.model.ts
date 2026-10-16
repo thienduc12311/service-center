@@ -64,8 +64,10 @@ export const toPushMessage = (
   badge: number | undefined,
 ): PushMessage => ({
   to: token,
-  title: row.title,
-  body: row.body ?? '',
+  // Lock screens can be visible to anyone holding the device. Detailed plan,
+  // team and person wording stays in the authenticated in-app feed.
+  title: 'Service Center',
+  body: 'Open the app to view a schedule update.',
   badge,
   data: {
     notification_id: row.id,

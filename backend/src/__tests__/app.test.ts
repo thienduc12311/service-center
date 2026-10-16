@@ -33,6 +33,14 @@ describe('app', () => {
     expect(res.status).toBe(404);
     expect(res.body.code).toBe('not_found');
   });
+
+  it('exposes assignment responses without requiring an auth session', async () => {
+    const res = await request(app)
+      .post('/api/v1/assignment-responses/not-a-live-token/respond')
+      .send({ status: 'unsupported' });
+    expect(res.status).toBe(422);
+    expect(res.body.code).toBe('unprocessable');
+  });
 });
 
 describe('CORS', () => {

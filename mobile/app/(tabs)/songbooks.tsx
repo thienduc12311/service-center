@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import { STORAGE_BUCKETS, type SongWithArrangements } from '@service-center/shared';
 import { api } from '../../src/lib/api';
+import { queryKeys } from '../../src/lib/query-keys';
 import { supabase } from '../../src/lib/supabase';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
@@ -44,16 +45,16 @@ const DOCUMENT_TYPES = [
 ];
 
 export default function SongbooksScreen() {
-  const { organizationId, canManage } = useAuth();
+  const { canManage, queryScope, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const queryClient = useQueryClient();
   const [composing, setComposing] = useState(false);
 
   const books = useQuery({
-    queryKey: ['songbooks', organizationId],
+    queryKey: queryKeys.songbooks(queryScope),
     queryFn: () => api.listSongbooks(),
-    enabled: Boolean(organizationId),
+    enabled: Boolean(queryScope),
   });
 
   if (composing) {
@@ -61,7 +62,9 @@ export default function SongbooksScreen() {
       <ComposeSongbook
         onCancel={() => setComposing(false)}
         onCreated={async (bookId) => {
-          await queryClient.invalidateQueries({ queryKey: ['songbooks', organizationId] });
+          if (!isCurrentGeneration(generation)) return;
+          await queryClient.invalidateQueries({ queryKey: queryKeys.songbooks(queryScope) });
+          if (!isCurrentGeneration(generation)) return;
           setComposing(false);
           router.push(`/songbooks/${bookId}`);
         }}
@@ -144,7 +147,7 @@ interface ComposeSongbookProps {
 }
 
 const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
-  const { organizationId } = useAuth();
+  const { organizationId, queryScope, generation, isCurrentGeneration } = useAuth();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [title, setTitle] = useState('');
@@ -153,9 +156,9 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
   const [document, setDocument] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
 
   const songs = useQuery({
-    queryKey: ['songbook-songs', organizationId],
+    queryKey: queryKeys.songbookSongs(queryScope),
     queryFn: () => api.listSongs({ per_page: 200 }),
-    enabled: Boolean(organizationId),
+    enabled: Boolean(queryScope),
   });
 
   const defaultArrangementId = (song: SongWithArrangements): string | null =>
@@ -167,6 +170,7 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
 
       if (source === 'document') {
         if (!document || !organizationId) throw new Error('Choose a document first.');
+        if (!isCurrentGeneration(generation)) throw new Error('Your account changed. Try again.');
         const safeName = document.name.replace(/[^a-zA-Z0-9._-]/g, '-');
         storagePath = `${organizationId}/${Date.now()}-${safeName}`;
         const bytes = new Uint8Array(await (await fetch(document.uri)).arrayBuffer());
@@ -174,8 +178,10 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
           .from(STORAGE_BUCKETS.songbooks)
           .upload(storagePath, bytes, { contentType: document.mimeType ?? 'application/pdf' });
         if (error) throw error;
+        if (!isCurrentGeneration(generation)) throw new Error('Your account changed. Try again.');
       }
 
+      if (!isCurrentGeneration(generation)) throw new Error('Your account changed. Try again.');
       return api.createSongbook({
         title,
         source_type: source,
@@ -190,7 +196,10 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
         }),
       });
     },
-    onSuccess: (book) => onCreated(book.id),
+    onSuccess: (book) => {
+      if (!isCurrentGeneration(generation)) return;
+      return onCreated(book.id);
+    },
   });
 
   const chooseDocument = async (): Promise<void> => {

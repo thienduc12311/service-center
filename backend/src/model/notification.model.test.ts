@@ -55,8 +55,11 @@ describe('toPushMessage', () => {
     created_at: '2026-09-06T10:00:00.000Z',
   };
 
-  it('sends an empty body rather than "null" when there is no detail line', () => {
-    expect(toPushMessage(row, 'ExponentPushToken[abc]', 3).body).toBe('');
+  it('keeps private schedule wording off the lock screen', () => {
+    const message = toPushMessage(row, 'ExponentPushToken[abc]', 3);
+    expect(message.title).toBe('Service Center');
+    expect(message.body).toBe('Open the app to view a schedule update.');
+    expect(message.title).not.toContain(row.title);
   });
 
   it('carries the ids the app needs to deep-link', () => {

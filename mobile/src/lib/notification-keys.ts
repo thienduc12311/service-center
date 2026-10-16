@@ -1,9 +1,9 @@
-/**
- * Query keys for the notification centre. Namespaced by organization like
- * every other key in the app, so switching org can't show a stale badge.
- */
+import type { ProtectedQueryScope } from './session-lifecycle';
+import { queryKeys } from './query-keys';
+
+/** Account, organization and session-generation scoped notification keys. */
 export const notificationKeys = {
-  unread: (organizationId: string | null) => ['notifications', 'unread', organizationId] as const,
-  feed: (organizationId: string | null) => ['notifications', 'feed', organizationId] as const,
-  all: ['notifications'] as const,
+  unread: (scope: ProtectedQueryScope | null) => queryKeys.notificationUnread(scope),
+  feed: (scope: ProtectedQueryScope | null) => queryKeys.notificationFeed(scope),
+  all: (scope: ProtectedQueryScope | null) => queryKeys.notifications(scope),
 };

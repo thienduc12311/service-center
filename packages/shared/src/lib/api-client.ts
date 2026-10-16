@@ -7,7 +7,6 @@ import type {
   ArrangementRow,
   AssignmentRow,
   BlockoutRow,
-  DevicePushTokenRow,
   OrganizationMemberRow,
   OrganizationRow,
   PlanItemRow,
@@ -26,9 +25,11 @@ import type {
   AssignmentRespondResult,
   CalendarFeedTokenResponse,
   CurrentUser,
+  DeviceRegistration,
   InvitationPreview,
   MyScheduleEntry,
   NotificationFeed,
+  NotificationFeedItem,
   Paginated,
   PersonDetail,
   PlanDetail,
@@ -61,6 +62,7 @@ import type {
   ListNotificationsQuery,
   MarkNotificationsReadInput,
   RegisterDeviceInput,
+  RevokeDeviceRegistrationInput,
 } from '../schemas/notification.js';
 import type {
   CreatePositionPayload,
@@ -86,15 +88,37 @@ export class ApiError extends Error {
   }
 }
 
-export interface ApiClientOptions {
+export interface ApiRequestContext {
+  accessToken: string | null;
+  organizationId?: string | null;
+  /** Opaque caller metadata returned to onUnauthorized for stale-request checks. */
+  metadata?: Readonly<Record<string, unknown>>;
+}
+
+interface ApiClientOptionsBase {
   baseUrl: string;
-  /** Called before every request; return null when signed out. */
-  getAccessToken: () => Promise<string | null> | string | null;
   /** Active organization, sent as X-Organization-Id. */
   getOrganizationId?: () => string | null;
   fetchImpl?: typeof fetch;
-  onUnauthorized?: () => void;
+  onUnauthorized?: (context: ApiRequestContext) => void;
 }
+
+export type ApiClientOptions = ApiClientOptionsBase &
+  (
+    | {
+        /** Called before every request; return null when signed out. */
+        getAccessToken: () => Promise<string | null> | string | null;
+        getRequestContext?: never;
+      }
+    | {
+        /**
+         * Atomically captures authentication and organization for one request.
+         * Prefer this when either value can change while an async token read is in progress.
+         */
+        getRequestContext: () => Promise<ApiRequestContext> | ApiRequestContext;
+        getAccessToken?: never;
+      }
+  );
 
 type Query = Record<string, string | number | boolean | null | undefined>;
 
@@ -119,8 +143,14 @@ export class ServiceCenterApi {
     query?: Query,
   ): Promise<T> {
     const fetchImpl = this.options.fetchImpl ?? globalThis.fetch;
-    const token = await this.options.getAccessToken();
-    const orgId = this.options.getOrganizationId?.();
+    const context = this.options.getRequestContext
+      ? await this.options.getRequestContext()
+      : {
+          accessToken: (await this.options.getAccessToken?.()) ?? null,
+          organizationId: this.options.getOrganizationId?.() ?? null,
+        };
+    const token = context.accessToken;
+    const orgId = context.organizationId;
 
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -138,7 +168,7 @@ export class ServiceCenterApi {
     const payload = text ? safeJson(text) : null;
 
     if (!response.ok) {
-      if (response.status === 401) this.options.onUnauthorized?.();
+      if (response.status === 401) this.options.onUnauthorized?.(context);
       const err = (payload ?? {}) as { error?: string; code?: string; details?: unknown };
       throw new ApiError(
         response.status,
@@ -334,15 +364,20 @@ export class ServiceCenterApi {
     this.request<NotificationFeed>('GET', '/api/v1/notifications', undefined, query);
   unreadNotificationCount = () =>
     this.request<UnreadNotificationCount>('GET', '/api/v1/notifications/unread-count');
+  getNotification = (id: string) =>
+    this.request<NotificationFeedItem>('GET', `/api/v1/notifications/${id}`);
   /** Omit `ids` to mark everything in the active organization as read. */
   markNotificationsRead = (body: MarkNotificationsReadInput = {}) =>
     this.request<UnreadNotificationCount>('POST', '/api/v1/notifications/read', body);
 
   /** Registers this device for push. Not organization-scoped. */
   registerDevice = (body: RegisterDeviceInput) =>
-    this.request<DevicePushTokenRow>('POST', '/api/v1/me/devices', body);
+    this.request<DeviceRegistration>('POST', '/api/v1/me/devices', body);
   unregisterDevice = (token: string) =>
     this.request<void>('DELETE', `/api/v1/me/devices/${encodeURIComponent(token)}`);
+  /** Revokes one registration after auth is gone; the secret authorizes only this token. */
+  revokeDeviceRegistration = (body: RevokeDeviceRegistrationInput) =>
+    this.request<void>('POST', '/api/v1/device-revocations', body);
 
   health = () => this.request<{ status: string; version: string }>('GET', '/health');
 }

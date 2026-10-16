@@ -6,8 +6,61 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 |---|---|---|---|
 | MOB-001 shared UI and device review | implemented; QA pending | `codex/mob-001-ui-review` (committed `7270b56`) | Signed-in native device matrix (below), then mark complete |
 | MOB-002 Pass A — chart context + arrangement picker | implemented; QA pending | `codex/mob-002-plan-chart-context` (uncommitted, branched from `7270b56`) | Signed-in device check of plan → chart and picker (below) |
-| MOB-002 Pass B — persisted per-item sequence | not started | — | **Next pass** (task stays partial until done) |
-| MOB-003 – MOB-010 | not started | — | Per README order |
+| MOB-002 Pass B — persisted per-item sequence | not started | — | Pending when MOB-002 resumes; task stays partial |
+| MOB-003 Pass A — query and session lifecycle | implemented; QA pending | `codex/mob-003-session-lifecycle` | Signed-in device transition matrix (below) |
+| MOB-003 Pass B — device registration lifecycle | implemented; QA pending | `codex/mob-003-session-lifecycle` | Physical push/sign-out matrix and EAS delivery gate (below) |
+| MOB-003 Pass C — validated navigation + public responses | not started | — | **Next task/pass** |
+| MOB-004 – MOB-010 | not started | — | Per README order |
+
+## MOB-003 Pass B — 2026-10-16
+
+**Implementation note / baseline:** Expo registration was owned by `NotificationsProvider`, but the provider tried to delete the token only after the session disappeared, making the request unauthorised; the failure was swallowed. Registrations were account-wide in persistence but re-registered on organization changes, never expired, and all rows were eligible for push forever. Lock-screen messages contained plan and assignee detail. Supabase auth was inspected before choosing the boundary: online sign-out can use the still-current access token, but a disconnected server cannot learn an offline local event instantly. The Supabase Postgres skill therefore guided an additive `timestamptz` lease, constrained capability hash, recipient/lease index, atomic token upsert and unchanged owner RLS rather than a claim of instant offline revocation.
+
+**Delivered**
+
+- Registration now returns a one-time per-registration revocation secret while storing only its SHA-256 hash. A public, globally rate-limited endpoint can delete only the exact token/hash pair and always returns `204`; it cannot enumerate registrations. The normal authenticated owner delete remains first choice.
+- Each successful registration creates/renews a server-computed 30-day lease. Notification delivery selects only rows whose lease is still active. Existing rows are backfilled from `last_seen_at`, so stale registrations gain no new grace period. Database constraints enforce a forward lease and lowercase 64-hex hash; `(user_id, lease_expires_at)` supports the delivery lookup without widening RLS.
+- Native registration is now account-wide rather than organization-bound. A testable lifecycle serializes ownership generations, avoids duplicate registration during org switches, renews daily while open, bounds sign-out cleanup, resets the badge, and publicly revokes failed/timed-out or late registrations after auth disappears. Successive credentials for a reused Expo token remain independently cleanable. Tokens and revocation secrets stay in memory only and are not logged or persisted.
+- Explicit sign-out waits up to two seconds per cleanup operation before removing the local Supabase session. Authenticated delete is attempted while authority still exists; failed cleanup is reported and falls back to the narrow capability. If Supabase sign-out itself fails, registration recovery is attempted and the profile screen surfaces the error instead of pretending sign-out succeeded. Expired/external sessions use capability cleanup.
+- Push alert title/body are generic (`Service Center` / `Open the app to view a schedule update.`); opaque IDs remain in data for Pass C validation. Client navigation is not treated as a privacy boundary.
+
+**Files changed:** `packages/shared/src/{lib/api-client.ts,schemas/notification.ts,types/database.ts,types/domain.ts}`; `backend/src/app.ts`, `backend/src/model/notification.model.ts` + test, `backend/src/routes/notifications.ts`, `backend/src/services/notification-center.ts`, `backend/src/services/device-registrations.ts` + test; `mobile/src/lib/push.ts`, `mobile/src/lib/device-registration-lifecycle.ts` + test, `mobile/src/providers/{AuthProvider,NotificationsProvider}.tsx`, `mobile/app/(tabs)/profile.tsx`; `supabase/migrations/20261016000000_device_push_token_leases.sql`; `supabase/tests/device-push-token-leases.sql`; this ledger.
+
+**Checks (Node 26.9.0 / npm 11.19.1)**
+
+- Applied `20261016000000_device_push_token_leases.sql` to the running local Supabase database and recorded it in local migration history; pass. No database reset and no production database change.
+- `psql -v ON_ERROR_STOP=1 -f /tmp/device-push-token-leases.sql` in `supabase_db_service-center` — pass and rollback: active lease eligible, expired lease excluded, authenticated owner delete removed the active registration under RLS.
+- `npm run typecheck` — pass for shared, backend, frontend and mobile.
+- `npm test` — pass: shared 92, backend 54, mobile 14. New controlled tests cover the 30-day server cutoff, hashed capability, authenticated pre-sign-out cleanup, unregister failure fallback, late registration, bounded never-settling work, no duplicate registration on an organization switch, and renewal suppression/recovery across a sign-out attempt.
+- `npm run build` — pass; existing Vite >500 kB chunk advisory only.
+- `EXPO_OFFLINE=1 CI=1 ../node_modules/.bin/expo export --platform ios --platform android --output-dir /private/tmp/service-center-mobile-check-mob003b-node26-final-2` — pass for final source. Bundling only.
+- `git diff --check` — pass.
+
+**Remaining gates / limitations:** run physical signed-in iOS and Android checks with a linked EAS project for permission allowed/denied, real receipt, org switch, online sign-out, offline sign-out, expired session, delayed registration, failed unregister, repeated sign-out and account A→B on one device. Confirm the old user receives no new push after proven online revocation and that delivery stops after forced lease expiry. A fully offline sign-out cannot notify the server: failed transient capability cleanup is kept only for the process lifetime, and the hard server cutoff is the last successful registration plus 30 days. Force-quitting can lose that retry; already delivered OS notifications cannot be recalled. Expo provider acceptance/delivery and lock-screen rendering were not exercised here. MOB-003 remains partial. **Exact next task: MOB-003 Pass C — validated navigation and public responses**, including unknown payload validation, safe cross-organization intent handling, signed-out `/respond`, one-time post-login intent consumption and production association-file configuration. MOB-004 follows only after Pass C.
+
+## MOB-003 Pass A — 2026-10-16
+
+**Implementation note / baseline:** native had one global persisted organization id; `ServiceCenterApi` awaited the token and then read the mutable organization separately; keys were organization-only and songbook detail was just `['songbook', id]`; protected queries enabled as soon as an organization string existed; session/org switches neither hid the old navigator nor cancelled/cleared QueryClient; mutation callbacks could invalidate or navigate after a switch. There are no downloaded manifests/offline packs in current native source. Account-wide operations are `/me`, profile changes, organization creation and device registration. Schedule, calendar, plans, songs, songbooks, blockouts and notification data/actions are organization-scoped. Invitation preview/accept is public and remains outside private caching. Push registration/unregistration is inventoried but intentionally remains Pass B; link handling remains Pass C. No database work was required, so the Postgres skill was not loaded.
+
+**Delivered**
+
+- Added a testable native session-generation lifecycle. Every account/organization transition synchronously gates protected rendering, advances generation, installs a token-with-no-tenant request context, cancels queries, clears query and mutation caches, loads `/me` plus that account's stored preference, validates membership, persists the authorized choice and only then enables protected queries. Old async completions fail generation checks. Invalid stored organizations fall back to the first current membership.
+- Organization preference is stored at `service-center.organization-id.<profile id>`; the unsafe legacy global value is removed and never adopted by a new account.
+- Extended the shared API client with an optional atomic `ApiRequestContext`, preserving the website's legacy access-token/organization getters. Native requests snapshot token, organization, user and generation once. A `401` carries that snapshot to the callback, so a response from an old organization or refreshed token cannot sign out the current session.
+- Added typed keys for every native private query: schedule, calendar, plans, songs, songbook list/detail/composer songs, blockouts and notification unread/feed. Keys include authenticated profile, organization and generation; all queries require a validated `queryScope`.
+- Guarded asynchronous protected writers/callbacks: assignment responses, notification read/refresh, profile save, blockout create/delete, organization create/switch, organization-logo upload/update and songbook document upload/create. The protected stack is keyed by generation, clearing screen/form state on transitions and sign-out. Current load failures show a retry gate instead of exposing an empty protected navigator.
+- Added a native Vitest harness with controlled completions for account A→B, storage hydration vs `/me`, invalid stored org, organization switching/gating, token refresh during and after hydration, stale unauthorized contexts, sign-out→new account, distinct detail keys and a late tenant query after cache clear. Added shared client tests for atomic header capture and unauthorized context forwarding.
+
+**Files changed:** `packages/shared/src/lib/api-client.ts` + test; `mobile/src/lib/{api,organization-storage,query-keys,session-lifecycle,notification-keys}.ts` + lifecycle test; `mobile/src/providers/{AuthProvider,NotificationsProvider}.tsx`; `mobile/app/_layout.tsx`, protected query screens under `mobile/app`; `mobile/src/components/BlockoutForm.tsx`; `mobile/package.json`; `package-lock.json`; this ledger.
+
+**Checks (Node 26.9.0 / npm 11.19.1)**
+
+- `npm run typecheck` — pass for shared, backend, frontend and mobile.
+- `npm test` — pass after allowing the existing Supertest suite to open a local listener: shared 92, backend 52, mobile lifecycle 8. The first sandboxed run failed only because Supertest could not `listen` (`EPERM`); rerun passed unchanged.
+- `npm run build` — pass; existing Vite >500 kB chunk advisory only.
+- `EXPO_OFFLINE=1 CI=1 ../node_modules/.bin/expo export --platform ios --platform android --output-dir /private/tmp/service-center-mobile-check-mob003a-final` — pass for the final source. Bundling only.
+
+**Remaining gates / next:** run a signed-in iOS + Android device matrix with delayed A→B queries/mutations, sign-out→different account, invalid stored org, hydration race, token refresh and stale `401`; assert the old protected stack never flashes and forms reset. Automated state/cache tests cover those transitions, but no native renderer/device interaction harness or signed-in device session was available. MOB-003 remains partial. **Exact next task: MOB-003 Pass B — device registration lifecycle**, including authenticated unregister-before-sign-out, bounded failure handling, late registration guards, badge reset and server revocation/lease-expiry proof. Pass C still owns link validation, `/respond` and association files.
 
 ## MOB-002 Pass A — 2026-10-15
 

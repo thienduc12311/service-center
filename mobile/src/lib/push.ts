@@ -2,18 +2,13 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
-import type { DevicePlatform } from '@service-center/shared';
+import type { DevicePlatform, DeviceRegistration } from '@service-center/shared';
 import { api } from './api';
 
 /**
  * Push registration. Kept out of the React tree so the provider stays a thin
  * lifecycle wrapper around it.
  */
-export interface PushRegistration {
-  token: string;
-  platform: DevicePlatform;
-}
-
 const ANDROID_CHANNEL_ID = 'default';
 
 /** Foreground behaviour: a banner, matching what people expect from the OS. */
@@ -45,7 +40,7 @@ const projectId = (): string | undefined =>
  * device with the API. Returns null when push isn't available: a simulator, a
  * denied prompt, or a project with no EAS id.
  */
-export const registerForPushNotifications = async (): Promise<PushRegistration | null> => {
+export const registerForPushNotifications = async (): Promise<DeviceRegistration | null> => {
   if (!Device.isDevice) return null;
 
   if (Platform.OS === 'android') {
@@ -65,13 +60,22 @@ export const registerForPushNotifications = async (): Promise<PushRegistration |
 
   const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId: id });
   const platform = devicePlatform();
-  await api.registerDevice({ token, platform, device_name: Device.deviceName });
-  return { token, platform };
+  return api.registerDevice({ token, platform, device_name: Device.deviceName });
 };
 
 /** Called on sign-out so a shared phone stops receiving the old user's pushes. */
 export const unregisterPushNotifications = async (token: string): Promise<void> => {
   await api.unregisterDevice(token);
+};
+
+/** Auth-independent cleanup for a late registration or expired session. */
+export const revokePushRegistration = async (
+  registration: DeviceRegistration,
+): Promise<void> => {
+  await api.revokeDeviceRegistration({
+    token: registration.token,
+    revocation_secret: registration.revocation_secret,
+  });
 };
 
 export const setBadgeCount = async (count: number): Promise<void> => {

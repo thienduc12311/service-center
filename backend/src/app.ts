@@ -29,7 +29,11 @@ import {
 import { calendarRouter } from './routes/calendar.js';
 import { blockoutsRouter } from './routes/blockouts.js';
 import { songbooksRouter } from './routes/songbooks.js';
-import { devicesRouter, notificationsRouter } from './routes/notifications.js';
+import {
+  deviceRevocationsRouter,
+  devicesRouter,
+  notificationsRouter,
+} from './routes/notifications.js';
 
 /** Preview deployments are `<project>-<hash>-<team>.vercel.app`. */
 const VERCEL_PREVIEW_ORIGIN = /^https:\/\/[a-z0-9-]+\.vercel\.app$/;
@@ -73,6 +77,7 @@ export const createApp = (): Express => {
   // route resolves and authorises one first.
   // Devices are per-person, not per-organization, so they sit beside /me.
   app.use('/api/v1/me/devices', requireAuth, devicesRouter);
+  app.use('/api/v1/device-revocations', deviceRevocationsRouter);
   app.use('/api/v1/me', requireAuth, meRouter);
   app.use('/api/v1/organizations', requireAuth, organizationsRouter);
   // Fully public: the caller isn't signed in yet — a valid token is the

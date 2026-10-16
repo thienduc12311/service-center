@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { useAuth } from '../providers/AuthProvider';
 import type { Theme } from '../lib/theme';
 import { useThemedStyles } from '../lib/useTheme';
 import { Button, ErrorNotice, Field } from './ui';
@@ -39,6 +40,7 @@ const blockoutRange = (from: string, to: string): BlockoutRange => {
 };
 
 export const BlockoutForm = ({ onCreated }: BlockoutFormProps) => {
+  const { generation, isCurrentGeneration } = useAuth();
   const styles = useThemedStyles(makeStyles);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -55,6 +57,7 @@ export const BlockoutForm = ({ onCreated }: BlockoutFormProps) => {
       });
     },
     onSuccess: async () => {
+      if (!isCurrentGeneration(generation)) return;
       setFrom('');
       setTo('');
       setReason('');

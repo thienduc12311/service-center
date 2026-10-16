@@ -1,15 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import * as Notifications from 'expo-notifications';
-import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { notificationKeys } from '../lib/notification-keys';
 import {
   registerForPushNotifications,
+  revokePushRegistration,
   setBadgeCount,
   unregisterPushNotifications,
 } from '../lib/push';
+import {
+  DeviceRegistrationLifecycle,
+  setDeviceSignOutHandler,
+  setDeviceSignOutRecoveryHandler,
+  type DeviceRegistrationState,
+} from '../lib/device-registration-lifecycle';
 import { useAuth } from './AuthProvider';
 
 interface NotificationsContextValue {
@@ -24,6 +30,8 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(nul
 
 /** How often the badge re-checks while the app is open. */
 const POLL_INTERVAL_MS = 60_000;
+const DEVICE_REGISTRATION_TIMEOUT_MS = 2_000;
+const DEVICE_REGISTRATION_RENEW_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Owns everything that is true app-wide about notifications: the unread count
@@ -31,57 +39,71 @@ const POLL_INTERVAL_MS = 60_000;
  * push is tapped.
  */
 export const NotificationsProvider = ({ children }: { children: ReactNode }) => {
-  const { session, organizationId } = useAuth();
+  const { session, queryScope } = useAuth();
   const queryClient = useQueryClient();
-  const router = useRouter();
-  const [pushToken, setPushToken] = useState<string | null>(null);
-  // Survives the effect cleanup that runs when the session ends, so the token
-  // can still be handed back to the API on sign-out.
-  const tokenRef = useRef<string | null>(null);
+  const registrationRef = useRef<DeviceRegistrationLifecycle | null>(null);
+  if (!registrationRef.current) {
+    registrationRef.current = new DeviceRegistrationLifecycle({
+      register: registerForPushNotifications,
+      unregisterAuthenticated: unregisterPushNotifications,
+      revoke: revokePushRegistration,
+      resetBadge: () => setBadgeCount(0),
+      timeoutMs: DEVICE_REGISTRATION_TIMEOUT_MS,
+    });
+  }
+  const registration = registrationRef.current;
+  const [registrationState, setRegistrationState] = useState<DeviceRegistrationState>(
+    registration.getState,
+  );
 
   const unreadQuery = useQuery({
-    queryKey: notificationKeys.unread(organizationId),
+    queryKey: notificationKeys.unread(queryScope),
     queryFn: () => api.unreadNotificationCount(),
-    enabled: Boolean(session && organizationId),
+    enabled: Boolean(queryScope),
     refetchInterval: POLL_INTERVAL_MS,
   });
 
   const unread = unreadQuery.data?.unread ?? 0;
 
-  // Register once per signed-in session; the OS remembers the permission.
+  useEffect(() => registration.subscribe(setRegistrationState), [registration]);
+
+  // Account-wide ownership: organization switches deliberately do not rerun
+  // this effect. A daily renewal keeps the thirty-day server lease current
+  // while the app stays open for an extended period.
+  const userId = session?.user.id ?? null;
   useEffect(() => {
-    if (!session) return;
-    let active = true;
+    if (userId) void registration.activate(userId);
+    else registration.deactivateWithoutSession();
+  }, [registration, userId]);
 
-    void registerForPushNotifications()
-      .then((registration) => {
-        if (!active || !registration) return;
-        tokenRef.current = registration.token;
-        setPushToken(registration.token);
-      })
-      .catch((error) => console.warn('Could not register for push notifications', error));
-
-    return () => {
-      active = false;
-    };
-  }, [session]);
-
-  // Hand the token back when the session ends, so the next person to sign in
-  // on this phone doesn't inherit the previous user's notifications.
   useEffect(() => {
-    if (session || !tokenRef.current) return;
-    const token = tokenRef.current;
-    tokenRef.current = null;
-    setPushToken(null);
-    void unregisterPushNotifications(token).catch(() => {
-      // Signed out already — the server rejects the call, and the row is
-      // harmless until the next registration replaces it.
+    if (!userId) return;
+    const timer = setInterval(() => {
+      void registration.activate(userId, true);
+    }, DEVICE_REGISTRATION_RENEW_MS);
+    return () => clearInterval(timer);
+  }, [registration, userId]);
+
+  useEffect(() => {
+    setDeviceSignOutHandler(() => registration.prepareForSignOut());
+    setDeviceSignOutRecoveryHandler(async () => {
+      if (userId) await registration.recoverAfterFailedSignOut(userId);
     });
-  }, [session]);
+    return () => {
+      setDeviceSignOutHandler(null);
+      setDeviceSignOutRecoveryHandler(null);
+    };
+  }, [registration, userId]);
+
+  useEffect(() => {
+    if (registrationState.error) {
+      console.warn('[push] device registration or cleanup failed', registrationState.error);
+    }
+  }, [registrationState.error]);
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: notificationKeys.all });
-  }, [queryClient]);
+    await queryClient.invalidateQueries({ queryKey: notificationKeys.all(queryScope) });
+  }, [queryClient, queryScope]);
 
   // A push that lands while the app is open should move the badge straight
   // away rather than waiting for the next poll.
@@ -91,13 +113,12 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     });
     const tapped = Notifications.addNotificationResponseReceivedListener(() => {
       void invalidate();
-      router.push('/notifications');
     });
     return () => {
       received.remove();
       tapped.remove();
     };
-  }, [invalidate, router]);
+  }, [invalidate]);
 
   useEffect(() => {
     void setBadgeCount(unread).catch(() => {
@@ -108,12 +129,12 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   const value = useMemo<NotificationsContextValue>(
     () => ({
       unread,
-      pushEnabled: pushToken !== null,
+      pushEnabled: registrationState.pushEnabled,
       refresh: async () => {
         await unreadQuery.refetch();
       },
     }),
-    [unread, pushToken, unreadQuery],
+    [registrationState.pushEnabled, unread, unreadQuery],
   );
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
