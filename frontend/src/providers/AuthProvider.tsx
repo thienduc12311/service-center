@@ -9,7 +9,17 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { canManage, isAdmin, type CurrentUser, type OrgRole } from '@service-center/shared';
+import {
+  canAccess,
+  canAccessAnywhere,
+  isAdmin,
+  isLeader,
+  type AccessCapability,
+  type AccessTarget,
+  type CurrentUser,
+  type EffectiveAccess,
+  type OrgRole,
+} from '@service-center/shared';
 import { supabase } from '../lib/supabase';
 import { api, getStoredOrganizationId, setStoredOrganizationId } from '../lib/api';
 
@@ -18,6 +28,13 @@ interface AuthContextValue {
   user: CurrentUser | null;
   organizationId: string | null;
   role: OrgRole | null;
+  /** The caller's effective access in the active organization (F01). */
+  access: EffectiveAccess | null;
+  /** May the caller do `capability` on this service type / team? UI hint only; the server decides. */
+  can: (capability: AccessCapability, target?: AccessTarget) => boolean;
+  /** Holds `capability` at some scope. */
+  canAnywhere: (capability: AccessCapability) => boolean;
+  /** Some planning, scheduling or team capability. */
   canManage: boolean;
   /** Owners and admins: membership, org settings and AI chord sheet imports. */
   isAdmin: boolean;
@@ -126,13 +143,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const value = useMemo<AuthContextValue>(() => {
-    const role = user?.memberships.find((m) => m.organization.id === organizationId)?.role ?? null;
+    const membership = user?.memberships.find((m) => m.organization.id === organizationId) ?? null;
+    const role = membership?.role ?? null;
+    const access = membership?.access ?? null;
     return {
       session,
       user,
       organizationId,
       role,
-      canManage: canManage(role),
+      access,
+      can: (capability, target) => canAccess(access, capability, target),
+      canAnywhere: (capability) => canAccessAnywhere(access, capability),
+      canManage: isLeader(access),
       isAdmin: isAdmin(role),
       loading,
       switchOrganization,

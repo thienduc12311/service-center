@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { createSongbookSchema, type CreateSongbookInput, type SongbookDetail } from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { validateBody } from '../lib/validate.js';
-import { requireManager } from '../middleware/organization.js';
+import { requireCapability } from '../middleware/organization.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 
@@ -47,7 +47,7 @@ songbooksRouter.get('/:id', async (req, res) => {
   res.json(book);
 });
 
-songbooksRouter.post('/', requireManager, validateBody(createSongbookSchema), async (req, res) => {
+songbooksRouter.post('/', requireCapability('songs.manage'), validateBody(createSongbookSchema), async (req, res) => {
   const { songs, ...input } = req.body as CreateSongbookInput;
   if (input.source_storage_path && !input.source_storage_path.startsWith(`${req.orgId}/`)) {
     throw HttpError.badRequest('Upload the document under your organization’s folder');
@@ -103,7 +103,7 @@ songbooksRouter.post('/', requireManager, validateBody(createSongbookSchema), as
   res.status(201).json(result);
 });
 
-songbooksRouter.delete('/:id', requireManager, async (req, res) => {
+songbooksRouter.delete('/:id', requireCapability('songs.manage'), async (req, res) => {
   const deleted = await unwrap(
     req.db
       .from('songbooks')

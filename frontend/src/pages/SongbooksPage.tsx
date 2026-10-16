@@ -9,7 +9,9 @@ import { useAuth } from '../providers/AuthProvider';
 import { Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
 
 export const SongbooksPage = () => {
-  const { canManage, organizationId } = useAuth();
+  const { canAnywhere, organizationId } = useAuth();
+  // The song library is organization-wide; leading a team never implies it.
+  const canManage = canAnywhere('songs.manage');
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
   const books = useSongbooks();

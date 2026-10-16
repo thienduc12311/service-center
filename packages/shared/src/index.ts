@@ -9,5 +9,6 @@ export * from './lib/chart-context.js';
 export * from './lib/service-song-book.js';
 export * from './lib/assignment-responses.js';
 export * from './lib/delivery.js';
+export * from './lib/access.js';
 export * from './lib/api-client.js';
 export * from './lib/design-tokens.js';

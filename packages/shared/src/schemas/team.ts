@@ -13,7 +13,19 @@ export const createTeamSchema = z.object({
   positions: z.array(nonEmpty.max(80)).max(50).optional(),
 });
 
-export const updateTeamSchema = createTeamSchema.partial().omit({ positions: true });
+export const updateTeamSchema = createTeamSchema
+  .partial()
+  .omit({ positions: true })
+  .extend({
+    default_visibility: z.enum(['prepared', 'released']).optional(),
+    default_response_owner_id: uuid.nullish(),
+    requires_eligibility: z.boolean().optional(),
+    eligibility_kind: z.string().trim().min(1).max(60).nullish(),
+  })
+  .refine((value) => value.requires_eligibility !== true || Boolean(value.eligibility_kind), {
+    message: 'Name the eligibility a secure team requires',
+    path: ['eligibility_kind'],
+  });
 
 export const createPositionSchema = z.object({
   name: nonEmpty.max(80),

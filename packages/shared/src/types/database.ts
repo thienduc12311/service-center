@@ -56,6 +56,28 @@ export type ResponseTransition = 'response' | 'withdrawal';
 /** Column layout a printed chord chart uses. Constrained in the database too. */
 export type ChartColumns = 1 | 2;
 
+/**
+ * F01 operational capabilities. Owners/admins hold all of them; a scheduler
+ * holds all of them organization-wide while their access mode is `legacy`.
+ */
+export type AccessCapability =
+  | 'plans.edit'
+  | 'scheduling.manage'
+  | 'teams.manage'
+  | 'people.view_private'
+  | 'people.manage'
+  | 'songs.manage'
+  | 'media.manage';
+/** Where a grant applies. A folder grant covers every service type beneath it. */
+export type AccessScopeType = 'organization' | 'folder' | 'service_type' | 'team';
+/** `legacy`: a scheduler keeps organization-wide management. `scoped`: explicit grants only. */
+export type AccessMode = 'legacy' | 'scoped';
+/** `prepared` requests are a scheduler's private draft; `released` ones reach their person. */
+export type AssignmentVisibility = 'prepared' | 'released';
+/** Who sees released team rosters: everyone in the organization, or teams (and related teams) only. */
+export type AssignmentRosterVisibility = 'organization' | 'teams';
+export type EligibilityStatus = 'clear' | 'not_clear' | 'pending';
+
 export type OrganizationRow = {
   id: string;
   name: string;
@@ -71,6 +93,9 @@ export type OrganizationRow = {
   denomination: string | null;
   /** Self-reported congregation size — distinct from the count of people actually in the system. */
   member_count: number | null;
+  /** Where plan lists open when a member has not chosen a landing folder. */
+  default_folder_id: string | null;
+  assignment_visibility: AssignmentRosterVisibility;
   created_at: string;
   updated_at: string;
 }
@@ -113,6 +138,8 @@ export type OrganizationMemberRow = {
   user_id: string;
   role: OrgRole;
   status: MemberStatus;
+  access_mode: AccessMode;
+  landing_folder_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -172,6 +199,9 @@ export type ServiceTypeRow = {
   description: string | null;
   recurrence: PlanRecurrence;
   sort_order: number;
+  folder_id: string | null;
+  /** Archived service types are hidden from pickers; their plans stay readable. */
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -184,6 +214,13 @@ export type TeamRow = {
   description: string | null;
   color: string;
   sort_order: number;
+  /** Visibility new requests get when the scheduler does not choose one. */
+  default_visibility: AssignmentVisibility;
+  /** Who hears answers by default, when they can schedule this team. */
+  default_response_owner_id: string | null;
+  /** Scheduling and membership need a current eligibility record of `eligibility_kind`. */
+  requires_eligibility: boolean;
+  eligibility_kind: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -316,6 +353,12 @@ export type AssignmentRow = {
   notified_at: string | null;
   responded_at: string | null;
   created_by: string | null;
+  /** Independent of the answer status and the plan's publication. */
+  visibility: AssignmentVisibility;
+  released_at: string | null;
+  released_by: string | null;
+  /** Who receives answer updates; defaults to whoever scheduled it. */
+  response_owner_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -465,6 +508,118 @@ export type SchedulingConflictRow = {
   plan_id: string | null;
 }
 
+export type AccessGrantRow = {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  capability: AccessCapability;
+  scope_type: AccessScopeType;
+  service_type_id: string | null;
+  team_id: string | null;
+  folder_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** Audit of response-owner reassignment. */
+export type AssignmentOwnerChangeRow = {
+  id: string;
+  organization_id: string;
+  assignment_id: string;
+  previous_owner_id: string | null;
+  new_owner_id: string | null;
+  changed_by: string | null;
+  created_at: string;
+}
+
+export type ServiceTypeFolderRow = {
+  id: string;
+  organization_id: string;
+  parent_id: string | null;
+  name: string;
+  sort_order: number;
+  /** Bumped by every move; a move sends the revision it previewed. */
+  revision: number;
+  archived_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ServiceTypeTeamRow = {
+  service_type_id: string;
+  team_id: string;
+  organization_id: string;
+  created_at: string;
+}
+
+export type PersonTagRow = {
+  organization_id: string;
+  person_id: string;
+  tag: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type TeamTagRuleRow = {
+  team_id: string;
+  organization_id: string;
+  tag: string;
+  created_at: string;
+}
+
+/** Members of `team_id` may see `related_team_id`'s roster (one hop). */
+export type TeamRelatedVisibilityRow = {
+  team_id: string;
+  related_team_id: string;
+  organization_id: string;
+  created_at: string;
+}
+
+/** Explicit eligibility evidence for secure teams; the latest record of a kind decides. */
+export type PersonEligibilityRecordRow = {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  kind: string;
+  status: EligibilityStatus;
+  provider: string;
+  provider_reference: string | null;
+  verified_at: string;
+  expires_at: string;
+  recorded_by: string | null;
+  created_at: string;
+}
+
+/** The non-private roster projection every member may read. */
+export type PeopleDirectoryRow = Pick<
+  PersonRow,
+  'id' | 'organization_id' | 'profile_id' | 'first_name' | 'last_name' | 'avatar_url' | 'campus' | 'person_type' | 'created_at' | 'updated_at'
+>;
+
+/** A person's private record as API roles may select it (no medical note). */
+export type PersonSelectableRow = Omit<PersonRow, 'medical_note'>;
+
+/** Profile columns API roles may select; contact comes from `member_contacts`. */
+export type PublicProfileRow = Pick<ProfileRow, 'id' | 'full_name' | 'avatar_url' | 'created_at' | 'updated_at'>;
+
+/** One row of effective access as resolved by the database. */
+export type EffectiveAccessRow = {
+  capability: AccessCapability;
+  scope_type: AccessScopeType;
+  scope_id: string | null;
+  /** `role:owner`, `role:admin`, `role:scheduler_legacy`, `grant` or `grant:folder`. */
+  source: string;
+  grant_id: string | null;
+}
+
+export type AccessMoveChangeRow = {
+  user_id: string;
+  capability: AccessCapability;
+  service_type_id: string;
+  change: 'gain' | 'lose';
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -495,8 +650,18 @@ export type Database = {
       attachments: Table<AttachmentRow>;
       songbooks: Table<SongbookRow>;
       songbook_items: Table<SongbookItemRow>;
+      access_grants: Table<AccessGrantRow>;
+      assignment_owner_changes: Table<AssignmentOwnerChangeRow>;
+      service_type_folders: Table<ServiceTypeFolderRow>;
+      service_type_teams: Table<ServiceTypeTeamRow>;
+      person_tags: Table<PersonTagRow>;
+      team_tag_rules: Table<TeamTagRuleRow>;
+      team_related_visibility: Table<TeamRelatedVisibilityRow>;
+      person_eligibility_records: Table<PersonEligibilityRecordRow>;
     };
-    Views: Record<string, never>;
+    Views: {
+      people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
+    };
     Functions: {
       create_organization: {
         Args: { p_name: string; p_slug: string; p_timezone?: string };
@@ -514,11 +679,101 @@ export type Database = {
       schedule_plan_assignments: {
         Args: {
           p_plan_id: string;
-          p_assignments: Array<{ user_id: string; team_id: string; position_id: string | null; notes: string | null }>;
+          p_assignments: Array<{
+            user_id: string;
+            team_id: string;
+            position_id: string | null;
+            notes: string | null;
+            visibility?: AssignmentVisibility | null;
+          }>;
           p_notify: boolean;
           p_effect_key?: string | null;
+          p_visibility?: AssignmentVisibility | null;
+          p_response_owner?: string | null;
         };
         Returns: AssignmentRow[];
+      };
+      release_plan_assignments: {
+        Args: { p_plan_id: string; p_assignment_ids: string[]; p_notify: boolean; p_effect_key: string | null };
+        Returns: AssignmentRow[];
+      };
+      set_assignment_response_owner: {
+        Args: { p_assignment_ids: string[]; p_owner: string };
+        Returns: AssignmentRow[];
+      };
+      has_capability: {
+        Args: { p_org: string; p_cap: AccessCapability; p_service_type?: string | null; p_team?: string | null };
+        Returns: boolean;
+      };
+      user_can_schedule_assignment: {
+        Args: { p_user: string; p_assignment: string };
+        Returns: boolean;
+      };
+      my_effective_access: {
+        Args: { p_org: string };
+        Returns: EffectiveAccessRow[];
+      };
+      member_effective_access: {
+        Args: { p_org: string; p_user: string };
+        Returns: EffectiveAccessRow[];
+      };
+      explain_capability: {
+        Args: {
+          p_org: string;
+          p_user: string;
+          p_cap: AccessCapability;
+          p_service_type?: string | null;
+          p_team?: string | null;
+        };
+        Returns: unknown;
+      };
+      replace_scope_grants: {
+        Args: { p_org: string; p_scope_type: AccessScopeType; p_scope_id: string | null; p_grants: Array<{ user_id: string; capability: AccessCapability }> };
+        Returns: AccessGrantRow[];
+      };
+      my_profile: {
+        Args: Record<string, never>;
+        Returns: ProfileRow | null;
+      };
+      member_contacts: {
+        Args: { p_org: string; p_user_ids: string[] };
+        Returns: Array<{ user_id: string; email: string | null; phone: string | null }>;
+      };
+      person_medical_note: {
+        Args: { p_person: string };
+        Returns: string | null;
+      };
+      preview_folder_move: {
+        Args: { p_folder: string; p_new_parent: string | null };
+        Returns: AccessMoveChangeRow[];
+      };
+      preview_service_type_move: {
+        Args: { p_service_type: string; p_folder: string | null };
+        Returns: AccessMoveChangeRow[];
+      };
+      move_service_type_folder: {
+        Args: { p_folder: string; p_new_parent: string | null; p_expected_revision: number | null; p_acknowledge_changes?: boolean };
+        Returns: ServiceTypeFolderRow;
+      };
+      move_service_type: {
+        Args: { p_service_type: string; p_folder: string | null; p_acknowledge_changes?: boolean };
+        Returns: ServiceTypeRow;
+      };
+      set_landing_folder: {
+        Args: { p_org: string; p_folder: string | null };
+        Returns: null;
+      };
+      copy_service_type: {
+        Args: { p_service_type: string; p_name: string; p_include_teams?: boolean };
+        Returns: string;
+      };
+      team_candidates: {
+        Args: { p_team: string };
+        Returns: Array<{ person_id: string | null; profile_id: string | null; display_name: string | null; source: 'membership' | 'tag'; eligible: boolean }>;
+      };
+      team_eligibility_status: {
+        Args: { p_team: string };
+        Returns: Array<{ user_id: string; eligible: boolean; status: EligibilityStatus | null; expires_at: string | null }>;
       };
       enqueue_plan_notifications: {
         Args: {
@@ -621,6 +876,7 @@ export type Database = {
       delivery_channel: DeliveryChannel;
       delivery_status: DeliveryStatus;
       delivery_template: DeliveryTemplate;
+      access_capability: AccessCapability;
     };
     CompositeTypes: Record<string, never>;
   };

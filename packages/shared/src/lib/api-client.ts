@@ -5,7 +5,10 @@
 
 import type {
   ArrangementRow,
+  AssignmentOwnerChangeRow,
   AssignmentRow,
+  PersonEligibilityRecordRow,
+  ServiceTypeFolderRow,
   BlockoutRow,
   OrganizationMemberRow,
   OrganizationRow,
@@ -19,6 +22,15 @@ import type {
   TeamRow,
 } from '../types/database.js';
 import type {
+  AccessMember,
+  AccessMoveChange,
+  CapabilityExplanation,
+  EffectiveAccess,
+  FolderTree,
+  ScopeAccess,
+  TeamCandidate,
+  TeamEligibilityEntry,
+  TeamPolicySettings,
   CalendarEvent,
   AssignmentNotificationSendResult,
   AssignmentRespondPreview,
@@ -67,6 +79,21 @@ import type {
   SetPlanPositionNeedsInput,
 } from '../schemas/plan.js';
 import type { ListDeliveriesRequest, NotifyPlanInput } from '../schemas/delivery.js';
+import type {
+  ArchiveServiceTypeInput,
+  CopyServiceTypeRequest,
+  CreateFolderRequest,
+  EligibilityRecordInput,
+  ExplainCapabilityQuery,
+  MoveFolderRequest,
+  MoveServiceTypeRequest,
+  ReleaseAssignmentsRequest,
+  ReplaceScopeGrantsInput,
+  RosterVisibilityInput,
+  SetResponseOwnerInput,
+  UpdateFolderInput,
+  UpdateMemberAccessInput,
+} from '../schemas/access.js';
 import type { RespondToAssignmentNotificationRequest, RespondToAssignmentRequest } from '../schemas/assignment.js';
 import type {
   ListNotificationsQuery,
@@ -236,7 +263,9 @@ export class ServiceCenterApi {
     );
 
   // ------------------------------------------------------ service types --
-  listServiceTypes = () => this.request<ServiceTypeRow[]>('GET', '/api/v1/service-types');
+  /** Archived service types are left out unless asked for. */
+  listServiceTypes = (query?: { include_archived?: boolean }) =>
+    this.request<ServiceTypeRow[]>('GET', '/api/v1/service-types', undefined, query);
   createServiceType = (body: ServiceTypePayload) =>
     this.request<ServiceTypeRow>('POST', '/api/v1/service-types', body);
   updateServiceType = (id: string, body: Partial<ServiceTypePayload>) =>
@@ -341,6 +370,80 @@ export class ServiceCenterApi {
     this.request<AssignmentRow>('POST', `/api/v1/assignments/${id}/respond`, body);
   notifyPlan = (planId: string, body: NotifyPlanInput = {}) =>
     this.request<AssignmentNotificationSendResult>('POST', `/api/v1/plans/${planId}/notify`, body);
+
+  /** Releases exactly the reviewed prepared requests, notifying in the same transaction. */
+  releaseAssignments = (planId: string, body: ReleaseAssignmentsRequest) =>
+    this.request<{ released: AssignmentRow[] }>('POST', `/api/v1/plans/${planId}/release`, body);
+  setResponseOwner = (body: SetResponseOwnerInput) =>
+    this.request<AssignmentRow[]>('PUT', '/api/v1/assignments/response-owner', body);
+  responseOwnerHistory = (assignmentId: string) =>
+    this.request<AssignmentOwnerChangeRow[]>('GET', `/api/v1/assignments/${assignmentId}/response-owner-history`);
+
+  // ------------------------------------------------------------- access --
+  /** The caller's effective access in the active organization. */
+  myAccess = () => this.request<EffectiveAccess>('GET', '/api/v1/access/me');
+  /** Administrators: every member's role, access mode and explicit grants. */
+  listAccessMembers = () => this.request<AccessMember[]>('GET', '/api/v1/access/members');
+  memberAccess = (userId: string) => this.request<EffectiveAccess>('GET', `/api/v1/access/members/${userId}`);
+  updateMemberAccess = (userId: string, body: UpdateMemberAccessInput) =>
+    this.request<AccessMember>('PATCH', `/api/v1/access/members/${userId}`, body);
+  explainAccess = (query: ExplainCapabilityQuery) =>
+    this.request<CapabilityExplanation>('GET', '/api/v1/access/explain', undefined, query as unknown as Query);
+  organizationAccess = () => this.request<ScopeAccess>('GET', '/api/v1/access/organization');
+  replaceOrganizationAccess = (body: ReplaceScopeGrantsInput) =>
+    this.request<ScopeAccess>('PUT', '/api/v1/access/organization', body);
+  serviceTypeAccess = (id: string) => this.request<ScopeAccess>('GET', `/api/v1/service-types/${id}/access`);
+  replaceServiceTypeAccess = (id: string, body: ReplaceScopeGrantsInput) =>
+    this.request<ScopeAccess>('PUT', `/api/v1/service-types/${id}/access`, body);
+  teamAccess = (id: string) => this.request<ScopeAccess>('GET', `/api/v1/teams/${id}/access`);
+  replaceTeamAccess = (id: string, body: ReplaceScopeGrantsInput) =>
+    this.request<ScopeAccess>('PUT', `/api/v1/teams/${id}/access`, body);
+  folderAccess = (id: string) => this.request<ScopeAccess>('GET', `/api/v1/folders/${id}/access`);
+  replaceFolderAccess = (id: string, body: ReplaceScopeGrantsInput) =>
+    this.request<ScopeAccess>('PUT', `/api/v1/folders/${id}/access`, body);
+
+  // ------------------------------------------------------------ folders --
+  folderTree = () => this.request<FolderTree>('GET', '/api/v1/folders');
+  createFolder = (body: CreateFolderRequest) => this.request<ServiceTypeFolderRow>('POST', '/api/v1/folders', body);
+  updateFolder = (id: string, body: UpdateFolderInput) =>
+    this.request<ServiceTypeFolderRow>('PATCH', `/api/v1/folders/${id}`, body);
+  deleteFolder = (id: string) => this.request<void>('DELETE', `/api/v1/folders/${id}`);
+  previewFolderMove = (id: string, parentId: string | null) =>
+    this.request<AccessMoveChange[]>('GET', `/api/v1/folders/${id}/move-preview`, undefined, { parent_id: parentId ?? undefined });
+  moveFolder = (id: string, body: MoveFolderRequest) =>
+    this.request<ServiceTypeFolderRow>('POST', `/api/v1/folders/${id}/move`, body);
+  setLandingFolder = (folderId: string | null) =>
+    this.request<void>('PUT', '/api/v1/folders/landing', { folder_id: folderId });
+  previewServiceTypeMove = (id: string, folderId: string | null) =>
+    this.request<AccessMoveChange[]>('GET', `/api/v1/service-types/${id}/move-preview`, undefined, { folder_id: folderId ?? undefined });
+  moveServiceType = (id: string, body: MoveServiceTypeRequest) =>
+    this.request<ServiceTypeRow>('POST', `/api/v1/service-types/${id}/move`, body);
+  archiveServiceType = (id: string, body: ArchiveServiceTypeInput) =>
+    this.request<ServiceTypeRow>('POST', `/api/v1/service-types/${id}/archive`, body);
+  copyServiceType = (id: string, body: CopyServiceTypeRequest) =>
+    this.request<ServiceTypeRow>('POST', `/api/v1/service-types/${id}/copy`, body);
+  serviceTypeTeams = (id: string) => this.request<string[]>('GET', `/api/v1/service-types/${id}/teams`);
+  replaceServiceTypeTeams = (id: string, teamIds: string[]) =>
+    this.request<string[]>('PUT', `/api/v1/service-types/${id}/teams`, { team_ids: teamIds });
+
+  // ------------------------------------------------------ team policies --
+  teamPolicies = (teamId: string) => this.request<TeamPolicySettings>('GET', `/api/v1/teams/${teamId}/policies`);
+  replaceTeamTagRules = (teamId: string, tags: string[]) =>
+    this.request<TeamPolicySettings>('PUT', `/api/v1/teams/${teamId}/tag-rules`, { tags });
+  replaceRelatedTeams = (teamId: string, teamIds: string[]) =>
+    this.request<TeamPolicySettings>('PUT', `/api/v1/teams/${teamId}/related-teams`, { team_ids: teamIds });
+  teamCandidates = (teamId: string) => this.request<TeamCandidate[]>('GET', `/api/v1/teams/${teamId}/candidates`);
+  teamEligibility = (teamId: string) =>
+    this.request<TeamEligibilityEntry[]>('GET', `/api/v1/teams/${teamId}/eligibility`);
+  personTags = (personId: string) => this.request<string[]>('GET', `/api/v1/people/${personId}/tags`);
+  replacePersonTags = (personId: string, tags: string[]) =>
+    this.request<string[]>('PUT', `/api/v1/people/${personId}/tags`, { tags });
+  listEligibilityRecords = (userId: string) =>
+    this.request<PersonEligibilityRecordRow[]>('GET', `/api/v1/people/members/${userId}/eligibility`);
+  recordEligibility = (body: EligibilityRecordInput) =>
+    this.request<PersonEligibilityRecordRow>('POST', '/api/v1/people/eligibility', body);
+  setRosterVisibility = (body: RosterVisibilityInput) =>
+    this.request<RosterVisibilityInput>('PUT', '/api/v1/access/roster-visibility', body);
 
   // --------------------------------------------------------- deliveries --
   deliveryStatus = () => this.request<DeliveryTransportStatus>('GET', '/api/v1/deliveries/status');

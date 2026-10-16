@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { ORG_ROLES, type CreatePersonInput, type PersonDetail } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePerson, useInvalidateOrg } from '../hooks/queries';
+import { PersonPolicyPanel } from '../components/PersonPolicyPanel';
 import { Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
 
 /** Editable state for the add/edit person form — a superset of `CreatePersonInput` with '' standing in for unset. */
@@ -377,6 +378,12 @@ export const PersonPage = () => {
             </Button>
           </div>
         </section>
+      )}
+
+      {!isNew && personId && (
+        <div className="mt-6">
+          <PersonPolicyPanel personId={personId} profileId={person.data?.profile_id ?? null} />
+        </div>
       )}
     </div>
   );

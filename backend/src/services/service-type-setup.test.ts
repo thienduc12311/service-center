@@ -24,6 +24,10 @@ const existing = (name: string): TeamRow => ({
   description: null,
   color: '#6366f1',
   sort_order: 0,
+  default_visibility: 'released',
+  default_response_owner_id: null,
+  requires_eligibility: false,
+  eligibility_kind: null,
   created_at: '2026-09-13T00:00:00.000Z',
   updated_at: '2026-09-13T00:00:00.000Z',
 });

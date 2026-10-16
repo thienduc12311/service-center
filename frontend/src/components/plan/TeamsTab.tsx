@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ASSIGNMENT_STATUS_LABELS, type AssignmentDetail } from '@service-center/shared';
 import { Avatar, Button, EmptyState } from '../ui';
 import { assignmentDot } from '../../lib/format';
@@ -5,7 +6,13 @@ import type { PlanTeamPositionView, PlanTeamView } from './types';
 
 export interface TeamsTabProps {
   teams: PlanTeamView[];
-  canManage: boolean;
+  /** scheduling.manage for this team on this plan (F01 scope). */
+  canScheduleTeam: (teamId: string) => boolean;
+  /** plans.edit: may change needed positions on every team. */
+  canEditPlan: boolean;
+  /** Releases exactly these reviewed prepared requests. */
+  onRelease: (assignmentIds: string[]) => void;
+  releasing: boolean;
   currentUserId: string | null;
   editingNeeds: boolean;
   onEditingNeedsChange: (editing: boolean) => void;
@@ -19,7 +26,10 @@ export interface TeamsTabProps {
 
 export const TeamsTab = ({
   teams,
-  canManage,
+  canScheduleTeam,
+  canEditPlan,
+  onRelease,
+  releasing,
   currentUserId,
   editingNeeds,
   onEditingNeedsChange,
@@ -39,7 +49,7 @@ export const TeamsTab = ({
       >
         {showAllTeams ? 'Show this service’s teams' : 'Show all teams'}
       </button>
-      {canManage &&
+      {(canEditPlan || teams.some((team) => canScheduleTeam(team.team.id))) &&
         (editingNeeds ? (
           <Button onClick={() => onEditingNeedsChange(false)}>Done</Button>
         ) : (
@@ -80,7 +90,10 @@ export const TeamsTab = ({
           <TeamColumn
             key={team.team.id}
             team={team}
-            canManage={canManage}
+            canManage={canScheduleTeam(team.team.id)}
+            canEditNeeds={canEditPlan || canScheduleTeam(team.team.id)}
+            onRelease={onRelease}
+            releasing={releasing}
             currentUserId={currentUserId}
             editingNeeds={editingNeeds}
             onNeedChange={onNeedChange}
@@ -96,6 +109,9 @@ export const TeamsTab = ({
 interface TeamColumnProps {
   team: PlanTeamView;
   canManage: boolean;
+  canEditNeeds: boolean;
+  onRelease: (assignmentIds: string[]) => void;
+  releasing: boolean;
   currentUserId: string | null;
   editingNeeds: boolean;
   onNeedChange: (positionId: string, needed: number) => void;
@@ -106,6 +122,9 @@ interface TeamColumnProps {
 const TeamColumn = ({
   team,
   canManage,
+  canEditNeeds,
+  onRelease,
+  releasing,
   currentUserId,
   editingNeeds,
   onNeedChange,
@@ -143,7 +162,16 @@ const TeamColumn = ({
           <span className="mr-1 text-amber-500">?</span>
           {team.pending}
         </span>
+        {team.prepared.length > 0 && (
+          <span title="Prepared privately — not sent yet" className="text-slate-600">
+            <span className="mr-1" aria-hidden="true">◌</span>
+            {team.prepared.length} prepared
+          </span>
+        )}
       </div>
+      {canManage && team.prepared.length > 0 && (
+        <ReleaseReview prepared={team.prepared} releasing={releasing} onRelease={onRelease} />
+      )}
     </header>
 
     {team.positions.length === 0 && team.unpositioned.length === 0 ? (
@@ -161,6 +189,7 @@ const TeamColumn = ({
             key={position.position.id}
             position={position}
             canManage={canManage}
+            canEditNeeds={canEditNeeds}
             currentUserId={currentUserId}
             editingNeeds={editingNeeds}
             onNeedChange={onNeedChange}
@@ -197,6 +226,7 @@ const TeamColumn = ({
 interface PositionBlockProps {
   position: PlanTeamPositionView;
   canManage: boolean;
+  canEditNeeds: boolean;
   currentUserId: string | null;
   editingNeeds: boolean;
   onNeedChange: (positionId: string, needed: number) => void;
@@ -207,6 +237,7 @@ interface PositionBlockProps {
 const PositionBlock = ({
   position,
   canManage,
+  canEditNeeds,
   currentUserId,
   editingNeeds,
   onNeedChange,
@@ -239,7 +270,7 @@ const PositionBlock = ({
           <NeededStepper
             label={position.position.name}
             needed={position.needed}
-            disabled={!canManage}
+            disabled={!canEditNeeds}
             onChange={(needed) => onNeedChange(position.position.id, needed)}
           />
         </div>
@@ -318,13 +349,25 @@ const ScheduledPerson = ({
 }) => {
   const name = assignment.person?.full_name ?? assignment.person?.email ?? 'Unknown';
   const isMine = assignment.user_id === currentUserId;
+  const prepared = assignment.visibility === 'prepared';
+  const ownerName = assignment.response_owner?.full_name;
 
   return (
     <li className="flex items-center gap-2 px-4 py-2">
       <Avatar name={name} url={assignment.person?.avatar_url} size="sm" />
-      <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+      <span
+        className="min-w-0 flex-1 truncate text-sm"
+        title={canManage && ownerName ? `Answers go to ${ownerName}` : undefined}
+      >
+        {name}
+      </span>
+      {prepared && (
+        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+          Prepared
+        </span>
+      )}
 
-      {isMine && assignment.status === 'unconfirmed' ? (
+      {isMine && !prepared && assignment.status === 'unconfirmed' ? (
         <span className="flex gap-1">
           <button
             type="button"
@@ -359,5 +402,55 @@ const ScheduledPerson = ({
         </button>
       )}
     </li>
+  );
+};
+
+/**
+ * Lists exactly who a release will reach before it happens. The ids shown
+ * are the ids sent, so a refresh in between cannot widen what goes out.
+ */
+const ReleaseReview = ({
+  prepared,
+  releasing,
+  onRelease,
+}: {
+  prepared: AssignmentDetail[];
+  releasing: boolean;
+  onRelease: (assignmentIds: string[]) => void;
+}) => {
+  const [reviewing, setReviewing] = useState<AssignmentDetail[] | null>(null);
+
+  if (!reviewing) {
+    return (
+      <Button variant="secondary" className="mt-2 !py-1 text-xs" onClick={() => setReviewing(prepared)}>
+        Review and release {prepared.length}
+      </Button>
+    );
+  }
+
+  return (
+    <div className="mt-2 rounded-lg bg-slate-50 p-2 text-xs">
+      <p className="font-medium text-slate-700">These people will be notified:</p>
+      <ul className="mt-1 list-disc pl-4 text-slate-600">
+        {reviewing.map((assignment) => (
+          <li key={assignment.id}>{assignment.person?.full_name ?? 'Unknown'}</li>
+        ))}
+      </ul>
+      <div className="mt-2 flex gap-2">
+        <Button
+          className="!py-1 text-xs"
+          loading={releasing}
+          onClick={() => {
+            onRelease(reviewing.map((assignment) => assignment.id));
+            setReviewing(null);
+          }}
+        >
+          Release
+        </Button>
+        <Button variant="ghost" className="!py-1 text-xs" onClick={() => setReviewing(null)}>
+          Cancel
+        </Button>
+      </div>
+    </div>
   );
 };

@@ -5,7 +5,11 @@ import {
   conflictCheckSchema,
   createAssignmentsSchema,
   notifyPlanSchema,
+  releaseAssignmentsSchema,
   respondToAssignmentSchema,
+  setResponseOwnerSchema,
+  type ReleaseAssignmentsInput,
+  type SetResponseOwnerInput,
   type AssignmentNotificationSendResult,
   type CreateAssignmentsInput,
   type NotifyPlanInput,
@@ -16,7 +20,7 @@ import {
 } from '@service-center/shared';
 import { z } from 'zod';
 import { validateBody, validateQuery, parsedQuery } from '../lib/validate.js';
-import { requireManager } from '../middleware/organization.js';
+import { requireCapability } from '../middleware/organization.js';
 import { adminDb, raw, unwrap } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { latestDeclineReasons, respondToOwnAssignment } from '../services/assignment-responses.js';
@@ -29,6 +33,7 @@ import { deliverEffectNow } from '../services/delivery-worker.js';
 
 export const planAssignmentsRouter: Router = Router({ mergeParams: true });
 export const planNotifyRouter: Router = Router({ mergeParams: true });
+export const planReleaseRouter: Router = Router({ mergeParams: true });
 export const assignmentsRouter: Router = Router();
 export const scheduleRouter: Router = Router();
 export const schedulingRouter: Router = Router();
@@ -75,9 +80,10 @@ const serviceWindow = async (
 };
 
 // ---------------------------------------------- schedule people onto a plan --
-planAssignmentsRouter.post('/', requireManager, validateBody(createAssignmentsSchema), async (req, res) => {
+planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validateBody(createAssignmentsSchema), async (req, res) => {
   const planId = param(req, 'planId');
-  const { assignments, ignore_conflicts, notify, idempotency_key } = req.body as CreateAssignmentsInput;
+  const { assignments, ignore_conflicts, notify, idempotency_key, visibility, response_owner_id } =
+    req.body as CreateAssignmentsInput;
 
   const plan = await unwrap(
     req.db
@@ -106,8 +112,9 @@ planAssignmentsRouter.post('/', requireManager, validateBody(createAssignmentsSc
     );
   }
 
-  // One transaction: same-organization checks, the inserts (people already
-  // on the plan are skipped) and, when notifying, the request effect.
+  // One transaction: same-organization and team-scope checks, the inserts
+  // (people already on the plan are skipped) and, when notifying, the request
+  // effect for released rows. Prepared rows are never notified here.
   const effectKey = `assignments:${plan.id}:${idempotency_key ?? randomUUID()}`;
   const created = await unwrap(
     req.db.rpc('schedule_plan_assignments', {
@@ -117,19 +124,51 @@ planAssignmentsRouter.post('/', requireManager, validateBody(createAssignmentsSc
         team_id: a.team_id,
         position_id: a.position_id ?? null,
         notes: a.notes ?? null,
+        visibility: a.visibility ?? null,
       })),
       p_notify: notify,
       p_effect_key: effectKey,
+      p_visibility: visibility ?? null,
+      p_response_owner: response_owner_id ?? null,
     }),
   );
 
-  if (notify) await deliverEffectNow(await effectIdForKey(req.db, req.orgId, effectKey));
+  if (notify && (created ?? []).some((row) => row.visibility === 'released')) {
+    await deliverEffectNow(await effectIdForKey(req.db, req.orgId, effectKey));
+  }
 
   res.status(201).json({ created: created ?? [], conflicts: blocking });
 });
 
+/**
+ * Releases exactly the prepared requests the leader reviewed, and records
+ * their notification in the same transaction. Repeating it is a no-op.
+ */
+planReleaseRouter.post('/', requireCapability('scheduling.manage'), validateBody(releaseAssignmentsSchema), async (req, res) => {
+  const planId = param(req, 'planId');
+  const { assignment_ids, notify, idempotency_key } = req.body as ReleaseAssignmentsInput;
+  const plan = await unwrap(
+    req.db.from('plans').select('id').eq('id', planId).eq('organization_id', req.orgId).maybeSingle(),
+  );
+  if (!plan) throw HttpError.notFound('Plan not found');
+
+  const effectKey = `release:${plan.id}:${idempotency_key ?? randomUUID()}`;
+  const released = await unwrap(
+    req.db.rpc('release_plan_assignments', {
+      p_plan_id: plan.id,
+      p_assignment_ids: assignment_ids,
+      p_notify: notify,
+      p_effect_key: effectKey,
+    }),
+  );
+  if (notify && (released ?? []).length > 0) {
+    await deliverEffectNow(await effectIdForKey(req.db, req.orgId, effectKey));
+  }
+  res.json({ released: released ?? [] });
+});
+
 /** Re-sends notifications for everyone on the plan who hasn't replied. */
-planNotifyRouter.post('/', requireManager, validateBody(notifyPlanSchema), async (req, res) => {
+planNotifyRouter.post('/', requireCapability('scheduling.manage'), validateBody(notifyPlanSchema), async (req, res) => {
   const planId = param(req, 'planId');
   const { idempotency_key } = req.body as NotifyPlanInput;
   const plan = await unwrap(
@@ -137,8 +176,14 @@ planNotifyRouter.post('/', requireManager, validateBody(notifyPlanSchema), async
   );
   if (!plan) throw HttpError.notFound('Plan not found');
 
+  // Only released requests are ever reminded; prepared ones were never sent.
   const pending = await unwrap(
-    req.db.from('assignments').select('id').eq('plan_id', plan.id).eq('status', 'unconfirmed'),
+    req.db
+      .from('assignments')
+      .select('id')
+      .eq('plan_id', plan.id)
+      .eq('status', 'unconfirmed')
+      .eq('visibility', 'released'),
   );
 
   const result: AssignmentNotificationSendResult = await notifyPlanAssignments({
@@ -170,6 +215,7 @@ export const notifyConfirmedAssignmentsForPlan = async (
       .select('id')
       .eq('plan_id', input.planId)
       .eq('status', 'confirmed')
+      .eq('visibility', 'released')
       .or(`notified_at.is.null,notified_at.lt.${cutoff}`),
   );
   return notifyPlanAssignments({
@@ -183,7 +229,33 @@ export const notifyConfirmedAssignmentsForPlan = async (
 };
 
 // -------------------------------------------------- single assignment ------
-assignmentsRouter.patch('/:id', requireManager, validateBody(updateAssignmentSchema), async (req, res) => {
+/**
+ * Who hears the answers. The new owner must schedule each request's team on
+ * its plan; every change is audited.
+ */
+assignmentsRouter.put('/response-owner', requireCapability('scheduling.manage'), validateBody(setResponseOwnerSchema), async (req, res) => {
+  const { assignment_ids, response_owner_id } = req.body as SetResponseOwnerInput;
+  res.json(
+    (await unwrap(
+      req.db.rpc('set_assignment_response_owner', { p_assignment_ids: assignment_ids, p_owner: response_owner_id }),
+    )) ?? [],
+  );
+});
+
+assignmentsRouter.get('/:id/response-owner-history', requireCapability('scheduling.manage'), async (req, res) => {
+  res.json(
+    (await unwrap(
+      req.db
+        .from('assignment_owner_changes')
+        .select('*')
+        .eq('assignment_id', param(req, 'id'))
+        .eq('organization_id', req.orgId)
+        .order('created_at', { ascending: false }),
+    )) ?? [],
+  );
+});
+
+assignmentsRouter.patch('/:id', requireCapability('scheduling.manage'), validateBody(updateAssignmentSchema), async (req, res) => {
   const updated = await unwrap(
     req.db.from('assignments').update(req.body).eq('id', param(req, 'id')).select('*').maybeSingle(),
   );
@@ -191,7 +263,7 @@ assignmentsRouter.patch('/:id', requireManager, validateBody(updateAssignmentSch
   res.json(updated);
 });
 
-assignmentsRouter.delete('/:id', requireManager, async (req, res) => {
+assignmentsRouter.delete('/:id', requireCapability('scheduling.manage'), async (req, res) => {
   await unwrap(req.db.from('assignments').delete().eq('id', param(req, 'id')));
   res.status(204).end();
 });
@@ -243,6 +315,8 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
        plan:plans!inner(id, title, service_date, location, status, organization_id, times:plan_times(*))`,
     )
     .eq('user_id', req.auth.userId)
+    // A recipient surface: a leader who prepared themself still sees only released requests here.
+    .eq('visibility', 'released')
     .eq('plan.organization_id', req.orgId);
 
   if (status) query = query.eq('status', status);
@@ -286,7 +360,7 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
 });
 
 // ------------------------------------------------------ conflict check -----
-schedulingRouter.post('/conflicts', requireManager, validateBody(conflictCheckSchema), async (req, res) => {
+schedulingRouter.post('/conflicts', requireCapability('scheduling.manage'), validateBody(conflictCheckSchema), async (req, res) => {
   const { starts_at, ends_at, user_ids } = req.body as {
     starts_at: string;
     ends_at: string;

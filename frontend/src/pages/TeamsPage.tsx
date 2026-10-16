@@ -5,15 +5,21 @@ import { usePeople, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Avatar, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
 import { TeamEditor } from '../components/TeamEditor';
+import { TeamPolicyModal } from '../components/TeamPolicyModal';
 
 export const TeamsPage = () => {
-  const { canManage } = useAuth();
+  const { access, can } = useAuth();
+  /** A team can be managed organization-wide, per service type, or as its leader. */
+  const canManageTeam = (team: { id: string; service_type_id: string | null }) =>
+    can('teams.manage', { serviceTypeId: team.service_type_id, teamId: team.id });
+  const canCreateTeams = can('teams.manage');
   const invalidate = useInvalidateOrg();
   const teams = useTeams();
   const people = usePeople();
   const [creating, setCreating] = useState(false);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [policyTeamId, setPolicyTeamId] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -58,13 +64,14 @@ export const TeamsPage = () => {
   // Read the team back out of the query cache so the editor re-renders with the
   // roles it just changed.
   const editingTeam = teams.data?.find((t) => t.id === editingTeamId);
+  const policyTeam = teams.data?.find((t) => t.id === policyTeamId);
 
   return (
     <div>
       <PageHeader
         title="Teams"
         subtitle="Who serves where, and in which position."
-        actions={canManage && <Button onClick={() => setCreating(true)}>New team</Button>}
+        actions={canCreateTeams && <Button onClick={() => setCreating(true)}>New team</Button>}
       />
 
       <ErrorNotice error={teams.error ?? addMember.error} />
@@ -80,13 +87,22 @@ export const TeamsPage = () => {
                   <span className="size-3 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
                   <h2 className="font-semibold">{team.name}</h2>
                   <span className="ml-auto text-xs text-slate-400">{team.members.length} people</span>
-                  {canManage && (
+                  {canManageTeam(team) && (
                     <Button
                       variant="ghost"
                       className="!px-2 text-xs"
                       onClick={() => setEditingTeamId(team.id)}
                     >
                       Edit
+                    </Button>
+                  )}
+                  {(canManageTeam(team) || access?.can_administer_access) && (
+                    <Button
+                      variant="ghost"
+                      className="!px-2 text-xs"
+                      onClick={() => setPolicyTeamId(team.id)}
+                    >
+                      Settings
                     </Button>
                   )}
                 </div>
@@ -127,7 +143,7 @@ export const TeamsPage = () => {
                 )}
               </ul>
 
-              {canManage && (
+              {canManageTeam(team) && (
                 <div className="border-t border-slate-100 px-4 py-2">
                   <Button variant="ghost" className="!px-2 text-sm" onClick={() => setAddingTo(team.id)}>
                     + Add person
@@ -141,11 +157,12 @@ export const TeamsPage = () => {
         <EmptyState
           title="No teams yet"
           description="Teams group the positions you schedule — Worship Band, Production, Hospitality."
-          action={canManage ? <Button onClick={() => setCreating(true)}>Create a team</Button> : undefined}
+          action={canCreateTeams ? <Button onClick={() => setCreating(true)}>Create a team</Button> : undefined}
         />
       )}
 
       {editingTeam && <TeamEditor team={editingTeam} onClose={() => setEditingTeamId(null)} />}
+      {policyTeam && <TeamPolicyModal team={policyTeam} onClose={() => setPolicyTeamId(null)} />}
 
       <Modal open={creating} title="New team" onClose={() => setCreating(false)}>
         <form onSubmit={submit} className="space-y-4">

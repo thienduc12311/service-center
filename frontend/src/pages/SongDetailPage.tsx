@@ -22,7 +22,9 @@ type SongDialog = 'song-information' | 'arrangement';
 
 export const SongDetailPage = () => {
   const { songId } = useParams<{ songId: string }>();
-  const { canManage } = useAuth();
+  const { canAnywhere } = useAuth();
+  // The song library is organization-wide; leading a team never implies it.
+  const canManage = canAnywhere('songs.manage');
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
   const song = useSong(songId);

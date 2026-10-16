@@ -6,7 +6,10 @@ import { planTone } from '../../lib/format';
 export interface PlanWorkspaceHeaderProps {
   plan: PlanDetail;
   organizationName: string;
+  /** plans.edit on this plan's service type: publish, delete, add the next plan. */
   canManage: boolean;
+  /** scheduling.manage somewhere on this plan: send reminders. */
+  canNotify: boolean;
   /** Sibling plans of the same service type, for the date arrows. */
   previousPlanId: string | null;
   nextPlanId: string | null;
@@ -25,6 +28,7 @@ export const PlanWorkspaceHeader = ({
   plan,
   organizationName,
   canManage,
+  canNotify,
   previousPlanId,
   nextPlanId,
   creatingNextPlan,
@@ -60,35 +64,41 @@ export const PlanWorkspaceHeader = ({
         >
           ⎙
         </button>
-        {canManage && (
+        {(canManage || canNotify) && (
           <Menu label="Actions">
             {(close) => (
               <>
-                <MenuItem
-                  onClick={() => {
-                    onTogglePublished();
-                    close();
-                  }}
-                >
-                  {plan.status === 'published' ? 'Unpublish' : 'Publish'}
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    onNotify();
-                    close();
-                  }}
-                >
-                  Send notifications
-                </MenuItem>
-                <MenuItem
-                  tone="danger"
-                  onClick={() => {
-                    onDelete();
-                    close();
-                  }}
-                >
-                  Delete plan
-                </MenuItem>
+                {canManage && (
+                  <MenuItem
+                    onClick={() => {
+                      onTogglePublished();
+                      close();
+                    }}
+                  >
+                    {plan.status === 'published' ? 'Unpublish' : 'Publish'}
+                  </MenuItem>
+                )}
+                {canNotify && (
+                  <MenuItem
+                    onClick={() => {
+                      onNotify();
+                      close();
+                    }}
+                  >
+                    Send notifications
+                  </MenuItem>
+                )}
+                {canManage && (
+                  <MenuItem
+                    tone="danger"
+                    onClick={() => {
+                      onDelete();
+                      close();
+                    }}
+                  >
+                    Delete plan
+                  </MenuItem>
+                )}
               </>
             )}
           </Menu>

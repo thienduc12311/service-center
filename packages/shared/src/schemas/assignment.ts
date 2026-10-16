@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { idempotencyKey, uuid } from './common.js';
 
+const visibility = z.enum(['prepared', 'released']);
+
 export const assignmentStatusSchema = z.enum(['unconfirmed', 'confirmed', 'declined']);
 
 export const createAssignmentsSchema = z.object({
@@ -11,10 +13,19 @@ export const createAssignmentsSchema = z.object({
         team_id: uuid,
         position_id: uuid.nullish(),
         notes: z.string().trim().max(1000).nullish(),
+        /** Overrides `visibility` for this row. */
+        visibility: visibility.optional(),
       }),
     )
     .min(1)
     .max(200),
+  /**
+   * `prepared` keeps the requests private to schedulers until released.
+   * Omitted: each team's default (released unless the team says otherwise).
+   */
+  visibility: visibility.optional(),
+  /** Who hears the answers; must schedule those teams. Defaults to the team's owner, then you. */
+  response_owner_id: uuid.optional(),
   /** Schedule anyway when the person is blocked out or double booked. */
   ignore_conflicts: z.boolean().default(false),
   notify: z.boolean().default(true),

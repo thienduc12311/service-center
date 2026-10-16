@@ -16,7 +16,7 @@ import {
   type SongWithArrangements,
 } from '@service-center/shared';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
-import { requireManager } from '../middleware/organization.js';
+import { requireCapability } from '../middleware/organization.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import {
@@ -83,7 +83,7 @@ songsRouter.get('/:id/schedule', validateQuery(songScheduleQuerySchema), async (
   res.json(schedule);
 });
 
-songsRouter.post('/', requireManager, validateBody(createSongSchema), async (req, res) => {
+songsRouter.post('/', requireCapability('songs.manage'), validateBody(createSongSchema), async (req, res) => {
   const song = await createSongWithArrangement(req.db, req.body, {
     organizationId: req.orgId,
     userId: req.auth.userId,
@@ -91,7 +91,7 @@ songsRouter.post('/', requireManager, validateBody(createSongSchema), async (req
   res.status(201).json(song);
 });
 
-songsRouter.patch('/:id', requireManager, validateBody(updateSongSchema), async (req, res) => {
+songsRouter.patch('/:id', requireCapability('songs.manage'), validateBody(updateSongSchema), async (req, res) => {
   const updated = await unwrap(
     req.db
       .from('songs')
@@ -105,7 +105,7 @@ songsRouter.patch('/:id', requireManager, validateBody(updateSongSchema), async 
   res.json(updated);
 });
 
-songsRouter.delete('/:id', requireManager, async (req, res) => {
+songsRouter.delete('/:id', requireCapability('songs.manage'), async (req, res) => {
   await unwrap(req.db.from('songs').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId));
   res.status(204).end();
 });
@@ -113,7 +113,7 @@ songsRouter.delete('/:id', requireManager, async (req, res) => {
 // -------------------------------------------------------- arrangements ----
 songsRouter.post(
   '/:id/arrangements',
-  requireManager,
+  requireCapability('songs.manage'),
   validateBody(createArrangementSchema),
   async (req, res) => {
     const song = await unwrap(
@@ -141,7 +141,7 @@ songsRouter.post(
   },
 );
 
-arrangementsRouter.patch('/:id', requireManager, validateBody(updateArrangementSchema), async (req, res) => {
+arrangementsRouter.patch('/:id', requireCapability('songs.manage'), validateBody(updateArrangementSchema), async (req, res) => {
   if (req.body.is_default) {
     const current = await unwrap(
       req.db.from('arrangements').select('song_id').eq('id', param(req, 'id')).maybeSingle(),
@@ -164,7 +164,7 @@ arrangementsRouter.patch('/:id', requireManager, validateBody(updateArrangementS
   res.json(updated);
 });
 
-arrangementsRouter.delete('/:id', requireManager, async (req, res) => {
+arrangementsRouter.delete('/:id', requireCapability('songs.manage'), async (req, res) => {
   await unwrap(req.db.from('arrangements').delete().eq('id', param(req, 'id')));
   res.status(204).end();
 });

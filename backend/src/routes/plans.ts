@@ -21,7 +21,7 @@ import {
   type UpdatePlanInput,
 } from '@service-center/shared';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
-import { requireManager } from '../middleware/organization.js';
+import { requireCapability, requireManager } from '../middleware/organization.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import {
@@ -76,7 +76,7 @@ plansRouter.get('/:id', async (req, res) => {
  * Creates the plan, its times and anything copied from another plan in one
  * transaction; a retry with the same idempotency key returns the same plan.
  */
-plansRouter.post('/', requireManager, validateBody(createPlanSchema), async (req, res) => {
+plansRouter.post('/', requireCapability('plans.edit'), validateBody(createPlanSchema), async (req, res) => {
   const planId = await createPlanAtomically({
     db: req.db,
     orgId: req.orgId,
@@ -85,7 +85,7 @@ plansRouter.post('/', requireManager, validateBody(createPlanSchema), async (req
   res.status(201).json(await fetchPlanDetail(req.db, req.orgId, planId));
 });
 
-plansRouter.patch('/:id', requireManager, validateBody(updatePlanSchema), async (req, res) => {
+plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePlanSchema), async (req, res) => {
   const { times, ...plan } = req.body as UpdatePlanInput;
   const existingPlan = await unwrapOne(req.db.from('plans').select('id, location, organization_id').eq('id', param(req, 'id')).eq('organization_id', req.orgId).single());
   const existingTimes = times
@@ -133,7 +133,7 @@ plansRouter.patch('/:id', requireManager, validateBody(updatePlanSchema), async 
   res.json(await fetchPlanDetail(req.db, req.orgId, param(req, 'id')));
 });
 
-plansRouter.delete('/:id', requireManager, async (req, res) => {
+plansRouter.delete('/:id', requireCapability('plans.edit'), async (req, res) => {
   await unwrap(req.db.from('plans').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId));
   res.status(204).end();
 });
@@ -143,7 +143,7 @@ plansRouter.delete('/:id', requireManager, async (req, res) => {
  * One transaction: order, times (shifted by the date change), needs and,
  * optionally, the team as fresh unconfirmed requests. Nobody is notified.
  */
-plansRouter.post('/:id/duplicate', requireManager, validateBody(duplicatePlanSchema), async (req, res) => {
+plansRouter.post('/:id/duplicate', requireCapability('plans.edit'), validateBody(duplicatePlanSchema), async (req, res) => {
   const planId = await duplicatePlanAtomically({
     db: req.db,
     sourcePlanId: param(req, 'id'),
@@ -156,7 +156,7 @@ plansRouter.post('/:id/duplicate', requireManager, validateBody(duplicatePlanSch
  * Copies another plan's order, needs and/or team into this plan in one
  * transaction. Nothing already on the plan is removed and nobody is notified.
  */
-plansRouter.post('/:id/import', requireManager, validateBody(importPlanContentsSchema), async (req, res) => {
+plansRouter.post('/:id/import', requireCapability('plans.edit'), validateBody(importPlanContentsSchema), async (req, res) => {
   const targetPlanId = param(req, 'id');
   const contentRevision = await importPlanContents({
     db: req.db,
@@ -172,7 +172,7 @@ plansRouter.post('/:id/import', requireManager, validateBody(importPlanContentsS
 });
 
 // --------------------------------------------------------------- items ----
-plansRouter.post('/:id/items', requireManager, validateBody(createPlanItemSchema), async (req, res) => {
+plansRouter.post('/:id/items', requireCapability('plans.edit'), validateBody(createPlanItemSchema), async (req, res) => {
   const body = req.body as Record<string, unknown> & { song_id?: string | null; title?: string };
 
   const plan = await unwrap(
@@ -205,7 +205,7 @@ plansRouter.post('/:id/items', requireManager, validateBody(createPlanItemSchema
   res.status(201).json(created);
 });
 
-plansRouter.patch('/:id/items/:itemId', requireManager, validateBody(updatePlanItemSchema), async (req, res) => {
+plansRouter.patch('/:id/items/:itemId', requireCapability('plans.edit'), validateBody(updatePlanItemSchema), async (req, res) => {
   const updated = await unwrap(
     req.db
       .from('plan_items')
@@ -219,7 +219,7 @@ plansRouter.patch('/:id/items/:itemId', requireManager, validateBody(updatePlanI
   res.json(updated);
 });
 
-plansRouter.delete('/:id/items/:itemId', requireManager, async (req, res) => {
+plansRouter.delete('/:id/items/:itemId', requireCapability('plans.edit'), async (req, res) => {
   await unwrap(
     req.db.from('plan_items').delete().eq('id', param(req, 'itemId')).eq('plan_id', param(req, 'id')),
   );
@@ -247,7 +247,7 @@ plansRouter.put(
 );
 
 /** Persists a drag-and-drop reorder: the ids arrive in their new order. */
-plansRouter.put('/:id/items/order', requireManager, validateBody(reorderPlanItemsSchema), async (req, res) => {
+plansRouter.put('/:id/items/order', requireCapability('plans.edit'), validateBody(reorderPlanItemsSchema), async (req, res) => {
   const { item_ids } = req.body as { item_ids: string[] };
 
   res.json(await reorderPlanItems({ db: req.db, planId: param(req, 'id'), itemIds: item_ids }));

@@ -1,43 +1,69 @@
 import type { Request } from 'express';
 import { Router } from 'express';
 import {
+  canAccessAnywhere,
   createPersonSchema,
+  eligibilityRecordSchema,
   invitePersonSchema,
   isAdmin,
+  personTagsSchema,
   updateMemberSchema,
   updatePersonSchema,
+  type EligibilityRecordInput,
   type InvitePersonInput,
   type OrganizationMemberRow,
   type PersonDetail,
   type PersonRow,
+  type PersonSelectableRow,
+  type PersonTagsInput,
   type ProfileRow,
+  type PublicProfileRow,
 } from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { validateBody } from '../lib/validate.js';
-import { requireAdmin, requireManager } from '../middleware/organization.js';
+import { requireAdmin, requireCapability } from '../middleware/organization.js';
 import { adminDb, raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { generateInviteToken, inviteAcceptUrl } from '../services/invitations.js';
 import { sendPersonInvitation } from '../services/notifications.js';
 import {
+  PERSON_COLUMNS,
+  PUBLIC_PROFILE_COLUMNS,
   mergeRoster,
   personDisplayName,
   splitFullName,
   toPersonDetail,
   type ActiveMemberRow,
+  type RosterPersonRecord,
 } from '../model/people.js';
+import { NO_CONTACT, contactsFor } from '../services/contacts.js';
 
 export const peopleRouter: Router = Router();
 
+/** Full private records: people.view_private or people.manage (RLS enforces it too). */
+const canReadPrivate = (req: Request): boolean =>
+  canAccessAnywhere(req.access, 'people.view_private') || canAccessAnywhere(req.access, 'people.manage');
+
+/** A profile with whatever contact details the caller may see. */
+const profileWithContact = async (req: Request, profileId: string): Promise<ProfileRow | null> => {
+  const profile = (await unwrap(
+    raw(req.db).from('profiles').select(PUBLIC_PROFILE_COLUMNS).eq('id', profileId).maybeSingle(),
+  )) as PublicProfileRow | null;
+  if (!profile) return null;
+  const contacts = await contactsFor(req.db, req.orgId, [profileId]);
+  return { ...profile, ...(contacts.get(profileId) ?? NO_CONTACT) };
+};
+
 /** Loads the profile + membership (when linked) and any pending invitation for one person. */
-const loadPersonDetail = async (req: Request, person: PersonRow): Promise<PersonDetail> => {
+const loadPersonDetail = async (req: Request, selected: PersonSelectableRow): Promise<PersonDetail> => {
   let profile: ProfileRow | null = null;
   let membership: Pick<OrganizationMemberRow, 'role' | 'status'> | null = null;
+  // Not selectable by API roles; the database returns it to owners/admins only.
+  const medicalNote = await unwrap(req.db.rpc('person_medical_note', { p_person: selected.id }));
+  const person: PersonRow = { ...selected, medical_note: medicalNote ?? null };
 
   if (person.profile_id) {
-    profile = await unwrap(
-      req.db.from('profiles').select('*').eq('id', person.profile_id).maybeSingle(),
-    );
+    profile = await profileWithContact(req, person.profile_id);
     membership = await unwrap(
       req.db
         .from('organization_members')
@@ -62,17 +88,38 @@ const loadPersonDetail = async (req: Request, person: PersonRow): Promise<Person
   return toPersonDetail(person, profile, membership, pendingInvitation, !isAdmin(req.orgRole));
 };
 
-/** Everyone in the active organization: has-login members plus no-login roster entries. */
+interface MemberWithPublicProfile extends Omit<ActiveMemberRow, 'profile'> {
+  profile: PublicProfileRow;
+}
+
+/**
+ * Everyone in the active organization: has-login members plus no-login roster
+ * entries. Without people.view_private the caller sees names, pictures and
+ * campus only (the `people_directory` projection), plus their own contact.
+ */
 peopleRouter.get('/', async (req, res) => {
-  const members = (await unwrap(
+  const rawMembers = (await unwrap(
     raw(req.db)
       .from('organization_members')
-      .select('role, status, profile:profiles(*)')
+      .select(`role, status, profile:profiles(${PUBLIC_PROFILE_COLUMNS})`)
       .eq('organization_id', req.orgId)
       .neq('status', 'inactive'),
-  )) as unknown as ActiveMemberRow[];
+  )) as unknown as MemberWithPublicProfile[];
+  const contacts = await contactsFor(req.db, req.orgId, rawMembers.map((member) => member.profile?.id).filter(Boolean));
+  const members: ActiveMemberRow[] = rawMembers
+    .filter((member) => member.profile)
+    .map((member) => ({
+      ...member,
+      profile: { ...member.profile, ...(contacts.get(member.profile.id) ?? NO_CONTACT) },
+    }));
 
-  const people = await unwrap(req.db.from('people').select('*').eq('organization_id', req.orgId));
+  const people: RosterPersonRecord[] = canReadPrivate(req)
+    ? ((await unwrap(raw(req.db).from('people').select(PERSON_COLUMNS).eq('organization_id', req.orgId))) as unknown as RosterPersonRecord[])
+    : ((await unwrap(req.db.from('people_directory').select('*').eq('organization_id', req.orgId))) ?? []).map((row) => ({
+        ...row,
+        email: null,
+        phone: null,
+      }));
 
   const pendingInvitations = await unwrap(
     req.db
@@ -88,76 +135,78 @@ peopleRouter.get('/', async (req, res) => {
 });
 
 /** Adds a full roster entry that doesn't require a login yet. */
-peopleRouter.post('/', requireManager, validateBody(createPersonSchema), async (req, res) => {
-  const created = await unwrapOne(
-    req.db
+peopleRouter.post('/', requireCapability('people.manage'), validateBody(createPersonSchema), async (req, res) => {
+  const created = (await unwrapOne(
+    raw(req.db)
       .from('people')
       .insert({ ...req.body, organization_id: req.orgId, created_by: req.auth.userId })
-      .select('*')
+      .select(PERSON_COLUMNS)
       .single(),
-  );
+  )) as unknown as PersonSelectableRow;
   res.status(201).json(await loadPersonDetail(req, created));
 });
 
 /** Gives an existing has-login member a full roster record. */
-peopleRouter.post('/from-member/:userId', requireManager, async (req, res) => {
+peopleRouter.post('/from-member/:userId', requireCapability('people.manage'), async (req, res) => {
   const userId = param(req, 'userId');
 
-  const member = (await unwrap(
-    raw(req.db)
+  const member = await unwrap(
+    req.db
       .from('organization_members')
-      .select('role, status, profile:profiles(*)')
+      .select('role, status')
       .eq('organization_id', req.orgId)
       .eq('user_id', userId)
       .eq('status', 'active')
       .maybeSingle(),
-  )) as unknown as ActiveMemberRow | null;
-  if (!member) throw HttpError.notFound('That person is not an active member of this organization');
+  );
+  const profile = member ? await profileWithContact(req, userId) : null;
+  if (!member || !profile) throw HttpError.notFound('That person is not an active member of this organization');
 
-  const { first_name, last_name } = splitFullName(member.profile.full_name);
-  const created = await unwrapOne(
-    req.db
+  const { first_name, last_name } = splitFullName(profile.full_name);
+  const created = (await unwrapOne(
+    raw(req.db)
       .from('people')
       .insert({
         organization_id: req.orgId,
         profile_id: userId,
         first_name,
         last_name,
-        email: member.profile.email,
-        phone: member.profile.phone,
-        avatar_url: member.profile.avatar_url,
+        email: profile.email,
+        phone: profile.phone,
+        avatar_url: profile.avatar_url,
         created_by: req.auth.userId,
       })
-      .select('*')
+      .select(PERSON_COLUMNS)
       .single(),
-  );
+  )) as unknown as PersonSelectableRow;
 
   res.status(201).json(await loadPersonDetail(req, created));
 });
 
-peopleRouter.get('/:personId', requireManager, async (req, res) => {
-  const person = await unwrap(
-    req.db
+/** A private record: people.view_private / people.manage, or the person themself (RLS). */
+peopleRouter.get('/:personId', async (req, res) => {
+  const person = (await unwrap(
+    raw(req.db)
       .from('people')
-      .select('*')
+      .select(PERSON_COLUMNS)
       .eq('id', param(req, 'personId'))
       .eq('organization_id', req.orgId)
       .maybeSingle(),
-  );
+  )) as unknown as PersonSelectableRow | null;
   if (!person) throw HttpError.notFound();
   res.json(await loadPersonDetail(req, person));
 });
 
-peopleRouter.patch('/:personId', requireManager, validateBody(updatePersonSchema), async (req, res) => {
-  const updated = await unwrap(
-    req.db
+peopleRouter.patch('/:personId', requireCapability('people.manage'), validateBody(updatePersonSchema), async (req, res) => {
+  const updated = (await unwrap(
+    raw(req.db)
       .from('people')
       .update(req.body)
       .eq('id', param(req, 'personId'))
       .eq('organization_id', req.orgId)
-      .select('*')
+      .select(PERSON_COLUMNS)
       .maybeSingle(),
-  );
+  )) as unknown as PersonSelectableRow | null;
   if (!updated) throw HttpError.notFound();
   res.json(await loadPersonDetail(req, updated));
 });
@@ -184,9 +233,9 @@ peopleRouter.post(
     const personId = param(req, 'personId');
     const { email: overrideEmail, role } = req.body as InvitePersonInput;
 
-    const person = await unwrap(
-      req.db.from('people').select('*').eq('id', personId).eq('organization_id', req.orgId).maybeSingle(),
-    );
+    const person = (await unwrap(
+      raw(req.db).from('people').select(PERSON_COLUMNS).eq('id', personId).eq('organization_id', req.orgId).maybeSingle(),
+    )) as unknown as PersonSelectableRow | null;
     if (!person) throw HttpError.notFound();
     if (person.profile_id) throw HttpError.conflict('This person already has a login');
 
@@ -300,4 +349,60 @@ peopleRouter.delete('/members/:userId', requireAdmin, async (req, res) => {
       .eq('user_id', param(req, 'userId')),
   );
   res.status(204).end();
+});
+
+// --------------------------------------------------------------- tags ----
+/** Tags drive tag-derived team candidates (F01). People managers edit them. */
+peopleRouter.get('/:personId/tags', async (req, res) => {
+  const rows = await unwrap(
+    req.db.from('person_tags').select('tag').eq('person_id', param(req, 'personId')).eq('organization_id', req.orgId).order('tag'),
+  );
+  res.json((rows ?? []).map((row) => row.tag));
+});
+
+peopleRouter.put('/:personId/tags', requireCapability('people.manage'), validateBody(personTagsSchema), async (req, res) => {
+  const personId = param(req, 'personId');
+  const tags = [...new Set((req.body as PersonTagsInput).tags.map((tag) => tag.toLowerCase()))];
+  const person = await unwrap(
+    req.db.from('people_directory').select('id').eq('id', personId).eq('organization_id', req.orgId).maybeSingle(),
+  );
+  if (!person) throw HttpError.notFound();
+  await unwrap(req.db.from('person_tags').delete().eq('person_id', personId));
+  if (tags.length) {
+    await unwrap(
+      req.db
+        .from('person_tags')
+        .insert(tags.map((tag) => ({ person_id: personId, organization_id: req.orgId, tag, created_by: req.auth.userId }))),
+    );
+  }
+  res.json(tags.sort());
+});
+
+// -------------------------------------------------------- eligibility ----
+/**
+ * Explicit eligibility evidence for secure teams: the provider and its
+ * reference, never a report body. Append-only; the latest record decides.
+ */
+peopleRouter.get('/members/:userId/eligibility', async (req, res) => {
+  const rows = await unwrap(
+    req.db
+      .from('person_eligibility_records')
+      .select('*')
+      .eq('organization_id', req.orgId)
+      .eq('user_id', param(req, 'userId'))
+      .order('verified_at', { ascending: false }),
+  );
+  res.json(rows ?? []);
+});
+
+peopleRouter.post('/eligibility', requireCapability('people.manage'), validateBody(eligibilityRecordSchema), async (req, res) => {
+  const input = req.body as EligibilityRecordInput;
+  const created = await unwrapOne(
+    req.db
+      .from('person_eligibility_records')
+      .insert({ ...input, provider_reference: input.provider_reference ?? null, organization_id: req.orgId, recorded_by: req.auth.userId })
+      .select('*')
+      .single(),
+  );
+  res.status(201).json(created);
 });

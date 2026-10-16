@@ -50,7 +50,7 @@ assignmentRespondRouter.get('/:token', async (req, res) => {
   const [plan, person, assignments, serviceTime] = await Promise.all([
     unwrapOne(adminDb.from('plans').select('title, service_date, location').eq('id', notification.plan_id).single()),
     unwrap(adminDb.from('people').select('first_name').eq('profile_id', notification.user_id).eq('organization_id', notification.organization_id).maybeSingle()),
-    unwrap(raw(adminDb).from('assignments').select('id, status, team:teams(name), position:team_positions(name)').eq('plan_id', notification.plan_id).eq('user_id', notification.user_id)),
+    unwrap(raw(adminDb).from('assignments').select('id, status, team:teams(name), position:team_positions(name)').eq('plan_id', notification.plan_id).eq('user_id', notification.user_id).eq('visibility', 'released')),
     unwrap(adminDb.from('plan_times').select('starts_at, ends_at').eq('plan_id', notification.plan_id).eq('kind', 'service').order('starts_at').limit(1).maybeSingle()),
   ]);
   const preview: AssignmentRespondPreview = {

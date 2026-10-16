@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
-import { canManage } from '@service-center/shared';
+import { canAccessAnywhere } from '@service-center/shared';
 
 export const blockoutsRouter: Router = Router();
 
@@ -22,12 +22,12 @@ blockoutsRouter.get('/', validateQuery(listQuerySchema), async (req, res) => {
 
   let query = raw(req.db)
     .from('blockouts')
-    .select('*, person:profiles(id, full_name, email, avatar_url)')
+    .select('*, person:profiles(id, full_name, avatar_url)')
     .eq('organization_id', req.orgId)
     .order('starts_at');
 
   if (scope === 'organization') {
-    if (!canManage(req.orgRole)) throw HttpError.forbidden('Only schedulers can see everyone’s blockouts');
+    if (!canAccessAnywhere(req.access, 'scheduling.manage')) throw HttpError.forbidden('Only schedulers can see everyone’s blockouts');
     if (user_id) query = query.eq('user_id', user_id);
   } else {
     query = query.eq('user_id', req.auth.userId);
@@ -45,7 +45,7 @@ blockoutsRouter.post('/', validateBody(blockoutSchema), async (req, res) => {
   // RLS only lets you insert your own; recording someone else's needs a manager
   // role, and is rejected here with a clearer message than a 403 from Postgres.
   const targetUserId = user_id ?? req.auth.userId;
-  if (targetUserId !== req.auth.userId && !canManage(req.orgRole)) {
+  if (targetUserId !== req.auth.userId && !canAccessAnywhere(req.access, 'scheduling.manage')) {
     throw HttpError.forbidden('Only schedulers can record blockouts for other people');
   }
 
@@ -64,7 +64,7 @@ blockoutsRouter.delete('/:id', async (req, res) => {
     req.db.from('blockouts').select('id, user_id').eq('id', param(req, 'id')).maybeSingle(),
   );
   if (!blockout) throw HttpError.notFound('Blockout not found');
-  if (blockout.user_id !== req.auth.userId && !canManage(req.orgRole)) {
+  if (blockout.user_id !== req.auth.userId && !canAccessAnywhere(req.access, 'scheduling.manage')) {
     throw HttpError.forbidden('You can only remove your own blockouts');
   }
 

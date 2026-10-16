@@ -1,43 +1,66 @@
 import { Router, type Request } from 'express';
-import { updateProfileSchema, type CalendarFeedTokenResponse, type CurrentUser } from '@service-center/shared';
+import {
+  updateProfileSchema,
+  type AccessMode,
+  type CalendarFeedTokenResponse,
+  type CurrentUser,
+  type OrgRole,
+  type OrganizationRow,
+} from '@service-center/shared';
 import { validateBody } from '../lib/validate.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { generateCalendarFeedToken } from '../services/calendar-feed-tokens.js';
+import { loadMyAccess } from '../services/access.js';
 import { config } from '../config.js';
 
 export const meRouter: Router = Router();
 
-/** The signed-in profile plus every organization the user belongs to. */
+interface MembershipWithOrganization {
+  role: OrgRole;
+  access_mode: AccessMode;
+  organization: OrganizationRow | null;
+}
+
+/**
+ * The signed-in profile plus every organization the user belongs to, each
+ * with the caller's effective access there (F01), so clients can show the
+ * actions that are actually allowed.
+ */
 meRouter.get('/', async (req, res) => {
-  const profile = await unwrapOne(
-    req.db.from('profiles').select('*').eq('id', req.auth.userId).single(),
-  );
+  // Contact columns are not selectable from `profiles`; my_profile() returns your own.
+  const profile = await unwrapOne(req.db.rpc('my_profile'));
 
   const memberships = (await unwrap(
     raw(req.db)
       .from('organization_members')
-      .select('role, organization:organizations(*)')
+      .select('role, access_mode, organization:organizations(*)')
       .eq('user_id', req.auth.userId)
       .eq('status', 'active'),
-  )) as Array<{ role: string; organization: unknown }>;
+  )) as unknown as MembershipWithOrganization[];
 
   const payload: CurrentUser = {
     profile,
-    memberships: memberships
-      .filter((m) => m.organization)
-      .map((m) => ({ organization: m.organization, role: m.role })) as CurrentUser['memberships'],
+    memberships: await Promise.all(
+      memberships
+        .filter((m): m is MembershipWithOrganization & { organization: OrganizationRow } => Boolean(m.organization))
+        .map(async (m) => ({
+          organization: m.organization,
+          role: m.role,
+          access: await loadMyAccess(req.db, m.organization.id, req.auth.userId, m),
+        })),
+    ),
   };
 
   res.json(payload);
 });
 
 meRouter.patch('/', validateBody(updateProfileSchema), async (req, res) => {
-  const updated = await unwrapOne(
-    req.db.from('profiles').update(req.body).eq('id', req.auth.userId).select('*').single(),
+  const updated = await unwrap(
+    req.db.from('profiles').update(req.body).eq('id', req.auth.userId).select('id').maybeSingle(),
   );
   if (!updated) throw HttpError.notFound('Profile not found');
-  res.json(updated);
+  res.json(await unwrapOne(req.db.rpc('my_profile')));
 });
 
 const activeOrganizationForMe = async (req: Request): Promise<string> => {

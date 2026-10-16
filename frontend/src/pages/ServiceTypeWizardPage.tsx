@@ -29,7 +29,8 @@ const toInstant = (date: string, time: string): string => new Date(`${date}T${ti
 export const ServiceTypeWizardPage = () => {
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
-  const { canManage } = useAuth();
+  const { canAnywhere } = useAuth();
+  const canManage = canAnywhere('plans.edit');
 
   const [step, setStep] = useState<WizardStep>('name');
   const [name, setName] = useState<NameStepValue>({ name: '', recurrence: 'weekly' });

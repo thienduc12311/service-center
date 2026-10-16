@@ -18,7 +18,7 @@ interface RawPlanTime {
     location: string | null;
     service_type_id: string | null;
     service_type: { name: string } | null;
-    assignments: Array<{ user_id: string; team_id: string; status: CalendarEvent['status'] }>;
+    assignments: Array<{ user_id: string; team_id: string; status: CalendarEvent['status']; visibility: string }>;
   } | null;
 }
 
@@ -37,7 +37,7 @@ calendarRouter.get('/', validateQuery(calendarQuerySchema), async (req, res) => 
        plan:plans!inner(
          id, title, status, location, service_type_id, organization_id,
          service_type:service_types(name),
-         assignments:assignments(user_id, team_id, status)
+         assignments:assignments(user_id, team_id, status, visibility)
        )`,
     )
     .eq('plan.organization_id', req.orgId)
@@ -53,7 +53,8 @@ calendarRouter.get('/', validateQuery(calendarQuerySchema), async (req, res) => 
   const events: CalendarEvent[] = [];
   for (const row of rows) {
     if (!row.plan) continue;
-    const assignments = row.plan.assignments ?? [];
+    // A leader's prepared drafts are not anyone's schedule yet.
+    const assignments = (row.plan.assignments ?? []).filter((a) => a.visibility === 'released');
 
     const myAssignment = assignments.find((a) => a.user_id === req.auth.userId);
     if (mine && !myAssignment) continue;

@@ -19,7 +19,9 @@ const songBpm = (song: SongListItem): number | null =>
   song.default_bpm ?? song.arrangements.find((arrangement) => arrangement.bpm)?.bpm ?? null;
 
 export const SongsPage = () => {
-  const { canManage } = useAuth();
+  const { canAnywhere } = useAuth();
+  // The song library is organization-wide; leading a team never implies it.
+  const canManage = canAnywhere('songs.manage');
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<'title' | 'recent'>('title');
