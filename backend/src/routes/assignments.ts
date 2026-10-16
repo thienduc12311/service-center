@@ -4,6 +4,7 @@ import {
   conflictCheckSchema,
   createAssignmentsSchema,
   respondToAssignmentSchema,
+  type RespondToAssignmentInput,
   updateAssignmentSchema,
   formatDate,
   type MyScheduleEntry,
@@ -18,6 +19,11 @@ import { HttpError } from '../lib/errors.js';
 import { respondUrlFor, sendScheduleNotifications, type ScheduleNotification } from '../services/notifications.js';
 import { generateAssignmentToken } from '../services/assignment-tokens.js';
 import { createNotifications } from '../services/notification-center.js';
+import {
+  latestDeclineReasons,
+  notifySchedulerOfResponse,
+  respondToOwnAssignment,
+} from '../services/assignment-responses.js';
 import type { NotificationDraft } from '../model/notification.model.js';
 import { renderIcs, type IcsEvent } from '../lib/ics.js';
 import { config } from '../config.js';
@@ -351,60 +357,23 @@ assignmentsRouter.delete('/:id', requireManager, async (req, res) => {
 });
 
 /**
- * Accept or decline. RLS lets a person update only their own assignment, so
- * this endpoint is safe for every role.
+ * Accept, decline or withdraw a confirmation. RLS lets a person update only
+ * their own assignment, and a database trigger holds them to the permitted
+ * transitions, so this endpoint is safe for every role.
  */
 assignmentsRouter.post('/:id/respond', validateBody(respondToAssignmentSchema), async (req, res) => {
-  const assignment = await unwrap(
-    req.db.from('assignments').select('id, user_id, plan_id, created_by').eq('id', param(req, 'id')).maybeSingle(),
-  );
-  if (!assignment) throw HttpError.notFound('Assignment not found');
-  if (assignment.user_id !== req.auth.userId) {
-    throw HttpError.forbidden('You can only respond to your own assignments');
-  }
-
-  const updated = await unwrapOne(
-    req.db
-      .from('assignments')
-      .update({ status: req.body.status, notes: req.body.notes ?? null, responded_at: new Date().toISOString() })
-      .eq('id', assignment.id)
-      .select('*')
-      .single(),
-  );
-  if (assignment.created_by && assignment.created_by !== req.auth.userId) {
-    const [scheduler, plan, responder] = await Promise.all([
-      unwrap(req.db.from('profiles').select('email').eq('id', assignment.created_by).maybeSingle()),
-      unwrapOne(req.db.from('plans').select('title, service_date').eq('id', assignment.plan_id).single()),
-      unwrap(req.db.from('profiles').select('full_name').eq('id', req.auth.userId).maybeSingle()),
-    ]);
-
-    // Whoever scheduled this person sees the answer in their own feed.
-    await createNotifications([
-      {
-        organizationId: req.orgId,
-        userId: assignment.created_by,
-        type: 'assignment_response',
-        title: `${responder?.full_name ?? 'Someone'} ${req.body.status} ${plan.title}`,
-        body: formatDate(plan.service_date),
-        planId: assignment.plan_id,
-        assignmentId: assignment.id,
-        createdBy: req.auth.userId,
-      },
-    ]);
-
-    if (req.body.status === 'declined' && scheduler?.email) {
-      await sendScheduleNotifications([{
-        to: scheduler.email,
-        personName: null,
-        planTitle: `${plan.title} — assignment declined`,
-        serviceDate: plan.service_date,
-        teamName: null,
-        positionName: null,
-        respondUrl: `${config.APP_URL}/plans/${assignment.plan_id}`,
-      }]);
-    }
-  }
-  res.json(updated);
+  const body = req.body as RespondToAssignmentInput;
+  const outcome = await respondToOwnAssignment({
+    db: req.db,
+    orgId: req.orgId,
+    userId: req.auth.userId,
+    assignmentId: param(req, 'id'),
+    status: body.status,
+    reason: body.reason,
+    expectedStatus: body.expected_status,
+  });
+  await notifySchedulerOfResponse(req.orgId, req.auth.userId, outcome);
+  res.json(outcome.assignment);
 });
 
 // -------------------------------------------------------- my schedule ------
@@ -449,6 +418,7 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
       const { times = [], ...planFields } = plan ?? {};
       return {
         assignment,
+        response_note: null,
         plan: planFields,
         team,
         position,
@@ -461,6 +431,12 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
       (a, b) =>
         new Date(a.plan.service_date).getTime() - new Date(b.plan.service_date).getTime(),
     );
+
+  // Only a declined position shows its reason; an earlier decline that a
+  // scheduler has since re-requested is history, not the current answer.
+  const declined = entries.filter((entry) => entry.assignment.status === 'declined');
+  const reasons = await latestDeclineReasons(req.db, declined.map((entry) => entry.assignment.id));
+  for (const entry of declined) entry.response_note = reasons.get(entry.assignment.id) ?? null;
 
   res.json(entries);
 });

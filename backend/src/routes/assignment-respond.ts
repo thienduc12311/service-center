@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { type AssignmentRespondPreview, type AssignmentRespondResult, respondToAssignmentNotificationSchema } from '@service-center/shared';
+import {
+  type AssignmentRespondPreview,
+  type AssignmentRespondResult,
+  type AssignmentStatus,
+  type RespondToAssignmentNotificationInput,
+  respondToAssignmentNotificationSchema,
+} from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { validateBody } from '../lib/validate.js';
 import { adminDb, raw, unwrap, unwrapOne } from '../lib/supabase.js';
@@ -68,12 +74,23 @@ assignmentRespondRouter.post('/:token/respond', validateBody(respondToAssignment
   const token = param(req, 'token');
   const notification = await loadNotification(token);
   const respondedAt = new Date().toISOString();
+  const body = req.body as RespondToAssignmentNotificationInput;
+  // Only positions that may still take this answer: a declined one is never
+  // re-accepted from a link (the database guard refuses it too), and a
+  // repeated answer writes nothing.
+  const answerable: AssignmentStatus[] = body.status === 'confirmed' ? ['unconfirmed'] : ['unconfirmed', 'confirmed'];
   const updated = await unwrap(
-    adminDb.from('assignments').update({ status: req.body.status, notes: req.body.notes ?? null, responded_at: respondedAt }).eq('plan_id', notification.plan_id).eq('user_id', notification.user_id).select('id'),
+    adminDb
+      .from('assignments')
+      .update({ status: body.status, responded_at: respondedAt })
+      .eq('plan_id', notification.plan_id)
+      .eq('user_id', notification.user_id)
+      .in('status', answerable)
+      .select('id'),
   );
   await unwrap(adminDb.from('assignment_notifications').update({ responded_at: respondedAt }).eq('id', notification.id));
 
-  if (req.body.status === 'declined') {
+  if (body.status === 'declined' && (updated?.length ?? 0) > 0) {
     const assignment = await unwrap(adminDb.from('assignments').select('created_by').eq('plan_id', notification.plan_id).eq('user_id', notification.user_id).limit(1).maybeSingle());
     if (assignment?.created_by) {
       const scheduler = await unwrap(adminDb.from('profiles').select('email').eq('id', assignment.created_by).maybeSingle());
@@ -84,6 +101,6 @@ assignmentRespondRouter.post('/:token/respond', validateBody(respondToAssignment
     }
   }
 
-  const result: AssignmentRespondResult = { status: req.body.status, assignments_updated: updated?.length ?? 0 };
+  const result: AssignmentRespondResult = { status: body.status, assignments_updated: updated?.length ?? 0 };
   res.json(result);
 });

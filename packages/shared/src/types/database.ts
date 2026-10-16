@@ -290,12 +290,31 @@ export type AssignmentRow = {
   team_id: string;
   position_id: string | null;
   status: AssignmentStatus;
+  /** Scheduler-authored; the assignee cannot change it. */
   notes: string | null;
   notified_at: string | null;
   responded_at: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Append-only history of assignment status changes, written by a database
+ * trigger. Readable only by the assignee and the organization's schedulers,
+ * which is why decline reasons live here rather than on the assignment.
+ */
+export type AssignmentResponseRow = {
+  id: string;
+  organization_id: string;
+  assignment_id: string;
+  assignee_id: string;
+  /** Null when the change came from a respond link rather than a signed-in user. */
+  actor_id: string | null;
+  previous_status: AssignmentStatus;
+  status: AssignmentStatus;
+  response_note: string | null;
+  created_at: string;
 }
 
 export type AssignmentNotificationRow = {
@@ -403,6 +422,7 @@ export type Database = {
       plan_items: Table<PlanItemRow>;
       plan_position_needs: Table<PlanPositionNeedRow>;
       assignments: Table<AssignmentRow>;
+      assignment_responses: Table<AssignmentResponseRow>;
       assignment_notifications: Table<AssignmentNotificationRow>;
       calendar_feed_tokens: Table<CalendarFeedTokenRow>;
       notifications: Table<NotificationRow>;
@@ -417,6 +437,15 @@ export type Database = {
       create_organization: {
         Args: { p_name: string; p_slug: string; p_timezone?: string };
         Returns: OrganizationRow;
+      };
+      respond_to_own_assignment: {
+        Args: {
+          p_assignment_id: string;
+          p_status: AssignmentStatus;
+          p_expected_status: AssignmentStatus;
+          p_reason?: string | null;
+        };
+        Returns: AssignmentRow[];
       };
       scheduling_conflicts: {
         Args: {

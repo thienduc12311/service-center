@@ -262,6 +262,8 @@ export interface CalendarEvent {
 /** An assignment as it appears in "My Schedule". */
 export interface MyScheduleEntry {
   assignment: AssignmentRow;
+  /** The person's own reason from their latest decline; only they and schedulers can read it. */
+  response_note: string | null;
   plan: Pick<PlanRow, 'id' | 'title' | 'service_date' | 'location' | 'status'>;
   team: Pick<TeamRow, 'id' | 'name' | 'color'> | null;
   position: Pick<TeamPositionRow, 'id' | 'name'> | null;

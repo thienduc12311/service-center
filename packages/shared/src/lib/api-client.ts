@@ -58,6 +58,7 @@ import type {
 import type { ServiceTypePayload } from '../schemas/organization.js';
 import type { ServiceTypeSetupPayload } from '../schemas/service-type.js';
 import type { SetPlanPositionNeedsInput } from '../schemas/plan.js';
+import type { RespondToAssignmentNotificationRequest, RespondToAssignmentRequest } from '../schemas/assignment.js';
 import type {
   ListNotificationsQuery,
   MarkNotificationsReadInput,
@@ -324,7 +325,7 @@ export class ServiceCenterApi {
   updateAssignment = (id: string, body: Record<string, unknown>) =>
     this.request<AssignmentRow>('PATCH', `/api/v1/assignments/${id}`, body);
   deleteAssignment = (id: string) => this.request<void>('DELETE', `/api/v1/assignments/${id}`);
-  respondToAssignment = (id: string, body: { status: 'confirmed' | 'declined'; notes?: string | null }) =>
+  respondToAssignment = (id: string, body: RespondToAssignmentRequest) =>
     this.request<AssignmentRow>('POST', `/api/v1/assignments/${id}/respond`, body);
   notifyPlan = (planId: string) =>
     this.request<AssignmentNotificationSendResult>('POST', `/api/v1/plans/${planId}/notify`, {});
@@ -340,7 +341,7 @@ export class ServiceCenterApi {
 
   previewAssignmentResponse = (token: string) =>
     this.request<AssignmentRespondPreview>('GET', `/api/v1/assignment-responses/${encodeURIComponent(token)}`);
-  respondToAssignmentNotification = (token: string, body: { status: 'confirmed' | 'declined'; notes?: string | null }) =>
+  respondToAssignmentNotification = (token: string, body: RespondToAssignmentNotificationRequest) =>
     this.request<AssignmentRespondResult>('POST', `/api/v1/assignment-responses/${encodeURIComponent(token)}/respond`, body);
   getCalendarFeed = () => this.request<CalendarFeedTokenResponse>('GET', '/api/v1/me/calendar-feed');
   rotateCalendarFeed = () => this.request<CalendarFeedTokenResponse>('POST', '/api/v1/me/calendar-feed', {});

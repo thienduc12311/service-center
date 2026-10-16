@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   ASSIGNMENT_STATUS_LABELS,
   formatDateTime,
@@ -13,7 +13,6 @@ import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Avatar,
-  Button,
   Card,
   Divider,
   ErrorNotice,
@@ -25,15 +24,15 @@ import {
   screenPadding,
 } from '../../src/components/ui';
 import { PressableScale, Reveal } from '../../src/components/motion';
+import {
+  GroupStatusTag,
+  ResponsibilityList,
+  ScheduleTimes,
+} from '../../src/components/AssignmentResponses';
+import { groupStatus, mergeTimes, planResponsibilities } from '../../src/lib/schedule-groups';
+import { useAssignmentResponses } from '../../src/lib/useAssignmentResponses';
 import { statusAccent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
-
-type ResponseStatus = 'confirmed' | 'declined';
-
-interface RespondInput {
-  assignmentId: string;
-  status: ResponseStatus;
-}
 
 /** One team, and everyone on it for this plan. */
 interface TeamGroup {
@@ -43,26 +42,16 @@ interface TeamGroup {
 
 export default function PlanScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, queryScope, generation, isCurrentGeneration } = useAuth();
+  const { user, queryScope } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const queryClient = useQueryClient();
+  const responses = useAssignmentResponses(id);
 
   const plan = useQuery({
     queryKey: queryKeys.plan(queryScope, id),
     queryFn: () => api.getPlan(id!),
     enabled: Boolean(id && queryScope),
-  });
-
-  const respond = useMutation({
-    mutationFn: ({ assignmentId, status }: RespondInput) =>
-      api.respondToAssignment(assignmentId, { status }),
-    onSuccess: () => {
-      if (!isCurrentGeneration(generation)) return;
-      void queryClient.invalidateQueries({ queryKey: queryKeys.plan(queryScope, id) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.schedule(queryScope) });
-    },
   });
 
   const detail = plan.data;
@@ -85,6 +74,17 @@ export default function PlanScreen() {
     return numbers;
   }, [detail?.items]);
 
+  // Every position this person holds here — not just the first one found.
+  const mine = useMemo(
+    () => planResponsibilities(detail?.assignments ?? [], user?.profile.id),
+    [detail?.assignments, user?.profile.id],
+  );
+  const myTimes = useMemo(
+    () =>
+      mergeTimes(mine.map((item) => ({ assignmentId: item.assignmentId, times: detail?.times ?? [] }))),
+    [detail?.times, mine],
+  );
+
   if (plan.isLoading) {
     return (
       <Screen>
@@ -103,7 +103,7 @@ export default function PlanScreen() {
   }
   if (!detail) return null;
 
-  const mine = detail.assignments.find((assignment) => assignment.user_id === user?.profile.id);
+  const isPast = new Date(detail.service_date).getTime() < Date.now();
 
   return (
     <Screen>
@@ -139,30 +139,16 @@ export default function PlanScreen() {
           </View>
         </Reveal>
 
-        {mine && mine.status === 'unconfirmed' ? (
+        {mine.length ? (
           <Reveal index={1}>
             <Card>
-              <Label>Awaiting your reply</Label>
-              <Text style={styles.inviteText}>
-                {[mine.team?.name, mine.position?.name].filter(Boolean).join(' — ')}
-              </Text>
-              <ErrorNotice error={respond.error} />
-              <View style={styles.actionRow}>
-                <Button
-                  title="Decline"
-                  variant="secondary"
-                  style={styles.flex}
-                  loading={respond.isPending}
-                  onPress={() => respond.mutate({ assignmentId: mine.id, status: 'declined' })}
-                />
-                <Button
-                  title="Accept"
-                  icon="check"
-                  style={styles.flex}
-                  loading={respond.isPending}
-                  onPress={() => respond.mutate({ assignmentId: mine.id, status: 'confirmed' })}
-                />
+              <View style={styles.mineHeader}>
+                <Label>{mine.length > 1 ? 'Your positions' : 'Your position'}</Label>
+                <GroupStatusTag status={groupStatus(mine.map((item) => item.status))} />
               </View>
+              <ScheduleTimes times={myTimes} responsibilities={mine} />
+              <Divider />
+              <ResponsibilityList responsibilities={mine} responses={responses} canRespond={!isPast} />
             </Card>
           </Reveal>
         ) : null}
@@ -282,8 +268,12 @@ const makeStyles = (theme: Theme) =>
     heroMeta: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     times: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm, marginTop: theme.space.md },
 
-    inviteText: { ...theme.type.body, color: theme.color.ink },
-    actionRow: { flexDirection: 'row', gap: theme.space.md },
+    mineHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.space.md,
+    },
 
     orderHeader: {
       ...theme.type.label,
