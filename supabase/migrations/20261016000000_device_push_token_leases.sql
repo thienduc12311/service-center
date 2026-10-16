@@ -15,12 +15,12 @@ set
   lease_expires_at = last_seen_at + interval '30 days',
   -- Existing clients never received this raw secret, so their random hash is
   -- intentionally unclaimable; authenticated delete and lease expiry remain.
-  revocation_secret_hash = encode(gen_random_bytes(32), 'hex');
+  revocation_secret_hash = encode(extensions.gen_random_bytes(32), 'hex');
 
 alter table public.device_push_tokens
   alter column lease_expires_at set default (now() + interval '30 days'),
   alter column lease_expires_at set not null,
-  alter column revocation_secret_hash set default encode(gen_random_bytes(32), 'hex'),
+  alter column revocation_secret_hash set default encode(extensions.gen_random_bytes(32), 'hex'),
   alter column revocation_secret_hash set not null,
   add constraint device_push_tokens_lease_after_seen
     check (lease_expires_at > last_seen_at),
