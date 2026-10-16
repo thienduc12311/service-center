@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import type { SongWithArrangements } from '@service-center/shared';
 import { api } from '../../src/lib/api';
+import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Card,
@@ -24,16 +25,16 @@ import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
 export default function SongsScreen() {
-  const { organizationId } = useAuth();
+  const { queryScope } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [query, setQuery] = useState('');
 
   const songs = useQuery({
-    queryKey: ['songs', organizationId, query],
+    queryKey: queryKeys.songs(queryScope, query),
     queryFn: () => api.listSongs({ q: query || undefined, per_page: 100 }),
-    enabled: Boolean(organizationId),
+    enabled: Boolean(queryScope),
   });
 
   const results = songs.data?.data ?? [];

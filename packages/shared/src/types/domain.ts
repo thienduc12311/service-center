@@ -2,6 +2,7 @@ import type {
   ArrangementRow,
   AssignmentRow,
   BlockoutRow,
+  DevicePlatform,
   MemberStatus,
   NotificationRow,
   OrgRole,
@@ -29,6 +30,15 @@ export interface CurrentUser {
     organization: OrganizationRow;
     role: OrgRole;
   }>;
+}
+
+/** Returned once per device registration; keep the revocation secret in memory only. */
+export interface DeviceRegistration {
+  token: string;
+  platform: DevicePlatform;
+  device_name: string | null;
+  lease_expires_at: string;
+  revocation_secret: string;
 }
 
 export interface PersonSummary {

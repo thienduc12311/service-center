@@ -3,19 +3,27 @@ import {
   listNotificationsQuerySchema,
   markNotificationsReadSchema,
   registerDeviceSchema,
+  revokeDeviceRegistrationSchema,
   type ListNotificationsQuery,
   type MarkNotificationsReadInput,
   type NotificationFeed,
   type NotificationFeedItem,
   type RegisterDeviceInput,
+  type RevokeDeviceRegistrationInput,
   type UnreadNotificationCount,
 } from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { adminDb, raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
+import { HttpError } from '../lib/errors.js';
+import {
+  generateDeviceRegistration,
+  hashDeviceRevocationSecret,
+} from '../services/device-registrations.js';
 
 export const notificationsRouter: Router = Router();
 export const devicesRouter: Router = Router();
+export const deviceRevocationsRouter: Router = Router();
 
 /** Unread across the whole organization — what the bell's badge shows. */
 const unreadCountFor = async (db: Db, orgId: string, userId: string): Promise<number> => {
@@ -61,6 +69,20 @@ notificationsRouter.get('/unread-count', async (req, res) => {
   res.json(body);
 });
 
+notificationsRouter.get('/:id', async (req, res) => {
+  const item = await unwrap(
+    raw(req.db)
+      .from('notifications')
+      .select('*, plan:plans(id, title, service_date)')
+      .eq('id', param(req, 'id'))
+      .eq('organization_id', req.orgId)
+      .eq('user_id', req.auth.userId)
+      .maybeSingle(),
+  );
+  if (!item) throw HttpError.notFound('Notification not found');
+  res.json(item as unknown as NotificationFeedItem);
+});
+
 /** Marks the given notifications read, or the whole feed when `ids` is omitted. */
 notificationsRouter.post('/read', validateBody(markNotificationsReadSchema), async (req, res) => {
   const { ids } = req.body as MarkNotificationsReadInput;
@@ -104,6 +126,7 @@ notificationsRouter.delete('/:id', async (req, res) => {
  */
 devicesRouter.post('/', validateBody(registerDeviceSchema), async (req, res) => {
   const { token, platform, device_name } = req.body as RegisterDeviceInput;
+  const registration = generateDeviceRegistration();
   const device = await unwrapOne(
     adminDb
       .from('device_push_tokens')
@@ -113,15 +136,40 @@ devicesRouter.post('/', validateBody(registerDeviceSchema), async (req, res) => 
           token,
           platform,
           device_name: device_name ?? null,
-          last_seen_at: new Date().toISOString(),
+          last_seen_at: registration.lastSeenAt,
+          lease_expires_at: registration.leaseExpiresAt,
+          revocation_secret_hash: registration.revocationSecretHash,
         },
         { onConflict: 'token' },
       )
-      .select('*')
+      .select('token, platform, device_name, lease_expires_at')
       .single(),
   );
-  res.status(201).json(device);
+  res.status(201).json({
+    ...device,
+    revocation_secret: registration.revocationSecret,
+  });
 });
+
+/**
+ * Narrow fallback for a registration that finishes after auth disappears.
+ * Always returns 204 so token ownership/existence is not disclosed.
+ */
+deviceRevocationsRouter.post(
+  '/',
+  validateBody(revokeDeviceRegistrationSchema),
+  async (req, res) => {
+    const { token, revocation_secret } = req.body as RevokeDeviceRegistrationInput;
+    await unwrap(
+      adminDb
+        .from('device_push_tokens')
+        .delete()
+        .eq('token', token)
+        .eq('revocation_secret_hash', hashDeviceRevocationSecret(revocation_secret)),
+    );
+    res.status(204).end();
+  },
+);
 
 devicesRouter.delete('/:token', async (req, res) => {
   await unwrap(

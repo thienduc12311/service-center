@@ -3,6 +3,8 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { parseChordPro } from '@service-center/shared';
 import { api } from '../../src/lib/api';
+import { queryKeys } from '../../src/lib/query-keys';
+import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Button,
   Card,
@@ -20,13 +22,14 @@ import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
 export default function SongbookDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { queryScope } = useAuth();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   const book = useQuery({
-    queryKey: ['songbook', id],
+    queryKey: queryKeys.songbook(queryScope, id),
     queryFn: () => api.getSongbook(id!),
-    enabled: Boolean(id),
+    enabled: Boolean(id && queryScope),
   });
 
   if (book.isLoading) {

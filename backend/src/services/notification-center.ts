@@ -7,6 +7,7 @@ import {
   type PushMessage,
 } from '../model/notification.model.js';
 import { sendPushMessages } from './expo-push.js';
+import { activeDeviceTokens } from './device-registrations.js';
 
 /**
  * Writes the in-app feed rows behind the bell icon and pushes them to every
@@ -56,9 +57,7 @@ const pushToDevices = async (notifications: NotificationRow[]): Promise<void> =>
   if (notifications.length === 0) return;
   const userIds = [...new Set(notifications.map((n) => n.user_id))];
 
-  const devices = await unwrap(
-    adminDb.from('device_push_tokens').select('user_id, token').in('user_id', userIds),
-  );
+  const devices = await activeDeviceTokens(adminDb, userIds);
   if (!devices?.length) return;
 
   const tokensByUser = new Map<string, string[]>();

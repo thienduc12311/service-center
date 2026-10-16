@@ -335,6 +335,10 @@ export type DevicePushTokenRow = {
   device_name: string | null;
   created_at: string;
   last_seen_at: string;
+  /** Server-enforced upper bound for push delivery until the app renews. */
+  lease_expires_at: string;
+  /** SHA-256 only; the raw revocation secret is never persisted server-side. */
+  revocation_secret_hash: string;
 }
 
 export type CalendarFeedTokenRow = {

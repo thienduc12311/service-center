@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { formatDate, isAdmin, STORAGE_BUCKETS } from '@service-center/shared';
 import { api } from '../../src/lib/api';
+import { queryKeys } from '../../src/lib/query-keys';
 import { supabase } from '../../src/lib/supabase';
 import { base64ToBytes } from '../../src/lib/base64';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -34,7 +35,17 @@ const SCHEMES: readonly SegmentOption<ColorSchemeName>[] = [
 ];
 
 export default function ProfileScreen() {
-  const { user, role, organizationId, refreshUser, signOut, switchOrganization } = useAuth();
+  const {
+    user,
+    role,
+    organizationId,
+    queryScope,
+    generation,
+    isCurrentGeneration,
+    refreshUser,
+    signOut,
+    switchOrganization,
+  } = useAuth();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const queryClient = useQueryClient();
@@ -46,28 +57,36 @@ export default function ProfileScreen() {
   const [organizationError, setOrganizationError] = useState<unknown>(null);
   const [creatingOrganization, setCreatingOrganization] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<unknown>(null);
 
   const blockouts = useQuery({
-    queryKey: ['blockouts', organizationId],
+    queryKey: queryKeys.blockouts(queryScope),
     queryFn: () => api.listBlockouts({ scope: 'mine' }),
-    enabled: Boolean(organizationId),
+    enabled: Boolean(queryScope),
   });
 
   const save = useMutation({
     mutationFn: () => api.updateMe({ full_name: fullName, phone: phone || null }),
     onSuccess: async () => {
+      if (!isCurrentGeneration(generation)) return;
       await refreshUser();
+      if (!isCurrentGeneration(generation)) return;
       Alert.alert('Saved', 'Your profile has been updated.');
     },
   });
 
   const removeBlockout = useMutation({
     mutationFn: (id: string) => api.deleteBlockout(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['blockouts', organizationId] }),
+    onSuccess: () => {
+      if (!isCurrentGeneration(generation)) return;
+      return queryClient.invalidateQueries({ queryKey: queryKeys.blockouts(queryScope) });
+    },
   });
 
   const refreshBlockouts = async (): Promise<void> => {
-    await queryClient.invalidateQueries({ queryKey: ['blockouts', organizationId] });
+    if (!isCurrentGeneration(generation)) return;
+    await queryClient.invalidateQueries({ queryKey: queryKeys.blockouts(queryScope) });
   };
 
   const organization = user?.memberships.find(
@@ -89,19 +108,22 @@ export default function ProfileScreen() {
         slug,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
+      if (!isCurrentGeneration(generation)) return;
       setNewOrganizationName('');
       await refreshUser();
+      if (!isCurrentGeneration(generation)) return;
       await switchOrganization(created.id);
     } catch (error) {
-      setOrganizationError(error);
+      if (isCurrentGeneration(generation)) setOrganizationError(error);
     } finally {
-      setCreatingOrganization(false);
+      if (isCurrentGeneration(generation)) setCreatingOrganization(false);
     }
   };
 
   const updateLogo = async (): Promise<void> => {
     if (!organizationId) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!isCurrentGeneration(generation)) return;
     if (!permission.granted) {
       Alert.alert('Permission needed', 'Allow photo access to choose a logo.');
       return;
@@ -111,6 +133,7 @@ export default function ProfileScreen() {
       base64: true,
       quality: 0.85,
     });
+    if (!isCurrentGeneration(generation)) return;
     const asset = result.canceled ? null : result.assets[0];
     if (!asset?.base64) return;
 
@@ -122,17 +145,31 @@ export default function ProfileScreen() {
         .from(STORAGE_BUCKETS.organizationLogos)
         .upload(path, base64ToBytes(asset.base64), { contentType: 'image/jpeg' });
       if (error) throw error;
+      if (!isCurrentGeneration(generation)) return;
       const { data } = supabase.storage.from(STORAGE_BUCKETS.organizationLogos).getPublicUrl(path);
       await api.updateOrganization(organizationId, { logo_url: data.publicUrl });
+      if (!isCurrentGeneration(generation)) return;
       await refreshUser();
     } catch (error) {
-      setOrganizationError(error);
+      if (isCurrentGeneration(generation)) setOrganizationError(error);
     } finally {
-      setUploadingLogo(false);
+      if (isCurrentGeneration(generation)) setUploadingLogo(false);
     }
   };
 
   const memberships = user?.memberships ?? [];
+
+  const submitSignOut = async (): Promise<void> => {
+    setSigningOut(true);
+    setSignOutError(null);
+    try {
+      await signOut();
+    } catch (error) {
+      if (!isCurrentGeneration(generation)) return;
+      setSignOutError(error);
+      setSigningOut(false);
+    }
+  };
 
   return (
     <Screen safeTop>
@@ -270,7 +307,16 @@ export default function ProfileScreen() {
         </Reveal>
 
         <Reveal index={6}>
-          <Button title="Sign out" icon="signOut" variant="danger" onPress={() => void signOut()} />
+          <View style={styles.signOut}>
+            <ErrorNotice error={signOutError} />
+            <Button
+              title="Sign out"
+              icon="signOut"
+              variant="danger"
+              loading={signingOut}
+              onPress={() => void submitSignOut()}
+            />
+          </View>
         </Reveal>
       </ScrollView>
     </Screen>
@@ -286,6 +332,7 @@ const makeStyles = (theme: Theme) =>
     email: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     membership: { ...theme.type.label, color: theme.color.inkFaint, marginTop: theme.space.sm },
     body: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    signOut: { gap: theme.space.md },
     blockout: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, paddingVertical: theme.space.md },
     blockoutRange: { ...theme.type.numeric, color: theme.color.ink },
     blockoutReason: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: 2 },

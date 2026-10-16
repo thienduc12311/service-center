@@ -13,6 +13,7 @@ import {
   type CalendarEvent,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
+import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Card,
@@ -50,7 +51,7 @@ interface AgendaDay {
  * mobile shows the same data as a run of dated cards.
  */
 export default function CalendarScreen() {
-  const { organizationId } = useAuth();
+  const { queryScope } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -63,9 +64,9 @@ export default function CalendarScreen() {
   );
 
   const calendar = useQuery({
-    queryKey: ['calendar', organizationId, range, scope],
+    queryKey: queryKeys.calendar(queryScope, range, scope),
     queryFn: () => api.calendar({ ...range, ...(scope === 'mine' ? { mine: true } : {}) }),
-    enabled: Boolean(organizationId),
+    enabled: Boolean(queryScope),
   });
 
   const days = useMemo<AgendaDay[]>(() => {

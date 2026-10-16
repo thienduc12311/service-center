@@ -8,7 +8,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { ApiError } from '@service-center/shared';
 import { AuthProvider, useAuth } from '../src/providers/AuthProvider';
 import { NotificationsProvider } from '../src/providers/NotificationsProvider';
-import { Loading } from '../src/components/ui';
+import { NavigationIntentProvider } from '../src/providers/NavigationIntentProvider';
+import { Button, ErrorNotice, Loading } from '../src/components/ui';
 import { fonts } from '../src/lib/theme';
 import { useTheme } from '../src/lib/useTheme';
 import '../global.css';
@@ -29,7 +30,7 @@ const queryClient = new QueryClient({
 
 /** Keeps the navigator and the session in sync in both directions. */
 const RootNavigator = () => {
-  const { session, loading } = useAuth();
+  const { session, loading, ready, error, retry, generation } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const theme = useTheme();
@@ -39,9 +40,11 @@ const RootNavigator = () => {
     const inAuthGroup = segments[0] === '(auth)';
     // Reachable from an invite link before the user has a session — the
     // screen itself handles what to show if they're already signed in.
-    const inAcceptInvite = segments[0] === 'accept-invite';
+    const inPublicRoute = ['accept-invite', 'respond', 'link-result'].includes(
+      String(segments[0]),
+    );
 
-    if (!session && !inAuthGroup && !inAcceptInvite) router.replace('/(auth)/login');
+    if (!session && !inAuthGroup && !inPublicRoute) router.replace('/(auth)/login');
     else if (session && inAuthGroup) router.replace('/(tabs)');
   }, [session, loading, segments, router]);
 
@@ -53,8 +56,18 @@ const RootNavigator = () => {
     );
   }
 
+  if (session && !ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.color.canvas, justifyContent: 'center', padding: 24, gap: 16 }}>
+        <ErrorNotice error={error ?? new Error('Your account could not be loaded.')} />
+        <Button title="Try again" onPress={() => void retry()} />
+      </View>
+    );
+  }
+
   return (
     <Stack
+      key={`session-${generation}`}
       screenOptions={{
         headerStyle: { backgroundColor: theme.color.surface },
         headerShadowVisible: true,
@@ -66,6 +79,9 @@ const RootNavigator = () => {
     >
       <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
       <Stack.Screen name="accept-invite" options={{ headerShown: false }} />
+      <Stack.Screen name="respond" options={{ headerShown: false }} />
+      <Stack.Screen name="link-result" options={{ title: 'Link' }} />
+      <Stack.Screen name="open/plan/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="plan/[id]" options={{ title: 'Plan' }} />
       <Stack.Screen name="song/[id]" options={{ title: 'Song' }} />
@@ -85,8 +101,10 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <NotificationsProvider>
-            <StatusBar style="auto" />
-            <RootNavigator />
+            <NavigationIntentProvider>
+              <StatusBar style="auto" />
+              <RootNavigator />
+            </NavigationIntentProvider>
           </NotificationsProvider>
         </AuthProvider>
       </QueryClientProvider>

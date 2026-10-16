@@ -6,7 +6,11 @@ require('dotenv/config');
 // `expo start`, and require WEB_APP_DOMAIN to point at a real domain that
 // hosts the verification files under frontend/public/.well-known/ — so this
 // is left unset (and the associated-domain config omitted) for local dev.
-const webAppDomain = process.env.WEB_APP_DOMAIN;
+const webAppDomain = process.env.EXPO_PUBLIC_WEB_APP_DOMAIN || process.env.WEB_APP_DOMAIN;
+
+if (webAppDomain && !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/i.test(webAppDomain)) {
+  throw new Error('EXPO_PUBLIC_WEB_APP_DOMAIN must be a hostname without a protocol or path.');
+}
 
 /** @type {import('expo/config').ExpoConfig} */
 const config = {
@@ -34,7 +38,10 @@ const config = {
             {
               action: 'VIEW',
               autoVerify: true,
-              data: [{ scheme: 'https', host: webAppDomain, pathPrefix: '/accept-invite' }],
+              data: [
+                { scheme: 'https', host: webAppDomain, path: '/accept-invite' },
+                { scheme: 'https', host: webAppDomain, path: '/respond' },
+              ],
               category: ['BROWSABLE', 'DEFAULT'],
             },
           ],
@@ -54,6 +61,7 @@ const config = {
     supabaseUrl: 'http://127.0.0.1:54321',
     supabaseAnonKey: '',
     apiUrl: 'http://localhost:4000',
+    webAppDomain,
   },
 };
 

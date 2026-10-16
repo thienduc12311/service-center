@@ -17,6 +17,7 @@ import {
   type SongWithArrangements,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
+import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Button,
@@ -115,23 +116,23 @@ const parseChartRoute = (params: SongRouteParams): ChartRoute => {
 export default function SongScreen() {
   const params: SongRouteParams = useLocalSearchParams();
   const route = parseChartRoute(params);
-  const { organizationId } = useAuth();
+  const { organizationId, queryScope } = useAuth();
   const styles = useThemedStyles(makeStyles);
 
   const songId = route.kind === 'invalid' ? null : route.songId;
   const planId = route.kind === 'plan' ? route.planId : null;
 
   const song = useQuery({
-    queryKey: ['song', organizationId, songId],
+    queryKey: queryKeys.song(queryScope, songId),
     queryFn: () => api.getSong(songId!),
-    enabled: Boolean(songId && organizationId),
+    enabled: Boolean(songId && queryScope),
   });
   // The plan is re-read rather than trusted from the link, so an item id only
   // yields chart context when this person can see the plan it belongs to.
   const plan = useQuery({
-    queryKey: ['plan', organizationId, planId],
+    queryKey: queryKeys.plan(queryScope, planId),
     queryFn: () => api.getPlan(planId!),
-    enabled: Boolean(planId && organizationId),
+    enabled: Boolean(planId && queryScope),
   });
 
   if (route.kind === 'invalid') return <Unavailable reason="invalid_link" />;

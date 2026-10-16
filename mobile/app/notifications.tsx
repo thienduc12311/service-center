@@ -25,7 +25,7 @@ const PAGE_SIZE = 30;
 
 /** Everything the bell has collected, newest first. */
 export default function NotificationsScreen() {
-  const { organizationId } = useAuth();
+  const { queryScope, generation, isCurrentGeneration } = useAuth();
   const { unread, refresh } = useNotifications();
   const router = useRouter();
   const theme = useTheme();
@@ -33,17 +33,18 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const feed = useInfiniteQuery({
-    queryKey: notificationKeys.feed(organizationId),
+    queryKey: notificationKeys.feed(queryScope),
     queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
       api.listNotifications({ limit: PAGE_SIZE, before: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
-    enabled: Boolean(organizationId),
+    enabled: Boolean(queryScope),
   });
 
   const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: notificationKeys.all });
-  }, [queryClient]);
+    if (!isCurrentGeneration(generation)) return;
+    await queryClient.invalidateQueries({ queryKey: notificationKeys.all(queryScope) });
+  }, [generation, isCurrentGeneration, queryClient, queryScope]);
 
   const markRead = useMutation({
     mutationFn: (ids?: string[]) => api.markNotificationsRead(ids ? { ids } : {}),
@@ -58,8 +59,8 @@ export default function NotificationsScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([feed.refetch(), refresh()]);
-    setRefreshing(false);
-  }, [feed, refresh]);
+    if (isCurrentGeneration(generation)) setRefreshing(false);
+  }, [feed, generation, isCurrentGeneration, refresh]);
 
   const open = (item: NotificationFeedItem): void => {
     if (!item.read_at) markRead.mutate([item.id]);

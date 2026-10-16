@@ -8,3 +8,4 @@ export * from './service-type.js';
 export * from './assignment.js';
 export * from './songbook.js';
 export * from './notification.js';
+export * from './navigation.js';

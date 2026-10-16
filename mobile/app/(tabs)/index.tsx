@@ -9,6 +9,7 @@ import {
   type MyScheduleEntry,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
+import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Button,
@@ -35,29 +36,32 @@ interface RespondInput {
 }
 
 export default function MyScheduleScreen() {
-  const { organizationId } = useAuth();
+  const { queryScope, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
 
   const schedule = useQuery({
-    queryKey: ['schedule', organizationId],
+    queryKey: queryKeys.schedule(queryScope),
     queryFn: () => api.mySchedule(),
-    enabled: Boolean(organizationId),
+    enabled: Boolean(queryScope),
   });
 
   const respond = useMutation({
     mutationFn: ({ assignmentId, status }: RespondInput) =>
       api.respondToAssignment(assignmentId, { status }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedule', organizationId] }),
+    onSuccess: () => {
+      if (!isCurrentGeneration(generation)) return;
+      return queryClient.invalidateQueries({ queryKey: queryKeys.schedule(queryScope) });
+    },
   });
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     await schedule.refetch();
-    setRefreshing(false);
-  }, [schedule]);
+    if (isCurrentGeneration(generation)) setRefreshing(false);
+  }, [generation, isCurrentGeneration, schedule]);
 
   const entries = useMemo(() => schedule.data ?? [], [schedule.data]);
   const awaiting = entries.filter((entry) => entry.assignment.status === 'unconfirmed').length;
