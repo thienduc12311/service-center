@@ -69,11 +69,14 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
     mutationFn: () =>
       api.updatePlan(plan.id, {
         times: drafts.map((draft) => ({
+          id: draft.id,
           kind: draft.kind,
           name: draft.name.trim() || null,
           starts_at: new Date(`${draft.date}T${draft.from}`).toISOString(),
           ends_at: new Date(`${draft.date}T${draft.to}`).toISOString(),
+          sort_order: drafts.findIndex((item) => item.id === draft.id),
         })),
+        expected_revision: plan.content_revision,
       }),
     onSuccess: async () => {
       await invalidate();

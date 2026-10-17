@@ -11,10 +11,14 @@ import type {
 export interface ScheduleResponsibility {
   assignmentId: string;
   status: AssignmentStatus;
+  /** Exact per-time answers may differ even though the legacy aggregate is pending. */
+  scopeStatus: ScheduleGroupStatus;
   /** The person's own reason for a decline; only on My Schedule, which may read it. */
   responseNote: string | null;
   /** The scheduler's note to the person. */
   notes: string | null;
+  requestRevision: number;
+  timeResponses: MyScheduleEntry['time_responses'];
   team: Pick<TeamRow, 'id' | 'name' | 'color'> | null;
   position: Pick<TeamPositionRow, 'id' | 'name'> | null;
 }
@@ -73,7 +77,7 @@ export const scheduleWindowQuery = (window: ScheduleWindow, now: Date): Schedule
   return { include_past: 'true', from: from.toISOString(), to: now.toISOString() };
 };
 
-export const groupStatus = (statuses: readonly AssignmentStatus[]): ScheduleGroupStatus => {
+export const groupStatus = (statuses: readonly ScheduleGroupStatus[]): ScheduleGroupStatus => {
   const distinct = new Set(statuses);
   if (distinct.size === 1) return statuses[0]!;
   return 'mixed';
@@ -126,19 +130,26 @@ const toResponsibility = (
   team: ScheduleResponsibility['team'],
   position: ScheduleResponsibility['position'],
   responseNote: string | null,
-): ScheduleResponsibility => ({
-  assignmentId: assignment.id,
-  status: assignment.status,
-  responseNote,
-  notes: assignment.notes,
-  team,
-  position,
-});
+  timeResponses: MyScheduleEntry['time_responses'] = [],
+): ScheduleResponsibility => {
+  const exactStatuses = timeResponses.map((response) => response.status);
+  return {
+    assignmentId: assignment.id,
+    status: assignment.status,
+    scopeStatus: exactStatuses.length ? groupStatus(exactStatuses) : assignment.status,
+    responseNote,
+    notes: assignment.notes,
+    requestRevision: assignment.request_revision,
+    timeResponses,
+    team,
+    position,
+  };
+};
 
 const summarize = (
   responsibilities: ScheduleResponsibility[],
 ): Pick<SchedulePlanGroup, 'status' | 'pendingCount'> => ({
-  status: groupStatus(responsibilities.map((item) => item.status)),
+  status: groupStatus(responsibilities.map((item) => item.scopeStatus)),
   pendingCount: responsibilities.filter((item) => item.status === 'unconfirmed').length,
 });
 
@@ -153,7 +164,7 @@ export const groupSchedule = (
 ): SchedulePlanGroup[] => {
   const buckets = new Map<string, MyScheduleEntry[]>();
   for (const entry of entries) {
-    const key = `${organizationId}:${entry.assignment.user_id}:${entry.plan.id}`;
+    const key = `${organizationId}:${entry.assignment.person_id}:${entry.plan.id}`;
     const bucket = buckets.get(key);
     if (bucket) {
       if (!bucket.some((existing) => existing.assignment.id === entry.assignment.id)) bucket.push(entry);
@@ -165,13 +176,19 @@ export const groupSchedule = (
   const groups = [...buckets.entries()].map(([key, bucket]): SchedulePlanGroup => {
     const first = bucket[0]!;
     const responsibilities = bucket
-      .map((entry) => toResponsibility(entry.assignment, entry.team, entry.position, entry.response_note))
+      .map((entry) => toResponsibility(
+        entry.assignment,
+        entry.team,
+        entry.position,
+        entry.response_note,
+        entry.time_responses,
+      ))
       .sort(byTeamThenPosition);
     const times = mergeTimes(bucket.map((entry) => ({ assignmentId: entry.assignment.id, times: entry.times })));
     return {
       key,
       organizationId,
-      personId: first.assignment.user_id,
+      personId: first.assignment.person_id,
       plan: first.plan,
       startsAt: serviceStart(times, first.plan.service_date),
       responsibilities,
@@ -207,6 +224,12 @@ export const planResponsibilities = (
   userId
     ? assignments
         .filter((assignment) => assignment.user_id === userId)
-        .map((assignment) => toResponsibility(assignment, assignment.team, assignment.position, null))
+        .map((assignment) => toResponsibility(
+          assignment,
+          assignment.team,
+          assignment.position,
+          null,
+          assignment.time_responses,
+        ))
         .sort(byTeamThenPosition)
     : [];

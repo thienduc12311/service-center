@@ -11,7 +11,7 @@ export interface TeamsTabProps {
   /** plans.edit: may change needed positions on every team. */
   canEditPlan: boolean;
   /** Releases exactly these reviewed prepared requests. */
-  onRelease: (assignmentIds: string[]) => void;
+  onRelease: (assignments: AssignmentDetail[]) => void;
   releasing: boolean;
   currentUserId: string | null;
   editingNeeds: boolean;
@@ -110,7 +110,7 @@ interface TeamColumnProps {
   team: PlanTeamView;
   canManage: boolean;
   canEditNeeds: boolean;
-  onRelease: (assignmentIds: string[]) => void;
+  onRelease: (assignments: AssignmentDetail[]) => void;
   releasing: boolean;
   currentUserId: string | null;
   editingNeeds: boolean;
@@ -416,7 +416,7 @@ const ReleaseReview = ({
 }: {
   prepared: AssignmentDetail[];
   releasing: boolean;
-  onRelease: (assignmentIds: string[]) => void;
+  onRelease: (assignments: AssignmentDetail[]) => void;
 }) => {
   const [reviewing, setReviewing] = useState<AssignmentDetail[] | null>(null);
 
@@ -441,7 +441,7 @@ const ReleaseReview = ({
           className="!py-1 text-xs"
           loading={releasing}
           onClick={() => {
-            onRelease(reviewing.map((assignment) => assignment.id));
+            onRelease(reviewing);
             setReviewing(null);
           }}
         >

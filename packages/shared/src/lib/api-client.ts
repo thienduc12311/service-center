@@ -33,6 +33,9 @@ import type {
   TeamPolicySettings,
   CalendarEvent,
   AssignmentNotificationSendResult,
+  AssignmentResponseCommitResult,
+  AssignmentResponseReview,
+  AssignmentReleasePreview,
   AssignmentRespondPreview,
   AssignmentRespondResult,
   CalendarFeedTokenResponse,
@@ -87,6 +90,7 @@ import type {
   ExplainCapabilityQuery,
   MoveFolderRequest,
   MoveServiceTypeRequest,
+  ReleaseAssignmentsPreviewInput,
   ReleaseAssignmentsRequest,
   ReplaceScopeGrantsInput,
   RosterVisibilityInput,
@@ -94,7 +98,12 @@ import type {
   UpdateFolderInput,
   UpdateMemberAccessInput,
 } from '../schemas/access.js';
-import type { RespondToAssignmentNotificationRequest, RespondToAssignmentRequest } from '../schemas/assignment.js';
+import type {
+  PreviewAssignmentResponsesInput,
+  RespondToAssignmentNotificationRequest,
+  RespondToAssignmentRequest,
+  RespondToAssignmentSnapshotsRequest,
+} from '../schemas/assignment.js';
 import type {
   ListNotificationsQuery,
   MarkNotificationsReadInput,
@@ -289,7 +298,7 @@ export class ServiceCenterApi {
     this.request<TeamPositionRow>('PATCH', `/api/v1/teams/${teamId}/positions/${positionId}`, body);
   deletePosition = (teamId: string, positionId: string) =>
     this.request<void>('DELETE', `/api/v1/teams/${teamId}/positions/${positionId}`);
-  addTeamMember = (teamId: string, body: { user_id: string; position_id?: string | null }) =>
+  addTeamMember = (teamId: string, body: { person_id?: string; user_id?: string; position_id?: string | null }) =>
     this.request<void>('POST', `/api/v1/teams/${teamId}/members`, body);
   removeTeamMember = (teamId: string, membershipId: string) =>
     this.request<void>('DELETE', `/api/v1/teams/${teamId}/members/${membershipId}`);
@@ -368,10 +377,16 @@ export class ServiceCenterApi {
   deleteAssignment = (id: string) => this.request<void>('DELETE', `/api/v1/assignments/${id}`);
   respondToAssignment = (id: string, body: RespondToAssignmentRequest) =>
     this.request<AssignmentRow>('POST', `/api/v1/assignments/${id}/respond`, body);
+  previewAssignmentResponses = (body: PreviewAssignmentResponsesInput) =>
+    this.request<AssignmentResponseReview[]>('POST', '/api/v1/assignments/responses/preview', body);
+  respondToAssignmentSnapshots = (body: RespondToAssignmentSnapshotsRequest) =>
+    this.request<AssignmentResponseCommitResult>('POST', '/api/v1/assignments/responses/commit', body);
   notifyPlan = (planId: string, body: NotifyPlanInput = {}) =>
     this.request<AssignmentNotificationSendResult>('POST', `/api/v1/plans/${planId}/notify`, body);
 
   /** Releases exactly the reviewed prepared requests, notifying in the same transaction. */
+  previewAssignmentRelease = (planId: string, body: ReleaseAssignmentsPreviewInput) =>
+    this.request<AssignmentReleasePreview>('POST', `/api/v1/plans/${planId}/release/preview`, body);
   releaseAssignments = (planId: string, body: ReleaseAssignmentsRequest) =>
     this.request<{ released: AssignmentRow[] }>('POST', `/api/v1/plans/${planId}/release`, body);
   setResponseOwner = (body: SetResponseOwnerInput) =>

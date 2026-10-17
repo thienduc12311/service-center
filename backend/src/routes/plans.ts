@@ -86,12 +86,34 @@ plansRouter.post('/', requireCapability('plans.edit'), validateBody(createPlanSc
 });
 
 plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePlanSchema), async (req, res) => {
-  const { times, ...plan } = req.body as UpdatePlanInput;
-  const existingPlan = await unwrapOne(req.db.from('plans').select('id, location, organization_id').eq('id', param(req, 'id')).eq('organization_id', req.orgId).single());
+  const { times, expected_revision, ...plan } = req.body as UpdatePlanInput;
+  const existingPlan = await unwrapOne(req.db.from('plans').select('id, location, organization_id, content_revision').eq('id', param(req, 'id')).eq('organization_id', req.orgId).single());
   const existingTimes = times
-    ? (await unwrap(req.db.from('plan_times').select('id, starts_at, ends_at').eq('plan_id', param(req, 'id')).order('starts_at'))) ?? []
+    ? (await unwrap(req.db.from('plan_times').select('*').eq('plan_id', param(req, 'id')).order('sort_order'))) ?? []
     : [];
 
+  // The editor sends the complete set with stable IDs. The RPC locks the plan,
+  // checks its revision, preserves IDs across reorder and rejects deleting a
+  // selected attendance time until the scheduler reviews affected requests.
+  if (times) {
+    await unwrap(
+      req.db.rpc('replace_plan_times', {
+        p_plan_id: param(req, 'id'),
+        p_times: times.map((time, index) => ({
+          id: time.id,
+          kind: time.kind,
+          name: time.name ?? null,
+          starts_at: time.starts_at,
+          ends_at: time.ends_at,
+          sort_order: time.sort_order ?? index,
+        })),
+        p_expected_revision: expected_revision ?? existingPlan.content_revision,
+      }),
+    );
+  }
+
+  // Do this after the versioned time replacement so a stale time editor cannot
+  // partially apply unrelated plan fields before receiving its 409.
   if (Object.keys(plan).length > 0) {
     const updated = await unwrap(
       req.db
@@ -105,24 +127,9 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
     if (!updated) throw HttpError.notFound('Plan not found');
   }
 
-  // The editor sends the complete set; update by position so event UIDs remain stable.
-  if (times) {
-    for (const [index, time] of times.entries()) {
-      const existing = existingTimes[index];
-      if (existing) {
-        await unwrap(req.db.from('plan_times').update(time).eq('id', existing.id).eq('plan_id', param(req, 'id')));
-      } else {
-        await unwrap(req.db.from('plan_times').insert({ ...time, plan_id: param(req, 'id') } as never));
-      }
-    }
-    for (const stale of existingTimes.slice(times.length)) {
-      await unwrap(req.db.from('plan_times').delete().eq('id', stale.id).eq('plan_id', param(req, 'id')));
-    }
-  }
-
   const timesChanged = times
-    ? times.length !== existingTimes.length || times.some((time, index) => {
-        const previous = existingTimes[index];
+    ? times.length !== existingTimes.length || times.some((time) => {
+        const previous = existingTimes.find((item) => item.id === time.id);
         return !previous || previous.starts_at !== time.starts_at || previous.ends_at !== time.ends_at;
       })
     : false;

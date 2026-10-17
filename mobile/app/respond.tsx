@@ -24,6 +24,7 @@ const FAILURE_MESSAGE: Record<AssignmentResponseFailure, string> = {
   invalid: "This response link isn't valid. Ask the scheduler to send a new one.",
   expired: 'This response link has expired. Ask the scheduler to send a new one.',
   used: 'This response link has already been used.',
+  stale: 'This request changed after the link was sent. Ask the scheduler to send a fresh response link.',
   network: "We couldn't check this response link. Check your connection and try again.",
 };
 
@@ -91,7 +92,7 @@ export default function RespondScreen() {
 
         {stage === 'loading' ? <Loading label="Checking your assignment" /> : null}
 
-        {stage === 'invalid' || stage === 'expired' || stage === 'used' || stage === 'network' ? (
+        {stage === 'invalid' || stage === 'expired' || stage === 'used' || stage === 'stale' || stage === 'network' ? (
           <Reveal index={1}>
             <Card>
               <Text style={styles.body}>{FAILURE_MESSAGE[stage]}</Text>
@@ -125,11 +126,16 @@ export default function RespondScreen() {
                       {assignment.position_name ? ` — ${assignment.position_name}` : ''}
                     </Text>
                     <Text style={styles.status}>{ASSIGNMENT_STATUS_LABELS[assignment.status]}</Text>
+                    {assignment.times.map((time) => (
+                      <Text key={time.id} style={styles.status}>
+                        {time.name ?? time.kind} · {formatDateTime(time.starts_at)}
+                      </Text>
+                    ))}
                   </View>
                 ))}
               </View>
               <Text style={styles.scopeNotice}>
-                Your answer applies to every assignment shown here for this service.
+                Your answer applies only to the positions and times shown here.
               </Text>
               <View style={styles.actions}>
                 <Button

@@ -34,10 +34,16 @@ export const createPositionSchema = z.object({
 
 export const updatePositionSchema = createPositionSchema.partial();
 
-export const teamMembershipSchema = z.object({
-  user_id: uuid,
-  position_id: uuid.nullish(),
-});
+export const teamMembershipSchema = z
+  .object({
+    person_id: uuid.optional(),
+    user_id: uuid.optional(),
+    position_id: uuid.nullish(),
+  })
+  .refine((value) => Boolean(value.person_id || value.user_id), {
+    message: 'Choose a Person',
+    path: ['person_id'],
+  });
 
 // `infer` is the parsed shape the backend works with (defaults applied);
 // `input` is what a client may send, where defaulted fields are optional.

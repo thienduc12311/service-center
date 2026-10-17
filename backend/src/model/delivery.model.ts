@@ -55,7 +55,9 @@ export interface DeliveryJob {
   id: string;
   organizationId: string;
   effectId: string;
-  recipientId: string;
+  /** Linked Profile, when the Person can receive in-app/push. */
+  recipientId: string | null;
+  recipientPersonId: string;
   channel: DeliveryChannel;
   attempts: number;
   maxAttempts: number;
@@ -67,6 +69,7 @@ export const mapDeliveryRowToJob = (row: DeliveryRow): DeliveryJob => ({
   organizationId: row.organization_id,
   effectId: row.effect_id,
   recipientId: row.recipient_id,
+  recipientPersonId: row.recipient_person_id,
   channel: row.channel,
   attempts: row.attempts,
   maxAttempts: row.max_attempts,
@@ -81,6 +84,7 @@ export interface DeliveryEffect {
   planId: string | null;
   assignmentIds: string[];
   responderId: string | null;
+  responderPersonId: string | null;
   responseStatus: AssignmentStatus | null;
   responseTransition: ResponseTransition | null;
   createdBy: string | null;

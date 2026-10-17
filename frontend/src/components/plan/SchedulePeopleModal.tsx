@@ -45,8 +45,8 @@ export const SchedulePeopleModal = ({
   const schedule = useMutation({
     mutationFn: (ignoreConflicts: boolean) =>
       api.createAssignments(planId, {
-        assignments: selected.map((userId) => ({
-          user_id: userId,
+        assignments: selected.map((personId) => ({
+          person_id: personId,
           team_id: teamId,
           position_id: positionId || null,
         })),
@@ -70,19 +70,19 @@ export const SchedulePeopleModal = ({
     },
   });
 
-  const toggle = (userId: string) =>
+  const toggle = (personId: string) =>
     setSelected((current) =>
-      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId],
+      current.includes(personId) ? current.filter((id) => id !== personId) : [...current, personId],
     );
 
   // Members of the chosen team come first — they're who you usually want.
-  // Only people with a login can be scheduled (assignments reference a real
-  // account), so no-login roster entries are excluded here.
   const candidates = useMemo(() => {
-    const all = (people.data ?? []).filter((person) => person.has_login);
+    const all = (people.data ?? []).filter((person) => person.person_id);
     if (!team) return all;
-    const onTeam = new Set(team.members.map((m) => m.user_id));
-    return [...all].sort((a, b) => Number(onTeam.has(b.id)) - Number(onTeam.has(a.id)));
+    const onTeam = new Set(team.members.map((m) => m.person_id));
+    return [...all].sort(
+      (a, b) => Number(onTeam.has(b.person_id!)) - Number(onTeam.has(a.person_id!)),
+    );
   }, [people.data, team]);
 
   return (
@@ -135,16 +135,17 @@ export const SchedulePeopleModal = ({
           <span className="label">People</span>
           <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-1">
             {candidates.map((person) => {
-              const onTeam = team?.members.some((m) => m.user_id === person.id);
+              const personId = person.person_id!;
+              const onTeam = team?.members.some((m) => m.person_id === personId);
               return (
                 <label
-                  key={person.id}
+                  key={personId}
                   className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-50"
                 >
                   <input
                     type="checkbox"
-                    checked={selected.includes(person.id)}
-                    onChange={() => toggle(person.id)}
+                    checked={selected.includes(personId)}
+                    onChange={() => toggle(personId)}
                     className="size-4 rounded border-slate-300"
                   />
                   <Avatar name={person.full_name ?? person.email} url={person.avatar_url} size="sm" />

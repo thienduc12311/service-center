@@ -24,19 +24,24 @@ import { deliverEffectNow } from './delivery-worker.js';
 /** A delivery row with the joins the outcome views need. */
 type DeliveryWithJoins = DeliveryRow & {
   recipient: { full_name: string | null } | null;
+  recipient_person: { first_name: string; last_name: string | null } | null;
   effect: { template: DeliveryTemplate; plan_id: string | null; plan: { title: string } | null } | null;
 };
 
 const DELIVERY_SELECT = `
   *,
   recipient:profiles!deliveries_recipient_id_fkey(full_name),
+  recipient_person:people!deliveries_recipient_person_id_fkey(first_name, last_name),
   effect:delivery_effects!inner(template, plan_id, plan:plans(title))
 `;
 
 export const toDeliveryOutcome = (row: DeliveryWithJoins): DeliveryOutcome => ({
   id: row.id,
   recipient_id: row.recipient_id,
-  recipient_name: row.recipient?.full_name ?? null,
+  recipient_person_id: row.recipient_person_id,
+  recipient_name: row.recipient?.full_name
+    ?? [row.recipient_person?.first_name, row.recipient_person?.last_name].filter(Boolean).join(' ')
+    ?? null,
   channel: row.channel,
   status: row.status,
   attempts: row.attempts,

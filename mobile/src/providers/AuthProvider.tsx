@@ -2,7 +2,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
-import { canManage, isAdmin, type CurrentUser, type OrgRole } from '@service-center/shared';
+import {
+  canAccess,
+  canManage,
+  isAdmin,
+  type AccessCapability,
+  type AccessTarget,
+  type CurrentUser,
+  type OrgRole,
+} from '@service-center/shared';
 import { supabase } from '../lib/supabase';
 import { api, setApiRequestContext, setUnauthorizedHandler } from '../lib/api';
 import { loadStoredOrganizationId, storeOrganizationId } from '../lib/organization-storage';
@@ -23,6 +31,8 @@ interface AuthContextValue {
   organizationId: string | null;
   role: OrgRole | null;
   canManage: boolean;
+  /** UI hint only; API and RLS remain authoritative. */
+  can: (capability: AccessCapability, target?: AccessTarget) => boolean;
   /** Owners and admins: membership, org settings and AI chord sheet imports. */
   isAdmin: boolean;
   loading: boolean;
@@ -139,12 +149,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const value = useMemo<AuthContextValue>(() => {
     const { user, organizationId, generation, phase, error } = lifecycleState;
     const role = user?.memberships.find((m) => m.organization.id === organizationId)?.role ?? null;
+    const access = user?.memberships.find((m) => m.organization.id === organizationId)?.access ?? null;
     return {
       session,
       user,
       organizationId,
       role,
       canManage: canManage(role),
+      can: (capability, target) => canAccess(access, capability, target),
       isAdmin: isAdmin(role),
       loading: phase === 'loading',
       ready: phase === 'ready' || phase === 'signed-out',

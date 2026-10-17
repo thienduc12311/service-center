@@ -37,7 +37,9 @@ export const PLAN_DETAIL_SELECT = `
     team:teams(id, name, color),
     position:team_positions(id, name),
     person:profiles!assignments_user_id_fkey(id, full_name, avatar_url),
-    response_owner:profiles!assignments_response_owner_id_fkey(id, full_name)
+    response_owner:profiles!assignments_response_owner_id_fkey(id, full_name),
+    attendance_times:assignment_attendance_times(plan_time_id),
+    time_responses:assignment_time_responses(*)
   ),
   position_needs:plan_position_needs(
     needed,
@@ -139,14 +141,32 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
 
   if (!row) throw HttpError.notFound('Plan not found');
   const detail = shapePlanDetail(row);
-  const contacts = await contactsFor(db, orgId, detail.assignments.map((a) => a.user_id));
+  const personIds = [...new Set(detail.assignments.map((assignment) => assignment.person_id))];
+  const userIds = detail.assignments.flatMap((assignment) => assignment.user_id ? [assignment.user_id] : []);
+  const [contacts, directory] = await Promise.all([
+    contactsFor(db, orgId, userIds),
+    personIds.length
+      ? unwrap(db.from('people_directory').select('*').in('id', personIds))
+      : Promise.resolve([]),
+  ]);
+  const people = new Map((directory ?? []).map((person) => [person.id, person]));
   return {
     ...detail,
     assignments: detail.assignments.map((assignment) => ({
       ...assignment,
-      person: assignment.person
-        ? { ...assignment.person, ...(contacts.get(assignment.user_id) ?? NO_CONTACT) }
-        : null,
+      person: people.has(assignment.person_id)
+        ? {
+            id: assignment.person_id,
+            full_name: [people.get(assignment.person_id)?.first_name, people.get(assignment.person_id)?.last_name]
+              .filter(Boolean)
+              .join(' '),
+            avatar_url: people.get(assignment.person_id)?.avatar_url ?? null,
+            ...(assignment.user_id ? contacts.get(assignment.user_id) ?? NO_CONTACT : NO_CONTACT),
+            role: 'member',
+          }
+        : assignment.person
+          ? { ...assignment.person, ...(assignment.user_id ? contacts.get(assignment.user_id) ?? NO_CONTACT : NO_CONTACT) }
+          : null,
     })),
   };
 };

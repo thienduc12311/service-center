@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import {
   type AssignmentRespondPreview,
   type AssignmentRespondResult,
+  type AssignmentRequestSnapshotRow,
   type RespondToAssignmentNotificationInput,
   respondToAssignmentNotificationSchema,
 } from '@service-center/shared';
@@ -13,6 +14,7 @@ import { HttpError } from '../lib/errors.js';
 import { hashInviteToken } from '../services/invitations.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
 import { config } from '../config.js';
+import { loadAssignmentResponseReview } from '../services/assignment-snapshots.js';
 
 export const assignmentRespondRouter: Router = Router();
 assignmentRespondRouter.use(rateLimit({ windowMs: 60_000, limit: config.isProduction ? 30 : 10_000, standardHeaders: 'draft-7', legacyHeaders: false }));
@@ -21,22 +23,17 @@ interface AssignmentNotificationRecord {
   id: string;
   plan_id: string;
   organization_id: string;
-  user_id: string;
+  person_id: string;
+  user_id: string | null;
+  snapshot_id: string | null;
   email: string;
   expires_at: string;
   responded_at: string | null;
 }
 
-interface RespondAssignmentRow {
-  id: string;
-  status: 'unconfirmed' | 'confirmed' | 'declined';
-  team: { name: string } | null;
-  position: { name: string } | null;
-}
-
 const loadNotification = async (token: string): Promise<AssignmentNotificationRecord> => {
   const notification = await unwrap(
-    adminDb.from('assignment_notifications').select('id, plan_id, organization_id, user_id, email, expires_at, responded_at').eq('token_hash', hashInviteToken(token)).maybeSingle(),
+    adminDb.from('assignment_notifications').select('id, plan_id, organization_id, person_id, user_id, snapshot_id, email, expires_at, responded_at').eq('token_hash', hashInviteToken(token)).maybeSingle(),
   );
   if (!notification) throw HttpError.notFound('That assignment response link is not valid');
   const record = notification as AssignmentNotificationRecord;
@@ -47,22 +44,33 @@ const loadNotification = async (token: string): Promise<AssignmentNotificationRe
 
 assignmentRespondRouter.get('/:token', async (req, res) => {
   const notification = await loadNotification(param(req, 'token'));
-  const [plan, person, assignments, serviceTime] = await Promise.all([
+  if (!notification.snapshot_id) throw new HttpError(409, 'This response link needs to be reissued', 'assignment_request_stale');
+  const [plan, person, snapshot] = await Promise.all([
     unwrapOne(adminDb.from('plans').select('title, service_date, location').eq('id', notification.plan_id).single()),
-    unwrap(adminDb.from('people').select('first_name').eq('profile_id', notification.user_id).eq('organization_id', notification.organization_id).maybeSingle()),
-    unwrap(raw(adminDb).from('assignments').select('id, status, team:teams(name), position:team_positions(name)').eq('plan_id', notification.plan_id).eq('user_id', notification.user_id).eq('visibility', 'released')),
-    unwrap(adminDb.from('plan_times').select('starts_at, ends_at').eq('plan_id', notification.plan_id).eq('kind', 'service').order('starts_at').limit(1).maybeSingle()),
+    unwrap(adminDb.from('people').select('first_name').eq('id', notification.person_id).maybeSingle()),
+    unwrap(adminDb.from('assignment_request_snapshots').select('*').eq('id', notification.snapshot_id).maybeSingle()),
   ]);
+  if (!snapshot || snapshot.superseded_at || snapshot.consumed_at) {
+    throw new HttpError(409, 'This request changed. Ask your scheduler for a fresh link.', 'assignment_request_stale');
+  }
+  const review = await loadAssignmentResponseReview(snapshot as AssignmentRequestSnapshotRow);
+  const serviceTime = review.assignments.flatMap((assignment) => assignment.times).find((time) => time.kind === 'service') ?? null;
   const preview: AssignmentRespondPreview = {
+    snapshot_id: review.snapshot_id,
+    snapshot_version: review.version,
     plan_title: plan.title,
     service_date: plan.service_date,
-    service_time: serviceTime,
+    service_time: serviceTime ? { starts_at: serviceTime.starts_at, ends_at: serviceTime.ends_at } : null,
     location: plan.location,
     person_first_name: person?.first_name ?? 'there',
-    assignments: (assignments as unknown as RespondAssignmentRow[]).map((assignment) => ({
-      team_name: assignment.team?.name ?? 'Team',
-      position_name: assignment.position?.name ?? null,
+    assignments: review.assignments.map((assignment) => ({
+      assignment_id: assignment.assignment_id,
+      team_name: assignment.team_name,
+      position_name: assignment.position_name,
       status: assignment.status,
+      request_revision: assignment.request_revision,
+      times: assignment.times,
+      time_responses: assignment.time_responses,
     })),
     expires_at: notification.expires_at,
   };
@@ -90,6 +98,9 @@ assignmentRespondRouter.post('/:token/respond', validateBody(respondToAssignment
   }
   if (answer.outcome === 'expired') {
     throw new HttpError(410, 'This assignment response link has expired', 'assignment_notification_expired');
+  }
+  if (answer.outcome === 'stale') {
+    throw new HttpError(409, 'This request changed. Refresh or ask your scheduler for a new link.', 'assignment_request_stale');
   }
 
   await deliverEffectNow(answer.effect_id);

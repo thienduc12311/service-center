@@ -6,6 +6,7 @@ import {
   nextOccurrence,
   renderServiceSongBookHtml,
   serviceSongBookDocumentFromPlan,
+  type AssignmentDetail,
   type PlanSummary,
 } from '@service-center/shared';
 import { api } from '../lib/api';
@@ -85,8 +86,16 @@ export const PlanDetailPage = () => {
 
   // Exactly the reviewed ids; a repeated click is a no-op on the server.
   const release = useMutation({
-    mutationFn: (assignmentIds: string[]) =>
-      api.releaseAssignments(planId!, { assignment_ids: assignmentIds, notify: true, idempotency_key: crypto.randomUUID() }),
+    mutationFn: (assignments: AssignmentDetail[]) =>
+      api.releaseAssignments(planId!, {
+        assignment_ids: assignments.map((assignment) => assignment.id),
+        expected_revisions: assignments.map((assignment) => ({
+          assignment_id: assignment.id,
+          request_revision: assignment.request_revision,
+        })),
+        notify: true,
+        idempotency_key: crypto.randomUUID(),
+      }),
     onSuccess: invalidate,
   });
 
@@ -298,7 +307,7 @@ export const PlanDetailPage = () => {
               teams={showAllTeams ? everyTeam : serviceTeams}
               canScheduleTeam={canScheduleTeam}
               canEditPlan={canEditPlan}
-              onRelease={(ids) => release.mutate(ids)}
+              onRelease={(assignments) => release.mutate(assignments)}
               releasing={release.isPending}
               currentUserId={user?.profile.id ?? null}
               editingNeeds={editingNeeds && (canEditPlan || canSchedule)}

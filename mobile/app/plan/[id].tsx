@@ -1,18 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   ASSIGNMENT_STATUS_LABELS,
   formatDateTime,
   formatDuration,
   type AssignmentDetail,
+  type AssignmentReleasePreview,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Avatar,
+  Button,
   Card,
   Divider,
   ErrorNotice,
@@ -26,6 +28,7 @@ import {
 import { PressableScale, Reveal } from '../../src/components/motion';
 import {
   GroupStatusTag,
+  BatchResponseReview,
   ResponsibilityList,
   ScheduleTimes,
 } from '../../src/components/AssignmentResponses';
@@ -42,11 +45,12 @@ interface TeamGroup {
 
 export default function PlanScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, queryScope } = useAuth();
+  const { can, user, queryScope } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const responses = useAssignmentResponses(id);
+  const [releasePreview, setReleasePreview] = useState<AssignmentReleasePreview | null>(null);
 
   const plan = useQuery({
     queryKey: queryKeys.plan(queryScope, id),
@@ -65,6 +69,36 @@ export default function PlanScreen() {
     return [...groups.entries()].map(([name, assignments]) => ({ name, assignments }));
   }, [detail?.assignments]);
 
+  const prepared = useMemo(
+    () => (detail?.assignments ?? []).filter((assignment) =>
+      assignment.visibility === 'prepared'
+      && can('scheduling.manage', { serviceTypeId: detail?.service_type_id, teamId: assignment.team_id }),
+    ),
+    [can, detail?.assignments, detail?.service_type_id],
+  );
+
+  const previewRelease = useMutation({
+    mutationFn: () => api.previewAssignmentRelease(id!, {
+      assignment_ids: prepared.map((assignment) => assignment.id),
+    }),
+    onSuccess: setReleasePreview,
+  });
+  const release = useMutation({
+    mutationFn: (preview: AssignmentReleasePreview) => api.releaseAssignments(id!, {
+      assignment_ids: preview.assignments.map((assignment) => assignment.assignment_id),
+      expected_revisions: preview.assignments.map((assignment) => ({
+        assignment_id: assignment.assignment_id,
+        request_revision: assignment.request_revision,
+      })),
+      notify: true,
+      idempotency_key: `mobile-release-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    }),
+    onSuccess: async () => {
+      setReleasePreview(null);
+      await plan.refetch();
+    },
+  });
+
   // Headers divide the order but aren't items in it, so they take no number.
   const ordinals = useMemo(() => {
     const numbers = new Map<string, number>();
@@ -81,8 +115,17 @@ export default function PlanScreen() {
   );
   const myTimes = useMemo(
     () =>
-      mergeTimes(mine.map((item) => ({ assignmentId: item.assignmentId, times: detail?.times ?? [] }))),
-    [detail?.times, mine],
+      mergeTimes(mine.map((item) => {
+        const assignment = detail?.assignments.find((candidate) => candidate.id === item.assignmentId);
+        const selected = new Set(assignment?.attendance_times.map((time) => time.plan_time_id) ?? []);
+        return {
+          assignmentId: item.assignmentId,
+          times: assignment?.attendance_mode === 'selected'
+            ? (detail?.times ?? []).filter((time) => selected.has(time.id))
+            : (detail?.times ?? []),
+        };
+      })),
+    [detail?.assignments, detail?.times, mine],
   );
 
   if (plan.isLoading) {
@@ -144,16 +187,64 @@ export default function PlanScreen() {
             <Card>
               <View style={styles.mineHeader}>
                 <Label>{mine.length > 1 ? 'Your positions' : 'Your position'}</Label>
-                <GroupStatusTag status={groupStatus(mine.map((item) => item.status))} />
+                <GroupStatusTag status={groupStatus(mine.map((item) => item.scopeStatus))} />
               </View>
               <ScheduleTimes times={myTimes} responsibilities={mine} />
               <Divider />
+              {!isPast ? <BatchResponseReview responsibilities={mine} planId={detail.id} /> : null}
               <ResponsibilityList responsibilities={mine} responses={responses} canRespond={!isPast} />
             </Card>
           </Reveal>
         ) : null}
 
-        <Reveal index={2}>
+        {prepared.length ? (
+          <Reveal index={2}>
+            <Card>
+              <Label>Prepared requests</Label>
+              {releasePreview ? (
+                <View style={styles.releaseReview}>
+                  <Text style={styles.muted}>Review the exact positions and attendance times before release.</Text>
+                  {releasePreview.assignments.map((assignment) => (
+                    <View key={assignment.assignment_id} style={styles.releaseItem}>
+                      <Text style={styles.personName}>{assignment.person_name}</Text>
+                      <Text style={styles.personRole}>
+                        {[assignment.team_name, assignment.position_name].filter(Boolean).join(' — ')}
+                      </Text>
+                      {assignment.times.map((time) => (
+                        <Text key={time.id} style={styles.muted}>
+                          {time.name ?? time.kind} · {formatDateTime(time.starts_at)}
+                        </Text>
+                      ))}
+                    </View>
+                  ))}
+                  <View style={styles.releaseActions}>
+                    <Button
+                      title="Cancel"
+                      variant="secondary"
+                      disabled={release.isPending}
+                      onPress={() => setReleasePreview(null)}
+                    />
+                    <Button
+                      title="Release and notify"
+                      loading={release.isPending}
+                      onPress={() => release.mutate(releasePreview)}
+                    />
+                  </View>
+                </View>
+              ) : (
+                <Button
+                  title={`Review and release ${prepared.length}`}
+                  variant="secondary"
+                  loading={previewRelease.isPending}
+                  onPress={() => previewRelease.mutate()}
+                />
+              )}
+              <ErrorNotice error={previewRelease.error ?? release.error} />
+            </Card>
+          </Reveal>
+        ) : null}
+
+        <Reveal index={prepared.length ? 3 : 2}>
           <Card>
             <Label>Order of service</Label>
             {detail.items.length ? (
@@ -301,4 +392,7 @@ const makeStyles = (theme: Theme) =>
 
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     notes: { ...theme.type.body, color: theme.color.inkMuted },
+    releaseReview: { gap: theme.space.md },
+    releaseItem: { gap: theme.space.xs },
+    releaseActions: { flexDirection: 'row', gap: theme.space.sm },
   });
