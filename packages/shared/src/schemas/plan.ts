@@ -7,10 +7,13 @@ export const planItemTypeSchema = z.enum(['song', 'header', 'item']);
 
 export const planTimeSchema = z
   .object({
+    /** Stable identity on edits; omitted only while creating a new plan. */
+    id: uuid.optional(),
     kind: planTimeKindSchema.default('service'),
     name: z.string().trim().max(120).nullish(),
     starts_at: z.string(),
     ends_at: z.string(),
+    sort_order: z.number().int().min(0).optional(),
   })
   .refine((v) => new Date(v.starts_at) < new Date(v.ends_at), {
     message: 'End must be after start',
@@ -33,7 +36,8 @@ export const createPlanSchema = z.object({
 
 export const updatePlanSchema = createPlanSchema
   .partial()
-  .omit({ copy_from_plan_id: true, copy_assignments: true, idempotency_key: true });
+  .omit({ copy_from_plan_id: true, copy_assignments: true, idempotency_key: true })
+  .extend({ expected_revision: z.number().int().min(0).optional() });
 
 /** "Same as last week": a new draft plan copied from an existing one. */
 export const duplicatePlanSchema = z.object({

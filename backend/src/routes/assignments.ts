@@ -6,14 +6,23 @@ import {
   createAssignmentsSchema,
   notifyPlanSchema,
   releaseAssignmentsSchema,
+  releaseAssignmentsPreviewSchema,
   respondToAssignmentSchema,
+  previewAssignmentResponsesSchema,
+  respondToAssignmentSnapshotsSchema,
   setResponseOwnerSchema,
   type ReleaseAssignmentsInput,
+  type ReleaseAssignmentsPreviewInput,
+  type AssignmentReleasePreview,
   type SetResponseOwnerInput,
   type AssignmentNotificationSendResult,
   type CreateAssignmentsInput,
   type NotifyPlanInput,
   type RespondToAssignmentInput,
+  type PreviewAssignmentResponsesInput,
+  type RespondToAssignmentSnapshotsInput,
+  type AssignmentRequestSnapshotRow,
+  type AssignmentResponseCommitResult,
   updateAssignmentSchema,
   type MyScheduleEntry,
   type SchedulingConflict,
@@ -30,6 +39,7 @@ import {
   notifyPlanAssignments,
 } from '../services/deliveries.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
+import { loadAssignmentResponseReview } from '../services/assignment-snapshots.js';
 
 export const planAssignmentsRouter: Router = Router({ mergeParams: true });
 export const planNotifyRouter: Router = Router({ mergeParams: true });
@@ -52,6 +62,44 @@ const conflictsFor = async (
   });
   if (error) throw new HttpError(500, error.message, error.code);
   return (data ?? []) as SchedulingConflict[];
+};
+
+interface ExactConflictScope {
+  personId: string;
+  timeIds: string[];
+}
+
+const exactConflictsFor = async (
+  req: { db: import('../lib/supabase.js').Db; orgId: string },
+  scopes: readonly ExactConflictScope[],
+): Promise<SchedulingConflict[]> => {
+  const rows = await Promise.all(
+    scopes.filter((scope) => scope.timeIds.length > 0).map(async (scope) => {
+      const { data, error } = await raw(req.db).rpc('scheduling_conflicts_for_people', {
+        p_organization_id: req.orgId,
+        p_person_ids: [scope.personId],
+        p_plan_time_ids: scope.timeIds,
+        p_exclude_assignment_ids: [],
+      });
+      if (error) throw new HttpError(500, error.message, error.code);
+      return (data ?? []).map((conflict: {
+        person_id: string;
+        conflict_type: 'blockout' | 'double_booked';
+        detail: string | null;
+        starts_at: string;
+        ends_at: string;
+        plan_id: string | null;
+      }) => ({
+        user_id: conflict.person_id,
+        conflict_type: conflict.conflict_type,
+        detail: conflict.detail,
+        starts_at: conflict.starts_at,
+        ends_at: conflict.ends_at,
+        plan_id: conflict.plan_id,
+      } satisfies SchedulingConflict));
+    }),
+  );
+  return rows.flat();
 };
 
 /** The service window a plan occupies, used for conflict detection. */
@@ -94,17 +142,26 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
       .maybeSingle(),
   );
   if (!plan) throw HttpError.notFound('Plan not found');
+  const planTimes = (await unwrap(req.db.from('plan_times').select('id').eq('plan_id', plan.id))) ?? [];
 
-  const window = await serviceWindow(req.db, plan.id, plan.service_date);
-  const conflicts = await conflictsFor(
-    req,
-    window.starts_at,
-    window.ends_at,
-    assignments.map((a) => a.user_id),
-  );
+  const legacyUserIds = assignments.flatMap((assignment) => assignment.user_id ? [assignment.user_id] : []);
+  const linked = legacyUserIds.length
+    ? await unwrap(req.db.from('people').select('id, profile_id').eq('organization_id', req.orgId).in('profile_id', legacyUserIds))
+    : [];
+  const personForProfile = new Map((linked ?? []).map((person) => [person.profile_id, person.id]));
+  const scopes = assignments.map((assignment): ExactConflictScope => ({
+    personId: assignment.person_id ?? personForProfile.get(assignment.user_id ?? '') ?? '',
+    timeIds: assignment.attendance_mode === 'selected'
+      ? assignment.time_ids
+      : planTimes.map((time) => time.id),
+  }));
+  let conflicts = await exactConflictsFor(req, scopes.filter((scope) => Boolean(scope.personId)));
+  if (planTimes.length === 0 && legacyUserIds.length > 0) {
+    const window = await serviceWindow(req.db, plan.id, plan.service_date);
+    conflicts = await conflictsFor(req, window.starts_at, window.ends_at, legacyUserIds);
+  }
 
-  // Conflicts against this very plan aren't conflicts — they're re-saves.
-  const blocking = conflicts.filter((c) => c.plan_id !== plan.id);
+  const blocking = conflicts;
   if (blocking.length > 0 && !ignore_conflicts) {
     throw HttpError.conflict(
       'Some people are unavailable or already scheduled at that time',
@@ -121,10 +178,13 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
       p_plan_id: plan.id,
       p_assignments: assignments.map((a) => ({
         user_id: a.user_id,
+        person_id: a.person_id ?? null,
         team_id: a.team_id,
         position_id: a.position_id ?? null,
         notes: a.notes ?? null,
         visibility: a.visibility ?? null,
+        attendance_mode: a.attendance_mode,
+        time_ids: a.time_ids,
       })),
       p_notify: notify,
       p_effect_key: effectKey,
@@ -146,17 +206,27 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
  */
 planReleaseRouter.post('/', requireCapability('scheduling.manage'), validateBody(releaseAssignmentsSchema), async (req, res) => {
   const planId = param(req, 'planId');
-  const { assignment_ids, notify, idempotency_key } = req.body as ReleaseAssignmentsInput;
+  const { assignment_ids, expected_revisions, notify, idempotency_key } = req.body as ReleaseAssignmentsInput;
   const plan = await unwrap(
     req.db.from('plans').select('id').eq('id', planId).eq('organization_id', req.orgId).maybeSingle(),
   );
   if (!plan) throw HttpError.notFound('Plan not found');
 
+  const revisions = expected_revisions.length > 0
+    ? expected_revisions
+    : ((await unwrap(
+        req.db.from('assignments').select('id, request_revision').eq('plan_id', plan.id).in('id', assignment_ids),
+      )) ?? []).map((assignment) => ({
+        assignment_id: assignment.id,
+        request_revision: assignment.request_revision,
+      }));
+
   const effectKey = `release:${plan.id}:${idempotency_key ?? randomUUID()}`;
   const released = await unwrap(
-    req.db.rpc('release_plan_assignments', {
+    req.db.rpc('release_plan_assignments_versioned', {
       p_plan_id: plan.id,
       p_assignment_ids: assignment_ids,
+      p_expected_revisions: revisions,
       p_notify: notify,
       p_effect_key: effectKey,
     }),
@@ -166,6 +236,61 @@ planReleaseRouter.post('/', requireCapability('scheduling.manage'), validateBody
   }
   res.json({ released: released ?? [] });
 });
+
+planReleaseRouter.post(
+  '/preview',
+  requireCapability('scheduling.manage'),
+  validateBody(releaseAssignmentsPreviewSchema),
+  async (req, res) => {
+    const planId = param(req, 'planId');
+    const { assignment_ids } = req.body as ReleaseAssignmentsPreviewInput;
+    const assignments = await unwrap(
+      raw(req.db).from('assignments').select(
+        'id, person_id, attendance_mode, request_revision, team:teams(name), position:team_positions(name)',
+      ).eq('plan_id', planId).eq('visibility', 'prepared').in('id', assignment_ids),
+    ) as unknown as Array<{
+      id: string;
+      person_id: string;
+      attendance_mode: 'all' | 'selected';
+      request_revision: number;
+      team: { name: string } | null;
+      position: { name: string } | null;
+    }>;
+    if (assignments.length !== assignment_ids.length) {
+      throw new HttpError(409, 'Prepared requests changed. Refresh the release review.', 'assignment_release_stale');
+    }
+    const [times, selected, people] = await Promise.all([
+      unwrap(req.db.from('plan_times').select('*').eq('plan_id', planId).order('sort_order')),
+      unwrap(req.db.from('assignment_attendance_times').select('*').in('assignment_id', assignment_ids)),
+      unwrap(req.db.from('people_directory').select('*').in('id', assignments.map((assignment) => assignment.person_id))),
+    ]);
+    const personNames = new Map((people ?? []).map((person) => [
+      person.id,
+      [person.first_name, person.last_name].filter(Boolean).join(' '),
+    ]));
+    const selectedByAssignment = new Map<string, Set<string>>();
+    for (const row of selected ?? []) {
+      const ids = selectedByAssignment.get(row.assignment_id) ?? new Set<string>();
+      ids.add(row.plan_time_id);
+      selectedByAssignment.set(row.assignment_id, ids);
+    }
+    const preview: AssignmentReleasePreview = {
+      plan_id: planId,
+      assignments: assignments.map((assignment) => ({
+        assignment_id: assignment.id,
+        person_id: assignment.person_id,
+        person_name: personNames.get(assignment.person_id) ?? 'Person',
+        team_name: assignment.team?.name ?? 'Team',
+        position_name: assignment.position?.name ?? null,
+        request_revision: assignment.request_revision,
+        times: assignment.attendance_mode === 'selected'
+          ? (times ?? []).filter((time) => selectedByAssignment.get(assignment.id)?.has(time.id))
+          : (times ?? []),
+      })),
+    };
+    res.json(preview);
+  },
+);
 
 /** Re-sends notifications for everyone on the plan who hasn't replied. */
 planNotifyRouter.post('/', requireCapability('scheduling.manage'), validateBody(notifyPlanSchema), async (req, res) => {
@@ -255,6 +380,40 @@ assignmentsRouter.get('/:id/response-owner-history', requireCapability('scheduli
   );
 });
 
+/** Freezes exactly the selected released requests/times for a review screen. */
+assignmentsRouter.post(
+  '/responses/preview',
+  validateBody(previewAssignmentResponsesSchema),
+  async (req, res) => {
+    const { assignment_ids } = req.body as PreviewAssignmentResponsesInput;
+    const snapshots = (await unwrap(
+      req.db.rpc('preview_assignment_responses', {
+        p_organization_id: req.orgId,
+        p_assignment_ids: assignment_ids,
+      }),
+    )) as AssignmentRequestSnapshotRow[];
+    res.json(await Promise.all(snapshots.map(loadAssignmentResponseReview)));
+  },
+);
+
+/** Commits every reviewed snapshot atomically, with transport retry safety. */
+assignmentsRouter.post(
+  '/responses/commit',
+  validateBody(respondToAssignmentSnapshotsSchema),
+  async (req, res) => {
+    const body = req.body as RespondToAssignmentSnapshotsInput;
+    const result = (await unwrap(
+      req.db.rpc('respond_to_assignment_snapshots', {
+        p_organization_id: req.orgId,
+        p_responses: body.responses,
+        p_idempotency_key: body.idempotency_key,
+      }),
+    )) as AssignmentResponseCommitResult;
+    await Promise.all(result.effect_ids.map(deliverEffectNow));
+    res.json(result);
+  },
+);
+
 assignmentsRouter.patch('/:id', requireCapability('scheduling.manage'), validateBody(updateAssignmentSchema), async (req, res) => {
   const updated = await unwrap(
     req.db.from('assignments').update(req.body).eq('id', param(req, 'id')).select('*').maybeSingle(),
@@ -306,6 +465,11 @@ const myScheduleQuerySchema = z.object({
 scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, res) => {
   const { from, to, status, include_past } = parsedQuery<z.infer<typeof myScheduleQuerySchema>>(res);
 
+  const me = await unwrap(
+    req.db.from('people').select('id').eq('organization_id', req.orgId).eq('profile_id', req.auth.userId).maybeSingle(),
+  );
+  if (!me) return res.json([]);
+
   let query = raw(req.db)
     .from('assignments')
     .select(
@@ -314,7 +478,7 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
        position:team_positions(id, name),
        plan:plans!inner(id, title, service_date, location, status, organization_id, times:plan_times(*))`,
     )
-    .eq('user_id', req.auth.userId)
+    .eq('person_id', me.id)
     // A recipient surface: a leader who prepared themself still sees only released requests here.
     .eq('visibility', 'released')
     .eq('plan.organization_id', req.orgId);
@@ -325,6 +489,19 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
   if (to) query = query.lte('plan.service_date', to);
 
   const rows = (await unwrap(query)) as Array<Record<string, unknown>>;
+  const assignmentIds = rows.map((row) => String(row.id));
+  const [selectedTimes, timeResponses] = assignmentIds.length
+    ? await Promise.all([
+        unwrap(req.db.from('assignment_attendance_times').select('*').in('assignment_id', assignmentIds)),
+        unwrap(req.db.from('assignment_time_responses').select('*').in('assignment_id', assignmentIds)),
+      ])
+    : [[], []];
+  const selectedByAssignment = new Map<string, Set<string>>();
+  for (const selected of selectedTimes ?? []) {
+    const ids = selectedByAssignment.get(selected.assignment_id) ?? new Set<string>();
+    ids.add(selected.plan_time_id);
+    selectedByAssignment.set(selected.assignment_id, ids);
+  }
 
   const entries: MyScheduleEntry[] = rows
     .map((row) => {
@@ -334,15 +511,22 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
         position: unknown;
       } & Record<string, unknown>;
       const { times = [], ...planFields } = plan ?? {};
+      const assignmentId = String(assignment.id);
+      const applicable = assignment.attendance_mode === 'selected'
+        ? (times as Array<{ id: string; starts_at: string }>).filter((time) =>
+            selectedByAssignment.get(assignmentId)?.has(time.id),
+          )
+        : (times as Array<{ id: string; starts_at: string }>);
       return {
         assignment,
         response_note: null,
         plan: planFields,
         team,
         position,
-        times: [...(times as Array<{ starts_at: string }>)].sort(
+        times: [...applicable].sort(
           (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
         ),
+        time_responses: (timeResponses ?? []).filter((response) => response.assignment_id === assignmentId),
       } as unknown as MyScheduleEntry;
     })
     .sort(

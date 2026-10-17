@@ -6,6 +6,8 @@ import type {
   AccessScopeType,
   ArrangementRow,
   AssignmentRow,
+  AssignmentStatus,
+  AssignmentTimeResponseRow,
   BlockoutRow,
   DeliveryChannel,
   DeliveryStatus,
@@ -192,15 +194,21 @@ export interface InvitationPreview {
 }
 
 export interface AssignmentRespondPreview {
+  snapshot_id: string;
+  snapshot_version: number;
   plan_title: string;
   service_date: string;
   service_time: { starts_at: string; ends_at: string } | null;
   location: string | null;
   person_first_name: string;
   assignments: Array<{
+    assignment_id: string;
     team_name: string;
     position_name: string | null;
     status: AssignmentRow['status'];
+    request_revision: number;
+    times: PlanTimeRow[];
+    time_responses: AssignmentTimeResponseRow[];
   }>;
   expires_at: string;
 }
@@ -208,6 +216,45 @@ export interface AssignmentRespondPreview {
 export interface AssignmentRespondResult {
   status: Extract<AssignmentRow['status'], 'confirmed' | 'declined'>;
   assignments_updated: number;
+}
+
+export interface AssignmentResponseReviewItem {
+  assignment_id: string;
+  plan_id: string;
+  plan_title: string;
+  team_name: string;
+  position_name: string | null;
+  status: AssignmentStatus;
+  request_revision: number;
+  times: PlanTimeRow[];
+  time_responses: AssignmentTimeResponseRow[];
+}
+
+export interface AssignmentResponseReview {
+  snapshot_id: string;
+  version: number;
+  person_id: string;
+  plan_id: string;
+  expires_at: string;
+  assignments: AssignmentResponseReviewItem[];
+}
+
+export interface AssignmentResponseCommitResult {
+  snapshots: Array<{ snapshot_id: string; assignments_updated: number }>;
+  effect_ids: string[];
+}
+
+export interface AssignmentReleasePreview {
+  plan_id: string;
+  assignments: Array<{
+    assignment_id: string;
+    person_id: string;
+    person_name: string;
+    team_name: string;
+    position_name: string | null;
+    request_revision: number;
+    times: PlanTimeRow[];
+  }>;
 }
 
 export interface CalendarFeedTokenResponse {
@@ -224,7 +271,8 @@ export type PushTransportMode = 'expo' | 'simulated';
 /** Per-recipient, per-channel outcome of one delivery. */
 export interface DeliveryOutcome {
   id: string;
-  recipient_id: string;
+  recipient_id: string | null;
+  recipient_person_id: string;
   recipient_name: string | null;
   channel: DeliveryChannel;
   status: DeliveryStatus;
@@ -300,7 +348,12 @@ export interface ImportPlanContentsResult {
 
 export interface TeamWithPositions extends TeamRow {
   positions: TeamPositionRow[];
-  members: Array<{ user_id: string; position_id: string | null; profile: PersonSummary | null }>;
+  members: Array<{
+    person_id: string;
+    user_id: string | null;
+    position_id: string | null;
+    profile: PersonSummary | null;
+  }>;
 }
 
 export interface SongWithArrangements extends SongRow {
@@ -378,6 +431,9 @@ export interface AssignmentDetail extends AssignmentRow {
   response_owner: Pick<ProfileRow, 'id' | 'full_name'> | null;
   team: Pick<TeamRow, 'id' | 'name' | 'color'> | null;
   position: Pick<TeamPositionRow, 'id' | 'name'> | null;
+  /** Explicit selection when attendance_mode is selected. */
+  attendance_times: Array<{ plan_time_id: string }>;
+  time_responses: AssignmentTimeResponseRow[];
 }
 
 /**
@@ -454,6 +510,7 @@ export interface MyScheduleEntry {
   team: Pick<TeamRow, 'id' | 'name' | 'color'> | null;
   position: Pick<TeamPositionRow, 'id' | 'name'> | null;
   times: PlanTimeRow[];
+  time_responses: AssignmentTimeResponseRow[];
 }
 
 export interface BlockoutWithPerson extends BlockoutRow {

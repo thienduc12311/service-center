@@ -49,6 +49,8 @@ export const fromPostgrestError = (error: { code?: string; message: string; deta
     // change; PostgREST also answers direct table calls with 409 for it.
     case 'PT409':
       return HttpError.conflict('That change is no longer allowed');
+    case 'PT410':
+      return new HttpError(410, error.message, 'assignment_request_expired');
     default:
       return new HttpError(500, error.message, error.code);
   }

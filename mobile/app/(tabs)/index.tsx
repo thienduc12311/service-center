@@ -22,6 +22,7 @@ import { NotificationBell } from '../../src/components/NotificationBell';
 import { PressableScale, Reveal } from '../../src/components/motion';
 import {
   GroupStatusTag,
+  BatchResponseReview,
   ResponsibilityList,
   ScheduleTimes,
 } from '../../src/components/AssignmentResponses';
@@ -188,6 +189,9 @@ const PlanGroupCard = ({ group, responses, canRespond, onOpen }: PlanGroupCardPr
       </PressableScale>
 
       <Divider bleed={theme.space.lg} />
+      {canRespond ? (
+        <BatchResponseReview responsibilities={group.responsibilities} planId={group.plan.id} />
+      ) : null}
       <ResponsibilityList
         responsibilities={group.responsibilities}
         responses={responses}

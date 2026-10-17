@@ -46,6 +46,7 @@ const fakeDb = (results: Array<{ data: unknown; error: null }>) => {
 const assignment = (status: AssignmentRow['status']): AssignmentRow & { plan: unknown } => ({
   id: 'assignment-1',
   plan_id: 'plan-1',
+  person_id: 'person-1',
   user_id: 'user-1',
   team_id: 'team-1',
   position_id: 'position-1',
@@ -58,6 +59,8 @@ const assignment = (status: AssignmentRow['status']): AssignmentRow & { plan: un
   released_at: '2026-10-01T00:00:00.000Z',
   released_by: 'scheduler-1',
   response_owner_id: 'scheduler-1',
+  attendance_mode: 'all',
+  request_revision: 0,
   created_at: '2026-10-01T00:00:00.000Z',
   updated_at: '2026-10-01T00:00:00.000Z',
   plan: { organization_id: 'org-1' },

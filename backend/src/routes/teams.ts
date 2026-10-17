@@ -29,14 +29,28 @@ const TEAM_SELECT = `
   *,
   positions:team_positions(*),
   memberships:team_memberships(
-    id, user_id, position_id,
-    profile:profiles(id, full_name, avatar_url)
+    id, person_id, user_id, position_id,
+    person:people(id, profile_id, first_name, last_name, avatar_url)
   )
 `;
 
+interface RawTeamPerson {
+  id: string;
+  profile_id: string | null;
+  first_name: string;
+  last_name: string | null;
+  avatar_url: string | null;
+}
+
 type RawTeam = Record<string, unknown> & {
   positions?: Array<Record<string, unknown>>;
-  memberships?: Array<{ id: string; user_id: string; position_id: string | null; profile: unknown }>;
+  memberships?: Array<{
+    id: string;
+    person_id: string;
+    user_id: string | null;
+    position_id: string | null;
+    person: RawTeamPerson | null;
+  }>;
 };
 
 /** Roles live on organization_members, so they are stitched in separately. */
@@ -49,11 +63,18 @@ const shapeTeam = (
     (a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
   );
   const members = (team.memberships ?? []).map((m) => ({
+    person_id: m.person_id,
     user_id: m.user_id,
     position_id: m.position_id,
     membership_id: m.id,
-    profile: m.profile
-      ? { ...(m.profile as object), ...(contacts.get(m.user_id) ?? NO_CONTACT), role: roles.get(m.user_id) ?? 'member' }
+    profile: m.person
+      ? {
+          id: m.person.id,
+          full_name: [m.person.first_name, m.person.last_name].filter(Boolean).join(' '),
+          avatar_url: m.person.avatar_url,
+          ...(m.user_id ? contacts.get(m.user_id) ?? NO_CONTACT : NO_CONTACT),
+          role: m.user_id ? roles.get(m.user_id) ?? 'member' : 'member',
+        }
       : null,
   }));
   const { memberships: _ignored, ...rest } = team;
@@ -69,7 +90,9 @@ const roleMap = async (req: Request): Promise<Map<string, string>> => {
 };
 
 const shapeTeams = async (req: Request, teams: RawTeam[]): Promise<TeamWithPositions[]> => {
-  const userIds = teams.flatMap((team) => (team.memberships ?? []).map((m) => m.user_id));
+  const userIds = teams.flatMap((team) =>
+    (team.memberships ?? []).flatMap((membership) => membership.user_id ? [membership.user_id] : []),
+  );
   const [roles, contacts] = await Promise.all([roleMap(req), contactsFor(req.db, req.orgId, userIds)]);
   return teams.map((team) => shapeTeam(team, roles, contacts));
 };
@@ -180,23 +203,33 @@ teamsRouter.delete('/:id/positions/:positionId', requireCapability('teams.manage
 
 // ------------------------------------------------------------- members ----
 teamsRouter.post('/:id/members', requireCapability('teams.manage'), validateBody(teamMembershipSchema), async (req, res) => {
-  const { user_id, position_id } = req.body as { user_id: string; position_id?: string | null };
+  const { person_id, user_id, position_id } = req.body as {
+    person_id?: string;
+    user_id?: string;
+    position_id?: string | null;
+  };
 
-  // Guard against adding someone who isn't in the organization at all.
-  const member = await unwrap(
+  // Resolve only an explicit Person or its linked Profile. Email is never an
+  // identity key, and a no-login Person is a valid team member.
+  const person = await unwrap(
     req.db
-      .from('organization_members')
-      .select('user_id')
+      .from('people')
+      .select('id, profile_id')
       .eq('organization_id', req.orgId)
-      .eq('user_id', user_id)
+      .match(person_id ? { id: person_id } : { profile_id: user_id })
       .maybeSingle(),
   );
-  if (!member) throw HttpError.badRequest('That person is not in this organization');
+  if (!person) throw HttpError.badRequest('That Person is not in this organization');
 
   const created = await unwrapOne(
     req.db
       .from('team_memberships')
-      .insert({ team_id: param(req, 'id'), user_id, position_id: position_id ?? null })
+      .insert({
+        team_id: param(req, 'id'),
+        person_id: person.id,
+        user_id: person.profile_id,
+        position_id: position_id ?? null,
+      })
       .select('*')
       .single(),
   );

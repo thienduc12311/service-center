@@ -8,14 +8,28 @@ export const assignmentStatusSchema = z.enum(['unconfirmed', 'confirmed', 'decli
 export const createAssignmentsSchema = z.object({
   assignments: z
     .array(
-      z.object({
-        user_id: uuid,
-        team_id: uuid,
-        position_id: uuid.nullish(),
-        notes: z.string().trim().max(1000).nullish(),
-        /** Overrides `visibility` for this row. */
-        visibility: visibility.optional(),
-      }),
+      z
+        .object({
+          /** Canonical roster identity. */
+          person_id: uuid.optional(),
+          /** Compatibility input for older clients; resolved to an existing Person. */
+          user_id: uuid.optional(),
+          team_id: uuid,
+          position_id: uuid.nullish(),
+          notes: z.string().trim().max(1000).nullish(),
+          /** Overrides `visibility` for this row. */
+          visibility: visibility.optional(),
+          attendance_mode: z.enum(['all', 'selected']).default('all'),
+          time_ids: z.array(uuid).max(20).default([]),
+        })
+        .refine((value) => Boolean(value.person_id || value.user_id), {
+          message: 'Choose a Person',
+          path: ['person_id'],
+        })
+        .refine((value) => value.attendance_mode === 'all' || value.time_ids.length > 0, {
+          message: 'Choose at least one attendance time',
+          path: ['time_ids'],
+        }),
     )
     .min(1)
     .max(200),
@@ -67,6 +81,34 @@ export const respondToAssignmentSchema = z
 /** Respond links carry only the answer; reasons are given in the app. */
 export const respondToAssignmentNotificationSchema = z.object({ status: responseStatus });
 
+export const previewAssignmentResponsesSchema = z.object({
+  assignment_ids: z.array(uuid).min(1).max(500),
+});
+
+export const assignmentSnapshotAnswerSchema = z
+  .object({
+    assignment_id: uuid,
+    /** Null only for a genuinely untimed legacy plan. */
+    plan_time_id: uuid.nullable(),
+    status: responseStatus,
+    reason: responseReason,
+  })
+  .refine(reasonOnlyWithDecline, reasonOnlyWithDeclineIssue);
+
+export const respondToAssignmentSnapshotsSchema = z.object({
+  responses: z
+    .array(
+      z.object({
+        snapshot_id: uuid,
+        version: z.number().int().positive(),
+        answers: z.array(assignmentSnapshotAnswerSchema).min(1).max(2000),
+      }),
+    )
+    .min(1)
+    .max(100),
+  idempotency_key: idempotencyKey,
+});
+
 export const updateAssignmentSchema = z.object({
   status: assignmentStatusSchema.optional(),
   position_id: uuid.nullish(),
@@ -85,4 +127,7 @@ export type RespondToAssignmentInput = z.infer<typeof respondToAssignmentSchema>
 export type RespondToAssignmentRequest = z.input<typeof respondToAssignmentSchema>;
 export type RespondToAssignmentNotificationInput = z.infer<typeof respondToAssignmentNotificationSchema>;
 export type RespondToAssignmentNotificationRequest = z.input<typeof respondToAssignmentNotificationSchema>;
+export type PreviewAssignmentResponsesInput = z.infer<typeof previewAssignmentResponsesSchema>;
+export type RespondToAssignmentSnapshotsInput = z.infer<typeof respondToAssignmentSnapshotsSchema>;
+export type RespondToAssignmentSnapshotsRequest = z.input<typeof respondToAssignmentSnapshotsSchema>;
 export type ConflictCheckInput = z.infer<typeof conflictCheckSchema>;

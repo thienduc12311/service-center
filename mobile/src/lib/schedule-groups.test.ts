@@ -14,6 +14,8 @@ const time = (id: string, kind: PlanTimeRow['kind'], startsAt: string): PlanTime
   name: null,
   starts_at: startsAt,
   ends_at: new Date(new Date(startsAt).getTime() + 60 * 60 * 1000).toISOString(),
+  revision: 1,
+  sort_order: 0,
   ics_sequence: 0,
   created_at: '2026-10-01T00:00:00.000Z',
 });
@@ -26,16 +28,20 @@ interface EntryFixture {
   position: string | null;
   serviceDate?: string;
   times?: PlanTimeRow[];
+  timeResponses?: MyScheduleEntry['time_responses'];
 }
 
 const entry = (fixture: EntryFixture): MyScheduleEntry => ({
   assignment: {
     id: fixture.id,
     plan_id: fixture.planId,
+    person_id: 'me',
     user_id: 'me',
     team_id: `team-${fixture.team}`,
     position_id: fixture.position ? `position-${fixture.position}` : null,
     status: fixture.status,
+    attendance_mode: 'all',
+    request_revision: 1,
     notes: null,
     notified_at: null,
     responded_at: null,
@@ -58,6 +64,7 @@ const entry = (fixture: EntryFixture): MyScheduleEntry => ({
   team: { id: `team-${fixture.team}`, name: fixture.team, color: '#000000' },
   position: fixture.position ? { id: `position-${fixture.position}`, name: fixture.position } : null,
   times: fixture.times ?? [],
+  time_responses: fixture.timeResponses ?? [],
 });
 
 const sunday = [
@@ -100,6 +107,26 @@ describe('groupSchedule', () => {
       ['service', ['a1', 'a2']],
     ]);
     expect(group!.status).toBe('confirmed');
+  });
+
+  it('summarizes split per-time answers as mixed instead of pending', () => {
+    const [group] = groupSchedule([
+      entry({
+        id: 'split',
+        planId: 'p1',
+        status: 'unconfirmed',
+        team: 'Band',
+        position: 'Bass',
+        times: sunday,
+        timeResponses: [
+          { assignment_id: 'split', plan_time_id: 'rehearsal', status: 'confirmed', response_note: null, actor_id: 'me', responded_at: '2026-10-01T00:00:00.000Z' },
+          { assignment_id: 'split', plan_time_id: 'service', status: 'declined', response_note: 'Unavailable', actor_id: 'me', responded_at: '2026-10-01T00:00:00.000Z' },
+        ],
+      }),
+    ], 'org');
+
+    expect(group!.responsibilities[0]!.scopeStatus).toBe('mixed');
+    expect(group!.status).toBe('mixed');
   });
 
   it('ignores a duplicated assignment row', () => {
@@ -190,6 +217,8 @@ describe('planResponsibilities', () => {
     response_owner: null,
     team: { id: `team-${team}`, name: team, color: '#000000' },
     position: null,
+    attendance_times: [],
+    time_responses: [],
   });
 
   it("returns every one of the person's positions on the plan, not just the first", () => {

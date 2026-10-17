@@ -33,8 +33,16 @@ export const explainCapabilityQuerySchema = z.object({
 /** Release exactly the reviewed prepared requests. */
 export const releaseAssignmentsSchema = z.object({
   assignment_ids: z.array(uuid).min(1).max(500),
+  expected_revisions: z.array(z.object({
+    assignment_id: uuid,
+    request_revision: z.number().int().min(0),
+  })).max(500).default([]),
   notify: z.boolean().default(true),
   idempotency_key: idempotencyKey.optional(),
+});
+
+export const releaseAssignmentsPreviewSchema = z.object({
+  assignment_ids: z.array(uuid).min(1).max(500),
 });
 
 export const setResponseOwnerSchema = z.object({
@@ -112,6 +120,7 @@ export type UpdateMemberAccessInput = z.infer<typeof updateMemberAccessSchema>;
 export type ExplainCapabilityQuery = z.infer<typeof explainCapabilityQuerySchema>;
 export type ReleaseAssignmentsInput = z.infer<typeof releaseAssignmentsSchema>;
 export type ReleaseAssignmentsRequest = z.input<typeof releaseAssignmentsSchema>;
+export type ReleaseAssignmentsPreviewInput = z.infer<typeof releaseAssignmentsPreviewSchema>;
 export type SetResponseOwnerInput = z.infer<typeof setResponseOwnerSchema>;
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type CreateFolderRequest = z.input<typeof createFolderSchema>;

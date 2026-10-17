@@ -40,6 +40,7 @@ interface DispatchPlan {
 interface RecipientAssignment {
   id: string;
   plan_id: string;
+  person_id: string;
   status: 'unconfirmed' | 'confirmed' | 'declined';
   visibility: 'prepared' | 'released';
   response_owner_id: string | null;
@@ -54,6 +55,7 @@ const mapEffect = (row: DeliveryEffectRow): DeliveryEffect => ({
   planId: row.plan_id,
   assignmentIds: row.assignment_ids,
   responderId: row.responder_id,
+  responderPersonId: row.responder_person_id,
   responseStatus: row.response_status,
   responseTransition: row.response_transition,
   createdBy: row.created_by,
@@ -126,15 +128,15 @@ const loadPlan = async (planId: string | null): Promise<DispatchPlan | null> => 
   );
 };
 
-const isActiveMember = async (orgId: string, userId: string): Promise<boolean> => {
+const isEligiblePerson = async (orgId: string, personId: string): Promise<boolean> => {
+  const person = await unwrap(
+    adminDb.from('people').select('profile_id').eq('id', personId).eq('organization_id', orgId).maybeSingle(),
+  );
+  if (!person) return false;
+  if (!person.profile_id) return true;
   const membership = await unwrap(
-    adminDb
-      .from('organization_members')
-      .select('user_id')
-      .eq('organization_id', orgId)
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .maybeSingle(),
+    adminDb.from('organization_members').select('user_id').eq('organization_id', orgId)
+      .eq('user_id', person.profile_id).eq('status', 'active').maybeSingle(),
   );
   return Boolean(membership);
 };
@@ -154,14 +156,14 @@ const stillSchedulesAny = async (userId: string, assignmentIds: readonly string[
 };
 
 /** The recipient's positions this effect is still about, re-read at dispatch. */
-const eligibleAssignments = async (effect: DeliveryEffect, recipientId: string): Promise<RecipientAssignment[]> => {
+const eligibleAssignments = async (effect: DeliveryEffect, personId: string): Promise<RecipientAssignment[]> => {
   if (effect.assignmentIds.length === 0) return [];
   const rows = (await unwrap(
     raw(adminDb)
       .from('assignments')
-      .select('id, plan_id, status, visibility, response_owner_id, team:teams(name), position:team_positions(name)')
+      .select('id, plan_id, person_id, status, visibility, response_owner_id, team:teams(name), position:team_positions(name)')
       .in('id', effect.assignmentIds)
-      .eq('user_id', recipientId)
+      .eq('person_id', personId)
       .eq('plan_id', effect.planId)
       .eq('visibility', 'released'),
   )) as unknown as RecipientAssignment[];
@@ -208,16 +210,24 @@ const responseDrafts = async (
   plan: DispatchPlan,
   recipientId: string,
 ): Promise<Array<NotificationDraft & { dedupeKey: string }>> => {
-  const responder = effect.responderId
-    ? await unwrap(adminDb.from('profiles').select('full_name').eq('id', effect.responderId).maybeSingle())
-    : null;
+  const [profile, person] = await Promise.all([
+    effect.responderId
+      ? unwrap(adminDb.from('profiles').select('full_name').eq('id', effect.responderId).maybeSingle())
+      : Promise.resolve(null),
+    effect.responderPersonId
+      ? unwrap(adminDb.from('people').select('first_name, last_name').eq('id', effect.responderPersonId).maybeSingle())
+      : Promise.resolve(null),
+  ]);
+  const responderName = profile?.full_name
+    ?? [person?.first_name, person?.last_name].filter(Boolean).join(' ')
+    ?? 'Someone';
   return [
     {
       organizationId: plan.organization_id,
       userId: recipientId,
       type: 'assignment_response',
       // No decline reason here: the feed and push never carry it.
-      title: `${responder?.full_name ?? 'Someone'} ${responseVerb(effect)} ${plan.title}`,
+      title: `${responderName || 'Someone'} ${responseVerb(effect)} ${plan.title}`,
       body: formatDate(plan.service_date),
       planId: plan.id,
       assignmentId: effect.assignmentIds[0] ?? null,
@@ -232,6 +242,7 @@ const sendPush = async (
   drafts: ReadonlyArray<NotificationDraft & { dedupeKey: string }>,
   begin: BeginProviderCall,
 ): Promise<DispatchResult | null> => {
+  if (!job.recipientId) return finished('skipped', 'no_active_device');
   const rows = await ensureFeedRows(drafts);
   const newest = rows[0];
   if (!newest) return finished('skipped', 'recipient_not_eligible');
@@ -260,19 +271,23 @@ const sendEmail = async (notification: ScheduleNotification, begin: BeginProvide
   return emailOutcome(transport.mode, receipt.providerMessageId);
 };
 
-const recipientEmail = async (orgId: string, userId: string): Promise<{ email: string | null; name: string | null }> => {
+const recipientEmail = async (
+  orgId: string,
+  personId: string,
+  profileId: string | null,
+): Promise<{ email: string | null; name: string | null }> => {
   const [profile, person] = await Promise.all([
-    unwrap(adminDb.from('profiles').select('full_name, email').eq('id', userId).maybeSingle()),
-    unwrap(
-      adminDb
-        .from('people')
-        .select('first_name, email')
-        .eq('profile_id', userId)
-        .eq('organization_id', orgId)
-        .maybeSingle(),
-    ),
+    profileId
+      ? unwrap(adminDb.from('profiles').select('full_name, email').eq('id', profileId).maybeSingle())
+      : Promise.resolve(null),
+    unwrap(adminDb.from('people').select('first_name, last_name, email').eq('id', personId)
+      .eq('organization_id', orgId).maybeSingle()),
   ]);
-  return { email: profile?.email ?? person?.email ?? null, name: profile?.full_name ?? person?.first_name ?? null };
+  return {
+    email: profile?.email ?? person?.email ?? null,
+    name: profile?.full_name
+      ?? ([person?.first_name, person?.last_name].filter(Boolean).join(' ') || null),
+  };
 };
 
 /** The request email: a fresh respond link, the positions and the calendar file. */
@@ -283,19 +298,29 @@ const requestEmail = async (
   rows: readonly RecipientAssignment[],
   begin: BeginProviderCall,
 ): Promise<DispatchResult | null> => {
-  const { email, name } = await recipientEmail(plan.organization_id, job.recipientId);
+  const { email, name } = await recipientEmail(plan.organization_id, job.recipientPersonId, job.recipientId);
   if (!email) return finished('skipped', 'no_email_address');
 
   // Replies go to whoever owns these answers, falling back to the sender.
   const replyTo = rows.find((row) => row.response_owner_id)?.response_owner_id ?? effect.createdBy;
+  const snapshot = await unwrap(
+    adminDb.from('assignment_request_snapshots').select('*')
+      .eq('effect_id', effect.id).eq('person_id', job.recipientPersonId).maybeSingle(),
+  );
+  if (!snapshot) return finished('cancelled', 'recipient_not_eligible');
+  const snapshotItems = await unwrap(
+    adminDb.from('assignment_request_snapshot_items').select('plan_time_ids')
+      .eq('snapshot_id', snapshot.id),
+  );
+  const timeIds = [...new Set((snapshotItems ?? []).flatMap((item) => item.plan_time_ids))];
   const [organization, scheduler, times] = await Promise.all([
     unwrap(adminDb.from('organizations').select('name').eq('id', plan.organization_id).maybeSingle()),
     replyTo
       ? unwrap(adminDb.from('profiles').select('email').eq('id', replyTo).maybeSingle())
       : Promise.resolve(null),
-    unwrap(
-      adminDb.from('plan_times').select('id, kind, name, starts_at, ends_at, ics_sequence').eq('plan_id', plan.id),
-    ),
+    timeIds.length
+      ? unwrap(adminDb.from('plan_times').select('id, kind, name, starts_at, ends_at, ics_sequence').in('id', timeIds))
+      : Promise.resolve([]),
   ]);
 
   const host = new URL(config.API_URL).host;
@@ -316,12 +341,15 @@ const requestEmail = async (
       .from('assignment_notifications')
       .select('id')
       .eq('plan_id', plan.id)
-      .eq('user_id', job.recipientId)
+      .eq('person_id', job.recipientPersonId)
       .is('responded_at', null)
       .maybeSingle(),
   );
   const link = {
     token_hash: token.tokenHash,
+    snapshot_id: snapshot.id,
+    person_id: job.recipientPersonId,
+    user_id: job.recipientId,
     email,
     expires_at: token.expiresAt.toISOString(),
     sent_at: null,
@@ -333,7 +361,7 @@ const requestEmail = async (
     await unwrap(
       adminDb
         .from('assignment_notifications')
-        .insert({ ...link, organization_id: plan.organization_id, plan_id: plan.id, user_id: job.recipientId }),
+        .insert({ ...link, organization_id: plan.organization_id, plan_id: plan.id }),
     );
   }
 
@@ -361,6 +389,7 @@ const responseEmail = async (
   job: DeliveryJob,
   begin: BeginProviderCall,
 ): Promise<DispatchResult | null> => {
+  if (!job.recipientId) return finished('cancelled', 'scheduler_not_active');
   const scheduler = await unwrap(adminDb.from('profiles').select('email').eq('id', job.recipientId).maybeSingle());
   if (!scheduler?.email) return finished('skipped', 'no_email_address');
   return sendEmail(
@@ -390,10 +419,10 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
   const plan = await loadPlan(effect.planId);
   if (!plan) return finished('cancelled', 'plan_missing');
 
-  const member = await isActiveMember(plan.organization_id, job.recipientId);
+  const member = await isEligiblePerson(plan.organization_id, job.recipientPersonId);
 
   if (effect.template === 'scheduler_response') {
-    if (!member || !(await stillSchedulesAny(job.recipientId, effect.assignmentIds))) {
+    if (!job.recipientId || !member || !(await stillSchedulesAny(job.recipientId, effect.assignmentIds))) {
       return finished('cancelled', 'scheduler_not_active');
     }
     if (job.channel === 'email') return responseEmail(effect, plan, job, begin);
@@ -406,10 +435,11 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
   }
 
   if (!member) return finished('cancelled', 'recipient_not_eligible');
-  const rows = await eligibleAssignments(effect, job.recipientId);
+  const rows = await eligibleAssignments(effect, job.recipientPersonId);
   if (rows.length === 0) return finished('cancelled', 'recipient_not_eligible');
 
   if (job.channel === 'email') return requestEmail(effect, plan, job, rows, begin);
+  if (!job.recipientId) return finished('skipped', 'no_active_device');
   const drafts = requestDrafts(effect, plan, job.recipientId, rows);
   if (job.channel === 'in_app') {
     await ensureFeedRows(drafts);

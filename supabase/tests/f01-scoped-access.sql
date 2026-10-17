@@ -392,9 +392,13 @@ begin
 end $$;
 reset role;
 
--- Private person details.
-insert into public.people (organization_id, profile_id, first_name, email, phone, medical_note)
-values ((select id from fx where k = 'org'), '55555555-5555-4555-8555-555555555555', 'Morgan', 'morgan@example.com', '555-0100', 'Allergy');
+-- Private person details. MOB-005 guarantees that an organization member
+-- already has exactly one Person, so enrich that stable row rather than
+-- creating a second roster identity.
+update public.people
+   set first_name = 'Morgan', email = 'morgan@example.com', phone = '555-0100', medical_note = 'Allergy'
+ where organization_id = (select id from fx where k = 'org')
+   and profile_id = '55555555-5555-4555-8555-555555555555';
 set local role authenticated;
 set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
 do $$

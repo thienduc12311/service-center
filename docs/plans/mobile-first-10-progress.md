@@ -11,7 +11,48 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 | MOB-003 Pass B — device registration lifecycle | implemented; QA pending | `codex/mob-003-session-lifecycle` | Physical push/sign-out matrix and EAS delivery gate (below) |
 | MOB-003 Pass C — validated navigation + public responses | not started | — | **Next task/pass** |
 | MOB-004 — individual responses, grouped schedule | implemented; QA pending | `codex/mob-004-personal-schedule` (uncommitted) | Signed-in device check (below); grouped atomic answers wait on MOB-005 |
-| MOB-005 – MOB-010 | not started | — | Per README order; MOB-003 Pass C also still open |
+| MOB-005 Pass A — Person identity + scoped access | complete | `feature/mob-005-prepared-response-foundations` | Person-first migration/API/RLS verified |
+| MOB-005 Pass B — stable times + attendance | complete | `feature/mob-005-prepared-response-foundations` | Stable IDs, revisions, exact conflicts verified |
+| MOB-005 Pass C — snapshots + atomic answers | complete | `feature/mob-005-prepared-response-foundations` | Stale rollback and real two-session replay race verified |
+| MOB-005 Pass D — preparation + release | complete | `feature/mob-005-prepared-response-foundations` | Private preparation, versioned release, durable effects verified |
+| MOB-005 Pass E — native review + split batch | implemented; QA pending | `feature/mob-005-prepared-response-foundations` | Signed-in iOS/Android interaction matrix below; implementation/export complete |
+| MOB-006 – MOB-010 | not started | — | Per README order; MOB-003 Pass C also still open |
+
+## MOB-005 Passes A–E — 2026-10-17
+
+**Implementation note / baseline:** F00's durable outbox and F01's capability/prepared-visibility foundations were present. Scheduling still keyed several records to Profile, plan times were replaced by list position, responses inferred all current assignments for a Person/plan, and native could answer only whole assignments. The Supabase Postgres skill's schema, RLS, index and locking guidance shaped the additive migration and transaction boundaries.
+
+**Identity compatibility map**
+
+| Contract | Legacy identity | Canonical identity | Compatible behavior |
+|---|---|---|---|
+| `assignments` | nullable `user_id` / Profile | required `person_id` | Existing IDs/history retained; linked writes synchronize both; no-login rows keep `user_id = null` |
+| `team_memberships` | nullable `user_id` / Profile | required `person_id` | Existing membership IDs retained; legacy Profile payload resolves only through the already-linked Person |
+| response history/effects | `assignee_id` / `responder_id` | `assignee_person_id` / `responder_person_id` | Old actor columns remain nullable compatibility references; history is append-only |
+| response links | plan + Profile, scope inferred later | required Person + immutable snapshot | Outstanding unambiguous links receive recorded scope; empty/ambiguous legacy links are consumed for safe reissue |
+| deliveries | nullable Profile recipient | required Person recipient | Linked recipients retain in-app/push/email; no-login recipients are email-only without an auth stub |
+
+**Delivered**
+
+- Pass A: idempotent one-Person-per-membership backfill and onboarding trigger; Person-first assignments/memberships/history/links/deliveries with dual-write guards; no email identity matching; no-login scheduling; invitation linking preserves the same Person and history; direct SQL and API remain capability/team scoped.
+- Pass B: stable `plan_times.id`, order and revision; assignment `all` versus selected attendance; per-time current answers plus append-only history; versioned full-list time replacement refuses referenced deletion; exact half-open interval conflicts cover rehearsal/other times, touching boundaries, gaps and distinct same-plan obligations. Truly untimed legacy plans retain the documented two-hour service-date fallback in the API.
+- Pass C: immutable Person/plan request snapshots with exact assignment IDs, time IDs, expected statuses/revisions, expiry and consumption; typed preview plus atomic, idempotent batch commit; deterministic stale/expired/used handling; public single-use links use the same transaction/service path; declined requests cannot be silently confirmed without a scheduler re-request; confirmed declines record withdrawal effects.
+- Pass D: versioned release preview/commit; prepared rows remain absent under recipient RLS and all calendar/feed/delivery paths; release creates snapshots and durable outbox effects in the same transaction, grouped by Person/plan; provider dispatch remains after commit and idempotent. Web staffing uses Person/time payloads and exact revisions.
+- Pass E: native grouped review freezes a server snapshot before showing controls, lists every selected position/time, permits split answers and an optional decline reason, commits atomically, displays mixed per-time state, handles stale refresh, disables duplicates and invalidates scoped schedule/plan/calendar/notification caches. Authorized leaders get prepared release review/commit; volunteers rely on RLS and never receive prepared rows.
+
+**Primary files:** `supabase/migrations/20261017000300_mob005_identity_times_snapshots.sql`; `supabase/tests/mob005-{snapshots-and-attendance.sql,concurrent-token.sh}`; shared database/domain types, assignment/plan/access/team schemas and API client; backend assignment/respond/plan/team routes, snapshot model/service and Person-aware delivery services; web plan time/staffing/release controls; native schedule grouping, response review, plan, schedule and public-response screens.
+
+**Checks (all pass)**
+
+- `npm run db:reset` from an empty local database, including seed and every migration.
+- `mob005-snapshots-and-attendance.sql`: deterministic Person backfill, linked/no-login scheduling, stable selected attendance, referenced-time refusal, recipient RLS, stale release rollback, exact release snapshot/outbox, later-assignment exclusion, public replay, split times/history/withdrawal, stale all-or-nothing batch, declined non-resurrection, rehearsal overlap, touching boundaries, service gaps and same-plan collision.
+- `mob005-concurrent-token.sh`: two actual PostgreSQL sessions forced to overlap; exactly one `ok`, one `used`, one assignment-history row.
+- SQL regressions: `assignment-response-history.sql`, `assignment-notifications-rls.sql`, `delivery-outbox.sql`, `f01-scoped-access.sql`, `atomic-plan-copy.sql`, `device-push-token-leases.sql`.
+- `npm run typecheck`; `npm test` (shared 114, backend 82, mobile 42); `npm run build` (existing Vite chunk advisory only).
+- `EXPO_OFFLINE=1 CI=1 ../node_modules/.bin/expo export --platform ios --platform android --output-dir /private/tmp/service-center-mobile-check-mob005-final-2`.
+- `git diff --check`.
+
+**Remaining gate:** no signed-in native device/simulator interaction surface was available. Run iOS and Android in light/dark and large text through prepare → absent for recipient → release review → exact batch/split response → scheduler update, plus no-login link, stale refresh, offline retry and duplicate-tap checks. Code, database, web build and both native bundles are complete; MOB-005 remains `implemented; QA pending` until that interaction evidence is recorded. No production migration, provider notification, push or deployment was performed.
 
 ## MOB-004 — 2026-10-16
 

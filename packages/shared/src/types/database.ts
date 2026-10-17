@@ -74,6 +74,7 @@ export type AccessScopeType = 'organization' | 'folder' | 'service_type' | 'team
 export type AccessMode = 'legacy' | 'scoped';
 /** `prepared` requests are a scheduler's private draft; `released` ones reach their person. */
 export type AssignmentVisibility = 'prepared' | 'released';
+export type AssignmentAttendanceMode = 'all' | 'selected';
 /** Who sees released team rosters: everyone in the organization, or teams (and related teams) only. */
 export type AssignmentRosterVisibility = 'organization' | 'teams';
 export type EligibilityStatus = 'clear' | 'not_clear' | 'pending';
@@ -237,7 +238,10 @@ export type TeamPositionRow = {
 export type TeamMembershipRow = {
   id: string;
   team_id: string;
-  user_id: string;
+  /** Canonical roster identity; a login is optional. */
+  person_id: string;
+  /** Compatibility reference to the linked Profile. */
+  user_id: string | null;
   position_id: string | null;
   created_at: string;
 }
@@ -313,6 +317,8 @@ export type PlanTimeRow = {
   starts_at: string;
   ends_at: string;
   ics_sequence: number;
+  revision: number;
+  sort_order: number;
   created_at: string;
 }
 
@@ -344,7 +350,10 @@ export type PlanPositionNeedRow = {
 export type AssignmentRow = {
   id: string;
   plan_id: string;
-  user_id: string;
+  /** Canonical roster identity. */
+  person_id: string;
+  /** Compatibility reference; null until this Person has a login. */
+  user_id: string | null;
   team_id: string;
   position_id: string | null;
   status: AssignmentStatus;
@@ -359,6 +368,9 @@ export type AssignmentRow = {
   released_by: string | null;
   /** Who receives answer updates; defaults to whoever scheduled it. */
   response_owner_id: string | null;
+  attendance_mode: AssignmentAttendanceMode;
+  /** Changes only when the promised request scope changes. */
+  request_revision: number;
   created_at: string;
   updated_at: string;
 }
@@ -372,7 +384,8 @@ export type AssignmentResponseRow = {
   id: string;
   organization_id: string;
   assignment_id: string;
-  assignee_id: string;
+  assignee_id: string | null;
+  assignee_person_id: string;
   /** Null when the change came from a respond link rather than a signed-in user. */
   actor_id: string | null;
   previous_status: AssignmentStatus;
@@ -385,7 +398,9 @@ export type AssignmentNotificationRow = {
   id: string;
   organization_id: string;
   plan_id: string;
-  user_id: string;
+  person_id: string;
+  user_id: string | null;
+  snapshot_id: string | null;
   email: string;
   token_hash: string;
   expires_at: string;
@@ -421,6 +436,7 @@ export type DeliveryEffectRow = {
   plan_id: string | null;
   assignment_ids: string[];
   responder_id: string | null;
+  responder_person_id: string | null;
   response_status: AssignmentStatus | null;
   response_transition: ResponseTransition | null;
   created_by: string | null;
@@ -432,7 +448,8 @@ export type DeliveryRow = {
   id: string;
   organization_id: string;
   effect_id: string;
-  recipient_id: string;
+  recipient_id: string | null;
+  recipient_person_id: string;
   channel: DeliveryChannel;
   status: DeliveryStatus;
   attempts: number;
@@ -449,6 +466,43 @@ export type DeliveryRow = {
   manual_retries: number;
   created_at: string;
   updated_at: string;
+}
+
+export type AssignmentAttendanceTimeRow = {
+  assignment_id: string;
+  plan_time_id: string;
+  created_at: string;
+}
+
+export type AssignmentTimeResponseRow = {
+  assignment_id: string;
+  plan_time_id: string;
+  status: Exclude<AssignmentStatus, 'unconfirmed'>;
+  response_note: string | null;
+  actor_id: string | null;
+  responded_at: string;
+}
+
+export type AssignmentRequestSnapshotRow = {
+  id: string;
+  organization_id: string;
+  person_id: string;
+  plan_id: string;
+  effect_id: string | null;
+  version: number;
+  expires_at: string;
+  consumed_at: string | null;
+  superseded_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export type AssignmentRequestSnapshotItemRow = {
+  snapshot_id: string;
+  assignment_id: string;
+  expected_request_revision: number;
+  expected_status: AssignmentStatus;
+  plan_time_ids: string[];
 }
 
 export type DevicePushTokenRow = {
@@ -639,6 +693,10 @@ export type Database = {
       plan_items: Table<PlanItemRow>;
       plan_position_needs: Table<PlanPositionNeedRow>;
       assignments: Table<AssignmentRow>;
+      assignment_attendance_times: Table<AssignmentAttendanceTimeRow>;
+      assignment_time_responses: Table<AssignmentTimeResponseRow>;
+      assignment_request_snapshots: Table<AssignmentRequestSnapshotRow>;
+      assignment_request_snapshot_items: Table<AssignmentRequestSnapshotItemRow>;
       assignment_responses: Table<AssignmentResponseRow>;
       assignment_notifications: Table<AssignmentNotificationRow>;
       calendar_feed_tokens: Table<CalendarFeedTokenRow>;
@@ -676,15 +734,26 @@ export type Database = {
         };
         Returns: AssignmentRow[];
       };
+      preview_assignment_responses: {
+        Args: { p_organization_id: string; p_assignment_ids: string[] };
+        Returns: AssignmentRequestSnapshotRow[];
+      };
+      respond_to_assignment_snapshots: {
+        Args: { p_organization_id: string; p_responses: unknown; p_idempotency_key: string };
+        Returns: unknown;
+      };
       schedule_plan_assignments: {
         Args: {
           p_plan_id: string;
           p_assignments: Array<{
-            user_id: string;
+            person_id?: string | null;
+            user_id?: string | null;
             team_id: string;
             position_id: string | null;
             notes: string | null;
             visibility?: AssignmentVisibility | null;
+            attendance_mode?: AssignmentAttendanceMode | null;
+            time_ids?: string[] | null;
           }>;
           p_notify: boolean;
           p_effect_key?: string | null;
@@ -695,6 +764,16 @@ export type Database = {
       };
       release_plan_assignments: {
         Args: { p_plan_id: string; p_assignment_ids: string[]; p_notify: boolean; p_effect_key: string | null };
+        Returns: AssignmentRow[];
+      };
+      release_plan_assignments_versioned: {
+        Args: {
+          p_plan_id: string;
+          p_assignment_ids: string[];
+          p_expected_revisions: Array<{ assignment_id: string; request_revision: number }>;
+          p_notify: boolean;
+          p_effect_key: string | null;
+        };
         Returns: AssignmentRow[];
       };
       set_assignment_response_owner: {
@@ -786,7 +865,29 @@ export type Database = {
       };
       respond_via_assignment_link: {
         Args: { p_token_hash: string; p_status: AssignmentStatus };
-        Returns: Array<{ outcome: 'ok' | 'not_found' | 'used' | 'expired'; assignments_updated: number; effect_id: string | null }>;
+        Returns: Array<{ outcome: 'ok' | 'not_found' | 'used' | 'expired' | 'stale'; assignments_updated: number; effect_id: string | null }>;
+      };
+      replace_plan_times: {
+        Args: { p_plan_id: string; p_times: unknown; p_expected_revision?: number | null };
+        Returns: PlanTimeRow[];
+      };
+      scheduling_conflicts_for_people: {
+        Args: {
+          p_organization_id: string;
+          p_person_ids: string[];
+          p_plan_time_ids: string[];
+          p_exclude_assignment_ids?: string[];
+        };
+        Returns: Array<{
+          person_id: string;
+          conflict_type: 'blockout' | 'double_booked';
+          detail: string | null;
+          starts_at: string;
+          ends_at: string;
+          plan_id: string | null;
+          assignment_id: string | null;
+          plan_time_id: string;
+        }>;
       };
       claim_deliveries: {
         Args: { p_worker: string; p_limit: number; p_lease_seconds: number; p_effect_id?: string | null };
