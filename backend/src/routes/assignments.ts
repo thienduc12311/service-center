@@ -51,6 +51,7 @@ import {
   notifyPlanAssignments,
 } from '../services/deliveries.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
+import { releasePlanAssignments } from '../services/releases.js';
 import { loadAssignmentResponseReview } from '../services/assignment-snapshots.js';
 
 export const planAssignmentsRouter: Router = Router({ mergeParams: true });
@@ -198,40 +199,19 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
 });
 
 /**
- * Releases exactly the prepared requests the leader reviewed, and records
- * their notification in the same transaction. Repeating it is a no-op.
+ * Releases exactly the prepared requests the leader reviewed as a one-plan
+ * F08 release batch (one message per Person), recorded in the same
+ * transaction. Repeating it with the same idempotency key is a no-op.
  */
 planReleaseRouter.post('/', requireCapability('scheduling.manage'), validateBody(releaseAssignmentsSchema), async (req, res) => {
   const planId = param(req, 'planId');
-  const { assignment_ids, expected_revisions, notify, idempotency_key } = req.body as ReleaseAssignmentsInput;
+  const input = req.body as ReleaseAssignmentsInput;
   const plan = await unwrap(
     req.db.from('plans').select('id').eq('id', planId).eq('organization_id', req.orgId).maybeSingle(),
   );
   if (!plan) throw HttpError.notFound('Plan not found');
-
-  const revisions = expected_revisions.length > 0
-    ? expected_revisions
-    : ((await unwrap(
-        req.db.from('assignments').select('id, request_revision').eq('plan_id', plan.id).in('id', assignment_ids),
-      )) ?? []).map((assignment) => ({
-        assignment_id: assignment.id,
-        request_revision: assignment.request_revision,
-      }));
-
-  const effectKey = `release:${plan.id}:${idempotency_key ?? randomUUID()}`;
-  const released = await unwrap(
-    req.db.rpc('release_plan_assignments_versioned', {
-      p_plan_id: plan.id,
-      p_assignment_ids: assignment_ids,
-      p_expected_revisions: revisions,
-      p_notify: notify,
-      p_effect_key: effectKey,
-    }),
-  );
-  if (notify && (released ?? []).length > 0) {
-    await deliverEffectNow(await effectIdForKey(req.db, req.orgId, effectKey));
-  }
-  res.json({ released: released ?? [] });
+  const released: AssignmentRow[] = await releasePlanAssignments(req.db, req.orgId, req.auth.userId, plan.id, input);
+  res.json({ released });
 });
 
 planReleaseRouter.post(

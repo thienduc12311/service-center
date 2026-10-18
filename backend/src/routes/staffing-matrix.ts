@@ -8,6 +8,7 @@ import {
   type CommitStaffingMatrixInput,
   type PreviewStaffingMatrixInput,
   type SaveStaffingMatrixViewInput,
+  type StaffingMatrixCommitResult,
   type StaffingMatrixSavedView,
   type StaffingMatrixViewRow,
 } from '@service-center/shared';
@@ -41,8 +42,8 @@ staffingMatrixRouter.post('/commit', validateBody(commitStaffingMatrixSchema), a
     p_idempotency_key: input.idempotency_key,
   });
   if (error) throw fromPostgrestError(error);
-  const result = data as { delivery_effect_ids?: string[] };
-  for (const effectId of result.delivery_effect_ids ?? []) await deliverEffectNow(effectId);
+  const result = data as StaffingMatrixCommitResult;
+  for (const effectId of result.delivery_effect_ids) await deliverEffectNow(effectId);
   res.json(result);
 });
 
