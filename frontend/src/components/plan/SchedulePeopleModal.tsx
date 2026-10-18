@@ -5,14 +5,15 @@ import {
   isFreshnessWarning,
   PREFERENCE_WARNING_LABELS,
   type AssignmentVisibility,
+  type AttendanceConflict,
   type PreferenceWarning,
-  type SchedulingConflict,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { keys, useDeliveryReadiness, useInvalidateOrg, usePeople, usePlan, useTeams } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Avatar, Button, ErrorNotice, Modal } from '../ui';
 import { AddGuestForm } from './AddGuestForm';
+import { ALL_TIMES, ConflictList, isScopeComplete, TimeScopePicker, type TimeScope } from './attendance';
 
 /** Sentinel option value for "create a plan-only position". */
 const NEW_POSITION = '__new__';
@@ -50,12 +51,47 @@ export const SchedulePeopleModal = ({
   const [newPositionName, setNewPositionName] = useState('');
   const [positionId, setPositionId] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
-  const [conflicts, setConflicts] = useState<SchedulingConflict[]>([]);
+  const [scope, setScope] = useState<TimeScope>(ALL_TIMES);
+  /** Conflicts the server reported at commit time (e.g. someone else got there first). */
+  const [commitConflicts, setCommitConflicts] = useState<AttendanceConflict[] | null>(null);
+  const [conflictReason, setConflictReason] = useState('');
   /** Null follows the team's default. */
   const [visibilityChoice, setVisibilityChoice] = useState<AssignmentVisibility | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
 
   const team = teams.data?.find((t) => t.id === teamId);
+  const realPositionId = positionId && positionId !== NEW_POSITION ? positionId : null;
+
+  // F04: actual attendance intervals, checked as the scheduler chooses. The
+  // server re-checks at commit, so this preview is advisory, never trusted.
+  const conflictQuery = {
+    team_id: teamId,
+    position_id: realPositionId,
+    people: [...selected].sort(),
+    mode: scope.mode,
+    time_ids: [...scope.timeIds].sort(),
+  };
+  const conflictCheck = useQuery({
+    queryKey: keys.conflictCheck(organizationId, { plan: planId, ...conflictQuery }),
+    queryFn: () =>
+      api.checkAssignmentConflicts({
+        candidates: selected.map((personId) => ({
+          key: personId,
+          person_id: personId,
+          plan_id: planId,
+          team_id: teamId,
+          position_id: realPositionId,
+          attendance_mode: scope.mode,
+          time_ids: scope.mode === 'selected' ? scope.timeIds : [],
+        })),
+      }),
+    enabled: open && Boolean(teamId) && selected.length > 0 && isScopeComplete(scope),
+  });
+  const conflicts = commitConflicts ?? conflictCheck.data?.conflicts ?? [];
+  const blocking = conflicts.filter((conflict) => conflict.severity === 'blocking');
+  const mayOverride =
+    can('scheduling.override_conflicts', { serviceTypeId, teamId }) &&
+    (commitConflicts !== null || conflictCheck.data?.override_permitted !== false);
   const visibility: AssignmentVisibility = visibilityChoice ?? team?.default_visibility ?? 'released';
   /** Positions added for this plan only (F02); the team's normal list is untouched. */
   const planPositions = (plan.data?.plan_positions ?? []).filter((position) => position.team_id === teamId);
@@ -88,39 +124,45 @@ export const SchedulePeopleModal = ({
   });
 
   const schedule = useMutation({
-    mutationFn: (ignoreConflicts: boolean) =>
+    mutationFn: () =>
       api.createAssignments(planId, {
         assignments: selected.map((personId) => ({
           person_id: personId,
           team_id: teamId,
-          position_id: positionId || null,
+          position_id: realPositionId,
+          attendance_mode: scope.mode,
+          time_ids: scope.mode === 'selected' ? scope.timeIds : [],
         })),
-        ignore_conflicts: ignoreConflicts,
         notify: true,
         visibility,
         preference_override_reason: overrideReason.trim() || null,
+        conflict_override_reason: blocking.length > 0 ? conflictReason.trim() || null : null,
       }),
     onSuccess: async () => {
       await invalidate();
       setSelected([]);
-      setConflicts([]);
+      setScope(ALL_TIMES);
+      setCommitConflicts(null);
+      setConflictReason('');
       setVisibilityChoice(null);
       setOverrideReason('');
       onClose();
     },
     onError: (error) => {
-      // 409 carries the list of who is unavailable, so the scheduler can
-      // decide to override rather than being stuck.
-      if (error instanceof ApiError && error.status === 409) {
-        setConflicts((error.details as SchedulingConflict[]) ?? []);
+      // A 409 at commit means the picture changed since the check (or a
+      // reason is needed): show exactly what the server found.
+      if (error instanceof ApiError && error.status === 409 && error.code === 'scheduling_conflict') {
+        setCommitConflicts((error.details as AttendanceConflict[] | undefined) ?? []);
       }
     },
   });
 
-  const toggle = (personId: string) =>
+  const toggle = (personId: string) => {
+    setCommitConflicts(null);
     setSelected((current) =>
       current.includes(personId) ? current.filter((id) => id !== personId) : [...current, personId],
     );
+  };
 
   // Members of the chosen team come first — they're who you usually want.
   // Archived people are not in this list (the server leaves them out).
@@ -153,6 +195,7 @@ export const SchedulePeopleModal = ({
             onChange={(e) => {
               setTeamId(e.target.value);
               setPositionId('');
+              setCommitConflicts(null);
             }}
           >
             <option value="">Choose a team</option>
@@ -173,7 +216,10 @@ export const SchedulePeopleModal = ({
               id="schedule-position"
               className="input"
               value={positionId}
-              onChange={(e) => setPositionId(e.target.value)}
+              onChange={(e) => {
+              setCommitConflicts(null);
+              setPositionId(e.target.value);
+            }}
             >
               <option value="">No specific position</option>
               {team.positions.map((position) => (
@@ -219,6 +265,18 @@ export const SchedulePeopleModal = ({
               </div>
             )}
           </div>
+        )}
+
+        {team && (
+          <TimeScopePicker
+            idPrefix="schedule-times"
+            times={plan.data?.times ?? []}
+            value={scope}
+            onChange={(next) => {
+              setCommitConflicts(null);
+              setScope(next);
+            }}
+          />
         )}
 
         <div>
@@ -300,23 +358,22 @@ export const SchedulePeopleModal = ({
           </div>
         )}
 
-        {conflicts.length > 0 && (
-          <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
-            <p className="font-medium">Scheduling conflicts</p>
-            <ul className="mt-1 space-y-0.5 text-xs">
-              {conflicts.map((conflict, index) => {
-                const person = people.data?.find((p) => p.id === conflict.user_id);
-                return (
-                  <li key={`${conflict.user_id}-${index}`}>
-                    {person?.full_name ?? 'Someone'} —{' '}
-                    {conflict.conflict_type === 'blockout' ? 'unavailable' : 'already scheduled'}
-                    {conflict.detail ? ` (${conflict.detail})` : ''}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
+        {conflicts.length > 0 && <ConflictList conflicts={conflicts} nameOf={nameOf} />}
+        {blocking.length > 0 && (mayOverride ? (
+          <input
+            aria-label="Reason for scheduling over the conflicts"
+            className="input"
+            placeholder="Reason for scheduling anyway (required, kept with the request)"
+            maxLength={500}
+            value={conflictReason}
+            onChange={(e) => setConflictReason(e.target.value)}
+          />
+        ) : (
+          <p className="text-xs text-slate-500">
+            You can’t schedule over a conflict here. Choose other times or people, or ask someone who may
+            schedule over conflicts.
+          </p>
+        ))}
 
         {warningsByPerson.size > 0 && (
           <div role="status" className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 ring-1 ring-slate-300/60">
@@ -344,7 +401,7 @@ export const SchedulePeopleModal = ({
           </div>
         )}
 
-        {schedule.error && !(schedule.error instanceof ApiError && schedule.error.status === 409) && (
+        {schedule.error && !(schedule.error instanceof ApiError && schedule.error.code === 'scheduling_conflict') && (
           <ErrorNotice error={schedule.error} />
         )}
 
@@ -354,10 +411,16 @@ export const SchedulePeopleModal = ({
           </Button>
           <Button
             loading={schedule.isPending}
-            disabled={!teamId || selected.length === 0 || positionId === NEW_POSITION}
-            onClick={() => schedule.mutate(conflicts.length > 0)}
+            disabled={
+              !teamId ||
+              selected.length === 0 ||
+              positionId === NEW_POSITION ||
+              !isScopeComplete(scope) ||
+              (blocking.length > 0 && (!mayOverride || !conflictReason.trim()))
+            }
+            onClick={() => schedule.mutate()}
           >
-            {conflicts.length > 0
+            {blocking.length > 0
               ? 'Schedule anyway'
               : `${visibility === 'prepared' ? 'Prepare' : 'Schedule'} ${selected.length || ''}`.trim()}
           </Button>

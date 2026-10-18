@@ -1,5 +1,11 @@
-import { Router } from 'express';
-import { calendarQuerySchema, type CalendarEvent, type CalendarQuery } from '@service-center/shared';
+import { Router, type Request } from 'express';
+import {
+  calendarQuerySchema,
+  type AssignmentStatus,
+  type CalendarEvent,
+  type CalendarQuery,
+} from '@service-center/shared';
+import { attendanceFor } from '../services/attendance.js';
 import { parsedQuery, validateQuery } from '../lib/validate.js';
 import { raw, unwrap } from '../lib/supabase.js';
 
@@ -18,9 +24,36 @@ interface RawPlanTime {
     location: string | null;
     service_type_id: string | null;
     service_type: { name: string } | null;
-    assignments: Array<{ user_id: string; team_id: string; status: CalendarEvent['status']; visibility: string }>;
+    assignments: Array<{ team_id: string; visibility: string }>;
   } | null;
 }
+
+/** An answer that still stands outranks a decline on another position. */
+const STATUS_RANK: Record<AssignmentStatus, number> = { confirmed: 2, unconfirmed: 1, declined: 0 };
+
+/** For each plan time, my status on the released request(s) that cover it. */
+const myStatusForTimes = async (req: Request, planIds: readonly string[]): Promise<Map<string, AssignmentStatus>> => {
+  const statusByTime = new Map<string, AssignmentStatus>();
+  if (planIds.length === 0) return statusByTime;
+  const me = await unwrap(
+    req.db.from('people').select('id').eq('organization_id', req.orgId).eq('profile_id', req.auth.userId).maybeSingle(),
+  );
+  if (!me) return statusByTime;
+  const mine = (await unwrap(
+    req.db.from('assignments').select('id, status').eq('person_id', me.id).eq('visibility', 'released').in('plan_id', [...planIds]),
+  )) ?? [];
+  const attendance = await attendanceFor(req.db, mine.map((assignment) => assignment.id));
+  for (const assignment of mine) {
+    for (const interval of attendance.get(assignment.id) ?? []) {
+      if (!interval.plan_time_id) continue;
+      const current = statusByTime.get(interval.plan_time_id);
+      if (!current || STATUS_RANK[assignment.status] > STATUS_RANK[current]) {
+        statusByTime.set(interval.plan_time_id, assignment.status);
+      }
+    }
+  }
+  return statusByTime;
+};
 
 /**
  * Feeds every calendar surface — the web month/week grid and the mobile agenda.
@@ -37,7 +70,7 @@ calendarRouter.get('/', validateQuery(calendarQuerySchema), async (req, res) => 
        plan:plans!inner(
          id, title, status, location, service_type_id, organization_id,
          service_type:service_types(name),
-         assignments:assignments(user_id, team_id, status, visibility)
+         assignments:assignments(team_id, visibility)
        )`,
     )
     .eq('plan.organization_id', req.orgId)
@@ -49,6 +82,7 @@ calendarRouter.get('/', validateQuery(calendarQuerySchema), async (req, res) => 
   if (!include_rehearsals) query = query.eq('kind', 'service');
 
   const rows = (await unwrap(query)) as unknown as RawPlanTime[];
+  const myStatusByTime = await myStatusForTimes(req, [...new Set(rows.flatMap((row) => (row.plan ? [row.plan.id] : [])))]);
 
   const events: CalendarEvent[] = [];
   for (const row of rows) {
@@ -56,8 +90,10 @@ calendarRouter.get('/', validateQuery(calendarQuerySchema), async (req, res) => 
     // A leader's prepared drafts are not anyone's schedule yet.
     const assignments = (row.plan.assignments ?? []).filter((a) => a.visibility === 'released');
 
-    const myAssignment = assignments.find((a) => a.user_id === req.auth.userId);
-    if (mine && !myAssignment) continue;
+    // F04: "mine" means the times my requests cover, not every time on a plan
+    // I'm somewhere on.
+    const myStatus = myStatusByTime.get(row.id);
+    if (mine && !myStatus) continue;
     if (team_id && !assignments.some((a) => a.team_id === team_id)) continue;
 
     events.push({
@@ -70,7 +106,7 @@ calendarRouter.get('/', validateQuery(calendarQuerySchema), async (req, res) => 
       status: row.plan.status,
       location: row.plan.location,
       service_type: row.plan.service_type?.name ?? null,
-      ...(myAssignment ? { my_assignment_status: myAssignment.status } : {}),
+      ...(myStatus ? { my_assignment_status: myStatus } : {}),
     } as CalendarEvent);
   }
 

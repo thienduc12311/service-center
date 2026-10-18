@@ -57,6 +57,9 @@ export const keys = {
   delegations: (org: string | null) => [...keys.all(org), 'delegations'] as const,
   delegatedSchedule: (org: string | null, id: string) => [...keys.delegations(org), id, 'schedule'] as const,
   preferenceWarnings: (org: string | null, query: unknown) => [...keys.all(org), 'preference-warnings', query] as const,
+  // F04 attendance and conflicts.
+  conflictCheck: (org: string | null, query: unknown) => [...keys.all(org), 'conflict-check', query] as const,
+  conflictOverrides: (org: string | null, planId: string) => [...keys.plan(org, planId), 'conflict-overrides'] as const,
 };
 
 /** Not organization-scoped: the signed-in user's own cross-organization settings. */

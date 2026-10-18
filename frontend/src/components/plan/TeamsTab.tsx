@@ -3,6 +3,13 @@ import { ASSIGNMENT_STATUS_LABELS, type AssignmentDetail } from '@service-center
 import { Avatar, Button, EmptyState } from '../ui';
 import { assignmentDot } from '../../lib/format';
 import type { PlanTeamPositionView, PlanTeamView } from './types';
+import { attendanceSummary } from './attendance';
+
+/** "All times" stays explicit so a later-added time's effect is visible. */
+const attendanceLabel = (assignment: AssignmentDetail): string =>
+  assignment.attendance_mode === 'all' && assignment.attendance.some((interval) => interval.source === 'plan_time')
+    ? `All times · ${attendanceSummary(assignment.attendance)}`
+    : attendanceSummary(assignment.attendance);
 
 export interface TeamsTabProps {
   teams: PlanTeamView[];
@@ -20,6 +27,10 @@ export interface TeamsTabProps {
   onAddPeople: () => void;
   onRemoveAssignment: (assignmentId: string) => void;
   onRespond: (assignmentId: string, status: 'confirmed' | 'declined') => void;
+  /** F04: change which times one request covers. */
+  onEditTimes: (assignment: AssignmentDetail) => void;
+  /** F04: requests committed over a conflict, by assignment id → reason. */
+  overrideReasons: ReadonlyMap<string, string>;
   showAllTeams: boolean;
   onToggleAllTeams: () => void;
 }
@@ -37,6 +48,8 @@ export const TeamsTab = ({
   onAddPeople,
   onRemoveAssignment,
   onRespond,
+  onEditTimes,
+  overrideReasons,
   showAllTeams,
   onToggleAllTeams,
 }: TeamsTabProps) => (
@@ -99,6 +112,8 @@ export const TeamsTab = ({
             onNeedChange={onNeedChange}
             onRemoveAssignment={onRemoveAssignment}
             onRespond={onRespond}
+            onEditTimes={onEditTimes}
+            overrideReasons={overrideReasons}
           />
         ))}
       </div>
@@ -117,6 +132,8 @@ interface TeamColumnProps {
   onNeedChange: (positionId: string, needed: number) => void;
   onRemoveAssignment: (assignmentId: string) => void;
   onRespond: (assignmentId: string, status: 'confirmed' | 'declined') => void;
+  onEditTimes: (assignment: AssignmentDetail) => void;
+  overrideReasons: ReadonlyMap<string, string>;
 }
 
 const TeamColumn = ({
@@ -130,6 +147,8 @@ const TeamColumn = ({
   onNeedChange,
   onRemoveAssignment,
   onRespond,
+  onEditTimes,
+  overrideReasons,
 }: TeamColumnProps) => {
   // Outside the editor a position only shows when it is staffed or wanted, so
   // a team can have positions and still have nothing worth drawing.
@@ -195,6 +214,8 @@ const TeamColumn = ({
             onNeedChange={onNeedChange}
             onRemoveAssignment={onRemoveAssignment}
             onRespond={onRespond}
+            onEditTimes={onEditTimes}
+            overrideReasons={overrideReasons}
           />
         ))}
 
@@ -212,6 +233,8 @@ const TeamColumn = ({
                   currentUserId={currentUserId}
                   onRemove={() => onRemoveAssignment(assignment.id)}
                   onRespond={onRespond}
+                  onEditTimes={() => onEditTimes(assignment)}
+                  overrideReason={overrideReasons.get(assignment.id) ?? null}
                 />
               ))}
             </ul>
@@ -232,6 +255,8 @@ interface PositionBlockProps {
   onNeedChange: (positionId: string, needed: number) => void;
   onRemoveAssignment: (assignmentId: string) => void;
   onRespond: (assignmentId: string, status: 'confirmed' | 'declined') => void;
+  onEditTimes: (assignment: AssignmentDetail) => void;
+  overrideReasons: ReadonlyMap<string, string>;
 }
 
 const PositionBlock = ({
@@ -243,6 +268,8 @@ const PositionBlock = ({
   onNeedChange,
   onRemoveAssignment,
   onRespond,
+  onEditTimes,
+  overrideReasons,
 }: PositionBlockProps) => {
   // A position with nobody on it and nothing asked for is noise outside the editor.
   if (!editingNeeds && position.scheduled.length === 0 && position.needed === 0) return null;
@@ -289,6 +316,8 @@ const PositionBlock = ({
               currentUserId={currentUserId}
               onRemove={() => onRemoveAssignment(assignment.id)}
               onRespond={onRespond}
+              onEditTimes={() => onEditTimes(assignment)}
+              overrideReason={overrideReasons.get(assignment.id) ?? null}
             />
           ))}
         </ul>
@@ -337,19 +366,26 @@ const NeededStepper = ({
   </div>
 );
 
+interface ScheduledPersonProps {
+  assignment: AssignmentDetail;
+  canManage: boolean;
+  currentUserId: string | null;
+  onRemove: () => void;
+  onRespond: (assignmentId: string, status: 'confirmed' | 'declined') => void;
+  onEditTimes: () => void;
+  /** Set when this request was committed over a conflict. */
+  overrideReason: string | null;
+}
+
 const ScheduledPerson = ({
   assignment,
   canManage,
   currentUserId,
   onRemove,
   onRespond,
-}: {
-  assignment: AssignmentDetail;
-  canManage: boolean;
-  currentUserId: string | null;
-  onRemove: () => void;
-  onRespond: (assignmentId: string, status: 'confirmed' | 'declined') => void;
-}) => {
+  onEditTimes,
+  overrideReason,
+}: ScheduledPersonProps) => {
   const name = assignment.person?.full_name ?? assignment.person?.email ?? 'Unknown';
   const isMine = assignment.user_id === currentUserId;
   const prepared = assignment.visibility === 'prepared';
@@ -358,11 +394,31 @@ const ScheduledPerson = ({
   return (
     <li className="flex items-center gap-2 px-4 py-2">
       <Avatar name={name} url={assignment.person?.avatar_url} size="sm" />
-      <span
-        className="min-w-0 flex-1 truncate text-sm"
-        title={canManage && ownerName ? `Answers go to ${ownerName}` : undefined}
-      >
-        {name}
+      <span className="min-w-0 flex-1">
+        <span
+          className="block truncate text-sm"
+          title={canManage && ownerName ? `Answers go to ${ownerName}` : undefined}
+        >
+          {name}
+          {overrideReason && (
+            <span className="ml-1 text-amber-600" title={`Scheduled over a conflict: ${overrideReason}`} aria-label="Scheduled over a conflict">
+              ⚠
+            </span>
+          )}
+        </span>
+        {/* F04: the times this request actually covers, from the shared resolver. */}
+        {canManage ? (
+          <button
+            type="button"
+            onClick={onEditTimes}
+            className="block max-w-full truncate text-left text-[11px] text-slate-500 hover:text-brand-600 hover:underline"
+            title="Change which times this request covers"
+          >
+            {attendanceLabel(assignment)}
+          </button>
+        ) : (
+          <span className="block truncate text-[11px] text-slate-500">{attendanceLabel(assignment)}</span>
+        )}
       </span>
       {prepared && (
         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">

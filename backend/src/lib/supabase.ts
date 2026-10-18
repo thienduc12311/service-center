@@ -50,7 +50,7 @@ export const raw = (db: Db): SupabaseClient => db as unknown as SupabaseClient;
 
 interface PostgrestLike<T> {
   data: T;
-  error: { code?: string; message: string; details?: string | null } | null;
+  error: { code?: string; message: string; details?: string | null; hint?: string | null } | null;
 }
 
 /** Unwraps a PostgREST response, throwing a mapped HttpError on failure. */

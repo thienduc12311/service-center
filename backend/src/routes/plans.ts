@@ -21,7 +21,13 @@ import {
   type PlanSummary,
   type SetPlanPositionNeedsInput,
   type UpdatePlanInput,
+  previewPlanTimesSchema,
+  type PreviewPlanTimesInput,
+  type PlanTimeChangeResult,
+  type PlanTimeImpact,
+  canAccessAnywhere,
 } from '@service-center/shared';
+import { randomUUID } from 'node:crypto';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireCapability, requireManager } from '../middleware/organization.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
@@ -37,6 +43,8 @@ import {
   shapePlanSummary,
 } from '../services/plans.js';
 import { notifyConfirmedAssignmentsForPlan } from './assignments.js';
+import { applyPlanTimes, identifyPlanTimes, previewPlanTimes } from '../services/attendance.js';
+import { deliverEffectNow } from '../services/delivery-worker.js';
 
 export const plansRouter: Router = Router();
 
@@ -87,31 +95,62 @@ plansRouter.post('/', requireCapability('plans.edit'), validateBody(createPlanSc
   res.status(201).json(await fetchPlanDetail(req.db, req.orgId, planId));
 });
 
-plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePlanSchema), async (req, res) => {
-  const { times, expected_revision, ...plan } = req.body as UpdatePlanInput;
-  const existingPlan = await unwrapOne(req.db.from('plans').select('id, location, organization_id, content_revision').eq('id', param(req, 'id')).eq('organization_id', req.orgId).single());
-  const existingTimes = times
-    ? (await unwrap(req.db.from('plan_times').select('*').eq('plan_id', param(req, 'id')).order('sort_order'))) ?? []
-    : [];
+/**
+ * F04: what saving this complete time list would do — which requests gain,
+ * lose or change attendance, which selected requests would be left without a
+ * time, and which outstanding requests would have to be answered again.
+ */
+plansRouter.post('/:id/times/preview', requireCapability('plans.edit'), validateBody(previewPlanTimesSchema), async (req, res) => {
+  const planId = param(req, 'id');
+  const { times } = req.body as PreviewPlanTimesInput;
+  await unwrapOne(req.db.from('plans').select('id').eq('id', planId).eq('organization_id', req.orgId).single());
+  const ctx = { db: req.db, orgId: req.orgId, planId };
+  const identified = await identifyPlanTimes(ctx, times);
+  const impact: PlanTimeImpact = await previewPlanTimes(ctx, identified, canAccessAnywhere(req.access, 'scheduling.manage'));
+  res.json(impact);
+});
 
-  // The editor sends the complete set with stable IDs. The RPC locks the plan,
-  // checks its revision, preserves IDs across reorder and rejects deleting a
-  // selected attendance time until the scheduler reviews affected requests.
+/** F04: requests on this plan committed over a conflict, with who and why (RLS-scoped). */
+plansRouter.get('/:id/conflict-overrides', requireCapability('scheduling.manage'), async (req, res) => {
+  res.json(
+    (await unwrap(
+      req.db
+        .from('assignment_conflict_overrides')
+        .select('*')
+        .eq('plan_id', param(req, 'id'))
+        .eq('organization_id', req.orgId)
+        .order('created_at', { ascending: false }),
+    )) ?? [],
+  );
+});
+
+plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePlanSchema), async (req, res) => {
+  const {
+    times,
+    expected_revision,
+    time_impact_hash,
+    orphan_resolutions,
+    notify_time_changes,
+    ...plan
+  } = req.body as UpdatePlanInput;
+  const planId = param(req, 'id');
+  const existingPlan = await unwrapOne(req.db.from('plans').select('id, location, organization_id, content_revision').eq('id', planId).eq('organization_id', req.orgId).single());
+
+  // F04: one transaction locks the plan, checks its revision and the previewed
+  // impact, keeps time ids across reorder, resolves requests left without a
+  // time, makes outstanding requests stale and re-sends the affected ones.
+  // Without an impact hash it refuses to remove anyone's selected time.
+  let timeChange: PlanTimeChangeResult | null = null;
   if (times) {
-    await unwrap(
-      req.db.rpc('replace_plan_times', {
-        p_plan_id: param(req, 'id'),
-        p_times: times.map((time, index) => ({
-          id: time.id,
-          kind: time.kind,
-          name: time.name ?? null,
-          starts_at: time.starts_at,
-          ends_at: time.ends_at,
-          sort_order: time.sort_order ?? index,
-        })),
-        p_expected_revision: expected_revision ?? existingPlan.content_revision,
-      }),
-    );
+    const ctx = { db: req.db, orgId: req.orgId, planId };
+    timeChange = await applyPlanTimes(ctx, {
+      times: await identifyPlanTimes(ctx, times),
+      expectedRevision: expected_revision ?? existingPlan.content_revision,
+      impactHash: time_impact_hash ?? null,
+      orphanResolutions: orphan_resolutions,
+      notify: notify_time_changes,
+      effectKey: `plan-times:${planId}:${randomUUID()}`,
+    });
   }
 
   // Do this after the versioned time replacement so a stale time editor cannot
@@ -121,7 +160,7 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
       req.db
         .from('plans')
         .update(plan)
-        .eq('id', param(req, 'id'))
+        .eq('id', planId)
         .eq('organization_id', req.orgId)
         .select('id')
         .maybeSingle(),
@@ -129,17 +168,13 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
     if (!updated) throw HttpError.notFound('Plan not found');
   }
 
-  const timesChanged = times
-    ? times.length !== existingTimes.length || times.some((time) => {
-        const previous = existingTimes.find((item) => item.id === time.id);
-        return !previous || previous.starts_at !== time.starts_at || previous.ends_at !== time.ends_at;
-      })
-    : false;
-  if (timesChanged || (plan.location !== undefined && plan.location !== existingPlan.location)) {
+  if (timeChange?.effect_id) await deliverEffectNow(timeChange.effect_id);
+  // A new place (no time change) still matters to the people who said yes.
+  if (plan.location !== undefined && plan.location !== existingPlan.location) {
     await notifyConfirmedAssignmentsForPlan({ db: req.db, orgId: req.orgId, planId: existingPlan.id });
   }
 
-  res.json(await fetchPlanDetail(req.db, req.orgId, param(req, 'id')));
+  res.json(await fetchPlanDetail(req.db, req.orgId, planId));
 });
 
 plansRouter.delete('/:id', requireCapability('plans.edit'), async (req, res) => {

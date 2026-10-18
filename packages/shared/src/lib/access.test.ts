@@ -59,8 +59,12 @@ describe('canAccess', () => {
 
 describe('capability scopes', () => {
   it('keeps library and directory capabilities organization-wide', () => {
-    expect(capabilitiesForScope('team')).toEqual(['scheduling.manage', 'teams.manage']);
+    expect(capabilitiesForScope('team')).toEqual([
+      'scheduling.manage',
+      'scheduling.override_conflicts',
+      'teams.manage',
+    ]);
     expect(CAPABILITY_SCOPES['songs.manage']).toEqual(['organization']);
-    expect(capabilitiesForScope('organization')).toHaveLength(7);
+    expect(capabilitiesForScope('organization')).toHaveLength(8);
   });
 });

@@ -37,6 +37,7 @@ import type {
   TeamRow,
 } from './database.js';
 import type { ChartNotation } from '../lib/chordpro.js';
+import type { AttendanceInterval } from './attendance.js';
 
 /** One rule of effective access: a capability at a scope, and where it comes from. */
 export interface EffectiveAccessEntry {
@@ -260,6 +261,8 @@ export interface AssignmentReleasePreview {
     position_name: string | null;
     request_revision: number;
     times: PlanTimeRow[];
+    /** F04: the plan has no times; the request covers an approximate window. */
+    untimed: boolean;
   }>;
 }
 
@@ -440,6 +443,8 @@ export interface AssignmentDetail extends AssignmentRow {
   /** Explicit selection when attendance_mode is selected. */
   attendance_times: Array<{ plan_time_id: string }>;
   time_responses: AssignmentTimeResponseRow[];
+  /** F04: the intervals this request commits its Person to (the shared resolver). */
+  attendance: AttendanceInterval[];
 }
 
 /**
@@ -517,8 +522,11 @@ export interface MyScheduleEntry {
   plan: Pick<PlanRow, 'id' | 'title' | 'service_date' | 'location' | 'status'>;
   team: Pick<TeamRow, 'id' | 'name' | 'color'> | null;
   position: Pick<TeamPositionRow, 'id' | 'name'> | null;
+  /** Only the times this request covers. */
   times: PlanTimeRow[];
   time_responses: AssignmentTimeResponseRow[];
+  /** F04: true when the plan has no times and the date is an approximate two-hour window. */
+  untimed: boolean;
 }
 
 export interface BlockoutWithPerson extends BlockoutRow {

@@ -13,6 +13,7 @@ import type {
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { NO_CONTACT, contactsFor } from './contacts.js';
+import { attendanceFor } from './attendance.js';
 
 /**
  * `person:profiles!assignments_user_id_fkey` is spelled out because
@@ -150,17 +151,19 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
   const detail = shapePlanDetail(row);
   const personIds = [...new Set(detail.assignments.map((assignment) => assignment.person_id))];
   const userIds = detail.assignments.flatMap((assignment) => assignment.user_id ? [assignment.user_id] : []);
-  const [contacts, directory] = await Promise.all([
+  const [contacts, directory, attendance] = await Promise.all([
     contactsFor(db, orgId, userIds),
     personIds.length
       ? unwrap(db.from('people_directory').select('*').in('id', personIds))
       : Promise.resolve([]),
+    attendanceFor(db, detail.assignments.map((assignment) => assignment.id)),
   ]);
   const people = new Map((directory ?? []).map((person) => [person.id, person]));
   return {
     ...detail,
     assignments: detail.assignments.map((assignment) => ({
       ...assignment,
+      attendance: attendance.get(assignment.id) ?? [],
       person: people.has(assignment.person_id)
         ? {
             id: assignment.person_id,
@@ -179,7 +182,7 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
 };
 
 /** The plan id a create/copy function returned. */
-const requireId = async (query: PromiseLike<{ data: string | null; error: { code?: string; message: string; details?: string | null } | null }>): Promise<string> => {
+const requireId = async (query: PromiseLike<{ data: string | null; error: { code?: string; message: string; details?: string | null; hint?: string | null } | null }>): Promise<string> => {
   const id = await unwrap(query);
   if (!id) throw HttpError.notFound('Plan not found');
   return id;
@@ -193,7 +196,7 @@ export interface CreatePlanAtomicallyInput {
 
 /** Plan, times and optional copy in one transaction (`create_plan`). */
 export const createPlanAtomically = async ({ db, orgId, input }: CreatePlanAtomicallyInput): Promise<string> => {
-  const { times, copy_from_plan_id, copy_assignments, idempotency_key, ...plan } = input;
+  const { times, copy_from_plan_id, copy_assignments, idempotency_key, conflict_override_reason, ...plan } = input;
   return requireId(
     db.rpc('create_plan', {
       p_organization_id: orgId,
@@ -202,6 +205,7 @@ export const createPlanAtomically = async ({ db, orgId, input }: CreatePlanAtomi
       p_copy_from: copy_from_plan_id ?? null,
       p_copy_assignments: copy_assignments,
       p_idempotency_key: idempotency_key ?? null,
+      p_conflict_override_reason: conflict_override_reason ?? null,
     }),
   );
 };
@@ -221,6 +225,7 @@ export const duplicatePlanAtomically = async ({ db, sourcePlanId, input }: Dupli
       p_title: input.title ?? null,
       p_copy_assignments: input.copy_assignments,
       p_idempotency_key: input.idempotency_key ?? null,
+      p_conflict_override_reason: input.conflict_override_reason ?? null,
     }),
   );
 
@@ -257,7 +262,9 @@ export const importPlanContents = async ({
     p_assignments: input.assignments,
     p_expected_revision: input.expected_revision ?? null,
     p_idempotency_key: input.idempotency_key ?? null,
+    p_conflict_override_reason: input.conflict_override_reason ?? null,
   });
+  if (error?.code === 'PT409' && error.hint === 'scheduling_conflict') throw fromPostgrestError(error);
   if (error?.code === 'PT409') {
     throw new HttpError(409, 'This plan changed since you opened it. Review it and import again.', STALE_PLAN_CODE);
   }

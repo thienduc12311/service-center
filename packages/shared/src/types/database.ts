@@ -18,6 +18,13 @@ import type {
   UserScheduleSettingsRow,
 } from './availability.js';
 import type {
+  AssignmentConflictOverrideRow,
+  AttendanceCalendarStateRow,
+  AttendanceIntervalSource,
+  ConflictKind,
+  ConflictSeverity,
+} from './attendance.js';
+import type {
   AcceptPersonInvitationRow,
   PersonDeliveryReadiness,
   PersonIdentityReconciliationRow,
@@ -86,6 +93,7 @@ export type ChartColumns = 1 | 2;
 export type AccessCapability =
   | 'plans.edit'
   | 'scheduling.manage'
+  | 'scheduling.override_conflicts'
   | 'teams.manage'
   | 'people.view_private'
   | 'people.manage'
@@ -815,6 +823,8 @@ export type Database = {
       schedule_delegations: Table<ScheduleDelegationRow>;
       schedule_delegation_events: Table<ScheduleDelegationEventRow>;
       user_schedule_settings: Table<UserScheduleSettingsRow>;
+      assignment_conflict_overrides: Table<AssignmentConflictOverrideRow>;
+      attendance_calendar_states: Table<AttendanceCalendarStateRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -882,6 +892,7 @@ export type Database = {
           p_effect_key?: string | null;
           p_visibility?: AssignmentVisibility | null;
           p_response_owner?: string | null;
+          p_conflict_override_reason?: string | null;
         };
         Returns: AssignmentRow[];
       };
@@ -994,6 +1005,69 @@ export type Database = {
         Args: { p_plan_id: string; p_times: unknown; p_expected_revision?: number | null };
         Returns: PlanTimeRow[];
       };
+      assignment_attendance_for: {
+        Args: { p_assignment_ids: string[] };
+        Returns: Array<{
+          assignment_id: string;
+          plan_time_id: string | null;
+          kind: PlanTimeKind;
+          name: string | null;
+          starts_at: string;
+          ends_at: string;
+          source: AttendanceIntervalSource;
+        }>;
+      };
+      check_assignment_conflicts: {
+        Args: { p_organization_id: string; p_candidates: unknown; p_exclude_assignment_ids?: string[] };
+        Returns: Array<{
+          candidate_key: string;
+          person_id: string;
+          kind: ConflictKind;
+          severity: ConflictSeverity;
+          plan_time_id: string | null;
+          interval_source: AttendanceIntervalSource;
+          starts_at: string;
+          ends_at: string;
+          other_plan_id: string | null;
+          other_assignment_id: string | null;
+          other_plan_time_id: string | null;
+          other_time_kind: PlanTimeKind | null;
+          detail: string;
+          redacted: boolean;
+          override_permitted: boolean;
+        }>;
+      };
+      set_assignment_attendance: {
+        Args: {
+          p_plan_id: string;
+          p_changes: Array<{
+            assignment_id: string;
+            expected_request_revision: number;
+            attendance_mode: AssignmentAttendanceMode;
+            time_ids: string[];
+          }>;
+          p_conflict_override_reason?: string | null;
+          p_notify?: boolean;
+          p_effect_key?: string | null;
+        };
+        Returns: AssignmentRow[];
+      };
+      preview_plan_time_changes: {
+        Args: { p_plan_id: string; p_times: unknown };
+        Returns: unknown;
+      };
+      apply_plan_time_changes: {
+        Args: {
+          p_plan_id: string;
+          p_times: unknown;
+          p_expected_revision: number | null;
+          p_impact_hash?: string | null;
+          p_orphan_resolutions?: Array<{ assignment_id: string; action: 'all' | 'remove' }>;
+          p_notify?: boolean;
+          p_effect_key?: string | null;
+        };
+        Returns: unknown;
+      };
       scheduling_conflicts_for_people: {
         Args: {
           p_organization_id: string;
@@ -1042,6 +1116,7 @@ export type Database = {
           p_title?: string | null;
           p_copy_assignments?: boolean;
           p_idempotency_key?: string | null;
+          p_conflict_override_reason?: string | null;
         };
         Returns: string;
       };
@@ -1060,6 +1135,7 @@ export type Database = {
           p_copy_from?: string | null;
           p_copy_assignments?: boolean;
           p_idempotency_key?: string | null;
+          p_conflict_override_reason?: string | null;
         };
         Returns: string;
       };
@@ -1072,6 +1148,7 @@ export type Database = {
           p_assignments: boolean;
           p_expected_revision?: number | null;
           p_idempotency_key?: string | null;
+          p_conflict_override_reason?: string | null;
         };
         Returns: number;
       };

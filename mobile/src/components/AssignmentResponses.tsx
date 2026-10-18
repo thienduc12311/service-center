@@ -53,7 +53,8 @@ export interface ScheduleTimesProps {
 export const ScheduleTimes = ({ times, responsibilities }: ScheduleTimesProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  if (!times.length) return null;
+  // F04: a plan without times is an approximate window, never a precise time.
+  if (!times.length) return <Text style={styles.muted}>Time not set yet — shown by service date</Text>;
   return (
     <View style={styles.times}>
       {times.map((time) => {

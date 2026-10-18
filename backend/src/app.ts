@@ -22,6 +22,7 @@ import { songsRouter, arrangementsRouter } from './routes/songs.js';
 import { plansRouter } from './routes/plans.js';
 import {
   assignmentsRouter,
+  planAssignmentTimesRouter,
   planAssignmentsRouter,
   planNotifyRouter,
   planReleaseRouter,
@@ -104,6 +105,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/songs', scoped, songsRouter);
   app.use('/api/v1/arrangements', scoped, arrangementsRouter);
   app.use('/api/v1/plans/:planId/assignments', scoped, planAssignmentsRouter);
+  app.use('/api/v1/plans/:planId/assignment-times', scoped, planAssignmentTimesRouter);
   app.use('/api/v1/plans/:planId/notify', scoped, planNotifyRouter);
   app.use('/api/v1/plans/:planId/release', scoped, planReleaseRouter);
   app.use('/api/v1/plans', scoped, plansRouter);
