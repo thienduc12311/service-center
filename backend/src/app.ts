@@ -51,6 +51,7 @@ import {
   planItemCommentsRouter,
   planNotesRouter,
 } from './routes/collaboration.js';
+import { planTemplateUseRouter, planTemplatesRouter } from './routes/plan-templates.js';
 import {
   deviceRevocationsRouter,
   devicesRouter,
@@ -136,7 +137,8 @@ export const createApp = (): Express => {
   app.use('/api/v1/plans/:planId/deliveries', scoped, planDeliveriesRouter);
   app.use('/api/v1/plans/:planId/opportunities', scoped, planOpportunitiesRouter);
   app.use('/api/v1/plans/:planId/notes', scoped, planNotesRouter);
-  app.use('/api/v1/plans', scoped, plansRouter);
+  app.use('/api/v1/plans', scoped, planTemplateUseRouter, plansRouter);
+  app.use('/api/v1/plan-templates', scoped, planTemplatesRouter);
   app.use('/api/v1/plan-items', scoped, planItemCommentsRouter);
   app.use('/api/v1/note-categories', scoped, noteCategoriesRouter);
   app.use('/api/v1/mention-candidates', scoped, mentionCandidatesRouter);

@@ -177,6 +177,28 @@ import type {
 } from '../schemas/plan.js';
 import type { ListDeliveriesRequest, NotifyPlanInput } from '../schemas/delivery.js';
 import type {
+  PlanGenerationPreview,
+  PlanGenerationResult,
+  PlanTemplateApplicationRow,
+  PlanTemplateDetail,
+  PlanTemplateSummary,
+  ReschedulePreview,
+  RescheduleResult,
+  TemplateApplyPreviewResult,
+  TemplateApplyResult,
+} from '../types/plan-templates.js';
+import type {
+  ApplyTemplateRequest,
+  CreatePlanTemplateRequest,
+  GeneratePlansRequest,
+  ListPlanTemplatesRequest,
+  PlanSeriesRequest,
+  PreviewTemplateApplyRequest,
+  RescheduleCommitRequest,
+  ReschedulePreviewRequest,
+  UpdatePlanTemplateRequest,
+} from '../schemas/plan-templates.js';
+import type {
   ConversationDetail,
   ConversationMessage,
   ConversationReport,
@@ -565,6 +587,32 @@ export class ServiceCenterApi {
   /** Copies another plan's order/needs/team into this one in one transaction. */
   importPlanContents = (planId: string, body: ImportPlanContentsRequest) =>
     this.request<ImportPlanContentsResult>('POST', `/api/v1/plans/${planId}/import`, body);
+
+  // F10 saved templates, sections and bounded generation.
+  planTemplates = (query: ListPlanTemplatesRequest = {}) =>
+    this.request<PlanTemplateSummary[]>('GET', '/api/v1/plan-templates', undefined, query as Query);
+  planTemplate = (templateId: string, revision?: number) =>
+    this.request<PlanTemplateDetail>('GET', `/api/v1/plan-templates/${templateId}`, undefined, { revision });
+  createPlanTemplate = (body: CreatePlanTemplateRequest) =>
+    this.request<PlanTemplateDetail>('POST', '/api/v1/plan-templates', body);
+  updatePlanTemplate = (templateId: string, body: UpdatePlanTemplateRequest) =>
+    this.request<PlanTemplateDetail>('PATCH', `/api/v1/plan-templates/${templateId}`, body);
+  archivePlanTemplate = (templateId: string, archived: boolean) =>
+    this.request<PlanTemplateDetail>('POST', `/api/v1/plan-templates/${templateId}/archive`, { archived });
+  planTemplateApplications = (planId: string) =>
+    this.request<PlanTemplateApplicationRow[]>('GET', `/api/v1/plans/${planId}/template-applications`);
+  previewApplyTemplate = (planId: string, body: PreviewTemplateApplyRequest) =>
+    this.request<TemplateApplyPreviewResult>('POST', `/api/v1/plans/${planId}/apply-template/preview`, body);
+  applyTemplate = (planId: string, body: ApplyTemplateRequest) =>
+    this.request<TemplateApplyResult>('POST', `/api/v1/plans/${planId}/apply-template`, body);
+  previewPlanGeneration = (body: PlanSeriesRequest) =>
+    this.request<PlanGenerationPreview>('POST', '/api/v1/plans/generate/preview', body);
+  generatePlans = (body: GeneratePlansRequest) =>
+    this.request<PlanGenerationResult>('POST', '/api/v1/plans/generate', body);
+  previewReschedule = (body: ReschedulePreviewRequest) =>
+    this.request<ReschedulePreview>('POST', '/api/v1/plans/reschedule/preview', body);
+  reschedulePlans = (body: RescheduleCommitRequest) =>
+    this.request<RescheduleResult>('POST', '/api/v1/plans/reschedule', body);
 
   addPlanItem = (planId: string, body: Record<string, unknown>) =>
     this.request<PlanItemRow>('POST', `/api/v1/plans/${planId}/items`, body);

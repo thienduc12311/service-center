@@ -20,3 +20,4 @@ export * from './staffing-proposals.js';
 export * from './opportunities.js';
 export * from './reminders.js';
 export * from './collaboration.js';
+export * from './plan-templates.js';

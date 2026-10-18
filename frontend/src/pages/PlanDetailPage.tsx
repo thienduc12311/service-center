@@ -11,7 +11,7 @@ import {
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { printDocument } from '../lib/print-document';
-import { keys, usePlan, usePlanNotes, usePlans, useTeams, useInvalidateOrg } from '../hooks/queries';
+import { keys, usePlan, usePlanNotes, usePlans, useTeams, useTemplateApplications, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, EmptyState, ErrorNotice, Loading } from '../components/ui';
 import { MessageComposerModal } from '../components/collaboration/MessageComposerModal';
@@ -27,12 +27,14 @@ import { EditTimesModal } from '../components/plan/EditTimesModal';
 import { AssignmentTimesModal } from '../components/plan/AssignmentTimesModal';
 import { ItemDiscussionModal } from '../components/collaboration/ItemDiscussionModal';
 import { ImportTemplateModal } from '../components/plan/ImportTemplateModal';
+import { ApplyTemplateModal } from '../components/templates/ApplyTemplateModal';
+import { SaveTemplateModal } from '../components/templates/SaveTemplateModal';
 import { DeliveryOutcomeNotice } from '../components/plan/DeliveryOutcomeNotice';
 import { OpportunityPanel, type SignupSetupOption } from '../components/plan/OpportunityPanel';
 import { PLAN_TABS, PLAN_TAB_LABELS, buildPlanTeams, type PlanTab } from '../components/plan/types';
 
 /** Which dialog, if any, is on top of the workspace. */
-type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'import-template';
+type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'import-template' | 'apply-template' | 'save-template';
 
 export const PlanDetailPage = () => {
   const { planId } = useParams<{ planId: string }>();
@@ -48,6 +50,8 @@ export const PlanDetailPage = () => {
     queryFn: () => api.planConflictOverrides(planId!),
     enabled: Boolean(planId) && canAnywhere('scheduling.manage'),
   });
+  // F10: which template revisions this plan's content came from.
+  const templateApplications = useTemplateApplications(planId, canAnywhere('plans.edit'));
   const overrideReasons = useMemo(
     () => new Map((overrides.data ?? []).flatMap((row) => (row.assignment_id ? [[row.assignment_id, row.reason] as const] : []))),
     [overrides.data],
@@ -302,7 +306,18 @@ export const PlanDetailPage = () => {
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" loading={openChat.isPending} onClick={() => openChat.mutate()}>Plan chat</Button>
           {canSchedule && <Button variant="secondary" onClick={() => setComposing(true)}>Message people</Button>}
+          {canEditPlan && <Button variant="secondary" onClick={() => setDialog('apply-template')}>Apply template</Button>}
+          {canEditPlan && <Button variant="secondary" onClick={() => setDialog('save-template')}>Save as template</Button>}
         </div>
+        {(templateApplications.data?.length ?? 0) > 0 && (
+          <p className="text-xs text-slate-500">
+            From template{' '}
+            {templateApplications.data!.map((applied) =>
+              `“${applied.template_name}” rev ${applied.template_revision}${applied.template_kind === 'section' ? ' (section)' : ''}`,
+            ).join(', ')}
+            . Later template edits do not change this plan.
+          </p>
+        )}
         <ErrorNotice error={openChat.error ? new Error('Plan chat is open to plan leaders and the people scheduled on this plan.') : null} />
       </div>
 
@@ -417,6 +432,14 @@ export const PlanDetailPage = () => {
         plan={detail}
         onClose={() => setDialog(null)}
       />
+      {dialog === 'apply-template' && <ApplyTemplateModal plan={detail} onClose={() => setDialog(null)} />}
+      {dialog === 'save-template' && (
+        <SaveTemplateModal
+          plan={detail}
+          onClose={() => setDialog(null)}
+          onSaved={(templateId) => navigate(`/plans/templates?template=${templateId}`)}
+        />
+      )}
     </div>
   );
 };

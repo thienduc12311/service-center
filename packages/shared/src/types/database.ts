@@ -53,6 +53,19 @@ import type {
   PlanNoteTeamRow,
 } from './collaboration.js';
 import type {
+  PlanGenerationBatchRow,
+  PlanRescheduleOperationRow,
+  PlanGenerationCommit,
+  PlanTemplateApplicationRow,
+  PlanTemplateRevisionRow,
+  PlanTemplateRow,
+  PlanTemplateSaveResult,
+  TemplateApplyCommit,
+  TemplateApplyPreviewResult,
+  ReschedulePreview,
+  RescheduleResult,
+} from './plan-templates.js';
+import type {
   EffectiveReminderPolicy,
   PersonReminderPreferencesRow,
   ReleaseBatchItemRow,
@@ -1018,6 +1031,11 @@ export type Database = {
       conversation_message_mentions: Table<ConversationMessageMentionRow>;
       conversation_member_states: Table<ConversationMemberStateRow>;
       conversation_message_reports: Table<ConversationMessageReportRow>;
+      plan_templates: Table<PlanTemplateRow>;
+      plan_template_revisions: Table<PlanTemplateRevisionRow>;
+      plan_template_applications: Table<PlanTemplateApplicationRow>;
+      plan_generation_batches: Table<PlanGenerationBatchRow>;
+      plan_reschedule_operations: Table<PlanRescheduleOperationRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -1458,6 +1476,93 @@ export type Database = {
       purge_expired_conversation_messages: {
         Args: { p_limit?: number };
         Returns: number;
+      };
+      save_plan_template: {
+        Args: {
+          p_organization_id: string;
+          p_template_id?: string | null;
+          p_expected_revision?: number | null;
+          p_kind?: string | null;
+          p_service_type_id?: string | null;
+          p_name?: string | null;
+          p_description?: string | null;
+          p_content?: unknown;
+          p_source_plan_id?: string | null;
+          p_source_components?: string[] | null;
+        };
+        Returns: PlanTemplateSaveResult;
+      };
+      set_plan_template_archived: {
+        Args: { p_template_id: string; p_archived: boolean };
+        Returns: undefined;
+      };
+      preview_plan_template_apply: {
+        Args: {
+          p_plan_id: string;
+          p_revision_id: string;
+          p_mode: string;
+          p_components: string[];
+          p_times?: unknown;
+          p_insert_at?: number | null;
+        };
+        Returns: TemplateApplyPreviewResult;
+      };
+      apply_plan_template: {
+        Args: {
+          p_plan_id: string;
+          p_revision_id: string;
+          p_mode: string;
+          p_components: string[];
+          p_preview_hash: string;
+          p_times?: unknown;
+          p_insert_at?: number | null;
+          p_expected_revision?: number | null;
+          p_idempotency_key?: string | null;
+          p_conflict_override_reason?: string | null;
+        };
+        Returns: TemplateApplyCommit;
+      };
+      preview_plan_generation: {
+        Args: { p_organization_id: string; p_revision_id: string; p_components: string[]; p_plans: unknown };
+        Returns: unknown;
+      };
+      generate_plans_from_template: {
+        Args: {
+          p_organization_id: string;
+          p_revision_id: string;
+          p_components: string[];
+          p_plans: unknown;
+          p_preview_hash: string;
+          p_idempotency_key: string;
+          p_series?: unknown;
+          p_conflict_override_reason?: string | null;
+        };
+        Returns: PlanGenerationCommit;
+      };
+      preview_plan_reschedule: {
+        Args: {
+          p_organization_id: string;
+          p_mode: string;
+          p_moves?: unknown;
+          p_order?: unknown;
+          p_reset_responses?: boolean;
+          p_notify?: boolean;
+        };
+        Returns: ReschedulePreview;
+      };
+      reschedule_plans: {
+        Args: {
+          p_organization_id: string;
+          p_mode: string;
+          p_preview_hash: string;
+          p_idempotency_key: string;
+          p_moves?: unknown;
+          p_order?: unknown;
+          p_reset_responses?: boolean;
+          p_notify?: boolean;
+          p_conflict_override_reason?: string | null;
+        };
+        Returns: RescheduleResult;
       };
       resolve_person_reconciliation: {
         Args: { p_id: string; p_action: 'keep_separate' | 'merge' };
