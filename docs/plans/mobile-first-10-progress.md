@@ -52,7 +52,7 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 - `EXPO_OFFLINE=1 CI=1 ../node_modules/.bin/expo export --platform ios --platform android --output-dir /private/tmp/service-center-mobile-check-mob005-final-2`.
 - `git diff --check`.
 
-**Fix — removing a sent request (2026-10-17):** Pass C's `assignment_request_snapshot_items.assignment_id … on delete restrict` made any assignment that had been sent undeletable (`DELETE /api/v1/assignments/:id` failed with 23503), breaking F01's "to withdraw a released request a scheduler removes it". Additive migration `20261017000400_mob005_assignment_removal_snapshots.sql` (the historical migration is unchanged) switches the item FK to `on delete cascade` and adds a `before delete` trigger on `assignments`:
+**Fix — removing a sent request (2026-10-17):** Pass C's `assignment_request_snapshot_items.assignment_id … on delete restrict` made any assignment that had been sent undeletable (`DELETE /api/v1/assignments/:id` failed with 23503), breaking F01's "to withdraw a released request a scheduler removes it". Additive migration `20261019000000_mob005_assignment_removal_snapshots.sql` (the historical migration is unchanged) switches the item FK to `on delete cascade` and adds a `before delete` trigger on `assignments`:
 
 - a *live* snapshot (not consumed/superseded) that included the removed assignment drops that item and bumps `version`, keeping its id — the effect's deliveries and an outstanding emailed link still answer the remaining requests, while a signed-in review taken earlier is refused with PT409 and must be refreshed;
 - a live snapshot left with no items is superseded, so its link answers `stale`;
