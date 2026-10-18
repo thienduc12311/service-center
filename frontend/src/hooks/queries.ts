@@ -4,7 +4,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query';
-import type { ListDeliveriesRequest } from '@service-center/shared';
+import type { ListDeliveriesRequest, StaffingMatrixQueryInput } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 
@@ -60,6 +60,8 @@ export const keys = {
   // F04 attendance and conflicts.
   conflictCheck: (org: string | null, query: unknown) => [...keys.all(org), 'conflict-check', query] as const,
   conflictOverrides: (org: string | null, planId: string) => [...keys.plan(org, planId), 'conflict-overrides'] as const,
+  staffingMatrix: (org: string | null, input: unknown) => [...keys.all(org), 'staffing-matrix', input] as const,
+  staffingMatrixViews: (org: string | null) => [...keys.all(org), 'staffing-matrix-views'] as const,
 };
 
 /** Not organization-scoped: the signed-in user's own cross-organization settings. */
@@ -155,6 +157,21 @@ export const usePlan = (id: string | undefined) => {
     queryFn: () => api.getPlan(id!),
     enabled: Boolean(org && id),
   });
+};
+
+export const useStaffingMatrix = (input: StaffingMatrixQueryInput, enabled = true) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.staffingMatrix(org, input),
+    queryFn: () => api.staffingMatrix(input),
+    enabled: Boolean(org) && enabled,
+    placeholderData: (previous) => previous,
+  });
+};
+
+export const useStaffingMatrixViews = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.staffingMatrixViews(org), queryFn: () => api.staffingMatrixViews(), enabled: Boolean(org) });
 };
 
 export const useCalendar = (query: { from: string; to: string; mine?: boolean; team_id?: string }) => {

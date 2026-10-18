@@ -42,6 +42,7 @@ const PT409_HINTS: Record<string, string> = {
   plan_changed: 'plan_revision_stale',
   assignment_changed: 'assignment_revision_stale',
   time_identity: 'time_identity_required',
+  matrix_changed: 'matrix_changed',
 };
 
 export const fromPostgrestError = (error: {

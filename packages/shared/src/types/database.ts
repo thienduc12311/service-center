@@ -341,6 +341,8 @@ export type PlanRow = {
   notes: string | null;
   /** Bumped by every change to the plan's items, times or needs. */
   content_revision: number;
+  /** Bumped by assignments, needs and plan-time changes for F05 previews. */
+  staffing_revision: number;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -767,6 +769,26 @@ export type AccessMoveChangeRow = {
   change: 'gain' | 'lose';
 }
 
+export type StaffingMatrixViewRow = {
+  id: string;
+  organization_id: string;
+  owner_id: string;
+  name: string;
+  filters: unknown;
+  created_at: string;
+  updated_at: string;
+}
+
+export type StaffingMatrixCommitRow = {
+  id: string;
+  organization_id: string;
+  actor_id: string;
+  idempotency_key: string;
+  operation_id: string;
+  result: unknown;
+  created_at: string;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -825,6 +847,8 @@ export type Database = {
       user_schedule_settings: Table<UserScheduleSettingsRow>;
       assignment_conflict_overrides: Table<AssignmentConflictOverrideRow>;
       attendance_calendar_states: Table<AttendanceCalendarStateRow>;
+      staffing_matrix_views: Table<StaffingMatrixViewRow>;
+      staffing_matrix_commits: Table<StaffingMatrixCommitRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -909,6 +933,20 @@ export type Database = {
           p_effect_key: string | null;
         };
         Returns: AssignmentRow[];
+      };
+      staffing_matrix_operation_id: {
+        Args: { p_actions: unknown; p_base_revisions: unknown };
+        Returns: string;
+      };
+      commit_staffing_matrix: {
+        Args: {
+          p_organization_id: string;
+          p_operation_id: string;
+          p_actions: unknown;
+          p_base_revisions: unknown;
+          p_idempotency_key: string;
+        };
+        Returns: unknown;
       };
       set_assignment_response_owner: {
         Args: { p_assignment_ids: string[]; p_owner: string };
