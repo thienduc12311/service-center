@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../providers/AuthProvider';
 import { Avatar } from './ui';
+import { GlobalSearch } from './GlobalSearch';
 import { useTheme } from '../providers/ThemeProvider';
 
 const NAV = [
@@ -60,6 +61,7 @@ export const AppShell = () => {
           </nav>
 
           <div className="ml-auto flex items-center gap-3">
+            {organizationId && <GlobalSearch />}
             <button
               type="button"
               onClick={() => setMode(resolved === 'dark' ? 'light' : 'dark')}

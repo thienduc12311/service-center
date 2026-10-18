@@ -40,10 +40,22 @@ const person = (overrides: Partial<PersonRow> = {}): PersonRow => ({
   created_by: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
+  archived_at: null,
+  archived_by: null,
   ...overrides,
 });
 
 describe('mergeRoster', () => {
+  it('leaves archived people out unless asked, and flags them when included', () => {
+    const people = [person({ id: 'active' }), person({ id: 'gone', first_name: 'Zed', archived_at: '2026-10-01T00:00:00Z' })];
+
+    expect(mergeRoster([], people, []).map((r) => r.id)).toEqual(['active']);
+    expect(mergeRoster([], people, [], true).map((r) => [r.id, r.archived])).toEqual([
+      ['active', false],
+      ['gone', true],
+    ]);
+  });
+
   it('lists a no-login person standalone, flagged with a pending invite', () => {
     const roster = mergeRoster([], [person()], [{ person_id: 'person-1' }]);
 

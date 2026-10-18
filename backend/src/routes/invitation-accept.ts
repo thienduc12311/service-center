@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { acceptInvitationSchema, type InvitationPreview } from '@service-center/shared';
+import { acceptInvitationSchema, type InvitationAcceptResult, type InvitationPreview } from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { validateBody } from '../lib/validate.js';
 import { adminDb, unwrap, unwrapOne } from '../lib/supabase.js';
@@ -79,15 +79,32 @@ invitationAcceptRouter.post(
           return data.user.id;
         })();
 
-    const { error: rpcError } = await adminDb.rpc('accept_person_invitation', {
+    // Links the login to the invited Person; their existing assignments,
+    // answers and respond links follow (same ids). Conflicts stop here.
+    const { data, error: rpcError } = await adminDb.rpc('accept_person_invitation', {
       p_token_hash: tokenHash,
       p_new_user_id: userId,
     });
     if (rpcError) {
-      console.error('[invite] accept_person_invitation failed', rpcError);
+      console.error('[invite] accept_person_invitation failed', rpcError.code);
+      throw HttpError.conflict('This invitation is no longer valid — it may have just been used or expired');
+    }
+    const outcome = data?.[0]?.out_status ?? 'invalid';
+    if (outcome === 'identity_conflict') {
+      throw new HttpError(
+        409,
+        'This account is already on this organization’s roster as someone else. An administrator needs to confirm it is the same person.',
+        'identity_conflict',
+      );
+    }
+    if (outcome === 'person_linked') {
+      throw new HttpError(409, 'This invitation belongs to a person who already has a different login.', 'person_already_linked');
+    }
+    if (outcome !== 'linked') {
       throw HttpError.conflict('This invitation is no longer valid — it may have just been used or expired');
     }
 
-    res.json({ email: invitation.email, linked_existing_account: Boolean(existingProfile) });
+    const result: InvitationAcceptResult = { email: invitation.email, linked_existing_account: Boolean(existingProfile) };
+    res.json(result);
   },
 );

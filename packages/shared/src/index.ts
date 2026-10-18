@@ -1,5 +1,6 @@
 export * from './types/database.js';
 export * from './types/domain.js';
+export * from './types/roster.js';
 export * from './schemas/index.js';
 export * from './lib/constants.js';
 export * from './lib/dates.js';

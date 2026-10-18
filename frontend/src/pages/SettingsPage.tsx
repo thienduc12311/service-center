@@ -8,6 +8,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { DeliverySettings } from '../components/settings/DeliverySettings';
 import { AccessSettings } from '../components/settings/AccessSettings';
+import { IdentityReconciliationSettings } from '../components/settings/IdentityReconciliationSettings';
 
 export const SettingsPage = () => {
   const { user, organizationId, role, refreshUser, switchOrganization } = useAuth();
@@ -120,6 +121,8 @@ export const SettingsPage = () => {
       {isAdmin(role) && <AccessSettings organization={organization ?? null} />}
 
       {isAdmin(role) && <DeliverySettings />}
+
+      {isAdmin(role) && <IdentityReconciliationSettings />}
 
       <section className="card p-5">
         <h2 className="mb-1 font-semibold">Calendar sync</h2>

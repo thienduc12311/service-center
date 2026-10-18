@@ -177,6 +177,8 @@ export interface RosterPerson {
   status: MemberStatus | 'no_account';
   campus: string | null;
   invite_pending: boolean;
+  /** F02: archived people are listed only on request and offered in no picker. */
+  archived: boolean;
 }
 
 export interface PersonDetail extends PersonRow {
@@ -463,6 +465,8 @@ export interface PlanSummary extends PlanRow {
 export interface PlanDetail extends PlanSummary {
   items: PlanItemDetail[];
   assignments: AssignmentDetail[];
+  /** F02: positions added for this plan only, by team. Not part of any team's normal list. */
+  plan_positions: TeamPositionRow[];
   /** Only positions a manager has actually asked for; absent means "none needed". */
   position_needs: PlanPositionNeed[];
   total_length_seconds: number;

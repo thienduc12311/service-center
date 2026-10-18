@@ -67,6 +67,26 @@ import type {
 } from '../types/domain.js';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
 import type {
+  IdentityReconciliation,
+  PersonDeliveryReadiness,
+  GlobalSearchResults,
+  PersonRosterEvent,
+  PersonTagGroupRow,
+  RosterBulkApplyResult,
+  RosterBulkPreview,
+  RosterTagCatalog,
+} from '../types/roster.js';
+import type {
+  CreateGuestInput,
+  CreatePlanPositionRequest,
+  DeliveryReadinessInput,
+  ResolveReconciliationInput,
+  ApplyRosterBulkRequest,
+  CreateTagGroupRequest,
+  PreviewRosterBulkRequest,
+  SetTagGroupInput,
+} from '../schemas/roster.js';
+import type {
   ChartQuery,
   CreateArrangementInput,
   CreateSongInput,
@@ -242,7 +262,9 @@ export class ServiceCenterApi {
   updateOrganization = (id: string, body: Partial<OrganizationRow>) =>
     this.request<OrganizationRow>('PATCH', `/api/v1/organizations/${id}`, body);
 
-  listPeople = () => this.request<RosterPerson[]>('GET', '/api/v1/people');
+  /** Archived people are left out unless asked for. */
+  listPeople = (query?: { include_archived?: boolean }) =>
+    this.request<RosterPerson[]>('GET', '/api/v1/people', undefined, query as Query);
   getPerson = (personId: string) => this.request<PersonDetail>('GET', `/api/v1/people/${personId}`);
   createPerson = (body: CreatePersonInput) => this.request<PersonDetail>('POST', '/api/v1/people', body);
   updatePerson = (personId: string, body: UpdatePersonInput) =>
@@ -256,6 +278,43 @@ export class ServiceCenterApi {
       | { linked: true; invited: false }
       | { linked: false; invited: true; invite_url: string }
     >('POST', `/api/v1/people/${personId}/invitations`, body);
+
+  // ------------------------------------------------------ roster (F02) --
+  archivePerson = (personId: string) =>
+    this.request<PersonDetail>('POST', `/api/v1/people/${personId}/archive`, {});
+  restorePerson = (personId: string) =>
+    this.request<PersonDetail>('POST', `/api/v1/people/${personId}/restore`, {});
+  rosterAudit = (query?: { person_id?: string; limit?: number }) =>
+    this.request<PersonRosterEvent[]>('GET', '/api/v1/people/audit', undefined, query as Query);
+  rosterTagCatalog = () => this.request<RosterTagCatalog>('GET', '/api/v1/people/tag-catalog');
+  createTagGroup = (body: CreateTagGroupRequest) =>
+    this.request<PersonTagGroupRow>('POST', '/api/v1/people/tag-groups', body);
+  updateTagGroup = (groupId: string, body: Partial<CreateTagGroupRequest>) =>
+    this.request<PersonTagGroupRow>('PATCH', `/api/v1/people/tag-groups/${groupId}`, body);
+  deleteTagGroup = (groupId: string) => this.request<void>('DELETE', `/api/v1/people/tag-groups/${groupId}`);
+  setTagGroup = (body: SetTagGroupInput) =>
+    this.request<RosterTagCatalog>('PUT', '/api/v1/people/tag-catalog', body);
+  previewRosterBulk = (body: PreviewRosterBulkRequest) =>
+    this.request<RosterBulkPreview>('POST', '/api/v1/people/bulk/preview', body);
+  applyRosterBulk = (body: ApplyRosterBulkRequest) =>
+    this.request<RosterBulkApplyResult>('POST', '/api/v1/people/bulk/apply', body);
+  /** A minimal no-login Person, created while staffing (schedulers or people managers). */
+  createGuest = (body: CreateGuestInput) => this.request<RosterPerson>('POST', '/api/v1/people/guests', body);
+  /** Whether requests can reach these People (login / email / active), never the address. */
+  deliveryReadiness = (body: DeliveryReadinessInput) =>
+    this.request<PersonDeliveryReadiness[]>('POST', '/api/v1/people/readiness', body);
+  /** Possible duplicate identities awaiting an administrator's decision. */
+  identityReconciliations = () =>
+    this.request<IdentityReconciliation[]>('GET', '/api/v1/people/reconciliations');
+  resolveIdentityReconciliation = (id: string, body: ResolveReconciliationInput) =>
+    this.request<IdentityReconciliation>('POST', `/api/v1/people/reconciliations/${id}/resolve`, body);
+  createPlanPosition = (planId: string, body: CreatePlanPositionRequest) =>
+    this.request<TeamPositionRow>('POST', `/api/v1/plans/${planId}/positions`, body);
+  deletePlanPosition = (planId: string, positionId: string) =>
+    this.request<void>('DELETE', `/api/v1/plans/${planId}/positions/${positionId}`);
+  /** Permission-filtered search across people, teams, positions, plans, songs and media. */
+  search = (query: { q: string; limit?: number }) =>
+    this.request<GlobalSearchResults>('GET', '/api/v1/search', undefined, query as Query);
 
   updateMember = (userId: string, body: { role?: string; status?: string }) =>
     this.request<OrganizationMemberRow>('PATCH', `/api/v1/people/members/${userId}`, body);

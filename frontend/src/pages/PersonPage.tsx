@@ -5,7 +5,9 @@ import { ORG_ROLES, type CreatePersonInput, type PersonDetail } from '@service-c
 import { api } from '../lib/api';
 import { usePerson, useInvalidateOrg } from '../hooks/queries';
 import { PersonPolicyPanel } from '../components/PersonPolicyPanel';
-import { Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
+import { Badge, Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
+import { RosterHistoryPanel } from '../components/people/RosterHistoryPanel';
+import { useAuth } from '../providers/AuthProvider';
 
 /** Editable state for the add/edit person form — a superset of `CreatePersonInput` with '' standing in for unset. */
 interface PersonFormState {
@@ -145,6 +147,18 @@ export const PersonPage = () => {
     if (person.data) setInviteEmail(person.data.email ?? '');
   }, [person.data]);
 
+  const { canAnywhere } = useAuth();
+  const canManage = canAnywhere('people.manage');
+  const canSeeHistory = canManage || canAnywhere('people.view_private');
+  // Reversible: history stays, pickers and new requests leave them out.
+  const archive = useMutation({
+    mutationFn: (archived: boolean) => (archived ? api.archivePerson(personId!) : api.restorePerson(personId!)),
+    onSuccess: async () => {
+      await invalidate();
+      await person.refetch();
+    },
+  });
+
   const invite = useMutation({
     mutationFn: () => api.invitePerson(personId!, { email: inviteEmail || undefined, role: inviteRole }),
     onSuccess: async (result) => {
@@ -162,8 +176,30 @@ export const PersonPage = () => {
     <div className="max-w-3xl">
       <PageHeader
         title={isNew ? 'Add person' : (form.first_name || 'Edit person')}
-        subtitle={isNew ? 'Record their profile — inviting them to create a login is a separate step.' : undefined}
+        subtitle={
+          isNew
+            ? 'Record their profile — inviting them to create a login is a separate step.'
+            : person.data?.archived_at
+              ? 'Archived — kept in past plans, hidden from scheduling and pickers.'
+              : undefined
+        }
+        actions={
+          !isNew &&
+          canManage && (
+            <div className="flex items-center gap-2">
+              {person.data?.archived_at && <Badge tone="bg-amber-50 text-amber-700 ring-amber-600/20">Archived</Badge>}
+              <Button
+                variant="secondary"
+                loading={archive.isPending}
+                onClick={() => archive.mutate(!person.data?.archived_at)}
+              >
+                {person.data?.archived_at ? 'Restore' : 'Archive'}
+              </Button>
+            </div>
+          )
+        }
       />
+      <ErrorNotice error={archive.error} />
 
       <form
         className="space-y-6"
@@ -328,7 +364,7 @@ export const PersonPage = () => {
         </div>
       </form>
 
-      {!isNew && !hasLogin && (
+      {!isNew && !hasLogin && !person.data?.archived_at && (
         <section className="card mt-6 space-y-4 p-5">
           <div>
             <h2 className="font-semibold">Invite to create a login</h2>
@@ -383,6 +419,12 @@ export const PersonPage = () => {
       {!isNew && personId && (
         <div className="mt-6">
           <PersonPolicyPanel personId={personId} profileId={person.data?.profile_id ?? null} />
+        </div>
+      )}
+
+      {!isNew && personId && canSeeHistory && (
+        <div className="mt-6">
+          <RosterHistoryPanel personId={personId} />
         </div>
       )}
     </div>

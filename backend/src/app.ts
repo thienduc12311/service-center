@@ -12,6 +12,7 @@ import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { meRouter } from './routes/me.js';
 import { organizationsRouter } from './routes/organizations.js';
 import { peopleRouter } from './routes/people.js';
+import { rosterRouter, searchRouter } from './routes/roster.js';
 import { invitationAcceptRouter } from './routes/invitation-accept.js';
 import { assignmentRespondRouter } from './routes/assignment-respond.js';
 import { calendarFeedRouter } from './routes/calendar-feed.js';
@@ -92,7 +93,9 @@ export const createApp = (): Express => {
   app.use('/api/v1/internal/deliveries', deliveryWorkerRouter);
 
   const scoped = [requireAuth, withOrganization];
-  app.use('/api/v1/people', scoped, peopleRouter);
+  // Roster maintenance first: its fixed paths must not be read as a person id.
+  app.use('/api/v1/people', scoped, rosterRouter, peopleRouter);
+  app.use('/api/v1/search', scoped, searchRouter);
   app.use('/api/v1/service-types', scoped, serviceTypesRouter);
   app.use('/api/v1/teams', scoped, teamsRouter);
   app.use('/api/v1/songs', scoped, songsRouter);

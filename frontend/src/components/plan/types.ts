@@ -22,6 +22,8 @@ export interface PlanTeamPositionView {
   /** How many people this plan asks for; 0 means nobody has asked yet. */
   needed: number;
   scheduled: AssignmentDetail[];
+  /** F02: a position added for this plan only, not part of the team's usual list. */
+  planOnly: boolean;
 }
 
 export interface PlanTeamView {
@@ -66,10 +68,16 @@ export const buildPlanTeams = ({
     ]);
   }
 
+  const planPositionsByTeam = new Map<string, TeamPositionRow[]>();
+  for (const position of plan.plan_positions ?? []) {
+    planPositionsByTeam.set(position.team_id, [...(planPositionsByTeam.get(position.team_id) ?? []), position]);
+  }
+
   return teams
     .filter((team) => {
       if (includeEveryTeam) return true;
       if (assignmentsByTeam.has(team.id)) return true;
+      if (planPositionsByTeam.has(team.id)) return true;
       if (team.positions.some((position) => neededByPosition.has(position.id))) return true;
       return Boolean(plan.service_type_id) && team.service_type_id === plan.service_type_id;
     })
@@ -77,8 +85,12 @@ export const buildPlanTeams = ({
       const scheduled = assignmentsByTeam.get(team.id) ?? [];
       return {
         team,
-        positions: team.positions.map((position) => ({
+        positions: [
+          ...team.positions.map((position) => ({ position, planOnly: false })),
+          ...(planPositionsByTeam.get(team.id) ?? []).map((position) => ({ position, planOnly: true })),
+        ].map(({ position, planOnly }) => ({
           position,
+          planOnly,
           needed: neededByPosition.get(position.id) ?? 0,
           scheduled: scheduled.filter((assignment) => assignment.position_id === position.id),
         })),

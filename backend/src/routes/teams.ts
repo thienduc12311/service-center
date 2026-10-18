@@ -59,9 +59,10 @@ const shapeTeam = (
   roles: Map<string, string>,
   contacts: Map<string, MemberContact>,
 ): TeamWithPositions => {
-  const positions = [...(team.positions ?? [])].sort(
-    (a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
-  );
+  // A team's normal list only; plan-only positions (F02) live on their plan.
+  const positions = (team.positions ?? [])
+    .filter((position) => position.plan_id === null || position.plan_id === undefined)
+    .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
   const members = (team.memberships ?? []).map((m) => ({
     person_id: m.person_id,
     user_id: m.user_id,
@@ -211,15 +212,17 @@ teamsRouter.post('/:id/members', requireCapability('teams.manage'), validateBody
 
   // Resolve only an explicit Person or its linked Profile. Email is never an
   // identity key, and a no-login Person is a valid team member.
+  // The member-visible directory: a team leader need not hold people.view_private.
   const person = await unwrap(
     req.db
-      .from('people')
-      .select('id, profile_id')
+      .from('people_directory')
+      .select('id, profile_id, archived_at')
       .eq('organization_id', req.orgId)
       .match(person_id ? { id: person_id } : { profile_id: user_id })
       .maybeSingle(),
   );
   if (!person) throw HttpError.badRequest('That Person is not in this organization');
+  if (person.archived_at) throw HttpError.conflict('That person is archived; restore them first');
 
   const created = await unwrapOne(
     req.db

@@ -6,11 +6,14 @@ import {
   eligibilityRecordSchema,
   invitePersonSchema,
   isAdmin,
+  listPeopleQuerySchema,
+  type ListPeopleQuery,
   personTagsSchema,
   updateMemberSchema,
   updatePersonSchema,
   type EligibilityRecordInput,
   type InvitePersonInput,
+  type PersonInvitationResult,
   type OrganizationMemberRow,
   type PersonDetail,
   type PersonRow,
@@ -20,10 +23,10 @@ import {
   type PublicProfileRow,
 } from '@service-center/shared';
 import { param } from '../lib/params.js';
-import { validateBody } from '../lib/validate.js';
+import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireAdmin, requireCapability } from '../middleware/organization.js';
-import { adminDb, raw, unwrap, unwrapOne } from '../lib/supabase.js';
-import { HttpError } from '../lib/errors.js';
+import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { generateInviteToken, inviteAcceptUrl } from '../services/invitations.js';
 import { sendPersonInvitation } from '../services/notifications.js';
 import {
@@ -97,7 +100,8 @@ interface MemberWithPublicProfile extends Omit<ActiveMemberRow, 'profile'> {
  * entries. Without people.view_private the caller sees names, pictures and
  * campus only (the `people_directory` projection), plus their own contact.
  */
-peopleRouter.get('/', async (req, res) => {
+peopleRouter.get('/', validateQuery(listPeopleQuerySchema), async (req, res) => {
+  const { include_archived } = parsedQuery<ListPeopleQuery>(res);
   const rawMembers = (await unwrap(
     raw(req.db)
       .from('organization_members')
@@ -131,7 +135,7 @@ peopleRouter.get('/', async (req, res) => {
       .gt('expires_at', new Date().toISOString()),
   );
 
-  res.json(mergeRoster(members, people ?? [], pendingInvitations ?? []));
+  res.json(mergeRoster(members, people ?? [], pendingInvitations ?? [], include_archived));
 });
 
 /** Adds a full roster entry that doesn't require a login yet. */
@@ -161,6 +165,15 @@ peopleRouter.post('/from-member/:userId', requireCapability('people.manage'), as
   );
   const profile = member ? await profileWithContact(req, userId) : null;
   if (!member || !profile) throw HttpError.notFound('That person is not an active member of this organization');
+
+  // Every member already has a Person (MOB-005/F02); return it rather than a second one.
+  const existing = (await unwrap(
+    raw(req.db).from('people').select(PERSON_COLUMNS).eq('organization_id', req.orgId).eq('profile_id', userId).maybeSingle(),
+  )) as unknown as PersonSelectableRow | null;
+  if (existing) {
+    res.json(await loadPersonDetail(req, existing));
+    return;
+  }
 
   const { first_name, last_name } = splitFullName(profile.full_name);
   const created = (await unwrapOne(
@@ -211,12 +224,45 @@ peopleRouter.patch('/:personId', requireCapability('people.manage'), validateBod
   res.json(await loadPersonDetail(req, updated));
 });
 
-/** Removes only the roster record — has no effect on an existing login or membership. */
+/**
+ * Removes only the roster record — has no effect on an existing login or
+ * membership. A Person with staffing history cannot be deleted; archive them.
+ */
 peopleRouter.delete('/:personId', requireAdmin, async (req, res) => {
-  await unwrap(
-    req.db.from('people').delete().eq('id', param(req, 'personId')).eq('organization_id', req.orgId),
-  );
+  const { error } = await req.db.from('people').delete().eq('id', param(req, 'personId')).eq('organization_id', req.orgId);
+  if (error?.code === '23503') {
+    throw new HttpError(409, 'This person has service history. Archive them instead.', 'person_has_history');
+  }
+  if (error) throw fromPostgrestError(error);
   res.status(204).end();
+});
+
+/**
+ * Reversible archive: hidden from pickers and new staffing, history kept.
+ * Repeating either call is a no-op.
+ */
+const setArchived = async (req: Request, archived: boolean): Promise<PersonDetail> => {
+  const personId = param(req, 'personId');
+  let update = raw(req.db)
+    .from('people')
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq('id', personId)
+    .eq('organization_id', req.orgId);
+  update = archived ? update.is('archived_at', null) : update.not('archived_at', 'is', null);
+  await unwrap(update);
+  const person = (await unwrap(
+    raw(req.db).from('people').select(PERSON_COLUMNS).eq('id', personId).eq('organization_id', req.orgId).maybeSingle(),
+  )) as unknown as PersonSelectableRow | null;
+  if (!person) throw HttpError.notFound();
+  return loadPersonDetail(req, person);
+};
+
+peopleRouter.post('/:personId/archive', requireCapability('people.manage'), async (req, res) => {
+  res.json(await setArchived(req, true));
+});
+
+peopleRouter.post('/:personId/restore', requireCapability('people.manage'), async (req, res) => {
+  res.json(await setArchived(req, false));
 });
 
 /**
@@ -242,37 +288,10 @@ peopleRouter.post(
     const email = overrideEmail ?? person.email;
     if (!email) throw HttpError.badRequest('An email address is required to send an invitation');
 
-    const existingProfile = await unwrap(
-      adminDb.from('profiles').select('id').eq('email', email).maybeSingle(),
-    );
+    if (person.archived_at) throw HttpError.conflict('Restore this person before inviting them');
 
-    if (existingProfile) {
-      await unwrap(req.db.from('people').update({ profile_id: existingProfile.id }).eq('id', personId));
-
-      // Don't clobber an already-active membership's role/status — this
-      // branch only exists to attach the roster record to an existing
-      // login, not to re-invite someone who's already in the organization.
-      const existingMembership = await unwrap(
-        req.db
-          .from('organization_members')
-          .select('role, status')
-          .eq('organization_id', req.orgId)
-          .eq('user_id', existingProfile.id)
-          .maybeSingle(),
-      );
-      if (!existingMembership || existingMembership.status !== 'active') {
-        await unwrap(
-          req.db.from('organization_members').upsert(
-            { organization_id: req.orgId, user_id: existingProfile.id, role: role as never, status: 'active' },
-            { onConflict: 'organization_id,user_id' },
-          ),
-        );
-      }
-
-      res.status(201).json({ linked: true, invited: false });
-      return;
-    }
-
+    // A login with the same email is never linked here: identity is linked
+    // only when the invitation is accepted by whoever controls that address.
     // At most one live invitation per person — revoke any still-pending one first.
     await unwrap(
       req.db
@@ -315,7 +334,8 @@ peopleRouter.post(
       console.error('[invite] failed to send person invitation email', error);
     }
 
-    res.status(201).json({ linked: false, invited: true, invite_url: inviteUrl });
+    const result: PersonInvitationResult = { linked: false, invited: true, invite_url: inviteUrl };
+    res.status(201).json(result);
   },
 );
 

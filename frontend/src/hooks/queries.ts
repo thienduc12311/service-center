@@ -36,6 +36,14 @@ export const keys = {
   folders: (org: string | null) => [...keys.all(org), 'folders'] as const,
   songbooks: (org: string | null) => [...keys.all(org), 'songbooks'] as const,
   songbook: (org: string | null, id: string) => [...keys.songbooks(org), id] as const,
+  /** Includes archived people (F02); a separate entry from the default list. */
+  peopleWithArchived: (org: string | null) => [...keys.people(org), { archived: true }] as const,
+  deliveryReadiness: (org: string | null, ids: readonly string[]) =>
+    [...keys.people(org), { readiness: [...ids].sort() }] as const,
+  rosterAudit: (org: string | null, personId: string | null) => [...keys.all(org), 'roster-audit', personId] as const,
+  tagCatalog: (org: string | null) => [...keys.all(org), 'tag-catalog'] as const,
+  reconciliations: (org: string | null) => [...keys.all(org), 'reconciliations'] as const,
+  search: (org: string | null, q: string) => [...keys.all(org), 'search', q] as const,
 };
 
 const useOrg = () => useAuth().organizationId;
@@ -216,4 +224,61 @@ export const useAccessMembers = () => {
 export const useFolderTree = () => {
   const org = useOrg();
   return useQuery({ queryKey: keys.folders(org), queryFn: () => api.folderTree(), enabled: Boolean(org) });
+};
+
+// ------------------------------------------------------------------ F02 --
+
+/** The roster including archived people, for the People page's filter. */
+export const usePeopleWithArchived = (enabled: boolean) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.peopleWithArchived(org),
+    queryFn: () => api.listPeople({ include_archived: true }),
+    enabled: Boolean(org) && enabled,
+  });
+};
+
+/** Whether requests can reach these People (login, email, active) — never the address. */
+export const useDeliveryReadiness = (personIds: readonly string[]) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.deliveryReadiness(org, personIds),
+    queryFn: () => api.deliveryReadiness({ person_ids: [...personIds] }),
+    enabled: Boolean(org) && personIds.length > 0,
+  });
+};
+
+export const useRosterAudit = (personId: string | null, enabled = true) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.rosterAudit(org, personId),
+    queryFn: () => api.rosterAudit({ ...(personId ? { person_id: personId } : {}), limit: 50 }),
+    enabled: Boolean(org) && enabled,
+  });
+};
+
+export const useTagCatalog = (enabled = true) => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.tagCatalog(org), queryFn: () => api.rosterTagCatalog(), enabled: Boolean(org) && enabled });
+};
+
+export const useIdentityReconciliations = (enabled: boolean) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.reconciliations(org),
+    queryFn: () => api.identityReconciliations(),
+    enabled: Boolean(org) && enabled,
+  });
+};
+
+/** Global search; runs once the query has two characters. */
+export const useGlobalSearch = (q: string) => {
+  const org = useOrg();
+  const query = q.trim();
+  return useQuery({
+    queryKey: keys.search(org, query),
+    queryFn: () => api.search({ q: query, limit: 5 }),
+    enabled: Boolean(org) && query.length >= 2,
+    staleTime: 30_000,
+  });
 };

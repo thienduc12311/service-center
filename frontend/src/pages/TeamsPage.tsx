@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { usePeople, useTeams, useInvalidateOrg } from '../hooks/queries';
@@ -47,8 +48,8 @@ export const TeamsPage = () => {
   });
 
   const addMember = useMutation({
-    mutationFn: ({ teamId, userId, positionId }: { teamId: string; userId: string; positionId: string | null }) =>
-      api.addTeamMember(teamId, { user_id: userId, position_id: positionId }),
+    mutationFn: ({ teamId, personId, positionId }: { teamId: string; personId: string; positionId: string | null }) =>
+      api.addTeamMember(teamId, { person_id: personId, position_id: positionId }),
     onSuccess: async () => {
       await invalidate();
       setAddingTo(null);
@@ -59,6 +60,13 @@ export const TeamsPage = () => {
     event.preventDefault();
     createTeam.mutate();
   };
+
+  // `?team=` (from search) scrolls to and highlights one team.
+  const [searchParams] = useSearchParams();
+  const focusedTeamId = searchParams.get('team');
+  useEffect(() => {
+    if (focusedTeamId && teams.data) document.getElementById(`team-${focusedTeamId}`)?.scrollIntoView({ block: 'center' });
+  }, [focusedTeamId, teams.data]);
 
   const activeTeam = teams.data?.find((t) => t.id === addingTo);
   // Read the team back out of the query cache so the editor re-renders with the
@@ -81,7 +89,11 @@ export const TeamsPage = () => {
       ) : teams.data?.length ? (
         <div className="grid gap-4 md:grid-cols-2">
           {teams.data.map((team) => (
-            <div key={team.id} className="card overflow-hidden">
+            <div
+              key={team.id}
+              id={`team-${team.id}`}
+              className={`card overflow-hidden ${focusedTeamId === team.id ? 'ring-2 ring-brand-500' : ''}`}
+            >
               <div className="border-b border-slate-100 px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="size-3 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
@@ -219,12 +231,10 @@ export const TeamsPage = () => {
 
       <Modal open={Boolean(addingTo)} title={`Add to ${activeTeam?.name ?? 'team'}`} onClose={() => setAddingTo(null)}>
         <p className="mb-2 text-xs text-slate-400">
-          Only people with a login can be scheduled — invite someone from the People page first.
+          Anyone on the roster can join a team, with or without a login. Archived people aren’t listed.
         </p>
         <ul className="max-h-80 space-y-1 overflow-y-auto">
-          {/* team_memberships references a real login (profiles.id), so a no-login
-              roster entry can't be scheduled until they accept an invitation. */}
-          {(people.data ?? []).filter((person) => person.has_login).map((person) => (
+          {(people.data ?? []).filter((person) => person.person_id).map((person) => (
             <li key={person.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
               <Avatar name={person.full_name ?? person.email} url={person.avatar_url} size="sm" />
               <span className="flex-1 text-sm">{person.full_name ?? person.email}</span>
@@ -236,7 +246,7 @@ export const TeamsPage = () => {
                   if (!addingTo) return;
                   addMember.mutate({
                     teamId: addingTo,
-                    userId: person.id,
+                    personId: person.person_id as string,
                     positionId: event.target.value || null,
                   });
                 }}

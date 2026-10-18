@@ -250,7 +250,10 @@ const PositionBlock = ({
   return (
     <div>
       <div className="flex items-center justify-between bg-slate-50 px-4 py-1.5">
-        <p className="text-xs font-medium text-slate-500">{position.position.name}</p>
+        <p className="text-xs font-medium text-slate-500">
+          {position.position.name}
+          {position.planOnly && <span className="ml-1.5 font-normal text-slate-400">· this plan only</span>}
+        </p>
         {!editingNeeds && position.needed > 0 && (
           <p
             className={`text-xs tabular-nums ${
