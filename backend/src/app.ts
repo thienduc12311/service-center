@@ -45,6 +45,14 @@ import {
   devicesRouter,
   notificationsRouter,
 } from './routes/notifications.js';
+import {
+  approvedSwapsRouter,
+  opportunitiesRouter,
+  opportunityClaimsRouter,
+  planOpportunitiesRouter,
+  replacementOffersRouter,
+  replacementRequestsRouter,
+} from './routes/opportunities.js';
 
 /** Preview deployments are `<project>-<hash>-<team>.vercel.app`. */
 const VERCEL_PREVIEW_ORIGIN = /^https:\/\/[a-z0-9-]+\.vercel\.app$/;
@@ -110,7 +118,13 @@ export const createApp = (): Express => {
   app.use('/api/v1/plans/:planId/assignment-times', scoped, planAssignmentTimesRouter);
   app.use('/api/v1/plans/:planId/notify', scoped, planNotifyRouter);
   app.use('/api/v1/plans/:planId/release', scoped, planReleaseRouter);
+  app.use('/api/v1/plans/:planId/opportunities', scoped, planOpportunitiesRouter);
   app.use('/api/v1/plans', scoped, plansRouter);
+  app.use('/api/v1/opportunities', scoped, opportunitiesRouter);
+  app.use('/api/v1/opportunity-claims', scoped, opportunityClaimsRouter);
+  app.use('/api/v1/replacement-requests', scoped, replacementRequestsRouter);
+  app.use('/api/v1/replacement-offers', scoped, replacementOffersRouter);
+  app.use('/api/v1/approved-swaps', scoped, approvedSwapsRouter);
   app.use('/api/v1/assignments', scoped, assignmentsRouter);
   app.use('/api/v1/schedule', scoped, scheduleRouter);
   app.use('/api/v1/scheduling/proposals', scoped, staffingProposalsRouter);

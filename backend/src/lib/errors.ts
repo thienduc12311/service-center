@@ -47,6 +47,9 @@ const PT409_HINTS: Record<string, string> = {
   proposal_stale: 'proposal_stale',
   proposal_expired: 'proposal_expired',
   rotation_changed: 'rotation_changed',
+  capacity_full: 'capacity_full',
+  opportunity_closed: 'opportunity_closed',
+  opportunity_changed: 'opportunity_changed',
 };
 
 export const fromPostgrestError = (error: {

@@ -26,6 +26,7 @@ import { AssignmentTimesModal } from '../components/plan/AssignmentTimesModal';
 import { EditNotesModal } from '../components/plan/EditNotesModal';
 import { ImportTemplateModal } from '../components/plan/ImportTemplateModal';
 import { DeliveryOutcomeNotice } from '../components/plan/DeliveryOutcomeNotice';
+import { OpportunityPanel, type SignupSetupOption } from '../components/plan/OpportunityPanel';
 import { PLAN_TABS, PLAN_TAB_LABELS, buildPlanTeams, type PlanTab } from '../components/plan/types';
 
 /** Which dialog, if any, is on top of the workspace. */
@@ -208,6 +209,16 @@ export const PlanDetailPage = () => {
   const organizationName =
     user?.memberships.find((membership) => membership.organization.id === organizationId)
       ?.organization.name ?? 'Service Center';
+  const allAssignments = everyTeam.flatMap((view) => [...view.positions.flatMap((position) => position.scheduled), ...view.unpositioned]);
+  const currentPersonId = allAssignments.find((assignment) => assignment.user_id === user?.profile.id)?.person_id ?? null;
+  const signupOptions: SignupSetupOption[] = everyTeam.flatMap((view) => view.positions.map((position) => ({
+    teamId: view.team.id,
+    teamName: view.team.name,
+    positionId: position.position.id,
+    positionName: position.position.name,
+    needed: position.needed,
+    canManage: canScheduleTeam(view.team.id),
+  })));
 
   const move = (index: number, direction: -1 | 1) => {
     const ids = detail.items.map((item) => item.id);
@@ -315,6 +326,8 @@ export const PlanDetailPage = () => {
           )}
 
           {tab === 'teams' && (
+            <>
+            <OpportunityPanel planId={planId} options={signupOptions} assignments={allAssignments} currentPersonId={currentPersonId} />
             <TeamsTab
               teams={showAllTeams ? everyTeam : serviceTeams}
               canScheduleTeam={canScheduleTeam}
@@ -333,6 +346,7 @@ export const PlanDetailPage = () => {
               showAllTeams={showAllTeams}
               onToggleAllTeams={() => setShowAllTeams((current) => !current)}
             />
+            </>
           )}
 
           {tab === 'rehearse' && <RehearseTab plan={detail} />}

@@ -142,6 +142,29 @@ import type {
   PlanTimeImpact,
 } from '../types/attendance.js';
 import type {
+  ApprovedSwapRow,
+  OpportunityClaimRow,
+  OpportunityClaimDetail,
+  ReplacementOfferRow,
+  ReplacementRequestDetail,
+  ReplacementRequestRow,
+  SignupOpportunity,
+  SignupOpportunityRow,
+} from '../types/opportunities.js';
+import type {
+  ActOnApprovedSwapInput,
+  ActOnReplacementOfferInput,
+  CancelReplacementRequestInput,
+  CancelSignupClaimInput,
+  ClaimSignupOpportunityInput,
+  CreateApprovedSwapInput,
+  CreateReplacementRequestInput,
+  CreateSignupOpportunityInput,
+  DecideSignupClaimInput,
+  IssueReplacementOfferInput,
+  UpdateSignupOpportunityInput,
+} from '../schemas/opportunities.js';
+import type {
   CheckAssignmentConflictsRequest,
   PreviewPlanTimesInput,
   SetAssignmentAttendanceRequest,
@@ -538,6 +561,37 @@ export class ServiceCenterApi {
     this.request<AssignmentRow[]>('PUT', '/api/v1/assignments/response-owner', body);
   responseOwnerHistory = (assignmentId: string) =>
     this.request<AssignmentOwnerChangeRow[]>('GET', `/api/v1/assignments/${assignmentId}/response-owner-history`);
+
+  // --------------------------------------- openings and replacements (F07) --
+  listSignupOpportunities = (query?: { plan_id?: string }) =>
+    this.request<SignupOpportunity[]>('GET', '/api/v1/opportunities', undefined, query);
+  getSignupOpportunity = (id: string) => this.request<SignupOpportunity>('GET', `/api/v1/opportunities/${id}`);
+  createSignupOpportunity = (planId: string, body: CreateSignupOpportunityInput) =>
+    this.request<SignupOpportunityRow>('POST', `/api/v1/plans/${planId}/opportunities`, body);
+  updateSignupOpportunity = (id: string, body: UpdateSignupOpportunityInput) =>
+    this.request<SignupOpportunityRow>('PATCH', `/api/v1/opportunities/${id}`, body);
+  claimSignupOpportunity = (id: string, body: ClaimSignupOpportunityInput) =>
+    this.request<OpportunityClaimRow>('POST', `/api/v1/opportunities/${id}/claim`, body);
+  decideSignupClaim = (id: string, body: DecideSignupClaimInput) =>
+    this.request<OpportunityClaimRow>('POST', `/api/v1/opportunity-claims/${id}/decision`, body);
+  cancelSignupClaim = (id: string, body: CancelSignupClaimInput) =>
+    this.request<OpportunityClaimRow>('POST', `/api/v1/opportunity-claims/${id}/cancel`, body);
+  listSignupClaims = (query?: { plan_id?: string }) =>
+    this.request<OpportunityClaimDetail[]>('GET', '/api/v1/opportunity-claims', undefined, query);
+  listReplacementRequests = () => this.request<ReplacementRequestDetail[]>('GET', '/api/v1/replacement-requests');
+  createReplacementRequest = (body: CreateReplacementRequestInput) =>
+    this.request<ReplacementRequestRow>('POST', '/api/v1/replacement-requests', body);
+  cancelReplacementRequest = (id: string, body: CancelReplacementRequestInput) =>
+    this.request<ReplacementRequestRow>('POST', `/api/v1/replacement-requests/${id}/cancel`, body);
+  issueReplacementOffer = (id: string, body: IssueReplacementOfferInput) =>
+    this.request<ReplacementOfferRow>('POST', `/api/v1/replacement-requests/${id}/offers`, body);
+  actOnReplacementOffer = (id: string, body: ActOnReplacementOfferInput) =>
+    this.request<ReplacementOfferRow>('POST', `/api/v1/replacement-offers/${id}/action`, body);
+  listApprovedSwaps = () => this.request<ApprovedSwapRow[]>('GET', '/api/v1/approved-swaps');
+  createApprovedSwap = (body: CreateApprovedSwapInput) =>
+    this.request<ApprovedSwapRow>('POST', '/api/v1/approved-swaps', body);
+  actOnApprovedSwap = (id: string, body: ActOnApprovedSwapInput) =>
+    this.request<ApprovedSwapRow>('POST', `/api/v1/approved-swaps/${id}/action`, body);
 
   // ---------------------------------------------------- staffing matrix --
   staffingMatrix = (body: StaffingMatrixQueryInput) =>

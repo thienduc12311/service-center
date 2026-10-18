@@ -34,7 +34,12 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F06 Pass B — versioned team rotations and reviewed recompute (lock/exclude/use instead) | implemented; QA pending | same | Household together/apart stays absent until F03 household grants exist |
 | F06 Pass C — atomic, idempotent prepared commit | implemented; QA pending | same | Release stays the existing F01/F05 action; F08 Pass A still owns release policy/reminders |
 | F06 epic | in progress | — | Gates below; epic is not complete |
-| F07 – F17 | not started | — | **Next: F08 Pass A — versioned release and reminders** (F11 Pass A can run independently) |
+| F07 Pass A — one capacity transaction | implemented; QA pending | `feature/f07-signups-replacements` (uncommitted, from `c0b59c8`) | Empty-database migration replay; production-like capacity review |
+| F07 Pass B — signup web/shared flow | implemented; QA pending | same | Signed-in browser/accessibility QA; F08 committed transition delivery |
+| F07 Pass C — replacement and history | implemented; QA pending | same | Signed-in multi-role browser QA; F08 requester/candidate/leader delivery |
+| F07 Pass D — optional approved swaps | implemented; QA pending | same | Product review and signed-in stale/expiry UI QA |
+| F07 epic | in progress | — | Gates below; native MOB-009/010 and F08 delivery remain explicit |
+| F08 – F17 | not started | — | **Next: F08 Pass A — exact request versions and release** (F11 Pass A can run independently) |
 
 ## F00 — 2026-10-16
 
@@ -340,3 +345,32 @@ Schedule dialog: Times (All times / Only these times, with untimed notice), live
 - Native scheduler UI for proposals/rotations is out of scope (no MOB task); device QA not applicable.
 
 **Next pass:** F08 Pass A — versioned release and reminders (release prepared F06/F05 requests through it). F11 Pass A remains independent.
+
+## F07 — 2026-10-18
+
+**Pre-existing state.** `main` at `c0b59c8`, clean; new branch `feature/f07-signups-replacements`. All four passes were selected in this invocation. MOB-009/010 were not started, so there was no allocator to reuse. The implementation instead reuses the shared foundations already delivered through MOB-005 and the Services work it unlocked: canonical Person identity and memberships, prepared/released assignments and response history, exact attendance/conflicts and sorted Person locks (F01/F02/F04), per-plan needs and every existing assignment writer, plus F00's durable outbox boundary. F08 is not implemented, so F07 does not invent a second dispatcher/template family.
+
+### Contracts and state
+- One organization-scoped API family: `/plans/:id/opportunities`, `/opportunities`, `/opportunity-claims`, `/replacement-requests`, `/replacement-offers`, `/approved-swaps`. Shared row/DTO types, Zod inputs and API methods are exported from `@service-center/shared`; assignment revisions accept the existing initial value `0`.
+- Opportunities bind one plan/team/position and exact time-id scope, cannot exceed `plan_position_needs`, and have an explicit close time, direct or leader-approval policy, finite reservation duration and version. Direct claims create a new released confirmed assignment from the claimant's consent; approval claims reserve capacity until approved/rejected/cancelled/expired. Retry keys return the same row, including after confirmation.
+- Replacement requests require the original assignment to remain declined, retain its response/history, permit one unresolved request and refuse a second request after the vacancy is filled. Offers are pending → accepted-awaiting-approval → finalized, or declined/rejected/expired/superseded. Consent and leader approval work in either order; finalization creates a separate confirmed assignment and supersedes competitors. Request cancellation supersedes offers and clears their reservations atomically; repeated cancellation returns the same terminal row.
+- Optional swaps retain both original assignments/history, require both Persons' consent plus a scheduler authorized for both sides, recheck target eligibility/conflicts/revisions, decline both originals and create both new confirmed assignments in one transaction. A stale second side rolls the entire final action back. Retry of the finalized operation returns the original swap.
+
+### Persistence, allocator and permissions
+- Migration `20261023000000_f07_signups_replacements.sql`: `signup_opportunities`, `opportunity_claims`, `replacement_requests`, `replacement_offers`, `approved_swaps`, append-only `allocation_events`; constrained states, indexed foreign keys/status scans, version/idempotency keys, RLS and least-privilege grants. Replacement request/offer visibility uses boolean-only security-definer helpers so the two RLS policies do not recurse. Lists are explicitly scoped to the selected organization; unrelated members cannot read claims, requests or offers. NULL-safe Person comparisons refuse unlinked/forged actors.
+- One broad advisory lock per plan/position serializes overlapping time scopes after F04's sorted Person locks. Occupancy includes every non-declined assignment plus live signup/replacement reservations and excludes expired/cancelled/rejected/superseded rows. Deferred assignment/attendance triggers cover direct/manual/matrix/proposal/future writers; a needs trigger refuses reducing capacity below commitments/reservations. All critical transitions recheck server time, eligibility, exact F04 conflicts, scope/revision and capacity.
+- `expire_f07_allocations` is bounded, idempotent lazy cleanup for claims, replacement offers/requests and swaps; reads invoke it until F08 supplies durable scheduled due work. Every expiry/cancel/decision/finalization has an `allocation_events` transition. Committed email/push/feed updates are intentionally pending F08's template/policy/dispatcher work rather than misusing `assignment_request` (which would tell a confirmed claimant they still need to respond).
+
+### Web and checks
+- Plan Teams now includes `OpportunityPanel`: authorized opening setup/close, eligible list with remaining capacity/deadline/policy, claim/cancel, leader approve/reject, declined-assignment replacement request/cancel, candidate offer/consent/approval tracking, and optional two-assignment swap proposal/consent/approval/cancel. Status text distinguishes awaiting approval from confirmed; original declines are explicitly described as retained. Native source is unchanged; MOB-009/010 consume these shared contracts later.
+- `supabase/tests/f07-signups-replacements.sql` passes and rolls back: eligible approval claim, due reservation expiry before allocation, zero-based revisions, duplicate retries, consent-before-approval replacement, original decline preserved, filled vacancy cannot reopen, cancellation releases/supersedes once, approve-before-consent swap, target eligibility, stale second-side all-or-nothing rollback, unlinked actor refusal and uninvolved-member RLS isolation.
+- `bash supabase/tests/f07-concurrent-allocation.sh` passes with real independent PostgreSQL sessions: claim/claim, offer/offer and signup/replacement/manual each leave exactly one occupied final slot; losers receive `capacity_full` and fixtures are removed.
+- `npm run typecheck` passes for shared/backend/frontend/mobile. `npm test` passes when rerun with local-listen permission: shared 151, backend 111, mobile 42 (the sandbox-only first run failed because Supertest could not bind `0.0.0.0`). `npm run build` passes; existing Vite >500 kB chunk advisory only. `git diff --check` passes. No native files changed, so Expo export was not required for this F07 web/shared pass.
+
+### Remaining gates
+- Replay all migrations from an empty disposable database before a shared environment; no production migration was applied.
+- Run signed-in browser QA as eligible member, candidate, scoped scheduler and unrelated member: loading/empty/full/closed/stale/expiry/cancel states, keyboard/screen reader, both themes and long names. Confirm candidate selection wording against a production-like roster.
+- F08 must add truthful deduplicated requester/candidate/scoped-leader outbox templates and durable scheduled expiry. F00 has the queue/worker, but its existing `assignment_request` template is semantically wrong for F07 confirmations/offers. Provider/device delivery remains the shared F00/F08 gate.
+- Native MOB-009 and MOB-010 screens, offline/unknown-result behavior, organization-switch invalidation and iOS/Android device QA are not implemented here. Public signup and household delegation remain explicitly out of scope.
+
+**Exact next pass:** F08 Pass A — exact request versions and release. F07 remains **in progress**, not complete, until the gates above are closed.

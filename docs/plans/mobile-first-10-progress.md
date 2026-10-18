@@ -19,7 +19,15 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 | MOB-006 Pass A — one-off availability + timezone contract | implemented; QA pending | `feature/mob-006-availability` | Signed-in timezone/DST matrix below |
 | MOB-006 Pass B — bounded recurrence + web maintenance | implemented; QA pending | `feature/mob-006-availability` | Signed-in web maintenance matrix below |
 | MOB-006 Pass C — native editor + conflict review | implemented; QA pending | `feature/mob-006-availability` | Signed-in iOS/Android interaction matrix below |
-| MOB-007 – MOB-010 | not started | — | Next task: MOB-007 |
+| MOB-007 – MOB-008 | not started | — | Next task: MOB-007 |
+| MOB-009 Pass A — shared opportunity allocator/API | implemented; QA pending | delivered by F07 on `feature/f07-signups-replacements` | Reuse for native Pass B; F08 transition delivery remains a gate |
+| MOB-009 Pass B — native opportunities/review | not started | — | Build on F07 contracts; iOS/Android device QA |
+| MOB-010 Pass A — shared replacement allocator/API | implemented; QA pending | delivered by F07 on `feature/f07-signups-replacements` | Reuse for native Pass B; F08 transition delivery remains a gate |
+| MOB-010 Pass B — native replacement tracking | not started | — | Build on F07 contracts; iOS/Android device QA |
+
+## MOB-009/010 shared foundation — 2026-10-18
+
+Services F07 delivered the shared Person-first opportunity, claim, replacement-offer and optional approved-swap contracts on `feature/f07-signups-replacements`; see the F07 section in [services-capabilities-progress.md](services-capabilities-progress.md) for the state machine, files and exact SQL/concurrency evidence. It reuses MOB-005 identity/attendance/history and F00/F01/F04 scheduling boundaries rather than creating mobile-only tables or APIs. Real races prove one winner for claim/claim, offer/offer and signup/replacement/manual final-slot contention; the original decline remains intact and stale swaps roll back both sides. MOB-009/010 native screens were not selected and remain not started. F08 still owns truthful committed transition notifications/durable scheduled expiry, so neither mobile task is marked complete.
 
 ## MOB-006 Passes A–C — 2026-10-17
 

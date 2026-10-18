@@ -3,6 +3,7 @@ export * from './types/domain.js';
 export * from './types/roster.js';
 export * from './types/availability.js';
 export * from './types/attendance.js';
+export * from './types/opportunities.js';
 export * from './types/staffing-matrix.js';
 export * from './types/staffing-proposals.js';
 export * from './schemas/index.js';
