@@ -550,10 +550,63 @@ export type CalendarFeedTokenRow = {
 export type BlockoutRow = {
   id: string;
   organization_id: string;
-  user_id: string;
+  /** Compatibility link for signed-in people; null for a Person without a Profile. */
+  user_id: string | null;
+  person_id: string;
   starts_at: string;
   ends_at: string;
   reason: string | null;
+  timezone: string | null;
+  all_day: boolean;
+  local_start_date: string | null;
+  local_start_time: string | null;
+  local_end_date: string | null;
+  local_end_time: string | null;
+  series_id: string | null;
+  occurrence_key: string | null;
+  revision: number;
+  created_by: string | null;
+  updated_by: string | null;
+  idempotency_key: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type BlockoutFrequency = 'weekly' | 'monthly';
+export type BlockoutSeriesEndType = 'count' | 'until';
+
+export type BlockoutSeriesRow = {
+  id: string;
+  organization_id: string;
+  person_id: string;
+  timezone: string;
+  all_day: boolean;
+  local_start_date: string;
+  local_start_time: string | null;
+  local_end_date: string;
+  local_end_time: string | null;
+  reason: string | null;
+  frequency: BlockoutFrequency;
+  interval_count: number;
+  end_type: BlockoutSeriesEndType;
+  until_date: string | null;
+  occurrence_count: number | null;
+  monthly_missing_date: 'skip';
+  ambiguous_time_policy: 'earlier' | 'later';
+  revision: number;
+  idempotency_key: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type BlockoutSeriesExceptionRow = {
+  id: string;
+  series_id: string;
+  occurrence_key: string;
+  kind: 'updated' | 'deleted' | 'future_split';
+  replacement_blockout_id: string | null;
+  created_by: string;
   created_at: string;
 }
 
@@ -724,6 +777,8 @@ export type Database = {
       deliveries: Table<DeliveryRow>;
       device_push_tokens: Table<DevicePushTokenRow>;
       blockouts: Table<BlockoutRow>;
+      blockout_series: Table<BlockoutSeriesRow>;
+      blockout_series_exceptions: Table<BlockoutSeriesExceptionRow>;
       attachments: Table<AttachmentRow>;
       songbooks: Table<SongbookRow>;
       songbook_items: Table<SongbookItemRow>;

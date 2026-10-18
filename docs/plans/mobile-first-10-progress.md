@@ -16,8 +16,24 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 | MOB-005 Pass C — snapshots + atomic answers | complete | `feature/mob-005-prepared-response-foundations` | Stale rollback and real two-session replay race verified |
 | MOB-005 Pass D — preparation + release | complete | `feature/mob-005-prepared-response-foundations` | Private preparation, versioned release, durable effects verified |
 | MOB-005 Pass E — native review + split batch | implemented; QA pending | `feature/mob-005-prepared-response-foundations` | Signed-in iOS/Android interaction matrix below; implementation/export complete |
-| MOB-006 Pass A — one-off availability + timezone contract | not started | — | **Next task/pass** |
-| MOB-006 Pass B – MOB-010 | not started | — | Per README order after MOB-006 Pass A |
+| MOB-006 Pass A — one-off availability + timezone contract | implemented; QA pending | `feature/mob-006-availability` | Signed-in timezone/DST matrix below |
+| MOB-006 Pass B — bounded recurrence + web maintenance | implemented; QA pending | `feature/mob-006-availability` | Signed-in web maintenance matrix below |
+| MOB-006 Pass C — native editor + conflict review | implemented; QA pending | `feature/mob-006-availability` | Signed-in iOS/Android interaction matrix below |
+| MOB-007 – MOB-010 | not started | — | Next task: MOB-007 |
+
+## MOB-006 Passes A–C — 2026-10-17
+
+**Implementation note / baseline:** MOB-005 Person identity, stable plan-time identity, exact attendance and prepared visibility were present. Blockouts were timestamp-only Profile rows with create/delete; web used browser-local dates and native used raw date text. The Supabase skill's RLS, indexed-FK, constraint and short-transaction guidance shaped the additive Person-first migration and atomic revision/idempotency functions.
+
+**Delivered:** shared organization-timezone resolution preserves civil intent independently of device timezone, uses exclusive all-day end dates, produces real 23/25-hour DST intervals, rejects nonexistent spring-forward times and carries an explicit earlier/later fall-back policy. One-off create/update/delete is Person-scoped and revision checked. Weekly/monthly series are finite (maximum 120), skip missing monthly dates explicitly, preview and commit from the same resolver, create idempotently, and persist bounded occurrence rows used by existing conflicts. Unique exception/audit rows and one transaction support one, future and whole-series update/delete with stale/replay safety. Affected commitments use actual selected/all attendance times (including rehearsals), rely on assignment RLS to hide prepared requests from recipients, redact blockout reasons from generic scheduler conflicts, and never alter assignment answers.
+
+Web settings supports all-day/timed one-off and series creation, preview and affected commitments. `/settings/blockouts/:seriesId` loads the exact authorized series and maintains one occurrence, this-and-future or the whole series. Native uses the Expo-compatible platform date/time picker, organization-zone label, all-day/repeat/end/DST controls, occurrence/commitment review, draft retention and duplicate-save prevention. One-off edit/delete stays native; series rows open the exact web route.
+
+**Primary files:** `supabase/migrations/20261019000100_mob006_availability.sql`, `supabase/tests/mob006-availability.sql`; shared timezone resolver/tests, blockout schemas/types/client; backend blockout routes; web availability settings/series route; native blockout form/profile; date-time-picker dependency.
+
+**Checks:** rollback-only migration application and `mob006-availability.sql` pass against local Supabase (Person ownership, finite/idempotent series, exception retry, stale edits, 23-hour stored interval, local/absolute mismatch rejection, prepared privacy, private-reason redaction). `npm run typecheck`, `npm test` (shared 120, backend 88, mobile 42), `npm run build`, and `git diff --check` pass. iOS and Android Expo export passes at `/private/tmp/service-center-mobile-check-mob006-final`. The first sandboxed `npm test` run failed only because Supertest could not bind a listener; the permitted rerun passed unchanged. `db:reset` was not run because approval rejected destructive replacement of the developer database; migration and SQL behavior were instead executed in one transaction ending in `ROLLBACK`.
+
+**Remaining gate:** signed-in interaction QA was unavailable. Verify web and iOS/Android in light/dark and large text: one-off create/edit/delete; Sunday across device timezone changes; spring/fall picker behavior; series preview/create; exact web handoff and one/future/all maintenance; rehearsal/split-time affected list; prepared privacy; offline/lost-response retry and duplicate taps. No production migration or deployment was performed. **Next task: MOB-007.**
 
 ## MOB-005 Passes A–E — 2026-10-17
 

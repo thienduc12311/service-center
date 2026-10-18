@@ -7,8 +7,11 @@ import type {
   ArrangementRow,
   AssignmentRow,
   AssignmentStatus,
+  AssignmentVisibility,
   AssignmentTimeResponseRow,
   BlockoutRow,
+  BlockoutSeriesExceptionRow,
+  BlockoutSeriesRow,
   DeliveryChannel,
   DeliveryStatus,
   DeliveryTemplate,
@@ -23,6 +26,7 @@ import type {
   PlanItemRow,
   PlanRow,
   PlanTimeRow,
+  PlanTimeKind,
   ProfileRow,
   SchedulingConflictRow,
   ServiceTypeFolderRow,
@@ -519,6 +523,49 @@ export interface MyScheduleEntry {
 
 export interface BlockoutWithPerson extends BlockoutRow {
   person: PersonSummary | null;
+}
+
+export interface BlockoutSeriesDetail {
+  series: BlockoutSeriesRow;
+  occurrences: BlockoutOccurrencePreview[];
+  exceptions: BlockoutSeriesExceptionRow[];
+}
+
+export interface BlockoutOccurrencePreview {
+  occurrence_key: string;
+  local_start_date: string;
+  local_start_time: string | null;
+  local_end_date: string;
+  local_end_time: string | null;
+  starts_at: string;
+  ends_at: string;
+  utc_offset_minutes: number;
+}
+
+export interface AffectedAssignmentPreview {
+  assignment_id: string;
+  plan_id: string;
+  plan_title: string;
+  assignment_status: AssignmentStatus;
+  visibility: AssignmentVisibility;
+  team_name: string | null;
+  position_name: string | null;
+  time_id: string | null;
+  time_kind: PlanTimeKind | null;
+  time_name: string | null;
+  starts_at: string;
+  ends_at: string;
+}
+
+export interface BlockoutSaveResult {
+  blockout: BlockoutRow;
+  affected_assignments: AffectedAssignmentPreview[];
+}
+
+export interface BlockoutSeriesSaveResult {
+  series: BlockoutSeriesRow;
+  occurrences: BlockoutOccurrencePreview[];
+  affected_assignments: AffectedAssignmentPreview[];
 }
 
 export type SchedulingConflict = SchedulingConflictRow;

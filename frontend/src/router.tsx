@@ -22,6 +22,7 @@ import { MySchedulePage } from './pages/MySchedulePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SongbooksPage } from './pages/SongbooksPage';
 import { SongbookPage } from './pages/SongbookPage';
+import { BlockoutSeriesPage } from './pages/BlockoutSeriesPage';
 
 /**
  * Gate for every authenticated route. Anyone signed in but not yet in an
@@ -71,6 +72,7 @@ export const router = createBrowserRouter([
           { path: '/people/:personId', element: <PersonPage /> },
           { path: '/my-schedule', element: <MySchedulePage /> },
           { path: '/settings', element: <SettingsPage /> },
+          { path: '/settings/blockouts/:seriesId', element: <BlockoutSeriesPage /> },
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       },
