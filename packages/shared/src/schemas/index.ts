@@ -18,3 +18,4 @@ export * from './attendance.js';
 export * from './staffing-matrix.js';
 export * from './staffing-proposals.js';
 export * from './opportunities.js';
+export * from './reminders.js';

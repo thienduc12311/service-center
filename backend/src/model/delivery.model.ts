@@ -31,6 +31,10 @@ export type DeliveryErrorCode =
   | 'provider_rejected'
   | 'provider_misconfigured'
   | 'provider_timeout'
+  /** F08: the provider already holds an earlier attempt under this idempotency key. */
+  | 'provider_duplicate_key'
+  /** F08: a materialized reminder no longer matched current state at dispatch. */
+  | 'reminder_obsolete'
   | 'internal_error';
 
 export class DeliveryError extends Error {
@@ -91,6 +95,10 @@ export interface DeliveryEffect {
   responseTransition: ResponseTransition | null;
   /** F03 availability request this effect announces. */
   availabilityRequestId: string | null;
+  /** F08: the consolidated release batch this request belongs to. */
+  releaseBatchId: string | null;
+  /** F08: the reminder job this effect materialized. */
+  reminderJobId: string | null;
   createdBy: string | null;
 }
 
@@ -111,4 +119,8 @@ export interface WorkerRunResult {
   retried: number;
   /** Lost the lease before finishing (another run recovers them). */
   abandoned: number;
+  /** F08: scheduled releases this run executed (released or failed). */
+  releases: number;
+  /** F08: reminder jobs this run turned into outbox deliveries. */
+  remindersEnqueued: number;
 }

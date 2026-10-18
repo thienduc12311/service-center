@@ -177,6 +177,25 @@ import type {
 } from '../schemas/plan.js';
 import type { ListDeliveriesRequest, NotifyPlanInput } from '../schemas/delivery.js';
 import type {
+  CreateReleaseBatchRequest,
+  ListPreparedRequestsQuery,
+  ListReleaseBatchesQuery,
+  ReleaseBatchPreviewInput,
+  ReminderPolicyScopeQuery,
+  UpdateReminderPreferencesInput,
+  UpsertReminderPolicyRequest,
+} from '../schemas/reminders.js';
+import type {
+  PlanDeliveryHistory,
+  PreparedRequestListItem,
+  ReleaseBatchPreview,
+  ReleaseBatchResult,
+  ReleaseBatchSummary,
+  ReminderPolicyRow,
+  ReminderPolicyScopeView,
+  ReminderPreferences,
+} from '../types/reminders.js';
+import type {
   ArchiveServiceTypeInput,
   CopyServiceTypeRequest,
   CreateFolderRequest,
@@ -707,6 +726,36 @@ export class ServiceCenterApi {
   /** Re-queues a failed or uncertain delivery (administrators only). */
   retryDelivery = (id: string) =>
     this.request<DeliveryListItem>('POST', `/api/v1/deliveries/${id}/retry`, {});
+
+  // ---------------------------------------------- F08 release/reminders --
+  /** Prepared requests on upcoming plans the caller may release. */
+  listPreparedRequests = (query?: Partial<ListPreparedRequestsQuery>) =>
+    this.request<PreparedRequestListItem[]>('GET', '/api/v1/releases/prepared', undefined, query as Query);
+  /** Who will receive what (grouped per Person, then plan) and which channels will be skipped. */
+  previewReleaseBatch = (body: ReleaseBatchPreviewInput) =>
+    this.request<ReleaseBatchPreview>('POST', '/api/v1/releases/preview', body);
+  /** Releases the reviewed set now, or schedules it when `scheduled_for` is in the future. */
+  createReleaseBatch = (body: CreateReleaseBatchRequest) =>
+    this.request<ReleaseBatchResult>('POST', '/api/v1/releases', body);
+  listReleaseBatches = (query?: Partial<ListReleaseBatchesQuery>) =>
+    this.request<ReleaseBatchSummary[]>('GET', '/api/v1/releases', undefined, query as Query);
+  cancelReleaseBatch = (id: string) =>
+    this.request<ReleaseBatchSummary>('POST', `/api/v1/releases/${id}/cancel`, {});
+  /** Effective and explicit reminder policies at a scope (organization when both ids are omitted). */
+  reminderPolicies = (query?: ReminderPolicyScopeQuery) =>
+    this.request<ReminderPolicyScopeView>('GET', '/api/v1/reminder-policies', undefined, query as Query);
+  saveReminderPolicy = (body: UpsertReminderPolicyRequest) =>
+    this.request<ReminderPolicyRow>('PUT', '/api/v1/reminder-policies', body);
+  /** Removes an override so the scope inherits again. */
+  deleteReminderPolicy = (id: string) =>
+    this.request<void>('DELETE', `/api/v1/reminder-policies/${id}`);
+  myReminderPreferences = () =>
+    this.request<ReminderPreferences>('GET', '/api/v1/reminder-policies/me');
+  updateMyReminderPreferences = (body: UpdateReminderPreferencesInput) =>
+    this.request<ReminderPreferences>('PUT', '/api/v1/reminder-policies/me', body);
+  /** Scheduled reminders and per-Person/channel delivery history for one plan. */
+  planDeliveryHistory = (planId: string) =>
+    this.request<PlanDeliveryHistory>('GET', `/api/v1/plans/${planId}/deliveries`);
   checkConflicts = (body: { starts_at: string; ends_at: string; user_ids: string[] }) =>
     this.request<SchedulingConflict[]>('POST', '/api/v1/scheduling/conflicts', body);
   /** F04: typed, redacted conflicts for prospective requests (actual attendance intervals). */

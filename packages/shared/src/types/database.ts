@@ -36,6 +36,15 @@ import type {
   RosterBulkPreviewRow,
 } from './roster.js';
 import type { ApprovedSwapRow, OpportunityClaimRow, ReplacementOfferRow, ReplacementRequestRow, SignupOpportunityRow } from './opportunities.js';
+import type {
+  EffectiveReminderPolicy,
+  PersonReminderPreferencesRow,
+  ReleaseBatchItemRow,
+  ReleaseBatchRow,
+  ReleaseBatchStatus,
+  ReminderJobRow,
+  ReminderPolicyRow,
+} from './reminders.js';
 
 /**
  * Row types are exact — every read is precisely typed. Insert and Update are
@@ -82,7 +91,13 @@ export type DeliveryStatus =
   | 'ambiguous'
   | 'skipped'
   | 'cancelled';
-export type DeliveryTemplate = 'assignment_request' | 'assignment_reminder' | 'scheduler_response' | 'availability_request';
+export type DeliveryTemplate =
+  | 'assignment_request'
+  | 'assignment_reminder'
+  | 'scheduler_response'
+  | 'availability_request'
+  /** F08: a confirmed-service ("coming up") reminder; carries no respond link. */
+  | 'service_reminder';
 export type ResponseTransition = 'response' | 'withdrawal';
 /** Column layout a printed chord chart uses. Constrained in the database too. */
 export type ChartColumns = 1 | 2;
@@ -444,6 +459,15 @@ export type AssignmentNotificationRow = {
   email: string;
   token_hash: string;
   expires_at: string;
+  /**
+   * F08: the last provider-accepted token, kept usable until the replacement
+   * (`token_hash`) is itself accepted. Answers through either consume the row.
+   */
+  previous_token_hash: string | null;
+  previous_snapshot_id: string | null;
+  previous_expires_at: string | null;
+  /** The delivery whose email carries `token_hash`. */
+  issued_delivery_id: string | null;
   sent_at: string | null;
   responded_at: string | null;
   created_by: string | null;
@@ -481,6 +505,10 @@ export type DeliveryEffectRow = {
   response_transition: ResponseTransition | null;
   /** Set for `availability_request` effects (F03). */
   availability_request_id: string | null;
+  /** F08: the release batch whose consolidated request this is. */
+  release_batch_id: string | null;
+  /** F08: the reminder job this effect materialized. */
+  reminder_job_id: string | null;
   created_by: string | null;
   created_at: string;
 }
@@ -921,6 +949,11 @@ export type Database = {
       team_rotation_versions: Table<TeamRotationVersionRow>;
       staffing_proposals: Table<StaffingProposalRow>;
       signup_opportunities: Table<SignupOpportunityRow>;
+      release_batches: Table<ReleaseBatchRow>;
+      release_batch_items: Table<ReleaseBatchItemRow>;
+      reminder_policies: Table<ReminderPolicyRow>;
+      person_reminder_preferences: Table<PersonReminderPreferencesRow>;
+      reminder_jobs: Table<ReminderJobRow>;
       opportunity_claims: Table<OpportunityClaimRow>;
       replacement_requests: Table<ReplacementRequestRow>;
       replacement_offers: Table<ReplacementOfferRow>;
@@ -1234,6 +1267,50 @@ export type Database = {
         Args: { p_delivery_id: string };
         Returns: DeliveryRow;
       };
+      create_release_batch: {
+        Args: {
+          p_org: string;
+          p_items: Array<{ assignment_id: string; request_revision: number }>;
+          p_notify: boolean;
+          p_scheduled_for: string | null;
+          p_idempotency_key: string;
+        };
+        Returns: ReleaseBatchRow;
+      };
+      cancel_release_batch: {
+        Args: { p_batch: string };
+        Returns: ReleaseBatchRow;
+      };
+      run_due_release_batches: {
+        Args: { p_limit?: number };
+        Returns: Array<{ batch_id: string; status: ReleaseBatchStatus; effect_id: string | null }>;
+      };
+      materialize_due_reminders: {
+        Args: { p_limit?: number };
+        Returns: Array<{ job_id: string; outcome: 'enqueued' | 'deferred' | 'cancelled' | 'skipped'; effect_id: string | null }>;
+      };
+      plan_reminder_jobs: {
+        Args: { p_plan: string };
+        Returns: ReminderJobRow[];
+      };
+      reminder_job_is_current: {
+        Args: { p_job: string };
+        Returns: boolean;
+      };
+      effective_reminder_policies: {
+        Args: { p_org: string; p_service_type: string | null; p_team: string | null };
+        Returns: EffectiveReminderPolicy[];
+      };
+      issue_assignment_link: {
+        Args: {
+          p_delivery: string;
+          p_snapshot: string;
+          p_token_hash: string;
+          p_expires_at: string;
+          p_email: string;
+        };
+        Returns: string;
+      };
       duplicate_plan: {
         Args: {
           p_source_plan_id: string;
@@ -1323,6 +1400,7 @@ export type Database = {
       delivery_status: DeliveryStatus;
       delivery_template: DeliveryTemplate;
       access_capability: AccessCapability;
+      release_batch_status: ReleaseBatchStatus;
     };
     CompositeTypes: Record<string, never>;
   };

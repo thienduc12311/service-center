@@ -6,6 +6,7 @@ import { keys, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Modal, Spinner } from './ui';
 import { ScopeAccessEditor } from './settings/ScopeAccessEditor';
+import { ReminderPolicyEditor } from './settings/ReminderPolicyEditor';
 
 export interface TeamPolicyModalProps {
   team: TeamWithPositions;
@@ -161,6 +162,12 @@ export const TeamPolicyModal = ({ team, onClose }: TeamPolicyModalProps) => {
             </div>
           </fieldset>
         )}
+
+        <section aria-labelledby="team-reminders-heading" className="space-y-2">
+          <h3 id="team-reminders-heading" className="text-sm font-medium">Reminders</h3>
+          <p className="text-sm text-slate-500">Overrides the service type and organization for this team's requests. Saved separately.</p>
+          <ReminderPolicyEditor teamId={team.id} scopeLabel="this team" />
+        </section>
 
         <ErrorNotice error={policies.error ?? save.error} />
 

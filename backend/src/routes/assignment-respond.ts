@@ -31,12 +31,41 @@ interface AssignmentNotificationRecord {
   responded_at: string | null;
 }
 
+interface StoredNotification extends AssignmentNotificationRecord {
+  token_hash: string;
+  previous_token_hash: string | null;
+  previous_snapshot_id: string | null;
+  previous_expires_at: string | null;
+}
+
+/**
+ * Resolves a link token. F08: the last provider-accepted token stays usable
+ * (with its own exact snapshot) until its replacement is accepted, so the
+ * preview reads whichever snapshot the presented token was issued for —
+ * the same rule `respond_via_assignment_link` applies.
+ */
 const loadNotification = async (token: string): Promise<AssignmentNotificationRecord> => {
+  const hash = hashInviteToken(token);
   const notification = await unwrap(
-    adminDb.from('assignment_notifications').select('id, plan_id, organization_id, person_id, user_id, snapshot_id, email, expires_at, responded_at').eq('token_hash', hashInviteToken(token)).maybeSingle(),
+    adminDb.from('assignment_notifications')
+      .select('id, plan_id, organization_id, person_id, user_id, snapshot_id, email, expires_at, responded_at, token_hash, previous_token_hash, previous_snapshot_id, previous_expires_at')
+      .or(`token_hash.eq.${hash},previous_token_hash.eq.${hash}`)
+      .maybeSingle(),
   );
   if (!notification) throw HttpError.notFound('That assignment response link is not valid');
-  const record = notification as AssignmentNotificationRecord;
+  const stored = notification as StoredNotification;
+  const viaPrevious = stored.token_hash !== hash;
+  const record: AssignmentNotificationRecord = {
+    id: stored.id,
+    plan_id: stored.plan_id,
+    organization_id: stored.organization_id,
+    person_id: stored.person_id,
+    user_id: stored.user_id,
+    snapshot_id: viaPrevious ? stored.previous_snapshot_id : stored.snapshot_id,
+    email: stored.email,
+    expires_at: (viaPrevious ? stored.previous_expires_at : stored.expires_at) ?? stored.expires_at,
+    responded_at: stored.responded_at,
+  };
   if (record.responded_at) throw new HttpError(410, 'This assignment response link has already been used', 'assignment_notification_used');
   if (new Date(record.expires_at) <= new Date()) throw new HttpError(410, 'This assignment response link has expired', 'assignment_notification_expired');
   return record;

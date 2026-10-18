@@ -2,6 +2,7 @@ import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import { redactTokenPath } from './lib/redact.js';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
@@ -31,6 +32,7 @@ import {
 } from './routes/assignments.js';
 import { calendarRouter } from './routes/calendar.js';
 import { deliveriesRouter, deliveryWorkerRouter } from './routes/deliveries.js';
+import { planDeliveriesRouter, releasesRouter, reminderPoliciesRouter } from './routes/releases.js';
 import { blockoutsRouter } from './routes/blockouts.js';
 import { availabilityRouter } from './routes/availability.js';
 import { delegationsRouter } from './routes/delegations.js';
@@ -77,7 +79,11 @@ export const createApp = (): Express => {
     }),
   );
   app.use(express.json({ limit: '2mb' }));
-  if (!config.isTest) app.use(morgan(config.isProduction ? 'combined' : 'dev'));
+  if (!config.isTest) {
+    // Bearer-token paths (response links, invitations, feeds) are logged by shape only.
+    morgan.token<express.Request>('url', (req) => redactTokenPath(req.originalUrl ?? req.url ?? ''));
+    app.use(morgan(config.isProduction ? 'combined' : 'dev'));
+  }
 
   app.use(
     rateLimit({
@@ -118,6 +124,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/plans/:planId/assignment-times', scoped, planAssignmentTimesRouter);
   app.use('/api/v1/plans/:planId/notify', scoped, planNotifyRouter);
   app.use('/api/v1/plans/:planId/release', scoped, planReleaseRouter);
+  app.use('/api/v1/plans/:planId/deliveries', scoped, planDeliveriesRouter);
   app.use('/api/v1/plans/:planId/opportunities', scoped, planOpportunitiesRouter);
   app.use('/api/v1/plans', scoped, plansRouter);
   app.use('/api/v1/opportunities', scoped, opportunitiesRouter);
@@ -136,6 +143,8 @@ export const createApp = (): Express => {
   app.use('/api/v1/songbooks', scoped, songbooksRouter);
   app.use('/api/v1/notifications', scoped, notificationsRouter);
   app.use('/api/v1/deliveries', scoped, deliveriesRouter);
+  app.use('/api/v1/releases', scoped, releasesRouter);
+  app.use('/api/v1/reminder-policies', scoped, reminderPoliciesRouter);
   app.use('/api/v1/access', scoped, accessRouter);
   app.use('/api/v1/folders', scoped, foldersRouter);
   app.use('/api/v1/staffing-matrix', scoped, staffingMatrixRouter);

@@ -36,6 +36,15 @@ const envSchema = z.object({
    * deliveries kicked by API requests (and `npm run worker`) are processed.
    */
   CRON_SECRET: z.string().min(16).optional(),
+  /**
+   * F08: HMAC key for emailed response-link tokens. Set: a delivery's link
+   * token is the same on every attempt, so retries carry an identical
+   * payload and the email provider's idempotency key can drop a duplicate
+   * (Resend keeps keys for 24 hours). Unset: a fresh random token per attempt
+   * and no provider idempotency key. Keep it secret and stable; rotating it
+   * only changes tokens minted afterwards (issued links stay valid by hash).
+   */
+  DELIVERY_LINK_SECRET: z.string().min(32).optional(),
   MAIL_FROM_ADDRESS: z.string().email().default('notifications@example.com'),
   MAIL_FROM_NAME: z.string().default('Service Center'),
 });

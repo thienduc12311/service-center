@@ -51,6 +51,8 @@ const DELIVERY_ERROR_LABELS: Readonly<Record<string, string>> = {
   outcome_unknown: 'Interrupted while sending; it may have been sent',
   worker_lease_expired: 'Worker stopped before sending; will retry',
   internal_error: 'Unexpected error',
+  reminder_obsolete: 'Reminder no longer applied when it was about to be sent',
+  provider_duplicate_key: 'Provider already has an earlier attempt of this message; it may have been sent',
 };
 
 export const deliveryErrorLabel = (code: string | null): string | null =>

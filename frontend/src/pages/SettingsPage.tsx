@@ -1,12 +1,13 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { isAdmin, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
+import { isAdmin, isLeader, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useCalendarFeed } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, PageHeader } from '../components/ui';
 import { DeliverySettings } from '../components/settings/DeliverySettings';
+import { MyReminderSettings, ReminderPolicySettings } from '../components/settings/ReminderSettings';
 import { AccessSettings } from '../components/settings/AccessSettings';
 import { IdentityReconciliationSettings } from '../components/settings/IdentityReconciliationSettings';
 import { AvailabilitySettings } from '../components/settings/AvailabilitySettings';
@@ -16,7 +17,7 @@ import { ScheduleHelp } from '../components/settings/ScheduleHelp';
 import { AcrossOrganizations } from '../components/settings/AcrossOrganizations';
 
 export const SettingsPage = () => {
-  const { user, organizationId, role, refreshUser, switchOrganization } = useAuth();
+  const { user, organizationId, role, access, refreshUser, switchOrganization } = useAuth();
   const calendarFeed = useCalendarFeed();
   const rotateFeed = useMutation({ mutationFn: () => api.rotateCalendarFeed(), onSuccess: () => calendarFeed.refetch() });
   const feed = rotateFeed.data ?? calendarFeed.data;
@@ -81,6 +82,10 @@ export const SettingsPage = () => {
       {isAdmin(role) && <AccessSettings organization={organization ?? null} />}
 
       {isAdmin(role) && <DeliverySettings />}
+
+      {isLeader(access) && <ReminderPolicySettings />}
+
+      <MyReminderSettings />
 
       {isAdmin(role) && <IdentityReconciliationSettings />}
 

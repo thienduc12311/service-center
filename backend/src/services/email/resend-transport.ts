@@ -1,18 +1,22 @@
 import { Resend, type ErrorResponse } from 'resend';
 import {
   isAvailabilityRequest,
+  isServiceReminder,
   type AvailabilityRequestNotification,
+  type EmailSendOptions,
   type EmailSendReceipt,
   type NotificationTransport,
   type PersonInvitationNotification,
   type PersonInvitationTransport,
   type ScheduleNotification,
+  type ServiceReminderNotification,
 } from '../notifications.js';
 import { availabilityRequestEmail } from './templates/availability.js';
 import { config } from '../../config.js';
 import { DeliveryError } from '../../model/delivery.model.js';
 import { invitationEmail } from './templates/invitation.js';
 import { scheduleEmail } from './templates/schedule.js';
+import { serviceReminderEmail } from './templates/service-reminder.js';
 
 /** How long to wait for Resend before treating the outcome as unknown. */
 const SEND_TIMEOUT_MS = 15_000;
@@ -25,6 +29,10 @@ const SEND_TIMEOUT_MS = 15_000;
 export const classifyResendError = (error: Pick<ErrorResponse, 'name' | 'statusCode'>): DeliveryError => {
   if (error.statusCode === null) return new DeliveryError('provider_timeout', 'ambiguous');
   switch (error.name) {
+    // Same idempotency key, different body, within Resend's 24-hour window:
+    // an earlier attempt of this delivery was already accepted.
+    case 'invalid_idempotent_request':
+      return new DeliveryError('provider_duplicate_key', 'ambiguous');
     case 'rate_limit_exceeded':
     case 'concurrent_idempotent_requests':
       return new DeliveryError('provider_rate_limited', 'retry', 60);
@@ -61,7 +69,8 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
   }
 
   async send(
-    notification: ScheduleNotification | AvailabilityRequestNotification | PersonInvitationNotification,
+    notification: ScheduleNotification | AvailabilityRequestNotification | ServiceReminderNotification | PersonInvitationNotification,
+    options: EmailSendOptions = {},
   ): Promise<EmailSendReceipt> {
     if (isAvailabilityRequest(notification)) {
       const content = availabilityRequestEmail(notification);
@@ -69,7 +78,15 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
         from: `${notification.organizationName} <${config.MAIL_FROM_ADDRESS}>`,
         to: notification.to, subject: content.subject, html: content.html, text: content.text,
         ...(notification.replyTo ? { replyTo: notification.replyTo } : {}),
-      });
+      }, options);
+    }
+    if (isServiceReminder(notification)) {
+      const content = serviceReminderEmail(notification);
+      return this.deliver({
+        from: `${notification.organizationName} <${config.MAIL_FROM_ADDRESS}>`,
+        to: notification.to, subject: content.subject, html: content.html, text: content.text,
+        ...(notification.replyTo ? { replyTo: notification.replyTo } : {}),
+      }, options);
     }
     const content = 'respondUrl' in notification ? scheduleEmail(notification) : invitationEmail(notification);
     const replyTo = 'respondUrl' in notification ? notification.schedulerEmail ?? undefined : undefined;
@@ -85,15 +102,21 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
         text: content.text,
         ...(replyTo ? { replyTo } : {}),
         ...(attachments ? { attachments } : {}),
-      }),
+      }, options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined),
       timeout(SEND_TIMEOUT_MS),
     ]);
     if (error) throw classifyResendError(error);
     return { providerMessageId: data?.id ?? null };
   }
 
-  private async deliver(message: { from: string; to: string; subject: string; html: string; text: string; replyTo?: string }): Promise<EmailSendReceipt> {
-    const { data, error } = await Promise.race([this.client.emails.send(message), timeout(SEND_TIMEOUT_MS)]);
+  private async deliver(
+    message: { from: string; to: string; subject: string; html: string; text: string; replyTo?: string },
+    options: EmailSendOptions = {},
+  ): Promise<EmailSendReceipt> {
+    const { data, error } = await Promise.race([
+      this.client.emails.send(message, options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined),
+      timeout(SEND_TIMEOUT_MS),
+    ]);
     if (error) throw classifyResendError(error);
     return { providerMessageId: data?.id ?? null };
   }
