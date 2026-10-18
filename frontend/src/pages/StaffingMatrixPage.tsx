@@ -134,7 +134,7 @@ export const StaffingMatrixPage = () => {
   return (
     <div>
       <PageHeader title="Staffing matrix" subtitle="Compare and staff up to 12 plans. Every batch is reviewed before it changes anything."
-        actions={<Link to="/plans"><Button variant="secondary">Back to plans</Button></Link>} />
+        actions={<div className="flex gap-2"><Link to="/plans/proposals"><Button variant="secondary">Propose staffing</Button></Link><Link to="/plans"><Button variant="secondary">Back to plans</Button></Link></div>} />
       <section className="card mb-5 space-y-3 p-4" aria-label="Matrix filters">
         <div className="grid gap-3 md:grid-cols-4">
           <label className="text-sm">From<input className="input mt-1" type="date" value={dateInput(filters.from)} onChange={(e) => { setCursor(undefined); setFilters({ ...filters, from: dateStart(e.target.value) }); }} /></label>

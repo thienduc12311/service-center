@@ -62,6 +62,8 @@ export const keys = {
   conflictOverrides: (org: string | null, planId: string) => [...keys.plan(org, planId), 'conflict-overrides'] as const,
   staffingMatrix: (org: string | null, input: unknown) => [...keys.all(org), 'staffing-matrix', input] as const,
   staffingMatrixViews: (org: string | null) => [...keys.all(org), 'staffing-matrix-views'] as const,
+  staffingProposals: (org: string | null) => [...keys.all(org), 'staffing-proposals'] as const,
+  rotations: (org: string | null, teamId: string) => [...keys.all(org), 'rotations', teamId] as const,
 };
 
 /** Not organization-scoped: the signed-in user's own cross-organization settings. */
@@ -166,6 +168,20 @@ export const useStaffingMatrix = (input: StaffingMatrixQueryInput, enabled = tru
     queryFn: () => api.staffingMatrix(input),
     enabled: Boolean(org) && enabled,
     placeholderData: (previous) => previous,
+  });
+};
+
+export const useStaffingProposals = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.staffingProposals(org), queryFn: () => api.staffingProposals(), enabled: Boolean(org) });
+};
+
+export const useRotations = (teamId: string) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.rotations(org, teamId),
+    queryFn: () => api.rotations({ team_id: teamId }),
+    enabled: Boolean(org && teamId),
   });
 };
 

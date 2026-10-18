@@ -107,6 +107,7 @@ export const PlansPage = () => {
               </>
             )}
             {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/matrix')}>Staffing matrix</Button>}
+            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/proposals')}>Propose staffing</Button>}
           </div>
         }
       />

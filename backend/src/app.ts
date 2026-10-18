@@ -38,6 +38,7 @@ import { meAvailabilityRouter } from './routes/me-availability.js';
 import { accessRouter } from './routes/access.js';
 import { foldersRouter } from './routes/folders.js';
 import { staffingMatrixRouter } from './routes/staffing-matrix.js';
+import { rotationsRouter, staffingProposalsRouter } from './routes/staffing-proposals.js';
 import { songbooksRouter } from './routes/songbooks.js';
 import {
   deviceRevocationsRouter,
@@ -112,6 +113,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/plans', scoped, plansRouter);
   app.use('/api/v1/assignments', scoped, assignmentsRouter);
   app.use('/api/v1/schedule', scoped, scheduleRouter);
+  app.use('/api/v1/scheduling/proposals', scoped, staffingProposalsRouter);
   app.use('/api/v1/scheduling', scoped, schedulingRouter);
   app.use('/api/v1/calendar', scoped, calendarRouter);
   app.use('/api/v1/blockouts', scoped, blockoutsRouter);
@@ -123,6 +125,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/access', scoped, accessRouter);
   app.use('/api/v1/folders', scoped, foldersRouter);
   app.use('/api/v1/staffing-matrix', scoped, staffingMatrixRouter);
+  app.use('/api/v1/rotations', scoped, rotationsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

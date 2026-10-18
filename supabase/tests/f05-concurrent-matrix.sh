@@ -51,7 +51,7 @@ with input as (
       'plan_id','$1','staffing_revision',(select staffing_revision from public.plans where id = '$1'))) revisions
 )
 select 'committed:' || (public.commit_staffing_matrix('$org',
-  public.staffing_matrix_operation_id(actions, revisions), actions, revisions, 'f05-race-$2')->>'operation_id')
+  public.staffing_matrix_operation_id(actions, revisions), actions, revisions, 'f05-race-$2-$1')->>'operation_id')
 from input;
 select pg_sleep(1);
 commit;
