@@ -9,14 +9,15 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 | MOB-002 Pass B — persisted per-item sequence | not started | — | Pending when MOB-002 resumes; task stays partial |
 | MOB-003 Pass A — query and session lifecycle | implemented; QA pending | `codex/mob-003-session-lifecycle` | Signed-in device transition matrix (below) |
 | MOB-003 Pass B — device registration lifecycle | implemented; QA pending | `codex/mob-003-session-lifecycle` | Physical push/sign-out matrix and EAS delivery gate (below) |
-| MOB-003 Pass C — validated navigation + public responses | not started | — | **Next task/pass** |
-| MOB-004 — individual responses, grouped schedule | implemented; QA pending | `codex/mob-004-personal-schedule` (uncommitted) | Signed-in device check (below); grouped atomic answers wait on MOB-005 |
+| MOB-003 Pass C — validated navigation + public responses | implemented; QA pending | `codex/mob-003-session-lifecycle` (`20ca764`, merged) | Production association deployment/signing and installed-device link matrix (below) |
+| MOB-004 — individual responses, grouped schedule | implemented; QA pending | `codex/mob-004-personal-schedule` (`463943a`, merged) | Signed-in device check (below); reuse completed MOB-005 atomic answers |
 | MOB-005 Pass A — Person identity + scoped access | complete | `feature/mob-005-prepared-response-foundations` | Person-first migration/API/RLS verified |
 | MOB-005 Pass B — stable times + attendance | complete | `feature/mob-005-prepared-response-foundations` | Stable IDs, revisions, exact conflicts verified |
 | MOB-005 Pass C — snapshots + atomic answers | complete | `feature/mob-005-prepared-response-foundations` | Stale rollback and real two-session replay race verified |
 | MOB-005 Pass D — preparation + release | complete | `feature/mob-005-prepared-response-foundations` | Private preparation, versioned release, durable effects verified |
 | MOB-005 Pass E — native review + split batch | implemented; QA pending | `feature/mob-005-prepared-response-foundations` | Signed-in iOS/Android interaction matrix below; implementation/export complete |
-| MOB-006 – MOB-010 | not started | — | Per README order; MOB-003 Pass C also still open |
+| MOB-006 Pass A — one-off availability + timezone contract | not started | — | **Next task/pass** |
+| MOB-006 Pass B – MOB-010 | not started | — | Per README order after MOB-006 Pass A |
 
 ## MOB-005 Passes A–E — 2026-10-17
 
@@ -94,6 +95,33 @@ The route now reports anything that still blocks a removal as 409 "still in use"
 - Respond-link reason entry and per-time answers are not offered (link is status-only).
 - Website still offers an unreviewed Decline on a confirmed assignment (`frontend/src/pages/MySchedulePage.tsx`) and sends no `expected_status`; it now gets the server rules and history but not the review UI — web parity task.
 - Shared response service for app + link paths, versioned grouped answers and prepared/released visibility: MOB-005.
+
+## MOB-003 Pass C — 2026-10-17
+
+**Implementation note / baseline:** Native notification responses routed directly from an untrusted payload to a plan, link handling was split across screens, cold-start and foreground behavior had no common validation/duplicate-consumption boundary, and there was no signed-out native assignment-response screen. Website association files covered invitations only and still contained signing placeholders. No database change was required for this pass.
+
+**Delivered**
+
+- Shared navigation contracts parse external values from `unknown` and accept only the configured exact HTTPS host or custom scheme, the supported `/accept-invite`, `/respond` and inert `/open/plan/:uuid` routes, valid 43-character public tokens, valid UUIDs and the existing strict push fields (`notification_id`, `type`, `organization_id`, nullable `plan_id`). Unknown hosts/routes, credentials, ports, malformed IDs and invented payload fields cannot become app routes.
+- A single native navigation-intent provider handles cold-start and foreground Linking/notification responses. It retains at most one validated private intent through login, ignores duplicate push taps after one successful consumption, and permits a retry after a network failure. Public invitation and response intents remain signed-out routes; unknown app routes fall back safely.
+- Private intents verify active membership before an awaited organization switch, then verify the exact organization-scoped notification row and plan before routing. Deleted, foreign, mismatched and unavailable targets land on a non-sensitive explanation screen instead of exposing or guessing a route.
+- `/respond` uses the public token API without login or full-plan access and represents loading, ready, submitting, success, invalid, expired, used, stale and retryable-network states. Tokens stay in route/local component memory and are not persisted or logged. The screen now displays MOB-005's immutable request snapshot (only its exact positions/times); the earlier Person/plan grouping limitation has therefore been superseded by MOB-005's atomic/versioned contract.
+- Expo config applies the same configured host to iOS associated domains, Android verified filters for `/accept-invite` and `/respond`, and runtime validation. AASA permits exactly those two public paths; Vercel serves both association files with JSON content types. Invitation behavior remains intact.
+
+**Files changed:** `packages/shared/src/schemas/navigation.ts` + test/index export and `lib/api-client.ts`; `backend/src/routes/notifications.ts` and `src/__tests__/app.test.ts`; `mobile/src/lib/{navigation-intents,assignment-response-state,env}.ts` + tests, `mobile/src/providers/{NavigationIntentProvider,AuthProvider,NotificationsProvider}.tsx`, `mobile/app/{_layout,+not-found,accept-invite,respond,link-result}.tsx`, `mobile/app/open/plan/[id].tsx`, `mobile/app.config.js`, `mobile/.env.example`; `frontend/public/.well-known/{apple-app-site-association,README.md}` and `frontend/vercel.json`; this ledger.
+
+**Checks (Node 26.9.0 / npm 11.19.1)**
+
+- `npm run typecheck` — pass for shared, backend, frontend and mobile.
+- `npm test` — pass: shared 114, backend 88, mobile 42. Navigation coverage includes allowed/unknown hosts and schemes, malformed IDs/payloads, authorized/foreign organization resolution, absent and mismatched targets, one-time post-login consumption, duplicate taps and network retry; backend coverage proves the public response route is not auth-gated.
+- `npm run build` — pass; existing Vite >500 kB chunk advisory only.
+- `EXPO_OFFLINE=1 CI=1 npx expo export --platform ios ...` and `--platform android ...` — both native bundles exported. An attempted `--platform all` stopped before bundling because this repository intentionally lacks `react-native-web`; the common instructions explicitly exclude Expo web export.
+- Local public-API fixture check without auth — active preview `200` with the minimal snapshot, expired `410`, used `410`, submit `200`, replay `410`; the temporary notifications were deleted and the touched assignment was restored.
+- Synthetic `EXPO_PUBLIC_WEB_APP_DOMAIN=app.example.test` config check produced one iOS associated domain and exact Android `/accept-invite` + `/respond` filters; AASA, asset links and `vercel.json` parse as JSON.
+
+**Remaining gates:** no production hostname is configured (`EXPO_PUBLIC_WEB_APP_DOMAIN` is unset and backend `APP_URL` is localhost); AASA still needs the Apple Team ID and asset links still need the production Android SHA-256 certificate fingerprint. Deploy both files byte-for-byte over HTTPS with the required content type and no redirect, make signed EAS builds, and verify installed iOS/Android cold, warm and background invitation/response links. On physical signed-in devices also exercise malformed/unknown-host links, unauthorized organization, deleted notification/plan, sign-out then one-time login resume and duplicate notification taps. Pass A's signed-in transition matrix and Pass B's real push/revocation/lease matrix remain open, so MOB-003 stays `implemented; QA pending`.
+
+**Exact next task/pass:** MOB-006 Pass A — one-off availability contract and organization-timezone conversion. MOB-004 is already implemented and MOB-005's response-version/atomic upgrades are complete, so they are prerequisites to reuse rather than the next work item.
 
 ## MOB-003 Pass B — 2026-10-16
 
