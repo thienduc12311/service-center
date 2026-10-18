@@ -104,5 +104,8 @@ export interface StaffingMatrixCommitResult {
   committed_at: string;
   assignment_ids: string[];
   affected_plan_ids: string[];
+  /** The consolidated release-batch effect (at most one per commit). */
   delivery_effect_ids: string[];
+  /** F08 release batches the commit's release cells went through. Absent on commits stored before batching. */
+  release_batch_ids?: string[];
 }

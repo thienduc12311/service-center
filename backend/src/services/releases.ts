@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import type {
+  AssignmentRow,
   CreateReleaseBatchInput,
   ListPreparedRequestsQuery,
   ListReleaseBatchesQuery,
@@ -12,6 +14,7 @@ import type {
 import { HttpError } from '../lib/errors.js';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { isUntimed, timesForAttendance } from '../model/attendance.model.js';
+import { planReleaseBatchKey, planReleaseItems, type ReleaseItem } from '../model/release.model.js';
 import {
   groupReleaseRecipients,
   personDisplayName,
@@ -136,6 +139,67 @@ export const createReleaseBatch = async (
     batch,
     released_assignment_ids: batch.status === 'released' ? input.items.map((item) => item.assignment_id) : [],
   };
+};
+
+/** The single-plan release request (`POST /plans/:planId/release`). */
+export interface PlanReleaseInput {
+  assignment_ids: string[];
+  expected_revisions: ReleaseItem[];
+  notify: boolean;
+  idempotency_key?: string;
+}
+
+/** A release-batch item row as read back for an idempotent repeat. */
+interface ReleaseBatchItemRef {
+  assignment_id: string;
+}
+
+/**
+ * Releases exactly the reviewed prepared requests on one plan as a one-plan
+ * release batch, so it sends the same consolidated message as Release review.
+ * Returns the released rows. A repeat with the same key returns the first
+ * call's rows (the released requests' revisions have moved on, so the scope
+ * is not re-derived); the same key for a different set is refused.
+ */
+export const releasePlanAssignments = async (
+  db: Db,
+  orgId: string,
+  actorId: string,
+  planId: string,
+  input: PlanReleaseInput,
+): Promise<AssignmentRow[]> => {
+  const idempotencyKey = planReleaseBatchKey(planId, input.idempotency_key ?? randomUUID());
+  const existing = await unwrap(
+    db.from('release_batches').select('*').eq('organization_id', orgId)
+      .eq('created_by', actorId).eq('idempotency_key', idempotencyKey).maybeSingle(),
+  );
+  let releasedIds: string[];
+  if (existing) {
+    const items = (await unwrap(
+      raw(db).from('release_batch_items').select('assignment_id').eq('batch_id', existing.id),
+    )) as ReleaseBatchItemRef[];
+    const batchIds = new Set(items.map((item) => item.assignment_id));
+    if (batchIds.size !== new Set(input.assignment_ids).size || input.assignment_ids.some((id) => !batchIds.has(id))) {
+      throw new HttpError(409, 'That idempotency key was used for a different release', 'conflict');
+    }
+    releasedIds = existing.status === 'released' ? [...batchIds] : [];
+  } else {
+    const onPlan = ((await unwrap(
+      db.from('assignments').select('id, request_revision').eq('plan_id', planId).in('id', input.assignment_ids),
+    )) ?? []).map((row) => ({ assignment_id: row.id, request_revision: row.request_revision }));
+    const items = planReleaseItems(input.assignment_ids, input.expected_revisions, onPlan);
+    if (!items) {
+      throw new HttpError(409, 'Prepared requests changed since the release review', 'assignment_release_stale');
+    }
+    ({ released_assignment_ids: releasedIds } = await createReleaseBatch(db, orgId, {
+      items,
+      notify: input.notify,
+      scheduled_for: null,
+      idempotency_key: idempotencyKey,
+    }));
+  }
+  if (releasedIds.length === 0) return [];
+  return (await unwrap(db.from('assignments').select('*').in('id', releasedIds))) ?? [];
 };
 
 const withPlanTitles = async (db: Db, batches: readonly ReleaseBatchRow[]): Promise<ReleaseBatchSummary[]> => {
