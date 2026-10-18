@@ -199,6 +199,20 @@ import type {
   SaveStaffingMatrixViewInput,
   StaffingMatrixQueryInput,
 } from '../schemas/staffing-matrix.js';
+import type {
+  RotationPreviewEntry,
+  StaffingProposal,
+  StaffingProposalCommitResult,
+  TeamRotation,
+} from '../types/staffing-proposals.js';
+import type {
+  CommitStaffingProposalInput,
+  CreateStaffingProposalInput,
+  CreateTeamRotationInput,
+  RecomputeStaffingProposalInput,
+  RotationPreviewQuery,
+  UpdateTeamRotationInput,
+} from '../schemas/staffing-proposals.js';
 
 export class ApiError extends Error {
   constructor(
@@ -538,6 +552,33 @@ export class ServiceCenterApi {
     this.request<StaffingMatrixSavedView>('POST', '/api/v1/staffing-matrix/views', body);
   deleteStaffingMatrixView = (id: string) =>
     this.request<void>('DELETE', `/api/v1/staffing-matrix/views/${id}`);
+
+  // ------------------------------------------------ staffing proposals --
+  /** F06: capture a snapshot and run the deterministic engine. Creates no requests. */
+  createStaffingProposal = (body: Partial<CreateStaffingProposalInput> & Pick<CreateStaffingProposalInput, 'plan_ids' | 'team_ids'>) =>
+    this.request<StaffingProposal>('POST', '/api/v1/scheduling/proposals', body);
+  staffingProposals = () => this.request<StaffingProposal[]>('GET', '/api/v1/scheduling/proposals');
+  staffingProposal = (id: string) => this.request<StaffingProposal>('GET', `/api/v1/scheduling/proposals/${id}`);
+  recomputeStaffingProposal = (id: string, body: RecomputeStaffingProposalInput) =>
+    this.request<StaffingProposal>('POST', `/api/v1/scheduling/proposals/${id}/recompute`, body);
+  refreshStaffingProposal = (id: string) =>
+    this.request<StaffingProposal>('POST', `/api/v1/scheduling/proposals/${id}/refresh`, {});
+  /** Creates the reviewed choices as prepared requests; release is a separate action. */
+  commitStaffingProposal = (id: string, body: CommitStaffingProposalInput) =>
+    this.request<StaffingProposalCommitResult>('POST', `/api/v1/scheduling/proposals/${id}/commit`, body);
+
+  // ---------------------------------------------------------- rotations --
+  rotations = (query: { team_id?: string; include_archived?: boolean } = {}) =>
+    this.request<TeamRotation[]>('GET', `/api/v1/rotations${buildQuery({
+      team_id: query.team_id, include_archived: query.include_archived ? 'true' : undefined,
+    })}`);
+  rotation = (id: string) => this.request<TeamRotation>('GET', `/api/v1/rotations/${id}`);
+  createRotation = (body: CreateTeamRotationInput) => this.request<TeamRotation>('POST', '/api/v1/rotations', body);
+  updateRotation = (id: string, body: UpdateTeamRotationInput) => this.request<TeamRotation>('PUT', `/api/v1/rotations/${id}`, body);
+  archiveRotation = (id: string, expectedRevision: number) =>
+    this.request<void>('POST', `/api/v1/rotations/${id}/archive`, { expected_revision: expectedRevision });
+  previewRotation = (id: string, query: RotationPreviewQuery) =>
+    this.request<RotationPreviewEntry[]>('GET', `/api/v1/rotations/${id}/preview${buildQuery(query)}`);
 
   // ------------------------------------------------------------- access --
   /** The caller's effective access in the active organization. */

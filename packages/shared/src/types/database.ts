@@ -789,6 +789,71 @@ export type StaffingMatrixCommitRow = {
   created_at: string;
 }
 
+export type TeamRotationRow = {
+  id: string;
+  organization_id: string;
+  team_id: string;
+  name: string;
+  cycle_weeks: number;
+  anchor_date: string;
+  substitute_policy: 'vacancy' | 'fairness';
+  revision: number;
+  archived_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TeamRotationSlotRow = {
+  rotation_id: string;
+  week_index: number;
+  position_id: string;
+  person_id: string;
+}
+
+export type TeamRotationExceptionRow = {
+  id: string;
+  rotation_id: string;
+  local_date: string;
+  position_id: string;
+  person_id: string | null;
+  note: string | null;
+}
+
+export type TeamRotationVersionRow = {
+  rotation_id: string;
+  revision: number;
+  definition: unknown;
+  saved_by: string | null;
+  saved_at: string;
+}
+
+export type StaffingProposalRow = {
+  id: string;
+  organization_id: string;
+  author_id: string;
+  status: 'draft' | 'committed' | 'superseded';
+  revision: number;
+  rule_version: string;
+  seed: string;
+  lookback_days: number;
+  plan_ids: string[];
+  team_ids: string[];
+  base_revisions: unknown;
+  rotation_versions: unknown;
+  snapshot: unknown;
+  input_hash: string;
+  edits: unknown;
+  result: unknown;
+  expires_at: string;
+  superseded_by: string | null;
+  commit_key: string | null;
+  committed_at: string | null;
+  commit_result: unknown;
+  created_at: string;
+  updated_at: string;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -849,6 +914,11 @@ export type Database = {
       attendance_calendar_states: Table<AttendanceCalendarStateRow>;
       staffing_matrix_views: Table<StaffingMatrixViewRow>;
       staffing_matrix_commits: Table<StaffingMatrixCommitRow>;
+      team_rotations: Table<TeamRotationRow>;
+      team_rotation_slots: Table<TeamRotationSlotRow>;
+      team_rotation_exceptions: Table<TeamRotationExceptionRow>;
+      team_rotation_versions: Table<TeamRotationVersionRow>;
+      staffing_proposals: Table<StaffingProposalRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };

@@ -130,6 +130,17 @@ const formattedParts = (instantMs: number, timeZone: string): LocalDateTimeParts
   };
 };
 
+/** The civil date (`YYYY-MM-DD`) of an instant in an IANA zone. */
+export const localDateAt = (instant: string | number, timeZone: string): string => {
+  const ms = typeof instant === 'number' ? instant : new Date(instant).getTime();
+  if (Number.isNaN(ms)) throw new Error('Enter a valid instant.');
+  const parts = formattedParts(ms, timeZone);
+  return formatLocalDate(parts);
+};
+
+/** Whole civil days from `start` to `end` (DST-free: civil-date arithmetic). */
+export const localDaysBetween = (start: string, end: string): number => localDayDifference(start, end);
+
 const sameLocalDateTime = (a: LocalDateTimeParts, b: LocalDateTimeParts): boolean =>
   a.year === b.year && a.month === b.month && a.day === b.day
   && a.hour === b.hour && a.minute === b.minute;
