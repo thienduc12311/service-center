@@ -35,6 +35,7 @@ import type {
   RosterBulkApplyResult,
   RosterBulkPreviewRow,
 } from './roster.js';
+import type { ApprovedSwapRow, OpportunityClaimRow, ReplacementOfferRow, ReplacementRequestRow, SignupOpportunityRow } from './opportunities.js';
 
 /**
  * Row types are exact — every read is precisely typed. Insert and Update are
@@ -919,6 +920,11 @@ export type Database = {
       team_rotation_exceptions: Table<TeamRotationExceptionRow>;
       team_rotation_versions: Table<TeamRotationVersionRow>;
       staffing_proposals: Table<StaffingProposalRow>;
+      signup_opportunities: Table<SignupOpportunityRow>;
+      opportunity_claims: Table<OpportunityClaimRow>;
+      replacement_requests: Table<ReplacementRequestRow>;
+      replacement_offers: Table<ReplacementOfferRow>;
+      approved_swaps: Table<ApprovedSwapRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -990,6 +996,17 @@ export type Database = {
         };
         Returns: AssignmentRow[];
       };
+      claim_signup_opportunity: { Args: { p_opportunity: string; p_expected_version: number; p_idempotency_key: string }; Returns: OpportunityClaimRow };
+      list_signup_opportunities: { Args: { p_organization: string; p_plan?: string | null }; Returns: unknown };
+      expire_f07_allocations: { Args: { p_organization: string; p_limit?: number }; Returns: number };
+      decide_signup_claim: { Args: { p_claim: string; p_expected_version: number; p_action: 'approve' | 'reject' }; Returns: OpportunityClaimRow };
+      cancel_signup_claim: { Args: { p_claim: string; p_expected_version: number }; Returns: OpportunityClaimRow };
+      create_replacement_request: { Args: { p_assignment: string; p_expected_revision: number; p_idempotency_key: string; p_expires_at: string }; Returns: ReplacementRequestRow };
+      cancel_replacement_request: { Args: { p_request: string; p_expected_version: number }; Returns: ReplacementRequestRow };
+      issue_replacement_offer: { Args: { p_request: string; p_candidate: string; p_expected_version: number; p_idempotency_key: string }; Returns: ReplacementOfferRow };
+      act_on_replacement_offer: { Args: { p_offer: string; p_expected_version: number; p_action: 'accept'|'decline'|'approve'|'reject' }; Returns: ReplacementOfferRow };
+      create_approved_swap: { Args: { p_first: string; p_second: string; p_first_revision: number; p_second_revision: number; p_expires_at: string; p_idempotency_key: string }; Returns: ApprovedSwapRow };
+      act_on_approved_swap: { Args: { p_swap: string; p_expected_version: number; p_action: 'consent'|'approve'|'cancel'|'reject' }; Returns: ApprovedSwapRow };
       release_plan_assignments: {
         Args: { p_plan_id: string; p_assignment_ids: string[]; p_notify: boolean; p_effect_key: string | null };
         Returns: AssignmentRow[];
