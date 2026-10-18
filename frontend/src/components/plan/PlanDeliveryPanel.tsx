@@ -9,6 +9,7 @@ import {
   formatDateTime,
   reminderReasonLabel,
   type DeliveryStatus,
+  type DeliveryTemplate,
   type PlanDeliveryHistoryItem,
   type PlanReminderJob,
 } from '@service-center/shared';
@@ -24,13 +25,16 @@ const TONE: Partial<Record<DeliveryStatus, string>> = {
 };
 const NEUTRAL = 'bg-slate-100 text-slate-600 ring-slate-500/20';
 
-const TEMPLATE_LABELS = {
+const TEMPLATE_LABELS: Record<DeliveryTemplate, string> = {
   assignment_request: 'Request',
   assignment_reminder: 'Reminder',
   service_reminder: 'Coming-up reminder',
   scheduler_response: 'Response update',
   availability_request: 'Availability request',
-} as const;
+  item_comment: 'Discussion',
+  operational_message: 'Message',
+  conversation_message: 'Chat',
+};
 
 export interface PlanDeliveryPanelProps {
   planId: string;

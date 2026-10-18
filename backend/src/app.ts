@@ -43,6 +43,15 @@ import { staffingMatrixRouter } from './routes/staffing-matrix.js';
 import { rotationsRouter, staffingProposalsRouter } from './routes/staffing-proposals.js';
 import { songbooksRouter } from './routes/songbooks.js';
 import {
+  conversationsRouter,
+  mentionCandidatesRouter,
+  messagesRouter,
+  messageTemplatesRouter,
+  noteCategoriesRouter,
+  planItemCommentsRouter,
+  planNotesRouter,
+} from './routes/collaboration.js';
+import {
   deviceRevocationsRouter,
   devicesRouter,
   notificationsRouter,
@@ -126,7 +135,14 @@ export const createApp = (): Express => {
   app.use('/api/v1/plans/:planId/release', scoped, planReleaseRouter);
   app.use('/api/v1/plans/:planId/deliveries', scoped, planDeliveriesRouter);
   app.use('/api/v1/plans/:planId/opportunities', scoped, planOpportunitiesRouter);
+  app.use('/api/v1/plans/:planId/notes', scoped, planNotesRouter);
   app.use('/api/v1/plans', scoped, plansRouter);
+  app.use('/api/v1/plan-items', scoped, planItemCommentsRouter);
+  app.use('/api/v1/note-categories', scoped, noteCategoriesRouter);
+  app.use('/api/v1/mention-candidates', scoped, mentionCandidatesRouter);
+  app.use('/api/v1/messages', scoped, messagesRouter);
+  app.use('/api/v1/message-templates', scoped, messageTemplatesRouter);
+  app.use('/api/v1/conversations', scoped, conversationsRouter);
   app.use('/api/v1/opportunities', scoped, opportunitiesRouter);
   app.use('/api/v1/opportunity-claims', scoped, opportunityClaimsRouter);
   app.use('/api/v1/replacement-requests', scoped, replacementRequestsRouter);

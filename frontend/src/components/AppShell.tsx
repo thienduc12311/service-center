@@ -14,6 +14,8 @@ const NAV = [
   { to: '/teams', label: 'Teams' },
   { to: '/people', label: 'People' },
   { to: '/my-schedule', label: 'My Schedule' },
+  { to: '/chat', label: 'Chat' },
+  { to: '/messages', label: 'Messages' },
 ];
 
 export const AppShell = () => {

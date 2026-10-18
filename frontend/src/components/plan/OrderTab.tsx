@@ -8,6 +8,10 @@ export interface OrderTabProps {
   onAddItem: () => void;
   onMoveItem: (index: number, direction: -1 | 1) => void;
   onRemoveItem: (itemId: string) => void;
+  /** F09: open an item's notes and discussion. */
+  onDiscussItem: (item: PlanItemDetail) => void;
+  /** F09: how many notes on each item the reader can see. */
+  itemNoteCounts: ReadonlyMap<string, number>;
 }
 
 export const OrderTab = ({
@@ -16,6 +20,8 @@ export const OrderTab = ({
   onAddItem,
   onMoveItem,
   onRemoveItem,
+  onDiscussItem,
+  itemNoteCounts,
 }: OrderTabProps) => (
   <div>
     <div className="mb-3 flex items-center justify-between">
@@ -54,6 +60,8 @@ export const OrderTab = ({
               isLast={index === plan.items.length - 1}
               onMove={onMoveItem}
               onRemove={() => onRemoveItem(item.id)}
+              onDiscuss={() => onDiscussItem(item)}
+              noteCount={itemNoteCounts.get(item.id) ?? 0}
             />
           ))}
         </ol>
@@ -70,11 +78,25 @@ interface OrderRowProps {
   isLast: boolean;
   onMove: (index: number, direction: -1 | 1) => void;
   onRemove: () => void;
+  onDiscuss: () => void;
+  noteCount: number;
 }
 
-const OrderRow = ({ item, index, canManage, isFirst, isLast, onMove, onRemove }: OrderRowProps) => {
-  const controls = canManage && (
+const OrderRow = ({ item, index, canManage, isFirst, isLast, onMove, onRemove, onDiscuss, noteCount }: OrderRowProps) => {
+  const discuss = (
+    <button
+      type="button"
+      onClick={onDiscuss}
+      aria-label={`Notes and discussion for ${item.title}`}
+      className="rounded px-1.5 text-xs text-slate-400 hover:bg-slate-100 hover:text-brand-600"
+    >
+      💬{noteCount > 0 ? ` ${noteCount} note${noteCount === 1 ? '' : 's'}` : ''}
+    </button>
+  );
+  const controls = (
     <div className="flex shrink-0 items-center gap-1">
+      {item.item_type !== 'header' && discuss}
+      {canManage && <>
       <button
         type="button"
         aria-label={`Move ${item.title} up`}
@@ -101,6 +123,7 @@ const OrderRow = ({ item, index, canManage, isFirst, isLast, onMove, onRemove }:
       >
         ×
       </button>
+      </>}
     </div>
   );
 

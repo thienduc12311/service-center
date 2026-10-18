@@ -71,6 +71,15 @@ export const keys = {
   staffingMatrixViews: (org: string | null) => [...keys.all(org), 'staffing-matrix-views'] as const,
   staffingProposals: (org: string | null) => [...keys.all(org), 'staffing-proposals'] as const,
   rotations: (org: string | null, teamId: string) => [...keys.all(org), 'rotations', teamId] as const,
+  // F09 collaboration.
+  planNotes: (org: string | null, planId: string) => [...keys.plan(org, planId), 'notes'] as const,
+  itemComments: (org: string | null, itemId: string) => [...keys.all(org), 'item-comments', itemId] as const,
+  mentionCandidates: (org: string | null, target: string) => [...keys.all(org), 'mention-candidates', target] as const,
+  messages: (org: string | null, query: unknown) => [...keys.all(org), 'messages', query] as const,
+  message: (org: string | null, id: string) => [...keys.all(org), 'messages', 'detail', id] as const,
+  messageTemplates: (org: string | null) => [...keys.all(org), 'message-templates'] as const,
+  conversations: (org: string | null) => [...keys.all(org), 'conversations'] as const,
+  conversation: (org: string | null, id: string) => [...keys.conversations(org), id] as const,
 };
 
 /** Not organization-scoped: the signed-in user's own cross-organization settings. */
@@ -469,5 +478,75 @@ export const useCombinedSchedule = (query: { from: string; to: string }, enabled
     queryKey: userKeys.combinedSchedule(userId, query),
     queryFn: () => api.combinedSchedule(query),
     enabled: Boolean(userId) && enabled,
+  });
+};
+
+// ------------------------------------------------------------------ F09 ----
+
+export const usePlanNotes = (planId: string) => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.planNotes(org, planId), queryFn: () => api.planNotes(planId), enabled: Boolean(org && planId) });
+};
+
+export const useItemComments = (itemId: string | null) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.itemComments(org, itemId ?? ''),
+    queryFn: () => api.itemComments(itemId!, { limit: 50 }),
+    enabled: Boolean(org && itemId),
+    retry: false,
+  });
+};
+
+export const useMentionCandidates = (target: { plan_id: string } | { conversation_id: string } | null) => {
+  const org = useOrg();
+  const id = target ? ('plan_id' in target ? `plan:${target.plan_id}` : `conversation:${target.conversation_id}`) : '';
+  return useQuery({
+    queryKey: keys.mentionCandidates(org, id),
+    queryFn: () => api.mentionCandidates(target!),
+    enabled: Boolean(org && target),
+    retry: false,
+  });
+};
+
+export const useMessages = (query: { box: 'sent' | 'received'; plan_id?: string }) => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.messages(org, query), queryFn: () => api.listMessages(query), enabled: Boolean(org) });
+};
+
+export const useMessage = (id: string | undefined) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.message(org, id ?? ''),
+    queryFn: () => api.getMessage(id!),
+    enabled: Boolean(org && id),
+    retry: false,
+  });
+};
+
+export const useMessageTemplates = (enabled = true) => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.messageTemplates(org), queryFn: () => api.messageTemplates(), enabled: Boolean(org) && enabled });
+};
+
+/** Polled: the API rechecks participation on every read, so access ends when membership does. */
+export const useConversations = () => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.conversations(org),
+    queryFn: () => api.conversations(),
+    enabled: Boolean(org),
+    refetchInterval: 30_000,
+  });
+};
+
+export const useConversation = (id: string | undefined) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.conversation(org, id ?? ''),
+    queryFn: () => api.getConversation(id!),
+    enabled: Boolean(org && id),
+    refetchInterval: 10_000,
+    retry: false,
   });
 };

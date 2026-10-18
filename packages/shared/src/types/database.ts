@@ -37,6 +37,22 @@ import type {
 } from './roster.js';
 import type { ApprovedSwapRow, OpportunityClaimRow, ReplacementOfferRow, ReplacementRequestRow, SignupOpportunityRow } from './opportunities.js';
 import type {
+  ConversationMemberStateRow,
+  ConversationMessageMentionRow,
+  ConversationMessageReportRow,
+  ConversationMessageRow,
+  ConversationRow,
+  DiscussionAuditEventRow,
+  MessageTemplateRow,
+  NoteCategoryRow,
+  OperationalMessageRecipientRow,
+  OperationalMessageRow,
+  PlanItemCommentMentionRow,
+  PlanItemCommentRow,
+  PlanNoteRow,
+  PlanNoteTeamRow,
+} from './collaboration.js';
+import type {
   EffectiveReminderPolicy,
   PersonReminderPreferencesRow,
   ReleaseBatchItemRow,
@@ -72,7 +88,17 @@ export type NotificationType =
   | 'assignment_reminder'
   | 'assignment_response'
   | 'plan_updated'
-  | 'availability_request';
+  | 'availability_request'
+  /** F09: someone mentioned you in an item discussion. */
+  | 'comment_mention'
+  /** F09: a new comment in an item discussion you took part in. */
+  | 'comment_reply'
+  /** F09: a leader's targeted operational message. */
+  | 'operational_message'
+  /** F09: someone mentioned you in a team/plan conversation. */
+  | 'conversation_mention'
+  /** F09: someone replied to your conversation message. */
+  | 'conversation_reply';
 export type DevicePlatform = 'ios' | 'android' | 'web';
 /** Where a delivery goes: the in-app feed, a device push, or email. */
 export type DeliveryChannel = 'in_app' | 'push' | 'email';
@@ -97,7 +123,13 @@ export type DeliveryTemplate =
   | 'scheduler_response'
   | 'availability_request'
   /** F08: a confirmed-service ("coming up") reminder; carries no respond link. */
-  | 'service_reminder';
+  | 'service_reminder'
+  /** F09: item discussion mention/reply. */
+  | 'item_comment'
+  /** F09: targeted operational message. */
+  | 'operational_message'
+  /** F09: conversation mention/reply. */
+  | 'conversation_message';
 export type ResponseTransition = 'response' | 'withdrawal';
 /** Column layout a printed chord chart uses. Constrained in the database too. */
 export type ChartColumns = 1 | 2;
@@ -144,6 +176,8 @@ export type OrganizationRow = {
   /** Where plan lists open when a member has not chosen a landing folder. */
   default_folder_id: string | null;
   assignment_visibility: AssignmentRosterVisibility;
+  /** F09: conversation messages older than this are purged. Null keeps them. */
+  conversation_retention_days?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -489,6 +523,12 @@ export type NotificationRow = {
   created_at: string;
   /** Set when a delivery wrote the row, so a retry never adds a second copy. */
   dedupe_key: string | null;
+  /** F09: deep link to an item discussion. */
+  plan_item_id?: string | null;
+  /** F09: deep link to a targeted message. */
+  operational_message_id?: string | null;
+  /** F09: deep link to a conversation. */
+  conversation_id?: string | null;
 }
 
 /** One logical side effect of an action, unique per organization by effect_key. */
@@ -509,6 +549,12 @@ export type DeliveryEffectRow = {
   release_batch_id: string | null;
   /** F08: the reminder job this effect materialized. */
   reminder_job_id: string | null;
+  /** F09: the item comment this effect announces. */
+  comment_id?: string | null;
+  /** F09: the targeted message this effect delivers. */
+  operational_message_id?: string | null;
+  /** F09: the conversation message this effect announces. */
+  conversation_message_id?: string | null;
   created_by: string | null;
   created_at: string;
 }
@@ -958,6 +1004,20 @@ export type Database = {
       replacement_requests: Table<ReplacementRequestRow>;
       replacement_offers: Table<ReplacementOfferRow>;
       approved_swaps: Table<ApprovedSwapRow>;
+      note_categories: Table<NoteCategoryRow>;
+      plan_notes: Table<PlanNoteRow>;
+      plan_note_teams: Table<PlanNoteTeamRow>;
+      plan_item_comments: Table<PlanItemCommentRow>;
+      plan_item_comment_mentions: Table<PlanItemCommentMentionRow>;
+      discussion_audit_events: Table<DiscussionAuditEventRow>;
+      message_templates: Table<MessageTemplateRow>;
+      operational_messages: Table<OperationalMessageRow>;
+      operational_message_recipients: Table<OperationalMessageRecipientRow>;
+      conversations: Table<ConversationRow>;
+      conversation_messages: Table<ConversationMessageRow>;
+      conversation_message_mentions: Table<ConversationMessageMentionRow>;
+      conversation_member_states: Table<ConversationMemberStateRow>;
+      conversation_message_reports: Table<ConversationMessageReportRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -1382,6 +1442,22 @@ export type Database = {
       person_delivery_readiness: {
         Args: { p_org: string; p_person_ids: string[] };
         Returns: PersonDeliveryReadiness[];
+      };
+      user_can_read_item_thread: {
+        Args: { p_user: string; p_plan: string };
+        Returns: boolean;
+      };
+      operational_message_recipient_current: {
+        Args: { p_message: string; p_person: string };
+        Returns: boolean;
+      };
+      user_can_access_conversation: {
+        Args: { p_user: string; p_conversation: string };
+        Returns: boolean;
+      };
+      purge_expired_conversation_messages: {
+        Args: { p_limit?: number };
+        Returns: number;
       };
       resolve_person_reconciliation: {
         Args: { p_id: string; p_action: 'keep_separate' | 'merge' };

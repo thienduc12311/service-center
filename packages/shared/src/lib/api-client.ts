@@ -177,6 +177,43 @@ import type {
 } from '../schemas/plan.js';
 import type { ListDeliveriesRequest, NotifyPlanInput } from '../schemas/delivery.js';
 import type {
+  ConversationDetail,
+  ConversationMessage,
+  ConversationReport,
+  ConversationSummary,
+  DiscussionPage,
+  MentionCandidate,
+  MessageAudiencePreview,
+  MessageTemplateList,
+  MessageTemplateRow,
+  NoteCategoryRow,
+  OperationalMessageDetail,
+  OperationalMessageSummary,
+  PlanItemComment,
+  PlanItemThread,
+  PlanNote,
+  PlanNotesResponse,
+  PostDiscussionResult,
+  SendOperationalMessageResult,
+} from '../types/collaboration.js';
+import type {
+  ConversationMessagesQuery,
+  CreateNoteCategoryInput,
+  DiscussionPageQuery,
+  ListOperationalMessagesQuery,
+  OpenConversationInput,
+  PostConversationMessageInput,
+  PostItemCommentInput,
+  PreviewOperationalMessageInput,
+  ReportConversationMessageInput,
+  ResolveConversationReportInput,
+  RetryOperationalMessageInput,
+  SaveMessageTemplateInput,
+  SavePlanNoteInput,
+  SendOperationalMessageInput,
+  UpdateNoteCategoryInput,
+} from '../schemas/collaboration.js';
+import type {
   CreateReleaseBatchRequest,
   ListPreparedRequestsQuery,
   ListReleaseBatchesQuery,
@@ -869,6 +906,85 @@ export class ServiceCenterApi {
   /** Revokes one registration after auth is gone; the secret authorizes only this token. */
   revokeDeviceRegistration = (body: RevokeDeviceRegistrationInput) =>
     this.request<void>('POST', '/api/v1/device-revocations', body);
+
+  // ------------------------------------------- F09 notes and discussion --
+  /** Notes on a plan and its items the caller may read, plus offered categories. */
+  planNotes = (planId: string) =>
+    this.request<PlanNotesResponse>('GET', `/api/v1/plans/${planId}/notes`);
+  createPlanNote = (planId: string, body: SavePlanNoteInput) =>
+    this.request<PlanNote>('POST', `/api/v1/plans/${planId}/notes`, body);
+  /** `expected_revision` is required; a stale editor gets 409 `note_stale`. */
+  updatePlanNote = (planId: string, noteId: string, body: SavePlanNoteInput) =>
+    this.request<PlanNote>('PUT', `/api/v1/plans/${planId}/notes/${noteId}`, body);
+  deletePlanNote = (planId: string, noteId: string, expectedRevision: number) =>
+    this.request<void>('DELETE', `/api/v1/plans/${planId}/notes/${noteId}`, undefined, { expected_revision: expectedRevision });
+  noteCategories = (query?: { service_type_id?: string }) =>
+    this.request<NoteCategoryRow[]>('GET', '/api/v1/note-categories', undefined, query);
+  createNoteCategory = (body: Partial<CreateNoteCategoryInput> & { name: string }) =>
+    this.request<NoteCategoryRow>('POST', '/api/v1/note-categories', body);
+  updateNoteCategory = (id: string, body: UpdateNoteCategoryInput) =>
+    this.request<NoteCategoryRow>('PATCH', `/api/v1/note-categories/${id}`, body);
+
+  /** Current participants of an item thread (plan) or a conversation. */
+  mentionCandidates = (query: { plan_id: string } | { conversation_id: string }) =>
+    this.request<MentionCandidate[]>('GET', '/api/v1/mention-candidates', undefined, query);
+  itemComments = (itemId: string, query?: Partial<DiscussionPageQuery>) =>
+    this.request<PlanItemThread>('GET', `/api/v1/plan-items/${itemId}/comments`, undefined, query as Query);
+  /** Reuse the same `id` when retrying; the server returns the stored comment. */
+  postItemComment = (itemId: string, body: Partial<PostItemCommentInput> & { id: string; body: string }) =>
+    this.request<PostDiscussionResult<PlanItemComment>>('POST', `/api/v1/plan-items/${itemId}/comments`, body);
+  editItemComment = (itemId: string, commentId: string, body: { body: string }) =>
+    this.request<PlanItemComment>('PATCH', `/api/v1/plan-items/${itemId}/comments/${commentId}`, body);
+  deleteItemComment = (itemId: string, commentId: string, body: { reason?: string } = {}) =>
+    this.request<PlanItemComment>('DELETE', `/api/v1/plan-items/${itemId}/comments/${commentId}`, body);
+
+  // ------------------------------------------------ F09 targeted messages --
+  /** Resolves the audience; sends nothing. */
+  previewMessage = (body: PreviewOperationalMessageInput) =>
+    this.request<MessageAudiencePreview>('POST', '/api/v1/messages/preview', body);
+  sendMessage = (body: SendOperationalMessageInput) =>
+    this.request<SendOperationalMessageResult>('POST', '/api/v1/messages', body);
+  listMessages = (query?: Partial<ListOperationalMessagesQuery>) =>
+    this.request<OperationalMessageSummary[]>('GET', '/api/v1/messages', undefined, query as Query);
+  getMessage = (id: string) =>
+    this.request<OperationalMessageDetail>('GET', `/api/v1/messages/${id}`);
+  /** Re-queues only failed or uncertain deliveries. */
+  retryMessage = (id: string, body: RetryOperationalMessageInput = {}) =>
+    this.request<{ requeued: number }>('POST', `/api/v1/messages/${id}/retry`, body);
+  messageTemplates = () => this.request<MessageTemplateList>('GET', '/api/v1/message-templates');
+  createMessageTemplate = (body: SaveMessageTemplateInput) =>
+    this.request<MessageTemplateRow>('POST', '/api/v1/message-templates', body);
+  updateMessageTemplate = (id: string, body: SaveMessageTemplateInput) =>
+    this.request<MessageTemplateRow>('PUT', `/api/v1/message-templates/${id}`, body);
+  archiveMessageTemplate = (id: string) =>
+    this.request<void>('DELETE', `/api/v1/message-templates/${id}`);
+
+  // --------------------------------------------------- F09 conversations --
+  conversations = () => this.request<ConversationSummary[]>('GET', '/api/v1/conversations');
+  /** Opens (creating on first use) the conversation for a team or plan. */
+  openConversation = (body: OpenConversationInput) =>
+    this.request<ConversationSummary>('POST', '/api/v1/conversations/open', body);
+  getConversation = (id: string) =>
+    this.request<ConversationDetail>('GET', `/api/v1/conversations/${id}`);
+  conversationMessages = (id: string, query?: Partial<ConversationMessagesQuery>) =>
+    this.request<DiscussionPage<ConversationMessage>>('GET', `/api/v1/conversations/${id}/messages`, undefined, query as Query);
+  /** Reuse the same `id` when retrying; the server returns the stored message. */
+  postConversationMessage = (id: string, body: Partial<PostConversationMessageInput> & { id: string; body: string }) =>
+    this.request<PostDiscussionResult<ConversationMessage>>('POST', `/api/v1/conversations/${id}/messages`, body);
+  editConversationMessage = (id: string, messageId: string, body: { body: string }) =>
+    this.request<ConversationMessage>('PATCH', `/api/v1/conversations/${id}/messages/${messageId}`, body);
+  deleteConversationMessage = (id: string, messageId: string) =>
+    this.request<ConversationMessage>('DELETE', `/api/v1/conversations/${id}/messages/${messageId}`);
+  markConversationRead = (id: string, readAt: string) =>
+    this.request<{ last_read_at: string | null }>('POST', `/api/v1/conversations/${id}/read`, { read_at: readAt });
+  muteConversation = (id: string, muted: boolean) =>
+    this.request<{ muted: boolean }>('PUT', `/api/v1/conversations/${id}/mute`, { muted });
+  reportConversationMessage = (id: string, messageId: string, body: ReportConversationMessageInput) =>
+    this.request<ConversationReport>('POST', `/api/v1/conversations/${id}/messages/${messageId}/report`, body);
+  resolveConversationReport = (id: string, reportId: string, body: ResolveConversationReportInput) =>
+    this.request<ConversationReport>('POST', `/api/v1/conversations/${id}/reports/${reportId}/resolve`, body);
+  restoreConversationMessage = (id: string, messageId: string) =>
+    this.request<ConversationMessage>('POST', `/api/v1/conversations/${id}/messages/${messageId}/restore`, {});
 
   health = () => this.request<{ status: string; version: string }>('GET', '/health');
 }

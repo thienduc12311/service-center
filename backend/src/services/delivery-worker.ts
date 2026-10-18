@@ -65,7 +65,8 @@ const processJob = async (job: DeliveryJob, tally: WorkerRunResult): Promise<voi
 
 /**
  * One bounded worker run: execute due scheduled releases (F08), turn due
- * reminder jobs into outbox deliveries (F08), then claim due deliveries (SKIP LOCKED, with a lease),
+ * reminder jobs into outbox deliveries (F08), purge conversation messages
+ * past their organization's retention (F09), then claim due deliveries (SKIP LOCKED, with a lease),
  * deliver them, record each outcome. Safe to run from several places at
  * once — an HTTP request kicking its own effect, a scheduled job, a CLI —
  * because a delivery is only ever leased to one of them. A run that dies
@@ -74,7 +75,9 @@ const processJob = async (job: DeliveryJob, tally: WorkerRunResult): Promise<voi
 export const runDeliveryWorker = async (options: WorkerRunOptions): Promise<WorkerRunResult> => {
   const workerId = options.workerId ?? `worker-${randomUUID()}`;
   const deadline = Date.now() + (options.timeBudgetMs ?? 25_000);
-  const tally: WorkerRunResult = { claimed: 0, completed: 0, retried: 0, abandoned: 0, releases: 0, remindersEnqueued: 0 };
+  const tally: WorkerRunResult = {
+    claimed: 0, completed: 0, retried: 0, abandoned: 0, releases: 0, remindersEnqueued: 0, conversationMessagesPurged: 0,
+  };
 
   // F08 due work comes first, so what it enqueues is claimed in this run.
   // Only general runs do it; an effect-scoped run delivers one action.
@@ -83,6 +86,8 @@ export const runDeliveryWorker = async (options: WorkerRunOptions): Promise<Work
     tally.releases = (releases ?? []).length;
     const reminders = await unwrap(adminDb.rpc('materialize_due_reminders', { p_limit: options.limit }));
     tally.remindersEnqueued = (reminders ?? []).filter((row) => row.outcome === 'enqueued').length;
+    // F09 retention: organizations that set a limit lose older chat messages.
+    tally.conversationMessagesPurged = (await unwrap(adminDb.rpc('purge_expired_conversation_messages', { p_limit: 500 }))) ?? 0;
   }
 
   const rows = await unwrap(

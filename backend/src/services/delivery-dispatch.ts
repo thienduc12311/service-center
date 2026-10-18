@@ -1,7 +1,10 @@
 import { recipientSequence } from '../model/attendance.model.js';
 import {
   formatDate,
+  messageVariableValues,
+  renderMessageTemplate,
   type DeliveryEffectRow,
+  type MessageVariableSnapshot,
   type EmailTransportMode,
   type NotificationType,
   type PushTransportMode,
@@ -29,6 +32,7 @@ import {
 import { pushTransport, type PushTicketResult } from './expo-push.js';
 import { activeDeviceTokens } from './device-registrations.js';
 import { deliveryLinkToken } from './assignment-tokens.js';
+import { excerpt } from '../model/collaboration.model.js';
 
 /**
  * Called by the dispatcher immediately before contacting a provider. Returns
@@ -68,6 +72,9 @@ const mapEffect = (row: DeliveryEffectRow): DeliveryEffect => ({
   availabilityRequestId: row.availability_request_id ?? null,
   releaseBatchId: row.release_batch_id ?? null,
   reminderJobId: row.reminder_job_id ?? null,
+  commentId: row.comment_id ?? null,
+  operationalMessageId: row.operational_message_id ?? null,
+  conversationMessageId: row.conversation_message_id ?? null,
   createdBy: row.created_by,
 });
 
@@ -583,6 +590,157 @@ const dispatchAvailabilityRequest = async (
   return sendPush(job, drafts, begin);
 };
 
+type FeedDraft = NotificationDraft & { dedupeKey: string };
+
+/** Feed row for in-app; feed row + generic push for push; nothing else. */
+const deliverFeedOrPush = async (job: DeliveryJob, drafts: readonly FeedDraft[], begin: BeginProviderCall): Promise<DispatchResult | null> => {
+  if (job.channel === 'email') return finished('skipped', 'channel_not_used');
+  if (!job.recipientId) return finished('skipped', 'no_active_device');
+  if (job.channel === 'in_app') {
+    await ensureFeedRows(drafts);
+    return finished('delivered');
+  }
+  return sendPush(job, drafts, begin);
+};
+
+const authorName = async (orgId: string, personId: string | null, profileId: string | null): Promise<string> => {
+  const [person, profile] = await Promise.all([
+    personId
+      ? unwrap(adminDb.from('people').select('first_name, last_name').eq('id', personId).eq('organization_id', orgId).maybeSingle())
+      : Promise.resolve(null),
+    !personId && profileId
+      ? unwrap(adminDb.from('profiles').select('full_name').eq('id', profileId).maybeSingle())
+      : Promise.resolve(null),
+  ]);
+  return [person?.first_name, person?.last_name].filter(Boolean).join(' ') || profile?.full_name || 'Someone';
+};
+
+/**
+ * F09 item discussion. Rechecked at send time: the comment still exists and
+ * is not deleted, and the recipient can still read the plan's thread (a
+ * mention never granted access). The feed row carries a short excerpt; the
+ * push stays generic like every other push.
+ */
+const dispatchItemComment = async (effect: DeliveryEffect, job: DeliveryJob, begin: BeginProviderCall): Promise<DispatchResult | null> => {
+  if (!effect.commentId) return finished('cancelled', 'content_removed');
+  const comment = await unwrap(adminDb.from('plan_item_comments').select('*').eq('id', effect.commentId).maybeSingle());
+  if (!comment || comment.deleted_at) return finished('cancelled', 'content_removed');
+  if (!job.recipientId || !(await isEligiblePerson(comment.organization_id, job.recipientPersonId))
+      || !(await unwrap(adminDb.rpc('user_can_read_item_thread', { p_user: job.recipientId, p_plan: comment.plan_id })))) {
+    return finished('cancelled', 'recipient_not_eligible');
+  }
+  const [item, mention, author] = await Promise.all([
+    unwrap(adminDb.from('plan_items').select('title').eq('id', comment.plan_item_id).maybeSingle()),
+    unwrap(adminDb.from('plan_item_comment_mentions').select('person_id').eq('comment_id', comment.id)
+      .eq('person_id', job.recipientPersonId).maybeSingle()),
+    authorName(comment.organization_id, comment.author_person_id, comment.author_id),
+  ]);
+  const itemTitle = item?.title ?? 'an item';
+  return deliverFeedOrPush(job, [{
+    organizationId: comment.organization_id,
+    userId: job.recipientId,
+    type: mention ? 'comment_mention' : 'comment_reply',
+    title: mention ? `${author} mentioned you on “${itemTitle}”` : `${author} commented on “${itemTitle}”`,
+    body: excerpt(comment.body),
+    planId: comment.plan_id,
+    planItemId: comment.plan_item_id,
+    createdBy: comment.author_id,
+    dedupeKey: `${effect.id}:${job.recipientPersonId}`,
+  }], begin);
+};
+
+/**
+ * F09 targeted message. The recipient must still be an active member and
+ * still in the audience for a recorded reason; the text is rendered from
+ * the values captured at send time, so every retry sends the same content.
+ */
+const dispatchOperationalMessage = async (effect: DeliveryEffect, job: DeliveryJob, begin: BeginProviderCall): Promise<DispatchResult | null> => {
+  if (!effect.operationalMessageId) return finished('cancelled', 'request_missing');
+  const [message, recipient] = await Promise.all([
+    unwrap(adminDb.from('operational_messages').select('*').eq('id', effect.operationalMessageId).maybeSingle()),
+    unwrap(adminDb.from('operational_message_recipients').select('*').eq('message_id', effect.operationalMessageId)
+      .eq('person_id', job.recipientPersonId).maybeSingle()),
+  ]);
+  if (!message || !recipient) return finished('cancelled', 'request_missing');
+  if (!(await unwrap(adminDb.rpc('operational_message_recipient_current', { p_message: message.id, p_person: job.recipientPersonId })))) {
+    return finished('cancelled', 'recipient_not_eligible');
+  }
+  const snapshot = message.variables as MessageVariableSnapshot;
+  const values = messageVariableValues(recipient, snapshot);
+  const subject = renderMessageTemplate(message.subject, values);
+  const body = renderMessageTemplate(message.body, values);
+  const messageUrl = `${config.APP_URL}/messages/${message.id}`;
+
+  if (job.channel === 'email') {
+    const { email, name } = await recipientEmail(message.organization_id, job.recipientPersonId, job.recipientId);
+    if (!email) return finished('skipped', 'no_email_address');
+    const sender = await unwrap(adminDb.from('profiles').select('email').eq('id', message.created_by).maybeSingle());
+    return sendEmail({
+      to: email,
+      personName: name,
+      organizationName: snapshot.organization_name ?? 'Service Center',
+      subject,
+      body,
+      senderName: snapshot.sender_name ?? null,
+      messageUrl,
+      replyTo: sender?.email ?? null,
+    }, begin, { idempotencyKey: `delivery-${job.id}` });
+  }
+  if (!job.recipientId) return finished('skipped', 'no_active_device');
+  return deliverFeedOrPush(job, [{
+    organizationId: message.organization_id,
+    userId: job.recipientId,
+    type: 'operational_message',
+    title: excerpt(subject, 200),
+    body: excerpt(body, 280),
+    planId: message.plan_id,
+    operationalMessageId: message.id,
+    createdBy: message.created_by,
+    dedupeKey: `${effect.id}:${job.recipientPersonId}`,
+  }], begin);
+};
+
+/**
+ * F09 conversation mention/reply. Rechecked at send time: the message is
+ * still visible, the recipient is still a participant (team/plan state,
+ * youth gate) and has not muted the conversation since.
+ */
+const dispatchConversationMessage = async (effect: DeliveryEffect, job: DeliveryJob, begin: BeginProviderCall): Promise<DispatchResult | null> => {
+  if (!effect.conversationMessageId) return finished('cancelled', 'content_removed');
+  const message = await unwrap(adminDb.from('conversation_messages').select('*').eq('id', effect.conversationMessageId).maybeSingle());
+  if (!message || message.deleted_at || message.hidden_at) return finished('cancelled', 'content_removed');
+  if (!job.recipientId || !(await isEligiblePerson(message.organization_id, job.recipientPersonId))
+      || !(await unwrap(adminDb.rpc('user_can_access_conversation', { p_user: job.recipientId, p_conversation: message.conversation_id })))) {
+    return finished('cancelled', 'recipient_not_eligible');
+  }
+  const [state, conversation, mention, author] = await Promise.all([
+    unwrap(adminDb.from('conversation_member_states').select('muted').eq('conversation_id', message.conversation_id)
+      .eq('user_id', job.recipientId).maybeSingle()),
+    unwrap(adminDb.from('conversations').select('kind, team_id, plan_id').eq('id', message.conversation_id).maybeSingle()),
+    unwrap(adminDb.from('conversation_message_mentions').select('person_id').eq('message_id', message.id)
+      .eq('person_id', job.recipientPersonId).maybeSingle()),
+    authorName(message.organization_id, message.author_person_id, message.author_id),
+  ]);
+  if (state?.muted) return finished('cancelled', 'conversation_muted');
+  const place = conversation?.team_id
+    ? (await unwrap(adminDb.from('teams').select('name').eq('id', conversation.team_id).maybeSingle()))?.name
+    : conversation?.plan_id
+      ? (await unwrap(adminDb.from('plans').select('title').eq('id', conversation.plan_id).maybeSingle()))?.title
+      : null;
+  const where = place ? `${place} chat` : 'a conversation';
+  return deliverFeedOrPush(job, [{
+    organizationId: message.organization_id,
+    userId: job.recipientId,
+    type: mention ? 'conversation_mention' : 'conversation_reply',
+    title: mention ? `${author} mentioned you in ${where}` : `${author} replied to you in ${where}`,
+    body: excerpt(message.body),
+    planId: conversation?.plan_id ?? null,
+    conversationId: message.conversation_id,
+    createdBy: message.author_id,
+    dedupeKey: `${effect.id}:${job.recipientPersonId}`,
+  }], begin);
+};
+
 /**
  * Performs one leased delivery. Everything is re-read here rather than
  * trusted from enqueue time: the plan may be gone, the person removed from
@@ -594,6 +752,9 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
   const effect = await loadEffect(job.effectId);
   if (!effect) return finished('cancelled', 'plan_missing');
   if (effect.template === 'availability_request') return dispatchAvailabilityRequest(effect, job, begin);
+  if (effect.template === 'item_comment') return dispatchItemComment(effect, job, begin);
+  if (effect.template === 'operational_message') return dispatchOperationalMessage(effect, job, begin);
+  if (effect.template === 'conversation_message') return dispatchConversationMessage(effect, job, begin);
   // F08: a reminder whose intent changed after it was enqueued (answer,
   // removal, archive, time/policy change, membership) is not sent.
   if (effect.reminderJobId && !(await reminderStillCurrent(effect.reminderJobId))) {

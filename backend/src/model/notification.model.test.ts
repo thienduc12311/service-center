@@ -21,6 +21,9 @@ describe('toNotificationInsert', () => {
       assignment_id: null,
       created_by: null,
       dedupe_key: null,
+      plan_item_id: null,
+      operational_message_id: null,
+      conversation_id: null,
     });
   });
 
