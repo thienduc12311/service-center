@@ -28,12 +28,21 @@ import {
   type SchedulingConflict,
   type AssignmentRow,
   type PreferenceWarning,
+  checkAssignmentConflictsSchema,
+  setAssignmentAttendanceSchema,
+  type AttendanceInterval,
+  type CheckAssignmentConflictsInput,
+  type ConflictCheckResult,
+  type PlanTimeRow,
+  type SetAssignmentAttendanceInput,
 } from '@service-center/shared';
 import { preferenceWarnings } from '../services/availability.js';
+import { attendanceFor, blockingConflicts, checkConflicts } from '../services/attendance.js';
+import { isUntimed, timesForAttendance } from '../model/attendance.model.js';
 import { z } from 'zod';
 import { validateBody, validateQuery, parsedQuery } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
-import { adminDb, raw, unwrap } from '../lib/supabase.js';
+import { adminDb, raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { latestDeclineReasons, respondToOwnAssignment } from '../services/assignment-responses.js';
 import {
@@ -50,6 +59,7 @@ export const planReleaseRouter: Router = Router({ mergeParams: true });
 export const assignmentsRouter: Router = Router();
 export const scheduleRouter: Router = Router();
 export const schedulingRouter: Router = Router();
+export const planAssignmentTimesRouter: Router = Router({ mergeParams: true });
 
 const conflictsFor = async (
   req: { db: import('../lib/supabase.js').Db; orgId: string },
@@ -65,69 +75,6 @@ const conflictsFor = async (
   });
   if (error) throw new HttpError(500, error.message, error.code);
   return (data ?? []) as SchedulingConflict[];
-};
-
-interface ExactConflictScope {
-  personId: string;
-  timeIds: string[];
-}
-
-const exactConflictsFor = async (
-  req: { db: import('../lib/supabase.js').Db; orgId: string },
-  scopes: readonly ExactConflictScope[],
-): Promise<SchedulingConflict[]> => {
-  const rows = await Promise.all(
-    scopes.filter((scope) => scope.timeIds.length > 0).map(async (scope) => {
-      const { data, error } = await raw(req.db).rpc('scheduling_conflicts_for_people', {
-        p_organization_id: req.orgId,
-        p_person_ids: [scope.personId],
-        p_plan_time_ids: scope.timeIds,
-        p_exclude_assignment_ids: [],
-      });
-      if (error) throw new HttpError(500, error.message, error.code);
-      return (data ?? []).map((conflict: {
-        person_id: string;
-        conflict_type: 'blockout' | 'double_booked';
-        detail: string | null;
-        starts_at: string;
-        ends_at: string;
-        plan_id: string | null;
-      }) => ({
-        user_id: conflict.person_id,
-        conflict_type: conflict.conflict_type,
-        detail: conflict.detail,
-        starts_at: conflict.starts_at,
-        ends_at: conflict.ends_at,
-        plan_id: conflict.plan_id,
-      } satisfies SchedulingConflict));
-    }),
-  );
-  return rows.flat();
-};
-
-/** The service window a plan occupies, used for conflict detection. */
-const serviceWindow = async (
-  db: import('../lib/supabase.js').Db,
-  planId: string,
-  serviceDate: string,
-): Promise<{ starts_at: string; ends_at: string }> => {
-  const times = await unwrap(
-    db.from('plan_times').select('starts_at, ends_at').eq('plan_id', planId).eq('kind', 'service'),
-  );
-  if (times?.length) {
-    const starts = times.map((t) => new Date(t.starts_at).getTime());
-    const ends = times.map((t) => new Date(t.ends_at).getTime());
-    return {
-      starts_at: new Date(Math.min(...starts)).toISOString(),
-      ends_at: new Date(Math.max(...ends)).toISOString(),
-    };
-  }
-  // Plans without explicit times still need a window; assume two hours.
-  const start = new Date(serviceDate);
-  return {
-    starts_at: start.toISOString(),
-    ends_at: new Date(start.getTime() + 2 * 60 * 60 * 1000).toISOString(),
-  };
 };
 
 /**
@@ -164,43 +111,57 @@ const recordPreferenceOverrides = async (
 // ---------------------------------------------- schedule people onto a plan --
 planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validateBody(createAssignmentsSchema), async (req, res) => {
   const planId = param(req, 'planId');
-  const { assignments, ignore_conflicts, notify, idempotency_key, visibility, response_owner_id, preference_override_reason } =
-    req.body as CreateAssignmentsInput;
+  const {
+    assignments,
+    ignore_conflicts,
+    conflict_override_reason,
+    notify,
+    idempotency_key,
+    visibility,
+    response_owner_id,
+    preference_override_reason,
+  } = req.body as CreateAssignmentsInput;
 
   const plan = await unwrap(
     req.db
       .from('plans')
-      .select('id, title, service_date')
+      .select('id')
       .eq('id', planId)
       .eq('organization_id', req.orgId)
       .maybeSingle(),
   );
   if (!plan) throw HttpError.notFound('Plan not found');
-  const planTimes = (await unwrap(req.db.from('plan_times').select('id').eq('plan_id', plan.id))) ?? [];
-
-  const legacyUserIds = assignments.flatMap((assignment) => assignment.user_id ? [assignment.user_id] : []);
-  const linked = legacyUserIds.length
-    ? await unwrap(req.db.from('people').select('id, profile_id').eq('organization_id', req.orgId).in('profile_id', legacyUserIds))
-    : [];
-  const personForProfile = new Map((linked ?? []).map((person) => [person.profile_id, person.id]));
-  const scopes = assignments.map((assignment): ExactConflictScope => ({
-    personId: assignment.person_id ?? personForProfile.get(assignment.user_id ?? '') ?? '',
-    timeIds: assignment.attendance_mode === 'selected'
-      ? assignment.time_ids
-      : planTimes.map((time) => time.id),
-  }));
-  let conflicts = await exactConflictsFor(req, scopes.filter((scope) => Boolean(scope.personId)));
-  if (planTimes.length === 0 && legacyUserIds.length > 0) {
-    const window = await serviceWindow(req.db, plan.id, plan.service_date);
-    conflicts = await conflictsFor(req, window.starts_at, window.ends_at, legacyUserIds);
-  }
-
-  const blocking = conflicts;
-  if (blocking.length > 0 && !ignore_conflicts) {
-    throw HttpError.conflict(
-      'Some people are unavailable or already scheduled at that time',
-      blocking,
+  // F04: actual attendance intervals through the shared resolver (rehearsals,
+  // gaps and touching ends included). Blocking conflicts need a reason and the
+  // override capability; the database re-checks under per-Person locks at
+  // commit, so this preview can never let a stale decision through.
+  const check = await checkConflicts(
+    { db: req.db, orgId: req.orgId },
+    assignments.map((assignment, index) => ({
+      key: String(index),
+      person_id: assignment.person_id,
+      user_id: assignment.user_id,
+      plan_id: plan.id,
+      team_id: assignment.team_id,
+      position_id: assignment.position_id ?? null,
+      attendance_mode: assignment.attendance_mode,
+      time_ids: assignment.attendance_mode === 'selected' ? assignment.time_ids : [],
+    })),
+  );
+  const blocking = blockingConflicts(check);
+  const overrideReason = conflict_override_reason?.trim() || null;
+  if (blocking.length > 0 && !overrideReason) {
+    throw new HttpError(
+      409,
+      ignore_conflicts
+        ? 'Give a reason to schedule over these conflicts'
+        : 'Some people are unavailable or already scheduled at that time',
+      'scheduling_conflict',
+      check.conflicts,
     );
+  }
+  if (blocking.length > 0 && !check.override_permitted) {
+    throw HttpError.forbidden('You cannot schedule over these conflicts');
   }
 
   // One transaction: same-organization and team-scope checks, the inserts
@@ -224,6 +185,7 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
       p_effect_key: effectKey,
       p_visibility: visibility ?? null,
       p_response_owner: response_owner_id ?? null,
+      p_conflict_override_reason: blocking.length > 0 ? overrideReason : null,
     }),
   );
 
@@ -232,7 +194,7 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
   }
 
   const warnings = await recordPreferenceOverrides(req, plan.id, created ?? [], preference_override_reason ?? null);
-  res.status(201).json({ created: created ?? [], conflicts: blocking, warnings });
+  res.status(201).json({ created: created ?? [], conflicts: check.conflicts, warnings });
 });
 
 /**
@@ -281,12 +243,11 @@ planReleaseRouter.post(
     const { assignment_ids } = req.body as ReleaseAssignmentsPreviewInput;
     const assignments = await unwrap(
       raw(req.db).from('assignments').select(
-        'id, person_id, attendance_mode, request_revision, team:teams(name), position:team_positions(name)',
+        'id, person_id, request_revision, team:teams(name), position:team_positions(name)',
       ).eq('plan_id', planId).eq('visibility', 'prepared').in('id', assignment_ids),
     ) as unknown as Array<{
       id: string;
       person_id: string;
-      attendance_mode: 'all' | 'selected';
       request_revision: number;
       team: { name: string } | null;
       position: { name: string } | null;
@@ -294,21 +255,15 @@ planReleaseRouter.post(
     if (assignments.length !== assignment_ids.length) {
       throw new HttpError(409, 'Prepared requests changed. Refresh the release review.', 'assignment_release_stale');
     }
-    const [times, selected, people] = await Promise.all([
+    const [times, attendance, people] = await Promise.all([
       unwrap(req.db.from('plan_times').select('*').eq('plan_id', planId).order('sort_order')),
-      unwrap(req.db.from('assignment_attendance_times').select('*').in('assignment_id', assignment_ids)),
+      attendanceFor(req.db, assignment_ids),
       unwrap(req.db.from('people_directory').select('*').in('id', assignments.map((assignment) => assignment.person_id))),
     ]);
     const personNames = new Map((people ?? []).map((person) => [
       person.id,
       [person.first_name, person.last_name].filter(Boolean).join(' '),
     ]));
-    const selectedByAssignment = new Map<string, Set<string>>();
-    for (const row of selected ?? []) {
-      const ids = selectedByAssignment.get(row.assignment_id) ?? new Set<string>();
-      ids.add(row.plan_time_id);
-      selectedByAssignment.set(row.assignment_id, ids);
-    }
     const preview: AssignmentReleasePreview = {
       plan_id: planId,
       assignments: assignments.map((assignment) => ({
@@ -318,9 +273,8 @@ planReleaseRouter.post(
         team_name: assignment.team?.name ?? 'Team',
         position_name: assignment.position?.name ?? null,
         request_revision: assignment.request_revision,
-        times: assignment.attendance_mode === 'selected'
-          ? (times ?? []).filter((time) => selectedByAssignment.get(assignment.id)?.has(time.id))
-          : (times ?? []),
+        times: timesForAttendance(attendance.get(assignment.id) ?? [], times ?? []),
+        untimed: isUntimed(attendance.get(assignment.id) ?? []),
       })),
     };
     res.json(preview);
@@ -534,18 +488,12 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
 
   const rows = (await unwrap(query)) as Array<Record<string, unknown>>;
   const assignmentIds = rows.map((row) => String(row.id));
-  const [selectedTimes, timeResponses] = assignmentIds.length
+  const [attendance, timeResponses] = assignmentIds.length
     ? await Promise.all([
-        unwrap(req.db.from('assignment_attendance_times').select('*').in('assignment_id', assignmentIds)),
+        attendanceFor(req.db, assignmentIds),
         unwrap(req.db.from('assignment_time_responses').select('*').in('assignment_id', assignmentIds)),
       ])
-    : [[], []];
-  const selectedByAssignment = new Map<string, Set<string>>();
-  for (const selected of selectedTimes ?? []) {
-    const ids = selectedByAssignment.get(selected.assignment_id) ?? new Set<string>();
-    ids.add(selected.plan_time_id);
-    selectedByAssignment.set(selected.assignment_id, ids);
-  }
+    : [new Map<string, AttendanceInterval[]>(), []];
 
   const entries: MyScheduleEntry[] = rows
     .map((row) => {
@@ -556,21 +504,17 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
       } & Record<string, unknown>;
       const { times = [], ...planFields } = plan ?? {};
       const assignmentId = String(assignment.id);
-      const applicable = assignment.attendance_mode === 'selected'
-        ? (times as Array<{ id: string; starts_at: string }>).filter((time) =>
-            selectedByAssignment.get(assignmentId)?.has(time.id),
-          )
-        : (times as Array<{ id: string; starts_at: string }>);
+      const covered = attendance.get(assignmentId) ?? [];
       return {
         assignment,
         response_note: null,
         plan: planFields,
         team,
         position,
-        times: [...applicable].sort(
-          (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
-        ),
+        // F04: only the times this request covers, from the shared resolver.
+        times: timesForAttendance(covered, times as PlanTimeRow[]),
         time_responses: (timeResponses ?? []).filter((response) => response.assignment_id === assignmentId),
+        untimed: isUntimed(covered),
       } as unknown as MyScheduleEntry;
     })
     .sort(
@@ -596,3 +540,56 @@ schedulingRouter.post('/conflicts', requireCapability('scheduling.manage'), vali
   };
   res.json(await conflictsFor(req, starts_at, ends_at, user_ids));
 });
+
+/**
+ * F04: typed, redacted conflicts for prospective requests — actual
+ * service/rehearsal/other intervals, blockouts as their own kind, and whether
+ * the caller may schedule over each one.
+ */
+schedulingRouter.post(
+  '/conflicts/check',
+  requireCapability('scheduling.manage'),
+  validateBody(checkAssignmentConflictsSchema),
+  async (req, res) => {
+    const { candidates, exclude_assignment_ids } = req.body as CheckAssignmentConflictsInput;
+    const result: ConflictCheckResult = await checkConflicts(
+      { db: req.db, orgId: req.orgId },
+      candidates,
+      exclude_assignment_ids,
+    );
+    res.json(result);
+  },
+);
+
+/**
+ * F04: change which times existing requests cover. Expected revisions make a
+ * stale editor fail; released requests whose times changed are re-sent to
+ * exactly those people, and older reviews/links for them become stale.
+ */
+planAssignmentTimesRouter.put(
+  '/',
+  requireCapability('scheduling.manage'),
+  validateBody(setAssignmentAttendanceSchema),
+  async (req, res) => {
+    const planId = param(req, 'planId');
+    const { changes, conflict_override_reason, notify, idempotency_key } = req.body as SetAssignmentAttendanceInput;
+    await unwrapOne(req.db.from('plans').select('id').eq('id', planId).eq('organization_id', req.orgId).single());
+    const effectKey = `attendance:${planId}:${idempotency_key ?? randomUUID()}`;
+    const updated = await unwrap(
+      req.db.rpc('set_assignment_attendance', {
+        p_plan_id: planId,
+        p_changes: changes,
+        p_conflict_override_reason: conflict_override_reason ?? null,
+        p_notify: notify,
+        p_effect_key: effectKey,
+      }),
+    );
+    if (notify) {
+      const effect = await unwrap(
+        req.db.from('delivery_effects').select('id').eq('organization_id', req.orgId).eq('effect_key', effectKey).maybeSingle(),
+      );
+      if (effect) await deliverEffectNow(effect.id);
+    }
+    res.json({ updated: updated ?? [] });
+  },
+);

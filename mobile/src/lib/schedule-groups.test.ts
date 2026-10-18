@@ -65,6 +65,7 @@ const entry = (fixture: EntryFixture): MyScheduleEntry => ({
   position: fixture.position ? { id: `position-${fixture.position}`, name: fixture.position } : null,
   times: fixture.times ?? [],
   time_responses: fixture.timeResponses ?? [],
+  untimed: false,
 });
 
 const sunday = [
@@ -219,6 +220,7 @@ describe('planResponsibilities', () => {
     position: null,
     attendance_times: [],
     time_responses: [],
+    attendance: [],
   });
 
   it("returns every one of the person's positions on the plan, not just the first", () => {

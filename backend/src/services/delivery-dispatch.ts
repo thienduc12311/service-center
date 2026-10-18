@@ -1,3 +1,4 @@
+import { recipientSequence } from '../model/attendance.model.js';
 import {
   formatDate,
   type DeliveryEffectRow,
@@ -315,7 +316,7 @@ const requestEmail = async (
       .eq('snapshot_id', snapshot.id),
   );
   const timeIds = [...new Set((snapshotItems ?? []).flatMap((item) => item.plan_time_ids))];
-  const [organization, scheduler, times] = await Promise.all([
+  const [organization, scheduler, times, states] = await Promise.all([
     unwrap(adminDb.from('organizations').select('name').eq('id', plan.organization_id).maybeSingle()),
     replyTo
       ? unwrap(adminDb.from('profiles').select('email').eq('id', replyTo).maybeSingle())
@@ -323,7 +324,13 @@ const requestEmail = async (
     timeIds.length
       ? unwrap(adminDb.from('plan_times').select('id, kind, name, starts_at, ends_at, ics_sequence').in('id', timeIds))
       : Promise.resolve([]),
+    timeIds.length
+      ? unwrap(adminDb.from('attendance_calendar_states').select('plan_time_id, sequence_offset')
+          .eq('person_id', job.recipientPersonId).in('plan_time_id', timeIds))
+      : Promise.resolve([]),
   ]);
+  // F04: same UID as the feed; the SEQUENCE includes this recipient's offset.
+  const offsets = new Map((states ?? []).map((state) => [state.plan_time_id, state.sequence_offset]));
 
   const host = new URL(config.API_URL).host;
   const events: IcsEvent[] = (times ?? []).map((time) => ({
@@ -331,7 +338,7 @@ const requestEmail = async (
     summary: time.name ? `${plan.title} · ${time.name}` : plan.title,
     startsAt: time.starts_at,
     endsAt: time.ends_at,
-    sequence: time.ics_sequence,
+    sequence: recipientSequence(time.ics_sequence, offsets.get(time.id)),
     location: plan.location,
   }));
 

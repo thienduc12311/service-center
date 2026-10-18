@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   isAdmin,
   nextOccurrence,
@@ -11,7 +11,7 @@ import {
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { printDocument } from '../lib/print-document';
-import { usePlan, usePlans, useTeams, useInvalidateOrg } from '../hooks/queries';
+import { keys, usePlan, usePlans, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { EmptyState, ErrorNotice, Loading } from '../components/ui';
 import { PlanWorkspaceHeader } from '../components/plan/PlanWorkspaceHeader';
@@ -22,6 +22,7 @@ import { RehearseTab } from '../components/plan/RehearseTab';
 import { AddItemModal } from '../components/plan/AddItemModal';
 import { SchedulePeopleModal } from '../components/plan/SchedulePeopleModal';
 import { EditTimesModal } from '../components/plan/EditTimesModal';
+import { AssignmentTimesModal } from '../components/plan/AssignmentTimesModal';
 import { EditNotesModal } from '../components/plan/EditNotesModal';
 import { ImportTemplateModal } from '../components/plan/ImportTemplateModal';
 import { DeliveryOutcomeNotice } from '../components/plan/DeliveryOutcomeNotice';
@@ -32,17 +33,28 @@ type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'edit-notes' |
 
 export const PlanDetailPage = () => {
   const { planId } = useParams<{ planId: string }>();
-  const { can, user, organizationId, role } = useAuth();
+  const { can, canAnywhere, user, organizationId, role } = useAuth();
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
 
   const plan = usePlan(planId);
   const teams = useTeams();
+  // F04: which requests were committed over a conflict (RLS shows only teams I schedule).
+  const overrides = useQuery({
+    queryKey: keys.conflictOverrides(organizationId, planId ?? ''),
+    queryFn: () => api.planConflictOverrides(planId!),
+    enabled: Boolean(planId) && canAnywhere('scheduling.manage'),
+  });
+  const overrideReasons = useMemo(
+    () => new Map((overrides.data ?? []).flatMap((row) => (row.assignment_id ? [[row.assignment_id, row.reason] as const] : []))),
+    [overrides.data],
+  );
 
   const [tab, setTab] = useState<PlanTab>('order');
   const [dialog, setDialog] = useState<PlanDialog | null>(null);
   const [showAllTeams, setShowAllTeams] = useState(false);
   const [editingNeeds, setEditingNeeds] = useState(false);
+  const [editingTimesFor, setEditingTimesFor] = useState<AssignmentDetail | null>(null);
 
   const serviceTypeId = plan.data?.service_type_id ?? undefined;
   // Siblings drive the ‹ › arrows: the other plans of the same service type.
@@ -316,6 +328,8 @@ export const PlanDetailPage = () => {
               onAddPeople={() => setDialog('schedule-people')}
               onRemoveAssignment={(assignmentId) => removeAssignment.mutate(assignmentId)}
               onRespond={(id, status) => respond.mutate({ id, status })}
+              onEditTimes={setEditingTimesFor}
+              overrideReasons={overrideReasons}
               showAllTeams={showAllTeams}
               onToggleAllTeams={() => setShowAllTeams((current) => !current)}
             />
@@ -335,6 +349,11 @@ export const PlanDetailPage = () => {
         planId={planId}
         serviceTypeId={detail.service_type_id}
         onClose={() => setDialog(null)}
+      />
+      <AssignmentTimesModal
+        plan={detail}
+        assignment={detail.assignments.find((assignment) => assignment.id === editingTimesFor?.id) ?? null}
+        onClose={() => setEditingTimesFor(null)}
       />
       <EditTimesModal
         open={dialog === 'edit-times'}

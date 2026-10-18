@@ -14,3 +14,4 @@ export * from './access.js';
 export * from './roster.js';
 export * from './blockout.js';
 export * from './availability.js';
+export * from './attendance.js';

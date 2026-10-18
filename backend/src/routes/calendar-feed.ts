@@ -5,6 +5,9 @@ import { HttpError } from '../lib/errors.js';
 import { hashInviteToken } from '../services/invitations.js';
 import { renderIcs, type IcsEvent } from '../lib/ics.js';
 import { config } from '../config.js';
+import type { AssignmentStatus } from '@service-center/shared';
+import { attendanceFor } from '../services/attendance.js';
+import { recipientSequence } from '../model/attendance.model.js';
 
 export const calendarFeedRouter: Router = Router();
 calendarFeedRouter.use(rateLimit({ windowMs: 60_000, limit: config.isProduction ? 60 : 10_000, standardHeaders: 'draft-7', legacyHeaders: false }));
@@ -27,9 +30,17 @@ interface FeedPlanTime {
 }
 
 interface FeedAssignment {
-  plan_id: string;
-  status: 'unconfirmed' | 'confirmed' | 'declined';
+  id: string;
+  status: AssignmentStatus;
 }
+
+interface FeedCalendarState {
+  plan_time_id: string;
+  applicable: boolean;
+  sequence_offset: number;
+}
+
+const FEED_TIME_SELECT = 'id, kind, name, starts_at, ends_at, ics_sequence, plan:plans!inner(id, title, location, organization_id)';
 
 calendarFeedRouter.get('/:token.ics', async (req, res) => {
   const token = await unwrap(adminDb.from('calendar_feed_tokens').select('id, organization_id, user_id, revoked_at').eq('token_hash', hashInviteToken(req.params.token)).maybeSingle());
@@ -41,24 +52,46 @@ calendarFeedRouter.get('/:token.ics', async (req, res) => {
   const now = new Date();
   const from = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const to = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
-  const times = (await unwrap(raw(adminDb).from('plan_times').select('id, kind, name, starts_at, ends_at, ics_sequence, plan:plans!inner(id, title, location, organization_id)').eq('plan.organization_id', feedToken.organization_id).gte('starts_at', from).lte('starts_at', to))) as unknown as FeedPlanTime[];
-  const planIds = [...new Set(times.map((time) => time.plan?.id).filter((id): id is string => Boolean(id)))];
-  const assignments = planIds.length
-    ? (await unwrap(adminDb.from('assignments').select('plan_id, status').eq('user_id', feedToken.user_id).eq('visibility', 'released').in('plan_id', planIds))) as FeedAssignment[]
-    : [];
-  const statusByPlan = new Map(assignments.filter((assignment) => assignment.status !== 'declined').map((assignment) => [assignment.plan_id, assignment.status]));
-  const events: IcsEvent[] = times.flatMap((time) => {
-    if (!time.plan || !statusByPlan.has(time.plan.id)) return [];
-    const status = statusByPlan.get(time.plan.id);
-    return [{
-      uid: `plan-time-${time.id}@${new URL(config.API_URL).host}`,
-      summary: `${status === 'unconfirmed' ? '? ' : ''}${time.name ? `${time.plan.title} · ${time.name}` : time.plan.title}`,
-      startsAt: time.starts_at,
-      endsAt: time.ends_at,
-      sequence: time.ics_sequence,
-      location: time.plan.location,
-    }];
-  });
+  const person = await unwrap(adminDb.from('people').select('id').eq('organization_id', feedToken.organization_id).eq('profile_id', feedToken.user_id).maybeSingle());
+
+  // F04: only the times this Person's released requests cover (the shared
+  // resolver), each with a recipient-specific SEQUENCE; a time they no longer
+  // attend stays in the feed as CANCELLED so subscribed calendars update.
+  const events: IcsEvent[] = [];
+  if (person) {
+    const assignments = ((await unwrap(raw(adminDb).from('assignments').select('id, status, plan:plans!inner(organization_id, service_date)').eq('person_id', person.id).eq('visibility', 'released').eq('plan.organization_id', feedToken.organization_id).gte('plan.service_date', new Date(new Date(from).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()))) ?? []) as unknown as FeedAssignment[];
+    const attendance = await attendanceFor(adminDb, assignments.map((assignment) => assignment.id));
+    const statusByTime = new Map<string, AssignmentStatus>();
+    for (const assignment of assignments) {
+      if (assignment.status === 'declined') continue;
+      for (const interval of attendance.get(assignment.id) ?? []) {
+        if (!interval.plan_time_id) continue;
+        if (statusByTime.get(interval.plan_time_id) !== 'confirmed') statusByTime.set(interval.plan_time_id, assignment.status);
+      }
+    }
+    const states = ((await unwrap(raw(adminDb).from('attendance_calendar_states').select('plan_time_id, applicable, sequence_offset, plan_time:plan_times!inner(starts_at)').eq('person_id', person.id).gte('plan_time.starts_at', from).lte('plan_time.starts_at', to))) ?? []) as unknown as FeedCalendarState[];
+    const stateByTime = new Map(states.map((state) => [state.plan_time_id, state]));
+    const cancelled = states.filter((state) => !state.applicable && !statusByTime.has(state.plan_time_id)).map((state) => state.plan_time_id);
+    const timeIds = [...statusByTime.keys(), ...cancelled];
+    const times = timeIds.length
+      ? ((await unwrap(raw(adminDb).from('plan_times').select(FEED_TIME_SELECT).in('id', timeIds).eq('plan.organization_id', feedToken.organization_id).gte('starts_at', from).lte('starts_at', to))) ?? []) as unknown as FeedPlanTime[]
+      : [];
+    const host = new URL(config.API_URL).host;
+    for (const time of times) {
+      if (!time.plan) continue;
+      const status = statusByTime.get(time.id);
+      events.push({
+        uid: `plan-time-${time.id}@${host}`,
+        summary: `${status === 'unconfirmed' ? '? ' : ''}${time.name ? `${time.plan.title} · ${time.name}` : time.plan.title}`,
+        startsAt: time.starts_at,
+        endsAt: time.ends_at,
+        sequence: recipientSequence(time.ics_sequence, stateByTime.get(time.id)?.sequence_offset),
+        location: time.plan.location,
+        ...(status ? {} : { status: 'CANCELLED' as const }),
+      });
+    }
+    events.sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+  }
   await unwrap(adminDb.from('calendar_feed_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', feedToken.id));
   res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
   res.setHeader('Cache-Control', 'private, max-age=3600');

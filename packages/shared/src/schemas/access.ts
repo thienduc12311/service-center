@@ -4,6 +4,7 @@ import { idempotencyKey, nonEmpty, uuid } from './common.js';
 export const accessCapabilitySchema = z.enum([
   'plans.edit',
   'scheduling.manage',
+  'scheduling.override_conflicts',
   'teams.manage',
   'people.view_private',
   'people.manage',

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idempotencyKey, musicalKey, nonEmpty, paginationSchema, uuid } from './common.js';
+import { conflictOverrideReason, idempotencyKey, musicalKey, nonEmpty, paginationSchema, uuid } from './common.js';
 
 export const planStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const planTimeKindSchema = z.enum(['service', 'rehearsal', 'other']);
@@ -32,12 +32,33 @@ export const createPlanSchema = z.object({
   copy_from_plan_id: uuid.optional(),
   copy_assignments: z.boolean().default(false),
   idempotency_key: idempotencyKey.optional(),
+  /** Copy the team over a scheduling conflict (F04); needs the override capability. */
+  conflict_override_reason: conflictOverrideReason.nullish(),
 });
+
+/** F04: what happens to a selected request whose only times are removed. */
+export const orphanResolutionSchema = z.object({
+  assignment_id: uuid,
+  /** `all`: keep the request for every time. `remove`: withdraw it. */
+  action: z.enum(['all', 'remove']),
+});
+
+export const impactHashSchema = z.string().regex(/^[0-9a-f]{32}$/, 'Preview the change again');
 
 export const updatePlanSchema = createPlanSchema
   .partial()
-  .omit({ copy_from_plan_id: true, copy_assignments: true, idempotency_key: true })
-  .extend({ expected_revision: z.number().int().min(0).optional() });
+  .omit({ copy_from_plan_id: true, copy_assignments: true, idempotency_key: true, conflict_override_reason: true })
+  .extend({
+    expected_revision: z.number().int().min(0).optional(),
+    /**
+     * F04: the `impact_hash` from `POST /plans/:id/times/preview`. Required to
+     * remove a time someone selected; a changed impact is a 409.
+     */
+    time_impact_hash: impactHashSchema.optional(),
+    orphan_resolutions: z.array(orphanResolutionSchema).max(200).default([]),
+    /** Re-send affected released requests after a time change (default). */
+    notify_time_changes: z.boolean().default(true),
+  });
 
 /** "Same as last week": a new draft plan copied from an existing one. */
 export const duplicatePlanSchema = z.object({
@@ -45,6 +66,7 @@ export const duplicatePlanSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   copy_assignments: z.boolean().default(true),
   idempotency_key: idempotencyKey.optional(),
+  conflict_override_reason: conflictOverrideReason.nullish(),
 });
 
 /**
@@ -60,6 +82,7 @@ export const importPlanContentsSchema = z
     assignments: z.boolean().default(false),
     expected_revision: z.number().int().min(0).optional(),
     idempotency_key: idempotencyKey.optional(),
+    conflict_override_reason: conflictOverrideReason.nullish(),
   })
   .refine((v) => v.items || v.position_needs || v.assignments, {
     message: 'Choose at least one thing to import',
@@ -150,3 +173,5 @@ export type DuplicatePlanInput = z.infer<typeof duplicatePlanSchema>;
 export type DuplicatePlanRequest = z.input<typeof duplicatePlanSchema>;
 export type ImportPlanContentsInput = z.infer<typeof importPlanContentsSchema>;
 export type ImportPlanContentsRequest = z.input<typeof importPlanContentsSchema>;
+
+export type OrphanResolutionInput = z.infer<typeof orphanResolutionSchema>;

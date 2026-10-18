@@ -24,3 +24,10 @@ export const dateRangeSchema = z
 
 export type Pagination = z.infer<typeof paginationSchema>;
 export type DateRange = z.infer<typeof dateRangeSchema>;
+
+/** Why a scheduler commits over a blocking conflict (F04); audited with the request. */
+export const conflictOverrideReason = z
+  .string()
+  .trim()
+  .min(1, 'Give a reason')
+  .max(500, 'Keep the reason under 500 characters');

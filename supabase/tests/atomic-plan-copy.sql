@@ -54,7 +54,9 @@ declare
   v_new     uuid;
   v_again   uuid;
   v_plans   int;
-  v_offset  interval := interval '7 days';
+  -- A week with no seeded plan: copying onto an occupied week is a real
+  -- scheduling conflict since F04 (covered in f04-assigned-times.sql).
+  v_offset  interval := interval '371 days';
 begin
   v_new := public.duplicate_plan(v_source, (select source_date from fixture) + v_offset, 'Copied plan', true, 'dup-key-0001');
   v_again := public.duplicate_plan(v_source, (select source_date from fixture) + v_offset, 'Copied plan', true, 'dup-key-0001');

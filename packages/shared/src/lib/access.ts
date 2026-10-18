@@ -4,6 +4,7 @@ import type { CapabilityDenial, EffectiveAccess, EffectiveAccessEntry } from '..
 export const ACCESS_CAPABILITIES: readonly AccessCapability[] = [
   'plans.edit',
   'scheduling.manage',
+  'scheduling.override_conflicts',
   'teams.manage',
   'people.view_private',
   'people.manage',
@@ -14,6 +15,7 @@ export const ACCESS_CAPABILITIES: readonly AccessCapability[] = [
 export const ACCESS_CAPABILITY_LABELS: Record<AccessCapability, string> = {
   'plans.edit': 'Edit plans',
   'scheduling.manage': 'Schedule people',
+  'scheduling.override_conflicts': 'Schedule over conflicts',
   'teams.manage': 'Manage teams',
   'people.view_private': 'See private person details',
   'people.manage': 'Manage people',
@@ -24,6 +26,7 @@ export const ACCESS_CAPABILITY_LABELS: Record<AccessCapability, string> = {
 export const ACCESS_CAPABILITY_DESCRIPTIONS: Record<AccessCapability, string> = {
   'plans.edit': 'Create plans, edit their order, times, notes and needed positions.',
   'scheduling.manage': 'Schedule, prepare, release and remind people; see blockouts and decline reasons.',
+  'scheduling.override_conflicts': 'Schedule someone who is blocked out or already scheduled elsewhere, with a recorded reason.',
   'teams.manage': 'Edit team settings, positions and who is on the team.',
   'people.view_private': 'Read contact, address and personal details of people.',
   'people.manage': 'Add and edit people in the directory.',
@@ -39,6 +42,7 @@ export const ACCESS_CAPABILITY_DESCRIPTIONS: Record<AccessCapability, string> = 
 export const CAPABILITY_SCOPES: Record<AccessCapability, readonly AccessScopeType[]> = {
   'plans.edit': ['organization', 'folder', 'service_type'],
   'scheduling.manage': ['organization', 'folder', 'service_type', 'team'],
+  'scheduling.override_conflicts': ['organization', 'folder', 'service_type', 'team'],
   'teams.manage': ['organization', 'folder', 'service_type', 'team'],
   'people.view_private': ['organization'],
   'people.manage': ['organization'],

@@ -135,6 +135,17 @@ import type {
   UpdateSongInput,
 } from '../schemas/song.js';
 import type { ServiceTypePayload } from '../schemas/organization.js';
+import type {
+  AssignmentConflictOverrideRow,
+  AttendanceConflict,
+  ConflictCheckResult,
+  PlanTimeImpact,
+} from '../types/attendance.js';
+import type {
+  CheckAssignmentConflictsRequest,
+  PreviewPlanTimesInput,
+  SetAssignmentAttendanceRequest,
+} from '../schemas/attendance.js';
 import type { ServiceTypeSetupPayload } from '../schemas/service-type.js';
 import type {
   DuplicatePlanRequest,
@@ -466,13 +477,22 @@ export class ServiceCenterApi {
 
   // --------------------------------------------------------- scheduling --
   createAssignments = (planId: string, body: Record<string, unknown>) =>
-    this.request<{ created: AssignmentRow[]; conflicts: SchedulingConflict[]; warnings?: PreferenceWarning[] }>(
+    this.request<{ created: AssignmentRow[]; conflicts: AttendanceConflict[]; warnings?: PreferenceWarning[] }>(
       'POST',
       `/api/v1/plans/${planId}/assignments`,
       body,
     );
   updateAssignment = (id: string, body: Record<string, unknown>) =>
     this.request<AssignmentRow>('PATCH', `/api/v1/assignments/${id}`, body);
+  /** F04: change which times existing requests cover (expected revisions required). */
+  setAssignmentAttendance = (planId: string, body: SetAssignmentAttendanceRequest) =>
+    this.request<{ updated: AssignmentRow[] }>('PUT', `/api/v1/plans/${planId}/assignment-times`, body);
+  /** F04: what a proposed full time list would do to requests, before saving it. */
+  previewPlanTimes = (planId: string, body: PreviewPlanTimesInput) =>
+    this.request<PlanTimeImpact>('POST', `/api/v1/plans/${planId}/times/preview`, body);
+  /** F04: requests committed over a conflict on this plan, with reasons. */
+  planConflictOverrides = (planId: string) =>
+    this.request<AssignmentConflictOverrideRow[]>('GET', `/api/v1/plans/${planId}/conflict-overrides`);
   deleteAssignment = (id: string) => this.request<void>('DELETE', `/api/v1/assignments/${id}`);
   respondToAssignment = (id: string, body: RespondToAssignmentRequest) =>
     this.request<AssignmentRow>('POST', `/api/v1/assignments/${id}/respond`, body);
@@ -568,6 +588,9 @@ export class ServiceCenterApi {
     this.request<DeliveryListItem>('POST', `/api/v1/deliveries/${id}/retry`, {});
   checkConflicts = (body: { starts_at: string; ends_at: string; user_ids: string[] }) =>
     this.request<SchedulingConflict[]>('POST', '/api/v1/scheduling/conflicts', body);
+  /** F04: typed, redacted conflicts for prospective requests (actual attendance intervals). */
+  checkAssignmentConflicts = (body: CheckAssignmentConflictsRequest) =>
+    this.request<ConflictCheckResult>('POST', '/api/v1/scheduling/conflicts/check', body);
 
   mySchedule = (query?: Query) =>
     this.request<MyScheduleEntry[]>('GET', '/api/v1/schedule/mine', undefined, query);

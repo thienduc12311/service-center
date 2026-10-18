@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { formatDate, type PlanDetail, type PlanSummary } from '@service-center/shared';
+import { ApiError, formatDate, type AttendanceConflict, type PlanDetail, type PlanSummary } from '@service-center/shared';
 import { api } from '../../lib/api';
-import { usePlans, useInvalidateOrg } from '../../hooks/queries';
+import { usePeople, usePlans, useInvalidateOrg } from '../../hooks/queries';
+import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Modal, Spinner } from '../ui';
+import { ConflictList } from './attendance';
 
 export interface ImportTemplateModalProps {
   open: boolean;
@@ -25,6 +27,9 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
   const [withOrder, setWithOrder] = useState(true);
   const [withTeam, setWithTeam] = useState(true);
   const [withNeeds, setWithNeeds] = useState(true);
+  const [conflictReason, setConflictReason] = useState('');
+  const { can } = useAuth();
+  const people = usePeople();
 
   const candidates = usePlans({
     ...(plan.service_type_id ? { service_type_id: plan.service_type_id } : {}),
@@ -46,10 +51,12 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
         assignments: withTeam,
         expected_revision: plan.content_revision,
         idempotency_key: idempotencyKey,
+        conflict_override_reason: conflictReason.trim() || null,
       }),
     onSuccess: async () => {
       await invalidate();
       setSourceId('');
+      setConflictReason('');
       setAttemptKey(crypto.randomUUID());
       onClose();
     },
@@ -58,6 +65,16 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
       await invalidate();
     },
   });
+  // F04: copied people are re-checked like any new request. A conflict
+  // refuses the whole import unless an authorized scheduler gives a reason.
+  const conflicts: AttendanceConflict[] =
+    runImport.error instanceof ApiError && runImport.error.code === 'scheduling_conflict'
+      ? ((runImport.error.details as AttendanceConflict[] | undefined) ?? [])
+      : [];
+  const mayOverride = can('scheduling.override_conflicts', { serviceTypeId: plan.service_type_id });
+  const nameOf = (personId: string): string =>
+    people.data?.find((person) => person.person_id === personId)?.full_name ?? 'Someone';
+
   return (
     <Modal open={open} title="Import from another plan" onClose={onClose}>
       <div className="space-y-4">
@@ -126,6 +143,11 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
             />
             Scheduled team
           </label>
+          {withTeam && (
+            <p className="ml-6 text-xs text-slate-500">
+              Someone asked for specific times is copied only when this plan has the same times.
+            </p>
+          )}
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -140,7 +162,25 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
           </label>
         </div>
 
-        <ErrorNotice error={runImport.error} />
+        {conflicts.length > 0 ? (
+          <>
+            <ConflictList conflicts={conflicts} nameOf={nameOf} />
+            {mayOverride ? (
+              <input
+                aria-label="Reason for copying the team over the conflicts"
+                className="input"
+                placeholder="Reason for copying anyway (kept with each request)"
+                maxLength={500}
+                value={conflictReason}
+                onChange={(event) => setConflictReason(event.target.value)}
+              />
+            ) : (
+              <p className="text-xs text-slate-500">Import without the scheduled team, or ask someone who may schedule over conflicts.</p>
+            )}
+          </>
+        ) : (
+          <ErrorNotice error={runImport.error} />
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>

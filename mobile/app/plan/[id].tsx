@@ -117,12 +117,11 @@ export default function PlanScreen() {
     () =>
       mergeTimes(mine.map((item) => {
         const assignment = detail?.assignments.find((candidate) => candidate.id === item.assignmentId);
-        const selected = new Set(assignment?.attendance_times.map((time) => time.plan_time_id) ?? []);
+        // F04: the server's attendance resolver decides which times apply.
+        const covered = new Set(assignment?.attendance.flatMap((interval) => interval.plan_time_id ? [interval.plan_time_id] : []) ?? []);
         return {
           assignmentId: item.assignmentId,
-          times: assignment?.attendance_mode === 'selected'
-            ? (detail?.times ?? []).filter((time) => selected.has(time.id))
-            : (detail?.times ?? []),
+          times: (detail?.times ?? []).filter((time) => covered.has(time.id)),
         };
       })),
     [detail?.assignments, detail?.times, mine],

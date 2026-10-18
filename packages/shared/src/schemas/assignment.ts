@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idempotencyKey, uuid } from './common.js';
+import { conflictOverrideReason, idempotencyKey, uuid } from './common.js';
 
 const visibility = z.enum(['prepared', 'released']);
 
@@ -40,8 +40,14 @@ export const createAssignmentsSchema = z.object({
   visibility: visibility.optional(),
   /** Who hears the answers; must schedule those teams. Defaults to the team's owner, then you. */
   response_owner_id: uuid.optional(),
-  /** Schedule anyway when the person is blocked out or double booked. */
+  /**
+   * Legacy flag. Scheduling over a blocking conflict needs
+   * `conflict_override_reason` (and the override capability); this flag alone
+   * no longer bypasses the commit-time check.
+   */
   ignore_conflicts: z.boolean().default(false),
+  /** Why the scheduler commits over a blockout or overlapping commitment (F04). */
+  conflict_override_reason: conflictOverrideReason.nullish(),
   /**
    * Why the scheduler proceeds despite preference warnings (F03). Warnings
    * never block; when any apply, they are recorded with this optional reason.

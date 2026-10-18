@@ -1,3 +1,5 @@
+import { parseConflictDetail } from '../model/attendance.model.js';
+
 /** An error that carries an HTTP status through to the response. */
 export class HttpError extends Error {
   constructor(
@@ -28,7 +30,34 @@ export class HttpError extends Error {
  * RLS denials surface as empty results or 42501, both of which should read as
  * "not found" rather than leaking whether the row exists in another org.
  */
-export const fromPostgrestError = (error: { code?: string; message: string; details?: string | null }): HttpError => {
+/**
+ * F04 PT409 errors carry a machine-readable hint; each becomes its own API
+ * code so clients can react (show conflicts, re-preview, refresh).
+ */
+const PT409_HINTS: Record<string, string> = {
+  scheduling_conflict: 'scheduling_conflict',
+  time_impact_stale: 'time_impact_stale',
+  time_impact_required: 'time_impact_required',
+  orphan_resolution_required: 'orphan_resolution_required',
+  plan_changed: 'plan_revision_stale',
+  assignment_changed: 'assignment_revision_stale',
+  time_identity: 'time_identity_required',
+};
+
+export const fromPostgrestError = (error: {
+  code?: string;
+  message: string;
+  details?: string | null;
+  hint?: string | null;
+}): HttpError => {
+  if (error.code === 'PT409' && error.hint && PT409_HINTS[error.hint]) {
+    return new HttpError(
+      409,
+      error.message,
+      PT409_HINTS[error.hint],
+      error.hint === 'scheduling_conflict' ? parseConflictDetail(error.details) : undefined,
+    );
+  }
   switch (error.code) {
     case 'PGRST116':
       return HttpError.notFound();
