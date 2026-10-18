@@ -12,6 +12,7 @@ import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
+import { resolveAvailabilityTarget } from '../services/availability.js';
 
 export const blockoutsRouter: Router = Router();
 
@@ -24,16 +25,9 @@ const deleteQuerySchema = z.object({ expected_revision: z.coerce.number().int().
 
 interface ResolvedTarget { personId: string; profileId: string | null }
 
-const resolveTarget = async (req: Request, personId?: string, legacyUserId?: string): Promise<ResolvedTarget> => {
-  let query = req.db.from('people').select('id, profile_id').eq('organization_id', req.orgId);
-  query = personId ? query.eq('id', personId) : query.eq('profile_id', legacyUserId ?? req.auth.userId);
-  const person = await unwrap(query.maybeSingle());
-  if (!person) throw HttpError.notFound('Person not found');
-  if (person.profile_id !== req.auth.userId && !canAccessAnywhere(req.access, 'scheduling.manage')) {
-    throw HttpError.forbidden('Only schedulers can record blockouts for other people');
-  }
-  return { personId: person.id, profileId: person.profile_id };
-};
+/** Self, a scheduler, or an explicit availability delegate (F03); RLS re-checks. */
+const resolveTarget = async (req: Request, personId?: string, legacyUserId?: string): Promise<ResolvedTarget> =>
+  resolveAvailabilityTarget({ db: req.db, orgId: req.orgId, userId: req.auth.userId, access: req.access }, personId, legacyUserId);
 
 const occurrencePreview = (occurrence: ReturnType<typeof resolveOneOffBlockout>): BlockoutOccurrencePreview => ({
   occurrence_key: occurrence.occurrenceKey, local_start_date: occurrence.localStartDate,
@@ -91,7 +85,7 @@ blockoutsRouter.get('/', validateQuery(listQuerySchema), async (req, res) => {
     if (!canAccessAnywhere(req.access, 'scheduling.manage')) throw HttpError.forbidden('Only schedulers can see everyone’s blockouts');
     if (person_id) query = query.eq('person_id', person_id);
     if (user_id) query = query.eq('user_id', user_id);
-  } else query = query.eq('person_id', (await resolveTarget(req)).personId);
+  } else query = query.eq('person_id', (await resolveTarget(req, person_id)).personId);
   if (from) query = query.gt('ends_at', from);
   if (to) query = query.lt('starts_at', to);
   res.json((await unwrap(query)) ?? []);

@@ -42,6 +42,11 @@ export const createAssignmentsSchema = z.object({
   response_owner_id: uuid.optional(),
   /** Schedule anyway when the person is blocked out or double booked. */
   ignore_conflicts: z.boolean().default(false),
+  /**
+   * Why the scheduler proceeds despite preference warnings (F03). Warnings
+   * never block; when any apply, they are recorded with this optional reason.
+   */
+  preference_override_reason: z.string().trim().max(500).nullish(),
   notify: z.boolean().default(true),
   /** Retrying with the same key never enqueues a second notification. */
   idempotency_key: idempotencyKey.optional(),

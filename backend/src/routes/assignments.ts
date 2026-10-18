@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { param } from '../lib/params.js';
 import { randomUUID } from 'node:crypto';
 import {
@@ -26,7 +26,10 @@ import {
   updateAssignmentSchema,
   type MyScheduleEntry,
   type SchedulingConflict,
+  type AssignmentRow,
+  type PreferenceWarning,
 } from '@service-center/shared';
+import { preferenceWarnings } from '../services/availability.js';
 import { z } from 'zod';
 import { validateBody, validateQuery, parsedQuery } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
@@ -127,10 +130,41 @@ const serviceWindow = async (
   };
 };
 
+/**
+ * F03: preference warnings never block scheduling. When a scheduler goes
+ * ahead anyway, each affected new assignment records which warnings applied
+ * and the optional reason, so the decision is reviewable later.
+ */
+const recordPreferenceOverrides = async (
+  req: Request,
+  planId: string,
+  created: ReadonlyArray<Pick<AssignmentRow, 'id' | 'person_id' | 'team_id'>>,
+  reason: string | null,
+): Promise<PreferenceWarning[]> => {
+  const byTeam = new Map<string, Set<string>>();
+  for (const row of created) {
+    if (!row.person_id || !row.team_id) continue;
+    byTeam.set(row.team_id, (byTeam.get(row.team_id) ?? new Set()).add(row.person_id));
+  }
+  const ctx = { db: req.db, orgId: req.orgId, userId: req.auth.userId, access: req.access };
+  const warnings: PreferenceWarning[] = [];
+  const overrides: Array<{ organization_id: string; assignment_id: string; warning_codes: string[]; reason: string | null }> = [];
+  for (const [teamId, people] of byTeam) {
+    const teamWarnings = await preferenceWarnings(ctx, { plan_id: planId, team_id: teamId, person_ids: [...people] });
+    warnings.push(...teamWarnings);
+    for (const row of created.filter((r) => r.team_id === teamId)) {
+      const codes = [...new Set(teamWarnings.filter((w) => w.person_id === row.person_id).map((w) => w.code))];
+      if (codes.length) overrides.push({ organization_id: req.orgId, assignment_id: row.id, warning_codes: codes, reason });
+    }
+  }
+  if (overrides.length) await unwrap(req.db.from('assignment_preference_overrides').insert(overrides));
+  return warnings;
+};
+
 // ---------------------------------------------- schedule people onto a plan --
 planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validateBody(createAssignmentsSchema), async (req, res) => {
   const planId = param(req, 'planId');
-  const { assignments, ignore_conflicts, notify, idempotency_key, visibility, response_owner_id } =
+  const { assignments, ignore_conflicts, notify, idempotency_key, visibility, response_owner_id, preference_override_reason } =
     req.body as CreateAssignmentsInput;
 
   const plan = await unwrap(
@@ -197,7 +231,8 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
     await deliverEffectNow(await effectIdForKey(req.db, req.orgId, effectKey));
   }
 
-  res.status(201).json({ created: created ?? [], conflicts: blocking });
+  const warnings = await recordPreferenceOverrides(req, plan.id, created ?? [], preference_override_reason ?? null);
+  res.status(201).json({ created: created ?? [], conflicts: blocking, warnings });
 });
 
 /**

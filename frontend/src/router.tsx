@@ -23,6 +23,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { SongbooksPage } from './pages/SongbooksPage';
 import { SongbookPage } from './pages/SongbookPage';
 import { BlockoutSeriesPage } from './pages/BlockoutSeriesPage';
+import { HelpPage } from './pages/HelpPage';
 
 /**
  * Gate for every authenticated route. Anyone signed in but not yet in an
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
           { path: '/my-schedule', element: <MySchedulePage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/blockouts/:seriesId', element: <BlockoutSeriesPage /> },
+          { path: '/help/:delegationId', element: <HelpPage /> },
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       },

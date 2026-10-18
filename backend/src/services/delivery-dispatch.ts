@@ -18,7 +18,7 @@ import {
 import type { NotificationDraft, PushMessage } from '../model/notification.model.js';
 import { toPushMessage } from '../model/notification.model.js';
 import { ensureFeedRows, unreadCount } from './notification-center.js';
-import { emailTransport, respondUrlFor, type ScheduleNotification } from './notifications.js';
+import { emailTransport, respondUrlFor, type EmailNotification } from './notifications.js';
 import { pushTransport, type PushTicketResult } from './expo-push.js';
 import { activeDeviceTokens } from './device-registrations.js';
 import { generateAssignmentToken } from './assignment-tokens.js';
@@ -58,6 +58,7 @@ const mapEffect = (row: DeliveryEffectRow): DeliveryEffect => ({
   responderPersonId: row.responder_person_id,
   responseStatus: row.response_status,
   responseTransition: row.response_transition,
+  availabilityRequestId: row.availability_request_id ?? null,
   createdBy: row.created_by,
 });
 
@@ -265,7 +266,7 @@ const sendPush = async (
   return result;
 };
 
-const sendEmail = async (notification: ScheduleNotification, begin: BeginProviderCall): Promise<DispatchResult | null> => {
+const sendEmail = async (notification: EmailNotification, begin: BeginProviderCall): Promise<DispatchResult | null> => {
   const transport = emailTransport();
   if (!(await begin())) return null;
   const receipt = await transport.send(notification);
@@ -408,6 +409,81 @@ const responseEmail = async (
 };
 
 /**
+ * F03 availability request. Re-checked at send time: the request still
+ * exists, the recipient is still an eligible member and still on the team,
+ * and has not already reviewed their availability since it was sent.
+ */
+const dispatchAvailabilityRequest = async (
+  effect: DeliveryEffect,
+  job: DeliveryJob,
+  begin: BeginProviderCall,
+): Promise<DispatchResult | null> => {
+  if (!effect.availabilityRequestId) return finished('cancelled', 'request_missing');
+  const request = await unwrap(
+    adminDb.from('availability_requests').select('*').eq('id', effect.availabilityRequestId).maybeSingle(),
+  );
+  if (!request) return finished('cancelled', 'request_missing');
+  if (!(await isEligiblePerson(request.organization_id, job.recipientPersonId))) {
+    return finished('cancelled', 'recipient_not_eligible');
+  }
+  if (request.team_id) {
+    const onTeam = await unwrap(
+      adminDb.from('team_memberships').select('id').eq('team_id', request.team_id)
+        .eq('person_id', job.recipientPersonId).limit(1),
+    );
+    if (!onTeam?.length) return finished('cancelled', 'recipient_not_eligible');
+  }
+  const recipient = await unwrap(
+    adminDb.from('availability_request_recipients').select('responded_at')
+      .eq('request_id', request.id).eq('person_id', job.recipientPersonId).maybeSingle(),
+  );
+  if (!recipient) return finished('cancelled', 'recipient_not_eligible');
+  if (recipient.responded_at) return finished('cancelled', 'already_reviewed');
+
+  const organization = await unwrap(
+    adminDb.from('organizations').select('name').eq('id', request.organization_id).maybeSingle(),
+  );
+  const organizationName = organization?.name ?? 'Your organization';
+  const availabilityUrl = `${config.APP_URL}/settings#availability`;
+
+  if (job.channel === 'email') {
+    const { email, name } = await recipientEmail(request.organization_id, job.recipientPersonId, job.recipientId);
+    if (!email) return finished('skipped', 'no_email_address');
+    const sender = request.created_by
+      ? await unwrap(adminDb.from('profiles').select('email').eq('id', request.created_by).maybeSingle())
+      : null;
+    return sendEmail({
+      to: email,
+      personName: name,
+      organizationName,
+      message: request.message,
+      windowStart: request.window_start,
+      windowEnd: request.window_end,
+      respondBy: request.respond_by,
+      availabilityUrl,
+      replyTo: sender?.email ?? null,
+    }, begin);
+  }
+  if (!job.recipientId) return finished('skipped', 'no_active_device');
+  const drafts: Array<NotificationDraft & { dedupeKey: string }> = [{
+    organizationId: request.organization_id,
+    userId: job.recipientId,
+    type: 'availability_request',
+    title: 'Please update your availability',
+    body: `${request.window_start} to ${request.window_end}${request.respond_by ? ` · respond by ${request.respond_by}` : ''}`,
+    planId: null,
+    assignmentId: null,
+    createdBy: effect.createdBy,
+    dedupeKey: `${effect.id}:${job.recipientPersonId}`,
+  }];
+  if (job.channel === 'in_app') {
+    await ensureFeedRows(drafts);
+    return finished('delivered');
+  }
+  return sendPush(job, drafts, begin);
+};
+
+/**
  * Performs one leased delivery. Everything is re-read here rather than
  * trusted from enqueue time: the plan may be gone, the person removed from
  * it or from the organization, or the response owner may no longer schedule
@@ -417,6 +493,7 @@ const responseEmail = async (
 export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCall): Promise<DispatchResult | null> => {
   const effect = await loadEffect(job.effectId);
   if (!effect) return finished('cancelled', 'plan_missing');
+  if (effect.template === 'availability_request') return dispatchAvailabilityRequest(effect, job, begin);
   const plan = await loadPlan(effect.planId);
   if (!plan) return finished('cancelled', 'plan_missing');
 
