@@ -52,6 +52,14 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 - `EXPO_OFFLINE=1 CI=1 ../node_modules/.bin/expo export --platform ios --platform android --output-dir /private/tmp/service-center-mobile-check-mob005-final-2`.
 - `git diff --check`.
 
+**Fix — removing a sent request (2026-10-17):** Pass C's `assignment_request_snapshot_items.assignment_id … on delete restrict` made any assignment that had been sent undeletable (`DELETE /api/v1/assignments/:id` failed with 23503), breaking F01's "to withdraw a released request a scheduler removes it". Additive migration `20261017000400_mob005_assignment_removal_snapshots.sql` (the historical migration is unchanged) switches the item FK to `on delete cascade` and adds a `before delete` trigger on `assignments`:
+
+- a *live* snapshot (not consumed/superseded) that included the removed assignment drops that item and bumps `version`, keeping its id — the effect's deliveries and an outstanding emailed link still answer the remaining requests, while a signed-in review taken earlier is refused with PT409 and must be refreshed;
+- a live snapshot left with no items is superseded, so its link answers `stale`;
+- a *consumed* or already-superseded snapshot keeps its header (Person, plan, `consumed_at`/`superseded_at`, version) as the audit record; its item for the removed assignment goes, like the assignment's response history and per-time answers, which already cascade.
+
+The route now reports anything that still blocks a removal as 409 "still in use" instead of the generic 400 for 23503. `supabase/tests/mob005-assignment-removal.sql` covers: recipient cannot remove, scheduler removes sent requests, re-versioned vs. superseded snapshots, stale review and answers to the removed request refused, preview of the removed request refused, pre-removal link answers only the remaining request, emptied link is `stale`, an answered request can be removed with its consumed audit header intact, and whole-plan removal. It fails with the 23503 when run without the fix. All `supabase/tests/*.sql`, `mob005-concurrent-token.sh`, `npm run typecheck` and `npm test` pass.
+
 **Remaining gate:** no signed-in native device/simulator interaction surface was available. Run iOS and Android in light/dark and large text through prepare → absent for recipient → release review → exact batch/split response → scheduler update, plus no-login link, stale refresh, offline retry and duplicate-tap checks. Code, database, web build and both native bundles are complete; MOB-005 remains `implemented; QA pending` until that interaction evidence is recorded. No production migration, provider notification, push or deployment was performed.
 
 ## MOB-004 — 2026-10-16

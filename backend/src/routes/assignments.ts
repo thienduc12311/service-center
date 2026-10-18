@@ -31,7 +31,7 @@ import { z } from 'zod';
 import { validateBody, validateQuery, parsedQuery } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
 import { adminDb, raw, unwrap } from '../lib/supabase.js';
-import { HttpError } from '../lib/errors.js';
+import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { latestDeclineReasons, respondToOwnAssignment } from '../services/assignment-responses.js';
 import {
   effectIdForKey,
@@ -422,8 +422,17 @@ assignmentsRouter.patch('/:id', requireCapability('scheduling.manage'), validate
   res.json(updated);
 });
 
+/**
+ * Removing a request is how a scheduler withdraws it, sent or not. Live
+ * response snapshots drop it in the database; anything else that still holds
+ * on to the row reads as a conflict rather than a bad request.
+ */
 assignmentsRouter.delete('/:id', requireCapability('scheduling.manage'), async (req, res) => {
-  await unwrap(req.db.from('assignments').delete().eq('id', param(req, 'id')));
+  const { error } = await req.db.from('assignments').delete().eq('id', param(req, 'id'));
+  if (error?.code === '23503') {
+    throw HttpError.conflict('This assignment is still in use and cannot be removed yet');
+  }
+  if (error) throw fromPostgrestError(error);
   res.status(204).end();
 });
 
