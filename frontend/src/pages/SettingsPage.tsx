@@ -10,6 +10,10 @@ import { DeliverySettings } from '../components/settings/DeliverySettings';
 import { AccessSettings } from '../components/settings/AccessSettings';
 import { IdentityReconciliationSettings } from '../components/settings/IdentityReconciliationSettings';
 import { AvailabilitySettings } from '../components/settings/AvailabilitySettings';
+import { AvailabilityReview } from '../components/settings/AvailabilityReview';
+import { SchedulingPreferences } from '../components/settings/SchedulingPreferences';
+import { ScheduleHelp } from '../components/settings/ScheduleHelp';
+import { AcrossOrganizations } from '../components/settings/AcrossOrganizations';
 
 export const SettingsPage = () => {
   const { user, organizationId, role, refreshUser, switchOrganization } = useAuth();
@@ -95,7 +99,25 @@ export const SettingsPage = () => {
         <ErrorNotice error={calendarFeed.error ?? rotateFeed.error} />
       </section>
 
-      {organization ? <AvailabilitySettings timezone={organization.timezone} /> : null}
+      {organization ? (
+        <>
+          <section className="card space-y-4 p-5">
+            <div>
+              <h2 className="mb-1 font-semibold">Availability</h2>
+              <p className="text-sm text-slate-500">Keep leaders informed: add the dates you can’t serve below, or confirm nothing has changed.</p>
+            </div>
+            <AvailabilityReview />
+          </section>
+          <AvailabilitySettings timezone={organization.timezone} />
+          <section className="card p-5">
+            <h2 className="mb-1 font-semibold">Scheduling preferences</h2>
+            <p className="mb-4 text-sm text-slate-500">How often and when you’d like to serve. Schedulers see these as warnings, not rules.</p>
+            <SchedulingPreferences />
+          </section>
+          <ScheduleHelp />
+          <AcrossOrganizations />
+        </>
+      ) : null}
     </div>
   );
 };

@@ -4,6 +4,33 @@
  */
 
 import type {
+  AvailabilityAudienceMember,
+  AvailabilityRequestDetail,
+  AvailabilityRequestSummary,
+  AvailabilityReviewStatus,
+  CombinedSchedule,
+  CopyAvailabilityResult,
+  CreateAvailabilityRequestResult,
+  DelegatedResponseResult,
+  DelegatedSchedule,
+  DelegationSummary,
+  MyAvailabilityRequest,
+  PreferenceWarning,
+  SchedulingPreferenceRow,
+  UserScheduleSettingsRow,
+} from '../types/availability.js';
+import type {
+  CombinedScheduleQuery,
+  CopyAvailabilityRequest,
+  CreateAvailabilityRequestInput,
+  DelegatedRespondInput,
+  GrantDelegationRequest,
+  PreferenceWarningsInput,
+  PreviewAvailabilityRequestInput,
+  SaveSchedulingPreferenceRequest,
+  ScheduleSettingsInput,
+} from '../schemas/availability.js';
+import type {
   ArrangementRow,
   AssignmentOwnerChangeRow,
   AssignmentRow,
@@ -439,7 +466,7 @@ export class ServiceCenterApi {
 
   // --------------------------------------------------------- scheduling --
   createAssignments = (planId: string, body: Record<string, unknown>) =>
-    this.request<{ created: AssignmentRow[]; conflicts: SchedulingConflict[] }>(
+    this.request<{ created: AssignmentRow[]; conflicts: SchedulingConflict[]; warnings?: PreferenceWarning[] }>(
       'POST',
       `/api/v1/plans/${planId}/assignments`,
       body,
@@ -580,6 +607,48 @@ export class ServiceCenterApi {
     this.request<{ deleted: boolean; series_id: string; revision?: number }>(
       'POST', `/api/v1/blockouts/series/${id}/change`, body,
     );
+
+  // ------------------------------------------- availability (F03) ---------
+  listSchedulingPreferences = (query?: { person_id?: string }) =>
+    this.request<SchedulingPreferenceRow[]>('GET', '/api/v1/availability/preferences', undefined, query);
+  saveSchedulingPreference = (body: SaveSchedulingPreferenceRequest) =>
+    this.request<SchedulingPreferenceRow>('PUT', '/api/v1/availability/preferences', body);
+  deleteSchedulingPreference = (id: string) =>
+    this.request<void>('DELETE', `/api/v1/availability/preferences/${id}`);
+  availabilityReview = (query?: { person_id?: string }) =>
+    this.request<AvailabilityReviewStatus>('GET', '/api/v1/availability/review', undefined, query);
+  affirmAvailability = (body: { person_id?: string } = {}) =>
+    this.request<AvailabilityReviewStatus>('POST', '/api/v1/availability/affirm', body);
+  preferenceWarnings = (body: PreferenceWarningsInput) =>
+    this.request<PreferenceWarning[]>('POST', '/api/v1/availability/warnings', body);
+  previewAvailabilityRequest = (body: PreviewAvailabilityRequestInput) =>
+    this.request<AvailabilityAudienceMember[]>('POST', '/api/v1/availability/requests/preview', body);
+  createAvailabilityRequest = (body: CreateAvailabilityRequestInput) =>
+    this.request<CreateAvailabilityRequestResult>('POST', '/api/v1/availability/requests', body);
+  listAvailabilityRequests = (query?: { team_id?: string }) =>
+    this.request<AvailabilityRequestSummary[]>('GET', '/api/v1/availability/requests', undefined, query);
+  getAvailabilityRequest = (id: string) =>
+    this.request<AvailabilityRequestDetail>('GET', `/api/v1/availability/requests/${id}`);
+  myAvailabilityRequests = () =>
+    this.request<MyAvailabilityRequest[]>('GET', '/api/v1/availability/requests/mine');
+
+  listDelegations = () => this.request<DelegationSummary[]>('GET', '/api/v1/delegations');
+  grantDelegation = (body: GrantDelegationRequest) =>
+    this.request<DelegationSummary>('POST', '/api/v1/delegations', body);
+  revokeDelegation = (id: string) =>
+    this.request<DelegationSummary>('POST', `/api/v1/delegations/${id}/revoke`);
+  delegatedSchedule = (id: string) =>
+    this.request<DelegatedSchedule>('GET', `/api/v1/delegations/${id}/schedule`);
+  respondAsDelegate = (id: string, assignmentId: string, body: DelegatedRespondInput) =>
+    this.request<DelegatedResponseResult>('POST', `/api/v1/delegations/${id}/assignments/${assignmentId}/respond`, body);
+
+  scheduleSettings = () => this.request<UserScheduleSettingsRow>('GET', '/api/v1/me/schedule-settings');
+  updateScheduleSettings = (body: ScheduleSettingsInput) =>
+    this.request<UserScheduleSettingsRow>('PUT', '/api/v1/me/schedule-settings', body);
+  combinedSchedule = (query: CombinedScheduleQuery) =>
+    this.request<CombinedSchedule>('GET', '/api/v1/me/combined-schedule', undefined, query);
+  copyAvailability = (body: CopyAvailabilityRequest) =>
+    this.request<CopyAvailabilityResult>('POST', '/api/v1/me/availability/copy', body);
 
   // ----------------------------------------------------------- songbooks --
   listSongbooks = () => this.request<SongbookRow[]>('GET', '/api/v1/songbooks');

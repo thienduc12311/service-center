@@ -31,6 +31,9 @@ import {
 import { calendarRouter } from './routes/calendar.js';
 import { deliveriesRouter, deliveryWorkerRouter } from './routes/deliveries.js';
 import { blockoutsRouter } from './routes/blockouts.js';
+import { availabilityRouter } from './routes/availability.js';
+import { delegationsRouter } from './routes/delegations.js';
+import { meAvailabilityRouter } from './routes/me-availability.js';
 import { accessRouter } from './routes/access.js';
 import { foldersRouter } from './routes/folders.js';
 import { songbooksRouter } from './routes/songbooks.js';
@@ -83,7 +86,7 @@ export const createApp = (): Express => {
   // Devices are per-person, not per-organization, so they sit beside /me.
   app.use('/api/v1/me/devices', requireAuth, devicesRouter);
   app.use('/api/v1/device-revocations', deviceRevocationsRouter);
-  app.use('/api/v1/me', requireAuth, meRouter);
+  app.use('/api/v1/me', requireAuth, meAvailabilityRouter, meRouter);
   app.use('/api/v1/organizations', requireAuth, organizationsRouter);
   // Fully public: the caller isn't signed in yet — a valid token is the
   // entire authorisation for this route (see invitation-accept.ts).
@@ -109,6 +112,8 @@ export const createApp = (): Express => {
   app.use('/api/v1/scheduling', scoped, schedulingRouter);
   app.use('/api/v1/calendar', scoped, calendarRouter);
   app.use('/api/v1/blockouts', scoped, blockoutsRouter);
+  app.use('/api/v1/availability', scoped, availabilityRouter);
+  app.use('/api/v1/delegations', scoped, delegationsRouter);
   app.use('/api/v1/songbooks', scoped, songbooksRouter);
   app.use('/api/v1/notifications', scoped, notificationsRouter);
   app.use('/api/v1/deliveries', scoped, deliveriesRouter);

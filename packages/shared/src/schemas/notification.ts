@@ -6,6 +6,7 @@ export const notificationTypeSchema = z.enum([
   'assignment_reminder',
   'assignment_response',
   'plan_updated',
+  'availability_request',
 ]);
 
 export const listNotificationsQuerySchema = z.object({

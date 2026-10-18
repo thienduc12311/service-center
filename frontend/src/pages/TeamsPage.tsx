@@ -7,6 +7,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { Avatar, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
 import { TeamEditor } from '../components/TeamEditor';
 import { TeamPolicyModal } from '../components/TeamPolicyModal';
+import { AvailabilityRequestsModal } from '../components/team/AvailabilityRequestsModal';
 
 export const TeamsPage = () => {
   const { access, can } = useAuth();
@@ -21,6 +22,9 @@ export const TeamsPage = () => {
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [policyTeamId, setPolicyTeamId] = useState<string | null>(null);
+  const [availabilityTeamId, setAvailabilityTeamId] = useState<string | null>(null);
+  const canScheduleTeam = (team: { id: string; service_type_id: string | null }) =>
+    can('scheduling.manage', { serviceTypeId: team.service_type_id, teamId: team.id });
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -73,6 +77,7 @@ export const TeamsPage = () => {
   // roles it just changed.
   const editingTeam = teams.data?.find((t) => t.id === editingTeamId);
   const policyTeam = teams.data?.find((t) => t.id === policyTeamId);
+  const availabilityTeam = teams.data?.find((t) => t.id === availabilityTeamId);
 
   return (
     <div>
@@ -106,6 +111,15 @@ export const TeamsPage = () => {
                       onClick={() => setEditingTeamId(team.id)}
                     >
                       Edit
+                    </Button>
+                  )}
+                  {canScheduleTeam(team) && (
+                    <Button
+                      variant="ghost"
+                      className="!px-2 text-xs"
+                      onClick={() => setAvailabilityTeamId(team.id)}
+                    >
+                      Availability
                     </Button>
                   )}
                   {(canManageTeam(team) || access?.can_administer_access) && (
@@ -175,6 +189,7 @@ export const TeamsPage = () => {
 
       {editingTeam && <TeamEditor team={editingTeam} onClose={() => setEditingTeamId(null)} />}
       {policyTeam && <TeamPolicyModal team={policyTeam} onClose={() => setPolicyTeamId(null)} />}
+      {availabilityTeam && <AvailabilityRequestsModal team={availabilityTeam} onClose={() => setAvailabilityTeamId(null)} />}
 
       <Modal open={creating} title="New team" onClose={() => setCreating(false)}>
         <form onSubmit={submit} className="space-y-4">

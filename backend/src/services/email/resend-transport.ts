@@ -1,11 +1,14 @@
 import { Resend, type ErrorResponse } from 'resend';
-import type {
-  EmailSendReceipt,
-  NotificationTransport,
-  PersonInvitationNotification,
-  PersonInvitationTransport,
-  ScheduleNotification,
+import {
+  isAvailabilityRequest,
+  type AvailabilityRequestNotification,
+  type EmailSendReceipt,
+  type NotificationTransport,
+  type PersonInvitationNotification,
+  type PersonInvitationTransport,
+  type ScheduleNotification,
 } from '../notifications.js';
+import { availabilityRequestEmail } from './templates/availability.js';
 import { config } from '../../config.js';
 import { DeliveryError } from '../../model/delivery.model.js';
 import { invitationEmail } from './templates/invitation.js';
@@ -57,7 +60,17 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
     this.client = new Resend(apiKey);
   }
 
-  async send(notification: ScheduleNotification | PersonInvitationNotification): Promise<EmailSendReceipt> {
+  async send(
+    notification: ScheduleNotification | AvailabilityRequestNotification | PersonInvitationNotification,
+  ): Promise<EmailSendReceipt> {
+    if (isAvailabilityRequest(notification)) {
+      const content = availabilityRequestEmail(notification);
+      return this.deliver({
+        from: `${notification.organizationName} <${config.MAIL_FROM_ADDRESS}>`,
+        to: notification.to, subject: content.subject, html: content.html, text: content.text,
+        ...(notification.replyTo ? { replyTo: notification.replyTo } : {}),
+      });
+    }
     const content = 'respondUrl' in notification ? scheduleEmail(notification) : invitationEmail(notification);
     const replyTo = 'respondUrl' in notification ? notification.schedulerEmail ?? undefined : undefined;
     const attachments = 'respondUrl' in notification && notification.ics
@@ -75,6 +88,12 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
       }),
       timeout(SEND_TIMEOUT_MS),
     ]);
+    if (error) throw classifyResendError(error);
+    return { providerMessageId: data?.id ?? null };
+  }
+
+  private async deliver(message: { from: string; to: string; subject: string; html: string; text: string; replyTo?: string }): Promise<EmailSendReceipt> {
+    const { data, error } = await Promise.race([this.client.emails.send(message), timeout(SEND_TIMEOUT_MS)]);
     if (error) throw classifyResendError(error);
     return { providerMessageId: data?.id ?? null };
   }

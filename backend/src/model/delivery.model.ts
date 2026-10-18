@@ -24,6 +24,8 @@ export type DeliveryErrorCode =
   | 'recipient_not_eligible'
   | 'scheduler_not_active'
   | 'plan_missing'
+  | 'request_missing'
+  | 'already_reviewed'
   | 'provider_rate_limited'
   | 'provider_unavailable'
   | 'provider_rejected'
@@ -87,6 +89,8 @@ export interface DeliveryEffect {
   responderPersonId: string | null;
   responseStatus: AssignmentStatus | null;
   responseTransition: ResponseTransition | null;
+  /** F03 availability request this effect announces. */
+  availabilityRequestId: string | null;
   createdBy: string | null;
 }
 

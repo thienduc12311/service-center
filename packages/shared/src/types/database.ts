@@ -8,6 +8,16 @@
  */
 
 import type {
+  AssignmentPreferenceOverrideRow,
+  AvailabilityRequestRecipientRow,
+  AvailabilityRequestRow,
+  PersonAvailabilityReviewRow,
+  ScheduleDelegationEventRow,
+  ScheduleDelegationRow,
+  SchedulingPreferenceRow,
+  UserScheduleSettingsRow,
+} from './availability.js';
+import type {
   AcceptPersonInvitationRow,
   PersonDeliveryReadiness,
   PersonIdentityReconciliationRow,
@@ -44,7 +54,8 @@ export type NotificationType =
   | 'assignment_scheduled'
   | 'assignment_reminder'
   | 'assignment_response'
-  | 'plan_updated';
+  | 'plan_updated'
+  | 'availability_request';
 export type DevicePlatform = 'ios' | 'android' | 'web';
 /** Where a delivery goes: the in-app feed, a device push, or email. */
 export type DeliveryChannel = 'in_app' | 'push' | 'email';
@@ -63,7 +74,7 @@ export type DeliveryStatus =
   | 'ambiguous'
   | 'skipped'
   | 'cancelled';
-export type DeliveryTemplate = 'assignment_request' | 'assignment_reminder' | 'scheduler_response';
+export type DeliveryTemplate = 'assignment_request' | 'assignment_reminder' | 'scheduler_response' | 'availability_request';
 export type ResponseTransition = 'response' | 'withdrawal';
 /** Column layout a printed chord chart uses. Constrained in the database too. */
 export type ChartColumns = 1 | 2;
@@ -457,6 +468,8 @@ export type DeliveryEffectRow = {
   responder_person_id: string | null;
   response_status: AssignmentStatus | null;
   response_transition: ResponseTransition | null;
+  /** Set for `availability_request` effects (F03). */
+  availability_request_id: string | null;
   created_by: string | null;
   created_at: string;
 }
@@ -794,6 +807,14 @@ export type Database = {
       person_tag_groups: Table<PersonTagGroupRow>;
       person_tag_catalog: Table<PersonTagCatalogRow>;
       person_identity_reconciliations: Table<PersonIdentityReconciliationRow>;
+      scheduling_preferences: Table<SchedulingPreferenceRow>;
+      assignment_preference_overrides: Table<AssignmentPreferenceOverrideRow>;
+      person_availability_reviews: Table<PersonAvailabilityReviewRow>;
+      availability_requests: Table<AvailabilityRequestRow>;
+      availability_request_recipients: Table<AvailabilityRequestRecipientRow>;
+      schedule_delegations: Table<ScheduleDelegationRow>;
+      schedule_delegation_events: Table<ScheduleDelegationEventRow>;
+      user_schedule_settings: Table<UserScheduleSettingsRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };

@@ -41,6 +41,8 @@ const DELIVERY_ERROR_LABELS: Readonly<Record<string, string>> = {
   recipient_not_eligible: 'No longer scheduled or no longer a member',
   scheduler_not_active: 'Scheduler is no longer active in this organization',
   plan_missing: 'The plan no longer exists',
+  request_missing: 'The availability request no longer exists',
+  already_reviewed: 'Already updated their availability',
   provider_rate_limited: 'Provider rate limit — will retry',
   provider_unavailable: 'Provider unavailable — will retry',
   provider_rejected: 'Provider rejected the message',

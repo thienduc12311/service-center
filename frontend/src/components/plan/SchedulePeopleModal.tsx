@@ -1,8 +1,15 @@
 import { useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { ApiError, type AssignmentVisibility, type SchedulingConflict } from '@service-center/shared';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import {
+  ApiError,
+  isFreshnessWarning,
+  PREFERENCE_WARNING_LABELS,
+  type AssignmentVisibility,
+  type PreferenceWarning,
+  type SchedulingConflict,
+} from '@service-center/shared';
 import { api } from '../../lib/api';
-import { useDeliveryReadiness, useInvalidateOrg, usePeople, usePlan, useTeams } from '../../hooks/queries';
+import { keys, useDeliveryReadiness, useInvalidateOrg, usePeople, usePlan, useTeams } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Avatar, Button, ErrorNotice, Modal } from '../ui';
 import { AddGuestForm } from './AddGuestForm';
@@ -28,7 +35,7 @@ export const SchedulePeopleModal = ({
   onClose,
 }: SchedulePeopleModalProps) => {
   const invalidate = useInvalidateOrg();
-  const { can } = useAuth();
+  const { can, organizationId } = useAuth();
   const allTeams = useTeams();
   // Only the teams this person may schedule on this plan; the server refuses the rest.
   const teams = {
@@ -46,6 +53,7 @@ export const SchedulePeopleModal = ({
   const [conflicts, setConflicts] = useState<SchedulingConflict[]>([]);
   /** Null follows the team's default. */
   const [visibilityChoice, setVisibilityChoice] = useState<AssignmentVisibility | null>(null);
+  const [overrideReason, setOverrideReason] = useState('');
 
   const team = teams.data?.find((t) => t.id === teamId);
   const visibility: AssignmentVisibility = visibilityChoice ?? team?.default_visibility ?? 'released';
@@ -55,6 +63,20 @@ export const SchedulePeopleModal = ({
   // Who a released request cannot reach: no login and no email on file.
   const readiness = useDeliveryReadiness(selected);
   const unreachable = (readiness.data ?? []).filter((entry) => !entry.has_login && !entry.has_email);
+
+  // F03: preference and freshness warnings never block; they explain.
+  const warningQuery = { plan_id: planId, team_id: teamId, person_ids: [...selected].sort() };
+  const warnings = useQuery({
+    queryKey: keys.preferenceWarnings(organizationId, warningQuery),
+    queryFn: () => api.preferenceWarnings(warningQuery),
+    enabled: open && Boolean(teamId) && selected.length > 0,
+  });
+  const warningsByPerson = useMemo(() => {
+    const grouped = new Map<string, PreferenceWarning[]>();
+    for (const warning of warnings.data ?? []) grouped.set(warning.person_id, [...(grouped.get(warning.person_id) ?? []), warning]);
+    return grouped;
+  }, [warnings.data]);
+  const hasPreferenceWarnings = (warnings.data ?? []).some((warning) => !isFreshnessWarning(warning.code));
 
   const addPlanPosition = useMutation({
     mutationFn: () => api.createPlanPosition(planId, { team_id: teamId, name: newPositionName, needed: 1 }),
@@ -76,12 +98,14 @@ export const SchedulePeopleModal = ({
         ignore_conflicts: ignoreConflicts,
         notify: true,
         visibility,
+        preference_override_reason: overrideReason.trim() || null,
       }),
     onSuccess: async () => {
       await invalidate();
       setSelected([]);
       setConflicts([]);
       setVisibilityChoice(null);
+      setOverrideReason('');
       onClose();
     },
     onError: (error) => {
@@ -291,6 +315,32 @@ export const SchedulePeopleModal = ({
                 );
               })}
             </ul>
+          </div>
+        )}
+
+        {warningsByPerson.size > 0 && (
+          <div role="status" className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 ring-1 ring-slate-300/60">
+            <p className="font-medium">Preferences and availability</p>
+            <p className="text-xs text-slate-500">Not conflicts — you can still schedule. Blockouts appear separately as conflicts.</p>
+            <ul className="mt-1 space-y-0.5 text-xs">
+              {[...warningsByPerson.entries()].map(([personId, list]) => (
+                <li key={personId}>
+                  <span className="font-medium">{nameOf(personId)}</span>
+                  {' — '}
+                  {list.map((warning) => `${PREFERENCE_WARNING_LABELS[warning.code]}${warning.code === 'busy_elsewhere' ? '' : ` (${warning.detail})`}`).join('; ')}
+                </li>
+              ))}
+            </ul>
+            {hasPreferenceWarnings && (
+              <input
+                aria-label="Reason for scheduling despite preferences"
+                className="input mt-2"
+                placeholder="Reason for going ahead (optional, kept with the request)"
+                maxLength={500}
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+              />
+            )}
           </div>
         )}
 

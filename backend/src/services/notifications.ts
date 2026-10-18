@@ -15,6 +15,25 @@ export interface ScheduleNotification {
   ics?: string;
 }
 
+/** F03: a leader asks someone to review their availability. */
+export interface AvailabilityRequestNotification {
+  to: string;
+  personName: string | null;
+  organizationName: string;
+  message: string | null;
+  windowStart: string;
+  windowEnd: string;
+  respondBy: string | null;
+  /** Where to update availability (sign-in required). */
+  availabilityUrl: string;
+  replyTo?: string | null;
+}
+
+export type EmailNotification = ScheduleNotification | AvailabilityRequestNotification;
+
+export const isAvailabilityRequest = (notification: object): notification is AvailabilityRequestNotification =>
+  'availabilityUrl' in notification;
+
 /** What a provider told us after accepting an email. */
 export interface EmailSendReceipt {
   providerMessageId: string | null;
@@ -29,14 +48,16 @@ export interface EmailSendReceipt {
  */
 export interface NotificationTransport {
   readonly mode: EmailTransportMode;
-  send(notification: ScheduleNotification): Promise<EmailSendReceipt>;
+  send(notification: EmailNotification): Promise<EmailSendReceipt>;
 }
 
 const consoleTransport: NotificationTransport = {
   mode: 'simulated',
   async send(notification) {
     if (!config.isTest) {
-      console.info(`[notify] simulated email for "${notification.planTitle}" on ${notification.serviceDate}`);
+      console.info(isAvailabilityRequest(notification)
+        ? '[notify] simulated availability request email'
+        : `[notify] simulated email for "${notification.planTitle}" on ${notification.serviceDate}`);
     }
     return { providerMessageId: null };
   },

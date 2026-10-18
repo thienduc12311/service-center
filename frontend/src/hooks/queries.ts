@@ -44,6 +44,25 @@ export const keys = {
   tagCatalog: (org: string | null) => [...keys.all(org), 'tag-catalog'] as const,
   reconciliations: (org: string | null) => [...keys.all(org), 'reconciliations'] as const,
   search: (org: string | null, q: string) => [...keys.all(org), 'search', q] as const,
+  // F03 availability. Person-scoped keys include the person, so a delegate's
+  // view of someone else never shares a cache entry with their own.
+  schedulingPreferences: (org: string | null, personId: string | null) =>
+    [...keys.all(org), 'scheduling-preferences', personId] as const,
+  availabilityReview: (org: string | null, personId: string | null) =>
+    [...keys.all(org), 'availability-review', personId] as const,
+  myAvailabilityRequests: (org: string | null) => [...keys.all(org), 'availability-requests', 'mine'] as const,
+  availabilityRequests: (org: string | null, teamId: string | null) =>
+    [...keys.all(org), 'availability-requests', 'team', teamId] as const,
+  availabilityRequest: (org: string | null, id: string) => [...keys.all(org), 'availability-requests', 'detail', id] as const,
+  delegations: (org: string | null) => [...keys.all(org), 'delegations'] as const,
+  delegatedSchedule: (org: string | null, id: string) => [...keys.delegations(org), id, 'schedule'] as const,
+  preferenceWarnings: (org: string | null, query: unknown) => [...keys.all(org), 'preference-warnings', query] as const,
+};
+
+/** Not organization-scoped: the signed-in user's own cross-organization settings. */
+export const userKeys = {
+  scheduleSettings: (userId: string | null) => ['user', userId, 'schedule-settings'] as const,
+  combinedSchedule: (userId: string | null, query: unknown) => ['user', userId, 'combined-schedule', query] as const,
 };
 
 const useOrg = () => useAuth().organizationId;
@@ -154,7 +173,7 @@ export const useMySchedule = (query: { include_past?: boolean; status?: string }
   });
 };
 
-export const useBlockouts = (query: { scope?: 'mine' | 'organization' } = {}) => {
+export const useBlockouts = (query: { scope?: 'mine' | 'organization'; person_id?: string } = {}) => {
   const org = useOrg();
   return useQuery({
     queryKey: keys.blockouts(org, query),
@@ -280,5 +299,80 @@ export const useGlobalSearch = (q: string) => {
     queryFn: () => api.search({ q: query, limit: 5 }),
     enabled: Boolean(org) && query.length >= 2,
     staleTime: 30_000,
+  });
+};
+
+// ------------------------------------------------------------ F03 --------
+
+export const useSchedulingPreferences = (personId?: string) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.schedulingPreferences(org, personId ?? null),
+    queryFn: () => api.listSchedulingPreferences(personId ? { person_id: personId } : undefined),
+    enabled: Boolean(org),
+  });
+};
+
+export const useAvailabilityReview = (personId?: string) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.availabilityReview(org, personId ?? null),
+    queryFn: () => api.availabilityReview(personId ? { person_id: personId } : undefined),
+    enabled: Boolean(org),
+  });
+};
+
+export const useMyAvailabilityRequests = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.myAvailabilityRequests(org), queryFn: () => api.myAvailabilityRequests(), enabled: Boolean(org) });
+};
+
+export const useAvailabilityRequests = (teamId: string | null, enabled = true) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.availabilityRequests(org, teamId),
+    queryFn: () => api.listAvailabilityRequests(teamId ? { team_id: teamId } : undefined),
+    enabled: Boolean(org) && enabled,
+  });
+};
+
+export const useAvailabilityRequest = (id: string | null) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.availabilityRequest(org, id ?? ''),
+    queryFn: () => api.getAvailabilityRequest(id!),
+    enabled: Boolean(org && id),
+  });
+};
+
+export const useDelegations = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.delegations(org), queryFn: () => api.listDelegations(), enabled: Boolean(org) });
+};
+
+export const useDelegatedSchedule = (id: string | undefined, enabled: boolean) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.delegatedSchedule(org, id ?? ''),
+    queryFn: () => api.delegatedSchedule(id!),
+    enabled: Boolean(org && id) && enabled,
+  });
+};
+
+export const useScheduleSettings = () => {
+  const userId = useAuth().user?.profile.id ?? null;
+  return useQuery({
+    queryKey: userKeys.scheduleSettings(userId),
+    queryFn: () => api.scheduleSettings(),
+    enabled: Boolean(userId),
+  });
+};
+
+export const useCombinedSchedule = (query: { from: string; to: string }, enabled: boolean) => {
+  const userId = useAuth().user?.profile.id ?? null;
+  return useQuery({
+    queryKey: userKeys.combinedSchedule(userId, query),
+    queryFn: () => api.combinedSchedule(query),
+    enabled: Boolean(userId) && enabled,
   });
 };
