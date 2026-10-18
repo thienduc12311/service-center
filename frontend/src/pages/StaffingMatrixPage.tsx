@@ -1,0 +1,182 @@
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  formatDateTime,
+  type StaffingMatrixAction,
+  type StaffingMatrixFilters,
+  type StaffingMatrixPreview,
+} from '@service-center/shared';
+import { api } from '../lib/api';
+import { keys, useServiceTypes, useStaffingMatrix, useStaffingMatrixViews, useTeams } from '../hooks/queries';
+import { useAuth } from '../providers/AuthProvider';
+import { Badge, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
+
+const day = 86_400_000;
+const defaultFilters = (): StaffingMatrixFilters => ({
+  from: new Date().toISOString(),
+  to: new Date(Date.now() + 56 * day).toISOString(),
+  service_type_ids: [], team_ids: [], plan_ids: [], search: null,
+});
+const dateInput = (value: string): string => value.slice(0, 10);
+const dateStart = (value: string): string => new Date(`${value}T00:00:00`).toISOString();
+const dateEnd = (value: string): string => new Date(`${value}T23:59:59.999`).toISOString();
+const cellKey = (personId: string, planId: string): string => `${personId}:${planId}`;
+
+export const StaffingMatrixPage = () => {
+  const { organizationId } = useAuth();
+  const client = useQueryClient();
+  const [filters, setFilters] = useState<StaffingMatrixFilters>(defaultFilters);
+  const [cursor, setCursor] = useState<string>();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [preview, setPreview] = useState<StaffingMatrixPreview | null>(null);
+  const [commitKey, setCommitKey] = useState('');
+  const [viewName, setViewName] = useState('');
+  const [teamId, setTeamId] = useState('');
+  const [positionId, setPositionId] = useState('');
+  const [visibility, setVisibility] = useState<'prepared' | 'released'>('prepared');
+  const [notify, setNotify] = useState(false);
+  const gridRef = useRef<HTMLTableElement>(null);
+  const input = useMemo(() => ({ filters, ...(cursor ? { cursor } : {}), page_size: 25 }), [filters, cursor]);
+  const matrix = useStaffingMatrix(input);
+  const views = useStaffingMatrixViews();
+  const teams = useTeams();
+  const serviceTypes = useServiceTypes();
+  const assignmentsByCell = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof matrix.data>['assignments']>();
+    for (const assignment of matrix.data?.assignments ?? []) {
+      const key = cellKey(assignment.person_id, assignment.plan_id);
+      map.set(key, [...(map.get(key) ?? []), assignment]);
+    }
+    return map;
+  }, [matrix.data]);
+  const conflictsByCell = useMemo(() => new Map((matrix.data?.conflicts ?? []).map((cell) => [cell.key, cell.conflicts])), [matrix.data]);
+  const totalsByPlan = useMemo(() => new Map((matrix.data?.plans ?? []).map((plan) => {
+    const requests = (matrix.data?.assignments ?? []).filter((assignment) => assignment.plan_id === plan.id);
+    return [plan.id, {
+      needed: plan.needs.reduce((sum, need) => sum + need.needed, 0),
+      staffed: requests.length,
+      prepared: requests.filter((assignment) => assignment.visibility === 'prepared').length,
+    }];
+  })), [matrix.data]);
+  const selectedTeam = teams.data?.find((team) => team.id === teamId);
+
+  const previewMutation = useMutation({
+    mutationFn: (actions: StaffingMatrixAction[]) => api.previewStaffingMatrix({ actions }),
+    onSuccess: (result) => { setPreview(result); setCommitKey(crypto.randomUUID()); },
+  });
+  const commitMutation = useMutation({
+    mutationFn: () => api.commitStaffingMatrix({
+      operation_id: preview!.operation_id, actions: preview!.actions,
+      base_revisions: preview!.base_revisions, idempotency_key: commitKey,
+    }),
+    onSuccess: async (result) => {
+      setPreview(null); setSelected(new Set());
+      await client.invalidateQueries({ queryKey: keys.staffingMatrix(organizationId, input) });
+      for (const planId of result.affected_plan_ids) await client.invalidateQueries({ queryKey: keys.plan(organizationId, planId) });
+    },
+  });
+  const saveView = useMutation({
+    mutationFn: () => api.saveStaffingMatrixView({ name: viewName, filters }),
+    onSuccess: async () => { setViewName(''); await client.invalidateQueries({ queryKey: keys.staffingMatrixViews(organizationId) }); },
+  });
+
+  const selectedEntries = [...selected].map((key) => {
+    const [personId, planId] = key.split(':');
+    return { key, personId: personId!, planId: planId!, assignments: assignmentsByCell.get(key) ?? [] };
+  });
+  const previewAssign = () => {
+    if (!teamId) return;
+    const actions: StaffingMatrixAction[] = selectedEntries.filter((entry) => entry.assignments.length === 0).map((entry) => ({
+      kind: 'assign', plan_id: entry.planId, person_id: entry.personId, team_id: teamId,
+      position_id: positionId || null, visibility, attendance_mode: 'all', time_ids: [], notify: visibility === 'released' && notify,
+    }));
+    if (actions.length) previewMutation.mutate(actions);
+  };
+  const previewRemove = () => {
+    const actions: StaffingMatrixAction[] = selectedEntries.flatMap((entry) => entry.assignments.map((assignment) => ({
+      kind: 'remove' as const, plan_id: assignment.plan_id, assignment_id: assignment.id,
+      expected_request_revision: assignment.request_revision,
+    })));
+    if (actions.length) previewMutation.mutate(actions);
+  };
+  const previewRelease = () => {
+    const actions: StaffingMatrixAction[] = selectedEntries.flatMap((entry) => entry.assignments
+      .filter((assignment) => assignment.visibility === 'prepared').map((assignment) => ({
+        kind: 'release' as const, plan_id: assignment.plan_id, assignment_id: assignment.id,
+        expected_request_revision: assignment.request_revision, notify,
+      })));
+    if (actions.length) previewMutation.mutate(actions);
+  };
+  const previewCopy = () => {
+    const source = selectedEntries.flatMap((entry) => entry.assignments).at(0);
+    if (!source) return;
+    const actions: StaffingMatrixAction[] = selectedEntries
+      .filter((entry) => entry.assignments.length === 0 && entry.personId === source.person_id)
+      .map((entry) => ({ kind: 'copy', source_assignment_id: source.id,
+        expected_source_revision: source.request_revision, destination_plan_id: entry.planId,
+        destination_attendance_mode: 'all', destination_time_ids: [], visibility, notify: visibility === 'released' && notify }));
+    if (actions.length) previewMutation.mutate(actions);
+  };
+
+  const toggleCell = (key: string) => setSelected((current) => {
+    const next = new Set(current); if (next.has(key)) next.delete(key); else next.add(key); return next;
+  });
+  const navigateGrid = (event: KeyboardEvent<HTMLButtonElement>, row: number, column: number, key: string) => {
+    if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); toggleCell(key); return; }
+    const directions: Record<string, [number, number]> = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+    const delta = directions[event.key]; if (!delta) return;
+    event.preventDefault();
+    const target = gridRef.current?.querySelector<HTMLButtonElement>(`[data-row="${row + delta[0]}"][data-column="${column + delta[1]}"]`);
+    target?.focus();
+  };
+
+  return (
+    <div>
+      <PageHeader title="Staffing matrix" subtitle="Compare and staff up to 12 plans. Every batch is reviewed before it changes anything."
+        actions={<Link to="/plans"><Button variant="secondary">Back to plans</Button></Link>} />
+      <section className="card mb-5 space-y-3 p-4" aria-label="Matrix filters">
+        <div className="grid gap-3 md:grid-cols-4">
+          <label className="text-sm">From<input className="input mt-1" type="date" value={dateInput(filters.from)} onChange={(e) => { setCursor(undefined); setFilters({ ...filters, from: dateStart(e.target.value) }); }} /></label>
+          <label className="text-sm">To<input className="input mt-1" type="date" value={dateInput(filters.to)} onChange={(e) => { setCursor(undefined); setFilters({ ...filters, to: dateEnd(e.target.value) }); }} /></label>
+          <label className="text-sm">Service type<select className="input mt-1" value={filters.service_type_ids[0] ?? ''} onChange={(e) => { setCursor(undefined); setFilters({ ...filters, service_type_ids: e.target.value ? [e.target.value] : [] }); }}><option value="">All permitted</option>{(serviceTypes.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label className="text-sm">Team<select className="input mt-1" value={filters.team_ids[0] ?? ''} onChange={(e) => { setCursor(undefined); setTeamId(e.target.value); setPositionId(''); setFilters({ ...filters, team_ids: e.target.value ? [e.target.value] : [] }); }}><option value="">All permitted</option>{(teams.data ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="min-w-48 flex-1 text-sm">Find a person<input className="input mt-1" value={filters.search ?? ''} onChange={(e) => { setCursor(undefined); setFilters({ ...filters, search: e.target.value || null }); }} /></label>
+          <label className="min-w-48 text-sm">Saved view<select className="input mt-1" value="" onChange={(e) => { const view = views.data?.find((item) => item.id === e.target.value); if (view) { setCursor(undefined); setFilters(view.filters); setTeamId(view.filters.team_ids[0] ?? ''); } }}><option value="">Choose…</option>{(views.data ?? []).map((view) => <option key={view.id} value={view.id}>{view.name}</option>)}</select></label>
+          <input aria-label="New saved view name" className="input w-48" placeholder="View name" value={viewName} onChange={(e) => setViewName(e.target.value)} />
+          <Button variant="secondary" disabled={!viewName.trim()} loading={saveView.isPending} onClick={() => saveView.mutate()}>Save view</Button>
+        </div>
+      </section>
+
+      <ErrorNotice error={matrix.error ?? previewMutation.error ?? saveView.error} />
+      {matrix.isLoading ? <Loading /> : !matrix.data?.plans.length ? <EmptyState title="No permitted plans" description="Adjust the date or service-type filters. Only plans and teams you can schedule appear here." /> : (
+        <>
+          <section className="card mb-4 flex flex-wrap items-end gap-3 p-4" aria-label="Selected cell actions">
+            <div className="mr-auto"><p className="font-medium">{selected.size} cells selected</p><p className="text-xs text-slate-500">Use arrow keys to move and Space to select.</p></div>
+            <label className="text-sm">Team<select className="input mt-1 min-w-36" value={teamId} onChange={(e) => { setTeamId(e.target.value); setPositionId(''); }}><option value="">Choose</option>{(teams.data ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
+            <label className="text-sm">Position<select className="input mt-1 min-w-36" value={positionId} onChange={(e) => setPositionId(e.target.value)}><option value="">No position</option>{(selectedTeam?.positions ?? []).map((position) => <option key={position.id} value={position.id}>{position.name}</option>)}</select></label>
+            <label className="text-sm">State<select className="input mt-1" value={visibility} onChange={(e) => setVisibility(e.target.value as 'prepared' | 'released')}><option value="prepared">Prepare</option><option value="released">Release</option></select></label>
+            <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />Notify on release</label>
+            <Button disabled={!selected.size || !teamId} onClick={previewAssign}>Assign</Button>
+            <Button variant="secondary" disabled={!selectedEntries.some((entry) => entry.assignments.length)} onClick={previewRemove}>Remove</Button>
+            <Button variant="secondary" disabled={!selectedEntries.some((entry) => entry.assignments.some((a) => a.visibility === 'prepared'))} onClick={previewRelease}>Release</Button>
+            <Button variant="secondary" disabled={!selectedEntries.some((entry) => entry.assignments.length) || !selectedEntries.some((entry) => !entry.assignments.length)} onClick={previewCopy}>Copy</Button>
+          </section>
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table ref={gridRef} className="min-w-full border-collapse text-sm">
+              <thead><tr className="bg-slate-50"><th className="sticky left-0 z-10 min-w-52 border-b border-r bg-slate-50 p-3 text-left">Person</th>{matrix.data.plans.map((plan) => { const totals = totalsByPlan.get(plan.id)!; return <th key={plan.id} className="min-w-48 border-b border-r p-3 text-left"><Link className="font-medium hover:underline" to={`/plans/${plan.id}`}>{plan.title}</Link><div className="text-xs font-normal text-slate-500">{formatDateTime(plan.service_date)}</div><div className="mt-1 text-xs font-normal text-slate-600">{totals.staffed} staffed · {totals.needed} needed · {totals.prepared} prepared</div></th>; })}</tr></thead>
+              <tbody>{matrix.data.people.map((person, row) => <tr key={person.id}><th className="sticky left-0 z-10 border-b border-r bg-white p-3 text-left font-normal"><div className="font-medium">{person.full_name}</div><div className="text-xs text-slate-500">{person.recent_serving_count} recent{person.last_served_at ? ` · last ${formatDateTime(person.last_served_at)}` : ''}</div></th>{matrix.data!.plans.map((plan, column) => { const key = cellKey(person.id, plan.id); const assignments = assignmentsByCell.get(key) ?? []; const conflicts = conflictsByCell.get(key) ?? []; const chosen = selected.has(key); return <td key={plan.id} className="border-b border-r p-1 align-top"><button type="button" data-row={row} data-column={column} aria-pressed={chosen} aria-label={`${chosen ? 'Deselect' : 'Select'} ${person.full_name} for ${plan.title}`} className={`min-h-20 w-full rounded-lg p-2 text-left outline-none focus:ring-2 focus:ring-brand-500 ${chosen ? 'bg-brand-50 ring-1 ring-brand-300' : 'hover:bg-slate-50'}`} onClick={() => toggleCell(key)} onKeyDown={(event) => navigateGrid(event, row, column, key)}>{assignments.map((assignment) => <div key={assignment.id} className="mb-1"><span className="font-medium">{assignment.position_name ?? assignment.team_name}</span> <Badge tone={assignment.status === 'declined' ? 'danger' : assignment.status === 'confirmed' ? 'success' : 'neutral'}>{assignment.visibility === 'prepared' ? 'prepared' : assignment.status}</Badge></div>)}{!assignments.length && <span className="text-slate-400">Empty</span>}{conflicts.length > 0 && <div className="mt-1 text-xs text-amber-700">⚠ {conflicts.length} conflict{conflicts.length === 1 ? '' : 's'}</div>}</button></td>; })}</tr>)}</tbody>
+            </table>
+          </div>
+          {matrix.data.next_cursor && <div className="mt-4 flex justify-end"><Button variant="secondary" onClick={() => setCursor(matrix.data!.next_cursor ?? undefined)}>Next people</Button></div>}
+        </>
+      )}
+
+      <Modal open={Boolean(preview)} title="Review staffing batch" onClose={() => { if (!commitMutation.isPending) setPreview(null); }}>
+        {preview && <div className="space-y-4"><p className="text-sm">This is one atomic {preview.items.length}-change batch. If any selected cell becomes stale, none of it is applied.</p><ul className="max-h-80 space-y-2 overflow-y-auto">{preview.items.map((item) => <li key={item.index} className="rounded-lg border p-3 text-sm"><div className="font-medium">{item.person_name} · {item.plan_title}</div><div className="text-slate-500">{item.action.kind} · {item.delivery_intent === 'assignment_request' ? 'will notify after commit' : 'no delivery'}</div>{item.conflicts.map((conflict, index) => <div key={index} className="mt-1 text-amber-700">⚠ {conflict.detail}</div>)}{item.warnings.map((warning) => <div key={warning} className="mt-1 text-amber-700">{warning}</div>)}</li>)}</ul>{preview.has_blocking_conflicts && <p role="alert" className="text-sm text-red-700">Resolve blocking conflicts before committing this batch. Your selected cells will remain selected.</p>}<ErrorNotice error={commitMutation.error} /><div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => setPreview(null)}>Back</Button><Button disabled={preview.has_blocking_conflicts} loading={commitMutation.isPending} onClick={() => commitMutation.mutate()}>Commit all changes</Button></div></div>}
+      </Modal>
+    </div>
+  );
+};

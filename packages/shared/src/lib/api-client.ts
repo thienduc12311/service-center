@@ -187,6 +187,18 @@ import type {
   UpdatePositionPayload,
   UpdateTeamPayload,
 } from '../schemas/team.js';
+import type {
+  StaffingMatrixCommitResult,
+  StaffingMatrixPage,
+  StaffingMatrixPreview,
+  StaffingMatrixSavedView,
+} from '../types/staffing-matrix.js';
+import type {
+  CommitStaffingMatrixInput,
+  PreviewStaffingMatrixInput,
+  SaveStaffingMatrixViewInput,
+  StaffingMatrixQueryInput,
+} from '../schemas/staffing-matrix.js';
 
 export class ApiError extends Error {
   constructor(
@@ -512,6 +524,20 @@ export class ServiceCenterApi {
     this.request<AssignmentRow[]>('PUT', '/api/v1/assignments/response-owner', body);
   responseOwnerHistory = (assignmentId: string) =>
     this.request<AssignmentOwnerChangeRow[]>('GET', `/api/v1/assignments/${assignmentId}/response-owner-history`);
+
+  // ---------------------------------------------------- staffing matrix --
+  staffingMatrix = (body: StaffingMatrixQueryInput) =>
+    this.request<StaffingMatrixPage>('POST', '/api/v1/staffing-matrix/query', body);
+  previewStaffingMatrix = (body: PreviewStaffingMatrixInput) =>
+    this.request<StaffingMatrixPreview>('POST', '/api/v1/staffing-matrix/preview', body);
+  commitStaffingMatrix = (body: CommitStaffingMatrixInput) =>
+    this.request<StaffingMatrixCommitResult>('POST', '/api/v1/staffing-matrix/commit', body);
+  staffingMatrixViews = () =>
+    this.request<StaffingMatrixSavedView[]>('GET', '/api/v1/staffing-matrix/views');
+  saveStaffingMatrixView = (body: SaveStaffingMatrixViewInput) =>
+    this.request<StaffingMatrixSavedView>('POST', '/api/v1/staffing-matrix/views', body);
+  deleteStaffingMatrixView = (id: string) =>
+    this.request<void>('DELETE', `/api/v1/staffing-matrix/views/${id}`);
 
   // ------------------------------------------------------------- access --
   /** The caller's effective access in the active organization. */

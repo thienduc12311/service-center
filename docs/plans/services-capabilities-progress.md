@@ -25,7 +25,12 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F04 Pass B — shared resolver, typed redacted conflicts, commit-time safety, audited override | implemented; QA pending | same | Product review: same-plan double role = warning; copy over a conflict needs a reason |
 | F04 Pass C — web time selection/impact UI, native compatibility, verification | implemented; QA pending | same | Native time editor/selection (MOB-015/008) on the same APIs; device QA |
 | F04 epic | in progress | — | Gates below; epic is not complete |
-| F05 – F17 | not started | — | **Next: F08 Pass A — versioned release and reminders** (F11 Pass A can run independently) |
+| F05 Pass A — bounded authorized staffing workspace | implemented; QA pending | `codex/f05-multi-plan-matrix` | Signed-in browser/accessibility matrix on production-like roster data |
+| F05 Pass B — reviewed atomic bulk staffing | implemented; QA pending | same | Real-provider delivery remains the shared F00 gate |
+| F05 Pass C — recoverable web conflict review | implemented; QA pending | same | Product/browser review; native scheduler is separate scope |
+| F05 Pass C extension — Order Matrix | not started (gated) | — | F10/F11 atomic section/item copy contracts |
+| F05 epic | in progress | — | Core implemented; Order Matrix extension and QA gates remain explicit |
+| F06 – F17 | not started | — | **Next: F08 Pass A — versioned release and reminders** (F11 Pass A can run independently) |
 
 ## F00 — 2026-10-16
 
@@ -254,3 +259,36 @@ Schedule dialog: Times (All times / Only these times, with untimed notice), live
 
 **Next pass:** F08 Pass A — versioned release and reminders (reuse `attendance_calendar_states` sequences and `assignment_attendance_for` for reminder scope). F11 Pass A remains independent.
 
+## F05 — 2026-10-18
+
+**Pre-existing state.** `main` at the completed F04 working state, clean; new branch `codex/f05-multi-plan-matrix`. F01 supplied scoped plan/team capabilities and prepared visibility; F02 supplied canonical Person identity; F03 supplied preference/freshness warnings; F04 supplied exact assigned-time conflicts, sorted Person locks and commit-time constraint checks. MOB-005/F01 already supplied versioned release. F10/F11 section/item-copy contracts are not implemented, so the separate Order Matrix extension remains gated and is not included in the core completion claim.
+
+### Boundary and contracts
+- Matrix queries accept a UTC date range, up to 20 service-type/team filters, at most 12 explicit plans and a keyset Person cursor; the API refuses a result wider than 12 plans and pages at 1–50 People. It loads only the selected RLS-visible plans, requests, needs, times and current roster page, then adds exact conflicts and authorized 90-day serving metrics. Deterministic order is service date/id for plans and id for the roster cursor.
+- Shared `types/staffing-matrix.ts` and `schemas/staffing-matrix.ts` define query/view/action/preview/commit contracts. Actions are explicit `assign`, `remove`, staffing `copy`, and `release`. Copy requires the source request revision plus an explicit destination attendance scope; it creates a new unconfirmed request and never copies answers or delivery timestamps.
+- `POST /staffing-matrix/preview` performs reads only. It returns the SHA-256 operation identity, every affected plan's `staffing_revision`, exact people/plans/actions/times, F03 warnings, F04 conflicts and delivery intent. Blocking conflicts keep the manual cell selection and disable commit.
+- `POST /staffing-matrix/commit` calls one `commit_staffing_matrix` database transaction. The transaction locks all plans by UUID, validates the exact plan/revision set and every cell, locks all People through F04's sorted advisory-lock helper, reuses versioned release and `schedule_plan_assignments`, forces deferred conflict checks, stores the result by owner/org/idempotency key and returns that same result on replay. Any stale or invalid middle cell raises `matrix_changed`; the transaction rolls back every earlier statement. Outbox delivery runs only after commit.
+
+### Persistence and authorization
+- Migration `20261021000000_f05_staffing_matrix.sql`: `plans.staffing_revision` plus assignment/need/time bump triggers; owner-only `staffing_matrix_views` RLS with `(organization_id, owner_id, name)` uniqueness; owner-readable, function-written `staffing_matrix_commits`; read-only identity and atomic commit functions with explicit `auth.uid()`/capability checks and least-privilege grants. Saved filters are revalidated and stripped against current scopes every time they are returned.
+- The matrix API requires `scheduling.manage` somewhere; exact plan/team cells are filtered through effective access and rechecked with `can_schedule_on_plan` inside the commit. Prepared requests remain visible only through existing assignment RLS. Counts and recent-serving metrics are derived only from caller-visible rows.
+
+### Web
+- `/plans/matrix` is linked from Plans for schedulers. The responsive table shows people against plans, plan needs, prepared/released answers, conflicts and recent serving context. Date/service type/team/person filters and owner-only named views are supported.
+- Cells are buttons with pressed state and a complete keyboard path: arrow keys move, Space/Enter select, and Assign/Remove/Release/Copy buttons replace drag-only interaction. Preview explains atomic scope and delivery; selections survive preview errors/conflicts and clear only after success. Success refreshes the active matrix and affected plan queries only.
+
+### Checks
+- `npm run typecheck` — pass across shared/backend/frontend/mobile. `npm run build` — pass (existing Vite large-chunk warning only).
+- `npm test`: shared 130 (including F05 12-plan/50-person/copy-scope schema tests), backend non-HTTP 96, mobile 42 pass in the sandbox. Backend HTTP tests initially hit sandbox `listen EPERM`; rerun with local-port permission: backend 107/107 pass.
+- `supabase migration up --local` — migration applies. The final commit function was re-applied after adding the no-silent-skip guard.
+- `supabase/tests/f05-staffing-matrix.sql` — pass and rollback: two-plan atomic assign, prepared/reset request state, duplicate commit returns byte-equivalent original result, stale second plan refuses the whole removal batch, and another owner cannot read the saved view.
+- `bash supabase/tests/f05-concurrent-matrix.sh` — two real database sessions both preview clean overlapping assignments for one Person; sorted locking yields one complete stored batch and one commit-time conflict, with one assignment total.
+- `git diff --check` — pass.
+
+### Remaining gates
+- Run signed-in browser QA with a 12-plan/50-person production-like roster, narrow/scoped leader, keyboard-only and screen-reader navigation, empty/denied/error/stale states, both themes and accessibility text. The code/build/database checks are complete, but this manual UX matrix was not run.
+- Real email/push provider acceptance remains the shared F00 gate; matrix preview/commit and outbox creation do not claim provider delivery.
+- Replay the full migration chain from an empty disposable database before a shared environment.
+- Order Matrix US-05.2 remains gated on F10/F11 atomic section/item copying. It must stay a separate order-content transaction and never reuse the staffing-copy action.
+
+**Next pass:** F08 Pass A remains the scheduling-platform priority; F10/F11 are the prerequisite for the optional F05 Order Matrix extension.

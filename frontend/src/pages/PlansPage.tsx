@@ -22,6 +22,7 @@ const defaultServiceDate = () => {
 export const PlansPage = () => {
   const { canAnywhere } = useAuth();
   const canManage = canAnywhere('plans.edit');
+  const canSchedule = canAnywhere('scheduling.manage');
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
   const serviceTypes = useServiceTypes();
@@ -105,6 +106,7 @@ export const PlansPage = () => {
                 <Button onClick={() => setCreating(true)}>New plan</Button>
               </>
             )}
+            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/matrix')}>Staffing matrix</Button>}
           </div>
         }
       />

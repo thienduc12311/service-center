@@ -37,6 +37,7 @@ import { delegationsRouter } from './routes/delegations.js';
 import { meAvailabilityRouter } from './routes/me-availability.js';
 import { accessRouter } from './routes/access.js';
 import { foldersRouter } from './routes/folders.js';
+import { staffingMatrixRouter } from './routes/staffing-matrix.js';
 import { songbooksRouter } from './routes/songbooks.js';
 import {
   deviceRevocationsRouter,
@@ -121,6 +122,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/deliveries', scoped, deliveriesRouter);
   app.use('/api/v1/access', scoped, accessRouter);
   app.use('/api/v1/folders', scoped, foldersRouter);
+  app.use('/api/v1/staffing-matrix', scoped, staffingMatrixRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
