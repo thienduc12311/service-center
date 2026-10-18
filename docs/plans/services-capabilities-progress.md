@@ -47,7 +47,13 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F09 Pass B — targeted operational messages | implemented; QA pending | same | Real-provider email check (shared F00 gate); product review of audience groups |
 | F09 Pass C — team/plan conversations | implemented; QA pending | same | Organization youth/guardian policy before any DM or youth participation; native MOB-019 |
 | F09 epic | in progress | — | Gates below; rich/DM/attachments (F13) stay unselected; epic is not complete |
-| F10 – F17 | not started | — | **Next: F13 Pass A** (F09 attachments wait on it); F11 Pass A remains independent |
+| F10 Pass A — saved templates, revisions and safe apply | implemented; QA pending | `feature/f10-templates-bulk-plans` (uncommitted, from `20a4802`) | Signed-in QA with a service-type-scoped plan editor; product review of apply rules (below) |
+| F10 Pass B — bounded DST-safe date generation | implemented; QA pending | same | Product review of the 12-plan atomic cap (no resumable job) |
+| F10 Pass C slice — reusable section templates | implemented; QA pending | same | Native MOB-013 on the same preview/commit |
+| F10 Pass C slice — deliberate bulk reschedule (shift whole plans vs order only) | implemented; QA pending | same | Product review of reset/notify defaults; signed-in commit QA on real data |
+| F10 Pass C — plan series/title/artwork, service-type defaults copy | not started | — | **Next F10 pass: Pass C plan series/title/artwork** (optional extension; select explicitly) |
+| F10 epic | in progress | — | Core (A/B), sections and reschedule implemented; series/artwork/defaults and QA gates remain explicit |
+| F11 – F17 | not started | — | F13 Pass A (F09 attachments wait on it); F11 Pass A remains independent |
 
 ## F00 — 2026-10-16
 
@@ -472,3 +478,74 @@ Branch `feature/f08-batched-release-paths` (from `c0612b2`).
 - **Native:** MOB-016 (categorized notes), MOB-018 (message composer/history, OS text handoff), MOB-019 (conversations) consume these contracts; device QA pending.
 
 **Exact next pass:** F13 Pass A — file upload/finalize/version lifecycle with matching Storage access (unblocks F09 attachments and F14). F09 remains **in progress**, not complete, until the gates above are closed; F11 Pass A remains independent.
+
+## F10 — 2026-10-18
+
+**Pre-existing state.** `main` at `20a4802` (F09 merged), clean. New branch `feature/f10-templates-bulk-plans`. No mobile ledger exists (`docs/plans/mobile-remaining-progress.md`); MOB-013 has not started, so nothing to point at yet.
+
+**Dependency evidence.** F00: plan `content_revision` triggers, idempotency/advisory-lock pattern, `private.lock_scheduling_people` (`20261016000200`, `atomic-plan-copy.sql`). F01: `private.capability_for`, `can_edit_plan`, plan/assignment RLS, prepared visibility (`f01-scoped-access.sql`). F02: Person-first `assignments.person_id`, archived People. F04: deferred conflict constraint + `private.check_pending_conflicts`, `f04.conflict_override_reason` audit, shared IANA resolver `possibleInstantsForLocalDateTime` (`timezone.ts`, `f04-assigned-times.sql`). F08: prepared rows stay out of member reads and reminders until release. F09: `plans.notes` legacy-note mirror, item comments/notes (warned before replace removes items).
+
+### Contract (implementation note)
+- **Concepts.** Service type and plan unchanged. `plan_templates.kind = 'plan'` (named template) or `'section'` (order items only). Content lives in immutable `plan_template_revisions` (jsonb `{notes, times, items, needs, roster}`); editing content saves revision N+1 with `expected_revision` (PT409 `template_changed`). Name/description edits do not create a revision. Archive/restore only; no delete grant.
+- **Times** are wall-clock intent: `{kind, name, day_offset, local_start 'HH:MM', duration_minutes}` relative to the plan's local service date in the organization's IANA timezone. The API resolves instants with the shared resolver (gap → reported, fold → explicit `ambiguous_time`), and SQL re-verifies each instant shows that local time on that local date, so fixed-offset week arithmetic is refused.
+- **Copied component matrix.**
+
+  | Component | Append | Replace | Never copied |
+  |---|---|---|---|
+  | Order items | inserted at end or chosen position (renumbered) | all items removed first (warns when they carry notes/comments) | item discussion |
+  | Times | added after existing | blocked (`times_in_use`) once anyone is scheduled; use the F04 time editor | ICS sequence, revision |
+  | Notes | set if empty, else appended (≤8000) | set | private/categorized F09 notes |
+  | Needed positions | destination value kept (listed as `kept`) | cleared, then set | plan-specific positions |
+  | Roster pattern | new `prepared` + `unconfirmed` requests for all times; existing (person, team, position) skipped | never removes anyone (warning) | answers, notified/sent/released timestamps, attendance selections, run timing |
+- **Apply.** `preview_plan_template_apply` writes nothing and returns exactly what is added/removed/kept/skipped (with reasons: song deleted, position gone, person archived, caller does not schedule that team) plus a hash. `apply_plan_template` locks the plan, checks `expected_revision` (PT409 `plan_changed` → `plan_revision_stale`), recomputes the preview and requires the same hash (PT409 `template_preview_changed`), refuses blocking items, applies, checks conflicts (F04 refusal/override reason) and records `plan_template_applications` provenance (name, kind, revision number, revision id). Same idempotency key → first result (`replayed`); same key, different request → `idempotency_key_reused`. Applying the same template again is allowed and flagged `already_applied`.
+- **Generation.** Weekly every 1–4 weeks, count ≤ 12 and optional end date; holiday exclusions and per-date skip/move/title edits are listed, never silently dropped. **Strategy: atomic bounded batch** (one transaction for ≤12 plans; not a resumable job). Retry with the same key returns the same `plan_ids`; a changed template or date list is PT409 `template_preview_changed`. Each plan gets a provenance row with `batch_id`; `plan_generation_batches` keeps the reviewed series.
+- **Authorization.** Read: `plans.edit` at the template's service type (or anywhere, for an organization-wide template). Write/apply/generate: `plans.edit` at that scope (RLS + invoker RPCs); roster rows also need `scheduling.manage` for the team or are listed as skipped; RLS re-checks every insert. Members get 403 at the API and see no rows.
+- **Compatibility.** Duplicate, create-with-copy and "Import from another plan" are unchanged and still use F00's `private.copy_plan_children`; templates use their own writer inside the same transaction pattern rather than re-routing those paths (no behavior change for existing clients). Routes are `/plan-templates` (with `kind=section` instead of a separate `/item-templates`), `/plans/:id/apply-template[/preview]`, `/plans/:id/template-applications`, `/plans/generate[/preview]`.
+
+### Delivered
+- Migration `20261027000000_f10_plan_templates.sql` (Supabase skill: RLS basics/performance, column-level update grant, FK indexes, partial unique indexes, advisory locks, short transactions): 4 tables, RLS, validator (same-organization songs/arrangements/positions/teams/People), snapshot-from-plan, preview/write core, apply and generation RPCs.
+- Shared: `types/plan-templates.ts`, `schemas/plan-templates.ts`, `lib/plan-templates.ts` (`resolveTemplateTimes`, `expandPlanSeries`, labels), `Database` table/function entries, API client methods.
+- Backend: `model/plan-template.model.ts`, `services/plan-templates.ts`, `routes/plan-templates.ts`, new PT409 codes `template_changed`/`template_preview_changed`.
+- Web: Plans → Templates (`/plans/templates`: library, revision history, content editor that saves the next revision, archive/restore) and Create from template (`/plans/generate`: series form, holidays, per-date skip/move/rename, DST choice, per-plan review, existing-plan warnings, conflict override). Plan page: Apply template (component choice, append/replace, insert position, review, stale/conflict recovery), Save as template (new or next revision; plan or section), provenance line.
+
+### Checks (Node v20.20.1 locally; manifests ask for ≥26.8.1)
+- `npm run build:shared`, `npm run typecheck`, `npm test`, `npm run build` — pass (shared 174 incl. 7 new, backend 140 incl. 4 new, mobile 42).
+- `supabase/tests/f10-plan-templates.sql` — 13 blocks pass: member refused, snapshot excludes declined and saves wall-clock times, foreign song and unknown component refused, preview writes nothing, stale revision → `plan_changed`, wrong hash → `template_preview_changed`, apply + replay + provenance + prepared/unconfirmed/no timestamps, reused key refused, duplicate intent flagged, template edit leaves revision 1 and the plan unchanged, revisions immutable, replace-times blocked, mismatched times refused, roster conflict rolls back items and provenance, section insert position, archived refused, generation across 2027-11-07 DST (fixed-offset refused, replay same ids, provenance per plan, roster prepared). Mutating one assertion makes it fail (harness check).
+- `supabase/tests/f10-concurrent-apply.sh` (committed rows, two sessions): same-key generation → one batch and identical ids; two applies from one preview → one applied, one stale.
+- Regression: `atomic-plan-copy.sql`, `f04-assigned-times.sql`, `f05-staffing-matrix.sql`, `f09-notes-messages-chat.sql` — pass. Migration re-applied from scratch inside a rolled-back transaction — pass.
+- Live API (:4100, local Supabase, email disabled): 15/15 — member 403, save from plan, preview no-write, apply, roster prepared, replay, stale 409, duplicate flag, provenance, revision 2 leaves plan alone, stale edit 409, generation preview (holiday listed), 4 plans created at constant local time across DST, same-key retry. Test rows deleted afterwards.
+- Browser (signed-in seeded scheduler, local dev): save-as-template → library shows local times; generation review across 2026-11-01 DST shows 06:00 local before and after, holiday listed, existing same-day plans flagged, per-date Skip re-reviews; apply review on a plan shows items/roster counts. UI-created template deleted afterwards.
+- Expo export not run: no native code changed (mobile typecheck/tests pass against the new shared build).
+
+### Remaining gates
+- **QA:** signed-in multi-role pass with a scheduler whose `plans.edit` is scoped to one service type (organization-wide templates read-only for them); keyboard/screen-reader pass of the three dialogs/pages; dark theme.
+- **Product review:** roster pattern excludes declined requests; replace never removes scheduled people and refuses time replacement once anyone is scheduled; 12-plan atomic cap instead of a resumable job; generated plan date = first service time on the day (else local noon); per-date edits are date/title/skip only (times follow the template revision).
+- **Not implemented (Pass C extensions):** plan series/title/artwork, copying service-type defaults (bulk reschedule: see the Pass C entry below). Routing duplicate/import through the template writer was deliberately not done.
+- **Native:** MOB-013 consumes `/plans/generate[/preview]` and `/plans/:id/apply-template[/preview]`; no native UI yet.
+- **Empty-database replay** (`supabase db reset`) not run (destructive local reset is outside the default pass); rollback replay passed.
+- Pre-existing, unrelated: the app header overflows horizontally by ~57px at 1024px width on every page.
+
+**Next pass:** superseded by the Pass C reschedule entry below.
+
+### F10 Pass C — deliberate bulk reschedule — 2026-10-18
+
+**Contract.** `POST /plans/reschedule/preview` (writes nothing) and `POST /plans/reschedule` (one transaction, idempotency key required, preview hash required). Two modes, never mixed:
+- `shift` (≤12 plans): each plan moves to a new local date; every time keeps its local clock and its day relative to the service date (API resolves with `shiftPlanToDate`, SQL re-verifies; DST gap → 400). Each plan goes through F04's `apply_plan_time_changes` with the **same time ids**, so live request links go stale, ICS sequences bump, reminder jobs are recomputed by the F08 triggers and (when `notify`) released non-declined people are re-sent the request; effects are delivered after commit. **Answers stay as they are** unless `reset_responses` is explicitly chosen: then released confirmed/declined requests become unconfirmed, recorded in `assignment_responses` with the scheduler as actor and note "Reset because the plan was rescheduled". Prepared requests stay prepared.
+- `order_only`: source plan's items into a destination (append or replace; move or copy) through F00's `private.copy_plan_children`; times, both rosters, answers, reminders, feeds and notes are untouched; a reset is refused in SQL (the API schema has no such field).
+- Preview per plan: times from → to (local), People by answer and visibility, who would be reset, conflicts (overlaps with other plans — a warning, as F04 time edits never refuse), counts of re-sent requests, invalidated links, recalculated reminder jobs, moving calendar-feed entries and queued deliveries; warnings for a taken date, kept confirmations and a silent reset.
+- Commit: sorted plan locks, recomputed preview must match the hash; a review that no longer validates is PT409 `template_preview_changed` (stale), not 400. Same key → first result; different request → `idempotency_key_reused`. `plan_reschedule_operations` (RLS: managers read, plan editors insert, no update/delete) records each operation. No template linkage, grant or Person copying.
+
+**Delivered.** Migration `20261027000100_f10_plan_reschedule.sql`; shared `reschedulePreviewSchema`/`rescheduleCommitSchema`, preview/result types, `shiftPlanToDate`/`localTimeAt`, API client `previewReschedule`/`reschedulePlans`; backend service + routes; web Plans → Reschedule (`/plans/reschedule`): whole-plan or order-only, per-plan dates or "move selected by N days", notify toggle, explicit reset checkbox (off by default), per-plan review, stale recovery.
+
+**Checks.**
+- `supabase/tests/f10-plan-reschedule.sql` — 6 blocks: member refused; fixed-offset move refused across 2027-11-07; preview writes nothing; shift keeps 10:00 local and the evening-before rehearsal, keeps confirmed/declined and prepared state, keeps time ids; replay; reused key refused; stale review → `template_preview_changed`; overlap shown as warning; failure on the second plan (test-only trigger) rolls back the first plan's move and reset and leaves no operation row; explicit reset with notify off warns, resets 2 released answers and records 2 history rows with actor and note; order-only refuses reset, appends to destination, empties source, keeps destination roster and date.
+- `supabase/tests/f10-concurrent-reschedule.sh` — two sessions, one review, different keys, across the 2028-03-12 spring-forward: one moves (10:00 local), the other is refused as stale.
+- Regression: `f10-plan-templates.sql`, `f10-concurrent-apply.sh`, `atomic-plan-copy.sql`, `f04-assigned-times.sql`, `f08-release-reminders.sql`, `f09-notes-messages-chat.sql` — pass. Both F10 migrations re-applied from scratch inside a rolled-back transaction — pass.
+- `npm run build:shared`, `typecheck`, `test` (shared 176, backend 140, mobile 42), `build` — pass.
+- Live API (:4000, email/push simulated): member 403; shift preview/commit to 2029-11-04 keeps 10:00 local; same-key replay; stale re-commit refused; order-only preview/commit (B keeps date and gets A's item after its own). Rows deleted afterwards.
+- Browser (seeded scheduler): review of moving 2026-10-25 → 2026-11-01 shows 06:00 local before and after DST, 0 resets by default, taken date, kept confirmations, overlaps with names and all counts. No commit against seed data.
+
+**Remaining gates.** Product review of defaults (notify on, reset off; overlaps warn, never refuse); signed-in commit QA with a service-type-scoped editor (a plan they cannot edit returns 404 for the whole batch); delivery of re-sent requests with a real provider (shared F00 gate); moving several plans that overlap each other compares against their current times (documented in the preview). Plan series/title/artwork and service-type defaults copy remain **not started**; native MOB-013 has no reschedule UI.
+
+**Next pass:** F10 Pass C plan series/title/artwork (optional; select explicitly). Outside F10, F13 Pass A and F11 Pass A remain the cross-epic priorities.
+

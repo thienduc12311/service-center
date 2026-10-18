@@ -104,6 +104,9 @@ export const PlansPage = () => {
                   New service type
                 </Button>
                 <Button onClick={() => setCreating(true)}>New plan</Button>
+                <Button variant="secondary" onClick={() => navigate('/plans/templates')}>Templates</Button>
+                <Button variant="secondary" onClick={() => navigate('/plans/generate')}>Create from template</Button>
+                <Button variant="secondary" onClick={() => navigate('/plans/reschedule')}>Reschedule</Button>
               </>
             )}
             {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/matrix')}>Staffing matrix</Button>}

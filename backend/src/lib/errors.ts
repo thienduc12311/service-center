@@ -59,6 +59,9 @@ const PT409_HINTS: Record<string, string> = {
   message_id_conflict: 'message_id_conflict',
   message_removed: 'message_removed',
   message_unrecoverable: 'message_unrecoverable',
+  // F10
+  template_changed: 'template_changed',
+  template_preview_changed: 'template_preview_changed',
 };
 
 export const fromPostgrestError = (error: {

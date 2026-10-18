@@ -4,7 +4,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query';
-import type { ListDeliveriesRequest, StaffingMatrixQueryInput } from '@service-center/shared';
+import type { ListDeliveriesRequest, ListPlanTemplatesRequest, StaffingMatrixQueryInput } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 
@@ -78,6 +78,11 @@ export const keys = {
   messages: (org: string | null, query: unknown) => [...keys.all(org), 'messages', query] as const,
   message: (org: string | null, id: string) => [...keys.all(org), 'messages', 'detail', id] as const,
   messageTemplates: (org: string | null) => [...keys.all(org), 'message-templates'] as const,
+  // F10 plan templates.
+  planTemplates: (org: string | null, query: unknown) => [...keys.all(org), 'plan-templates', query] as const,
+  planTemplate: (org: string | null, id: string, revision: number | null) =>
+    [...keys.all(org), 'plan-templates', 'detail', id, revision] as const,
+  templateApplications: (org: string | null, planId: string) => [...keys.plan(org, planId), 'template-applications'] as const,
   conversations: (org: string | null) => [...keys.all(org), 'conversations'] as const,
   conversation: (org: string | null, id: string) => [...keys.conversations(org), id] as const,
 };
@@ -548,5 +553,33 @@ export const useConversation = (id: string | undefined) => {
     enabled: Boolean(org && id),
     refetchInterval: 10_000,
     retry: false,
+  });
+};
+
+/** F10: templates the caller may use; RLS narrows them to their plans.edit scope. */
+export const usePlanTemplates = (query: ListPlanTemplatesRequest, enabled = true) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.planTemplates(org, query),
+    queryFn: () => api.planTemplates(query),
+    enabled: Boolean(org) && enabled,
+  });
+};
+
+export const usePlanTemplate = (id: string | null, revision: number | null = null) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.planTemplate(org, id ?? '', revision),
+    queryFn: () => api.planTemplate(id!, revision ?? undefined),
+    enabled: Boolean(org && id),
+  });
+};
+
+export const useTemplateApplications = (planId: string | undefined, enabled = true) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.templateApplications(org, planId ?? ''),
+    queryFn: () => api.planTemplateApplications(planId!),
+    enabled: Boolean(org && planId) && enabled,
   });
 };
