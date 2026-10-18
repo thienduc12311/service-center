@@ -130,9 +130,10 @@ const loadPlan = async (planId: string | null): Promise<DispatchPlan | null> => 
 
 const isEligiblePerson = async (orgId: string, personId: string): Promise<boolean> => {
   const person = await unwrap(
-    adminDb.from('people').select('profile_id').eq('id', personId).eq('organization_id', orgId).maybeSingle(),
+    adminDb.from('people').select('profile_id, archived_at').eq('id', personId).eq('organization_id', orgId).maybeSingle(),
   );
-  if (!person) return false;
+  // An archived Person (F02) receives no new requests or reminders.
+  if (!person || person.archived_at) return false;
   if (!person.profile_id) return true;
   const membership = await unwrap(
     adminDb.from('organization_members').select('user_id').eq('organization_id', orgId)

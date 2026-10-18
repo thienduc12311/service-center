@@ -7,6 +7,18 @@
  *   supabase gen types typescript --local > /tmp/db.ts
  */
 
+import type {
+  AcceptPersonInvitationRow,
+  PersonDeliveryReadiness,
+  PersonIdentityReconciliationRow,
+  PersonRosterEventRow,
+  PersonTagCatalogRow,
+  PersonTagGroupRow,
+  RosterBulkAction,
+  RosterBulkApplyResult,
+  RosterBulkPreviewRow,
+} from './roster.js';
+
 /**
  * Row types are exact — every read is precisely typed. Insert and Update are
  * deliberately permissive: request handlers build payloads by spreading
@@ -176,6 +188,9 @@ export type PersonRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  /** F02: set while the Person is archived (kept for history, hidden from pickers). */
+  archived_at: string | null;
+  archived_by: string | null;
 }
 
 export type PersonInvitationRow = {
@@ -231,6 +246,9 @@ export type TeamPositionRow = {
   team_id: string;
   name: string;
   sort_order: number;
+  /** F02: set for a position that exists on one plan only (not in the team's normal list). */
+  plan_id: string | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -648,7 +666,8 @@ export type PersonEligibilityRecordRow = {
 /** The non-private roster projection every member may read. */
 export type PeopleDirectoryRow = Pick<
   PersonRow,
-  'id' | 'organization_id' | 'profile_id' | 'first_name' | 'last_name' | 'avatar_url' | 'campus' | 'person_type' | 'created_at' | 'updated_at'
+    | 'id' | 'organization_id' | 'profile_id' | 'first_name' | 'last_name' | 'avatar_url' | 'campus' | 'person_type'
+  | 'created_at' | 'updated_at' | 'archived_at'
 >;
 
 /** A person's private record as API roles may select it (no medical note). */
@@ -716,11 +735,39 @@ export type Database = {
       team_tag_rules: Table<TeamTagRuleRow>;
       team_related_visibility: Table<TeamRelatedVisibilityRow>;
       person_eligibility_records: Table<PersonEligibilityRecordRow>;
+      person_roster_events: Table<PersonRosterEventRow>;
+      person_tag_groups: Table<PersonTagGroupRow>;
+      person_tag_catalog: Table<PersonTagCatalogRow>;
+      person_identity_reconciliations: Table<PersonIdentityReconciliationRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
     };
     Functions: {
+      preview_roster_bulk_change: {
+        Args: {
+          p_org: string;
+          p_person_ids: string[];
+          p_action: RosterBulkAction;
+          p_tag?: string | null;
+          p_team?: string | null;
+          p_position?: string | null;
+        };
+        Returns: RosterBulkPreviewRow[];
+      };
+      apply_roster_bulk_change: {
+        Args: {
+          p_org: string;
+          p_person_ids: string[];
+          p_action: RosterBulkAction;
+          p_tag: string | null;
+          p_team: string | null;
+          p_position: string | null;
+          p_expected_changes: number;
+          p_idempotency_key: string;
+        };
+        Returns: RosterBulkApplyResult;
+      };
       create_organization: {
         Args: { p_name: string; p_slug: string; p_timezone?: string };
         Returns: OrganizationRow;
@@ -963,7 +1010,27 @@ export type Database = {
       };
       accept_person_invitation: {
         Args: { p_token_hash: string; p_new_user_id: string };
-        Returns: Array<{ out_organization_id: string; out_person_id: string; out_role: OrgRole }>;
+        Returns: AcceptPersonInvitationRow[];
+      };
+      create_guest_person: {
+        Args: { p_org: string; p_first_name: string; p_last_name?: string | null; p_email?: string | null };
+        Returns: string;
+      };
+      create_plan_position: {
+        Args: { p_plan: string; p_team: string; p_name: string; p_needed?: number };
+        Returns: TeamPositionRow;
+      };
+      delete_plan_position: {
+        Args: { p_position: string };
+        Returns: undefined;
+      };
+      person_delivery_readiness: {
+        Args: { p_org: string; p_person_ids: string[] };
+        Returns: PersonDeliveryReadiness[];
+      };
+      resolve_person_reconciliation: {
+        Args: { p_id: string; p_action: 'keep_separate' | 'merge' };
+        Returns: PersonIdentityReconciliationRow;
       };
     };
     Enums: {

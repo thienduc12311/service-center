@@ -8,6 +8,7 @@ import type {
   PlanItemRow,
   PlanPositionNeed,
   PlanSummary,
+  TeamPositionRow,
 } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
@@ -44,7 +45,8 @@ export const PLAN_DETAIL_SELECT = `
   position_needs:plan_position_needs(
     needed,
     position:team_positions(id, team_id)
-  )
+  ),
+  plan_positions:team_positions(*)
 `;
 
 export const PLAN_SUMMARY_SELECT = `
@@ -61,6 +63,7 @@ type RawPositionNeed = {
 };
 
 type RawPlan = Record<string, unknown> & {
+  plan_positions?: TeamPositionRow[];
   items?: Array<{ item_type?: string }>;
   assignments?: Array<{ status?: string; visibility?: string }>;
   times?: Array<Record<string, unknown>>;
@@ -120,10 +123,14 @@ export const shapePlanDetail = (row: RawPlan): PlanDetail => {
   );
 
   const summary = shapePlanSummary(row);
+  const planPositions = [...((row.plan_positions as TeamPositionRow[] | undefined) ?? [])].sort(
+    (a, b) => a.team_id.localeCompare(b.team_id) || a.sort_order - b.sort_order || a.name.localeCompare(b.name),
+  );
   return {
     ...summary,
     items,
     assignments,
+    plan_positions: planPositions,
     position_needs: shapePositionNeeds(row.position_needs),
     total_length_seconds: items.reduce((sum, item) => sum + (item.length_seconds ?? 0), 0),
   };

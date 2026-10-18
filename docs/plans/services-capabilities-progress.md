@@ -12,7 +12,11 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F01 Pass B — audience and response ownership | implemented; QA pending | same | Mobile consumes visibility/owner contracts (MOB-005/008/012/031) |
 | F01 Pass C — extensions (folders, shared/archived/copied service types, team defaults, tag candidates, related-team visibility, secure eligibility) | implemented; QA pending | same | Product review of each opt-in policy before enabling per organization |
 | F01 epic | in progress | — | Gates below; epic is not complete |
-| F02 – F17 | not started | — | **Next: F02 Pass A — person-first identity** (F11 Pass A can run independently) |
+| F02 Pass A — identity continuity (on MOB-005's Person columns) | implemented; QA pending | `feature/f02-person-first-staffing` (worktree `.claude/worktrees/f02`, rebased on MOB-005 `23ecfdf`) | Admin review of `person_identity_reconciliations` after deploy; from-scratch migration replay |
+| F02 Pass B — guest staffing and account continuity | implemented; QA pending | same | Real-provider email check for a no-login guest (F00 gate) |
+| F02 Pass C — roster extensions (archive/audit, tag groups, bulk, search) | implemented; QA pending | same | Product review of search scope and archive semantics |
+| F02 epic | in progress | — | Gates below; epic is not complete |
+| F03 – F17 | not started | — | **Next: F03 Pass A — availability** (F11 Pass A can run independently) |
 
 ## F00 — 2026-10-16
 
@@ -109,3 +113,50 @@ RLS (plan detail, plan list counts, `/schedule/mine`, `/calendar`, assignment hi
 - Re-run all three migrations from scratch in a disposable database before applying to a shared environment.
 
 **Next pass:** F02 Pass A — person-first scheduling identity (reuse `access_grants`/`private.capability_for` for all new writers). F11 Pass A remains independent.
+
+## F02 — 2026-10-17
+
+**Pre-existing state.** `main` at `446f0f8`. Branch `feature/f02-person-first-staffing`. While Pass A was being drafted, MOB-005 was implemented concurrently in the main checkout and added the same Person columns; at the user's direction **MOB-005 owns `person_id`** and F02 was rebased onto its commit `23ecfdf` (`feature/mob-005-prepared-response-foundations`), adding only what MOB-005 does not cover. The work lives in worktree `.claude/worktrees/f02`; one WIP commit (`wip(f02): …`) was made only to rebase, everything after it is uncommitted.
+
+**Reused from MOB-005 (evidence: `20261017000300_mob005_identity_times_snapshots.sql`, `supabase/tests/mob005-*`).** `person_id` on assignments/team memberships/response history/respond links/deliveries/effects with backfill and dual-write triggers; a Person per member (trigger); email-only delivery and respond links for no-login Persons; person-based RLS on assignments; `schedule_plan_assignments` accepting `person_id` or legacy `user_id`; versioned request snapshots (old-token continuity, scope frozen per link).
+
+**Identity inventory (gaps found and closed by F02).**
+- Account linking did not propagate: `people.profile_id` changes left `assignments/team_memberships/assignment_notifications.user_id` and `assignment_responses.assignee_id` stale, so the calendar feed and login-keyed readers lost a newly linked guest's history.
+- Any API role with `people.manage` could rewrite `people.profile_id` (link anyone to any login) or move a Person between organizations.
+- Deleting a login cascaded and deleted that Person's assignments, team places, links and answer history (`user_id` FKs were `on delete cascade`).
+- `POST /people/:id/invitations` linked an existing login **by matching email**, without the person accepting anything.
+- Scheduling accepted a linked Person whose membership was inactive; plan copy still copied by `user_id`, so a plan containing a no-login guest could not be duplicated.
+- No report of possible duplicates (member joining with an unlinked Person's email).
+
+### Contracts
+- Shared: `types/roster.ts`, `schemas/roster.ts` (exported from `index.ts`); `TeamPositionRow.plan_id/created_by`, `PersonRow.archived_at/archived_by`, `RosterPerson.archived`, `PlanDetail.plan_positions`; Database entries for the new tables/RPCs.
+- People: `GET /people?include_archived=` (archived excluded by default), `POST /people/guests` (scheduling.manage anywhere or people.manage; minimal no-login Person, no invitation), `POST /people/readiness` (`has_login/has_email/active` booleans, never addresses), `POST /people/:id/archive|restore` (people.manage, idempotent), `DELETE /people/:id` → 409 `person_has_history` when staffing exists, `GET /people/audit` (view_private/manage), `GET|PUT /people/tag-catalog`, `POST|PATCH|DELETE /people/tag-groups[/:id]`, `POST /people/bulk/preview|apply` (`expected_changes` + `idempotency_key`; 409 `roster_bulk_stale`), `GET /people/reconciliations` + `POST /people/reconciliations/:id/resolve` (`keep_separate|merge`, admin). Invitations: never link by email; acceptance returns 409 `identity_conflict` / `person_already_linked`.
+- Plans: `POST /plans/:id/positions` `{team_id,name,needed}` and `DELETE /plans/:id/positions/:positionId` (scheduling.manage; 409 when held); plan detail carries `plan_positions`; team lists exclude plan-only positions.
+- Search: `GET /search?q=&limit=` → grouped people/teams/positions/plans/songs/media, each through the caller's RLS client; contact fields matched/shown only with people.view_private; `has_more` instead of counts.
+
+### Migrations (Supabase skill: RLS basics/performance, privileges, constraints, FK indexes, partial indexes, advisory locks)
+- `20261018000000_f02_identity_continuity.sql` — `person_identity_reconciliations` (admin read, no client writes) + email-match reporting in MOB-005's member trigger and over the MOB-005 backfill; `people_guard_link` (API roles cannot change `profile_id`/organization; linked insert needs an active member); `people_propagate_link` (login change follows the Person on every referencing row and queued email deliveries); `user_id`/`assignee_id` FKs → `on delete set null`; `resolve_scheduling_person` refuses inactive linked Persons; `copy_plan_children` copies by Person.
+- `20261018000100_f02_guest_staffing.sql` — `team_positions.plan_id` (plan-only positions; `(team,name)` uniqueness now per normal list and per plan), guard so a plan-only position/need/assignment is only ever on its plan, `create_plan_position`/`delete_plan_position` (scoped schedulers), copies skip plan-only positions; `accept_person_invitation` returns `linked|invalid|person_linked|identity_conflict`, serialized per (organization, login) with an advisory lock, records conflicts, keeps existing roles; `resolve_person_reconciliation` (merge moves requests, history, team places, tags, links, snapshots and deliveries from the no-login record; refuses colliding requests); `person_delivery_readiness`; `create_guest_person`.
+- `20261018000200_f02_roster_extensions.sql` — `people.archived_at/archived_by` (stamped), `people_directory.archived_at`; `person_roster_events` audit via triggers (created/archived/restored/linked/tags/team places); archived Persons refused for new team places and new staffing, excluded from `team_candidates` (now Person-based, guests included); `person_tag_groups`/`person_tag_catalog` (composite same-org FK, `on delete set null (group_id)`); `preview_roster_bulk_change`/`apply_roster_bulk_change` (invoker/RLS, ≤500 people, all-or-nothing, stale-count 409, idempotent replay, key reuse refused) + `roster_bulk_operations`.
+- Additive except two non-data constraint swaps (`team_positions_team_id_name_key` → partial unique indexes; `user_id` FK delete rules). No historical migration edited; `user_id` columns are kept for a later reviewed removal. Applied locally with `npx supabase migration up --local`; **not** replayed from scratch.
+
+### Web
+Schedule dialog: find-a-person filter, "no login" marker, **+ Someone new** (guest with optional email; admins may tick a separate "also invite"), a **Can't be notified** warning for people with neither email nor login, and plan-only positions ("New position for this plan only…"). Teams tab lists plan-only positions ("· this plan only"). People: Show archived, Archived badge, multi-select with bulk tag/team preview → apply, Tags dialog (groups). Person page: Archive/Restore, Roster history; invite card hidden while archived. Team "Add member" offers no-login people. Settings → Possible duplicate people (admins). Global search (header icon / Ctrl-⌘K).
+
+### Checks (Node v20.20.1 locally; manifests ask for ≥26.8.1)
+- `npm run build`, `npm run typecheck` — pass. `npm test` — shared 114, backend 88 (+5 roster model, +1 archived roster), mobile 42 — pass.
+- `EXPO_OFFLINE=1 CI=1 expo export --platform ios --platform android` — pass (both bundles; no native source changed, contracts did).
+- SQL (`docker exec -i supabase_db_service-center psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/<file>`), all rolled back: new `f02-person-identity.sql` (guest by Person with no login, email-only delivery, readiness booleans, legacy `user_id`, foreign and inactive refused, plan-only position: normal list unchanged/need/duplicate name/other plan refused/held delete refused/copy keeps guests and drops plan-only, member refused, direct link refused, invitation link keeps ids and fills login everywhere, no duplicate Person, token reuse invalid, identity conflict reported with invitation still pending, already-linked Person refused, joiner with same email gets own Person + report, merge collision refused, keep_separate audited and final, scheduler cannot read/resolve, deleting a login keeps history, guest creation scoped) and `f02-roster-extensions.sql` (archive stamping/audit/directory, bulk preview problems, error/stale/replay/key reuse, guest team place, candidates exclude archived, archived team place refused, tag groups, member and foreign-admin denials, org delete with audit triggers); existing 7 suites still pass.
+- Real contention: `bash supabase/tests/f02-concurrent-link.sh` — two sessions accepting two invitations for the same login → exactly one `linked`, one `identity_conflict`, one pending invitation, one report. `mob005-concurrent-token.sh` still passes.
+- Live API on :4000 from the worktree (email/push simulated): 32/32 (guests, readiness, plan-only positions, archive/restore/delete-with-history, audit, bulk + stale + replay, tag catalog, search incl. email only for view_private, reconciliation access, invitation not auto-linked → accepted → same request visible to the new login, no duplicate Person) and 7/7 for a no-login guest: one simulated email delivery, link minted for the Person, public preview and answer without a login, single use, scheduler notified. The raw token is never retrievable, so this run substituted a known token hash on the minted link. Server log: no errors.
+- Browser (scheduler Jordan): created a no-email guest from the schedule dialog (warning shown), added a plan-only "Guest trumpet" and scheduled the guest into it (Teams tab shows it, 1/1); search; bulk tag preview/apply; tag group; archive with history; Show archived. Test data removed afterwards.
+
+### Remaining gates
+- **MOB-005 regression found (not changed here):** `assignment_request_snapshot_items.assignment_id` is `on delete restrict`, so any request that was ever sent can no longer be removed (`DELETE /assignments/:id` fails) — this breaks F01's "withdraw a released request by removing it". Needs a decision in MOB-005 (cascade, or supersede the snapshot).
+- Pre-existing, unrelated: deleting an organization fails on `plan_items_song_ref` when songs are cascaded.
+- Replay all migrations from scratch in a disposable database before a shared environment; review open `person_identity_reconciliations` rows after deploy.
+- Guest email delivery still only simulated (F00 real-provider gate). Mobile has no guest/archive/search UI (not required for the member app); mobile types updated through shared only.
+- Accepting an invitation with a brand-new email creates the login before linking; if linking then reports `person_linked`, that login remains without membership (pre-existing order; rare).
+- Search is substring (`ilike`) over names/titles/filenames, bounded per group; no ranking or full-text index yet (F16 can add one).
+
+**Next pass:** F03 Pass A — availability and preferences (reuse Person for blockouts/preferences; blockouts are still login-keyed). F11 Pass A remains independent.

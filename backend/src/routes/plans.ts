@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { param } from '../lib/params.js';
 import {
   createPlanItemSchema,
+  createPlanPositionSchema,
   createPlanSchema,
+  type CreatePlanPositionInput,
   duplicatePlanSchema,
   importPlanContentsSchema,
   listPlansQuerySchema,
@@ -23,7 +25,7 @@ import {
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireCapability, requireManager } from '../middleware/organization.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
-import { HttpError } from '../lib/errors.js';
+import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import {
   PLAN_SUMMARY_SELECT,
   createPlanAtomically,
@@ -252,6 +254,35 @@ plansRouter.put(
     );
   },
 );
+
+/**
+ * A position for this plan only (F02): owned by a team, never added to the
+ * team's normal list. Anyone who schedules that team on this plan may add or
+ * remove one; removing one someone holds is refused.
+ */
+plansRouter.post('/:id/positions', requireCapability('scheduling.manage'), validateBody(createPlanPositionSchema), async (req, res) => {
+  const body = req.body as CreatePlanPositionInput;
+  const { data, error } = await req.db.rpc('create_plan_position', {
+    p_plan: param(req, 'id'),
+    p_team: body.team_id,
+    p_name: body.name,
+    p_needed: body.needed,
+  });
+  if (error?.code === 'PT409') throw new HttpError(409, error.message, 'plan_position_exists');
+  if (error) throw fromPostgrestError(error);
+  res.status(201).json(data);
+});
+
+plansRouter.delete('/:id/positions/:positionId', requireCapability('scheduling.manage'), async (req, res) => {
+  const position = await unwrap(
+    req.db.from('team_positions').select('id').eq('id', param(req, 'positionId')).eq('plan_id', param(req, 'id')).maybeSingle(),
+  );
+  if (!position) throw HttpError.notFound('Position not found');
+  const { error } = await req.db.rpc('delete_plan_position', { p_position: position.id });
+  if (error?.code === 'PT409') throw new HttpError(409, error.message, 'plan_position_in_use');
+  if (error) throw fromPostgrestError(error);
+  res.status(204).end();
+});
 
 /** Persists a drag-and-drop reorder: the ids arrive in their new order. */
 plansRouter.put('/:id/items/order', requireCapability('plans.edit'), validateBody(reorderPlanItemsSchema), async (req, res) => {

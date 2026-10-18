@@ -15,7 +15,7 @@ import type {
  */
 export type RosterPersonRecord = Pick<
   PersonRow,
-  'id' | 'profile_id' | 'first_name' | 'last_name' | 'avatar_url' | 'email' | 'phone' | 'campus'
+  'id' | 'profile_id' | 'first_name' | 'last_name' | 'avatar_url' | 'email' | 'phone' | 'campus' | 'archived_at'
 >;
 
 /** Every column of `people` an API role may select (the medical note is not one). */
@@ -23,7 +23,7 @@ export const PERSON_COLUMNS = [
   'id', 'organization_id', 'profile_id', 'first_name', 'last_name', 'avatar_url',
   'email', 'phone', 'phone_carrier', 'address_line1', 'address_line2', 'city', 'state_province',
   'postal_code', 'country', 'campus', 'person_type', 'gender', 'birthdate', 'marital_status',
-  'anniversary_date', 'school', 'created_by', 'created_at', 'updated_at',
+  'anniversary_date', 'school', 'created_by', 'created_at', 'updated_at', 'archived_at', 'archived_by',
 ].join(', ');
 
 /** Profile columns an API role may select; contact comes from `member_contacts`. */
@@ -45,11 +45,13 @@ export const personDisplayName = (person: Pick<PersonRow, 'first_name' | 'last_n
  * when its `profile_id` is linked, or stands alone when it isn't. A `people`
  * row whose `profile_id` no longer matches an active member (e.g. removed)
  * is dropped, matching the existing silent exclusion of inactive members.
+ * Archived people (F02) are left out unless `includeArchived`.
  */
 export const mergeRoster = (
   members: ActiveMemberRow[],
   people: RosterPersonRecord[],
   pendingInvitations: Array<Pick<PersonInvitationRow, 'person_id'>>,
+  includeArchived = false,
 ): RosterPerson[] => {
   const peopleByProfileId = new Map(
     people.filter((p): p is RosterPersonRecord & { profile_id: string } => p.profile_id !== null).map((p) => [p.profile_id, p]),
@@ -73,6 +75,7 @@ export const mergeRoster = (
         status: member.status,
         campus: person?.campus ?? null,
         invite_pending: false,
+        archived: Boolean(person?.archived_at),
       };
     });
 
@@ -91,9 +94,11 @@ export const mergeRoster = (
       status: 'no_account' as const,
       campus: person.campus,
       invite_pending: pendingPersonIds.has(person.id),
+      archived: Boolean(person.archived_at),
     }));
 
-  return [...linked, ...standalone].sort((a, b) =>
+  const everyone = [...linked, ...standalone].filter((person) => includeArchived || !person.archived);
+  return everyone.sort((a, b) =>
     (a.full_name ?? a.email ?? '').localeCompare(b.full_name ?? b.email ?? ''),
   );
 };
