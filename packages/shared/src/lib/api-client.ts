@@ -64,7 +64,20 @@ import type {
   SongbookDetail,
   TeamWithPositions,
   UnreadNotificationCount,
+  AffectedAssignmentPreview,
+  BlockoutSaveResult,
+  BlockoutSeriesDetail,
+  BlockoutSeriesSaveResult,
+  BlockoutOccurrencePreview,
 } from '../types/domain.js';
+import type {
+  AffectedAssignmentsPreviewInput,
+  CreateBlockoutInput,
+  CreateBlockoutSeriesInput,
+  MaintainBlockoutSeriesInput,
+  PreviewBlockoutSeriesInput,
+  UpdateBlockoutInput,
+} from '../schemas/blockout.js';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
 import type {
   IdentityReconciliation,
@@ -546,9 +559,27 @@ export class ServiceCenterApi {
   // ---------------------------------------------------------- blockouts --
   listBlockouts = (query?: Query) =>
     this.request<BlockoutRow[]>('GET', '/api/v1/blockouts', undefined, query);
-  createBlockout = (body: { starts_at: string; ends_at: string; reason?: string | null }) =>
-    this.request<BlockoutRow>('POST', '/api/v1/blockouts', body);
-  deleteBlockout = (id: string) => this.request<void>('DELETE', `/api/v1/blockouts/${id}`);
+  createBlockout = (body: CreateBlockoutInput | { starts_at: string; ends_at: string; reason?: string | null }) =>
+    this.request<BlockoutRow | BlockoutSaveResult>('POST', '/api/v1/blockouts', body);
+  updateBlockout = (id: string, body: UpdateBlockoutInput) =>
+    this.request<BlockoutSaveResult>('PATCH', `/api/v1/blockouts/${id}`, body);
+  deleteBlockout = (id: string, expectedRevision?: number) =>
+    this.request<void>('DELETE', `/api/v1/blockouts/${id}`, undefined,
+      expectedRevision == null ? undefined : { expected_revision: expectedRevision });
+  previewAffectedAssignments = (body: AffectedAssignmentsPreviewInput) =>
+    this.request<AffectedAssignmentPreview[]>('POST', '/api/v1/blockouts/affected-assignments', body);
+  previewBlockoutSeries = (body: PreviewBlockoutSeriesInput) =>
+    this.request<{ occurrences: BlockoutOccurrencePreview[]; affected_assignments: AffectedAssignmentPreview[] }>(
+      'POST', '/api/v1/blockouts/series/preview', body,
+    );
+  createBlockoutSeries = (body: CreateBlockoutSeriesInput) =>
+    this.request<BlockoutSeriesSaveResult>('POST', '/api/v1/blockouts/series', body);
+  getBlockoutSeries = (id: string) =>
+    this.request<BlockoutSeriesDetail>('GET', `/api/v1/blockouts/series/${id}`);
+  changeBlockoutSeries = (id: string, body: MaintainBlockoutSeriesInput) =>
+    this.request<{ deleted: boolean; series_id: string; revision?: number }>(
+      'POST', `/api/v1/blockouts/series/${id}/change`, body,
+    );
 
   // ----------------------------------------------------------- songbooks --
   listSongbooks = () => this.request<SongbookRow[]>('GET', '/api/v1/songbooks');

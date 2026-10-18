@@ -4,6 +4,7 @@ export * from './types/roster.js';
 export * from './schemas/index.js';
 export * from './lib/constants.js';
 export * from './lib/dates.js';
+export * from './lib/timezone.js';
 export * from './lib/chordpro.js';
 export * from './lib/chart-html.js';
 export * from './lib/chart-context.js';

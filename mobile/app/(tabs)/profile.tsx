@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Alert, Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import { formatDate, isAdmin, STORAGE_BUCKETS } from '@service-center/shared';
+import { formatDate, isAdmin, STORAGE_BUCKETS, type BlockoutRow } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { supabase } from '../../src/lib/supabase';
@@ -28,6 +28,7 @@ import { BlockoutForm } from '../../src/components/BlockoutForm';
 import { Reveal } from '../../src/components/motion';
 import type { ColorSchemeName, Theme } from '../../src/lib/theme';
 import { useColorSchemeControl, useTheme, useThemedStyles } from '../../src/lib/useTheme';
+import { env } from '../../src/lib/env';
 
 const SCHEMES: readonly SegmentOption<ColorSchemeName>[] = [
   { value: 'light', label: 'Light' },
@@ -59,6 +60,7 @@ export default function ProfileScreen() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<unknown>(null);
+  const [editingBlockout, setEditingBlockout] = useState<BlockoutRow | null>(null);
 
   const blockouts = useQuery({
     queryKey: queryKeys.blockouts(queryScope),
@@ -77,7 +79,7 @@ export default function ProfileScreen() {
   });
 
   const removeBlockout = useMutation({
-    mutationFn: (id: string) => api.deleteBlockout(id),
+    mutationFn: (blockout: BlockoutRow) => api.deleteBlockout(blockout.id, blockout.revision),
     onSuccess: () => {
       if (!isCurrentGeneration(generation)) return;
       return queryClient.invalidateQueries({ queryKey: queryKeys.blockouts(queryScope) });
@@ -158,6 +160,15 @@ export default function ProfileScreen() {
   };
 
   const memberships = user?.memberships ?? [];
+  const visibleBlockouts = useMemo(() => {
+    const seenSeries = new Set<string>();
+    return (blockouts.data ?? []).filter((row) => {
+      if (!row.series_id) return true;
+      if (seenSeries.has(row.series_id)) return false;
+      seenSeries.add(row.series_id);
+      return true;
+    });
+  }, [blockouts.data]);
 
   const submitSignOut = async (): Promise<void> => {
     setSigningOut(true);
@@ -225,28 +236,44 @@ export default function ProfileScreen() {
         <Reveal index={3}>
           <Card>
             <Label>Blockout dates</Label>
-            <BlockoutForm onCreated={refreshBlockouts} />
+            <BlockoutForm
+              editing={editingBlockout}
+              onSaved={async () => { setEditingBlockout(null); await refreshBlockouts(); }}
+              onCancelEdit={() => setEditingBlockout(null)}
+            />
 
             {blockouts.isLoading ? <Loading /> : null}
-            {blockouts.data?.length ? (
+            {visibleBlockouts.length ? (
               <View>
-                {blockouts.data.map((blockout, index) => (
+                {visibleBlockouts.map((blockout, index) => (
                   <View key={blockout.id}>
                     {index > 0 ? <Divider /> : null}
                     <View style={styles.blockout}>
                       <View style={styles.flex}>
                         <Text style={styles.blockoutRange}>
-                          {formatDate(blockout.starts_at)} – {formatDate(blockout.ends_at)}
+                          {blockout.local_start_date ?? formatDate(blockout.starts_at)}
+                          {blockout.all_day ? ' · all day' : blockout.local_start_time ? ` · ${blockout.local_start_time.slice(0, 5)}–${blockout.local_end_time?.slice(0, 5)}` : ` – ${formatDate(blockout.ends_at)}`}
                         </Text>
                         {blockout.reason ? (
                           <Text style={styles.blockoutReason}>{blockout.reason}</Text>
                         ) : null}
                       </View>
-                      <IconButton
-                        name="trash"
-                        accessibilityLabel={`Remove blockout from ${formatDate(blockout.starts_at)}`}
-                        onPress={() => removeBlockout.mutate(blockout.id)}
-                      />
+                      {blockout.series_id ? (
+                        <Button
+                          title="Manage on website"
+                          variant="quiet"
+                          onPress={() => void Linking.openURL(`${env.webAppDomain ? `https://${env.webAppDomain}` : 'http://localhost:5173'}/settings/blockouts/${blockout.series_id}`)}
+                        />
+                      ) : (
+                        <View style={styles.blockoutActions}>
+                          <Button title="Edit" variant="quiet" onPress={() => setEditingBlockout(blockout)} />
+                          <IconButton
+                            name="trash"
+                            accessibilityLabel={`Remove blockout from ${blockout.local_start_date ?? formatDate(blockout.starts_at)}`}
+                            onPress={() => removeBlockout.mutate(blockout)}
+                          />
+                        </View>
+                      )}
                     </View>
                   </View>
                 ))}
@@ -336,4 +363,5 @@ const makeStyles = (theme: Theme) =>
     blockout: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, paddingVertical: theme.space.md },
     blockoutRange: { ...theme.type.numeric, color: theme.color.ink },
     blockoutReason: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: 2 },
+    blockoutActions: { flexDirection: 'row', alignItems: 'center', gap: theme.space.xs },
   });

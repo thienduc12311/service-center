@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { nonEmpty, uuid } from './common.js';
+import { nonEmpty } from './common.js';
 import { planRecurrenceSchema } from './service-type.js';
 
 export const orgRoleSchema = z.enum(['owner', 'admin', 'scheduler', 'member']);
@@ -47,18 +47,5 @@ export const serviceTypeSchema = z.object({
 export type ServiceTypeInput = z.infer<typeof serviceTypeSchema>;
 export type ServiceTypePayload = z.input<typeof serviceTypeSchema>;
 
-export const blockoutSchema = z
-  .object({
-    starts_at: z.string(),
-    ends_at: z.string(),
-    reason: z.string().trim().max(200).nullish(),
-    user_id: uuid.optional(), // schedulers may record on someone's behalf
-  })
-  .refine((v) => new Date(v.starts_at) < new Date(v.ends_at), {
-    message: 'End must be after start',
-    path: ['ends_at'],
-  });
-
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
-export type BlockoutInput = z.infer<typeof blockoutSchema>;
