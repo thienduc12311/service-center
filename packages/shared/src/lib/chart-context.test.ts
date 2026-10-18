@@ -162,6 +162,31 @@ describe('resolveChartContext', () => {
   });
 });
 
+describe('resolveChartContext — F11 plan sequence', () => {
+  it('uses the item sequence override; null inherits; another item on the same song is independent', () => {
+    const own = ready(resolveChartContext({ song: song(), planItem: item({ sequence_override: ['C', 'C'] }) }));
+    expect(own.sequence).toEqual(['C', 'C']);
+    expect(own.sequenceFromPlan).toBe(true);
+
+    const inherits = ready(resolveChartContext({ song: song(), planItem: item({ id: 'two', sequence_override: null, key_override: 'B' }) }));
+    expect(inherits.sequence).toEqual(['Intro', 'V1', 'C', 'C']);
+    expect(inherits.sequenceFromPlan).toBe(false);
+    expect([own.displayKey, inherits.displayKey]).toEqual(['A', 'B']);
+  });
+
+  it('treats an empty override as "no sequence for this plan", not as inherit', () => {
+    const empty = ready(resolveChartContext({ song: song(), planItem: item({ sequence_override: [] }) }));
+    expect(empty.sequence).toEqual([]);
+    expect(empty.sequenceFromPlan).toBe(true);
+  });
+
+  it('shows the viewed arrangement’s own sequence in a temporary view', () => {
+    const viewing = ready(resolveChartContext({ song: song(), planItem: item({ sequence_override: ['C'] }), viewArrangementId: 'arr-a' }));
+    expect(viewing.sequence).toEqual(['V1', 'C']);
+    expect(viewing.sequenceFromPlan).toBe(false);
+  });
+});
+
 describe('renderChartContext', () => {
   it('renders a C-source arrangement in a D service key, chords and label together', () => {
     const context = ready(

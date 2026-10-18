@@ -6,7 +6,7 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 |---|---|---|---|
 | MOB-001 shared UI and device review | implemented; QA pending | `codex/mob-001-ui-review` (committed `7270b56`) | Signed-in native device matrix (below), then mark complete |
 | MOB-002 Pass A — chart context + arrangement picker | implemented; QA pending | `codex/mob-002-plan-chart-context` (uncommitted, branched from `7270b56`) | Signed-in device check of plan → chart and picker (below) |
-| MOB-002 Pass B — persisted per-item sequence | not started | — | Pending when MOB-002 resumes; task stays partial |
+| MOB-002 Pass B — persisted per-item sequence | implemented; QA pending (shared) | delivered by F11 Pass A on `feature/f11-order-editing-charts` | See the Services ledger F11 entry; native device check of plan sequence remains |
 | MOB-003 Pass A — query and session lifecycle | implemented; QA pending | `codex/mob-003-session-lifecycle` | Signed-in device transition matrix (below) |
 | MOB-003 Pass B — device registration lifecycle | implemented; QA pending | `codex/mob-003-session-lifecycle` | Physical push/sign-out matrix and EAS delivery gate (below) |
 | MOB-003 Pass C — validated navigation + public responses | implemented; QA pending | `codex/mob-003-session-lifecycle` (`20ca764`, merged) | Production association deployment/signing and installed-device link matrix (below) |
@@ -226,7 +226,9 @@ The route now reports anything that still blocks a removal as 409 "still in use"
 - No native test harness exists; resolver/render behaviour is covered in shared tests only.
 - Website `RehearseTab` / web song links do not yet pass item context — outside the native scope of this pass; revisit if web parity is required.
 
-**Pass B next:** read `.agents/skills/supabase-postgres-best-practices/SKILL.md`; add nullable `plan_items.sequence_override text[]` (null inherits) via new migration; validate against arrangement section rules in `schemas/plan.ts`; include in `PlanItemRow`, plan detail select and item update; wire `resolveChartContext` (`sequence` = override ?? arrangement); test two items on one song with different sequences/keys and null inheritance; also make `serviceSongBookDocumentFromPlan` use it.
+**Pass B (2026-10-18):** delivered as shared work by F11 Pass A — `plan_items.sequence_override` (null inherits), validation, revisioned item update, `resolveChartContext` applying it, and `serviceSongBookDocumentFromPlan` on the resolver. Evidence and gates: [Services ledger, F11](services-capabilities-progress.md). The native song screen needs no code change (it resolves the plan row it already fetches); only the device check remains.
+
+**Original Pass B plan:** read `.agents/skills/supabase-postgres-best-practices/SKILL.md`; add nullable `plan_items.sequence_override text[]` (null inherits) via new migration; validate against arrangement section rules in `schemas/plan.ts`; include in `PlanItemRow`, plan detail select and item update; wire `resolveChartContext` (`sequence` = override ?? arrangement); test two items on one song with different sequences/keys and null inheritance; also make `serviceSongBookDocumentFromPlan` use it.
 
 ## MOB-001 — 2026-10-15
 

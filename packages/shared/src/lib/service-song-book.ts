@@ -18,7 +18,7 @@ import {
   chartPageStyles,
   escapeHtml,
 } from './chart-html.js';
-import { renderChordProChart } from './chordpro.js';
+import { renderChartContext, resolvePlanItemChartContext } from './chart-context.js';
 import { formatDate, formatDuration } from './dates.js';
 
 const SONGS_PER_COVER_PAGE = 7;
@@ -36,6 +36,8 @@ export interface ServiceSongBookSong {
   chordpro: string;
   formatting: ChartFormatting;
   hasChart: boolean;
+  /** Why a chart that exists cannot be printed correctly; null otherwise. */
+  unavailableMessage: string | null;
 }
 
 export interface ServiceSongBookDocument {
@@ -67,31 +69,34 @@ export const serviceSongBookDocumentFromPlan = ({
   songs: plan.items.flatMap((item): ServiceSongBookSong[] => {
     if (item.item_type !== 'song' || !item.song) return [];
 
-    const sourceKey = item.arrangement?.song_key ?? item.song.default_key;
-    const scheduledKey = item.key_override ?? sourceKey;
-    const source = item.arrangement?.chord_chart ?? '';
-    const rendered = source
-      ? renderChordProChart(source, {
-          sourceKey,
-          targetKey: scheduledKey,
-          notation: 'chords',
-        })
-      : null;
+    // The same resolver as rehearsal and mobile: the item's arrangement (or
+    // the default it inherits), its service key and its own sequence.
+    const context = resolvePlanItemChartContext(item);
+    const ready = context.status === 'ready' ? context : null;
+    const arrangement = ready?.arrangement ?? null;
+    const rendered = ready ? renderChartContext(ready) : null;
+    const unavailableMessage =
+      context.status === 'unavailable'
+        ? 'The arrangement chosen for this item is no longer available.'
+        : rendered?.status === 'unavailable' && rendered.reason === 'key_unknown'
+          ? `This chart's written key is missing or unreadable, so it cannot be shown in ${ready?.displayKey ?? 'the service key'}.`
+          : null;
 
     return [
       {
         title: item.title || item.song.title,
         durationSeconds: item.length_seconds,
         description: item.description,
-        key: rendered?.key ?? scheduledKey,
-        arrangementName: item.arrangement?.name ?? null,
-        bpm: item.arrangement?.bpm ?? item.song.default_bpm,
+        key: rendered?.status === 'ready' ? (rendered.key ?? ready?.displayKey ?? null) : (ready?.displayKey ?? item.key_override),
+        arrangementName: arrangement?.name ?? null,
+        bpm: arrangement?.bpm ?? item.song.default_bpm,
         author: item.song.author,
-        sequence: item.arrangement?.sequence ?? [],
+        sequence: ready?.sequence ?? [],
         copyright: item.song.copyright,
-        chordpro: rendered?.chordpro ?? '',
-        formatting: chartFormattingFromRow(item.arrangement ?? {}),
-        hasChart: Boolean(source),
+        chordpro: rendered?.status === 'ready' ? rendered.chordpro : '',
+        formatting: chartFormattingFromRow(arrangement ?? {}),
+        hasChart: rendered?.status === 'ready',
+        unavailableMessage,
       },
     ];
   }),
@@ -161,7 +166,7 @@ const renderChartSource = (song: ServiceSongBookSong): string => {
   const markup = chartDocumentMarkup(chart);
   const body = song.hasChart
     ? markup.body
-    : '<section class="chart-empty"><p>No chord chart has been added for this song.</p></section>';
+    : `<section class="chart-empty"><p>${escapeHtml(song.unavailableMessage ?? 'No chord chart has been added for this song.')}</p></section>`;
   const font = song.formatting.fontFamily || DEFAULT_CHART_FONT;
   const fontSize = song.formatting.fontSize ?? DEFAULT_CHART_FONT_SIZE;
   const chordColor = song.formatting.chordColor || DEFAULT_CHART_CHORD_COLOR;

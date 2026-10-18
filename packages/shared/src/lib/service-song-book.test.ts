@@ -35,6 +35,7 @@ const songItem = (overrides: Partial<PlanItemDetail> = {}): PlanItemDetail => ({
   },
   arrangement: {
     id: 'arrangement-1',
+    song_id: 'song-1',
     name: 'Default Arrangement',
     song_key: 'C',
     bpm: 76,
@@ -44,7 +45,13 @@ const songItem = (overrides: Partial<PlanItemDetail> = {}): PlanItemDetail => ({
     chart_font: null,
     chart_font_size: null,
     chart_chord_color: null,
+    is_default: true,
+    length_seconds: null,
   },
+  sequence_override: null,
+  leader_person_id: null,
+  leader_position_id: null,
+  service_segment: 'service',
   ...overrides,
 });
 
@@ -119,6 +126,68 @@ describe('serviceSongBookDocumentFromPlan', () => {
   });
 });
 
+describe('serviceSongBookDocumentFromPlan — F11 effective chart context', () => {
+  const inC = {
+    id: 'arrangement-c',
+    song_id: 'song-1',
+    name: 'Acoustic in C',
+    song_key: 'C',
+    bpm: 70,
+    sequence: ['V1', 'C'],
+    chord_chart: '[C]Amazing [G]grace',
+    chart_columns: 1 as const,
+    chart_font: null,
+    chart_font_size: null,
+    chart_chord_color: null,
+    is_default: false,
+    length_seconds: null,
+  };
+
+  it('prints a non-default C arrangement in the plan key D, chords and label agreeing, once', () => {
+    const book = serviceSongBookDocumentFromPlan({
+      plan: plan([songItem({ arrangement_id: 'arrangement-c', arrangement: inC, key_override: 'D' })]),
+      organizationName: 'Grace Church',
+    });
+    expect(book.songs[0]).toMatchObject({ key: 'D', arrangementName: 'Acoustic in C', hasChart: true });
+    expect(book.songs[0]?.chordpro).toBe('[D]Amazing [A]grace');
+  });
+
+  it('uses the item sequence override and leaves the arrangement sequence alone', () => {
+    const item = songItem({ sequence_override: ['C', 'V1', 'C'] });
+    const book = serviceSongBookDocumentFromPlan({ plan: plan([item]), organizationName: 'x' });
+    expect(book.songs[0]?.sequence).toEqual(['C', 'V1', 'C']);
+    expect(item.arrangement?.sequence).toEqual(['Intro', 'V1', 'C1']);
+  });
+
+  it('plays the inherited default arrangement when the item chose none', () => {
+    const book = serviceSongBookDocumentFromPlan({
+      plan: plan([songItem({ arrangement_id: null, arrangement: null, key_override: 'E', default_arrangement: { ...inC, is_default: true } })]),
+      organizationName: 'x',
+    });
+    expect(book.songs[0]).toMatchObject({ key: 'E', arrangementName: 'Acoustic in C', hasChart: true });
+    expect(book.songs[0]?.chordpro).toBe('[E]Amazing [B]grace');
+  });
+
+  it('explains an arrangement of a different song instead of printing it', () => {
+    const book = serviceSongBookDocumentFromPlan({
+      plan: plan([songItem({ arrangement: { ...inC, id: 'arrangement-1', song_id: 'song-2' } })]),
+      organizationName: 'x',
+    });
+    expect(book.songs[0]).toMatchObject({ hasChart: false, chordpro: '' });
+    expect(book.songs[0]?.unavailableMessage).toMatch(/no longer available/);
+  });
+
+  it('refuses to put a transposed label over untransposed chords when the written key is unknown', () => {
+    const book = serviceSongBookDocumentFromPlan({
+      plan: plan([songItem({ arrangement: { ...inC, id: 'arrangement-1', song_key: null }, song: { ...songItem().song!, default_key: null } })]),
+      organizationName: 'x',
+    });
+    expect(book.songs[0]).toMatchObject({ hasChart: false, chordpro: '' });
+    expect(book.songs[0]?.unavailableMessage).toMatch(/cannot be shown in D/);
+    expect(renderServiceSongBookHtml({ ...book, title: 't', dateLabel: 'd' })).toContain('cannot be shown in D');
+  });
+});
+
 describe('renderServiceSongBookHtml', () => {
   const document = (): ServiceSongBookDocument => ({
     title: 'Sunday <Service>',
@@ -186,6 +255,7 @@ describe('renderServiceSongBookHtml', () => {
         ...missing.songs[0]!,
         chordpro: '',
         hasChart: false,
+        unavailableMessage: null,
       },
     ];
 

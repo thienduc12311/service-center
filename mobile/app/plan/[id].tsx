@@ -6,9 +6,17 @@ import {
   ASSIGNMENT_STATUS_LABELS,
   formatDateTime,
   formatDuration,
+  resolvePlanItemChartContext,
   type AssignmentDetail,
   type AssignmentReleasePreview,
+  type PlanItemDetail,
 } from '@service-center/shared';
+
+/** F11: the same service key the chart, web order and song book show. */
+const planItemKey = (item: PlanItemDetail): string => {
+  const context = resolvePlanItemChartContext(item);
+  return context.status === 'ready' ? (context.displayKey ?? '—') : '—';
+};
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -280,12 +288,7 @@ export default function PlanScreen() {
                           ) : null}
                         </View>
                         {item.item_type === 'song' ? (
-                          <KeyCap>
-                            {item.key_override ??
-                              item.arrangement?.song_key ??
-                              item.song?.default_key ??
-                              '—'}
-                          </KeyCap>
+                          <KeyCap>{planItemKey(item)}</KeyCap>
                         ) : null}
                         <Text style={styles.itemLength}>{formatDuration(item.length_seconds)}</Text>
                       </PressableScale>

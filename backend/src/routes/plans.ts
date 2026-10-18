@@ -26,6 +26,12 @@ import {
   type PlanTimeChangeResult,
   type PlanTimeImpact,
   canAccessAnywhere,
+  deletePlanItemQuerySchema,
+  planScheduleQuerySchema,
+  type DeletePlanItemQuery,
+  type PlanScheduleQuery,
+  type ReorderPlanItemsInput,
+  type UpdatePlanItemInput,
 } from '@service-center/shared';
 import { randomUUID } from 'node:crypto';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
@@ -38,10 +44,10 @@ import {
   duplicatePlanAtomically,
   fetchPlanDetail,
   importPlanContents,
-  reorderPlanItems,
   setPlanPositionNeeds,
   shapePlanSummary,
 } from '../services/plans.js';
+import { deletePlanItem, planScheduleFor, reorderPlanItems, updatePlanItem } from '../services/plan-items.js';
 import { notifyConfirmedAssignmentsForPlan } from './assignments.js';
 import { applyPlanTimes, identifyPlanTimes, previewPlanTimes } from '../services/attendance.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
@@ -249,25 +255,32 @@ plansRouter.post('/:id/items', requireCapability('plans.edit'), validateBody(cre
   res.status(201).json(created);
 });
 
+/**
+ * F11: edits an item in place (same id and position). With
+ * `expected_revision`, an edit over someone else's change is a 409
+ * `plan_revision_stale`. The response adds the plan's new revision.
+ */
 plansRouter.patch('/:id/items/:itemId', requireCapability('plans.edit'), validateBody(updatePlanItemSchema), async (req, res) => {
-  const updated = await unwrap(
-    req.db
-      .from('plan_items')
-      .update(req.body)
-      .eq('id', param(req, 'itemId'))
-      .eq('plan_id', param(req, 'id'))
-      .select('*')
-      .maybeSingle(),
-  );
-  if (!updated) throw HttpError.notFound('Item not found');
-  res.json(updated);
+  const result = await updatePlanItem({
+    db: req.db,
+    planId: param(req, 'id'),
+    itemId: param(req, 'itemId'),
+    input: req.body as UpdatePlanItemInput,
+  });
+  res.json({ ...result.item, content_revision: result.content_revision });
 });
 
-plansRouter.delete('/:id/items/:itemId', requireCapability('plans.edit'), async (req, res) => {
-  await unwrap(
-    req.db.from('plan_items').delete().eq('id', param(req, 'itemId')).eq('plan_id', param(req, 'id')),
-  );
+plansRouter.delete('/:id/items/:itemId', requireCapability('plans.edit'), validateQuery(deletePlanItemQuerySchema), async (req, res) => {
+  const { expected_revision } = parsedQuery<DeletePlanItemQuery>(res);
+  await deletePlanItem(req.db, param(req, 'id'), param(req, 'itemId'), expected_revision);
   res.status(204).end();
+});
+
+/** F11: planned item times for one service time — derived, never stored. */
+plansRouter.get('/:id/schedule', validateQuery(planScheduleQuerySchema), async (req, res) => {
+  const { time_id } = parsedQuery<PlanScheduleQuery>(res);
+  const plan = await fetchPlanDetail(req.db, req.orgId, param(req, 'id'));
+  res.json(planScheduleFor(plan, time_id));
 });
 
 // ----------------------------------------------------- needed positions ----
@@ -319,9 +332,11 @@ plansRouter.delete('/:id/positions/:positionId', requireCapability('scheduling.m
   res.status(204).end();
 });
 
-/** Persists a drag-and-drop reorder: the ids arrive in their new order. */
+/** Persists a reorder in one transaction: the ids arrive in their new order. */
 plansRouter.put('/:id/items/order', requireCapability('plans.edit'), validateBody(reorderPlanItemsSchema), async (req, res) => {
-  const { item_ids } = req.body as { item_ids: string[] };
+  const { item_ids, expected_revision } = req.body as ReorderPlanItemsInput;
 
-  res.json(await reorderPlanItems({ db: req.db, planId: param(req, 'id'), itemIds: item_ids }));
+  res.json(
+    await reorderPlanItems({ db: req.db, planId: param(req, 'id'), itemIds: item_ids, expectedRevision: expected_revision }),
+  );
 });
