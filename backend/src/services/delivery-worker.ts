@@ -64,7 +64,8 @@ const processJob = async (job: DeliveryJob, tally: WorkerRunResult): Promise<voi
 };
 
 /**
- * One bounded worker run: claim due deliveries (SKIP LOCKED, with a lease),
+ * One bounded worker run: execute due scheduled releases (F08), turn due
+ * reminder jobs into outbox deliveries (F08), then claim due deliveries (SKIP LOCKED, with a lease),
  * deliver them, record each outcome. Safe to run from several places at
  * once — an HTTP request kicking its own effect, a scheduled job, a CLI —
  * because a delivery is only ever leased to one of them. A run that dies
@@ -73,7 +74,16 @@ const processJob = async (job: DeliveryJob, tally: WorkerRunResult): Promise<voi
 export const runDeliveryWorker = async (options: WorkerRunOptions): Promise<WorkerRunResult> => {
   const workerId = options.workerId ?? `worker-${randomUUID()}`;
   const deadline = Date.now() + (options.timeBudgetMs ?? 25_000);
-  const tally: WorkerRunResult = { claimed: 0, completed: 0, retried: 0, abandoned: 0 };
+  const tally: WorkerRunResult = { claimed: 0, completed: 0, retried: 0, abandoned: 0, releases: 0, remindersEnqueued: 0 };
+
+  // F08 due work comes first, so what it enqueues is claimed in this run.
+  // Only general runs do it; an effect-scoped run delivers one action.
+  if (!options.effectId) {
+    const releases = await unwrap(adminDb.rpc('run_due_release_batches', { p_limit: 20 }));
+    tally.releases = (releases ?? []).length;
+    const reminders = await unwrap(adminDb.rpc('materialize_due_reminders', { p_limit: options.limit }));
+    tally.remindersEnqueued = (reminders ?? []).filter((row) => row.outcome === 'enqueued').length;
+  }
 
   const rows = await unwrap(
     adminDb.rpc('claim_deliveries', {

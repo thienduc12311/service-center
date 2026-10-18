@@ -19,10 +19,16 @@ import {
 import type { NotificationDraft, PushMessage } from '../model/notification.model.js';
 import { toPushMessage } from '../model/notification.model.js';
 import { ensureFeedRows, unreadCount } from './notification-center.js';
-import { emailTransport, respondUrlFor, type EmailNotification } from './notifications.js';
+import {
+  emailTransport,
+  respondUrlFor,
+  type EmailNotification,
+  type EmailSendOptions,
+  type ScheduleNotificationPlan,
+} from './notifications.js';
 import { pushTransport, type PushTicketResult } from './expo-push.js';
 import { activeDeviceTokens } from './device-registrations.js';
-import { generateAssignmentToken } from './assignment-tokens.js';
+import { deliveryLinkToken } from './assignment-tokens.js';
 
 /**
  * Called by the dispatcher immediately before contacting a provider. Returns
@@ -60,6 +66,8 @@ const mapEffect = (row: DeliveryEffectRow): DeliveryEffect => ({
   responseStatus: row.response_status,
   responseTransition: row.response_transition,
   availabilityRequestId: row.availability_request_id ?? null,
+  releaseBatchId: row.release_batch_id ?? null,
+  reminderJobId: row.reminder_job_id ?? null,
   createdBy: row.created_by,
 });
 
@@ -130,6 +138,18 @@ const loadPlan = async (planId: string | null): Promise<DispatchPlan | null> => 
   );
 };
 
+const loadPlans = async (planIds: readonly string[]): Promise<Map<string, DispatchPlan>> => {
+  if (planIds.length === 0) return new Map();
+  const rows = await unwrap(
+    adminDb.from('plans').select('id, organization_id, title, service_date, location').in('id', [...planIds]),
+  );
+  return new Map((rows ?? []).map((row) => [row.id, row]));
+};
+
+/** F08: a materialized reminder still matches current state (answers, times, policy, membership). */
+const reminderStillCurrent = async (jobId: string): Promise<boolean> =>
+  (await unwrap(adminDb.rpc('reminder_job_is_current', { p_job: jobId }))) === true;
+
 const isEligiblePerson = async (orgId: string, personId: string): Promise<boolean> => {
   const person = await unwrap(
     adminDb.from('people').select('profile_id, archived_at').eq('id', personId).eq('organization_id', orgId).maybeSingle(),
@@ -158,24 +178,30 @@ const stillSchedulesAny = async (userId: string, assignmentIds: readonly string[
   return false;
 };
 
-/** The recipient's positions this effect is still about, re-read at dispatch. */
+/**
+ * The recipient's positions this effect is still about, re-read at dispatch.
+ * A consolidated release (F08) spans several plans, so the plan filter only
+ * applies to single-plan effects.
+ */
 const eligibleAssignments = async (effect: DeliveryEffect, personId: string): Promise<RecipientAssignment[]> => {
   if (effect.assignmentIds.length === 0) return [];
-  const rows = (await unwrap(
-    raw(adminDb)
-      .from('assignments')
-      .select('id, plan_id, person_id, status, visibility, response_owner_id, team:teams(name), position:team_positions(name)')
-      .in('id', effect.assignmentIds)
-      .eq('person_id', personId)
-      .eq('plan_id', effect.planId)
-      .eq('visibility', 'released'),
-  )) as unknown as RecipientAssignment[];
-  // A reminder is only for positions still waiting for an answer; a request
-  // is never sent for a position the person has already declined. Prepared
-  // positions are never sent (filtered above as well as at enqueue).
-  return rows.filter((row) =>
-    effect.template === 'assignment_reminder' ? row.status === 'unconfirmed' : row.status !== 'declined',
-  );
+  let query = raw(adminDb)
+    .from('assignments')
+    .select('id, plan_id, person_id, status, visibility, response_owner_id, team:teams(name), position:team_positions(name)')
+    .in('id', effect.assignmentIds)
+    .eq('person_id', personId)
+    .eq('visibility', 'released');
+  if (effect.planId) query = query.eq('plan_id', effect.planId);
+  const rows = (await unwrap(query)) as unknown as RecipientAssignment[];
+  // A pending reminder is only for positions still waiting for an answer; a
+  // service reminder only for confirmed ones; a request is never sent for a
+  // position the person has already declined. Prepared positions are never
+  // sent (filtered above as well as at enqueue).
+  return rows.filter((row) => {
+    if (effect.template === 'assignment_reminder') return row.status === 'unconfirmed';
+    if (effect.template === 'service_reminder') return row.status === 'confirmed';
+    return row.status !== 'declined';
+  });
 };
 
 const roleLabel = (row: RecipientAssignment): string =>
@@ -183,22 +209,29 @@ const roleLabel = (row: RecipientAssignment): string =>
 
 const requestDrafts = (
   effect: DeliveryEffect,
-  plan: DispatchPlan,
+  plans: ReadonlyMap<string, DispatchPlan>,
   recipientId: string,
   rows: readonly RecipientAssignment[],
 ): Array<NotificationDraft & { dedupeKey: string }> => {
-  const type: NotificationType = effect.template === 'assignment_reminder' ? 'assignment_reminder' : 'assignment_scheduled';
-  return rows.map((row) => ({
-    organizationId: plan.organization_id,
-    userId: recipientId,
-    type,
-    title: type === 'assignment_reminder' ? `Reminder: ${plan.title}` : `You're scheduled for ${plan.title}`,
-    body: [roleLabel(row), formatDate(plan.service_date)].filter(Boolean).join(' — '),
-    planId: plan.id,
-    assignmentId: row.id,
-    createdBy: effect.createdBy,
-    dedupeKey: `${effect.id}:${row.id}`,
-  }));
+  const type: NotificationType = effect.template === 'assignment_request' ? 'assignment_scheduled' : 'assignment_reminder';
+  return rows.flatMap((row) => {
+    const plan = plans.get(row.plan_id);
+    if (!plan) return [];
+    const title = effect.template === 'service_reminder'
+      ? `Coming up: ${plan.title}`
+      : type === 'assignment_reminder' ? `Reminder: ${plan.title}` : `You're scheduled for ${plan.title}`;
+    return [{
+      organizationId: plan.organization_id,
+      userId: recipientId,
+      type,
+      title,
+      body: [roleLabel(row), formatDate(plan.service_date)].filter(Boolean).join(' — '),
+      planId: plan.id,
+      assignmentId: row.id,
+      createdBy: effect.createdBy,
+      dedupeKey: `${effect.id}:${row.id}`,
+    }];
+  });
 };
 
 const responseVerb = (effect: DeliveryEffect): string =>
@@ -267,10 +300,14 @@ const sendPush = async (
   return result;
 };
 
-const sendEmail = async (notification: EmailNotification, begin: BeginProviderCall): Promise<DispatchResult | null> => {
+const sendEmail = async (
+  notification: EmailNotification,
+  begin: BeginProviderCall,
+  options: EmailSendOptions = {},
+): Promise<DispatchResult | null> => {
   const transport = emailTransport();
   if (!(await begin())) return null;
-  const receipt = await transport.send(notification);
+  const receipt = await transport.send(notification, options);
   return emailOutcome(transport.mode, receipt.providerMessageId);
 };
 
@@ -293,36 +330,49 @@ const recipientEmail = async (
   };
 };
 
-/** The request email: a fresh respond link, the positions and the calendar file. */
+const byServiceDate = (plans: ReadonlyMap<string, DispatchPlan>) => (a: string, b: string): number =>
+  (plans.get(a)?.service_date ?? '').localeCompare(plans.get(b)?.service_date ?? '') || a.localeCompare(b);
+
+/**
+ * The request (or pending-reminder) email: one message per Person per
+ * effect, with one respond link per plan. Each link is issued for that
+ * plan's exact snapshot (F08), so answering one plan never answers another.
+ * Issuing keeps the last provider-accepted link usable until this email is
+ * itself accepted. The calendar file covers every plan's applicable times.
+ */
 const requestEmail = async (
   effect: DeliveryEffect,
-  plan: DispatchPlan,
+  plans: ReadonlyMap<string, DispatchPlan>,
   job: DeliveryJob,
   rows: readonly RecipientAssignment[],
   begin: BeginProviderCall,
 ): Promise<DispatchResult | null> => {
-  const { email, name } = await recipientEmail(plan.organization_id, job.recipientPersonId, job.recipientId);
+  const { email, name } = await recipientEmail(effect.organizationId, job.recipientPersonId, job.recipientId);
   if (!email) return finished('skipped', 'no_email_address');
 
-  // Replies go to whoever owns these answers, falling back to the sender.
-  const replyTo = rows.find((row) => row.response_owner_id)?.response_owner_id ?? effect.createdBy;
-  const snapshot = await unwrap(
+  const planIds = [...new Set(rows.map((row) => row.plan_id))].filter((id) => plans.has(id)).sort(byServiceDate(plans));
+  const snapshots = await unwrap(
     adminDb.from('assignment_request_snapshots').select('*')
-      .eq('effect_id', effect.id).eq('person_id', job.recipientPersonId).maybeSingle(),
+      .eq('effect_id', effect.id).eq('person_id', job.recipientPersonId).in('plan_id', planIds),
   );
-  if (!snapshot) return finished('cancelled', 'recipient_not_eligible');
+  const snapshotByPlan = new Map((snapshots ?? []).map((snapshot) => [snapshot.plan_id, snapshot]));
+  const linkedPlanIds = planIds.filter((id) => snapshotByPlan.has(id));
+  if (linkedPlanIds.length === 0) return finished('cancelled', 'recipient_not_eligible');
+
   const snapshotItems = await unwrap(
     adminDb.from('assignment_request_snapshot_items').select('plan_time_ids')
-      .eq('snapshot_id', snapshot.id),
+      .in('snapshot_id', linkedPlanIds.map((id) => snapshotByPlan.get(id)?.id ?? '')),
   );
   const timeIds = [...new Set((snapshotItems ?? []).flatMap((item) => item.plan_time_ids))];
+  // Replies go to whoever owns these answers, falling back to the sender.
+  const replyTo = rows.find((row) => row.response_owner_id)?.response_owner_id ?? effect.createdBy;
   const [organization, scheduler, times, states] = await Promise.all([
-    unwrap(adminDb.from('organizations').select('name').eq('id', plan.organization_id).maybeSingle()),
+    unwrap(adminDb.from('organizations').select('name').eq('id', effect.organizationId).maybeSingle()),
     replyTo
       ? unwrap(adminDb.from('profiles').select('email').eq('id', replyTo).maybeSingle())
       : Promise.resolve(null),
     timeIds.length
-      ? unwrap(adminDb.from('plan_times').select('id, kind, name, starts_at, ends_at, ics_sequence').in('id', timeIds))
+      ? unwrap(adminDb.from('plan_times').select('id, plan_id, kind, name, starts_at, ends_at, ics_sequence').in('id', timeIds))
       : Promise.resolve([]),
     timeIds.length
       ? unwrap(adminDb.from('attendance_calendar_states').select('plan_time_id, sequence_offset')
@@ -331,64 +381,107 @@ const requestEmail = async (
   ]);
   // F04: same UID as the feed; the SEQUENCE includes this recipient's offset.
   const offsets = new Map((states ?? []).map((state) => [state.plan_time_id, state.sequence_offset]));
-
   const host = new URL(config.API_URL).host;
-  const events: IcsEvent[] = (times ?? []).map((time) => ({
-    uid: `plan-time-${time.id}@${host}`,
-    summary: time.name ? `${plan.title} · ${time.name}` : plan.title,
-    startsAt: time.starts_at,
-    endsAt: time.ends_at,
-    sequence: recipientSequence(time.ics_sequence, offsets.get(time.id)),
-    location: plan.location,
-  }));
+  const events: IcsEvent[] = (times ?? []).map((time) => {
+    const title = plans.get(time.plan_id)?.title ?? '';
+    return {
+      uid: `plan-time-${time.id}@${host}`,
+      summary: time.name ? `${title} · ${time.name}` : title,
+      startsAt: time.starts_at,
+      endsAt: time.ends_at,
+      sequence: recipientSequence(time.ics_sequence, offsets.get(time.id)),
+      location: plans.get(time.plan_id)?.location ?? null,
+    };
+  });
 
-  // The raw token exists only in this email; each attempt mints a new one, so
-  // a link from an earlier, uncertain attempt stops working.
-  const token = generateAssignmentToken(plan.service_date);
-  const live = await unwrap(
-    adminDb
-      .from('assignment_notifications')
-      .select('id')
-      .eq('plan_id', plan.id)
-      .eq('person_id', job.recipientPersonId)
-      .is('responded_at', null)
-      .maybeSingle(),
-  );
-  const link = {
-    token_hash: token.tokenHash,
-    snapshot_id: snapshot.id,
-    person_id: job.recipientPersonId,
-    user_id: job.recipientId,
-    email,
-    expires_at: token.expiresAt.toISOString(),
-    sent_at: null,
-    created_by: effect.createdBy,
-  };
-  if (live) {
-    await unwrap(adminDb.from('assignment_notifications').update(link).eq('id', live.id));
-  } else {
-    await unwrap(
-      adminDb
-        .from('assignment_notifications')
-        .insert({ ...link, organization_id: plan.organization_id, plan_id: plan.id }),
-    );
+  // The raw token exists only in this email. With DELIVERY_LINK_SECRET it is
+  // the same on every attempt of this delivery, so the provider can dedupe.
+  let deterministic = true;
+  const sections: ScheduleNotificationPlan[] = [];
+  for (const planId of linkedPlanIds) {
+    const plan = plans.get(planId);
+    const snapshot = snapshotByPlan.get(planId);
+    if (!plan || !snapshot) continue;
+    const token = deliveryLinkToken(job.id, plan.id, plan.service_date);
+    deterministic &&= token.deterministic;
+    await unwrap(adminDb.rpc('issue_assignment_link', {
+      p_delivery: job.id,
+      p_snapshot: snapshot.id,
+      p_token_hash: token.tokenHash,
+      p_expires_at: token.expiresAt.toISOString(),
+      p_email: email,
+    }));
+    sections.push({
+      planTitle: plan.title,
+      serviceDate: plan.service_date,
+      assignments: rows.filter((row) => row.plan_id === planId)
+        .map((row) => ({ teamName: row.team?.name ?? null, positionName: row.position?.name ?? null })),
+      respondUrl: respondUrlFor(token.token),
+    });
   }
+  const first = sections[0];
+  if (!first) return finished('cancelled', 'recipient_not_eligible');
 
   return sendEmail(
     {
       to: email,
       personName: name,
-      planTitle: plan.title,
-      serviceDate: plan.service_date,
-      teamName: rows[0]?.team?.name ?? null,
-      positionName: rows[0]?.position?.name ?? null,
-      assignments: rows.map((row) => ({ teamName: row.team?.name ?? null, positionName: row.position?.name ?? null })),
-      respondUrl: respondUrlFor(token.token),
+      planTitle: first.planTitle,
+      serviceDate: first.serviceDate,
+      teamName: first.assignments[0]?.teamName ?? null,
+      positionName: first.assignments[0]?.positionName ?? null,
+      assignments: first.assignments,
+      respondUrl: first.respondUrl,
+      ...(sections.length > 1 ? { plans: sections } : {}),
+      reminder: effect.template === 'assignment_reminder',
       schedulerEmail: scheduler?.email ?? null,
       organizationName: organization?.name,
-      ics: renderIcs(events, { calendarName: plan.title, productId: `-//${host}//Service Center//EN` }),
+      ics: renderIcs(events, { calendarName: sections.length > 1 ? 'Service requests' : first.planTitle, productId: `-//${host}//Service Center//EN` }),
     },
     begin,
+    deterministic ? { idempotencyKey: `delivery-${job.id}` } : {},
+  );
+};
+
+/** "Sun, Oct 25, 9:00 AM" in the organization's zone. */
+const formatInZone = (instant: string, timeZone: string): string =>
+  new Intl.DateTimeFormat('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone,
+  }).format(new Date(instant));
+
+/** F08: confirmed-service reminder email. No respond link: nothing to answer. */
+const serviceReminderEmail = async (
+  effect: DeliveryEffect,
+  plans: ReadonlyMap<string, DispatchPlan>,
+  job: DeliveryJob,
+  rows: readonly RecipientAssignment[],
+  begin: BeginProviderCall,
+): Promise<DispatchResult | null> => {
+  const plan = effect.planId ? plans.get(effect.planId) : undefined;
+  if (!plan) return finished('cancelled', 'plan_missing');
+  const { email, name } = await recipientEmail(effect.organizationId, job.recipientPersonId, job.recipientId);
+  if (!email) return finished('skipped', 'no_email_address');
+  const [organization, reminder] = await Promise.all([
+    unwrap(adminDb.from('organizations').select('name, timezone').eq('id', effect.organizationId).maybeSingle()),
+    effect.reminderJobId
+      ? unwrap(adminDb.from('reminder_jobs').select('occurrence_starts_at, timezone').eq('id', effect.reminderJobId).maybeSingle())
+      : Promise.resolve(null),
+  ]);
+  return sendEmail(
+    {
+      to: email,
+      personName: name,
+      organizationName: organization?.name ?? 'Service Center',
+      planTitle: plan.title,
+      serviceDate: plan.service_date,
+      firstTimeAt: reminder?.occurrence_starts_at ?? null,
+      firstTimeLabel: reminder ? formatInZone(reminder.occurrence_starts_at, reminder.timezone) : null,
+      location: plan.location,
+      assignments: rows.map((row) => ({ teamName: row.team?.name ?? null, positionName: row.position?.name ?? null })),
+      planUrl: `${config.APP_URL}/plans/${plan.id}`,
+    },
+    begin,
+    { idempotencyKey: `delivery-${job.id}` },
   );
 };
 
@@ -501,12 +594,17 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
   const effect = await loadEffect(job.effectId);
   if (!effect) return finished('cancelled', 'plan_missing');
   if (effect.template === 'availability_request') return dispatchAvailabilityRequest(effect, job, begin);
-  const plan = await loadPlan(effect.planId);
-  if (!plan) return finished('cancelled', 'plan_missing');
+  // F08: a reminder whose intent changed after it was enqueued (answer,
+  // removal, archive, time/policy change, membership) is not sent.
+  if (effect.reminderJobId && !(await reminderStillCurrent(effect.reminderJobId))) {
+    return finished('cancelled', 'reminder_obsolete');
+  }
 
-  const member = await isEligiblePerson(plan.organization_id, job.recipientPersonId);
+  const member = await isEligiblePerson(effect.organizationId, job.recipientPersonId);
 
   if (effect.template === 'scheduler_response') {
+    const plan = await loadPlan(effect.planId);
+    if (!plan) return finished('cancelled', 'plan_missing');
     if (!job.recipientId || !member || !(await stillSchedulesAny(job.recipientId, effect.assignmentIds))) {
       return finished('cancelled', 'scheduler_not_active');
     }
@@ -522,10 +620,16 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
   if (!member) return finished('cancelled', 'recipient_not_eligible');
   const rows = await eligibleAssignments(effect, job.recipientPersonId);
   if (rows.length === 0) return finished('cancelled', 'recipient_not_eligible');
+  const plans = await loadPlans([...new Set(rows.map((row) => row.plan_id))]);
+  if (plans.size === 0) return finished('cancelled', 'plan_missing');
 
-  if (job.channel === 'email') return requestEmail(effect, plan, job, rows, begin);
+  if (job.channel === 'email') {
+    return effect.template === 'service_reminder'
+      ? serviceReminderEmail(effect, plans, job, rows, begin)
+      : requestEmail(effect, plans, job, rows, begin);
+  }
   if (!job.recipientId) return finished('skipped', 'no_active_device');
-  const drafts = requestDrafts(effect, plan, job.recipientId, rows);
+  const drafts = requestDrafts(effect, plans, job.recipientId, rows);
   if (job.channel === 'in_app') {
     await ensureFeedRows(drafts);
     return finished('delivered');

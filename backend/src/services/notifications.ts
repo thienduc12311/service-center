@@ -1,6 +1,20 @@
 import type { EmailTransportMode } from '@service-center/shared';
 import { config } from '../config.js';
 
+export interface ScheduleNotificationRole {
+  teamName: string | null;
+  positionName: string | null;
+}
+
+/** F08: one plan inside a consolidated message, with its own response action. */
+export interface ScheduleNotificationPlan {
+  planTitle: string;
+  serviceDate: string;
+  assignments: ScheduleNotificationRole[];
+  /** Answers this plan only. */
+  respondUrl: string;
+}
+
 export interface ScheduleNotification {
   to: string;
   personName: string | null;
@@ -11,8 +25,28 @@ export interface ScheduleNotification {
   respondUrl: string;
   organizationName?: string;
   schedulerEmail?: string | null;
-  assignments?: Array<{ teamName: string | null; positionName: string | null }>;
+  assignments?: ScheduleNotificationRole[];
   ics?: string;
+  /** Set for a multi-plan release; each plan is answered separately. */
+  plans?: ScheduleNotificationPlan[];
+  /** A reminder for an unanswered request rather than the first request. */
+  reminder?: boolean;
+}
+
+/** F08: "coming up" reminder for confirmed people; no response action. */
+export interface ServiceReminderNotification {
+  to: string;
+  personName: string | null;
+  organizationName: string;
+  planTitle: string;
+  serviceDate: string;
+  /** The first time this person needs to be there, ISO instant. */
+  firstTimeAt: string | null;
+  firstTimeLabel: string | null;
+  location: string | null;
+  assignments: ScheduleNotificationRole[];
+  planUrl: string;
+  replyTo?: string | null;
 }
 
 /** F03: a leader asks someone to review their availability. */
@@ -29,7 +63,19 @@ export interface AvailabilityRequestNotification {
   replyTo?: string | null;
 }
 
-export type EmailNotification = ScheduleNotification | AvailabilityRequestNotification;
+export type EmailNotification = ScheduleNotification | AvailabilityRequestNotification | ServiceReminderNotification;
+
+/** Per-send options a transport may honor. */
+export interface EmailSendOptions {
+  /**
+   * Stable across retries of one delivery (F08). With a deterministic link
+   * token the payload is identical, so the provider can drop a duplicate.
+   */
+  idempotencyKey?: string;
+}
+
+export const isServiceReminder = (notification: object): notification is ServiceReminderNotification =>
+  'planUrl' in notification;
 
 export const isAvailabilityRequest = (notification: object): notification is AvailabilityRequestNotification =>
   'availabilityUrl' in notification;
@@ -48,7 +94,7 @@ export interface EmailSendReceipt {
  */
 export interface NotificationTransport {
   readonly mode: EmailTransportMode;
-  send(notification: EmailNotification): Promise<EmailSendReceipt>;
+  send(notification: EmailNotification, options?: EmailSendOptions): Promise<EmailSendReceipt>;
 }
 
 const consoleTransport: NotificationTransport = {
@@ -57,7 +103,9 @@ const consoleTransport: NotificationTransport = {
     if (!config.isTest) {
       console.info(isAvailabilityRequest(notification)
         ? '[notify] simulated availability request email'
-        : `[notify] simulated email for "${notification.planTitle}" on ${notification.serviceDate}`);
+        : isServiceReminder(notification)
+          ? `[notify] simulated service reminder for "${notification.planTitle}"`
+          : `[notify] simulated email for "${notification.planTitle}" on ${notification.serviceDate}`);
     }
     return { providerMessageId: null };
   },

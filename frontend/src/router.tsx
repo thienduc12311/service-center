@@ -26,6 +26,7 @@ import { BlockoutSeriesPage } from './pages/BlockoutSeriesPage';
 import { HelpPage } from './pages/HelpPage';
 import { StaffingMatrixPage } from './pages/StaffingMatrixPage';
 import { StaffingProposalsPage } from './pages/StaffingProposalsPage';
+import { ReleaseReviewPage } from './pages/ReleaseReviewPage';
 
 /**
  * Gate for every authenticated route. Anyone signed in but not yet in an
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
           { path: '/plans', element: <PlansPage /> },
           { path: '/plans/matrix', element: <StaffingMatrixPage /> },
           { path: '/plans/proposals', element: <StaffingProposalsPage /> },
+          { path: '/plans/releases', element: <ReleaseReviewPage /> },
           { path: '/plans/:planId', element: <PlanDetailPage /> },
           { path: '/service-types/new', element: <ServiceTypeWizardPage /> },
           { path: '/songs', element: <SongsPage /> },

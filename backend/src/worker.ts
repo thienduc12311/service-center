@@ -20,9 +20,9 @@ const main = async (): Promise<void> => {
   for (let run = 1; run <= (drain ? MAX_RUNS : 1); run += 1) {
     const result = await runDeliveryWorker({ limit: 50, timeBudgetMs: 45_000 });
     console.info(
-      `[worker] run ${run}: claimed ${result.claimed}, completed ${result.completed}, retry later ${result.retried}, abandoned ${result.abandoned}`,
+      `[worker] run ${run}: releases ${result.releases}, reminders ${result.remindersEnqueued}, claimed ${result.claimed}, completed ${result.completed}, retry later ${result.retried}, abandoned ${result.abandoned}`,
     );
-    if (result.claimed === 0) break;
+    if (result.claimed === 0 && result.releases === 0 && result.remindersEnqueued === 0) break;
   }
 };
 

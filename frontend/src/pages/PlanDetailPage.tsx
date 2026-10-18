@@ -18,6 +18,7 @@ import { PlanWorkspaceHeader } from '../components/plan/PlanWorkspaceHeader';
 import { PlanSidebar } from '../components/plan/PlanSidebar';
 import { OrderTab } from '../components/plan/OrderTab';
 import { TeamsTab } from '../components/plan/TeamsTab';
+import { PlanDeliveryPanel } from '../components/plan/PlanDeliveryPanel';
 import { RehearseTab } from '../components/plan/RehearseTab';
 import { AddItemModal } from '../components/plan/AddItemModal';
 import { SchedulePeopleModal } from '../components/plan/SchedulePeopleModal';
@@ -346,6 +347,7 @@ export const PlanDetailPage = () => {
               showAllTeams={showAllTeams}
               onToggleAllTeams={() => setShowAllTeams((current) => !current)}
             />
+            {canSchedule && <PlanDeliveryPanel planId={planId} />}
             </>
           )}
 

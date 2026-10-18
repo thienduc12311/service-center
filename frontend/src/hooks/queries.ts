@@ -30,6 +30,13 @@ export const keys = {
   calendarFeed: (org: string | null) => [...keys.all(org), 'calendar-feed'] as const,
   deliveryStatus: (org: string | null) => [...keys.all(org), 'delivery-status'] as const,
   deliveries: (org: string | null, query: unknown) => [...keys.all(org), 'deliveries', query] as const,
+  // F08 release and reminders.
+  preparedRequests: (org: string | null) => [...keys.all(org), 'releases', 'prepared'] as const,
+  releaseBatches: (org: string | null) => [...keys.all(org), 'releases', 'batches'] as const,
+  reminderPolicies: (org: string | null, serviceTypeId: string | null, teamId: string | null) =>
+    [...keys.all(org), 'reminder-policies', serviceTypeId, teamId] as const,
+  myReminderPreferences: (org: string | null) => [...keys.all(org), 'reminder-preferences', 'me'] as const,
+  planDeliveries: (org: string | null, planId: string) => [...keys.plan(org, planId), 'deliveries'] as const,
   accessMembers: (org: string | null) => [...keys.all(org), 'access', 'members'] as const,
   scopeAccess: (org: string | null, scope: string, id: string | null) =>
     [...keys.all(org), 'access', 'scope', scope, id] as const,
@@ -234,6 +241,58 @@ export const useDeliveries = (query: ListDeliveriesRequest) => {
     queryKey: keys.deliveries(org, query),
     queryFn: () => api.listDeliveries(query),
     enabled: Boolean(org),
+  });
+};
+
+// ---------------------------------------------------- F08 release/reminders
+
+export const usePreparedRequests = (enabled = true) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.preparedRequests(org),
+    queryFn: () => api.listPreparedRequests(),
+    enabled: Boolean(org) && enabled,
+  });
+};
+
+export const useReleaseBatches = (enabled = true) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.releaseBatches(org),
+    queryFn: () => api.listReleaseBatches(),
+    enabled: Boolean(org) && enabled,
+  });
+};
+
+export const useReminderPolicies = (scope: { serviceTypeId?: string | null; teamId?: string | null }, enabled = true) => {
+  const org = useOrg();
+  const serviceTypeId = scope.serviceTypeId ?? null;
+  const teamId = scope.teamId ?? null;
+  return useQuery({
+    queryKey: keys.reminderPolicies(org, serviceTypeId, teamId),
+    queryFn: () => api.reminderPolicies({
+      ...(serviceTypeId ? { service_type_id: serviceTypeId } : {}),
+      ...(teamId ? { team_id: teamId } : {}),
+    }),
+    enabled: Boolean(org) && enabled,
+  });
+};
+
+export const useMyReminderPreferences = () => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.myReminderPreferences(org),
+    queryFn: () => api.myReminderPreferences(),
+    enabled: Boolean(org),
+  });
+};
+
+export const usePlanDeliveries = (planId: string, enabled = true) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.planDeliveries(org, planId),
+    queryFn: () => api.planDeliveryHistory(planId),
+    enabled: Boolean(org) && enabled,
   });
 };
 
