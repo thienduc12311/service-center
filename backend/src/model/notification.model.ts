@@ -17,6 +17,10 @@ export interface NotificationDraft {
   createdBy?: string | null;
   /** Identifies the row a delivery writes, so a retry never adds a second one. */
   dedupeKey?: string | null;
+  /** F09 deep links. */
+  planItemId?: string | null;
+  operationalMessageId?: string | null;
+  conversationId?: string | null;
 }
 
 /** The `notifications` insert payload. */
@@ -30,6 +34,9 @@ export type NotificationInsert = {
   assignment_id: string | null;
   created_by: string | null;
   dedupe_key: string | null;
+  plan_item_id: string | null;
+  operational_message_id: string | null;
+  conversation_id: string | null;
 };
 
 export const toNotificationInsert = (draft: NotificationDraft): NotificationInsert => ({
@@ -42,6 +49,9 @@ export const toNotificationInsert = (draft: NotificationDraft): NotificationInse
   assignment_id: draft.assignmentId ?? null,
   created_by: draft.createdBy ?? null,
   dedupe_key: draft.dedupeKey ?? null,
+  plan_item_id: draft.planItemId ?? null,
+  operational_message_id: draft.operationalMessageId ?? null,
+  conversation_id: draft.conversationId ?? null,
 });
 
 /** What a push notification carries to the device. */

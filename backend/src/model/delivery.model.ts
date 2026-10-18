@@ -35,6 +35,12 @@ export type DeliveryErrorCode =
   | 'provider_duplicate_key'
   /** F08: a materialized reminder no longer matched current state at dispatch. */
   | 'reminder_obsolete'
+  /** F09: the comment/message was deleted or hidden before it was announced. */
+  | 'content_removed'
+  /** F09: the recipient muted the conversation after the message was posted. */
+  | 'conversation_muted'
+  /** F09: a channel this kind of announcement never uses. */
+  | 'channel_not_used'
   | 'internal_error';
 
 export class DeliveryError extends Error {
@@ -99,6 +105,10 @@ export interface DeliveryEffect {
   releaseBatchId: string | null;
   /** F08: the reminder job this effect materialized. */
   reminderJobId: string | null;
+  /** F09: the item comment, targeted message or conversation message announced. */
+  commentId: string | null;
+  operationalMessageId: string | null;
+  conversationMessageId: string | null;
   createdBy: string | null;
 }
 
@@ -123,4 +133,6 @@ export interface WorkerRunResult {
   releases: number;
   /** F08: reminder jobs this run turned into outbox deliveries. */
   remindersEnqueued: number;
+  /** F09: conversation messages removed by retention this run. */
+  conversationMessagesPurged: number;
 }

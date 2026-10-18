@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   isAdmin,
   nextOccurrence,
@@ -11,9 +11,10 @@ import {
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { printDocument } from '../lib/print-document';
-import { keys, usePlan, usePlans, useTeams, useInvalidateOrg } from '../hooks/queries';
+import { keys, usePlan, usePlanNotes, usePlans, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { EmptyState, ErrorNotice, Loading } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, Loading } from '../components/ui';
+import { MessageComposerModal } from '../components/collaboration/MessageComposerModal';
 import { PlanWorkspaceHeader } from '../components/plan/PlanWorkspaceHeader';
 import { PlanSidebar } from '../components/plan/PlanSidebar';
 import { OrderTab } from '../components/plan/OrderTab';
@@ -24,14 +25,14 @@ import { AddItemModal } from '../components/plan/AddItemModal';
 import { SchedulePeopleModal } from '../components/plan/SchedulePeopleModal';
 import { EditTimesModal } from '../components/plan/EditTimesModal';
 import { AssignmentTimesModal } from '../components/plan/AssignmentTimesModal';
-import { EditNotesModal } from '../components/plan/EditNotesModal';
+import { ItemDiscussionModal } from '../components/collaboration/ItemDiscussionModal';
 import { ImportTemplateModal } from '../components/plan/ImportTemplateModal';
 import { DeliveryOutcomeNotice } from '../components/plan/DeliveryOutcomeNotice';
 import { OpportunityPanel, type SignupSetupOption } from '../components/plan/OpportunityPanel';
 import { PLAN_TABS, PLAN_TAB_LABELS, buildPlanTeams, type PlanTab } from '../components/plan/types';
 
 /** Which dialog, if any, is on top of the workspace. */
-type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'edit-notes' | 'import-template';
+type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'import-template';
 
 export const PlanDetailPage = () => {
   const { planId } = useParams<{ planId: string }>();
@@ -57,6 +58,24 @@ export const PlanDetailPage = () => {
   const [showAllTeams, setShowAllTeams] = useState(false);
   const [editingNeeds, setEditingNeeds] = useState(false);
   const [editingTimesFor, setEditingTimesFor] = useState<AssignmentDetail | null>(null);
+  const [discussingId, setDiscussingId] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
+  const queryClient = useQueryClient();
+  const openChat = useMutation({
+    mutationFn: () => api.openConversation({ kind: 'plan', target_id: planId! }),
+    onSuccess: async (conversation) => {
+      await queryClient.invalidateQueries({ queryKey: keys.conversations(organizationId) });
+      navigate(`/chat/${conversation.id}`);
+    },
+  });
+  const notes = usePlanNotes(planId ?? '');
+  const itemNoteCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const note of notes.data?.notes ?? []) {
+      if (note.plan_item_id) counts.set(note.plan_item_id, (counts.get(note.plan_item_id) ?? 0) + 1);
+    }
+    return counts;
+  }, [notes.data]);
 
   const serviceTypeId = plan.data?.service_type_id ?? undefined;
   // Siblings drive the ‹ › arrows: the other plans of the same service type.
@@ -203,6 +222,7 @@ export const PlanDetailPage = () => {
   if (!plan.data || !planId) return <EmptyState title="Plan not found" />;
 
   const detail = plan.data;
+  const discussing = detail.items.find((item) => item.id === discussingId) ?? null;
   const target = { serviceTypeId: detail.service_type_id };
   const canEditPlan = can('plans.edit', target);
   const canScheduleTeam = (teamId: string): boolean => can('scheduling.manage', { ...target, teamId });
@@ -279,6 +299,11 @@ export const PlanDetailPage = () => {
           }
         />
         {notify.isSuccess && <DeliveryOutcomeNotice result={notify.data} canRetry={isAdmin(role)} />}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" loading={openChat.isPending} onClick={() => openChat.mutate()}>Plan chat</Button>
+          {canSchedule && <Button variant="secondary" onClick={() => setComposing(true)}>Message people</Button>}
+        </div>
+        <ErrorNotice error={openChat.error ? new Error('Plan chat is open to plan leaders and the people scheduled on this plan.') : null} />
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[16rem_1fr]">
@@ -294,7 +319,6 @@ export const PlanDetailPage = () => {
           onImportTemplate={() => setDialog('import-template')}
           onAddPeople={() => setDialog('schedule-people')}
           onEditNeededPositions={openNeededPositions}
-          onEditNotes={() => setDialog('edit-notes')}
         />
 
         <div className="min-w-0">
@@ -323,6 +347,8 @@ export const PlanDetailPage = () => {
               onAddItem={() => setDialog('add-item')}
               onMoveItem={move}
               onRemoveItem={(itemId) => removeItem.mutate(itemId)}
+              onDiscussItem={(item) => setDiscussingId(item.id)}
+              itemNoteCounts={itemNoteCounts}
             />
           )}
 
@@ -376,11 +402,16 @@ export const PlanDetailPage = () => {
         plan={detail}
         onClose={() => setDialog(null)}
       />
-      <EditNotesModal
-        open={dialog === 'edit-notes'}
-        plan={detail}
-        onClose={() => setDialog(null)}
-      />
+      {composing && (
+        <MessageComposerModal
+          plan={detail}
+          teams={(teams.data ?? []).filter((team) => canScheduleTeam(team.id))}
+          onClose={() => setComposing(false)}
+        />
+      )}
+      {discussing && (
+        <ItemDiscussionModal planId={planId} item={discussing} onClose={() => setDiscussingId(null)} />
+      )}
       <ImportTemplateModal
         open={dialog === 'import-template'}
         plan={detail}

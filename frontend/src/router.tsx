@@ -19,6 +19,8 @@ import { TeamsPage } from './pages/TeamsPage';
 import { PeoplePage } from './pages/PeoplePage';
 import { PersonPage } from './pages/PersonPage';
 import { MySchedulePage } from './pages/MySchedulePage';
+import { MessageDetailPage, MessagesPage } from './pages/MessagesPage';
+import { ChatPage } from './pages/ChatPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SongbooksPage } from './pages/SongbooksPage';
 import { SongbookPage } from './pages/SongbookPage';
@@ -78,6 +80,10 @@ export const router = createBrowserRouter([
           { path: '/people/new', element: <PersonPage /> },
           { path: '/people/:personId', element: <PersonPage /> },
           { path: '/my-schedule', element: <MySchedulePage /> },
+          { path: '/messages', element: <MessagesPage /> },
+          { path: '/messages/:messageId', element: <MessageDetailPage /> },
+          { path: '/chat', element: <ChatPage /> },
+          { path: '/chat/:conversationId', element: <ChatPage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/blockouts/:seriesId', element: <BlockoutSeriesPage /> },
           { path: '/help/:delegationId', element: <HelpPage /> },

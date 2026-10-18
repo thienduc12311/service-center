@@ -50,6 +50,15 @@ const PT409_HINTS: Record<string, string> = {
   capacity_full: 'capacity_full',
   opportunity_closed: 'opportunity_closed',
   opportunity_changed: 'opportunity_changed',
+  // F09
+  note_stale: 'note_stale',
+  comment_id_conflict: 'comment_id_conflict',
+  comment_deleted: 'comment_deleted',
+  idempotency_key_reused: 'idempotency_key_reused',
+  audience_changed: 'audience_changed',
+  message_id_conflict: 'message_id_conflict',
+  message_removed: 'message_removed',
+  message_unrecoverable: 'message_unrecoverable',
 };
 
 export const fromPostgrestError = (error: {
@@ -86,6 +95,9 @@ export const fromPostgrestError = (error: {
     // change; PostgREST also answers direct table calls with 409 for it.
     case 'PT409':
       return HttpError.conflict('That change is no longer allowed');
+    // F09: posting faster than a conversation allows.
+    case 'PT429':
+      return new HttpError(429, error.message, 'rate_limited');
     case 'PT410':
       return new HttpError(410, error.message, 'assignment_request_expired');
     default:

@@ -3,6 +3,7 @@ import { ASSIGNMENT_STATUS_LABELS, formatDate, formatTime, type PlanDetail } fro
 import { Avatar, Button } from '../ui';
 import { assignmentDot } from '../../lib/format';
 import type { PlanTeamView } from './types';
+import { PlanNotesPanel } from '../collaboration/PlanNotesPanel';
 
 export interface PlanSidebarProps {
   plan: PlanDetail;
@@ -19,7 +20,6 @@ export interface PlanSidebarProps {
   onImportTemplate: () => void;
   onAddPeople: () => void;
   onEditNeededPositions: () => void;
-  onEditNotes: () => void;
 }
 
 const SectionHeading = ({
@@ -52,7 +52,6 @@ export const PlanSidebar = ({
   onImportTemplate,
   onAddPeople,
   onEditNeededPositions,
-  onEditNotes,
 }: PlanSidebarProps) => {
   const teams = showAllTeams ? everyTeam : myTeams;
   const scheduledCount = teams.reduce(
@@ -188,27 +187,7 @@ export const PlanSidebar = ({
         </button>
       </section>
 
-      {/* ------------------------------------------------------------ notes -- */}
-      <section>
-        <SectionHeading
-          icon="🗒"
-          title="Notes"
-          action={
-            canEditPlan && (
-              <Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={onEditNotes}>
-                {plan.notes ? 'Edit' : 'Add'}
-              </Button>
-            )
-          }
-        />
-        <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs">
-          {plan.notes ? (
-            <p className="whitespace-pre-wrap text-slate-600">{plan.notes}</p>
-          ) : (
-            <p className="text-slate-400">There are no notes for this plan.</p>
-          )}
-        </div>
-      </section>
+      <PlanNotesPanel planId={plan.id} />
     </aside>
   );
 };

@@ -1,11 +1,13 @@
 import { Resend, type ErrorResponse } from 'resend';
 import {
   isAvailabilityRequest,
+  isOperationalMessage,
   isServiceReminder,
   type AvailabilityRequestNotification,
   type EmailSendOptions,
   type EmailSendReceipt,
   type NotificationTransport,
+  type OperationalMessageNotification,
   type PersonInvitationNotification,
   type PersonInvitationTransport,
   type ScheduleNotification,
@@ -17,6 +19,7 @@ import { DeliveryError } from '../../model/delivery.model.js';
 import { invitationEmail } from './templates/invitation.js';
 import { scheduleEmail } from './templates/schedule.js';
 import { serviceReminderEmail } from './templates/service-reminder.js';
+import { operationalMessageEmail } from './templates/operational-message.js';
 
 /** How long to wait for Resend before treating the outcome as unknown. */
 const SEND_TIMEOUT_MS = 15_000;
@@ -69,9 +72,22 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
   }
 
   async send(
-    notification: ScheduleNotification | AvailabilityRequestNotification | ServiceReminderNotification | PersonInvitationNotification,
+    notification:
+      | ScheduleNotification
+      | AvailabilityRequestNotification
+      | ServiceReminderNotification
+      | OperationalMessageNotification
+      | PersonInvitationNotification,
     options: EmailSendOptions = {},
   ): Promise<EmailSendReceipt> {
+    if (isOperationalMessage(notification)) {
+      const content = operationalMessageEmail(notification);
+      return this.deliver({
+        from: `${notification.organizationName} <${config.MAIL_FROM_ADDRESS}>`,
+        to: notification.to, subject: content.subject, html: content.html, text: content.text,
+        ...(notification.replyTo ? { replyTo: notification.replyTo } : {}),
+      }, options);
+    }
     if (isAvailabilityRequest(notification)) {
       const content = availabilityRequestEmail(notification);
       return this.deliver({

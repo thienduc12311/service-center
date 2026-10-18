@@ -53,6 +53,9 @@ const DELIVERY_ERROR_LABELS: Readonly<Record<string, string>> = {
   internal_error: 'Unexpected error',
   reminder_obsolete: 'Reminder no longer applied when it was about to be sent',
   provider_duplicate_key: 'Provider already has an earlier attempt of this message; it may have been sent',
+  content_removed: 'The comment or message was removed before it was sent',
+  conversation_muted: 'The recipient muted this conversation',
+  channel_not_used: 'Not sent on this channel',
 };
 
 export const deliveryErrorLabel = (code: string | null): string | null =>

@@ -63,7 +63,26 @@ export interface AvailabilityRequestNotification {
   replyTo?: string | null;
 }
 
-export type EmailNotification = ScheduleNotification | AvailabilityRequestNotification | ServiceReminderNotification;
+/** F09: a leader's targeted message, rendered for one recipient. */
+export interface OperationalMessageNotification {
+  to: string;
+  personName: string | null;
+  organizationName: string;
+  /** Final text with variables substituted (plain text, escaped when rendered). */
+  subject: string;
+  body: string;
+  senderName: string | null;
+  /** Where the recipient can read it in the app (sign-in required). */
+  messageUrl: string;
+  /** The sender, so replies reach a person. No inbound email is ingested. */
+  replyTo?: string | null;
+}
+
+export type EmailNotification =
+  | ScheduleNotification
+  | AvailabilityRequestNotification
+  | ServiceReminderNotification
+  | OperationalMessageNotification;
 
 /** Per-send options a transport may honor. */
 export interface EmailSendOptions {
@@ -76,6 +95,9 @@ export interface EmailSendOptions {
 
 export const isServiceReminder = (notification: object): notification is ServiceReminderNotification =>
   'planUrl' in notification;
+
+export const isOperationalMessage = (notification: object): notification is OperationalMessageNotification =>
+  'messageUrl' in notification;
 
 export const isAvailabilityRequest = (notification: object): notification is AvailabilityRequestNotification =>
   'availabilityUrl' in notification;
@@ -101,7 +123,9 @@ const consoleTransport: NotificationTransport = {
   mode: 'simulated',
   async send(notification) {
     if (!config.isTest) {
-      console.info(isAvailabilityRequest(notification)
+      console.info(isOperationalMessage(notification)
+        ? '[notify] simulated operational message email'
+        : isAvailabilityRequest(notification)
         ? '[notify] simulated availability request email'
         : isServiceReminder(notification)
           ? `[notify] simulated service reminder for "${notification.planTitle}"`
