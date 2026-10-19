@@ -101,6 +101,43 @@ import type {
 } from './files.js';
 import type { MediaRow, PlanStageLayoutRow, StageLayoutTemplateRow } from './media.js';
 import type { FilePlaybackRights } from './rehearsal.js';
+import type {
+  AttendanceBatchResult,
+  AttendanceEventRow,
+  AttendanceRecordRow,
+  CalendarScopedFeedRow,
+  PersonCalendarSharingRow,
+  PlanPublicationRow,
+  PublicSetListLinkRow,
+  ReportExportRow,
+} from './reports.js';
+
+/** One mark as `record_attendance` receives it (F16). */
+export interface AttendanceMarkRpc {
+  person_id: string;
+  team_id: string;
+  status: string;
+  expected_revision: number;
+}
+
+/** What a scoped feed may show its subscriber right now (F16). */
+export interface ScopedFeedAccess {
+  names: boolean;
+  blockouts: boolean;
+  personal_dates: boolean;
+}
+
+/** One row of `team_calendar_layers` (F16). */
+export interface TeamCalendarLayerRpcRow {
+  layer: string;
+  source_id: string | null;
+  person_id: string;
+  person_name: string;
+  on_date: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  all_day: boolean;
+}
 
 /**
  * Row types are exact — every read is precisely typed. Insert and Update are
@@ -1101,6 +1138,13 @@ export type Database = {
       media: Table<MediaRow>;
       stage_layout_templates: Table<StageLayoutTemplateRow>;
       plan_stage_layouts: Table<PlanStageLayoutRow>;
+      attendance_records: Table<AttendanceRecordRow>;
+      attendance_events: Table<AttendanceEventRow>;
+      report_exports: Table<ReportExportRow>;
+      calendar_scoped_feeds: Table<CalendarScopedFeedRow>;
+      person_calendar_sharing: Table<PersonCalendarSharingRow>;
+      plan_publications: Table<PlanPublicationRow>;
+      public_set_list_links: Table<PublicSetListLinkRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -1672,6 +1716,55 @@ export type Database = {
       set_file_playback_rights: {
         Args: { p_attachment: string; p_expected_revision: number; p_rights: FilePlaybackRights };
         Returns: AttachmentRow;
+      };
+      // F16
+      record_attendance: {
+        Args: { p_plan_time_id: string; p_marks: AttendanceMarkRpc[]; p_reason: string | null; p_idempotency_key: string };
+        Returns: AttendanceBatchResult;
+      };
+      request_report_export: {
+        Args: { p_org: string; p_kind: string; p_filters: Record<string, unknown>; p_idempotency_key: string };
+        Returns: ReportExportRow;
+      };
+      retry_report_export: {
+        Args: { p_export: string };
+        Returns: ReportExportRow;
+      };
+      claim_report_exports: {
+        Args: { p_limit: number; p_lease_seconds: number };
+        Returns: ReportExportRow[];
+      };
+      report_requester_access: {
+        Args: { p_org: string; p_user: string };
+        Returns: EffectiveAccessRow[];
+      };
+      team_calendar_layers: {
+        Args: { p_team: string; p_from: string; p_to: string; p_layers: string[] };
+        Returns: TeamCalendarLayerRpcRow[];
+      };
+      scoped_feed_access_for: {
+        Args: { p_user: string; p_org: string; p_scope: string; p_service_type: string | null; p_team: string | null };
+        Returns: ScopedFeedAccess | null;
+      };
+      team_calendar_layers_for: {
+        Args: { p_user: string; p_team: string; p_from: string; p_to: string; p_layers: string[] };
+        Returns: TeamCalendarLayerRpcRow[];
+      };
+      can_set_person_calendar_sharing: {
+        Args: { p_person: string };
+        Returns: boolean;
+      };
+      publish_plan: {
+        Args: { p_plan: string; p_fields: string[]; p_mode: string; p_expected_revision: number; p_new_slug: boolean };
+        Returns: PlanPublicationRow;
+      };
+      revoke_plan_publication: {
+        Args: { p_plan: string; p_expected_revision: number };
+        Returns: PlanPublicationRow;
+      };
+      set_public_set_list_link: {
+        Args: { p_service_type: string; p_kind: string; p_action: string };
+        Returns: PublicSetListLinkRow;
       };
       set_plan_item_media: {
         Args: { p_plan_id: string; p_item_id: string; p_media_id: string | null; p_expected_revision: number | null };

@@ -14,6 +14,7 @@ export * from './types/live.js';
 export * from './types/files.js';
 export * from './types/rehearsal.js';
 export * from './types/media.js';
+export * from './types/reports.js';
 export * from './schemas/index.js';
 export * from './lib/constants.js';
 export * from './lib/dates.js';
@@ -36,6 +37,7 @@ export * from './lib/live-run.js';
 export * from './lib/files.js';
 export * from './lib/rehearsal.js';
 export * from './lib/stage-layouts.js';
+export * from './lib/reports.js';
 export * from './lib/api-client.js';
 export * from './lib/design-tokens.js';
 

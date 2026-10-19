@@ -27,6 +27,8 @@ import { TeamsTab } from '../components/plan/TeamsTab';
 import { PlanDeliveryPanel } from '../components/plan/PlanDeliveryPanel';
 import { RehearseTab } from '../components/plan/RehearseTab';
 import { StageTab } from '../components/stage/StageTab';
+import { AttendanceTab } from '../components/plan/AttendanceTab';
+import { ShareTab } from '../components/plan/ShareTab';
 import { PlanFilesTab } from '../components/files/PlanFilesTab';
 import { AddItemModal } from '../components/plan/AddItemModal';
 import { EditItemModal } from '../components/plan/EditItemModal';
@@ -383,7 +385,13 @@ export const PlanDetailPage = () => {
         <div className="min-w-0">
           <div className="mb-4 flex gap-6 border-b border-slate-200 dark:border-slate-800">
             {/* F14: stage layouts are for the plan's editors and leaders (RLS decides). */}
-            {PLAN_TABS.filter((value) => value !== 'stage' || canEditPlan || can('scheduling.manage', target)).map((value) => (
+            {/* F16: attendance for team schedulers; public sharing for the plan's editors. */}
+            {PLAN_TABS.filter(
+              (value) =>
+                (value !== 'stage' || canEditPlan || can('scheduling.manage', target)) &&
+                (value !== 'attendance' || canSchedule) &&
+                (value !== 'share' || canEditPlan),
+            ).map((value) => (
               <button
                 key={value}
                 type="button"
@@ -457,6 +465,8 @@ export const PlanDetailPage = () => {
 
           {tab === 'files' && <PlanFilesTab plan={detail} />}
           {tab === 'stage' && <StageTab plan={detail} />}
+          {tab === 'attendance' && <AttendanceTab plan={detail} />}
+          {tab === 'share' && <ShareTab plan={detail} />}
         </div>
       </div>
 

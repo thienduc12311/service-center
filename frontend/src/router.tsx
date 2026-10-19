@@ -35,6 +35,8 @@ import { PlanTemplatesPage } from './pages/PlanTemplatesPage';
 import { GeneratePlansPage } from './pages/GeneratePlansPage';
 import { ReschedulePlansPage } from './pages/ReschedulePlansPage';
 import { MediaDetailPage, MediaLibraryPage } from './pages/MediaPage';
+import { PublicPlanPage } from './pages/PublicPlanPage';
+import { ReportsPage } from './pages/ReportsPage';
 
 /**
  * Gate for every authenticated route. Anyone signed in but not yet in an
@@ -56,6 +58,9 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/accept-invite', element: <AcceptInvitePage /> },
   { path: '/respond', element: <RespondAssignmentPage /> },
+  // F16: anonymous public projections (no session needed).
+  { path: '/p/:slug', element: <PublicPlanPage kind="plan" /> },
+  { path: '/s/:slug', element: <PublicPlanPage kind="set-list" /> },
   {
     element: <RequireAuth />,
     children: [
@@ -71,6 +76,7 @@ export const router = createBrowserRouter([
         children: [
           { path: '/', element: <DashboardPage /> },
           { path: '/calendar', element: <CalendarPage /> },
+          { path: '/reports', element: <ReportsPage /> },
           { path: '/plans', element: <PlansPage /> },
           { path: '/plans/matrix', element: <StaffingMatrixPage /> },
           { path: '/plans/proposals', element: <StaffingProposalsPage /> },

@@ -8,6 +8,7 @@ import { config } from '../config.js';
 import type { AssignmentStatus } from '@service-center/shared';
 import { attendanceFor } from '../services/attendance.js';
 import { recipientSequence } from '../model/attendance.model.js';
+import { renderScopedFeed } from '../services/calendar-scoped-feeds.js';
 
 export const calendarFeedRouter: Router = Router();
 calendarFeedRouter.use(rateLimit({ windowMs: 60_000, limit: config.isProduction ? 60 : 10_000, standardHeaders: 'draft-7', legacyHeaders: false }));
@@ -41,6 +42,15 @@ interface FeedCalendarState {
 }
 
 const FEED_TIME_SELECT = 'id, kind, name, starts_at, ends_at, ics_sequence, plan:plans!inner(id, title, location, organization_id)';
+
+// F16: a service-type or team feed. Current access is re-checked on every fetch.
+calendarFeedRouter.get('/scoped/:token.ics', async (req, res) => {
+  const calendar = await renderScopedFeed(req.params.token);
+  if (!calendar) throw HttpError.notFound('Calendar feed not found');
+  res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+  res.setHeader('Cache-Control', 'private, max-age=3600');
+  res.send(calendar);
+});
 
 calendarFeedRouter.get('/:token.ics', async (req, res) => {
   const token = await unwrap(adminDb.from('calendar_feed_tokens').select('id, organization_id, user_id, revoked_at').eq('token_hash', hashInviteToken(req.params.token)).maybeSingle());
