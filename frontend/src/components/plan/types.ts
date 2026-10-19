@@ -5,15 +5,16 @@ import type {
   TeamWithPositions,
 } from '@service-center/shared';
 
-/** The three panels of the plan workspace. */
-export type PlanTab = 'order' | 'teams' | 'rehearse';
+/** The panels of the plan workspace. */
+export type PlanTab = 'order' | 'teams' | 'rehearse' | 'files';
 
-export const PLAN_TABS: readonly PlanTab[] = ['order', 'teams', 'rehearse'];
+export const PLAN_TABS: readonly PlanTab[] = ['order', 'teams', 'rehearse', 'files'];
 
 export const PLAN_TAB_LABELS: Record<PlanTab, string> = {
   order: 'Order',
   teams: 'Teams',
   rehearse: 'Rehearse',
+  files: 'Files',
 };
 
 /** One position on one team, as the plan's Teams tab shows it. */

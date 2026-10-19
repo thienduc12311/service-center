@@ -4,6 +4,30 @@
  */
 
 import type {
+  FileDetail,
+  FileDocument,
+  FileDownload,
+  FileFinalizeResult,
+  FileLinkSummary,
+  FileOwnerKind,
+  FileSummary,
+  FileUploadIntent,
+  ParentFiles,
+  PlanFiles,
+} from '../types/files.js';
+import type {
+  ArchiveFileInput,
+  CreateFileDocumentRequest,
+  CreateFileLinkRequest,
+  CreateFileUploadIntentRequest,
+  FileDownloadRequest,
+  LinkFileToPlanRequest,
+  SaveFileDocumentVersionInput,
+  SetFileLinkPinInput,
+  UpdateFileLinkUrlInput,
+  UpdateFileRequest,
+} from '../schemas/files.js';
+import type {
   AvailabilityAudienceMember,
   AvailabilityRequestDetail,
   AvailabilityRequestSummary,
@@ -647,6 +671,55 @@ export class ServiceCenterApi {
       'GET',
       `/api/v1/plans/${planId}/schedule${timeId ? `?time_id=${encodeURIComponent(timeId)}` : ''}`,
     );
+
+  // -------------------------------------------------------------- files --
+  /** F13: the files one parent owns (readers see only what their audience allows). */
+  files = (ownerKind: FileOwnerKind, ownerId: string) =>
+    this.request<ParentFiles>('GET', '/api/v1/files', undefined, { owner_kind: ownerKind, owner_id: ownerId });
+  /** Every file a plan uses: its own, its items', its songs'/arrangements' and linked defaults. */
+  planFiles = (planId: string) => this.request<PlanFiles>('GET', `/api/v1/plans/${planId}/files`);
+  file = (fileId: string) => this.request<FileDetail>('GET', `/api/v1/files/${fileId}`);
+  /**
+   * Step 1 of an upload (new file or replacement): returns one exact upload
+   * target. PUT the bytes there, then `finalizeFile`. Retrying with the same
+   * idempotency key returns the same intent.
+   */
+  createFileUploadIntent = (body: CreateFileUploadIntentRequest) =>
+    this.request<FileUploadIntent>('POST', '/api/v1/files/upload-intents', body);
+  /** Step 3: verifies the stored bytes; idempotent. Only `outcome: 'ready'` is a file version. */
+  finalizeFile = (fileId: string, versionId: string) =>
+    this.request<FileFinalizeResult>('POST', `/api/v1/files/${fileId}/finalize`, { version_id: versionId });
+  /** Cancels an unfinished upload; a new file that never finished is removed. */
+  abandonFileUpload = (fileId: string, versionId: string) =>
+    this.request<{ file_removed: boolean }>('POST', `/api/v1/files/${fileId}/abandon`, { version_id: versionId });
+  createFileLink = (body: CreateFileLinkRequest) => this.request<FileSummary>('POST', '/api/v1/files/links', body);
+  updateFileLinkUrl = (fileId: string, body: UpdateFileLinkUrlInput) =>
+    this.request<FileSummary>('PUT', `/api/v1/files/${fileId}/link`, body);
+  createFileDocument = (body: CreateFileDocumentRequest) =>
+    this.request<FileSummary>('POST', '/api/v1/files/documents', body);
+  fileDocument = (fileId: string, versionId?: string) =>
+    this.request<FileDocument>('GET', `/api/v1/files/${fileId}/document`, undefined, versionId ? { version_id: versionId } : undefined);
+  /** Saves the text as a new version. */
+  saveFileDocumentVersion = (fileId: string, body: SaveFileDocumentVersionInput) =>
+    this.request<FileSummary>('PUT', `/api/v1/files/${fileId}/document`, body);
+  updateFile = (fileId: string, body: UpdateFileRequest) => this.request<FileSummary>('PATCH', `/api/v1/files/${fileId}`, body);
+  archiveFile = (fileId: string, body: ArchiveFileInput) =>
+    this.request<FileSummary>('POST', `/api/v1/files/${fileId}/archive`, body);
+  /** Permanent; refused (409 `file_in_use`) while any plan links the file. */
+  deleteFile = (fileId: string, expectedRevision: number) =>
+    this.request<void>('DELETE', `/api/v1/files/${fileId}`, { expected_revision: expectedRevision });
+  /**
+   * A short-lived link (rechecked against current access every time) or the
+   * external address of a link file. Ask again when it expires.
+   */
+  fileDownload = (fileId: string, body: FileDownloadRequest = {}) =>
+    this.request<FileDownload>('POST', `/api/v1/files/${fileId}/download`, body);
+  linkFileToPlan = (planId: string, body: LinkFileToPlanRequest) =>
+    this.request<FileLinkSummary>('POST', `/api/v1/plans/${planId}/file-links`, body);
+  setFileLinkPin = (linkId: string, body: SetFileLinkPinInput) =>
+    this.request<FileLinkSummary>('PATCH', `/api/v1/file-links/${linkId}`, body);
+  /** Removes the plan reference only; the source file stays. */
+  unlinkFile = (linkId: string) => this.request<void>('DELETE', `/api/v1/file-links/${linkId}`);
 
   // --------------------------------------------------------------- live --
   /** F12: the plan's service times, each with its current run, and every run (newest first). */

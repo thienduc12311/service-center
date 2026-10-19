@@ -13,6 +13,7 @@ import { AllArrangementsPanel } from '../components/song/AllArrangementsPanel';
 import { SongSchedulePanel } from '../components/song/SongSchedulePanel';
 import { SongTagsPanel } from '../components/song/SongTagsPanel';
 import { SongNotesPanel } from '../components/song/SongNotesPanel';
+import { FilesPanel } from '../components/files/FilesPanel';
 import { SongInformationModal } from '../components/song/SongInformationModal';
 import { ArrangementModal } from '../components/song/ArrangementModal';
 import { ALL_ARRANGEMENTS, resolveArrangement, type SongPane } from '../components/song/types';
@@ -119,6 +120,19 @@ export const SongDetailPage = () => {
               onAdd={() => openArrangementDialog(null)}
             />
           )}
+
+          {pane.kind === 'arrangement' && arrangement && (
+            <FilesPanel
+              owner={{ kind: 'arrangement', id: arrangement.id }}
+              title={`${arrangement.name} files`}
+              description="Charts and tracks for this arrangement. Plans using it show them under the song."
+            />
+          )}
+          <FilesPanel
+            owner={{ kind: 'song', id: detail.id }}
+            title="Song files"
+            description="Shared by every arrangement. Plans using this song show them under the song."
+          />
 
           <div className="grid gap-6 lg:grid-cols-3">
             <SongSchedulePanel songId={detail.id} arrangementId={scheduleArrangementId} />

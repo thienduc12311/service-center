@@ -68,6 +68,9 @@ const PT409_HINTS: Record<string, string> = {
   run_control_held: 'run_control_held',
   run_exists: 'run_exists',
   run_state: 'run_state_invalid',
+  // F13
+  file_changed: 'file_revision_stale',
+  file_in_use: 'file_in_use',
 };
 
 export const fromPostgrestError = (error: {

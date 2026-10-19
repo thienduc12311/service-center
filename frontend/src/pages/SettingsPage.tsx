@@ -15,9 +15,10 @@ import { AvailabilityReview } from '../components/settings/AvailabilityReview';
 import { SchedulingPreferences } from '../components/settings/SchedulingPreferences';
 import { ScheduleHelp } from '../components/settings/ScheduleHelp';
 import { AcrossOrganizations } from '../components/settings/AcrossOrganizations';
+import { ServiceTypeFilesSettings } from '../components/settings/ServiceTypeFilesSettings';
 
 export const SettingsPage = () => {
-  const { user, organizationId, role, access, refreshUser, switchOrganization } = useAuth();
+  const { user, organizationId, role, access, canAnywhere, refreshUser, switchOrganization } = useAuth();
   const calendarFeed = useCalendarFeed();
   const rotateFeed = useMutation({ mutationFn: () => api.rotateCalendarFeed(), onSuccess: () => calendarFeed.refetch() });
   const feed = rotateFeed.data ?? calendarFeed.data;
@@ -84,6 +85,8 @@ export const SettingsPage = () => {
       {isAdmin(role) && <DeliverySettings />}
 
       {isLeader(access) && <ReminderPolicySettings />}
+
+      {(canAnywhere('plans.edit') || canAnywhere('media.manage')) && <ServiceTypeFilesSettings />}
 
       <MyReminderSettings />
 

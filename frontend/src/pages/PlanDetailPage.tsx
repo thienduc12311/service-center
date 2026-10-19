@@ -26,6 +26,7 @@ import { OrderTab } from '../components/plan/OrderTab';
 import { TeamsTab } from '../components/plan/TeamsTab';
 import { PlanDeliveryPanel } from '../components/plan/PlanDeliveryPanel';
 import { RehearseTab } from '../components/plan/RehearseTab';
+import { PlanFilesTab } from '../components/files/PlanFilesTab';
 import { AddItemModal } from '../components/plan/AddItemModal';
 import { EditItemModal } from '../components/plan/EditItemModal';
 import { PrintOrderModal } from '../components/plan/PrintOrderModal';
@@ -451,6 +452,8 @@ export const PlanDetailPage = () => {
           )}
 
           {tab === 'rehearse' && <RehearseTab plan={detail} />}
+
+          {tab === 'files' && <PlanFilesTab plan={detail} />}
         </div>
       </div>
 
