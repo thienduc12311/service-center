@@ -13,6 +13,7 @@ import { PlansPage } from './pages/PlansPage';
 import { PlanDetailPage } from './pages/PlanDetailPage';
 import { LivePage } from './pages/LivePage';
 import { ServiceTypeWizardPage } from './pages/ServiceTypeWizardPage';
+import { ImportsPage } from './pages/ImportsPage';
 import { SongsPage } from './pages/SongsPage';
 import { SongDetailPage } from './pages/SongDetailPage';
 import { ChartEditorPage } from './pages/ChartEditorPage';
@@ -81,6 +82,7 @@ export const router = createBrowserRouter([
           { path: '/plans/:planId/live', element: <LivePage /> },
           { path: '/service-types/new', element: <ServiceTypeWizardPage /> },
           { path: '/songs', element: <SongsPage /> },
+          { path: '/imports', element: <ImportsPage /> },
           { path: '/songs/:songId', element: <SongDetailPage /> },
           { path: '/songbooks', element: <SongbooksPage /> },
           { path: '/media', element: <MediaLibraryPage /> },

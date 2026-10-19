@@ -12,6 +12,8 @@ const SONG_ID = '00000000-0000-4000-8000-000000000001';
 
 const arrangement = (overrides: Partial<ArrangementRow>): ArrangementRow => ({
   id: 'arr',
+  archived_at: null,
+  revision: 1,
   song_id: SONG_ID,
   name: 'Arrangement',
   song_key: 'C',
@@ -35,6 +37,8 @@ const arrangement = (overrides: Partial<ArrangementRow>): ArrangementRow => ({
 /** Song default is arrangement A in C; arrangement B is a different version in G. */
 const song = (arrangements?: ArrangementRow[]): SongWithArrangements => ({
   id: SONG_ID,
+  archived_at: null,
+  revision: 1,
   organization_id: 'org',
   title: 'Amazing Grace',
   author: null,

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   FILE_DOWNLOAD_TTL_SECONDS,
   FILE_UPLOAD_TTL_SECONDS,
@@ -28,8 +29,9 @@ import {
   type UpdateFileInput,
   type UpdateFileLinkUrlInput,
 } from '@service-center/shared';
+import { defaultArrangementsFor } from './plan-items.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
-import { unwrap, type Db } from '../lib/supabase.js';
+import { raw, unwrap, type Db } from '../lib/supabase.js';
 import {
   FILE_VERSION_COLUMNS,
   buildPlanFileEntries,
@@ -173,17 +175,35 @@ export const listPlanFiles = async (caller: FileCaller, planId: string): Promise
   if (!plan) throw HttpError.notFound('Plan not found');
 
   const [items, links, own, canEdit] = await Promise.all([
-    unwrap(db.from('plan_items').select('id, song_id, arrangement_id').eq('plan_id', planId).order('sort_order')),
+    unwrap(db.from('plan_items').select('id, song_id, arrangement_id, key_override').eq('plan_id', planId).order('sort_order')),
     unwrap(db.from('attachment_links').select('*').eq('plan_id', planId).order('created_at')),
     unwrap(db.from('attachments').select('*').eq('organization_id', orgId).eq('plan_id', planId).order('created_at')),
     db.rpc('can_edit_plan', { p_plan: planId }),
   ]);
   if (canEdit.error) throw fromPostgrestError(canEdit.error);
-  const itemRows = (items ?? []) as PlanFileItemRow[];
+  const itemRows = (items ?? []) as (PlanFileItemRow & { key_override?: string | null })[];
   const linkRows = (links ?? []) as AttachmentLinkRow[];
   const songIds = [...new Set(itemRows.map((item) => item.song_id).filter((id): id is string => Boolean(id)))];
+  // Resolve null arrangement selections through the same current default as charts.
+  const defaults = await defaultArrangementsFor(db, songIds);
+  const effective = new Map<string, Promise<string[]>>();
+  await Promise.all(itemRows.map(async (item) => {
+    const arrangementId = item.arrangement_id ?? defaults.get(item.song_id ?? '')?.id;
+    if (!arrangementId) return;
+    const key = `${arrangementId}:${item.key_override ?? ''}`;
+    let pending = effective.get(key);
+    if (!pending) {
+      pending = (async () => {
+        const result: unknown = await unwrap(raw(db).rpc('arrangement_effective_file_ids', { p_org: orgId, p_arrangement: arrangementId, p_key: item.key_override ?? null }));
+        return z.array(z.string().uuid()).parse(result);
+      })();
+      effective.set(key, pending);
+    }
+    item.effective_file_ids = await pending;
+  }));
+  const reusedIds = [...new Set(itemRows.flatMap((item) => item.effective_file_ids ?? []))];
   const arrangementIds = [...new Set(itemRows.map((item) => item.arrangement_id).filter((id): id is string => Boolean(id)))];
-  const linkedIds = [...new Set(linkRows.map((link) => link.attachment_id))];
+  const linkedIds = [...new Set([...linkRows.map((link) => link.attachment_id), ...reusedIds])];
 
   const [songFiles, arrangementFiles, linked] = await Promise.all([
     songIds.length

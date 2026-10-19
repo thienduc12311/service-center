@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
   formatDuration,
@@ -119,7 +119,7 @@ const changesFrom = (draft: ItemDraft, item: PlanItemDetail): UpdatePlanItemRequ
  */
 export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps) => {
   const queryClient = useQueryClient();
-  const { organizationId } = useAuth();
+  const { organizationId, user } = useAuth();
   const [draft, setDraft] = useState<ItemDraft>(() => draftFrom(item));
   const [baseRevision, setBaseRevision] = useState(plan.content_revision);
   const [songQuery, setSongQuery] = useState('');
@@ -130,11 +130,18 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
   const people = usePeople();
   const set = <K extends keyof ItemDraft>(key: K, value: ItemDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
 
+  const effectiveArrangementId = draft.arrangementId ?? song.data?.arrangements.find((a) => a.is_default)?.id;
+  const labeledKeys = useQuery({
+    queryKey: ['arrangement-materials', organizationId, user?.profile.id, effectiveArrangementId],
+    queryFn: () => api.getArrangementMaterials(effectiveArrangementId!),
+    enabled: draft.itemType === 'song' && !!effectiveArrangementId,
+  });
   const changes = useMemo(() => changesFrom(draft, item), [draft, item]);
   const dirty = Object.keys(changes).length > 0;
   const planChanged = plan.content_revision !== baseRevision;
 
-  const arrangements = song.data?.arrangements ?? [];
+  const arrangements = (song.data?.arrangements ?? []).filter((row) =>
+    !row.archived_at || row.id === item.arrangement_id);
   const chosenArrangement =
     arrangements.find((candidate) => candidate.id === draft.arrangementId) ??
     (draft.arrangementId ? null : (arrangements.find((candidate) => candidate.is_default) ?? arrangements[0] ?? null));
@@ -291,6 +298,14 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
                 placeholder={chosenArrangement?.song_key ? `Arrangement key (${chosenArrangement.song_key})` : 'Arrangement key'}
                 resetLabel="Use the arrangement key"
               />
+              {!!labeledKeys.data?.keys.length && <div className="mt-2">
+                <label className="label" htmlFor="edit-item-labeled-key">Labeled library key</label>
+                <select className="input" id="edit-item-labeled-key" value={labeledKeys.data.keys.some((k) => k.song_key === draft.keyOverride) ? draft.keyOverride! : ''} onChange={(e) => set('keyOverride', e.target.value || null)}>
+                  <option value="">Use arrangement key / choose another service key</option>
+                  {labeledKeys.data.keys.map((k) => <option key={k.id} value={k.song_key}>{k.label} · {k.song_key}{k.capo ? ` · capo ${k.capo}` : ''}{k.vocal_label ? ` · ${k.vocal_label}` : ''}</option>)}
+                </select>
+              </div>}
+              <ErrorNotice error={labeledKeys.error} />
               <p className="mt-1 text-xs text-slate-500">For this plan only. The library arrangement stays in {chosenArrangement?.song_key ?? 'its own key'}.</p>
             </div>
 

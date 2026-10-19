@@ -150,6 +150,8 @@ export const toFileLinkSummary = (row: AttachmentLinkRow): FileLinkSummary => ({
 
 /** The items of one plan as the plan-files view needs them. */
 export interface PlanFileItemRow {
+  /** F15 effective key selection, already filtered through F13. */
+  effective_file_ids?: string[];
   id: string;
   song_id: string | null;
   arrangement_id: string | null;
@@ -205,6 +207,12 @@ export const buildPlanFileEntries = (
   // Under each song item: its arrangement's files first (most specific), then the song's.
   const live = bundle.files.filter((row) => !row.archived_at);
   for (const item of items) {
+    if (item.effective_file_ids) {
+      for (const row of live) {
+        if (item.effective_file_ids.includes(row.id)) push(row, row.owner_kind === 'song' ? 'song' : 'arrangement', item.id, null);
+      }
+      continue;
+    }
     for (const row of live) {
       if (item.arrangement_id && row.owner_kind === 'arrangement' && row.arrangement_id === item.arrangement_id) {
         push(row, 'arrangement', item.id, null);

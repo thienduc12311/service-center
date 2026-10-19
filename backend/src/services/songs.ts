@@ -11,7 +11,7 @@ import {
 import { raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 
-export const SONG_SELECT = '*, arrangements:arrangements(*)';
+export const SONG_SELECT = '*, arrangements:arrangements!arrangements_song_id_fkey(*)';
 
 /** Who is creating the song, and where it belongs. */
 export interface SongOwnership {

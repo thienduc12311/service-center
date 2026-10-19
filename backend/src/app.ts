@@ -1,4 +1,4 @@
-import express, { type Express } from 'express';
+import express, { type Express, type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
 import { requireAuth } from './middleware/auth.js';
 import { withOrganization } from './middleware/organization.js';
+import { HttpError } from './lib/errors.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 
 import { meRouter } from './routes/me.js';
@@ -19,6 +20,7 @@ import { assignmentRespondRouter } from './routes/assignment-respond.js';
 import { calendarFeedRouter } from './routes/calendar-feed.js';
 import { serviceTypesRouter } from './routes/service-types.js';
 import { teamsRouter } from './routes/teams.js';
+import { importsRouter } from './routes/imports.js';
 import { songsRouter, arrangementsRouter } from './routes/songs.js';
 import { plansRouter } from './routes/plans.js';
 import {
@@ -91,7 +93,15 @@ export const createApp = (): Express => {
       credentials: true,
     }),
   );
-  app.use(express.json({ limit: '2mb' }));
+  const importBodyError: ErrorRequestHandler = (error: unknown, _req, _res, next) => {
+    if (typeof error === 'object' && error !== null && 'type' in error) {
+      if (error.type === 'entity.too.large') { next(new HttpError(413, 'Import request is too large', 'import_too_large')); return; }
+      if (error.type === 'entity.parse.failed') { next(HttpError.badRequest('Invalid import JSON')); return; }
+    }
+    next(error);
+  };
+  app.use('/api/v1/imports', express.json({ limit: '2mb' }), importBodyError);
+  app.use(express.json());
   if (!config.isTest) {
     // Bearer-token paths (response links, invitations, feeds) are logged by shape only.
     morgan.token<express.Request>('url', (req) => redactTokenPath(req.originalUrl ?? req.url ?? ''));
@@ -132,6 +142,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/service-types', scoped, serviceTypesRouter);
   app.use('/api/v1/teams', scoped, teamsRouter);
   app.use('/api/v1/songs', scoped, songsRouter);
+  app.use('/api/v1/imports', scoped, importsRouter);
   app.use('/api/v1/arrangements', scoped, arrangementsRouter);
   app.use('/api/v1/plans/:planId/assignments', scoped, planAssignmentsRouter);
   app.use('/api/v1/plans/:planId/assignment-times', scoped, planAssignmentTimesRouter);
