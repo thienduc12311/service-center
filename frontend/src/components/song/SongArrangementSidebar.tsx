@@ -67,6 +67,7 @@ export const SongArrangementSidebar = ({
                     className={rowClass(selected)}
                   >
                     {arrangement.name}
+                    {arrangement.archived_at && <span className="ml-1 text-xs text-slate-400">(Archived)</span>}
                     {arrangement.song_key && (
                       <span className="ml-1 text-xs text-slate-400">[{arrangement.song_key}]</span>
                     )}

@@ -38,3 +38,8 @@ export * from './lib/rehearsal.js';
 export * from './lib/stage-layouts.js';
 export * from './lib/api-client.js';
 export * from './lib/design-tokens.js';
+
+export * from './types/song-curation.js';
+export * from './schemas/imports.js';
+export * from './lib/import-csv.js';
+export * from './schemas/arrangement-curation.js';

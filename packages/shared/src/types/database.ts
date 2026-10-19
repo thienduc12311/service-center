@@ -1,3 +1,6 @@
+import type { LabeledKey } from '../schemas/arrangement-curation.js';
+import type { ImportJob, ImportJobRow } from '../schemas/imports.js';
+import type { SongBulkPreview, SongCurationEventRow } from './song-curation.js';
 /**
  * Shape of the Postgres schema as supabase-js expects it.
  *
@@ -371,6 +374,10 @@ export type TeamMembershipRow = {
 }
 
 export type SongRow = {
+  merged_into_song_id?: string | null;
+  merged_default_arrangement_id?: string | null;
+  archived_at: string | null;
+  revision: number;
   id: string;
   organization_id: string;
   title: string;
@@ -393,7 +400,14 @@ export type SongRow = {
   updated_at: string;
 }
 
+export type ArrangementKeyRow = Omit<LabeledKey, 'file_ids'>;
+export type ArrangementFileLinkRow = { id: string; arrangement_id: string; attachment_id: string; key_id: string | null };
+export type LibraryOperationRow = { id: string; organization_id: string; actor_id: string; idempotency_key: string;
+  kind: 'duplicate_arrangement' | 'save_key' | 'merge_song'; input: unknown; before_state: unknown; result: unknown; created_at: string };
+
 export type ArrangementRow = {
+  archived_at: string | null;
+  revision: number;
   id: string;
   song_id: string;
   name: string;
@@ -989,8 +1003,15 @@ export type Database = {
       teams: Table<TeamRow>;
       team_positions: Table<TeamPositionRow>;
       team_memberships: Table<TeamMembershipRow>;
+      structured_import_jobs: Table<ImportJob & { source: unknown }>;
+      structured_import_rows: Table<ImportJobRow>;
       songs: Table<SongRow>;
+      song_bulk_previews: Table<SongBulkPreview>;
+      song_curation_events: Table<SongCurationEventRow>;
       arrangements: Table<ArrangementRow>;
+      arrangement_keys: Table<ArrangementKeyRow>;
+      arrangement_file_links: Table<ArrangementFileLinkRow>;
+      library_operations: Table<LibraryOperationRow>;
       plans: Table<PlanRow>;
       plan_times: Table<PlanTimeRow>;
       plan_items: Table<PlanItemRow>;
@@ -1085,6 +1106,13 @@ export type Database = {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
     };
     Functions: {
+      structured_import_context: { Args: { p_org: string; p_kind: string; p_rows: unknown }; Returns: unknown };
+      save_structured_import: { Args: { p_org: string; p_source: unknown; p_source_hash: string; p_preview_hash: string; p_rows: unknown; p_key: string }; Returns: ImportJob };
+      commit_structured_import: { Args: { p_org: string; p_job: string; p_revision: number }; Returns: ImportJob };
+      list_curated_songs: { Args: { p_org: string; p_query?: unknown }; Returns: unknown };
+      preview_song_bulk: { Args: { p_org: string; p_rows: unknown; p_patch: unknown }; Returns: SongBulkPreview };
+      commit_song_bulk: { Args: { p_org: string; p_preview: string }; Returns: SongBulkPreview };
+      archive_library_record: { Args: { p_org: string; p_kind: string; p_id: string; p_revision: number; p_archived: boolean }; Returns: unknown };
       preview_roster_bulk_change: {
         Args: {
           p_org: string;

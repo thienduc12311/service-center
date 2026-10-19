@@ -56,12 +56,20 @@ songbooksRouter.post('/', requireCapability('songs.manage'), validateBody(create
   if (songs.length) {
     const songIds = [...new Set(songs.map((item: { song_id: string }) => item.song_id))];
     const ownedSongs = await unwrap(
-      req.db.from('songs').select('id').eq('organization_id', req.orgId).in('id', songIds),
+      req.db.from('songs').select('id, merged_into_song_id, merged_default_arrangement_id').eq('organization_id', req.orgId).in('id', songIds),
     );
     if ((ownedSongs ?? []).length !== songIds.length) {
       throw HttpError.badRequest('Every selected song must belong to this organization');
     }
 
+    // Old saved selections remain valid after an explicit merge.
+    for (const item of songs) {
+      const alias = ownedSongs?.find((s) => s.id === item.song_id);
+      if (alias?.merged_into_song_id) {
+        item.song_id = alias.merged_into_song_id;
+        item.arrangement_id ??= alias.merged_default_arrangement_id ?? undefined;
+      }
+    }
     const arrangementIds = songs
       .map((item) => item.arrangement_id)
       .filter((id): id is string => Boolean(id));
