@@ -88,16 +88,16 @@ export const StaffingProposalsPage = () => {
       {!proposal && (
         <section className="card space-y-4 p-4" aria-label="Proposal scope">
           <div className="grid gap-3 md:grid-cols-3">
-            <label className="text-sm">From<input className="input mt-1" type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPlanIds([]); }} /></label>
-            <label className="text-sm">To<input className="input mt-1" type="date" value={to} onChange={(e) => { setTo(e.target.value); setPlanIds([]); }} /></label>
-            <label className="text-sm">Fairness lookback
-              <select className="input mt-1" value={lookback} onChange={(e) => setLookback(Number(e.target.value))}>
+            <label className="field">From<input className="input" type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPlanIds([]); }} /></label>
+            <label className="field">To<input className="input" type="date" value={to} onChange={(e) => { setTo(e.target.value); setPlanIds([]); }} /></label>
+            <label className="field">Fairness lookback
+              <select className="input" value={lookback} onChange={(e) => setLookback(Number(e.target.value))}>
                 {LOOKBACK_OPTIONS.map((days) => <option key={days} value={days}>{days} days</option>)}
               </select>
             </label>
           </div>
           <fieldset>
-            <legend className="mb-1 text-sm font-medium">Plans ({planIds.length}/{MAX_PLANS})</legend>
+            <legend className="label">Plans ({planIds.length}/{MAX_PLANS})</legend>
             {plans.isLoading ? <Loading /> : !(plans.data?.data.length) ? <p className="text-sm text-slate-500">No plans in this range.</p> : (
               <div className="grid gap-1 md:grid-cols-2">
                 {plans.data.data.map((plan) => (
@@ -112,7 +112,7 @@ export const StaffingProposalsPage = () => {
             )}
           </fieldset>
           <fieldset>
-            <legend className="mb-1 text-sm font-medium">Teams you schedule</legend>
+            <legend className="label">Teams you schedule</legend>
             <div className="flex flex-wrap gap-3">
               {schedulableTeams.map((team) => (
                 <label key={team.id} className="flex items-center gap-2 text-sm">
@@ -192,8 +192,8 @@ export const StaffingProposalsPage = () => {
       <section className="space-y-3" aria-label="Team rotations">
         <div className="flex flex-wrap items-end gap-3">
           <h2 className="mr-auto text-lg font-semibold">Team rotations</h2>
-          <label className="text-sm">Team
-            <select className="input mt-1" value={rotationTeamId} onChange={(e) => setRotationTeamId(e.target.value)}>
+          <label className="field">Team
+            <select className="input" value={rotationTeamId} onChange={(e) => setRotationTeamId(e.target.value)}>
               <option value="">Choose a team</option>
               {schedulableTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>

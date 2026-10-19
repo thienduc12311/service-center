@@ -147,10 +147,10 @@ export const ScopedFeedsPanel = () => {
         }
       >
         <div className="space-y-3 text-sm">
-          <label className="block">
+          <label className="field">
             Scope
             <select
-              className="input mt-1"
+              className="input"
               value={draft.scope_type}
               onChange={(event) =>
                 setDraft({ scope_type: event.target.value as CreateScopedFeedRequest['scope_type'], include_rehearsals: draft.include_rehearsals, layers: [] })
@@ -161,17 +161,17 @@ export const ScopedFeedsPanel = () => {
             </select>
           </label>
           {draft.scope_type === 'team' ? (
-            <label className="block">
+            <label className="field">
               Team
-              <select className="input mt-1" value={draft.team_id ?? ''} onChange={(e) => setDraft({ ...draft, team_id: e.target.value })}>
+              <select className="input" value={draft.team_id ?? ''} onChange={(e) => setDraft({ ...draft, team_id: e.target.value })}>
                 <option value="">Choose…</option>
                 {(teams.data ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
               </select>
             </label>
           ) : (
-            <label className="block">
+            <label className="field">
               Service type
-              <select className="input mt-1" value={draft.service_type_id ?? ''} onChange={(e) => setDraft({ ...draft, service_type_id: e.target.value })}>
+              <select className="input" value={draft.service_type_id ?? ''} onChange={(e) => setDraft({ ...draft, service_type_id: e.target.value })}>
                 <option value="">Choose…</option>
                 {(serviceTypes.data ?? []).map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}
               </select>
@@ -191,9 +191,9 @@ export const ScopedFeedsPanel = () => {
               <LayerToggles teamId={draft.team_id ?? ''} layers={draft.layers ?? []} onChange={(layers) => setDraft({ ...draft, layers })} />
             </div>
           )}
-          <label className="block">
+          <label className="field">
             Name (optional)
-            <input className="input mt-1" maxLength={80} value={draft.label ?? ''} onChange={(e) => setDraft({ ...draft, label: e.target.value || null })} />
+            <input className="input" maxLength={80} value={draft.label ?? ''} onChange={(e) => setDraft({ ...draft, label: e.target.value || null })} />
           </label>
           <ErrorNotice error={create.error} />
         </div>

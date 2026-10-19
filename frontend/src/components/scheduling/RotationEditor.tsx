@@ -118,16 +118,16 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
       {draft && (
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); save.mutate(draft); }}>
           <div className="grid gap-3 md:grid-cols-4">
-            <label className="text-sm">Name<input className="input mt-1" required maxLength={80} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
-            <label className="text-sm">Cycle (weeks)
-              <select className="input mt-1" value={draft.cycle_weeks} onChange={(e) => {
+            <label className="field">Name<input className="input" required maxLength={80} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
+            <label className="field">Cycle (weeks)
+              <select className="input" value={draft.cycle_weeks} onChange={(e) => {
                 const cycle = Number(e.target.value);
                 setDraft({ ...draft, cycle_weeks: cycle, slots: draft.slots.filter((slot) => slot.week_index < cycle) });
               }}>{Array.from({ length: 12 }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}</option>)}</select>
             </label>
-            <label className="text-sm">Week 1 starts on (local date)<input className="input mt-1" type="date" required value={draft.anchor_date} onChange={(e) => setDraft({ ...draft, anchor_date: e.target.value })} /></label>
-            <label className="text-sm">When the named person can’t serve
-              <select className="input mt-1" value={draft.substitute_policy} onChange={(e) => setDraft({ ...draft, substitute_policy: e.target.value as RotationDraft['substitute_policy'] })}>
+            <label className="field">Week 1 starts on (local date)<input className="input" type="date" required value={draft.anchor_date} onChange={(e) => setDraft({ ...draft, anchor_date: e.target.value })} /></label>
+            <label className="field">When the named person can’t serve
+              <select className="input" value={draft.substitute_policy} onChange={(e) => setDraft({ ...draft, substitute_policy: e.target.value as RotationDraft['substitute_policy'] })}>
                 <option value="vacancy">Leave the position open</option>
                 <option value="fairness">Suggest a fair substitute</option>
               </select>
@@ -165,8 +165,8 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
                   const current = draft.exceptions.find((item) => item.local_date === localDate && item.position_id === position.id);
                   const value = current === undefined ? '__pattern' : current.person_id ?? '__skip';
                   return (
-                    <label key={position.id} className="text-xs">{position.name}
-                      <select className="input mt-1" value={value} onChange={(e) => setException(localDate, position.id,
+                    <label key={position.id} className="field">{position.name}
+                      <select className="input" value={value} onChange={(e) => setException(localDate, position.id,
                         e.target.value === '__pattern' ? undefined : e.target.value === '__skip' ? null : e.target.value)}>
                         <option value="__pattern">Use pattern</option>
                         <option value="__skip">Skip (fair choice)</option>
@@ -179,7 +179,7 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
               </div>
             ))}
             <div className="flex items-end gap-2">
-              <label className="text-sm">Add exception date<input className="input mt-1" type="date" value={exceptionDate} onChange={(e) => setExceptionDate(e.target.value)} /></label>
+              <label className="field">Add exception date<input className="input" type="date" value={exceptionDate} onChange={(e) => setExceptionDate(e.target.value)} /></label>
               <Button type="button" variant="secondary" disabled={!exceptionDate || !team.positions.length} onClick={() => {
                 const first = team.positions[0];
                 if (first) setException(exceptionDate, first.id, null);

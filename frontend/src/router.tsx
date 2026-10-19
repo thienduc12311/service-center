@@ -24,8 +24,6 @@ import { MySchedulePage } from './pages/MySchedulePage';
 import { MessageDetailPage, MessagesPage } from './pages/MessagesPage';
 import { ChatPage } from './pages/ChatPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { SongbooksPage } from './pages/SongbooksPage';
-import { SongbookPage } from './pages/SongbookPage';
 import { BlockoutSeriesPage } from './pages/BlockoutSeriesPage';
 import { HelpPage } from './pages/HelpPage';
 import { StaffingMatrixPage } from './pages/StaffingMatrixPage';
@@ -90,10 +88,10 @@ export const router = createBrowserRouter([
           { path: '/songs', element: <SongsPage /> },
           { path: '/imports', element: <ImportsPage /> },
           { path: '/songs/:songId', element: <SongDetailPage /> },
-          { path: '/songbooks', element: <SongbooksPage /> },
+          // Song books are switched off for now; old links land on the song library.
+          { path: '/songbooks/*', element: <Navigate to="/songs" replace /> },
           { path: '/media', element: <MediaLibraryPage /> },
           { path: '/media/:mediaId', element: <MediaDetailPage /> },
-          { path: '/songbooks/:songbookId', element: <SongbookPage /> },
           { path: '/teams', element: <TeamsPage /> },
           { path: '/people', element: <PeoplePage /> },
           { path: '/people/new', element: <PersonPage /> },

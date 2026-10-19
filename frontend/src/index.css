@@ -88,10 +88,38 @@
     border-radius: var(--app-radius-input);
     border-color: var(--app-border-strong);
     background-color: var(--app-field);
+    /* A .field label is font-medium; the value typed inside it is not. */
+    font-weight: 400;
+  }
+
+  /* Native selects draw their chevron flush against the border, so replace it
+     with our own and leave room for it on the right. */
+  select.input:not([multiple]):not([size]) {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25rem;
+  }
+
+  input[type='file'].input {
+    @apply cursor-pointer py-1.5 text-slate-600 dark:text-slate-300;
+  }
+
+  input[type='file'].input::file-selector-button {
+    @apply mr-3 cursor-pointer rounded-lg border-0 bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700
+           hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700;
   }
 
   .label {
     @apply mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+
+  /* A <label> that wraps its caption text and its control:
+     <label className="field">Name<input className="input" /></label> */
+  .field {
+    @apply flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-300;
   }
 
   .button {

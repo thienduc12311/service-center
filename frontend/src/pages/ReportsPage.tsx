@@ -141,18 +141,18 @@ export const ReportsPage = () => {
           setFilters({ ...draft });
         }}
       >
-        <label className="text-sm">
+        <label className="field">
           From
-          <input type="date" className="input mt-1" value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} required />
+          <input type="date" className="input" value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} required />
         </label>
-        <label className="text-sm">
+        <label className="field">
           To
-          <input type="date" className="input mt-1" value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} required />
+          <input type="date" className="input" value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} required />
         </label>
-        <label className="text-sm">
+        <label className="field">
           Service type
           <select
-            className="input mt-1"
+            className="input"
             value={draft.service_type_ids?.[0] ?? ''}
             onChange={(e) => setDraft({ ...draft, service_type_ids: e.target.value ? [e.target.value] : [] })}
           >
@@ -162,10 +162,10 @@ export const ReportsPage = () => {
             ))}
           </select>
         </label>
-        <label className="text-sm">
+        <label className="field">
           Team
           <select
-            className="input mt-1"
+            className="input"
             value={draft.team_ids?.[0] ?? ''}
             onChange={(e) => setDraft({ ...draft, team_ids: e.target.value ? [e.target.value] : [] })}
           >
@@ -176,9 +176,9 @@ export const ReportsPage = () => {
           </select>
         </label>
         <fieldset className="text-sm">
-          <legend>Plan status</legend>
+          <legend className="label">Plan status</legend>
           {PLAN_STATUSES.map((status) => (
-            <label key={status} className="mr-3 inline-flex items-center gap-1">
+            <label key={status} className="mr-3 inline-flex items-center gap-1 capitalize">
               <input
                 type="checkbox"
                 checked={draft.plan_statuses?.includes(status) ?? false}
@@ -189,7 +189,7 @@ export const ReportsPage = () => {
           ))}
         </fieldset>
         <fieldset className="text-sm">
-          <legend>Responses</legend>
+          <legend className="label">Responses</legend>
           {RESPONSES.map(([value, label]) => (
             <label key={value} className="mr-3 inline-flex items-center gap-1">
               <input

@@ -91,9 +91,9 @@ export const OpportunityPanel = ({ planId, options, assignments, currentPersonId
     </div>
     {error && <ErrorNotice error={error} />}
     {canManage && <div className="flex flex-wrap items-end gap-2 rounded-lg bg-slate-50 p-3">
-      <label className="text-xs text-slate-600">Position<select className="input mt-1 block" value={setupPosition} onChange={(event) => setSetupPosition(event.target.value)}><option value="">Choose…</option>{options.filter((item) => item.canManage && item.needed > 0).map((item) => <option key={item.positionId} value={item.positionId}>{item.teamName} · {item.positionName}</option>)}</select></label>
-      <label className="text-xs text-slate-600">Capacity<input className="input mt-1 w-20" type="number" min={1} max={200} value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} /></label>
-      <label className="text-xs text-slate-600">Claim policy<select className="input mt-1 block" value={approval} onChange={(event) => setApproval(event.target.value as typeof approval)}><option value="leader_approval">Leader approval</option><option value="direct">Direct confirmation</option></select></label>
+      <label className="field">Position<select className="input" value={setupPosition} onChange={(event) => setSetupPosition(event.target.value)}><option value="">Choose…</option>{options.filter((item) => item.canManage && item.needed > 0).map((item) => <option key={item.positionId} value={item.positionId}>{item.teamName} · {item.positionName}</option>)}</select></label>
+      <label className="field">Capacity<input className="input w-20" type="number" min={1} max={200} value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} /></label>
+      <label className="field">Claim policy<select className="input" value={approval} onChange={(event) => setApproval(event.target.value as typeof approval)}><option value="leader_approval">Leader approval</option><option value="direct">Direct confirmation</option></select></label>
       <Button loading={create.isPending} disabled={!setupPosition} onClick={() => create.mutate()}>Open position</Button>
     </div>}
     {openings.isLoading ? <p className="text-sm text-slate-500">Loading openings…</p> : openings.error ? <ErrorNotice error={openings.error} /> : (openings.data ?? []).length === 0 ? <p className="text-sm text-slate-500">No positions are open for signup.</p> : <ul className="grid gap-2 md:grid-cols-2">{(openings.data ?? []).map((opening) => <li key={opening.id} className="rounded-lg border border-slate-200 p-3 text-sm">

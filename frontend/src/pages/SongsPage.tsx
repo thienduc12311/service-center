@@ -9,6 +9,23 @@ import { AddSongModal } from '../components/AddSongModal';
 
 const DAY = { month: 'short', day: 'numeric', year: 'numeric' } as const;
 
+/** A free-text song filter: the query parameter it sets and its caption. */
+interface TextFilter {
+  name: keyof ListSongsQuery;
+  label: string;
+}
+
+const NOT_FILTERS = new Set(['archive', 'sort', 'page', 'per_page', 'q']);
+
+const TEXT_FILTERS: TextFilter[] = [
+  { name: 'key', label: 'Key' },
+  { name: 'theme', label: 'Theme' },
+  { name: 'song_type', label: 'Song type' },
+  { name: 'style', label: 'Style' },
+  { name: 'speed', label: 'Speed' },
+  { name: 'author', label: 'Author' },
+];
+
 /** The keys a song is actually played in — its arrangements, not just the default. */
 const songKeys = (song: SongListItem): string => {
   const keys = song.arrangements.map((arrangement) => arrangement.song_key).filter(Boolean);
@@ -32,6 +49,10 @@ export const SongsPage = () => {
   const [selected, setSelected] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [filterError, setFilterError] = useState<Error | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  // Parsing fills in the library scope, sort and paging, so those never count as a filter.
+  const activeFilterCount = Object.entries(filters)
+    .filter(([name, value]) => !NOT_FILTERS.has(name) && value !== undefined).length;
   const songs = useSongs({ ...filters, q: query || undefined, sort, page, per_page: 50 });
   const resetPage = () => { setPage(1); setSelected([]); setEditing(false); };
 
@@ -46,7 +67,7 @@ export const SongsPage = () => {
           <div className="flex items-center gap-2">
             <select
               aria-label="Sort songs"
-              className="input w-36"
+              className="input w-48"
               value={sort}
               onChange={(event) => { setSort(event.target.value as 'title' | 'recent'); resetPage(); }}
             >
@@ -60,20 +81,24 @@ export const SongsPage = () => {
 
       <div className="card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
         <input
-          className="input max-w-sm"
+          className="input min-w-48 max-w-sm flex-1"
           value={query}
           onChange={(event) => { setQuery(event.target.value); resetPage(); }}
           placeholder="Add text filter"
           aria-label="Search songs"
         />
+        <Button variant="secondary" aria-expanded={showFilters} onClick={() => setShowFilters((open) => !open)}>
+          {showFilters ? 'Hide filters' : 'Filters'}{activeFilterCount ? ` (${activeFilterCount})` : ''}
+        </Button>
         {songs.data && (
-          <span className="text-sm text-slate-500">
+          <span className="ml-auto text-sm text-slate-500">
             {songs.data.total} song{songs.data.total === 1 ? '' : 's'}
           </span>
         )}
       </div>
 
-      <form className="card mb-4 grid gap-3 p-4 sm:grid-cols-3" onSubmit={(event) => {
+      {/* Hidden rather than unmounted, so reopening shows the filters still applied. */}
+      <form hidden={!showFilters} className="card mb-4 p-4" onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         const input = Object.fromEntries([...form.entries()].filter(([, value]) => value !== ''));
@@ -84,17 +109,22 @@ export const SongsPage = () => {
         const parsed = listSongsQuerySchema.safeParse(input);
         if (!parsed.success) { setFilterError(parsed.error); return; }
         setFilterError(null); setFilters(parsed.data); resetPage();
-      }}>
-        <label>Library<select name="archive" className="input"><option value="active">Active songs</option><option value="archived">Archived songs</option><option value="all">All songs</option></select></label>
-        {['key', 'theme', 'song_type', 'style', 'speed', 'author'].map((field) => <label key={field}>{field.replaceAll('_', ' ')}<input className="input" name={field} /></label>)}
-        <label>Minimum BPM<input className="input" name="bpm_min" type="number" min="20" max="300" /></label>
-        <label>Maximum BPM<input className="input" name="bpm_max" type="number" min="20" max="300" /></label>
-        <label>Scheduled from (UTC)<input className="input" name="scheduled_from" type="date" /></label>
-        <label>Scheduled before (UTC)<input className="input" name="scheduled_to" type="date" /></label>
-        <Button type="submit">Apply filters</Button>
+      }} onReset={() => { setFilterError(null); setFilters({}); resetPage(); }}>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="field">Library<select name="archive" className="input"><option value="active">Active songs</option><option value="archived">Archived songs</option><option value="all">All songs</option></select></label>
+          {TEXT_FILTERS.map((filter) => <label key={filter.name} className="field">{filter.label}<input className="input" name={filter.name} /></label>)}
+          <label className="field">Minimum BPM<input className="input" name="bpm_min" type="number" min="20" max="300" /></label>
+          <label className="field">Maximum BPM<input className="input" name="bpm_max" type="number" min="20" max="300" /></label>
+          <label className="field">Scheduled from (UTC)<input className="input" name="scheduled_from" type="date" /></label>
+          <label className="field">Scheduled before (UTC)<input className="input" name="scheduled_to" type="date" /></label>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button type="reset" variant="ghost">Clear</Button>
+          <Button type="submit">Apply filters</Button>
+        </div>
       </form>
       <ErrorNotice error={filterError ?? songs.error} />
-      {canManage && selected.length > 0 && !editing && <Button onClick={() => setEditing(true)}>Edit {selected.length} selected songs</Button>}
+      {canManage && selected.length > 0 && !editing && <div className="mb-4"><Button onClick={() => setEditing(true)}>Edit {selected.length} selected songs</Button></div>}
       {canManage && editing && <SongBulkEditor songs={rows.filter((row) => selected.includes(row.id))} onDone={() => { setEditing(false); setSelected([]); }} />}
 
 
@@ -143,10 +173,10 @@ export const SongsPage = () => {
         />
       )}
 
-      <div className="my-4 flex items-center gap-3">
-        <Button disabled={page <= 1 || songs.isFetching || editing} onClick={() => { setPage(page - 1); setSelected([]); }}>Previous</Button>
-        <span>Page {page}</span>
-        <Button disabled={!songs.data || page * 50 >= songs.data.total || songs.isFetching || editing} onClick={() => { setPage(page + 1); setSelected([]); }}>Next</Button>
+      <div className="my-4 flex items-center justify-end gap-3">
+        <Button variant="secondary" disabled={page <= 1 || songs.isFetching || editing} onClick={() => { setPage(page - 1); setSelected([]); }}>Previous</Button>
+        <span className="text-sm text-slate-500">Page {page}</span>
+        <Button variant="secondary" disabled={!songs.data || page * 50 >= songs.data.total || songs.isFetching || editing} onClick={() => { setPage(page + 1); setSelected([]); }}>Next</Button>
       </div>
       <AddSongModal
         open={adding}

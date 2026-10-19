@@ -160,7 +160,7 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
     <Modal open title={plan ? `Message people on ${plan.title}` : 'Message team members'} onClose={onClose} size="wide">
       <div className="space-y-5 text-sm">
         <fieldset>
-          <legend className="mb-1 font-medium text-slate-700">Who</legend>
+          <legend className="label">Who</legend>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             {(plan ? PLAN_GROUPS : (['team_members'] as MessageAudienceInclude[])).map((group) => (
               <label key={group} className="flex items-center gap-2">

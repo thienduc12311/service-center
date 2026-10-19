@@ -113,8 +113,8 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
             What actually happened. A confirmed answer is not attendance, and marking someone absent never changes their answer.
           </p>
         </div>
-        <label className="text-sm">
-          <span className="mr-2 text-slate-600">Time</span>
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+          Time
           <select
             className="input w-auto"
             value={data.time.id}
@@ -218,9 +218,9 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
             </li>
           ))}
         </ul>
-        <label className="block text-sm">
-          <span className="text-slate-600">Reason (optional; kept in the history)</span>
-          <input className="input mt-1" maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
+        <label className="field">
+          Reason (optional; kept in the history)
+          <input className="input" maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
         </label>
         <p className="mt-2 text-xs text-slate-500">All changes save together, or none do.</p>
         {stale ? (

@@ -84,17 +84,17 @@ const ImportWorkspace = () => {
     finally { setReadingFile(false); }
   };
   if (!canAnywhere('people.manage') && !canAnywhere('songs.manage')) return <EmptyState title="Import permission required" />;
-  return <div>
+  return <div className="text-sm text-slate-700 dark:text-slate-300">
     <PageHeader title="Structured imports" subtitle="Review CSV mappings and every row before saving. Up to 100 records and 256 KiB per atomic import." />
-    <p className="mb-4 text-sm text-slate-500">People imports maintain roster records. They do not create logins or send invitations. Songbook PDFs and Word files remain documents.</p>
+    <p className="mb-4 text-slate-500">People imports maintain roster records. They do not create logins or send invitations. Songbook PDFs and Word files remain documents.</p>
     {!job && <section className="card space-y-4 p-4">
-      <label className="block">Import type<select className="input" value={kind} disabled={busy} onChange={(event) => { setKind(event.target.value as ImportKind); setMapping({}); setResolutions([]); change(); }}>
+      <label className="field">Import type<select className="input" value={kind} disabled={busy} onChange={(event) => { setKind(event.target.value as ImportKind); setMapping({}); setResolutions([]); change(); }}>
         {canAnywhere('songs.manage') && <option value="songs">Song metadata</option>}
         {canAnywhere('people.manage') && <option value="people">People</option>}
       </select></label>
-      <label className="block">UTF-8 CSV file<input type="file" accept=".csv,text/csv" disabled={!permitted || busy} onChange={(event) => { void requestFile(event.target.files?.[0]); }} /></label>
+      <label className="field">UTF-8 CSV file<input className="input" type="file" accept=".csv,text/csv" disabled={!permitted || busy} onChange={(event) => { void requestFile(event.target.files?.[0]); }} /></label>
       {file && <><p>{file.filename} · {headers.length} columns. Blank mapped values clear nullable fields; unmapped fields stay unchanged on updates. Separate tags with semicolons.</p>
-        <div className="grid gap-3 sm:grid-cols-2">{importFieldNames[kind].map((field) => <label key={field}>{fieldLabel(field)}
+        <div className="grid gap-3 sm:grid-cols-2">{importFieldNames[kind].map((field) => <label key={field} className="field">{fieldLabel(field)}
           <select className="input" value={mapping[field] ?? ''} disabled={busy} onChange={(event) => {
             setMapping((current) => { const next = { ...current }; if (event.target.value) next[field] = event.target.value; else delete next[field]; return next; }); change();
           }}><option value="">Do not import</option>{headers.map((header) => <option key={header} value={header}>{header}</option>)}</select>
@@ -105,12 +105,12 @@ const ImportWorkspace = () => {
     {readingFile && <p>Reading CSV…</p>}
     <ErrorNotice error={fileError ?? review.error ?? save.error ?? resume.error ?? jobs.error} />
     {preview && !job && <section className="card my-4 space-y-4 p-4" aria-label="Import preview">
-      <h2 className="font-semibold">Read-only preview</h2><p>Preview itself writes no records or jobs. Resolve all errors and possible duplicates before saving; retries reuse the same saved review.</p>
+      <h2 className="text-base font-semibold text-slate-900 dark:text-white">Read-only preview</h2><p>Preview itself writes no records or jobs. Resolve all errors and possible duplicates before saving; retries reuse the same saved review.</p>
       {preview.rows.map((row) => <div className="border-t border-slate-200 py-3" key={row.row}>
         <h3 className="font-medium">Record {row.row - 1}: {row.action}</h3>
         {row.errors.map((error) => <p key={error} className="text-sm text-red-600">{error}</p>)}
         <ul className="text-sm">{Object.entries(row.data).map(([field, value]) => <li key={field}>{fieldLabel(field)}: {row.before ? `${display(row.before[field])} → ` : ''}{display(value)}</li>)}</ul>
-        <label>Resolution<select className="input" disabled={busy} value={resolutions.find((r) => r.row === row.row)?.action === 'update'
+        <label className="field">Resolution<select className="input" disabled={busy} value={resolutions.find((r) => r.row === row.row)?.action === 'update'
           ? `update:${resolutions.find((r) => r.row === row.row)?.target_id}` : resolutions.find((r) => r.row === row.row)?.action ?? ''}
           onChange={(event) => {
             const value = event.target.value;
@@ -128,7 +128,7 @@ const ImportWorkspace = () => {
       <Button loading={save.isPending} disabled={!preview.can_commit || !reviewedSource || busy || !permitted} onClick={() => save.mutate()}>Save reviewed import</Button>
     </section>}
     {job && <section className="card my-4 space-y-3 p-4">
-      <h2 className="font-semibold">{job.job.filename} · {job.job.status}</h2>
+      <h2 className="text-base font-semibold text-slate-900 dark:text-white">{job.job.filename} · {job.job.status}</h2>
       <p>Job {job.job.id}. {job.job.status === 'reviewed' ? 'Review saved. Commit is pending or unconfirmed; check status or retry the entire batch.' : 'All reviewed outcomes are saved. Retrying this job cannot duplicate its records.'}</p>
       <p className="text-sm">Mapped columns: {Object.entries(job.source.mapping).map(([field, header]) => `${header} → ${fieldLabel(field)}`).join('; ')}</p>
       <ul className="space-y-2">{job.rows.map((row) => <li key={row.row_number}>
@@ -140,7 +140,7 @@ const ImportWorkspace = () => {
       <Button disabled={busy} onClick={reset}>Start a new preview</Button>
       <p className="text-sm">If a target changed, start a fresh preview from this saved source. The old review stays unchanged in history.</p>
     </section>}
-    <section className="mt-6 space-y-3"><h2 className="font-semibold">Your recent imports (up to 50)</h2>
+    <section className="mt-6 space-y-3"><h2 className="text-base font-semibold text-slate-900 dark:text-white">Your recent imports (up to 50)</h2>
       {jobs.isLoading && <Loading />}
       {jobs.data?.length === 0 && <p>No saved imports yet.</p>}
       {!locked && params.get('job') && <Button onClick={() => resume.mutate(params.get('job')!)}>Resume job from this URL</Button>}

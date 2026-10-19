@@ -75,8 +75,8 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
           save.mutate();
         }}
       >
-        <label className="block text-sm">
-          <span className="mb-1 block font-medium text-slate-700">Category</span>
+        <label className="block">
+          <span className="label">Category</span>
           <select className="input" value={categoryId ?? ''} onChange={(event) => chooseCategory(event.target.value)}>
             <option value="">General</option>
             {categories.map((category) => (
@@ -86,7 +86,7 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
         </label>
 
         <fieldset className="text-sm">
-          <legend className="mb-1 font-medium text-slate-700">Who can read it</legend>
+          <legend className="label">Who can read it</legend>
           <div className="space-y-1">
             {AUDIENCES.map((value) => (
               <label key={value} className="flex items-center gap-2">
@@ -100,7 +100,7 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
 
         {audience === 'teams' && (
           <fieldset className="text-sm">
-            <legend className="mb-1 font-medium text-slate-700">Teams</legend>
+            <legend className="label">Teams</legend>
             <div className="grid max-h-40 grid-cols-2 gap-1 overflow-y-auto">
               {teams.map((team) => (
                 <label key={team.id} className="flex items-center gap-2">
@@ -112,8 +112,8 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
           </fieldset>
         )}
 
-        <label className="block text-sm">
-          <span className="mb-1 block font-medium text-slate-700">Note</span>
+        <label className="block">
+          <span className="label">Note</span>
           <textarea
             className="input"
             rows={6}
