@@ -222,13 +222,13 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
               time must stay between the entries before and after it. Times are in your browser’s timezone
               ({Intl.DateTimeFormat().resolvedOptions().timeZone}).
             </p>
-            <label className="block">
+            <label className="field">
               Actual time
-              <input type="datetime-local" step={1} className="input mt-1" value={value} onChange={(event) => setValue(event.target.value)} />
+              <input type="datetime-local" step={1} className="input" value={value} onChange={(event) => setValue(event.target.value)} />
             </label>
-            <label className="block">
+            <label className="field">
               Why? (required)
-              <input className="input mt-1" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} />
+              <input className="input" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} />
             </label>
             <ErrorNotice error={correct.error} />
           </div>

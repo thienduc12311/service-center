@@ -27,9 +27,9 @@ export const ReminderPolicySettings = () => {
         before an unanswered request and one 1 day before a confirmed person is needed. Reminders stop on their
         own when someone answers, is removed, or the time changes.
       </p>
-      <label className="mb-4 block text-sm">
+      <label className="field mb-4">
         Scope
-        <select className="input mt-1" value={serviceTypeId} onChange={(e) => setServiceTypeId(e.target.value)}>
+        <select className="input" value={serviceTypeId} onChange={(e) => setServiceTypeId(e.target.value)}>
           <option value="">Whole organization</option>
           {(serviceTypes.data ?? []).map((type) => (
             <option key={type.id} value={type.id}>{type.name}</option>

@@ -316,18 +316,18 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
         {confirm === 'take_over' && (
           <div className="space-y-3 text-sm text-slate-600">
             <p>{control.holder_name ?? 'The current controller'} will lose control immediately; their next command is refused. The takeover is recorded.</p>
-            <label className="block">
+            <label className="field">
               Reason (optional)
-              <input className="input mt-1" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} />
+              <input className="input" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} />
             </label>
           </div>
         )}
         {confirm === 'discard' && (
           <div className="space-y-3 text-sm text-slate-600">
             <p>The run and its history are kept but no longer count as this service’s run. You can then start a new run for the same service time.</p>
-            <label className="block">
+            <label className="field">
               Why? (required)
-              <input className="input mt-1" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} />
+              <input className="input" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} />
             </label>
           </div>
         )}

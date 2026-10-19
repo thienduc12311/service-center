@@ -99,7 +99,7 @@ export const AddFileModal = ({ owner, planId = null, mode, onClose, onAdded }: A
             <span className="label">File</span>
             <input
               type="file"
-              className="block w-full text-sm"
+              className="input"
               disabled={busy}
               onChange={(event) => {
                 upload.reset();

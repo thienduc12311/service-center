@@ -124,9 +124,9 @@ export const LivePage = () => {
             ))}
           </ul>
           {data.can_control && (
-            <label className="block text-sm text-slate-600">
+            <label className="field">
               Countdown for new runs
-              <select className="input mt-1" value={policy} onChange={(event) => setPolicy(event.target.value as LiveCountdownPolicy)}>
+              <select className="input" value={policy} onChange={(event) => setPolicy(event.target.value as LiveCountdownPolicy)}>
                 {(Object.keys(LIVE_POLICY_LABELS) as LiveCountdownPolicy[]).map((option) => (
                   <option key={option} value={option}>{LIVE_POLICY_LABELS[option]}</option>
                 ))}

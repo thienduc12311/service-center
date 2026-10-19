@@ -10,7 +10,6 @@ const NAV = [
   { to: '/calendar', label: 'Calendar' },
   { to: '/plans', label: 'Plans' },
   { to: '/songs', label: 'Songs' },
-  { to: '/songbooks', label: 'Song books' },
   { to: '/media', label: 'Media' },
   { to: '/teams', label: 'Teams' },
   { to: '/people', label: 'People' },
@@ -36,37 +35,20 @@ export const AppShell = () => {
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-left"
+            className="flex min-w-0 items-center gap-2 text-left"
             aria-label="Service Center home"
           >
             {organization?.logo_url ? (
-              <img src={organization.logo_url} alt="" className="size-9 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+              <img src={organization.logo_url} alt="" className="size-9 shrink-0 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
             ) : (
-              <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-700 text-sm font-bold text-white shadow-sm">SC</span>
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-700 text-sm font-bold text-white shadow-sm">SC</span>
             )}
-            <span className="hidden text-sm font-semibold text-slate-900 dark:text-white sm:block">
+            <span className="hidden max-w-xs truncate text-sm font-semibold text-slate-900 dark:text-white sm:block">
               {organization?.name ?? 'Service Center'}
             </span>
           </button>
 
-          <nav className="hidden flex-1 items-center gap-1 lg:flex">
-            {NAV.filter((item) => !('leadersOnly' in item) || leader).map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                    isActive ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-200' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-3">
             {organizationId && <GlobalSearch />}
             <button
               type="button"
@@ -107,21 +89,21 @@ export const AppShell = () => {
                   className="card absolute right-0 mt-2 w-56 overflow-hidden py-1 text-sm"
                   onMouseLeave={() => setMenuOpen(false)}
                 >
-                  <div className="border-b border-slate-100 px-4 py-2">
-                    <p className="font-medium text-slate-800">{user?.profile.full_name ?? 'Signed in'}</p>
+                  <div className="border-b border-slate-100 px-4 py-2 dark:border-slate-800">
+                    <p className="font-medium text-slate-800 dark:text-slate-100">{user?.profile.full_name ?? 'Signed in'}</p>
                     <p className="truncate text-xs text-slate-500">{user?.profile.email}</p>
                     {role && <p className="mt-1 text-xs capitalize text-brand-600">{role}</p>}
                   </div>
                   <NavLink
                     to="/settings"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-4 py-2 text-slate-700 hover:bg-slate-50"
+                    className="block px-4 py-2 text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
                     Settings
                   </NavLink>
                   <button
                     onClick={() => void signOut()}
-                    className="block w-full px-4 py-2 text-left text-rose-600 hover:bg-rose-50"
+                    className="block w-full px-4 py-2 text-left text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
                   >
                     Sign out
                   </button>
@@ -131,22 +113,27 @@ export const AppShell = () => {
           </div>
         </div>
 
-        {/* Mobile nav — the web app is used on phones too, at the door. */}
-        <nav className="flex gap-1 overflow-x-auto border-t border-slate-100 px-4 py-2 dark:border-slate-800 lg:hidden">
-          {NAV.filter((item) => !('leadersOnly' in item) || leader).map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium ${
-                  isActive ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-200' : 'text-slate-600 dark:text-slate-300'
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+        {/* One scrollable row at every width: the full list never fits beside the
+            brand and account controls, and wrapping labels break the bar. */}
+        <nav aria-label="Main" className="border-t border-slate-100 dark:border-slate-800">
+          <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 py-2 sm:px-6">
+            {NAV.filter((item) => !('leadersOnly' in item) || leader).map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-brand-500 ${
+                    isActive
+                      ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-200'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
         </nav>
       </header>
 

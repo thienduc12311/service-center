@@ -35,10 +35,10 @@ export const SongBulkEditor = ({ songs, onDone }: SongBulkEditorProps) => {
   return <section className="card mb-4 space-y-3 p-4" aria-label="Bulk song metadata">
     <h2 className="font-semibold">Edit metadata for {songs.length} selected songs</h2>
     {!preview ? <>
-      <label className="block">Field<select className="input" value={field} onChange={(event) => setField(event.target.value as MetadataField)}>
+      <label className="field">Field<select className="input" value={field} onChange={(event) => setField(event.target.value as MetadataField)}>
         {fields.map((name) => <option key={name} value={name}>{label(name)}</option>)}
       </select></label>
-      <label className="block">Replacement value<input className="input" value={value} onChange={(event) => setValue(event.target.value)} /></label>
+      <label className="field">Replacement value<input className="input" value={value} onChange={(event) => setValue(event.target.value)} /></label>
       <p className="text-sm text-slate-500">Tags use commas. An empty value clears the field. Unselected fields stay unchanged.</p>
       <Button disabled={review.isPending || !songs.length} onClick={() => review.mutate()}>Preview changes</Button>
     </> : <>

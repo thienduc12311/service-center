@@ -125,11 +125,11 @@ export const PersonPolicyPanel = ({ personId, profileId }: PersonPolicyPanelProp
               </select>
               <input aria-label="Provider" className="input" value={provider} onChange={(e) => setProvider(e.target.value)} />
               <input aria-label="Provider reference" className="input" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Reference (optional)" />
-              <label className="text-xs text-slate-500">
+              <label className="field">
                 Verified
                 <input type="date" className="input" value={verifiedOn} onChange={(e) => setVerifiedOn(e.target.value)} />
               </label>
-              <label className="text-xs text-slate-500">
+              <label className="field">
                 Expires
                 <input type="date" className="input" value={expiresOn} onChange={(e) => setExpiresOn(e.target.value)} />
               </label>

@@ -7,6 +7,7 @@ Prepared 2026-10-15. These documents turn the existing assessments, specificatio
 | First ten mobile tasks | MOB-001–MOB-010 | [Existing launcher](mobile-first-10/README.md) |
 | Remaining mobile tasks | MOB-011–MOB-033 | [Mobile launcher](mobile-remaining/README.md) |
 | Missing Services capabilities | F00–F17, including separately labeled extensions | [Services launcher](services-capabilities/README.md) |
+| English/Vietnamese internationalization | Shared catalogs, web/mobile UI, Person language preference and system messages | [Implementation prompt](implement-i18n-vietnamese.md) · [Specification](../specs/i18n-vietnamese.md) |
 
 Read [the execution rules](IMPLEMENTATION-RULES.md) for either new pack. Use one task and one named pass per invocation. Shared capabilities belong to the Services implementation; mobile prompts consume them and add native interaction. When a mobile prompt requires an absent foundation, implement the named Services pass first and record the dependency instead of inventing a client-only substitute.
 

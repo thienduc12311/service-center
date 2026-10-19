@@ -106,10 +106,10 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
             Send this reminder for {scopeLabel}
           </label>
           <div className="flex flex-wrap items-end gap-4">
-            <label>
+            <label className="field">
               Hours before
               <input
-                className="input mt-1 w-28"
+                className="input w-28"
                 type="number"
                 min={0.25}
                 max={720}
@@ -119,10 +119,10 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
                 aria-invalid={invalidOffset}
               />
             </label>
-            <label>
+            <label className="field">
               Per person per day
               <input
-                className="input mt-1 w-24"
+                className="input w-24"
                 type="number"
                 min={1}
                 max={10}
@@ -151,8 +151,8 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
             </label>
             {quiet && (
               <>
-                <label>From<input className="input mt-1" type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} /></label>
-                <label>Until<input className="input mt-1" type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)} /></label>
+                <label className="field">From<input className="input" type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} /></label>
+                <label className="field">Until<input className="input" type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)} /></label>
               </>
             )}
           </div>
