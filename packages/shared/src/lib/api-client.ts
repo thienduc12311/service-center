@@ -105,6 +105,8 @@ import type {
   PreviewBlockoutSeriesInput,
   UpdateBlockoutInput,
 } from '../schemas/blockout.js';
+import type { UpdatePlanItemRequest } from '../schemas/plan.js';
+import type { PlanScheduleResponse } from '../types/plan-order.js';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
 import type {
   IdentityReconciliation,
@@ -616,17 +618,33 @@ export class ServiceCenterApi {
 
   addPlanItem = (planId: string, body: Record<string, unknown>) =>
     this.request<PlanItemRow>('POST', `/api/v1/plans/${planId}/items`, body);
-  updatePlanItem = (planId: string, itemId: string, body: Record<string, unknown>) =>
-    this.request<PlanItemRow>('PATCH', `/api/v1/plans/${planId}/items/${itemId}`, body);
-  deletePlanItem = (planId: string, itemId: string) =>
-    this.request<void>('DELETE', `/api/v1/plans/${planId}/items/${itemId}`);
+  /**
+   * F11: edits an item in place. Pass `expected_revision` (the plan's
+   * `content_revision`) so a competing edit is a 409 rather than overwritten.
+   * The response is the saved row plus the plan's new revision.
+   */
+  updatePlanItem = (planId: string, itemId: string, body: UpdatePlanItemRequest) =>
+    this.request<PlanItemRow & { content_revision: number }>('PATCH', `/api/v1/plans/${planId}/items/${itemId}`, body);
+  deletePlanItem = (planId: string, itemId: string, expectedRevision?: number) =>
+    this.request<void>(
+      'DELETE',
+      `/api/v1/plans/${planId}/items/${itemId}${expectedRevision === undefined ? '' : `?expected_revision=${expectedRevision}`}`,
+    );
   /** Replaces the staffing need for every position sent; others are left alone. */
   setPlanPositionNeeds = (planId: string, body: SetPlanPositionNeedsInput) =>
     this.request<PlanPositionNeed[]>('PUT', `/api/v1/plans/${planId}/position-needs`, body);
-  reorderPlanItems = (planId: string, itemIds: string[]) =>
+  /** The full order in one transaction; with a revision, a stale order is a 409. */
+  reorderPlanItems = (planId: string, itemIds: string[], expectedRevision?: number) =>
     this.request<PlanItemRow[]>('PUT', `/api/v1/plans/${planId}/items/order`, {
       item_ids: itemIds,
+      ...(expectedRevision === undefined ? {} : { expected_revision: expectedRevision }),
     });
+  /** F11: planned item times for one service time (derived, never stored). */
+  planSchedule = (planId: string, timeId?: string) =>
+    this.request<PlanScheduleResponse>(
+      'GET',
+      `/api/v1/plans/${planId}/schedule${timeId ? `?time_id=${encodeURIComponent(timeId)}` : ''}`,
+    );
 
   // --------------------------------------------------------- scheduling --
   createAssignments = (planId: string, body: Record<string, unknown>) =>

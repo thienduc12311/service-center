@@ -38,6 +38,7 @@ import type {
 } from './database.js';
 import type { ChartNotation } from '../lib/chordpro.js';
 import type { AttendanceInterval } from './attendance.js';
+import type { PlanItemLeaderPerson } from './plan-order.js';
 
 /** One rule of effective access: a capability at a scope, and where it comes from. */
 export interface EffectiveAccessEntry {
@@ -414,24 +415,38 @@ export interface SongbookDetail extends SongbookRow {
   }>;
 }
 
+/** The arrangement fields a plan item carries for its order row and chart. */
+export type PlanItemArrangement = Pick<
+  ArrangementRow,
+  | 'id'
+  | 'song_id'
+  | 'name'
+  | 'song_key'
+  | 'bpm'
+  | 'sequence'
+  | 'chord_chart'
+  | 'chart_columns'
+  | 'chart_font'
+  | 'chart_font_size'
+  | 'chart_chord_color'
+  | 'is_default'
+  | 'length_seconds'
+>;
+
 export interface PlanItemDetail extends PlanItemRow {
   song: Pick<
     SongRow,
     'id' | 'title' | 'author' | 'copyright' | 'default_key' | 'default_bpm'
   > | null;
-  arrangement: Pick<
-    ArrangementRow,
-    | 'id'
-    | 'name'
-    | 'song_key'
-    | 'bpm'
-    | 'sequence'
-    | 'chord_chart'
-    | 'chart_columns'
-    | 'chart_font'
-    | 'chart_font_size'
-    | 'chart_chord_color'
-  > | null;
+  /** The arrangement the item chose; null when it chose none. */
+  arrangement: PlanItemArrangement | null;
+  /**
+   * F11: the song's default arrangement when the item chose none, so plan
+   * charts play what the item inherits. Null when the item chose one.
+   */
+  default_arrangement?: PlanItemArrangement | null;
+  /** F11: the direct leader's name from the roster directory, when set. */
+  leader_person?: PlanItemLeaderPerson | null;
 }
 
 export interface AssignmentDetail extends AssignmentRow {

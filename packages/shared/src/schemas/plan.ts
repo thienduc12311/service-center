@@ -89,15 +89,37 @@ export const importPlanContentsSchema = z
     path: ['items'],
   });
 
+export const planItemSegmentSchema = z.enum(['pre', 'service', 'post']);
+
+/**
+ * F11: this plan's section order for a song. Null inherits the arrangement's
+ * sequence; an empty list is "no sequence" for this plan only.
+ */
+export const sequenceOverrideSchema = z.array(nonEmpty.max(20)).max(60).nullable();
+
+/** Plan-level item fields shared by create and edit. */
+const planItemFields = {
+  song_id: uuid.nullish(),
+  arrangement_id: uuid.nullish(),
+  key_override: musicalKey.nullish(),
+  sequence_override: sequenceOverrideSchema.optional(),
+  description: z.string().trim().max(4000).nullish(),
+  /** F11: a named Person leads the item… */
+  leader_person_id: uuid.nullish(),
+  /** …or whoever holds this position on the plan. Never both. */
+  leader_position_id: uuid.nullish(),
+  service_segment: planItemSegmentSchema.optional(),
+};
+
+const oneLeader = (v: { leader_person_id?: string | null; leader_position_id?: string | null }) =>
+  !(v.leader_person_id && v.leader_position_id);
+
 export const createPlanItemSchema = z
   .object({
+    ...planItemFields,
     item_type: planItemTypeSchema.default('item'),
     title: nonEmpty.max(200).optional(),
-    song_id: uuid.nullish(),
-    arrangement_id: uuid.nullish(),
-    key_override: musicalKey.nullish(),
     length_seconds: z.number().int().min(0).max(36_000).default(0),
-    description: z.string().trim().max(4000).nullish(),
     sort_order: z.number().int().min(0).optional(),
   })
   .refine((v) => v.item_type !== 'song' || Boolean(v.song_id), {
@@ -107,20 +129,42 @@ export const createPlanItemSchema = z
   .refine((v) => v.item_type === 'song' || Boolean(v.title), {
     message: 'Title is required',
     path: ['title'],
+  })
+  .refine(oneLeader, { message: 'Choose a person or a position to lead, not both', path: ['leader_position_id'] });
+
+/**
+ * F11: edits an existing item in place (same id and position). Absent fields
+ * are kept; null clears. `expected_revision` is the plan's `content_revision`
+ * when the editor opened; a newer one is a 409 `plan_revision_stale`.
+ */
+export const updatePlanItemSchema = z
+  .object({
+    ...planItemFields,
+    item_type: planItemTypeSchema.optional(),
+    title: nonEmpty.max(200).optional(),
+    length_seconds: z.number().int().min(0).max(36_000).optional(),
+    expected_revision: z.number().int().min(0).optional(),
+  })
+  .refine(oneLeader, { message: 'Choose a person or a position to lead, not both', path: ['leader_position_id'] })
+  .refine((v) => v.item_type === undefined || v.item_type === 'song' || (!v.arrangement_id && !v.sequence_override), {
+    message: 'Only a song item has an arrangement or sequence',
+    path: ['item_type'],
   });
 
-export const updatePlanItemSchema = z.object({
-  title: nonEmpty.max(200).optional(),
-  song_id: uuid.nullish(),
-  arrangement_id: uuid.nullish(),
-  key_override: musicalKey.nullish(),
-  length_seconds: z.number().int().min(0).max(36_000).optional(),
-  description: z.string().trim().max(4000).nullish(),
-});
-
-/** Full ordering after a drag-and-drop, sent as the ids in their new order. */
+/** Full ordering after a move, sent as the ids in their new order. */
 export const reorderPlanItemsSchema = z.object({
   item_ids: z.array(uuid).min(1).max(500),
+  expected_revision: z.number().int().min(0).optional(),
+});
+
+/** `DELETE /plans/:id/items/:itemId?expected_revision=` */
+export const deletePlanItemQuerySchema = z.object({
+  expected_revision: z.coerce.number().int().min(0).optional(),
+});
+
+/** F11: which service time a running order is timed against. */
+export const planScheduleQuerySchema = z.object({
+  time_id: uuid.optional(),
 });
 
 /**
@@ -165,6 +209,12 @@ export const calendarQuerySchema = z.object({
 export type CreatePlanInput = z.infer<typeof createPlanSchema>;
 export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
 export type CreatePlanItemInput = z.infer<typeof createPlanItemSchema>;
+export type UpdatePlanItemInput = z.infer<typeof updatePlanItemSchema>;
+/** What a client sends to edit an item. */
+export type UpdatePlanItemRequest = z.input<typeof updatePlanItemSchema>;
+export type ReorderPlanItemsInput = z.infer<typeof reorderPlanItemsSchema>;
+export type DeletePlanItemQuery = z.infer<typeof deletePlanItemQuerySchema>;
+export type PlanScheduleQuery = z.infer<typeof planScheduleQuerySchema>;
 export type SetPlanPositionNeedsInput = z.infer<typeof setPlanPositionNeedsSchema>;
 export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
 export type ListPlansQuery = z.infer<typeof listPlansQuerySchema>;

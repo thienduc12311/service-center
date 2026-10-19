@@ -5,7 +5,6 @@ import type {
   ImportPlanContentsInput,
   PlanDetail,
   PlanItemDetail,
-  PlanItemRow,
   PlanPositionNeed,
   PlanSummary,
   TeamPositionRow,
@@ -14,6 +13,7 @@ import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { NO_CONTACT, contactsFor } from './contacts.js';
 import { attendanceFor } from './attendance.js';
+import { defaultArrangementsFor } from './plan-items.js';
 
 /**
  * `person:profiles!assignments_user_id_fkey` is spelled out because
@@ -30,8 +30,8 @@ export const PLAN_DETAIL_SELECT = `
     *,
     song:songs(id, title, author, copyright, default_key, default_bpm),
     arrangement:arrangements(
-      id, name, song_key, bpm, sequence, chord_chart,
-      chart_columns, chart_font, chart_font_size, chart_chord_color
+      id, song_id, name, song_key, bpm, sequence, chord_chart,
+      chart_columns, chart_font, chart_font_size, chart_chord_color, is_default, length_seconds
     )
   ),
   assignments:assignments(
@@ -149,18 +149,33 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
 
   if (!row) throw HttpError.notFound('Plan not found');
   const detail = shapePlanDetail(row);
-  const personIds = [...new Set(detail.assignments.map((assignment) => assignment.person_id))];
+  // F11: direct item leaders are named from the same roster directory.
+  const leaderIds = detail.items.flatMap((item) => (item.leader_person_id ? [item.leader_person_id] : []));
+  const personIds = [...new Set([...detail.assignments.map((assignment) => assignment.person_id), ...leaderIds])];
   const userIds = detail.assignments.flatMap((assignment) => assignment.user_id ? [assignment.user_id] : []);
-  const [contacts, directory, attendance] = await Promise.all([
+  const inheriting = detail.items.flatMap((item) =>
+    item.item_type === 'song' && item.song_id && !item.arrangement_id ? [item.song_id] : [],
+  );
+  const [contacts, directory, attendance, defaults] = await Promise.all([
     contactsFor(db, orgId, userIds),
     personIds.length
       ? unwrap(db.from('people_directory').select('*').in('id', personIds))
       : Promise.resolve([]),
     attendanceFor(db, detail.assignments.map((assignment) => assignment.id)),
+    defaultArrangementsFor(db, inheriting),
   ]);
   const people = new Map((directory ?? []).map((person) => [person.id, person]));
+  const fullName = (id: string): string | null => {
+    const person = people.get(id);
+    return person ? [person.first_name, person.last_name].filter(Boolean).join(' ') : null;
+  };
   return {
     ...detail,
+    items: detail.items.map((item) => ({
+      ...item,
+      default_arrangement: item.song_id && !item.arrangement_id ? (defaults.get(item.song_id) ?? null) : null,
+      leader_person: item.leader_person_id ? { id: item.leader_person_id, full_name: fullName(item.leader_person_id) } : null,
+    })),
     assignments: detail.assignments.map((assignment) => ({
       ...assignment,
       attendance: attendance.get(assignment.id) ?? [],
@@ -270,41 +285,6 @@ export const importPlanContents = async ({
   }
   if (error) throw fromPostgrestError(error);
   return data;
-};
-
-export interface ReorderPlanItemsInput {
-  db: Db;
-  planId: string;
-  itemIds: string[];
-}
-
-export const validatePlanItemOrder = (knownIds: ReadonlySet<string>, itemIds: string[]): void => {
-  const unknownIds = itemIds.filter((id) => !knownIds.has(id));
-
-  if (unknownIds.length) {
-    throw HttpError.badRequest('Some items do not belong to this plan', { unknown: unknownIds });
-  }
-  if (itemIds.length !== knownIds.size || new Set(itemIds).size !== itemIds.length) {
-    throw HttpError.badRequest('Send every item id in the plan exactly once, in the new order');
-  }
-};
-
-export const reorderPlanItems = async (input: ReorderPlanItemsInput): Promise<PlanItemRow[]> => {
-  const existing = await unwrap(
-    input.db.from('plan_items').select('id').eq('plan_id', input.planId),
-  );
-  const knownIds = new Set((existing ?? []).map((item) => item.id));
-  validatePlanItemOrder(knownIds, input.itemIds);
-
-  await Promise.all(
-    input.itemIds.map((id, sortOrder) =>
-      unwrap(input.db.from('plan_items').update({ sort_order: sortOrder }).eq('id', id).eq('plan_id', input.planId)),
-    ),
-  );
-
-  return (await unwrap(
-    input.db.from('plan_items').select('*').eq('plan_id', input.planId).order('sort_order'),
-  )) ?? [];
 };
 
 export interface ApplyPositionNeedsInput {

@@ -2,11 +2,16 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  ApiError,
+  computePlanSchedule,
   isAdmin,
   nextOccurrence,
+  selectServiceTime,
+  serviceTimesOf,
   renderServiceSongBookHtml,
   serviceSongBookDocumentFromPlan,
   type AssignmentDetail,
+  type PlanItemDetail,
   type PlanSummary,
 } from '@service-center/shared';
 import { api } from '../lib/api';
@@ -22,6 +27,8 @@ import { TeamsTab } from '../components/plan/TeamsTab';
 import { PlanDeliveryPanel } from '../components/plan/PlanDeliveryPanel';
 import { RehearseTab } from '../components/plan/RehearseTab';
 import { AddItemModal } from '../components/plan/AddItemModal';
+import { EditItemModal } from '../components/plan/EditItemModal';
+import { PrintOrderModal } from '../components/plan/PrintOrderModal';
 import { SchedulePeopleModal } from '../components/plan/SchedulePeopleModal';
 import { EditTimesModal } from '../components/plan/EditTimesModal';
 import { AssignmentTimesModal } from '../components/plan/AssignmentTimesModal';
@@ -34,7 +41,7 @@ import { OpportunityPanel, type SignupSetupOption } from '../components/plan/Opp
 import { PLAN_TABS, PLAN_TAB_LABELS, buildPlanTeams, type PlanTab } from '../components/plan/types';
 
 /** Which dialog, if any, is on top of the workspace. */
-type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'import-template' | 'apply-template' | 'save-template';
+type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'import-template' | 'apply-template' | 'save-template' | 'print-order';
 
 export const PlanDetailPage = () => {
   const { planId } = useParams<{ planId: string }>();
@@ -63,6 +70,9 @@ export const PlanDetailPage = () => {
   const [editingNeeds, setEditingNeeds] = useState(false);
   const [editingTimesFor, setEditingTimesFor] = useState<AssignmentDetail | null>(null);
   const [discussingId, setDiscussingId] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  /** F11: which service time the order is timed against; null = the first. */
+  const [timeId, setTimeId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const queryClient = useQueryClient();
   const openChat = useMutation({
@@ -111,14 +121,18 @@ export const PlanDetailPage = () => {
     onSuccess: invalidate,
   });
 
+  // F11: order changes carry the revision they were made against; a stale
+  // one is refused, and the refreshed order is shown instead.
   const reorder = useMutation({
-    mutationFn: (itemIds: string[]) => api.reorderPlanItems(planId!, itemIds),
-    onSuccess: invalidate,
+    mutationFn: ({ itemIds, revision }: { itemIds: string[]; revision: number }) =>
+      api.reorderPlanItems(planId!, itemIds, revision),
+    onSettled: invalidate,
   });
 
   const removeItem = useMutation({
-    mutationFn: (itemId: string) => api.deletePlanItem(planId!, itemId),
-    onSuccess: invalidate,
+    mutationFn: ({ itemId, revision }: { itemId: string; revision: number }) =>
+      api.deletePlanItem(planId!, itemId, revision),
+    onSettled: invalidate,
   });
 
   // Exactly the reviewed ids; a repeated click is a no-op on the server.
@@ -221,6 +235,21 @@ export const PlanDetailPage = () => {
     );
   }, [everyTeam, user]);
 
+  const organization = user?.memberships.find((membership) => membership.organization.id === organizationId)?.organization;
+  const timeZone = organization?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const serviceTimes = useMemo(() => serviceTimesOf(plan.data?.times ?? []), [plan.data?.times]);
+  const selectedTime = plan.data ? (selectServiceTime(plan.data.times, timeId) ?? selectServiceTime(plan.data.times)) : null;
+  const schedule = useMemo(
+    () => computePlanSchedule({ items: plan.data?.items ?? [], time: selectedTime ?? null }),
+    [plan.data?.items, selectedTime],
+  );
+  const positionNames = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const team of teams.data ?? []) for (const position of team.positions) names.set(position.id, position.name);
+    for (const position of plan.data?.plan_positions ?? []) names.set(position.id, position.name);
+    return names;
+  }, [teams.data, plan.data?.plan_positions]);
+
   if (plan.isLoading) return <Loading />;
   if (plan.error) return <ErrorNotice error={plan.error} />;
   if (!plan.data || !planId) return <EmptyState title="Plan not found" />;
@@ -245,13 +274,25 @@ export const PlanDetailPage = () => {
     canManage: canScheduleTeam(view.team.id),
   })));
 
+  const orderBusy = reorder.isPending || removeItem.isPending || plan.isFetching;
   const move = (index: number, direction: -1 | 1) => {
     const ids = detail.items.map((item) => item.id);
     const target = index + direction;
-    if (target < 0 || target >= ids.length) return;
+    if (target < 0 || target >= ids.length || orderBusy) return;
     [ids[index], ids[target]] = [ids[target]!, ids[index]!];
-    reorder.mutate(ids);
+    reorder.mutate({ itemIds: ids, revision: detail.content_revision });
   };
+
+  const confirmRemove = (item: PlanItemDetail) => {
+    const notesOnItem = itemNoteCounts.get(item.id) ?? 0;
+    const warning = notesOnItem > 0 ? ` Its ${notesOnItem} note${notesOnItem === 1 ? '' : 's'} and discussion will be removed too.` : '';
+    if (window.confirm(`Remove “${item.title}” from this plan?${warning}`)) {
+      removeItem.mutate({ itemId: item.id, revision: detail.content_revision });
+    }
+  };
+  const orderError = reorder.error ?? removeItem.error;
+  const orderStale = orderError instanceof ApiError && orderError.code === 'plan_revision_stale';
+  const editingItem = detail.items.find((item) => item.id === editingItemId) ?? null;
 
   const openNeededPositions = () => {
     setTab('teams');
@@ -294,7 +335,7 @@ export const PlanDetailPage = () => {
           error={
             publish.error ??
             notify.error ??
-            reorder.error ??
+            (orderStale ? null : orderError) ??
             respond.error ??
             release.error ??
             setNeed.error ??
@@ -356,15 +397,31 @@ export const PlanDetailPage = () => {
           </div>
 
           {tab === 'order' && (
-            <OrderTab
-              plan={detail}
-              canManage={canEditPlan}
-              onAddItem={() => setDialog('add-item')}
-              onMoveItem={move}
-              onRemoveItem={(itemId) => removeItem.mutate(itemId)}
-              onDiscussItem={(item) => setDiscussingId(item.id)}
-              itemNoteCounts={itemNoteCounts}
-            />
+            <>
+              {orderStale && (
+                <p role="alert" className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-600/20">
+                  Someone else changed this plan, so your last change was not saved. The order below is the latest — check it and try again.
+                </p>
+              )}
+              <OrderTab
+                plan={detail}
+                canManage={canEditPlan}
+                schedule={schedule}
+                timeZone={timeZone}
+                serviceTimes={serviceTimes}
+                selectedTimeId={selectedTime?.id ?? null}
+                onSelectTime={setTimeId}
+                positionNames={positionNames}
+                busy={orderBusy}
+                onAddItem={() => setDialog('add-item')}
+                onEditItem={(item) => setEditingItemId(item.id)}
+                onMoveItem={move}
+                onRemoveItem={confirmRemove}
+                onPrint={() => setDialog('print-order')}
+                onDiscussItem={(item) => setDiscussingId(item.id)}
+                itemNoteCounts={itemNoteCounts}
+              />
+            </>
           )}
 
           {tab === 'teams' && (
@@ -396,6 +453,26 @@ export const PlanDetailPage = () => {
         </div>
       </div>
 
+      {editingItem && (
+        <EditItemModal
+          key={editingItem.id}
+          plan={detail}
+          item={editingItem}
+          teams={teams.data ?? []}
+          onClose={() => setEditingItemId(null)}
+        />
+      )}
+      {dialog === 'print-order' && (
+        <PrintOrderModal
+          plan={detail}
+          organizationName={organizationName}
+          timeZone={timeZone}
+          serviceTimes={serviceTimes}
+          initialTimeId={selectedTime?.id ?? null}
+          positionNames={positionNames}
+          onClose={() => setDialog(null)}
+        />
+      )}
       <AddItemModal
         open={dialog === 'add-item'}
         planId={planId}

@@ -435,9 +435,31 @@ export type PlanItemRow = {
   length_seconds: number;
   description: string | null;
   sort_order: number;
+  /** F11: this plan's section order for the song; null inherits the arrangement's. */
+  sequence_override: string[] | null;
+  /** F11: a named Person responsible for the item (never with a position). */
+  leader_person_id: string | null;
+  /** F11: a team position whose current assignee on this plan leads the item. */
+  leader_position_id: string | null;
+  /** F11: before, during or after the service time. */
+  service_segment: PlanItemSegment;
   created_at: string;
   updated_at: string;
 }
+
+/** F11: an item edit and the plan's content revision after it. */
+export interface PlanItemSaveResult {
+  item: PlanItemRow;
+  content_revision: number;
+}
+
+/** F11: the plan's content revision after a reorder or removal. */
+export interface PlanOrderSaveResult {
+  content_revision: number;
+}
+
+/** F11: where an item sits relative to the service it belongs to. */
+export type PlanItemSegment = 'pre' | 'service' | 'post';
 
 /** How many people one plan needs in a given team position. */
 export type PlanPositionNeedRow = {
@@ -1506,6 +1528,18 @@ export type Database = {
           p_insert_at?: number | null;
         };
         Returns: TemplateApplyPreviewResult;
+      };
+      update_plan_item: {
+        Args: { p_plan_id: string; p_item_id: string; p_patch: unknown; p_expected_revision?: number | null };
+        Returns: PlanItemSaveResult;
+      };
+      reorder_plan_items: {
+        Args: { p_plan_id: string; p_item_ids: string[]; p_expected_revision?: number | null };
+        Returns: PlanOrderSaveResult;
+      };
+      delete_plan_item: {
+        Args: { p_plan_id: string; p_item_id: string; p_expected_revision?: number | null };
+        Returns: PlanOrderSaveResult;
       };
       apply_plan_template: {
         Args: {
