@@ -100,6 +100,14 @@ import type {
   FileUploadIntentRpcResult,
 } from './files.js';
 import type { MediaRow, PlanStageLayoutRow, StageLayoutTemplateRow } from './media.js';
+import type {
+  ApiCredentialRow,
+  WebhookDeliveredEventType,
+  WebhookDeliveryAttemptRow,
+  WebhookDeliveryRow,
+  WebhookEndpointRow,
+  WebhookEventRow,
+} from './integrations.js';
 import type { FilePlaybackRights } from './rehearsal.js';
 import type {
   AttendanceBatchResult,
@@ -145,6 +153,32 @@ export interface TeamCalendarLayerRpcRow {
  * Zod-validated objects, which an exact type would reject for reasons that
  * have nothing to do with correctness.
  */
+/** One row of `api_authenticate` (service role). */
+export type ApiAuthenticateRpcRow = {
+  outcome: 'ok' | 'invalid' | 'inactive' | 'rate_limited';
+  credential_id: string | null;
+  organization_id: string | null;
+  scopes: string[] | null;
+  rate_limit: number | null;
+  remaining: number | null;
+  reset_at: string | null;
+};
+
+/** One leased webhook delivery from `claim_webhook_deliveries` (service role). */
+export type WebhookClaimRpcRow = {
+  delivery_id: string;
+  organization_id: string;
+  endpoint_id: string;
+  url: string;
+  secret_ciphertext: string;
+  event_id: string;
+  event_type: WebhookDeliveredEventType;
+  occurred_at: string;
+  data: Record<string, unknown>;
+  attempt: number;
+  max_attempts: number;
+};
+
 type Table<Row> = {
   Row: Row;
   Insert: Partial<Row> & Record<string, unknown>;
@@ -1145,6 +1179,11 @@ export type Database = {
       person_calendar_sharing: Table<PersonCalendarSharingRow>;
       plan_publications: Table<PlanPublicationRow>;
       public_set_list_links: Table<PublicSetListLinkRow>;
+      api_credentials: Table<ApiCredentialRow>;
+      webhook_endpoints: Table<WebhookEndpointRow>;
+      webhook_events: Table<WebhookEventRow>;
+      webhook_deliveries: Table<WebhookDeliveryRow>;
+      webhook_delivery_attempts: Table<WebhookDeliveryAttemptRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -1762,6 +1801,98 @@ export type Database = {
         Args: { p_plan: string; p_expected_revision: number };
         Returns: PlanPublicationRow;
       };
+      create_api_credential: {
+        Args: {
+          p_org: string;
+          p_name: string;
+          p_scopes: string[];
+          p_key_prefix: string;
+          p_secret_hash: string;
+          p_expires_at: string | null;
+          p_rate_limit_per_minute: number;
+          p_idempotency_key: string;
+        };
+        Returns: Array<{ credential_id: string; replayed: boolean }>;
+      };
+      revoke_api_credential: { Args: { p_credential: string }; Returns: undefined };
+      api_authenticate: {
+        Args: { p_key_prefix: string; p_secret_hash: string };
+        Returns: ApiAuthenticateRpcRow[];
+      };
+      api_organization: { Args: { p_credential: string }; Returns: Array<{ id: string; name: string; timezone: string }> };
+      api_service_types: {
+        Args: { p_credential: string; p_after: string | null; p_limit: number };
+        Returns: Array<{ id: string; name: string; description: string | null; updated_at: string }>;
+      };
+      api_plans: {
+        Args: {
+          p_credential: string;
+          p_from: string;
+          p_to: string;
+          p_service_type: string | null;
+          p_after_date: string | null;
+          p_after_id: string | null;
+          p_limit: number;
+        };
+        Returns: Array<{
+          id: string;
+          service_type_id: string | null;
+          title: string;
+          service_date: string;
+          location: string | null;
+          updated_at: string;
+        }>;
+      };
+      api_plan: { Args: { p_credential: string; p_plan: string }; Returns: unknown };
+      api_songs: {
+        Args: { p_credential: string; p_query: string | null; p_after: string | null; p_limit: number };
+        Returns: Array<{
+          id: string;
+          title: string;
+          author: string | null;
+          ccli_number: string | null;
+          default_key: string | null;
+          themes: string[];
+          updated_at: string;
+        }>;
+      };
+      create_webhook_endpoint: {
+        Args: {
+          p_org: string;
+          p_url: string;
+          p_description: string | null;
+          p_event_types: string[];
+          p_secret_ciphertext: string;
+          p_secret_hint: string;
+          p_idempotency_key: string;
+        };
+        Returns: Array<{ endpoint_id: string; replayed: boolean }>;
+      };
+      set_webhook_endpoint_enabled: {
+        Args: { p_endpoint: string; p_enabled: boolean; p_expected_revision: number };
+        Returns: undefined;
+      };
+      revoke_webhook_endpoint: { Args: { p_endpoint: string }; Returns: undefined };
+      send_webhook_test: { Args: { p_endpoint: string }; Returns: string };
+      retry_webhook_delivery: { Args: { p_delivery: string }; Returns: undefined };
+      claim_webhook_deliveries: {
+        Args: { p_limit: number; p_lease_seconds: number };
+        Returns: WebhookClaimRpcRow[];
+      };
+      complete_webhook_delivery: {
+        Args: {
+          p_delivery: string;
+          p_attempt: number;
+          p_outcome: string;
+          p_status_code: number | null;
+          p_error_code: string | null;
+          p_started_at: string;
+          p_duration_ms: number | null;
+          p_retry_after_seconds: number | null;
+        };
+        Returns: string;
+      };
+      prune_webhook_history: { Args: { p_limit?: number }; Returns: number };
       set_public_set_list_link: {
         Args: { p_service_type: string; p_kind: string; p_action: string };
         Returns: PublicSetListLinkRow;
