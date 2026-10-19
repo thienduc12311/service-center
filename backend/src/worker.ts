@@ -13,6 +13,7 @@ import { configureTransports } from './lib/transports.js';
 import { runDeliveryWorker } from './services/delivery-worker.js';
 import { runFileMaintenanceSafely } from './services/file-maintenance.js';
 import { runReportExportsSafely } from './services/report-exports.js';
+import { runWebhookDeliveriesSafely } from './services/webhook-dispatch.js';
 
 const MAX_RUNS = 20;
 
@@ -29,6 +30,10 @@ const main = async (): Promise<void> => {
   const exports = await runReportExportsSafely();
   if (exports) {
     console.info(`[worker] report exports: claimed ${exports.claimed}, ready ${exports.ready}, failed ${exports.failed}, retry later ${exports.retried}, expired ${exports.expired}`);
+  }
+  const webhooks = await runWebhookDeliveriesSafely();
+  if (webhooks) {
+    console.info(`[worker] webhooks: claimed ${webhooks.claimed}, succeeded ${webhooks.succeeded}, retry later ${webhooks.retried}, failed ${webhooks.failed}, stale ${webhooks.stale}, pruned events ${webhooks.pruned}`);
   }
   const files = await runFileMaintenanceSafely();
   if (files) {

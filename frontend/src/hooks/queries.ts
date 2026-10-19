@@ -38,6 +38,12 @@ export const keys = {
   calendarFeed: (org: string | null) => [...keys.all(org), 'calendar-feed'] as const,
   deliveryStatus: (org: string | null) => [...keys.all(org), 'delivery-status'] as const,
   deliveries: (org: string | null, query: unknown) => [...keys.all(org), 'deliveries', query] as const,
+  // F17 developer API and webhooks.
+  integrations: (org: string | null) => [...keys.all(org), 'integrations'] as const,
+  integrationStatus: (org: string | null) => [...keys.integrations(org), 'status'] as const,
+  apiCredentials: (org: string | null) => [...keys.integrations(org), 'credentials'] as const,
+  webhookEndpoints: (org: string | null) => [...keys.integrations(org), 'webhooks'] as const,
+  webhookDeliveries: (org: string | null, endpointId: string) => [...keys.integrations(org), 'webhooks', endpointId, 'deliveries'] as const,
   // F08 release and reminders.
   preparedRequests: (org: string | null) => [...keys.all(org), 'releases', 'prepared'] as const,
   releaseBatches: (org: string | null) => [...keys.all(org), 'releases', 'batches'] as const,
@@ -294,6 +300,47 @@ export const useDeliveries = (query: ListDeliveriesRequest) => {
     queryFn: () => api.listDeliveries(query),
     enabled: Boolean(org),
   });
+};
+
+// ------------------------------------------- F17 developer API and webhooks
+
+export const useIntegrationStatus = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.integrationStatus(org), queryFn: () => api.integrationStatus(), enabled: Boolean(org) });
+};
+
+export const useApiCredentials = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.apiCredentials(org), queryFn: () => api.apiCredentials(), enabled: Boolean(org) });
+};
+
+export const useWebhookEndpoints = () => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.webhookEndpoints(org),
+    queryFn: () => api.webhookEndpoints(),
+    enabled: Boolean(org),
+    // Waiting counts settle as the worker sends; refresh until they do.
+    refetchInterval: (query) => (query.state.data?.some((endpoint) => endpoint.pending_deliveries > 0) ? 10_000 : false),
+  });
+};
+
+/** Polls while a delivery is still waiting so outcomes appear without a reload. */
+export const useWebhookDeliveries = (endpointId: string, enabled: boolean) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.webhookDeliveries(org, endpointId),
+    queryFn: () => api.webhookDeliveries(endpointId),
+    enabled: Boolean(org) && enabled,
+    refetchInterval: (query) =>
+      query.state.data?.some((delivery) => delivery.status === 'queued' || delivery.status === 'sending') ? 5_000 : false,
+  });
+};
+
+export const useInvalidateIntegrations = () => {
+  const org = useOrg();
+  const client = useQueryClient();
+  return () => client.invalidateQueries({ queryKey: keys.integrations(org) });
 };
 
 // ---------------------------------------------------- F08 release/reminders

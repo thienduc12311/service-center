@@ -81,7 +81,11 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F16 Pass C — scoped feeds, opt-in layers, public publication | implemented; QA pending | same | Signed-in calendar-client subscription check (Google/Apple/Outlook); product review of the public field allowlist and link rules |
 | F16 Pass C item 8 — custom report definitions (optional) | not started (not selected) | — | Select explicitly; reuse `reportTable`/builders and `planInScope`/`teamInScope` |
 | F16 epic | in progress | — | Core A/B and Pass C 6–7 implemented; optional custom reports, native MOB-017/022 and QA/deployment gates explicit |
-| F17 | not started | — | Select and verify one provider adapter first |
+| F17 Pass A — choose and verify one contract | implemented; QA pending | `feature/f17-developer-api` (uncommitted, from `d0d9ea1`) | Stage D selected (no provider entitlement needed); B/C options note below; product owner named at review |
+| F17 Stage D — scoped developer API credentials and signed webhooks | implemented; QA pending | same | Deployment: `INTEGRATION_SECRET_KEY`, scheduled F00 worker, egress review; real public-host delivery check (below) |
+| F17 Stage B — licensed catalog/usage (SongSelect/CCLI-compatible) | not started (not selected) | — | Blocked on a provider decision: CCLI partner access/commercial permission must be confirmed first (below) |
+| F17 Stage C — specific product/media/presentation handoff | not started (not selected) | — | Blocked on a named use case + owner (Check-Ins attendance, Publishing, presentation software) |
+| F17 epic | in progress | — | One stage (D) implemented; B/C unselected; QA/deployment gates below. **Exact next pass: F17 Stage D QA/deployment closure**, or select B/C explicitly |
 
 ## F00 — 2026-10-16
 
@@ -888,3 +892,136 @@ Save-review and commit are separate transactions behind one UI save action: savi
 - **Revocation honesty:** an issued export URL works until it expires (≤ 300 s) and a downloaded CSV cannot be recalled; calendar apps keep events they already fetched until their next refresh; a public page already viewed or cached (`max-age=60`) cannot be recalled.
 
 **Exact next pass:** MOB-017 Pass A — native attendance marking on `attendanceSheet`/`recordAttendance` (same batch, revisions and stale recovery; no new API). Cross-epic, F15 Pass A remains next in the suggested order on `main` (another session's branch exists); within F16 only the optional Pass C item 8 (custom report definitions) remains, and it must be selected explicitly.
+
+## F17 — 2026-10-19
+
+**Pre-existing state.** `main` at `d0d9ea1` (F16 merged), clean. New branch `feature/f17-developer-api`. The user asked for "all passes". Pass A means choosing one stage. B and C need provider access or commercial rights that cannot be verified or obtained in a session. D needs neither, so **D was selected** and implemented end to end; B and C remain unselected (options below). Two things differ from F16: the local DB now carries F15/F16 with history, and `supabase db diff` against an empty shadow replay is **empty**. `20261103000000` was applied with `psql` and recorded in `supabase_migrations.schema_migrations`. Other sessions held :4000/:5173, so this pass used API :4117, web :5187 and a test webhook receiver on :4199 (temporary `launch.json` entries, reverted). No mobile ledger exists. Administrator integration settings are web-only by specification (§1), so no native work was due.
+
+**Pass A — options and feasibility (provider facts vs assumptions).**
+- **D, developer API and webhooks (selected).** We own the contract, and there is no external entitlement to buy.
+  - Signing follows the [Standard Webhooks spec](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md), checked 2026-10-19: headers `webhook-id`, `webhook-timestamp`, `webhook-signature` (`v1,<base64 HMAC-SHA256 of id.timestamp.body>`); secret `whsec_` + 24–64 random bytes; non-2xx = failure; 3xx not followed; 410 = disable; 429/502/504 throttle and honour `retry-after`; 15–30 s timeout; multi-day jittered backoff; SSRF filtering is recommended. The spec gives no numeric replay window, so **5 minutes is our choice**.
+  - Our signer reproduces the spec libraries' reference vector (`integration-crypto.test.ts`).
+- **B, SongSelect/CCLI-compatible catalog and reporting (not selected).** The only lead found is a third-party project's notes ([pp-planer CCLI-API.md](https://git.stadtmission-butzbach.de/public/pp-planer/src/branch/master/CCLI-API.md)), **not an official CCLI source**. They say the SongSelect API partner program no longer accepts new partners and describe OAuth 2.0 + PKCE, a subscription-key header and rate limits. Treat all of it as unverified. Bounded choices:
+  1. Ask CCLI (partners@ccli.com) for partner access and reporting terms before any engineering.
+  2. Choose a different licensed provider with documented API terms.
+  3. Defer B.
+  - A `ccli_number` field is not an entitlement, and scraping is excluded.
+- **C, specific handoff (not selected).** This needs a named use case and owner: Check-Ins attendance into F16 `attendance_records` with provenance, Publishing, or a presentation tool. Each needs its own current API terms. The F16 public projection and this stage's webhooks are the reusable building blocks.
+
+### Contract (implementation note)
+- **Credentials.**
+  - Table `api_credentials`:
+    - key format `sck_<16 hex prefix>_<43 base64url>`; only `sha256(secret)` is stored, and `secret_hash` is not granted to `authenticated` (column privileges);
+    - scopes ⊆ {`plans.read`, `songs.read`};
+    - per-minute limit 1–600, optional expiry;
+    - one durable request key per (org, issuer); a replay returns the credential with `secret: null`, and a different payload gets 409 `idempotency_key_reused`;
+    - at most 25 active per organization.
+  - Issue and revoke run through `create_api_credential` / `revoke_api_credential`, owner/admin only.
+  - Service-role `api_authenticate(prefix, hash)`, in one round trip:
+    - checks the hash, then revocation, expiry and that the **issuer is still an active owner/admin**;
+    - only then counts the request in `api_credential_windows` (atomic upsert, per-minute window);
+    - returns `ok|invalid|inactive|rate_limited` with limit, remaining and reset.
+- **External API.**
+  - Lives under `/api/external/v1`. Supabase JWTs are not accepted there, and `sck_` keys are not accepted by first-party routes.
+  - Endpoints: `GET /organization`, `/service-types`, `/plans?from&to[&service_type_id]` (≤ 366 days, published only, keyset on `(service_date,id)`), `/plans/:id` (times + items: id/type/title/position/length/song_id), `/songs[?q]` (not archived or merged).
+  - Each endpoint calls a service-role SQL function. That function takes the credential id and re-derives organization and scope through `private.api_scope_org`: inactive → SQLSTATE 28000 → 401, missing scope → 403. Tenancy is therefore enforced in SQL, not by Express filters.
+  - Excluded: people, assignments, notes, item descriptions, files and drafts.
+  - Headers: `Service-Center-Api-Version`, `RateLimit-*`, `Retry-After`, `no-store`.
+  - Versioned contract with examples: `docs/integrations/developer-api.md`.
+- **Webhooks.**
+  - Table `webhook_endpoints`:
+    - URL checked by shared Zod and the server destination guard;
+    - events ⊆ {`plan.published`, `plan.unpublished`, `plan.deleted`};
+    - signing secret **sealed with AES-256-GCM in the API** (`INTEGRATION_SECRET_KEY`, never in the DB); `secret_ciphertext` is not granted to clients, and only a 4-character hint is shown;
+    - revision-checked enable/pause; revoke; at most 10 active per organization.
+  - `private.plan_webhook_events` (an after trigger on `plans` status/delete) records `webhook_events` (unique semantic `source_key`) and one `webhook_deliveries` row per subscribed active endpoint, **in the same transaction**. Nothing is recorded without a subscriber. Drafts and title edits never emit.
+  - Payloads carry ids only.
+- **Worker.**
+  - The same F00 scheduled run (`worker.ts`, `/internal/deliveries/run`) calls `runWebhookDeliveries`. There is no second scheduler.
+  - `claim_webhook_deliveries` first cancels waiting work for paused/revoked endpoints, then leases due work and lapsed leases with `SKIP LOCKED`.
+  - The send resolves the host again, refuses reserved ranges and **pins the socket to the checked address** (no rebinding). It does not follow redirects, never reads the response body, and times out after 15 s.
+  - `complete_webhook_delivery` accepts only the lease-holding attempt (`stale` otherwise) and records the attempt. Backoff runs 5 s → 20 h (jittered, ≤ 8 attempts, `Retry-After` honoured up to 24 h). 410 → pause (`gone`); five permanent failures in a row → pause (`failing`).
+  - A lapsed lease is re-sent with the **same** event id, which receivers deduplicate. This is honest at-least-once delivery.
+  - `prune_webhook_history` keeps 30 days.
+  - Administrators read deliveries and attempts (RLS `is_org_admin`) and may retry failed/cancelled ones (`max_attempts = attempts + 3`, same event id).
+
+### Delivered
+- **DB:** `20261103000000_f17_developer_api.sql`. Tests: `supabase/tests/f17-developer-api.sql` and `supabase/tests/f17-concurrent-webhooks.sh`.
+- **Shared:**
+  - `types/integrations.ts` (table rows are `type` aliases: interfaces broke the Supabase `GenericSchema` constraint and collapsed every `db.rpc`/`from` type);
+  - `schemas/integrations.ts` (+5 tests), `lib/integrations.ts` (version, prefix, key pattern, labels);
+  - `Database` tables and RPCs;
+  - client methods `integrationStatus`, `apiCredentials`, `createApiCredential`, `revokeApiCredential`, `webhookEndpoints`, `createWebhookEndpoint`, `setWebhookEndpointEnabled`, `revokeWebhookEndpoint`, `sendWebhookTest`, `webhookDeliveries`, `retryWebhookDelivery`.
+- **Backend:**
+  - lib: `secret-box.ts`, `webhook-signature.ts`, `destination-guard.ts` (+7 tests in `integration-crypto.test.ts`, including the spec reference vector, forged/altered/replayed/rotated signatures, reserved ranges, mixed DNS answers and DNS failure);
+  - `model/integration.model.ts` (+3 tests);
+  - `services/api-credentials.ts`, `services/webhooks.ts`, `services/webhook-dispatch.ts`, `services/external-api.ts`;
+  - `middleware/api-key.ts`; routes `integrations.ts` (admin) and `external-api.ts`;
+  - worker and internal-run wiring;
+  - config `INTEGRATION_SECRET_KEY` and `WEBHOOK_ALLOW_PRIVATE_DESTINATIONS` (refused in production), documented in `.env.example`;
+  - PT409 hint `webhook_changed` → `webhook_endpoint_stale`.
+- **Web:** Settings → **Developer API and webhooks** (`components/settings/IntegrationSettings.tsx`, administrators only):
+  - API keys: name, scopes, optional expiry; one-time key panel; state badges (active / revoked / expired / issuer inactive); last used; revoke with confirmation.
+  - Webhooks: URL, description, events; one-time signing-secret panel; pause/resume; send test; revoke; per-endpoint delivery history with attempts, timings, error labels and retry; polling while work waits.
+  - Notices when no encryption key or no scheduled worker is configured.
+- **Docs:** `docs/integrations/developer-api.md`.
+- **Native:** none (administrator configuration is web-only by spec).
+
+### Checks (Node v20.20.1 locally; manifests ask for ≥26.8.1)
+- **Workspace:** `npm run build:shared`, `npm run typecheck` (shared, backend, frontend, mobile), `npm test` (shared 287 incl. 5 new, backend 181 incl. 10 new, mobile 42) and `npm run build` all pass.
+- **`supabase/tests/f17-developer-api.sql`** (caller roles + JWT, rolled back) — pass:
+  - Credentials: a scheduler cannot issue; replay returns the same credential; reuse under another payload → PT409; unknown scope and past expiry refused; `secret_hash` unreadable; no direct writes; non-admins see none, cannot revoke, and cannot call `api_authenticate` or `api_plans`.
+  - Authentication and limits: a wrong secret is `invalid` and consumes no quota; limit 2 → ok, ok, rate_limited; `last_used_at` recorded.
+  - Data: published plans of the caller's own tenant only (draft and other-tenant plans invisible); detail without the description; keyset page; archived songs excluded; `%` treated as a literal; a plans-only key cannot read songs.
+  - Revocation: revoked → `inactive` and data functions raise 28000; a demoted issuer → `inactive`.
+  - Webhooks: a scheduler cannot register; endpoint replay; non-http URL and unknown event refused; ciphertext unreadable; no direct event insert; a member and the other tenant see nothing and cannot send a test.
+  - Events: publish/unpublish/delete transitions emit exactly 3 events; draft and title edits emit none; the other tenant without a subscriber records none; payloads contain no title.
+  - Worker: claim 3, then a second claim gets 0; a stale attempt is ignored; success; a 503-style retry gets backoff; attempts recorded; 410 pauses and cancels waiting work; a paused endpoint records no new events.
+  - Administration: a stale enable is refused; retry of a cancelled delivery works and retrying a queued one is refused; test event; revoke cancels waiting work and blocks tests; five permanent failures → `failing`.
+  - Harness check: inverting the draft-visibility assertion makes the file fail.
+- **`supabase/tests/f17-concurrent-webhooks.sh`** (real sessions) — pass:
+  - two workers claiming 40 deliveries at once → 40 distinct leases, none claimed twice;
+  - 20 concurrent authentications against a limit of 10 → window counts 20, exactly 10 allowed;
+  - one request key sent twice at once → one credential, one replay.
+- **Regression:** all 30 `supabase/tests/*.sql` and all 20 concurrency scripts pass.
+- **Empty-database replay:** `supabase db diff --local --schema public,private` is **empty**, so file = database for every migration on this branch.
+- **Live API** (:4117, local Supabase, real JWTs for the owner, Jordan and Sam; a second organization owned by Sam; real HTTP receiver on :4199; fixtures removed afterwards) — **59/59**:
+  - Administration: scheduler/member 403; status; create 201 with `no-store` and the key once; replay without the secret; key reuse 409; the list carries neither hash nor secret.
+  - Authentication: no key 401; a Supabase session rejected by the external API; a key rejected by `/api/v1`; wrong secret 401; organization response with version and rate headers.
+  - Data: published-only, own-tenant plans; two-page keyset; bad cursor 422; > 366 days 422; detail without the description text; draft, other-tenant and non-uuid plans all 404; service types; songs; missing scope 403.
+  - Rate limit 3/min → 429 with `Retry-After`. Revoke → 401 `api_key_inactive`. Scheduler cannot revoke.
+  - Webhook registration: scheduler 403; credentialed URL 422; unresolvable host 422 `webhook_dns_failed`; endpoint 201 with `whsec_` once, matching hint, and `v1.` ciphertext in the DB.
+  - Sending: unpublish + publish of one plan plus a title edit and a draft edit → worker sends exactly 2. Payloads hold ids only. **Signatures verify with an independent HMAC implementation.** A forged signature, a wrong secret and a timestamp +600 s are all rejected. `webhook-id` = payload id. History shows 204.
+  - Endpoint management: scheduler cannot read deliveries; test ping received; 503 → queued with backoff; 410 → paused (`gone`), retry 409, stale enable 409, then re-enable and retry the same event id; 302 → failed `redirect_not_followed` and the redirect target was never hit; a revoked endpoint gets no new deliveries.
+  - Isolation and issuer: the other organization sees none of the credentials or endpoints; issuer demoted → 401, restored → 200.
+  - Logs: server logs contain no `sck_` or `whsec_` values.
+- **Browser** (web :5187, signed in as the seeded owner; pane hidden, so checked via the accessibility tree and page text rather than screenshots):
+  - created a key → one-time panel → the list shows `sck_<prefix>_…`, scopes, 60/min, issuer, Active;
+  - added the receiver endpoint → one-time signing-secret panel;
+  - Send test → worker run → deliveries panel "Test event · 1 attempt · 3 ms · Accepted by endpoint" with `evt_` id;
+  - Pause → "Paused by an administrator" with Resume.
+  - Fixed during QA: the endpoint list now refreshes "waiting" counts while work is pending (after reload the count cleared correctly).
+- **Not run:** Expo export (no native files changed).
+
+### Remaining gates
+- **Deployment:**
+  - Set `INTEGRATION_SECRET_KEY` (base64 32 bytes; rotation makes stored secrets unreadable → `secret_unavailable`; endpoints must be re-registered). Without it, webhooks show as unavailable and the API still works.
+  - Webhooks are sent only where the F00 worker is scheduled. The serverless run shares one 60 s budget with deliveries, exports and files; webhooks get ~40 s with 15 s timeouts and 5 in parallel.
+  - Confirm the production network's egress policy. The app-level guard blocks reserved ranges and pins addresses; the spec also recommends a filtering egress proxy or private subnet.
+  - Public-host delivery check: TLS to a real HTTPS receiver. Local runs used `http://127.0.0.1` with `WEBHOOK_ALLOW_PRIVATE_DESTINATIONS=true`.
+- **QA:** visual pass in light/dark and narrow widths with the pane visible; keyboard/screen-reader pass of the checkbox groups and one-time secret panel; an external developer's test integration using a Standard Webhooks library.
+- **Product review:**
+  - member-level read scope (published plans, songs, service types; no people) and whether further scopes are wanted;
+  - "issuer demotion stops keys" (alternative: organization-owned keys that survive staff changes);
+  - 30-day delivery history; 60/min default; 5-minute replay window guidance;
+  - thin payloads vs embedding plan fields.
+- **Not implemented (explicit):**
+  - Stages B and C (not selected; provider/use-case decision needed);
+  - write endpoints;
+  - OAuth/per-user delegated access;
+  - events other than publication changes (assignment, song or people events would need audience review first);
+  - key rotation with overlap (revoke + reissue today);
+  - endpoint signing-secret rotation (re-register today; the receiver can accept multiple `v1,` signatures).
+- **Revocation honesty:** data already fetched and webhooks already delivered cannot be recalled. A delivery in flight at revocation can still land once. A lease that lapses mid-send is re-sent with the same event id (at-least-once).
+
+**Exact next pass:** F17 Stage D QA/deployment closure. Configure `INTEGRATION_SECRET_KEY` and the worker in staging, register a real HTTPS receiver built on a Standard Webhooks library, and run the visual/accessibility matrix. Stage B or C starts only after an explicit provider/use-case selection with verified access (see the options above).

@@ -2,6 +2,15 @@ import type { ArrangementMaterials, LabeledKeyInput, LabeledKey, DuplicateArrang
 import type { ImportPreviewRequest, ImportSaveRequest, ImportPreview, ImportJobDetail, ImportJob, ImportCommitRequest } from '../schemas/imports.js';
 import type { SongBulkPreview } from '../types/song-curation.js';
 import type { SongBulkPreviewInput, SongArchiveInput, SongBulkCommitInput } from '../schemas/song.js';
+import type {
+  ApiCredentialSummary,
+  CreatedApiCredential,
+  CreatedWebhookEndpoint,
+  IntegrationStatus,
+  WebhookDeliveryListItem,
+  WebhookEndpointSummary,
+} from '../types/integrations.js';
+import type { CreateApiCredentialRequest, CreateWebhookEndpointInput, SetWebhookEnabledInput } from '../schemas/integrations.js';
 /**
  * Typed client for the Express API. Shared verbatim by the web app and the
  * React Native app — the only difference is how each supplies the access token.
@@ -1171,6 +1180,30 @@ export class ServiceCenterApi {
   /** Re-queues a failed or uncertain delivery (administrators only). */
   retryDelivery = (id: string) =>
     this.request<DeliveryListItem>('POST', `/api/v1/deliveries/${id}/retry`, {});
+
+  // ------------------------------------- F17 developer API and webhooks --
+  /** Administrators only: what is configured for external integrations. */
+  integrationStatus = () => this.request<IntegrationStatus>('GET', '/api/v1/integrations/status');
+  apiCredentials = () => this.request<ApiCredentialSummary[]>('GET', '/api/v1/integrations/credentials');
+  /** The secret is in this response only (null when the request key was replayed). */
+  createApiCredential = (body: CreateApiCredentialRequest) =>
+    this.request<CreatedApiCredential>('POST', '/api/v1/integrations/credentials', body);
+  revokeApiCredential = (id: string) =>
+    this.request<ApiCredentialSummary>('POST', `/api/v1/integrations/credentials/${id}/revoke`, {});
+  webhookEndpoints = () => this.request<WebhookEndpointSummary[]>('GET', '/api/v1/integrations/webhooks');
+  /** The signing secret is in this response only (null when the request key was replayed). */
+  createWebhookEndpoint = (body: CreateWebhookEndpointInput) =>
+    this.request<CreatedWebhookEndpoint>('POST', '/api/v1/integrations/webhooks', body);
+  setWebhookEndpointEnabled = (id: string, body: SetWebhookEnabledInput) =>
+    this.request<WebhookEndpointSummary>('POST', `/api/v1/integrations/webhooks/${id}/enabled`, body);
+  revokeWebhookEndpoint = (id: string) =>
+    this.request<WebhookEndpointSummary>('POST', `/api/v1/integrations/webhooks/${id}/revoke`, {});
+  sendWebhookTest = (id: string) =>
+    this.request<WebhookDeliveryListItem>('POST', `/api/v1/integrations/webhooks/${id}/test`, {});
+  webhookDeliveries = (id: string, limit = 25) =>
+    this.request<WebhookDeliveryListItem[]>('GET', `/api/v1/integrations/webhooks/${id}/deliveries`, undefined, { limit });
+  retryWebhookDelivery = (deliveryId: string) =>
+    this.request<WebhookDeliveryListItem>('POST', `/api/v1/integrations/webhook-deliveries/${deliveryId}/retry`, {});
 
   // ---------------------------------------------- F08 release/reminders --
   /** Prepared requests on upcoming plans the caller may release. */

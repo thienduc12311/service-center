@@ -78,6 +78,8 @@ const PT409_HINTS: Record<string, string> = {
   // F16
   attendance_changed: 'attendance_revision_stale',
   publication_changed: 'publication_revision_stale',
+  // F17
+  webhook_changed: 'webhook_endpoint_stale',
 };
 
 export const fromPostgrestError = (error: {

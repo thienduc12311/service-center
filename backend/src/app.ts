@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import { redactTokenPath } from './lib/redact.js';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import { EXTERNAL_API_PREFIX } from '@service-center/shared';
 import { config } from './config.js';
 import { requireAuth } from './middleware/auth.js';
 import { withOrganization } from './middleware/organization.js';
@@ -59,6 +60,8 @@ import { fileLinksRouter, filesRouter, planFilesRouter } from './routes/files.js
 import { mediaRouter, planRehearsalRouter, stageTemplatesRouter } from './routes/rehearsal.js';
 import { planAttendanceRouter } from './routes/attendance.js';
 import { reportsRouter } from './routes/reports.js';
+import { integrationsRouter } from './routes/integrations.js';
+import { externalApiRouter } from './routes/external-api.js';
 import {
   personCalendarSharingRouter,
   planPublicationRouter,
@@ -144,6 +147,8 @@ export const createApp = (): Express => {
   // F16: anonymous, allowlisted public projections only.
   app.use('/api/v1/public', publicRouter);
   app.use('/api/v1/internal/deliveries', deliveryWorkerRouter);
+  // F17: organization API keys only (never a user session); read-only.
+  app.use(EXTERNAL_API_PREFIX, externalApiRouter);
 
   const scoped = [requireAuth, withOrganization];
   // Roster maintenance first: its fixed paths must not be read as a person id.
@@ -203,6 +208,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/folders', scoped, foldersRouter);
   app.use('/api/v1/staffing-matrix', scoped, staffingMatrixRouter);
   app.use('/api/v1/rotations', scoped, rotationsRouter);
+  app.use('/api/v1/integrations', scoped, integrationsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

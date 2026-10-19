@@ -45,6 +45,22 @@ const envSchema = z.object({
    * only changes tokens minted afterwards (issued links stay valid by hash).
    */
   DELIVERY_LINK_SECRET: z.string().min(32).optional(),
+  /**
+   * F17: base64 encoding of 32 random bytes; encrypts webhook signing secrets
+   * at rest (AES-256-GCM). Unset: webhooks cannot be registered or sent (the
+   * read-only developer API still works). Rotating it makes stored secrets
+   * unreadable — affected endpoints fail with `secret_unavailable` and must be
+   * registered again.
+   */
+  INTEGRATION_SECRET_KEY: z
+    .string()
+    .refine((value) => Buffer.from(value, 'base64').length === 32, 'must be base64 of exactly 32 bytes')
+    .optional(),
+  /**
+   * F17: allow webhook destinations on loopback/private networks. For local
+   * development and tests only; refused in production.
+   */
+  WEBHOOK_ALLOW_PRIVATE_DESTINATIONS: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
   MAIL_FROM_ADDRESS: z.string().email().default('notifications@example.com'),
   MAIL_FROM_NAME: z.string().default('Service Center'),
 });
@@ -57,6 +73,10 @@ if (!parsed.success) {
 }
 
 const env = parsed.data;
+
+if (env.NODE_ENV === 'production' && env.WEBHOOK_ALLOW_PRIVATE_DESTINATIONS) {
+  throw new Error('WEBHOOK_ALLOW_PRIVATE_DESTINATIONS must not be enabled in production.');
+}
 
 export const config = {
   ...env,
