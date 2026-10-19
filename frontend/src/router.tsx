@@ -33,6 +33,7 @@ import { ReleaseReviewPage } from './pages/ReleaseReviewPage';
 import { PlanTemplatesPage } from './pages/PlanTemplatesPage';
 import { GeneratePlansPage } from './pages/GeneratePlansPage';
 import { ReschedulePlansPage } from './pages/ReschedulePlansPage';
+import { MediaDetailPage, MediaLibraryPage } from './pages/MediaPage';
 
 /**
  * Gate for every authenticated route. Anyone signed in but not yet in an
@@ -82,6 +83,8 @@ export const router = createBrowserRouter([
           { path: '/songs', element: <SongsPage /> },
           { path: '/songs/:songId', element: <SongDetailPage /> },
           { path: '/songbooks', element: <SongbooksPage /> },
+          { path: '/media', element: <MediaLibraryPage /> },
+          { path: '/media/:mediaId', element: <MediaDetailPage /> },
           { path: '/songbooks/:songbookId', element: <SongbookPage /> },
           { path: '/teams', element: <TeamsPage /> },
           { path: '/people', element: <PeoplePage /> },

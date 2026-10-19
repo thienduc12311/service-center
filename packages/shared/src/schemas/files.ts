@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { idempotencyKey, uuid } from './common.js';
 import { FILE_MAX_BYTES, FILE_MIME_TYPES, FILE_DOCUMENT_MAX_CHARS } from '../lib/files.js';
 
-export const fileOwnerKindSchema = z.enum(['plan', 'plan_item', 'song', 'arrangement', 'service_type']);
+export const fileOwnerKindSchema = z.enum(['plan', 'plan_item', 'song', 'arrangement', 'service_type', 'media']);
 export const fileAudienceSchema = z.enum(['organization', 'scheduled', 'teams', 'positions', 'leaders']);
 export const fileCategorySchema = z.enum(['chart', 'lyrics', 'audio', 'video', 'image', 'document', 'other']);
 

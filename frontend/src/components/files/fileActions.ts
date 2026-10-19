@@ -37,6 +37,7 @@ export const fileErrorMessage = (error: unknown): string => {
   if (error instanceof ApiError) {
     if (error.code === 'file_revision_stale') return 'Someone else changed this file. The list has been refreshed — check it and try again.';
     if (error.code === 'file_in_use') return error.message;
+    if (error.code === 'file_stream_only') return 'This file can be played here but not downloaded.';
     if (error.status === 403) return 'You do not have permission to change this file.';
     if (error.status === 404) return 'This file is no longer available to you.';
     return error.message;

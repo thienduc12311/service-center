@@ -8,9 +8,11 @@
  * Who may read a file, a version and its bytes is decided by the database
  * (RLS and Storage policies); these types only describe what came back.
  */
+import type { FilePlaybackRights } from './rehearsal.js';
 
 /** The single primary parent of a file. */
-export type FileOwnerKind = 'plan' | 'plan_item' | 'song' | 'arrangement' | 'service_type';
+/** F14 adds `media` (a reusable media bundle). */
+export type FileOwnerKind = 'plan' | 'plan_item' | 'song' | 'arrangement' | 'service_type' | 'media';
 
 /**
  * Who may read the file. Leaders (writers plus schedulers at the plan's or
@@ -42,12 +44,16 @@ export type AttachmentRow = {
   song_id: string | null;
   arrangement_id: string | null;
   service_type_id: string | null;
+  /** F14: the owning media bundle. */
+  media_id: string | null;
   kind: FileKind;
   title: string;
   category: FileCategory;
   audience: FileAudience;
   external_url: string | null;
   current_version_id: string | null;
+  /** F14: whether readers may save a copy (uploads only). */
+  playback_rights: FilePlaybackRights;
   revision: number;
   /** Legacy mirrors of the current version. */
   storage_path: string | null;
@@ -186,6 +192,8 @@ export interface FileSummary {
   audience: FileAudience;
   audience_targets: FileAudienceTarget[];
   external_url: string | null;
+  /** F14: `stream_only` uploads can be played but are never offered as a download. */
+  playback_rights: FilePlaybackRights;
   /** Null until an upload is finalized (only writers see such a file). */
   current_version: FileVersionSummary | null;
   /** Writers only: the caller's and others' unfinished or failed uploads. */

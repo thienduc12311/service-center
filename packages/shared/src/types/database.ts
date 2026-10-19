@@ -96,6 +96,8 @@ import type {
   FileSaveRpcResult,
   FileUploadIntentRpcResult,
 } from './files.js';
+import type { MediaRow, PlanStageLayoutRow, StageLayoutTemplateRow } from './media.js';
+import type { FilePlaybackRights } from './rehearsal.js';
 
 /**
  * Row types are exact — every read is precisely typed. Insert and Update are
@@ -465,6 +467,8 @@ export type PlanItemRow = {
   leader_position_id: string | null;
   /** F11: before, during or after the service time. */
   service_segment: PlanItemSegment;
+  /** F14: a reusable media bundle linked to a regular item (absent from older responses). */
+  media_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1073,6 +1077,9 @@ export type Database = {
       live_runs: Table<LiveRunRow>;
       live_run_transitions: Table<LiveRunTransitionRow>;
       live_run_corrections: Table<LiveRunCorrectionRow>;
+      media: Table<MediaRow>;
+      stage_layout_templates: Table<StageLayoutTemplateRow>;
+      plan_stage_layouts: Table<PlanStageLayoutRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -1633,6 +1640,14 @@ export type Database = {
       unlink_file: {
         Args: { p_link: string };
         Returns: undefined;
+      };
+      set_file_playback_rights: {
+        Args: { p_attachment: string; p_expected_revision: number; p_rights: FilePlaybackRights };
+        Returns: AttachmentRow;
+      };
+      set_plan_item_media: {
+        Args: { p_plan_id: string; p_item_id: string; p_media_id: string | null; p_expected_revision: number | null };
+        Returns: PlanItemSaveResult;
       };
       can_add_file: {
         Args: { p_owner_kind: FileOwnerKind; p_owner_id: string };

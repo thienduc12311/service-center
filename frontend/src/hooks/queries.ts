@@ -4,7 +4,15 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query';
-import { LIVE_IDLE_POLL_MS, type FileOwnerKind, type ListDeliveriesRequest, type ListPlanTemplatesRequest, type StaffingMatrixQueryInput } from '@service-center/shared';
+import {
+  LIVE_IDLE_POLL_MS,
+  REHEARSAL_MANIFEST_TTL_SECONDS,
+  type FileOwnerKind,
+  type ListDeliveriesRequest,
+  type ListMediaRequest,
+  type ListPlanTemplatesRequest,
+  type StaffingMatrixQueryInput,
+} from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 
@@ -96,6 +104,13 @@ export const keys = {
   file: (org: string | null, fileId: string) => [...keys.files(org), 'detail', fileId] as const,
   fileDocument: (org: string | null, fileId: string, versionId: string | null) =>
     [...keys.files(org), 'document', fileId, versionId] as const,
+  // F14: the manifest sits under `files`, so any file change refreshes it too.
+  rehearsal: (org: string | null, planId: string) => [...keys.files(org), 'rehearsal', planId] as const,
+  media: (org: string | null) => [...keys.all(org), 'media'] as const,
+  mediaList: (org: string | null, query: unknown) => [...keys.media(org), 'list', query] as const,
+  mediaDetail: (org: string | null, id: string) => [...keys.media(org), 'detail', id] as const,
+  stageTemplates: (org: string | null) => [...keys.all(org), 'stage-templates'] as const,
+  stageLayouts: (org: string | null, planId: string) => [...keys.plan(org, planId), 'stage-layouts'] as const,
 };
 
 /** Not organization-scoped: the signed-in user's own cross-organization settings. */
@@ -657,4 +672,59 @@ export const useInvalidateFiles = () => {
   const org = useOrg();
   const client = useQueryClient();
   return () => client.invalidateQueries({ queryKey: keys.files(org) });
+};
+
+// ------------------------------------------------------------------ F14 --
+
+/**
+ * The plan's rehearsal manifest. It names versions, not URLs, and is re-read
+ * when it expires (rights and versions are rechecked on every read).
+ */
+export const useRehearsalManifest = (planId: string | undefined) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.rehearsal(org, planId ?? ''),
+    queryFn: () => api.rehearsalManifest(planId!),
+    enabled: Boolean(org && planId),
+    staleTime: REHEARSAL_MANIFEST_TTL_SECONDS * 1000,
+    refetchInterval: REHEARSAL_MANIFEST_TTL_SECONDS * 1000,
+  });
+};
+
+export const useMediaList = (query: ListMediaRequest) => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.mediaList(org, query), queryFn: () => api.mediaList(query), enabled: Boolean(org) });
+};
+
+export const useMediaDetail = (mediaId: string | null | undefined) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.mediaDetail(org, mediaId ?? ''),
+    queryFn: () => api.media(mediaId!),
+    enabled: Boolean(org && mediaId),
+  });
+};
+
+export const useInvalidateMedia = () => {
+  const org = useOrg();
+  const client = useQueryClient();
+  return () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: keys.media(org) }),
+      client.invalidateQueries({ queryKey: keys.files(org) }),
+    ]);
+};
+
+export const useStageTemplates = () => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.stageTemplates(org), queryFn: () => api.stageTemplates(), enabled: Boolean(org) });
+};
+
+export const usePlanStageLayouts = (planId: string | undefined) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.stageLayouts(org, planId ?? ''),
+    queryFn: () => api.planStageLayouts(planId!),
+    enabled: Boolean(org && planId),
+  });
 };

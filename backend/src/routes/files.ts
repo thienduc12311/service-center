@@ -12,6 +12,7 @@ import {
   listFilesQuerySchema,
   saveFileDocumentVersionSchema,
   setFileLinkPinSchema,
+  setFilePlaybackRightsSchema,
   updateFileLinkUrlSchema,
   updateFileSchema,
   type AbandonFileUploadInput,
@@ -26,6 +27,7 @@ import {
   type ListFilesQuery,
   type SaveFileDocumentVersionInput,
   type SetFileLinkPinInput,
+  type SetFilePlaybackRightsInput,
   type UpdateFileInput,
   type UpdateFileLinkUrlInput,
 } from '@service-center/shared';
@@ -48,6 +50,7 @@ import {
   saveDocumentVersion,
   setArchived,
   setLinkPin,
+  setPlaybackRights,
   unlink,
   updateFileMetadata,
   updateLinkUrl,
@@ -120,6 +123,10 @@ filesRouter.put('/:id/document', validateBody(saveFileDocumentVersionSchema), as
 
 filesRouter.post('/:id/archive', validateBody(archiveFileSchema), async (req, res) => {
   res.json(await setArchived(caller(req), param(req, 'id'), req.body as ArchiveFileInput));
+});
+
+filesRouter.put('/:id/playback-rights', validateBody(setFilePlaybackRightsSchema), async (req, res) => {
+  res.json(await setPlaybackRights(caller(req), param(req, 'id'), req.body as SetFilePlaybackRightsInput));
 });
 
 filesRouter.post('/:id/download', validateBody(fileDownloadSchema), async (req, res) => {

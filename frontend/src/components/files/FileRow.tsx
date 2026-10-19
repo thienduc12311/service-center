@@ -82,6 +82,9 @@ export const FileRow = ({ file, version, planId = null, badges, extraActions, on
             <span className="truncate">{file.title}</span>
             <Badge tone="bg-slate-50 text-slate-600 ring-slate-500/20">{KIND_LABEL[file.kind]}</Badge>
             {file.archived_at && <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">Archived</Badge>}
+            {file.kind === 'upload' && file.playback_rights === 'stream_only' && (
+              <Badge tone="bg-violet-50 text-violet-800 ring-violet-600/20">Play only</Badge>
+            )}
             {badges}
           </p>
           <p className="mt-0.5 text-xs text-slate-500">
@@ -106,7 +109,8 @@ export const FileRow = ({ file, version, planId = null, badges, extraActions, on
           <Menu label="More">
             {(close) => (
               <>
-                {file.kind === 'upload' && usable && (
+                {/* F14: a play-only file is not offered as a download (writers keep it). */}
+                {file.kind === 'upload' && usable && (file.playback_rights !== 'stream_only' || file.can_edit) && (
                   <MenuItem onClick={() => { close(); open(true); }}>Download</MenuItem>
                 )}
                 {file.kind !== 'link' && (

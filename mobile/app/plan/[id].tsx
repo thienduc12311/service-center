@@ -253,7 +253,17 @@ export default function PlanScreen() {
 
         <Reveal index={prepared.length ? 3 : 2}>
           <Card>
-            <Label>Order of service</Label>
+            <View style={styles.mineHeader}>
+              <Label>Order of service</Label>
+              {detail.items.length ? (
+                <Button
+                  variant="quiet"
+                  icon="music"
+                  title="Rehearse"
+                  onPress={() => router.push({ pathname: '/plan/rehearse/[id]', params: { id: detail.id } })}
+                />
+              ) : null}
+            </View>
             {detail.items.length ? (
               <View>
                 {detail.items.map((item, index) =>

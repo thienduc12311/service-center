@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { FILE_CATEGORY_LABELS, type FileCategory, type FileSummary } from '@service-center/shared';
+import { FILE_CATEGORY_LABELS, type FileCategory, type FilePlaybackRights, type FileSummary } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { Button, Modal } from '../ui';
 import { AudienceFields, type FileAudienceValue } from './AudienceFields';
@@ -18,6 +18,7 @@ export const FileDetailsModal = ({ file, planId = null, onClose, onSaved }: File
   const [title, setTitle] = useState(file.title);
   const [category, setCategory] = useState<FileCategory>(file.category);
   const [url, setUrl] = useState(file.external_url ?? '');
+  const [rights, setRights] = useState<FilePlaybackRights>(file.playback_rights);
   const [audience, setAudience] = useState<FileAudienceValue>({
     audience: file.audience,
     teamIds: file.audience_targets.flatMap((target) => (target.team_id ? [target.team_id] : [])),
@@ -30,7 +31,7 @@ export const FileDetailsModal = ({ file, planId = null, onClose, onSaved }: File
       if (file.kind === 'link' && url.trim() !== file.external_url) {
         revision = (await api.updateFileLinkUrl(file.id, { title: title.trim(), url: url.trim(), expected_revision: revision })).revision;
       }
-      return api.updateFile(file.id, {
+      const saved = await api.updateFile(file.id, {
         title: title.trim(),
         category,
         audience: audience.audience,
@@ -38,6 +39,10 @@ export const FileDetailsModal = ({ file, planId = null, onClose, onSaved }: File
         position_ids: audience.positionIds,
         expected_revision: revision,
       });
+      if (file.kind === 'upload' && rights !== file.playback_rights) {
+        return api.setFilePlaybackRights(file.id, { playback_rights: rights, expected_revision: saved.revision });
+      }
+      return saved;
     },
     onSuccess: () => {
       onSaved();
@@ -75,6 +80,21 @@ export const FileDetailsModal = ({ file, planId = null, onClose, onSaved }: File
             ))}
           </select>
         </label>
+        {file.kind === 'upload' && (
+          <label className="block">
+            <span className="label">Readers may</span>
+            <select className="input" value={rights} onChange={(event) => setRights(event.target.value as FilePlaybackRights)}>
+              <option value="download">Play, open and download</option>
+              <option value="stream_only">Play and open only (no download or offline copy)</option>
+            </select>
+            {rights === 'stream_only' && (
+              <span className="mt-1 block text-xs text-slate-500">
+                Download buttons and offline packs leave this file out. Anything a browser plays can still be recorded, so
+                this is not copy protection.
+              </span>
+            )}
+          </label>
+        )}
         <AudienceFields ownerKind={file.owner.kind} planId={planId} value={audience} onChange={setAudience} />
         {narrowing && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-600/20">

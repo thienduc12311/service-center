@@ -24,6 +24,7 @@ import {
   type PlanFiles,
   type SaveFileDocumentVersionInput,
   type SetFileLinkPinInput,
+  type SetFilePlaybackRightsInput,
   type UpdateFileInput,
   type UpdateFileLinkUrlInput,
 } from '@service-center/shared';
@@ -93,6 +94,12 @@ const readFileRow = async ({ db, orgId }: FileCaller, fileId: string): Promise<A
   return row as AttachmentRow;
 };
 
+const canWrite = async ({ db }: FileCaller, fileId: string): Promise<boolean> => {
+  const writable = await db.rpc('writable_file_ids', { p_ids: [fileId] });
+  if (writable.error) throw fromPostgrestError(writable.error);
+  return ((writable.data ?? []) as string[]).includes(fileId);
+};
+
 export const getFileSummary = async (caller: FileCaller, fileId: string): Promise<FileSummary> => {
   const row = await readFileRow(caller, fileId);
   return toFileSummary(row, await loadBundle(caller.db, [row]));
@@ -126,6 +133,9 @@ const assertOwnerInOrganization = async ({ db, orgId }: FileCaller, kind: FileOw
     }
     case 'service_type':
       found = await unwrap(db.from('service_types').select('id').eq('id', id).eq('organization_id', orgId).maybeSingle());
+      break;
+    case 'media':
+      found = await unwrap(db.from('media').select('id').eq('id', id).eq('organization_id', orgId).maybeSingle());
       break;
   }
   if (!found) throw HttpError.notFound('That parent was not found');
@@ -462,6 +472,11 @@ export const createDownload = async (caller: FileCaller, fileId: string, input: 
   if (row.kind === 'document') {
     throw HttpError.badRequest('Open a text document with GET /files/:id/document');
   }
+  // F14: stream-only files play inline; a "save a copy" link is not issued.
+  // (Inline bytes can still be captured; this states rights, it is not DRM.)
+  if (input.disposition === 'attachment' && row.playback_rights === 'stream_only' && !(await canWrite(caller, row.id))) {
+    throw new HttpError(403, 'This file can be played but not downloaded.', 'file_stream_only');
+  }
   const targetId = input.version_id ?? row.current_version_id;
   if (!targetId) throw HttpError.notFound('This file has no finished upload yet');
   const version = await unwrap(
@@ -528,4 +543,38 @@ export const setLinkPin = async (caller: FileCaller, linkId: string, input: SetF
 export const unlink = async (caller: FileCaller, linkId: string): Promise<void> => {
   await readLink(caller, linkId);
   await rpcVoid(caller.db.rpc('unlink_file', { p_link: linkId }));
+};
+
+/** F14: whether readers may save a copy of an upload. */
+export const setPlaybackRights = async (
+  caller: FileCaller,
+  fileId: string,
+  input: SetFilePlaybackRightsInput,
+): Promise<FileSummary> => {
+  await readFileRow(caller, fileId);
+  await rpc(
+    caller.db.rpc('set_file_playback_rights', {
+      p_attachment: fileId,
+      p_expected_revision: input.expected_revision,
+      p_rights: input.playback_rights,
+    }),
+  );
+  return getFileSummary(caller, fileId);
+};
+
+/** F14: the files of these media bundles that the caller may see (RLS), as summaries. */
+export const listMediaFiles = async ({ db, orgId }: FileCaller, mediaIds: readonly string[]): Promise<FileSummary[]> => {
+  if (!mediaIds.length) return [];
+  const rows = (await unwrap(
+    db
+      .from('attachments')
+      .select('*')
+      .eq('organization_id', orgId)
+      .eq('owner_kind', 'media')
+      .in('media_id', [...mediaIds])
+      .order('created_at'),
+  )) as AttachmentRow[] | null;
+  const files = rows ?? [];
+  const bundle = await loadBundle(db, files);
+  return files.map((row) => toFileSummary(row, bundle));
 };

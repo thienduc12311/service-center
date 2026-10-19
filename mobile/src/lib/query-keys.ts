@@ -22,6 +22,9 @@ export const queryKeys = {
     [...privateRoot(scope), 'calendar'] as const,
   plan: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'plan', planId ?? null] as const,
+  /** F14: the plan's rehearsal manifest (names versions, never URLs). */
+  rehearsal: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
+    [...privateRoot(scope), 'rehearsal', planId ?? null] as const,
   song: (scope: ProtectedQueryScope | null, songId: string | null | undefined) =>
     [...privateRoot(scope), 'song', songId ?? null] as const,
   songs: (scope: ProtectedQueryScope | null, query: string) =>
