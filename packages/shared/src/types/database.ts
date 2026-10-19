@@ -74,6 +74,13 @@ import type {
   ReminderJobRow,
   ReminderPolicyRow,
 } from './reminders.js';
+import type {
+  LiveRunCommandResult,
+  LiveRunCorrectionRow,
+  LiveRunRow,
+  LiveRunStateRecord,
+  LiveRunTransitionRow,
+} from './live.js';
 
 /**
  * Row types are exact — every read is precisely typed. Insert and Update are
@@ -1058,6 +1065,9 @@ export type Database = {
       plan_template_applications: Table<PlanTemplateApplicationRow>;
       plan_generation_batches: Table<PlanGenerationBatchRow>;
       plan_reschedule_operations: Table<PlanRescheduleOperationRow>;
+      live_runs: Table<LiveRunRow>;
+      live_run_transitions: Table<LiveRunTransitionRow>;
+      live_run_corrections: Table<LiveRunCorrectionRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -1540,6 +1550,51 @@ export type Database = {
       delete_plan_item: {
         Args: { p_plan_id: string; p_item_id: string; p_expected_revision?: number | null };
         Returns: PlanOrderSaveResult;
+      };
+      create_live_run: {
+        Args: {
+          p_plan_id: string;
+          p_plan_time_id: string;
+          p_countdown_policy: string;
+          p_idempotency_key: string;
+          p_client_id: string;
+        };
+        Returns: LiveRunCommandResult;
+      };
+      live_run_action: {
+        Args: {
+          p_run_id: string;
+          p_action: string;
+          p_expected_revision: number | null;
+          p_client_id: string;
+          p_action_id: string | null;
+          p_target_index?: number | null;
+          p_reason?: string | null;
+          p_countdown_policy?: string | null;
+        };
+        Returns: LiveRunCommandResult;
+      };
+      live_run_state: {
+        Args: { p_run_id: string };
+        Returns: LiveRunStateRecord | null;
+      };
+      live_server_now: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      can_edit_plan: {
+        Args: { p_plan: string };
+        Returns: boolean;
+      };
+      correct_live_run_time: {
+        Args: {
+          p_run_id: string;
+          p_transition_id: number;
+          p_corrected_at: string;
+          p_reason: string;
+          p_expected_revision: number;
+        };
+        Returns: LiveRunCommandResult;
       };
       apply_plan_template: {
         Args: {

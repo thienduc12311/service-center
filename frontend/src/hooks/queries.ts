@@ -4,7 +4,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query';
-import type { ListDeliveriesRequest, ListPlanTemplatesRequest, StaffingMatrixQueryInput } from '@service-center/shared';
+import { LIVE_IDLE_POLL_MS, type ListDeliveriesRequest, type ListPlanTemplatesRequest, type StaffingMatrixQueryInput } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 
@@ -85,6 +85,10 @@ export const keys = {
   templateApplications: (org: string | null, planId: string) => [...keys.plan(org, planId), 'template-applications'] as const,
   conversations: (org: string | null) => [...keys.all(org), 'conversations'] as const,
   conversation: (org: string | null, id: string) => [...keys.conversations(org), id] as const,
+  // F12 Live.
+  liveRuns: (org: string | null, planId: string) => [...keys.plan(org, planId), 'live-runs'] as const,
+  liveRun: (org: string | null, runId: string) => [...keys.all(org), 'live-run', runId] as const,
+  liveRunHistory: (org: string | null, runId: string) => [...keys.all(org), 'live-run-history', runId] as const,
 };
 
 /** Not organization-scoped: the signed-in user's own cross-organization settings. */
@@ -581,5 +585,28 @@ export const useTemplateApplications = (planId: string | undefined, enabled = tr
     queryKey: keys.templateApplications(org, planId ?? ''),
     queryFn: () => api.planTemplateApplications(planId!),
     enabled: Boolean(org && planId) && enabled,
+  });
+};
+
+// ------------------------------------------------------------------ F12 --
+
+/** The plan's service times with their runs; polled slowly so another editor's new run appears. */
+export const useLivePlanRuns = (planId: string | undefined) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.liveRuns(org, planId ?? ''),
+    queryFn: () => api.liveRuns(planId!),
+    enabled: Boolean(org && planId),
+    refetchInterval: LIVE_IDLE_POLL_MS,
+  });
+};
+
+/** History, corrections and planned-versus-actual for one run. */
+export const useLiveRunHistory = (runId: string | null, enabled: boolean) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.liveRunHistory(org, runId ?? ''),
+    queryFn: () => api.liveRunHistory(runId!),
+    enabled: Boolean(org && runId && enabled),
   });
 };

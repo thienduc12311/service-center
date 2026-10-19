@@ -345,6 +345,7 @@ export const PlanDetailPage = () => {
         />
         {notify.isSuccess && <DeliveryOutcomeNotice result={notify.data} canRetry={isAdmin(role)} />}
         <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => navigate(`/plans/${planId}/live`)}>Live</Button>
           <Button variant="secondary" loading={openChat.isPending} onClick={() => openChat.mutate()}>Plan chat</Button>
           {canSchedule && <Button variant="secondary" onClick={() => setComposing(true)}>Message people</Button>}
           {canEditPlan && <Button variant="secondary" onClick={() => setDialog('apply-template')}>Apply template</Button>}
