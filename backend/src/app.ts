@@ -54,6 +54,7 @@ import {
 import { planTemplateUseRouter, planTemplatesRouter } from './routes/plan-templates.js';
 import { liveRunsRouter, planLiveRunsRouter } from './routes/live-runs.js';
 import { fileLinksRouter, filesRouter, planFilesRouter } from './routes/files.js';
+import { mediaRouter, planRehearsalRouter, stageTemplatesRouter } from './routes/rehearsal.js';
 import {
   deviceRevocationsRouter,
   devicesRouter,
@@ -140,12 +141,14 @@ export const createApp = (): Express => {
   app.use('/api/v1/plans/:planId/opportunities', scoped, planOpportunitiesRouter);
   app.use('/api/v1/plans/:planId/notes', scoped, planNotesRouter);
   app.use('/api/v1/plans/:planId/runs', scoped, planLiveRunsRouter);
-  app.use('/api/v1/plans/:planId', scoped, planFilesRouter);
+  app.use('/api/v1/plans/:planId', scoped, planFilesRouter, planRehearsalRouter);
   app.use('/api/v1/plans', scoped, planTemplateUseRouter, plansRouter);
   app.use('/api/v1/plan-templates', scoped, planTemplatesRouter);
   app.use('/api/v1/runs', scoped, liveRunsRouter);
   app.use('/api/v1/files', scoped, filesRouter);
   app.use('/api/v1/file-links', scoped, fileLinksRouter);
+  app.use('/api/v1/media', scoped, mediaRouter);
+  app.use('/api/v1/stage-templates', scoped, stageTemplatesRouter);
   app.use('/api/v1/plan-items', scoped, planItemCommentsRouter);
   app.use('/api/v1/note-categories', scoped, noteCategoriesRouter);
   app.use('/api/v1/mention-candidates', scoped, mentionCandidatesRouter);

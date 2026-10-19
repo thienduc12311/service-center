@@ -39,6 +39,7 @@ import type {
 import type { ChartNotation } from '../lib/chordpro.js';
 import type { AttendanceInterval } from './attendance.js';
 import type { PlanItemLeaderPerson } from './plan-order.js';
+import type { RehearsalMediaRef } from './rehearsal.js';
 
 /** One rule of effective access: a capability at a scope, and where it comes from. */
 export interface EffectiveAccessEntry {
@@ -447,6 +448,8 @@ export interface PlanItemDetail extends PlanItemRow {
   default_arrangement?: PlanItemArrangement | null;
   /** F11: the direct leader's name from the roster directory, when set. */
   leader_person?: PlanItemLeaderPerson | null;
+  /** F14: the linked media bundle's summary, when the item links one. */
+  media?: RehearsalMediaRef | null;
 }
 
 export interface AssignmentDetail extends AssignmentRow {

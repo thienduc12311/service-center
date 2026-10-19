@@ -26,6 +26,7 @@ import { OrderTab } from '../components/plan/OrderTab';
 import { TeamsTab } from '../components/plan/TeamsTab';
 import { PlanDeliveryPanel } from '../components/plan/PlanDeliveryPanel';
 import { RehearseTab } from '../components/plan/RehearseTab';
+import { StageTab } from '../components/stage/StageTab';
 import { PlanFilesTab } from '../components/files/PlanFilesTab';
 import { AddItemModal } from '../components/plan/AddItemModal';
 import { EditItemModal } from '../components/plan/EditItemModal';
@@ -381,7 +382,8 @@ export const PlanDetailPage = () => {
 
         <div className="min-w-0">
           <div className="mb-4 flex gap-6 border-b border-slate-200 dark:border-slate-800">
-            {PLAN_TABS.map((value) => (
+            {/* F14: stage layouts are for the plan's editors and leaders (RLS decides). */}
+            {PLAN_TABS.filter((value) => value !== 'stage' || canEditPlan || can('scheduling.manage', target)).map((value) => (
               <button
                 key={value}
                 type="button"
@@ -454,6 +456,7 @@ export const PlanDetailPage = () => {
           {tab === 'rehearse' && <RehearseTab plan={detail} />}
 
           {tab === 'files' && <PlanFilesTab plan={detail} />}
+          {tab === 'stage' && <StageTab plan={detail} />}
         </div>
       </div>
 

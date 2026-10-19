@@ -9,7 +9,9 @@ import {
   type PlanSchedule,
   type PlannedItemTime,
 } from '@service-center/shared';
+import { useState } from 'react';
 import { Badge, Button } from '../ui';
+import { LinkMediaModal } from '../media/LinkMediaModal';
 
 export interface OrderTabProps {
   plan: PlanDetail;
@@ -61,6 +63,8 @@ export const OrderTab = ({
   itemNoteCounts,
 }: OrderTabProps) => {
   const clock = clockIn(timeZone);
+  // F14: linking a media bundle is its own revisioned action.
+  const [mediaItem, setMediaItem] = useState<PlanItemDetail | null>(null);
   const slots = new Map(schedule.items.map((slot) => [slot.item_id, slot]));
   const overrun = schedule.warnings.find((warning) => warning.code === 'runs_over');
   const misplaced = new Set(schedule.warnings.flatMap((warning) => (warning.code === 'segment_out_of_order' && warning.item_id ? [warning.item_id] : [])));
@@ -143,11 +147,13 @@ export const OrderTab = ({
                 onEdit={() => onEditItem(item)}
                 onRemove={() => onRemoveItem(item)}
                 onDiscuss={() => onDiscussItem(item)}
+                onMedia={() => setMediaItem(item)}
                 noteCount={itemNoteCounts.get(item.id) ?? 0}
               />
             ))}
           </ol>
         )}
+        {mediaItem && <LinkMediaModal plan={plan} item={mediaItem} onClose={() => setMediaItem(null)} />}
       </div>
     </div>
   );
@@ -168,12 +174,13 @@ interface OrderRowProps {
   onEdit: () => void;
   onRemove: () => void;
   onDiscuss: () => void;
+  onMedia: () => void;
   noteCount: number;
 }
 
 const controlClass = 'min-h-8 min-w-8 rounded px-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent';
 
-const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy, isFirst, isLast, onMove, onEdit, onRemove, onDiscuss, noteCount }: OrderRowProps) => {
+const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy, isFirst, isLast, onMove, onEdit, onRemove, onDiscuss, onMedia, noteCount }: OrderRowProps) => {
   const discuss = (
     <button
       type="button"
@@ -191,6 +198,11 @@ const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy
         <button type="button" aria-label={`Edit ${item.title}`} onClick={onEdit} className={`${controlClass} text-xs`}>
           Edit
         </button>
+        {item.item_type === 'item' && (
+          <button type="button" aria-label={`Media for ${item.title}`} onClick={onMedia} className={`${controlClass} text-xs`}>
+            Media
+          </button>
+        )}
         <button type="button" aria-label={`Move ${item.title} up`} disabled={isFirst || busy} onClick={() => onMove(index, -1)} className={controlClass}>
           ↑
         </button>
@@ -263,6 +275,12 @@ const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy
         {leader && (
           <p className={`mt-0.5 text-xs ${leader.endsWith(': unfilled') ? 'text-amber-700' : 'text-slate-500'}`}>
             Led by {leader}
+          </p>
+        )}
+        {item.media && (
+          <p className="mt-0.5 text-xs text-sky-700">
+            Media: <Link className="hover:underline" to={`/media/${item.media.id}`}>{item.media.title}</Link>
+            {item.media.archived && ' (archived)'}
           </p>
         )}
       </div>

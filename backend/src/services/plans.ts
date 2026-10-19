@@ -14,6 +14,12 @@ import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { NO_CONTACT, contactsFor } from './contacts.js';
 import { attendanceFor } from './attendance.js';
 import { defaultArrangementsFor } from './plan-items.js';
+import {
+  PLAN_ITEM_MEDIA_COLUMNS,
+  organizationToday,
+  toRehearsalMediaRef,
+  type PlanItemMediaEmbed,
+} from '../model/media.model.js';
 
 /**
  * `person:profiles!assignments_user_id_fkey` is spelled out because
@@ -32,7 +38,8 @@ export const PLAN_DETAIL_SELECT = `
     arrangement:arrangements(
       id, song_id, name, song_key, bpm, sequence, chord_chart,
       chart_columns, chart_font, chart_font_size, chart_chord_color, is_default, length_seconds
-    )
+    ),
+    media:media(${PLAN_ITEM_MEDIA_COLUMNS})
   ),
   assignments:assignments(
     *,
@@ -156,14 +163,20 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
   const inheriting = detail.items.flatMap((item) =>
     item.item_type === 'song' && item.song_id && !item.arrangement_id ? [item.song_id] : [],
   );
-  const [contacts, directory, attendance, defaults] = await Promise.all([
+  // F14: archive dates are the organization's local dates.
+  const withMedia = detail.items.some((item) => Boolean(item.media));
+  const [contacts, directory, attendance, defaults, organization] = await Promise.all([
     contactsFor(db, orgId, userIds),
     personIds.length
       ? unwrap(db.from('people_directory').select('*').in('id', personIds))
       : Promise.resolve([]),
     attendanceFor(db, detail.assignments.map((assignment) => assignment.id)),
     defaultArrangementsFor(db, inheriting),
+    withMedia
+      ? unwrap(db.from('organizations').select('timezone').eq('id', orgId).maybeSingle())
+      : Promise.resolve(null),
   ]);
+  const today = organizationToday(organization?.timezone);
   const people = new Map((directory ?? []).map((person) => [person.id, person]));
   const fullName = (id: string): string | null => {
     const person = people.get(id);
@@ -175,6 +188,7 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
       ...item,
       default_arrangement: item.song_id && !item.arrangement_id ? (defaults.get(item.song_id) ?? null) : null,
       leader_person: item.leader_person_id ? { id: item.leader_person_id, full_name: fullName(item.leader_person_id) } : null,
+      media: item.media ? toRehearsalMediaRef(item.media as unknown as PlanItemMediaEmbed, today) : null,
     })),
     assignments: detail.assignments.map((assignment) => ({
       ...assignment,

@@ -6,15 +6,16 @@ import type {
 } from '@service-center/shared';
 
 /** The panels of the plan workspace. */
-export type PlanTab = 'order' | 'teams' | 'rehearse' | 'files';
+export type PlanTab = 'order' | 'teams' | 'rehearse' | 'files' | 'stage';
 
-export const PLAN_TABS: readonly PlanTab[] = ['order', 'teams', 'rehearse', 'files'];
+export const PLAN_TABS: readonly PlanTab[] = ['order', 'teams', 'rehearse', 'files', 'stage'];
 
 export const PLAN_TAB_LABELS: Record<PlanTab, string> = {
   order: 'Order',
   teams: 'Teams',
   rehearse: 'Rehearse',
   files: 'Files',
+  stage: 'Stage',
 };
 
 /** One position on one team, as the plan's Teams tab shows it. */

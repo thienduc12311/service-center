@@ -28,6 +28,29 @@ import type {
   UpdateFileRequest,
 } from '../schemas/files.js';
 import type {
+  ArchiveMediaInput,
+  CreateMediaInput,
+  CreatePlanStageLayoutInput,
+  CreateStageTemplateRequest,
+  ListMediaRequest,
+  OfflinePackRequestInput,
+  SetFilePlaybackRightsInput,
+  SetPlanItemMediaInput,
+  UpdateMediaInput,
+  UpdatePlanStageLayoutInput,
+  UpdateStageTemplateInput,
+} from '../schemas/media.js';
+import type { OfflinePackPlan, RehearsalManifest } from '../types/rehearsal.js';
+import type {
+  MediaDetail,
+  MediaList,
+  MediaSummary,
+  PlanStageLayouts,
+  PlanStageLayoutView,
+  StageLayoutTemplateList,
+  StageLayoutTemplateRow,
+} from '../types/media.js';
+import type {
   AvailabilityAudienceMember,
   AvailabilityRequestDetail,
   AvailabilityRequestSummary,
@@ -64,6 +87,7 @@ import type {
   OrganizationMemberRow,
   OrganizationRow,
   PlanItemRow,
+  PlanItemSaveResult,
   PlanRow,
   ProfileRow,
   ServiceTypeRow,
@@ -720,6 +744,57 @@ export class ServiceCenterApi {
     this.request<FileLinkSummary>('PATCH', `/api/v1/file-links/${linkId}`, body);
   /** Removes the plan reference only; the source file stays. */
   unlinkFile = (linkId: string) => this.request<void>('DELETE', `/api/v1/file-links/${linkId}`);
+  /** F14: whether readers may save a copy of an upload (`stream_only` = play only). */
+  setFilePlaybackRights = (fileId: string, body: SetFilePlaybackRightsInput) =>
+    this.request<FileSummary>('PUT', `/api/v1/files/${fileId}/playback-rights`, body);
+
+  // ---------------------------------------------------------- rehearsal --
+  /**
+   * F14: the plan's permitted materials in order, with charts in the service
+   * key. Holds no file URLs: ask `fileDownload(file_id, { version_id })`
+   * when playing. Re-read after `expires_at`.
+   */
+  rehearsalManifest = (planId: string) =>
+    this.request<RehearsalManifest>('GET', `/api/v1/plans/${planId}/rehearsal-manifest`);
+  /** F14 Pass C: downloadable entries with short-lived URLs for an explicit offline pack. */
+  rehearsalOfflinePack = (planId: string, body: OfflinePackRequestInput = {}) =>
+    this.request<OfflinePackPlan>('POST', `/api/v1/plans/${planId}/rehearsal-manifest/offline-pack`, body);
+
+  // -------------------------------------------------------------- media --
+  mediaList = (query: ListMediaRequest = {}) =>
+    this.request<MediaList>('GET', '/api/v1/media', undefined, {
+      ...(query.q ? { q: query.q } : {}),
+      ...(query.include_archived ? { include_archived: 'true' } : {}),
+    });
+  media = (mediaId: string) => this.request<MediaDetail>('GET', `/api/v1/media/${mediaId}`);
+  createMedia = (body: CreateMediaInput) => this.request<MediaDetail>('POST', '/api/v1/media', body);
+  updateMedia = (mediaId: string, body: UpdateMediaInput) =>
+    this.request<MediaDetail>('PATCH', `/api/v1/media/${mediaId}`, body);
+  archiveMedia = (mediaId: string, body: ArchiveMediaInput) =>
+    this.request<MediaSummary>('POST', `/api/v1/media/${mediaId}/archive`, body);
+  deleteMedia = (mediaId: string, expectedRevision: number) =>
+    this.request<void>('DELETE', `/api/v1/media/${mediaId}`, { expected_revision: expectedRevision });
+  /** Links (or clears) a bundle on a regular order item, with the plan's revision. */
+  setPlanItemMedia = (planId: string, itemId: string, body: SetPlanItemMediaInput) =>
+    this.request<PlanItemSaveResult>('PUT', `/api/v1/plans/${planId}/items/${itemId}/media`, body);
+
+  // ------------------------------------------------------- stage layouts --
+  stageTemplates = () => this.request<StageLayoutTemplateList>('GET', '/api/v1/stage-templates');
+  createStageTemplate = (body: CreateStageTemplateRequest) =>
+    this.request<StageLayoutTemplateRow>('POST', '/api/v1/stage-templates', body);
+  updateStageTemplate = (templateId: string, body: UpdateStageTemplateInput) =>
+    this.request<StageLayoutTemplateRow>('PATCH', `/api/v1/stage-templates/${templateId}`, body);
+  deleteStageTemplate = (templateId: string, expectedRevision: number) =>
+    this.request<void>('DELETE', `/api/v1/stage-templates/${templateId}`, { expected_revision: expectedRevision });
+  planStageLayouts = (planId: string) =>
+    this.request<PlanStageLayouts>('GET', `/api/v1/plans/${planId}/stage-layouts`);
+  createPlanStageLayout = (planId: string, body: CreatePlanStageLayoutInput) =>
+    this.request<PlanStageLayoutView>('POST', `/api/v1/plans/${planId}/stage-layouts`, body);
+  /** A 409 `layout_revision_stale` means someone else saved first: nothing was applied. */
+  updatePlanStageLayout = (planId: string, layoutId: string, body: UpdatePlanStageLayoutInput) =>
+    this.request<PlanStageLayoutView>('PATCH', `/api/v1/plans/${planId}/stage-layouts/${layoutId}`, body);
+  deletePlanStageLayout = (planId: string, layoutId: string, expectedRevision: number) =>
+    this.request<void>('DELETE', `/api/v1/plans/${planId}/stage-layouts/${layoutId}`, { expected_revision: expectedRevision });
 
   // --------------------------------------------------------------- live --
   /** F12: the plan's service times, each with its current run, and every run (newest first). */

@@ -56,6 +56,8 @@ export const fileOwnerOf = (row: AttachmentRow): FileOwnerRef => {
       return { kind: 'arrangement', id: row.arrangement_id ?? '' };
     case 'service_type':
       return { kind: 'service_type', id: row.service_type_id ?? '' };
+    case 'media':
+      return { kind: 'media', id: row.media_id ?? '' };
   }
 };
 
@@ -72,6 +74,8 @@ export const ownerColumn = (kind: FileOwnerKind): keyof AttachmentRow => {
       return 'arrangement_id';
     case 'service_type':
       return 'service_type_id';
+    case 'media':
+      return 'media_id';
   }
 };
 
@@ -122,6 +126,8 @@ export const toFileSummary = (row: AttachmentRow, bundle: FileRowsBundle, now: D
       .filter((target) => target.attachment_id === row.id)
       .map((target) => ({ team_id: target.team_id, position_id: target.position_id })),
     external_url: row.external_url,
+    // Rows from before F14 carry no rights column: they were downloadable.
+    playback_rights: row.playback_rights ?? 'download',
     current_version: current ? toFileVersionSummary(current, row.current_version_id) : null,
     pending_versions: pending,
     revision: row.revision,
