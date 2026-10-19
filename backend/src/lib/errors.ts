@@ -62,6 +62,12 @@ const PT409_HINTS: Record<string, string> = {
   // F10
   template_changed: 'template_changed',
   template_preview_changed: 'template_preview_changed',
+  // F12 — every one of these means "nothing was applied; reload the run".
+  run_changed: 'run_revision_stale',
+  run_control_lost: 'run_control_lost',
+  run_control_held: 'run_control_held',
+  run_exists: 'run_exists',
+  run_state: 'run_state_invalid',
 };
 
 export const fromPostgrestError = (error: {

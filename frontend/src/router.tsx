@@ -11,6 +11,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { PlansPage } from './pages/PlansPage';
 import { PlanDetailPage } from './pages/PlanDetailPage';
+import { LivePage } from './pages/LivePage';
 import { ServiceTypeWizardPage } from './pages/ServiceTypeWizardPage';
 import { SongsPage } from './pages/SongsPage';
 import { SongDetailPage } from './pages/SongDetailPage';
@@ -76,6 +77,7 @@ export const router = createBrowserRouter([
           { path: '/plans/generate', element: <GeneratePlansPage /> },
           { path: '/plans/reschedule', element: <ReschedulePlansPage /> },
           { path: '/plans/:planId', element: <PlanDetailPage /> },
+          { path: '/plans/:planId/live', element: <LivePage /> },
           { path: '/service-types/new', element: <ServiceTypeWizardPage /> },
           { path: '/songs', element: <SongsPage /> },
           { path: '/songs/:songId', element: <SongDetailPage /> },

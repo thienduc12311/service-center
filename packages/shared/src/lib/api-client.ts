@@ -107,6 +107,8 @@ import type {
 } from '../schemas/blockout.js';
 import type { UpdatePlanItemRequest } from '../schemas/plan.js';
 import type { PlanScheduleResponse } from '../types/plan-order.js';
+import type { LivePlanRuns, LiveRunHistory, LiveRunState } from '../types/live.js';
+import type { CorrectLiveRunTimeInput, CreateLiveRunRequest, LiveRunActionInput } from '../schemas/live.js';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
 import type {
   IdentityReconciliation,
@@ -645,6 +647,25 @@ export class ServiceCenterApi {
       'GET',
       `/api/v1/plans/${planId}/schedule${timeId ? `?time_id=${encodeURIComponent(timeId)}` : ''}`,
     );
+
+  // --------------------------------------------------------------- live --
+  /** F12: the plan's service times, each with its current run, and every run (newest first). */
+  liveRuns = (planId: string) => this.request<LivePlanRuns>('GET', `/api/v1/plans/${planId}/runs`);
+  /** Creates (or, with the same idempotency key, returns) the run of one service time; the caller holds control. */
+  createLiveRun = (planId: string, body: CreateLiveRunRequest) =>
+    this.request<LiveRunState>('POST', `/api/v1/plans/${planId}/runs`, body);
+  /** Authoritative state plus the server clock; poll it and derive timers locally. */
+  liveRunState = (runId: string) => this.request<LiveRunState>('GET', `/api/v1/runs/${runId}/state`);
+  /**
+   * One serialized command. A 409 (`run_revision_stale`, `run_control_lost`,
+   * `run_control_held`, `run_state`) means nothing was applied: reload state.
+   */
+  liveRunAction = (runId: string, body: LiveRunActionInput) =>
+    this.request<LiveRunState>('POST', `/api/v1/runs/${runId}/actions`, body);
+  liveRunHistory = (runId: string) => this.request<LiveRunHistory>('GET', `/api/v1/runs/${runId}/history`);
+  /** Appends an audited correction to one recorded time of an ended run. */
+  correctLiveRunTime = (runId: string, body: CorrectLiveRunTimeInput) =>
+    this.request<LiveRunHistory>('POST', `/api/v1/runs/${runId}/corrections`, body);
 
   // --------------------------------------------------------- scheduling --
   createAssignments = (planId: string, body: Record<string, unknown>) =>
