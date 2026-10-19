@@ -4,7 +4,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query';
-import { LIVE_IDLE_POLL_MS, type ListDeliveriesRequest, type ListPlanTemplatesRequest, type StaffingMatrixQueryInput } from '@service-center/shared';
+import { LIVE_IDLE_POLL_MS, type FileOwnerKind, type ListDeliveriesRequest, type ListPlanTemplatesRequest, type StaffingMatrixQueryInput } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 
@@ -89,6 +89,13 @@ export const keys = {
   liveRuns: (org: string | null, planId: string) => [...keys.plan(org, planId), 'live-runs'] as const,
   liveRun: (org: string | null, runId: string) => [...keys.all(org), 'live-run', runId] as const,
   liveRunHistory: (org: string | null, runId: string) => [...keys.all(org), 'live-run-history', runId] as const,
+  // F13 files. Every file key sits under `files` so one invalidation refreshes them all.
+  files: (org: string | null) => [...keys.all(org), 'files'] as const,
+  parentFiles: (org: string | null, ownerKind: string, ownerId: string) => [...keys.files(org), 'parent', ownerKind, ownerId] as const,
+  planFiles: (org: string | null, planId: string) => [...keys.files(org), 'plan', planId] as const,
+  file: (org: string | null, fileId: string) => [...keys.files(org), 'detail', fileId] as const,
+  fileDocument: (org: string | null, fileId: string, versionId: string | null) =>
+    [...keys.files(org), 'document', fileId, versionId] as const,
 };
 
 /** Not organization-scoped: the signed-in user's own cross-organization settings. */
@@ -609,4 +616,45 @@ export const useLiveRunHistory = (runId: string | null, enabled: boolean) => {
     queryFn: () => api.liveRunHistory(runId!),
     enabled: Boolean(org && runId && enabled),
   });
+};
+
+// ------------------------------------------------------------------ F13 --
+
+export const useParentFiles = (ownerKind: FileOwnerKind, ownerId: string | null | undefined) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.parentFiles(org, ownerKind, ownerId ?? ''),
+    queryFn: () => api.files(ownerKind, ownerId!),
+    enabled: Boolean(org && ownerId),
+  });
+};
+
+export const usePlanFiles = (planId: string | undefined) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.planFiles(org, planId ?? ''),
+    queryFn: () => api.planFiles(planId!),
+    enabled: Boolean(org && planId),
+  });
+};
+
+export const useFileDetail = (fileId: string | null) => {
+  const org = useOrg();
+  return useQuery({ queryKey: keys.file(org, fileId ?? ''), queryFn: () => api.file(fileId!), enabled: Boolean(org && fileId) });
+};
+
+export const useFileDocument = (fileId: string | null, versionId: string | null) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.fileDocument(org, fileId ?? '', versionId),
+    queryFn: () => api.fileDocument(fileId!, versionId ?? undefined),
+    enabled: Boolean(org && fileId),
+  });
+};
+
+/** Refreshes every file list after a change (a file can appear under several parents). */
+export const useInvalidateFiles = () => {
+  const org = useOrg();
+  const client = useQueryClient();
+  return () => client.invalidateQueries({ queryKey: keys.files(org) });
 };

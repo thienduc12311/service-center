@@ -11,6 +11,7 @@
  */
 import { configureTransports } from './lib/transports.js';
 import { runDeliveryWorker } from './services/delivery-worker.js';
+import { runFileMaintenanceSafely } from './services/file-maintenance.js';
 
 const MAX_RUNS = 20;
 
@@ -23,6 +24,10 @@ const main = async (): Promise<void> => {
       `[worker] run ${run}: releases ${result.releases}, reminders ${result.remindersEnqueued}, claimed ${result.claimed}, completed ${result.completed}, retry later ${result.retried}, abandoned ${result.abandoned}`,
     );
     if (result.claimed === 0 && result.releases === 0 && result.remindersEnqueued === 0) break;
+  }
+  const files = await runFileMaintenanceSafely();
+  if (files) {
+    console.info(`[worker] files: expired uploads ${files.expired}, removed objects ${files.removed}, removal failures ${files.failed}`);
   }
 };
 

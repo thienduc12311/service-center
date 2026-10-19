@@ -81,6 +81,21 @@ import type {
   LiveRunStateRecord,
   LiveRunTransitionRow,
 } from './live.js';
+import type {
+  AttachmentAudienceTargetRow,
+  AttachmentLinkRow,
+  AttachmentRow,
+  AttachmentVersionRow,
+  FileAbandonRpcResult,
+  FileAudience,
+  FileCategory,
+  FileFinalizeRpcResult,
+  FileKind,
+  FileObjectRemovalRow,
+  FileOwnerKind,
+  FileSaveRpcResult,
+  FileUploadIntentRpcResult,
+} from './files.js';
 
 /**
  * Row types are exact — every read is precisely typed. Insert and Update are
@@ -750,19 +765,6 @@ export type BlockoutSeriesExceptionRow = {
   created_at: string;
 }
 
-export type AttachmentRow = {
-  id: string;
-  organization_id: string;
-  song_id: string | null;
-  arrangement_id: string | null;
-  plan_id: string | null;
-  storage_path: string;
-  filename: string;
-  mime_type: string | null;
-  size_bytes: number | null;
-  created_by: string | null;
-  created_at: string;
-}
 
 export type SchedulingConflictRow = {
   user_id: string;
@@ -1005,6 +1007,9 @@ export type Database = {
       blockout_series: Table<BlockoutSeriesRow>;
       blockout_series_exceptions: Table<BlockoutSeriesExceptionRow>;
       attachments: Table<AttachmentRow>;
+      attachment_versions: Table<AttachmentVersionRow>;
+      attachment_links: Table<AttachmentLinkRow>;
+      attachment_audience_targets: Table<AttachmentAudienceTargetRow>;
       songbooks: Table<SongbookRow>;
       songbook_items: Table<SongbookItemRow>;
       access_grants: Table<AccessGrantRow>;
@@ -1550,6 +1555,104 @@ export type Database = {
       delete_plan_item: {
         Args: { p_plan_id: string; p_item_id: string; p_expected_revision?: number | null };
         Returns: PlanOrderSaveResult;
+      };
+      create_file_upload_intent: {
+        Args: {
+          p_owner_kind: FileOwnerKind;
+          p_owner_id: string;
+          p_attachment: string | null;
+          p_expected_revision: number | null;
+          p_filename: string;
+          p_mime_type: string;
+          p_size_bytes: number;
+          p_title: string | null;
+          p_category: FileCategory;
+          p_audience: FileAudience;
+          p_team_ids: string[];
+          p_position_ids: string[];
+          p_idempotency_key: string;
+        };
+        Returns: FileUploadIntentRpcResult;
+      };
+      finalize_file_version: {
+        Args: { p_version: string };
+        Returns: FileFinalizeRpcResult;
+      };
+      abandon_file_version: {
+        Args: { p_version: string };
+        Returns: FileAbandonRpcResult;
+      };
+      save_file_content: {
+        Args: {
+          p_owner_kind: FileOwnerKind | null;
+          p_owner_id: string | null;
+          p_attachment: string | null;
+          p_expected_revision: number | null;
+          p_kind: FileKind;
+          p_title: string;
+          p_external_url: string | null;
+          p_document_body: string | null;
+          p_category: FileCategory;
+          p_audience: FileAudience;
+          p_team_ids: string[];
+          p_position_ids: string[];
+          p_idempotency_key: string | null;
+        };
+        Returns: FileSaveRpcResult;
+      };
+      update_file: {
+        Args: {
+          p_attachment: string;
+          p_expected_revision: number;
+          p_title: string;
+          p_category: FileCategory;
+          p_audience: FileAudience;
+          p_team_ids: string[];
+          p_position_ids: string[];
+          p_move_owner_kind: FileOwnerKind | null;
+          p_move_owner_id: string | null;
+        };
+        Returns: FileSaveRpcResult;
+      };
+      set_file_archived: {
+        Args: { p_attachment: string; p_expected_revision: number; p_archived: boolean };
+        Returns: FileSaveRpcResult;
+      };
+      delete_file: {
+        Args: { p_attachment: string; p_expected_revision: number };
+        Returns: undefined;
+      };
+      link_file_to_plan: {
+        Args: { p_plan: string; p_item: string | null; p_attachment: string; p_pin: boolean };
+        Returns: AttachmentLinkRow;
+      };
+      set_file_link_pin: {
+        Args: { p_link: string; p_version: string | null; p_follow: boolean };
+        Returns: AttachmentLinkRow;
+      };
+      unlink_file: {
+        Args: { p_link: string };
+        Returns: undefined;
+      };
+      can_add_file: {
+        Args: { p_owner_kind: FileOwnerKind; p_owner_id: string };
+        Returns: boolean;
+      };
+      writable_file_ids: {
+        Args: { p_ids: string[] };
+        Returns: string[];
+      };
+      expire_file_uploads: {
+        Args: { p_limit?: number };
+        Returns: number;
+      };
+      claim_file_object_removals: {
+        Args: { p_limit?: number };
+        Returns: FileObjectRemovalRow[];
+      };
+      complete_file_object_removals: {
+        Args: { p_removed: number[]; p_failed: number[]; p_error: string | null };
+        Returns: undefined;
       };
       create_live_run: {
         Args: {

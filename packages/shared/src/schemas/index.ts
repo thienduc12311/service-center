@@ -22,3 +22,4 @@ export * from './reminders.js';
 export * from './collaboration.js';
 export * from './plan-templates.js';
 export * from './live.js';
+export * from './files.js';

@@ -13,6 +13,7 @@ import { config } from '../config.js';
 import { requireAdmin } from '../middleware/organization.js';
 import { deliveryTransportStatus, listDeliveries, retryDelivery } from '../services/deliveries.js';
 import { runDeliveryWorker } from '../services/delivery-worker.js';
+import { runFileMaintenanceSafely } from '../services/file-maintenance.js';
 
 /** Administrator view of delivery outcomes, and manual retry. */
 export const deliveriesRouter: Router = Router();
@@ -50,5 +51,7 @@ deliveryWorkerRouter.all('/run', validateQuery(runDeliveryWorkerSchema), async (
   if (!authorizedWorker(req.header('authorization'))) throw HttpError.unauthorized('Worker secret required');
   const { limit } = parsedQuery<RunDeliveryWorkerInput>(res);
   // Stay inside a 60s function budget: claim once, finish within ~45s.
-  res.json(await runDeliveryWorker({ limit, timeBudgetMs: 45_000 }));
+  const deliveries = await runDeliveryWorker({ limit, timeBudgetMs: 45_000 });
+  // F13: the same scheduled run settles expired uploads and removes discarded bytes.
+  res.json({ ...deliveries, files: await runFileMaintenanceSafely() });
 });
