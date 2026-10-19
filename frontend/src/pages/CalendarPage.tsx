@@ -11,10 +11,19 @@ import {
   startOfMonth,
   toISODate,
   type CalendarEvent,
+  type CalendarLayer,
+  type CalendarLayerEvent,
 } from '@service-center/shared';
 import { useCalendar, useTeams } from '../hooks/queries';
 import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { assignmentTone } from '../lib/format';
+import {
+  LayerToggles,
+  ScopedFeedsPanel,
+  layerEventDays,
+  layerLabel,
+  useCalendarLayers,
+} from '../components/calendar/CalendarExtensions';
 
 type View = 'month' | 'agenda';
 
@@ -31,6 +40,8 @@ export const CalendarPage = () => {
   const [view, setView] = useState<View>('month');
   const [mine, setMine] = useState(false);
   const [teamId, setTeamId] = useState('');
+  // F16: opt-in layers for the chosen team (the server applies current access).
+  const [layers, setLayers] = useState<CalendarLayer[]>([]);
 
   const teams = useTeams();
 
@@ -49,6 +60,20 @@ export const CalendarPage = () => {
     ...(mine ? { mine: true } : {}),
     ...(teamId ? { team_id: teamId } : {}),
   });
+
+  const layerEvents = useCalendarLayers({
+    teamId,
+    from: toISODate(range.from),
+    to: toISODate(range.to),
+    layers,
+  });
+  const layersByDay = useMemo(() => {
+    const map = new Map<string, CalendarLayerEvent[]>();
+    for (const event of teamId ? layerEvents.data ?? [] : []) {
+      for (const day of layerEventDays(event)) map.set(day, [...(map.get(day) ?? []), event]);
+    }
+    return map;
+  }, [layerEvents.data, teamId]);
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
@@ -124,9 +149,12 @@ export const CalendarPage = () => {
           {formatDate(cursor, { month: 'long', year: 'numeric' })}
         </h2>
         {calendar.isFetching && <span className="text-xs text-slate-400">updating…</span>}
+        <div className="ml-auto">
+          <LayerToggles teamId={teamId} layers={layers} onChange={setLayers} />
+        </div>
       </div>
 
-      <ErrorNotice error={calendar.error} />
+      <ErrorNotice error={calendar.error ?? layerEvents.error} />
 
       {calendar.isLoading ? (
         <Loading />
@@ -164,6 +192,15 @@ export const CalendarPage = () => {
                     </span>
                   </div>
                   <div className="space-y-1">
+                    {(layersByDay.get(toISODate(day)) ?? []).slice(0, 2).map((event) => (
+                      <p
+                        key={event.id}
+                        title={layerLabel(event)}
+                        className="truncate rounded border border-dashed border-slate-300 px-1.5 py-0.5 text-xs text-slate-500"
+                      >
+                        {layerLabel(event)}
+                      </p>
+                    ))}
                     {events.slice(0, 3).map((event) => (
                       <Link
                         key={event.id}
@@ -216,6 +253,7 @@ export const CalendarPage = () => {
           ))}
         </ul>
       )}
+      <ScopedFeedsPanel />
     </div>
   );
 };

@@ -8,7 +8,16 @@ export interface IcsEvent {
   location?: string | null;
   status?: 'CONFIRMED' | 'CANCELLED' | 'TENTATIVE';
   dtstamp?: string | Date;
+  /** An all-day event on this civil date (`YYYY-MM-DD`); start/end instants are then ignored. */
+  allDayDate?: string;
+  /** Shown as free time (layers such as birthdays and blockouts). */
+  transparent?: boolean;
 }
+
+const nextCivilDate = (date: string): string => {
+  const [year, month, day] = date.split('-').map(Number) as [number, number, number];
+  return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
+};
 
 export interface IcsCalendarOptions {
   productId?: string;
@@ -66,13 +75,18 @@ export const renderIcs = (events: IcsEvent[], options: IcsCalendarOptions = {}):
       'BEGIN:VEVENT',
       property('UID', event.uid),
       property('DTSTAMP', formatIcsUtc(event.dtstamp ?? dtstamp)),
-      property('DTSTART', formatIcsUtc(event.startsAt)),
-      property('DTEND', formatIcsUtc(event.endsAt)),
+      ...(event.allDayDate
+        ? [
+            property('DTSTART;VALUE=DATE', event.allDayDate.replace(/-/g, '')),
+            property('DTEND;VALUE=DATE', nextCivilDate(event.allDayDate).replace(/-/g, '')),
+          ]
+        : [property('DTSTART', formatIcsUtc(event.startsAt)), property('DTEND', formatIcsUtc(event.endsAt))]),
       property('SEQUENCE', String(event.sequence)),
       property('SUMMARY', escapeIcsText(event.summary)),
       ...(event.description ? [property('DESCRIPTION', escapeIcsText(event.description))] : []),
       ...(event.location ? [property('LOCATION', escapeIcsText(event.location))] : []),
       ...(event.status ? [property('STATUS', event.status)] : []),
+      ...(event.transparent ? ['TRANSP:TRANSPARENT'] : []),
       'END:VEVENT',
     ]),
     'END:VCALENDAR',

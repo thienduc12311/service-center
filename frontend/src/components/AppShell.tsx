@@ -17,10 +17,13 @@ const NAV = [
   { to: '/my-schedule', label: 'My Schedule' },
   { to: '/chat', label: 'Chat' },
   { to: '/messages', label: 'Messages' },
+  // F16: leaders only (the reports API decides each report's access).
+  { to: '/reports', label: 'Reports', leadersOnly: true },
 ];
 
 export const AppShell = () => {
-  const { user, organizationId, role, switchOrganization, signOut } = useAuth();
+  const { user, organizationId, role, switchOrganization, signOut, canAnywhere } = useAuth();
+  const leader = canAnywhere('scheduling.manage') || canAnywhere('plans.edit') || canAnywhere('songs.manage');
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { resolved, setMode } = useTheme();
@@ -47,7 +50,7 @@ export const AppShell = () => {
           </button>
 
           <nav className="hidden flex-1 items-center gap-1 lg:flex">
-            {NAV.map((item) => (
+            {NAV.filter((item) => !('leadersOnly' in item) || leader).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -130,7 +133,7 @@ export const AppShell = () => {
 
         {/* Mobile nav — the web app is used on phones too, at the door. */}
         <nav className="flex gap-1 overflow-x-auto border-t border-slate-100 px-4 py-2 dark:border-slate-800 lg:hidden">
-          {NAV.map((item) => (
+          {NAV.filter((item) => !('leadersOnly' in item) || leader).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

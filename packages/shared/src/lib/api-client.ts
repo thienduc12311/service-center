@@ -42,6 +42,37 @@ import type {
 } from '../schemas/media.js';
 import type { OfflinePackPlan, RehearsalManifest } from '../types/rehearsal.js';
 import type {
+  AttendanceBatchResult,
+  AttendanceHistoryEntry,
+  AttendanceSheet,
+  CalendarLayerEvent,
+  CalendarScopedFeedCreated,
+  CalendarScopedFeedSummary,
+  ParticipationReport,
+  PersonCalendarSharingRow,
+  PlanPublicationView,
+  ReportExportDownload,
+  ReportExportSummary,
+  ReportKind,
+  RunTimesReport,
+  ScheduleReport,
+  ServiceTypePublicLinks,
+  SongUsageReport,
+  StaffingReport,
+  PublicPlanProjection,
+  PublicSetListLinkRow,
+} from '../types/reports.js';
+import type {
+  CalendarLayersRequest,
+  CreateScopedFeedRequest,
+  PersonCalendarSharingInput,
+  PublishPlanRequest,
+  RecordAttendanceRequest,
+  ReportFiltersRequest,
+  RequestReportExportRequest,
+  SetPublicLinkInput,
+} from '../schemas/reports.js';
+import type {
   MediaDetail,
   MediaList,
   MediaSummary,
@@ -429,6 +460,27 @@ const buildQuery = (query?: Query): string => {
   return str ? `?${str}` : '';
 };
 
+/** Report filters travel as a query string: lists comma-joined. */
+export const reportFiltersQuery = (filters: ReportFiltersRequest): Query => ({
+  from: filters.from,
+  to: filters.to,
+  service_type_ids: filters.service_type_ids?.length ? filters.service_type_ids.join(',') : undefined,
+  team_ids: filters.team_ids?.length ? filters.team_ids.join(',') : undefined,
+  plan_statuses: filters.plan_statuses?.length ? filters.plan_statuses.join(',') : undefined,
+  assignment_statuses: filters.assignment_statuses?.length ? filters.assignment_statuses.join(',') : undefined,
+  include_archived_people: filters.include_archived_people,
+  include_rehearsals: filters.include_rehearsals,
+});
+
+/** Report path segment for each kind. */
+const REPORT_PATHS: Record<ReportKind, string> = {
+  staffing: 'staffing',
+  participation: 'participation',
+  song_usage: 'song-usage',
+  run_times: 'run-times',
+  schedule: 'schedule',
+};
+
 export class ServiceCenterApi {
   constructor(private readonly options: ApiClientOptions) {}
 
@@ -474,6 +526,31 @@ export class ServiceCenterApi {
       );
     }
     return payload as T;
+  }
+
+  /** Same authentication as `request`, for text bodies (CSV). */
+  private async requestText(path: string, query?: Query): Promise<string> {
+    const fetchImpl = this.options.fetchImpl ?? globalThis.fetch;
+    const context = this.options.getRequestContext
+      ? await this.options.getRequestContext()
+      : {
+          accessToken: (await this.options.getAccessToken?.()) ?? null,
+          organizationId: this.options.getOrganizationId?.() ?? null,
+        };
+    const headers: Record<string, string> = { Accept: 'text/csv' };
+    if (context.accessToken) headers.Authorization = `Bearer ${context.accessToken}`;
+    if (context.organizationId) headers['X-Organization-Id'] = context.organizationId;
+    const response = await fetchImpl(`${this.options.baseUrl.replace(/\/$/, '')}${path}${buildQuery(query)}`, {
+      method: 'GET',
+      headers,
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      if (response.status === 401) this.options.onUnauthorized?.(context);
+      const err = (safeJson(text) ?? {}) as { error?: string; code?: string; details?: unknown };
+      throw new ApiError(response.status, err.error ?? `Request failed with status ${response.status}`, err.code, err.details);
+    }
+    return text;
   }
 
   // ------------------------------------------------------------- account --
@@ -759,6 +836,77 @@ export class ServiceCenterApi {
   /** F14 Pass C: downloadable entries with short-lived URLs for an explicit offline pack. */
   rehearsalOfflinePack = (planId: string, body: OfflinePackRequestInput = {}) =>
     this.request<OfflinePackPlan>('POST', `/api/v1/plans/${planId}/rehearsal-manifest/offline-pack`, body);
+
+  // ------------------------------------------------------ F16 attendance --
+  /** Who is scheduled at one plan time, deduplicated per Person, with their record. */
+  attendanceSheet = (planId: string, planTimeId?: string) =>
+    this.request<AttendanceSheet>('GET', `/api/v1/plans/${planId}/attendance`, undefined, { plan_time_id: planTimeId });
+  /** One reviewed batch: all marks apply or none do. */
+  recordAttendance = (planId: string, body: RecordAttendanceRequest) =>
+    this.request<AttendanceBatchResult>('POST', `/api/v1/plans/${planId}/attendance`, body);
+  attendanceHistory = (planId: string, planTimeId: string, personId: string) =>
+    this.request<AttendanceHistoryEntry[]>('GET', `/api/v1/plans/${planId}/attendance/history`, undefined, {
+      plan_time_id: planTimeId,
+      person_id: personId,
+    });
+
+  // --------------------------------------------------------- F16 reports --
+  staffingReport = (filters: ReportFiltersRequest) =>
+    this.request<StaffingReport>('GET', '/api/v1/reports/staffing', undefined, reportFiltersQuery(filters));
+  participationReport = (filters: ReportFiltersRequest) =>
+    this.request<ParticipationReport>('GET', '/api/v1/reports/participation', undefined, reportFiltersQuery(filters));
+  songUsageReport = (filters: ReportFiltersRequest) =>
+    this.request<SongUsageReport>('GET', '/api/v1/reports/song-usage', undefined, reportFiltersQuery(filters));
+  runTimesReport = (filters: ReportFiltersRequest) =>
+    this.request<RunTimesReport>('GET', '/api/v1/reports/run-times', undefined, reportFiltersQuery(filters));
+  scheduleReport = (filters: ReportFiltersRequest) =>
+    this.request<ScheduleReport>('GET', '/api/v1/reports/schedule', undefined, reportFiltersQuery(filters));
+  /** The same report as CSV (filters, timezone, generation time and definitions in the header). */
+  reportCsv = (kind: ReportKind, filters: ReportFiltersRequest) =>
+    this.requestText(`/api/v1/reports/${REPORT_PATHS[kind]}`, { ...reportFiltersQuery(filters), format: 'csv' });
+  reportExports = () => this.request<ReportExportSummary[]>('GET', '/api/v1/reports/exports');
+  requestReportExport = (body: RequestReportExportRequest) =>
+    this.request<ReportExportSummary>('POST', '/api/v1/reports/exports', body);
+  retryReportExport = (exportId: string) =>
+    this.request<ReportExportSummary>('POST', `/api/v1/reports/exports/${exportId}/retry`, {});
+  /** A fresh short-lived URL; access is re-checked every time. */
+  reportExportDownload = (exportId: string) =>
+    this.request<ReportExportDownload>('POST', `/api/v1/reports/exports/${exportId}/download`, {});
+
+  // ------------------------------------------------ F16 calendar extension --
+  calendarLayers = (query: CalendarLayersRequest) =>
+    this.request<CalendarLayerEvent[]>('GET', '/api/v1/calendar/layers', undefined, {
+      team_id: query.team_id,
+      from: query.from,
+      to: query.to,
+      layers: query.layers.join(','),
+    });
+  scopedCalendarFeeds = () => this.request<CalendarScopedFeedSummary[]>('GET', '/api/v1/calendar/feeds');
+  createScopedCalendarFeed = (body: CreateScopedFeedRequest) =>
+    this.request<CalendarScopedFeedCreated>('POST', '/api/v1/calendar/feeds', body);
+  /** New token, same scope; the old URL stops working. */
+  rotateScopedCalendarFeed = (feedId: string) =>
+    this.request<CalendarScopedFeedCreated>('POST', `/api/v1/calendar/feeds/${feedId}/rotate`, {});
+  revokeScopedCalendarFeed = (feedId: string) => this.request<void>('DELETE', `/api/v1/calendar/feeds/${feedId}`);
+  personCalendarSharing = (personId: string) =>
+    this.request<PersonCalendarSharingRow>('GET', `/api/v1/people/${personId}/calendar-sharing`);
+  setPersonCalendarSharing = (personId: string, body: PersonCalendarSharingInput) =>
+    this.request<PersonCalendarSharingRow>('PUT', `/api/v1/people/${personId}/calendar-sharing`, body);
+
+  // ------------------------------------------------------ F16 publication --
+  planPublication = (planId: string) =>
+    this.request<PlanPublicationView>('GET', `/api/v1/plans/${planId}/publication`);
+  publishPlan = (planId: string, body: PublishPlanRequest) =>
+    this.request<PlanPublicationView>('PUT', `/api/v1/plans/${planId}/publication`, body);
+  revokePlanPublication = (planId: string, expectedRevision: number) =>
+    this.request<PlanPublicationView>('DELETE', `/api/v1/plans/${planId}/publication`, { expected_revision: expectedRevision });
+  servicePublicLinks = (serviceTypeId: string) =>
+    this.request<ServiceTypePublicLinks>('GET', `/api/v1/service-types/${serviceTypeId}/public-links`);
+  setServicePublicLink = (serviceTypeId: string, body: SetPublicLinkInput) =>
+    this.request<PublicSetListLinkRow>('POST', `/api/v1/service-types/${serviceTypeId}/public-links`, body);
+  /** Anonymous: the allowlisted projection only. */
+  publicPlan = (slug: string) => this.request<PublicPlanProjection>('GET', `/api/v1/public/plans/${slug}`);
+  publicSetList = (slug: string) => this.request<PublicPlanProjection>('GET', `/api/v1/public/set-lists/${slug}`);
 
   // -------------------------------------------------------------- media --
   mediaList = (query: ListMediaRequest = {}) =>

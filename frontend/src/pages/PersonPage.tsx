@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { CalendarSharingCard } from '../components/people/CalendarSharingCard';
 import { useMutation } from '@tanstack/react-query';
 import { ORG_ROLES, type CreatePersonInput, type PersonDetail } from '@service-center/shared';
 import { api } from '../lib/api';
@@ -200,6 +201,8 @@ export const PersonPage = () => {
         }
       />
       <ErrorNotice error={archive.error} />
+      {/* F16: shown only to the person themselves or a roster manager (the server decides). */}
+      {!isNew && personId && <div className="mb-6"><CalendarSharingCard personId={personId} /></div>}
 
       <form
         className="space-y-6"

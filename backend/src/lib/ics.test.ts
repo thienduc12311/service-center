@@ -40,6 +40,15 @@ describe('ics', () => {
     expect(escapeIcsText('a,b;c\\d\ne')).toBe('a\\,b\\;c\\\\d\\ne');
   });
 
+  it('writes all-day, transparent layer events (F16)', () => {
+    const calendar = renderIcs([
+      { uid: 'birthdays-p-2026-12-31@x', summary: 'Birthday: Ana', startsAt: '', endsAt: '', sequence: 0, allDayDate: '2026-12-31', transparent: true },
+    ]);
+    expect(calendar).toContain('DTSTART;VALUE=DATE:20261231\r\n');
+    expect(calendar).toContain('DTEND;VALUE=DATE:20270101\r\n');
+    expect(calendar).toContain('TRANSP:TRANSPARENT\r\n');
+  });
+
   it('rejects invalid dates', () => {
     expect(() => formatIcsUtc('not a date')).toThrow('Invalid calendar date');
   });

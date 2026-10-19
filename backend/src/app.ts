@@ -55,6 +55,14 @@ import { planTemplateUseRouter, planTemplatesRouter } from './routes/plan-templa
 import { liveRunsRouter, planLiveRunsRouter } from './routes/live-runs.js';
 import { fileLinksRouter, filesRouter, planFilesRouter } from './routes/files.js';
 import { mediaRouter, planRehearsalRouter, stageTemplatesRouter } from './routes/rehearsal.js';
+import { planAttendanceRouter } from './routes/attendance.js';
+import { reportsRouter } from './routes/reports.js';
+import {
+  personCalendarSharingRouter,
+  planPublicationRouter,
+  publicRouter,
+  servicePublicLinksRouter,
+} from './routes/publication.js';
 import {
   deviceRevocationsRouter,
   devicesRouter,
@@ -123,12 +131,16 @@ export const createApp = (): Express => {
   app.use('/api/v1/invitations', invitationAcceptRouter);
   app.use('/api/v1/assignment-responses', assignmentRespondRouter);
   app.use('/api/v1/calendar-feed', calendarFeedRouter);
+  // F16: anonymous, allowlisted public projections only.
+  app.use('/api/v1/public', publicRouter);
   app.use('/api/v1/internal/deliveries', deliveryWorkerRouter);
 
   const scoped = [requireAuth, withOrganization];
   // Roster maintenance first: its fixed paths must not be read as a person id.
+  app.use('/api/v1/people/:personId/calendar-sharing', scoped, personCalendarSharingRouter);
   app.use('/api/v1/people', scoped, rosterRouter, peopleRouter);
   app.use('/api/v1/search', scoped, searchRouter);
+  app.use('/api/v1/service-types/:serviceTypeId/public-links', scoped, servicePublicLinksRouter);
   app.use('/api/v1/service-types', scoped, serviceTypesRouter);
   app.use('/api/v1/teams', scoped, teamsRouter);
   app.use('/api/v1/songs', scoped, songsRouter);
@@ -141,6 +153,8 @@ export const createApp = (): Express => {
   app.use('/api/v1/plans/:planId/opportunities', scoped, planOpportunitiesRouter);
   app.use('/api/v1/plans/:planId/notes', scoped, planNotesRouter);
   app.use('/api/v1/plans/:planId/runs', scoped, planLiveRunsRouter);
+  app.use('/api/v1/plans/:planId/attendance', scoped, planAttendanceRouter);
+  app.use('/api/v1/plans/:planId/publication', scoped, planPublicationRouter);
   app.use('/api/v1/plans/:planId', scoped, planFilesRouter, planRehearsalRouter);
   app.use('/api/v1/plans', scoped, planTemplateUseRouter, plansRouter);
   app.use('/api/v1/plan-templates', scoped, planTemplatesRouter);
@@ -165,6 +179,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/scheduling/proposals', scoped, staffingProposalsRouter);
   app.use('/api/v1/scheduling', scoped, schedulingRouter);
   app.use('/api/v1/calendar', scoped, calendarRouter);
+  app.use('/api/v1/reports', scoped, reportsRouter);
   app.use('/api/v1/blockouts', scoped, blockoutsRouter);
   app.use('/api/v1/availability', scoped, availabilityRouter);
   app.use('/api/v1/delegations', scoped, delegationsRouter);

@@ -1,12 +1,25 @@
 import { Router, type Request } from 'express';
 import {
+  calendarLayersQuerySchema,
+  createScopedFeedSchema,
   calendarQuerySchema,
+  type CalendarLayersQuery,
+  type CreateScopedFeedInput,
   type AssignmentStatus,
   type CalendarEvent,
   type CalendarQuery,
 } from '@service-center/shared';
 import { attendanceFor } from '../services/attendance.js';
-import { parsedQuery, validateQuery } from '../lib/validate.js';
+import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
+import { param } from '../lib/params.js';
+import {
+  calendarLayers,
+  createScopedFeed,
+  listScopedFeeds,
+  revokeScopedFeed,
+  rotateScopedFeed,
+  type FeedCaller,
+} from '../services/calendar-scoped-feeds.js';
 import { raw, unwrap } from '../lib/supabase.js';
 
 export const calendarRouter: Router = Router();
@@ -111,4 +124,32 @@ calendarRouter.get('/', validateQuery(calendarQuerySchema), async (req, res) => 
   }
 
   res.json(events);
+});
+
+// ---------------------------------------------------------------- F16 ----
+
+const feedCaller = (req: Request): FeedCaller => ({ db: req.db, orgId: req.orgId, userId: req.auth.userId });
+
+/** Opt-in layers for one team; the database re-checks current access per layer. */
+calendarRouter.get('/layers', validateQuery(calendarLayersQuerySchema), async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(await calendarLayers(feedCaller(req), parsedQuery<CalendarLayersQuery>(res)));
+});
+
+/** My service-type/team subscriptions (never the token after creation). */
+calendarRouter.get('/feeds', async (req, res) => {
+  res.json(await listScopedFeeds(feedCaller(req)));
+});
+
+calendarRouter.post('/feeds', validateBody(createScopedFeedSchema), async (req, res) => {
+  res.status(201).json(await createScopedFeed(feedCaller(req), req.body as CreateScopedFeedInput));
+});
+
+calendarRouter.post('/feeds/:id/rotate', async (req, res) => {
+  res.status(201).json(await rotateScopedFeed(feedCaller(req), param(req, 'id')));
+});
+
+calendarRouter.delete('/feeds/:id', async (req, res) => {
+  await revokeScopedFeed(feedCaller(req), param(req, 'id'));
+  res.status(204).end();
 });

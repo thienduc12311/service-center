@@ -71,6 +71,9 @@ const PT409_HINTS: Record<string, string> = {
   // F13
   file_changed: 'file_revision_stale',
   file_in_use: 'file_in_use',
+  // F16
+  attendance_changed: 'attendance_revision_stale',
+  publication_changed: 'publication_revision_stale',
 };
 
 export const fromPostgrestError = (error: {

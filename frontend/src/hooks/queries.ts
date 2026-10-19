@@ -93,6 +93,18 @@ export const keys = {
   templateApplications: (org: string | null, planId: string) => [...keys.plan(org, planId), 'template-applications'] as const,
   conversations: (org: string | null) => [...keys.all(org), 'conversations'] as const,
   conversation: (org: string | null, id: string) => [...keys.conversations(org), id] as const,
+  // F16 attendance, reports, calendar extension and publication.
+  attendance: (org: string | null, planId: string, timeId: string | null) =>
+    [...keys.plan(org, planId), 'attendance', timeId] as const,
+  attendanceHistory: (org: string | null, planId: string, timeId: string, personId: string) =>
+    [...keys.plan(org, planId), 'attendance-history', timeId, personId] as const,
+  report: (org: string | null, kind: string, filters: unknown) => [...keys.all(org), 'reports', kind, filters] as const,
+  reportExports: (org: string | null) => [...keys.all(org), 'reports', 'exports'] as const,
+  scopedFeeds: (org: string | null) => [...keys.all(org), 'calendar-feeds'] as const,
+  calendarLayers: (org: string | null, query: unknown) => [...keys.all(org), 'calendar-layers', query] as const,
+  publication: (org: string | null, planId: string) => [...keys.plan(org, planId), 'publication'] as const,
+  publicLinks: (org: string | null, serviceTypeId: string) => [...keys.all(org), 'public-links', serviceTypeId] as const,
+  personSharing: (org: string | null, personId: string) => [...keys.person(org, personId), 'calendar-sharing'] as const,
   // F12 Live.
   liveRuns: (org: string | null, planId: string) => [...keys.plan(org, planId), 'live-runs'] as const,
   liveRun: (org: string | null, runId: string) => [...keys.all(org), 'live-run', runId] as const,
