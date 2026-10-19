@@ -69,7 +69,20 @@ export const listSongsQuerySchema = paginationSchema.extend({
   q: z.string().trim().max(100).optional(),
   theme: z.string().trim().max(40).optional(),
   sort: z.enum(['title', 'recent']).default('title'),
-});
+  archive: z.enum(['active', 'archived', 'all']).default('active'),
+  key: musicalKey.optional(),
+  bpm_min: z.coerce.number().int().min(20).max(300).optional(),
+  bpm_max: z.coerce.number().int().min(20).max(300).optional(),
+  song_type: songTag.optional(),
+  style: z.string().trim().max(40).optional(),
+  speed: z.string().trim().max(40).optional(),
+  author: z.string().trim().max(200).optional(),
+  scheduled_from: z.string().datetime({ offset: true }).optional(),
+  scheduled_to: z.string().datetime({ offset: true }).optional(),
+}).refine((v) => v.bpm_min === undefined || v.bpm_max === undefined || v.bpm_min <= v.bpm_max,
+  { message: 'Minimum BPM exceeds maximum', path: ['bpm_max'] })
+  .refine((v) => !v.scheduled_from || !v.scheduled_to || Date.parse(v.scheduled_from) < Date.parse(v.scheduled_to),
+    { message: 'Scheduled end must follow start', path: ['scheduled_to'] });
 
 /**
  * How far back the Schedule panel looks. Counted in plans rather than days so
@@ -90,6 +103,23 @@ export const chartQuerySchema = z.object({
   notation: chartNotationSchema.default('chords'),
 });
 
+/** A bounded, explicit replacement of metadata; absent fields stay unchanged. */
+export const songBulkPatchSchema = songFieldsSchema.omit({ title: true }).partial().strict()
+  .refine((patch) => Object.keys(patch).length > 0, 'Choose metadata to change');
+export const songBulkPreviewSchema = z.object({
+  rows: z.array(z.object({ id: uuid, expected_revision: z.number().int().positive() }).strict()).min(1).max(100)
+    .refine((rows) => new Set(rows.map((row) => row.id)).size === rows.length, 'Duplicate song'),
+  patch: songBulkPatchSchema,
+}).strict();
+export const songBulkCommitSchema = z.object({ preview_id: uuid }).strict();
+export const songArchiveSchema = z.object({
+  expected_revision: z.number().int().positive(), archived: z.boolean(),
+}).strict();
+export type SongBulkPatch = z.infer<typeof songBulkPatchSchema>;
+export type SongBulkPreviewInput = z.infer<typeof songBulkPreviewSchema>;
+export type SongBulkCommitInput = z.infer<typeof songBulkCommitSchema>;
+export type SongArchiveInput = z.infer<typeof songArchiveSchema>;
+
 export type CreateSongInput = z.infer<typeof createSongSchema>;
 export type UpdateSongInput = z.infer<typeof updateSongSchema>;
 export type SongFields = z.infer<typeof songFieldsSchema>;
@@ -98,3 +128,25 @@ export type UpdateArrangementInput = z.infer<typeof updateArrangementSchema>;
 export type ListSongsQuery = z.infer<typeof listSongsQuerySchema>;
 export type SongScheduleQuery = z.infer<typeof songScheduleQuerySchema>;
 export type ChartQuery = z.infer<typeof chartQuerySchema>;
+
+/** Runtime validation for curation RPC results, including snapshots in audit rows. */
+export const curatedSongRowSchema = songFieldsSchema.extend({
+  merged_into_song_id: uuid.nullish(), merged_default_arrangement_id: uuid.nullish(),
+  id: uuid, organization_id: uuid, created_by: uuid.nullable(),
+  created_at: z.string(), updated_at: z.string(),
+  archived_at: z.string().nullable(), revision: z.number().int().positive(),
+});
+export const curatedArrangementRowSchema = createArrangementSchema.extend({
+  id: uuid, song_id: uuid, created_at: z.string(), updated_at: z.string(),
+  archived_at: z.string().nullable(), revision: z.number().int().positive(),
+});
+export const songBulkResultSchema = z.object({
+  id: uuid, organization_id: uuid, created_by: uuid, patch: songBulkPatchSchema,
+  created_at: z.string(), committed_at: z.string().nullable(),
+  rows: z.array(z.object({ id: uuid, before: curatedSongRowSchema, after: curatedSongRowSchema, outcome: z.literal('updated') })),
+});
+
+export const curatedSongPageSchema = z.object({
+  data: z.array(curatedSongRowSchema.extend({ arrangements: z.array(curatedArrangementRowSchema), last_scheduled_at: z.string().nullable() })),
+  page: z.number().int().positive(), per_page: z.number().int().positive(), total: z.number().int().nonnegative(),
+});

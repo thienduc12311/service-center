@@ -144,3 +144,30 @@ describe('buildPlanFileEntries', () => {
     expect(entries[0]).toMatchObject({ source: 'link', newer_version_available: false });
   });
 });
+
+describe('labeled-key file selection', () => {
+  const bundle: FileRowsBundle = { files: [
+    file({ id: 'owned', owner_kind: 'arrangement', arrangement_id: 'a', song_id: 's' }),
+    file({ id: 'reused', owner_kind: 'arrangement', arrangement_id: 'source', song_id: 's' }),
+    file({ id: 'general', owner_kind: 'song', song_id: 's' }),
+  ], versions: [], targets: [], writableIds: new Set() };
+  it('uses the per-item effective key projection for owned, reused and general files', () => {
+    const entries = buildPlanFileEntries([
+      { id: 'high', song_id: 's', arrangement_id: 'a', effective_file_ids: ['reused', 'general'] },
+      { id: 'low', song_id: 's', arrangement_id: 'a', effective_file_ids: ['owned', 'general'] },
+    ], [], bundle);
+    expect(entries.map((e) => `${e.plan_item_id}:${e.file.id}`)).toEqual(['high:reused', 'high:general', 'low:owned', 'low:general']);
+    expect(entries[0]?.source).toBe('arrangement');
+  });
+  it('does not fall back to all library files when F13 returns an empty permitted scope', () => {
+    expect(buildPlanFileEntries([{ id: 'i', song_id: 's', arrangement_id: 'a', effective_file_ids: [] }], [], bundle)).toEqual([]);
+  });
+  it('retains explicit plan links and their pinned version independently of automatic key selection', () => {
+    const entries = buildPlanFileEntries([{ id: 'i', song_id: 's', arrangement_id: 'a', effective_file_ids: [] }],
+      [link({ attachment_id: 'reused', plan_item_id: 'i', pinned_version_id: 'pinned' })],
+      { ...bundle, versions: [version({ id: 'pinned', attachment_id: 'reused' })] });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.source).toBe('link');
+    expect(entries[0]?.version?.id).toBe('pinned');
+  });
+});

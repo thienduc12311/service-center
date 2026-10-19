@@ -5,9 +5,11 @@ import type { ArrangementRow } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useSong, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { EmptyState, ErrorNotice, Loading } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, Loading } from '../components/ui';
 import { SongWorkspaceHeader } from '../components/song/SongWorkspaceHeader';
 import { SongArrangementSidebar } from '../components/song/SongArrangementSidebar';
+import { ArrangementCurationPanel } from '../components/song/ArrangementCurationPanel';
+import { SongMergePanel } from '../components/song/SongMergePanel';
 import { ArrangementPanel } from '../components/song/ArrangementPanel';
 import { AllArrangementsPanel } from '../components/song/AllArrangementsPanel';
 import { SongSchedulePanel } from '../components/song/SongSchedulePanel';
@@ -25,10 +27,10 @@ export const SongDetailPage = () => {
   const { songId } = useParams<{ songId: string }>();
   const { canAnywhere } = useAuth();
   // The song library is organization-wide; leading a team never implies it.
-  const canManage = canAnywhere('songs.manage');
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
   const song = useSong(songId);
+  const canManage = canAnywhere('songs.manage') && !song.data?.merged_into_song_id;
 
   const [pane, setPane] = useState<SongPane>(ALL_ARRANGEMENTS);
   const [dialog, setDialog] = useState<SongDialog | null>(null);
@@ -49,6 +51,17 @@ export const SongDetailPage = () => {
       await invalidate();
       setPane(ALL_ARRANGEMENTS);
     },
+  });
+
+  const archive = useMutation({
+    mutationFn: () => api.archiveSong(songId!, { expected_revision: song.data!.revision, archived: !song.data!.archived_at }),
+    onSuccess: () => invalidate(),
+    onError: () => { void invalidate(); },
+  });
+  const archiveArrangement = useMutation({
+    mutationFn: (row: ArrangementRow) => api.archiveArrangement(row.id, { expected_revision: row.revision, archived: !row.archived_at }),
+    onSuccess: () => invalidate(),
+    onError: () => { void invalidate(); },
   });
 
   if (song.isLoading) return <Loading />;
@@ -82,7 +95,13 @@ export const SongDetailPage = () => {
         }}
       />
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {detail.merged_into_song_id && <a className="text-brand-600 underline" href={`/songs/${detail.merged_into_song_id}`}>Merged into another song · open the kept song</a>}
+        {detail.archived_at && <p>Archived song · existing plans and charts remain available.</p>}
+        {canManage && <Button disabled={archive.isPending} onClick={() => archive.mutate()}>{detail.archived_at ? 'Restore song' : 'Archive song'}</Button>}
+        {canManage && pane.kind === 'arrangement' && arrangement && <Button disabled={archiveArrangement.isPending} onClick={() => archiveArrangement.mutate(arrangement)}>{arrangement.archived_at ? 'Restore arrangement' : 'Archive arrangement'}</Button>}
+        {pane.kind === 'arrangement' && arrangement?.archived_at && <p>Archived arrangement · existing plans and charts remain available.</p>}
+        <ErrorNotice error={archive.error ?? archiveArrangement.error} />
         <ErrorNotice error={removeSong.error ?? removeArrangement.error} />
       </div>
 
@@ -128,6 +147,8 @@ export const SongDetailPage = () => {
               description="Charts and tracks for this arrangement. Plans using it show them under the song."
             />
           )}
+          {pane.kind === 'arrangement' && arrangement && <ArrangementCurationPanel arrangement={arrangement} canManage={canManage && !detail.archived_at && !arrangement.archived_at} onDuplicated={(id) => setPane({ kind: 'arrangement', arrangementId: id })} />}
+          {canManage && !detail.archived_at && <SongMergePanel song={detail} />}
           <FilesPanel
             owner={{ kind: 'song', id: detail.id }}
             title="Song files"

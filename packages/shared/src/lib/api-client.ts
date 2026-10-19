@@ -1,3 +1,7 @@
+import type { ArrangementMaterials, LabeledKeyInput, LabeledKey, DuplicateArrangementInput, DuplicateArrangementCommit, DuplicateArrangementPreview, SongMergeInput, SongMergeCommit, SongMergePreview } from '../schemas/arrangement-curation.js';
+import type { ImportPreviewRequest, ImportSaveRequest, ImportPreview, ImportJobDetail, ImportJob, ImportCommitRequest } from '../schemas/imports.js';
+import type { SongBulkPreview } from '../types/song-curation.js';
+import type { SongBulkPreviewInput, SongArchiveInput, SongBulkCommitInput } from '../schemas/song.js';
 /**
  * Typed client for the Express API. Shared verbatim by the web app and the
  * React Native app — the only difference is how each supplies the access token.
@@ -669,7 +673,28 @@ export class ServiceCenterApi {
   removeTeamMember = (teamId: string, membershipId: string) =>
     this.request<void>('DELETE', `/api/v1/teams/${teamId}/members/${membershipId}`);
 
+  previewImport = (body: ImportPreviewRequest) => this.request<ImportPreview>('POST', '/api/v1/imports/preview', body);
+  saveImport = (body: ImportSaveRequest) => this.request<ImportJobDetail>('POST', '/api/v1/imports', body);
+  listImports = () => this.request<ImportJob[]>('GET', '/api/v1/imports');
+  getImport = (id: string) => this.request<ImportJobDetail>('GET', `/api/v1/imports/${id}`);
+  commitImport = (id: string, body: ImportCommitRequest) => this.request<ImportJobDetail>('POST', `/api/v1/imports/${id}/commit`, body);
+
   // -------------------------------------------------------------- songs --
+  previewSongBulk = (body: SongBulkPreviewInput) =>
+    this.request<SongBulkPreview>('POST', '/api/v1/songs/bulk/preview', body);
+  commitSongBulk = (body: SongBulkCommitInput) =>
+    this.request<SongBulkPreview>('POST', '/api/v1/songs/bulk', body);
+  getArrangementMaterials = (id: string) => this.request<ArrangementMaterials>('GET', `/api/v1/arrangements/${id}/materials`);
+  saveArrangementKey = (id: string, body: LabeledKeyInput) => this.request<LabeledKey>('POST', `/api/v1/arrangements/${id}/keys`, body);
+  previewArrangementDuplicate = (id: string, body: DuplicateArrangementInput) => this.request<DuplicateArrangementPreview>('POST', `/api/v1/arrangements/${id}/duplicate/preview`, body);
+  duplicateArrangement = (id: string, body: DuplicateArrangementCommit) => this.request<{ arrangement_id: string; operation_id: string }>('POST', `/api/v1/arrangements/${id}/duplicate`, body);
+  getSongDuplicates = (id: string) => this.request<{ id: string; title: string; reason: 'title' | 'ccli' }[]>('GET', `/api/v1/songs/${id}/duplicates`);
+  previewSongMerge = (body: SongMergeInput) => this.request<SongMergePreview>('POST', '/api/v1/songs/merge/preview', body);
+  mergeSongs = (body: SongMergeCommit) => this.request<{ winner_id: string; loser_id: string; operation_id: string }>('POST', '/api/v1/songs/merge', body);
+  archiveSong = (id: string, body: SongArchiveInput) =>
+    this.request<SongRow>('POST', `/api/v1/songs/${id}/archive`, body);
+  archiveArrangement = (id: string, body: SongArchiveInput) =>
+    this.request<ArrangementRow>('POST', `/api/v1/arrangements/${id}/archive`, body);
   listSongs = (query?: Query) =>
     this.request<Paginated<SongListItem>>('GET', '/api/v1/songs', undefined, query);
   getSong = (id: string) => this.request<SongWithArrangements>('GET', `/api/v1/songs/${id}`);

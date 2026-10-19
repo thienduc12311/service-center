@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { ORG_ROLES, isAdmin } from '@service-center/shared';
 import { api } from '../lib/api';
@@ -60,6 +60,7 @@ export const PeoplePage = () => {
         subtitle="Everyone in your organization."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {canManagePeople && <Link className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300" to="/imports?kind=people">Import CSV</Link>}
             <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
               <input
                 type="checkbox"

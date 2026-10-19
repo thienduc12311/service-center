@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { formatDate, type SongListItem } from '@service-center/shared';
+import { formatDate, listSongsQuerySchema, type ListSongsQuery, type SongListItem } from '@service-center/shared';
 import { useSongs } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
+import { SongBulkEditor } from '../components/song/SongBulkEditor';
 import { AddSongModal } from '../components/AddSongModal';
 
 const DAY = { month: 'short', day: 'numeric', year: 'numeric' } as const;
@@ -26,7 +27,13 @@ export const SongsPage = () => {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<'title' | 'recent'>('title');
   const [adding, setAdding] = useState(false);
-  const songs = useSongs({ q: query || undefined, sort, per_page: 100 });
+  const [filters, setFilters] = useState<Partial<ListSongsQuery>>({});
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [filterError, setFilterError] = useState<Error | null>(null);
+  const songs = useSongs({ ...filters, q: query || undefined, sort, page, per_page: 50 });
+  const resetPage = () => { setPage(1); setSelected([]); setEditing(false); };
 
   const rows = songs.data?.data ?? [];
 
@@ -41,12 +48,12 @@ export const SongsPage = () => {
               aria-label="Sort songs"
               className="input w-36"
               value={sort}
-              onChange={(event) => setSort(event.target.value as 'title' | 'recent')}
+              onChange={(event) => { setSort(event.target.value as 'title' | 'recent'); resetPage(); }}
             >
               <option value="title">A–Z</option>
               <option value="recent">Recently updated</option>
             </select>
-            {canManage && <Button onClick={() => setAdding(true)}>Add a song</Button>}
+            {canManage && <><Link className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300" to="/imports?kind=songs">Import CSV</Link><Button onClick={() => setAdding(true)}>Add a song</Button></>}
           </div>
         }
       />
@@ -55,7 +62,7 @@ export const SongsPage = () => {
         <input
           className="input max-w-sm"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => { setQuery(event.target.value); resetPage(); }}
           placeholder="Add text filter"
           aria-label="Search songs"
         />
@@ -66,7 +73,30 @@ export const SongsPage = () => {
         )}
       </div>
 
-      <ErrorNotice error={songs.error} />
+      <form className="card mb-4 grid gap-3 p-4 sm:grid-cols-3" onSubmit={(event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const input = Object.fromEntries([...form.entries()].filter(([, value]) => value !== ''));
+        for (const key of ['scheduled_from', 'scheduled_to']) {
+          const value = input[key];
+          if (typeof value === 'string' && value) input[key] = `${value}T00:00:00Z`;
+        }
+        const parsed = listSongsQuerySchema.safeParse(input);
+        if (!parsed.success) { setFilterError(parsed.error); return; }
+        setFilterError(null); setFilters(parsed.data); resetPage();
+      }}>
+        <label>Library<select name="archive" className="input"><option value="active">Active songs</option><option value="archived">Archived songs</option><option value="all">All songs</option></select></label>
+        {['key', 'theme', 'song_type', 'style', 'speed', 'author'].map((field) => <label key={field}>{field.replaceAll('_', ' ')}<input className="input" name={field} /></label>)}
+        <label>Minimum BPM<input className="input" name="bpm_min" type="number" min="20" max="300" /></label>
+        <label>Maximum BPM<input className="input" name="bpm_max" type="number" min="20" max="300" /></label>
+        <label>Scheduled from (UTC)<input className="input" name="scheduled_from" type="date" /></label>
+        <label>Scheduled before (UTC)<input className="input" name="scheduled_to" type="date" /></label>
+        <Button type="submit">Apply filters</Button>
+      </form>
+      <ErrorNotice error={filterError ?? songs.error} />
+      {canManage && selected.length > 0 && !editing && <Button onClick={() => setEditing(true)}>Edit {selected.length} selected songs</Button>}
+      {canManage && editing && <SongBulkEditor songs={rows.filter((row) => selected.includes(row.id))} onDone={() => { setEditing(false); setSelected([]); }} />}
+
 
       {songs.isLoading ? (
         <Loading />
@@ -75,6 +105,7 @@ export const SongsPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                {canManage && <th scope="col" className="px-4 py-3">Select</th>}
                 <th scope="col" className="px-4 py-3 font-medium">Title</th>
                 <th scope="col" className="px-4 py-3 font-medium">BPM</th>
                 <th scope="col" className="px-4 py-3 font-medium">Keys</th>
@@ -85,7 +116,9 @@ export const SongsPage = () => {
             <tbody className="divide-y divide-slate-100">
               {rows.map((song) => (
                 <tr key={song.id} className="transition hover:bg-slate-50">
+                  {canManage && <td className="px-4 py-3"><input type="checkbox" aria-label={`Select ${song.title}`} checked={selected.includes(song.id)} disabled={editing} onChange={(event) => setSelected((current) => event.target.checked ? [...current, song.id] : current.filter((id) => id !== song.id))} /></td>}
                   <td className="px-4 py-3">
+                    {song.archived_at && <span className="mr-2 text-xs text-slate-500">Archived</span>}
                     <Link to={`/songs/${song.id}`} className="font-medium text-slate-900 hover:text-brand-700">
                       {song.title}
                     </Link>
@@ -110,6 +143,11 @@ export const SongsPage = () => {
         />
       )}
 
+      <div className="my-4 flex items-center gap-3">
+        <Button disabled={page <= 1 || songs.isFetching || editing} onClick={() => { setPage(page - 1); setSelected([]); }}>Previous</Button>
+        <span>Page {page}</span>
+        <Button disabled={!songs.data || page * 50 >= songs.data.total || songs.isFetching || editing} onClick={() => { setPage(page + 1); setSelected([]); }}>Next</Button>
+      </div>
       <AddSongModal
         open={adding}
         onClose={() => setAdding(false)}

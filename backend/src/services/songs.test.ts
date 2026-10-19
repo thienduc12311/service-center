@@ -13,6 +13,8 @@ import { attachLastScheduled, loadArrangementChart, loadSongSchedule } from './s
 
 const song = (id: string): SongWithArrangements => ({
   id,
+  archived_at: null,
+  revision: 1,
   organization_id: 'org',
   title: id,
   author: null,

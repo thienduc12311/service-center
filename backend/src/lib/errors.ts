@@ -68,6 +68,10 @@ const PT409_HINTS: Record<string, string> = {
   run_control_held: 'run_control_held',
   run_exists: 'run_exists',
   run_state: 'run_state_invalid',
+  import_changed: 'import_changed',
+  library_changed: 'library_changed',
+  song_revision_stale: 'song_revision_stale',
+  arrangement_revision_stale: 'arrangement_revision_stale',
   // F13
   file_changed: 'file_revision_stale',
   file_in_use: 'file_in_use',
@@ -93,6 +97,9 @@ export const fromPostgrestError = (error: {
   switch (error.code) {
     case 'PGRST116':
       return HttpError.notFound();
+    case '55P03':
+    case '40P01':
+      return HttpError.conflict('Library is busy; retry the same reviewed request');
     case '23505':
       return HttpError.conflict('That record already exists', error.details);
     case '23503':
@@ -102,6 +109,7 @@ export const fromPostgrestError = (error: {
     case '42501':
       return HttpError.forbidden();
     // Raised by our own database functions with a message written for people.
+    case 'PT404':
     case 'P0002':
       return HttpError.notFound(error.message);
     case '22023':
