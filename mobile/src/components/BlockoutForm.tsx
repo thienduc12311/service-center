@@ -13,6 +13,7 @@ import type { Theme } from '../lib/theme';
 import { useThemedStyles } from '../lib/useTheme';
 import { Button, ErrorNotice, Field, SegmentedControl, type SegmentOption } from './ui';
 import { useFormatters } from '../i18n';
+import { newIdempotencyKey } from '../lib/idempotency';
 
 interface BlockoutFormProps {
   editing?: BlockoutRow | null;
@@ -38,11 +39,6 @@ const dateForPicker = (date: string, time = '12:00'): Date => {
   return new Date(year!, month! - 1, day!, hour!, minute!);
 };
 const initialDate = (): string => civilDate(new Date());
-const newIdempotencyKey = (): string => globalThis.crypto?.randomUUID?.()
-  ?? 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (token) => {
-    const value = Math.floor(Math.random() * 16);
-    return (token === 'x' ? value : (value & 0x3) | 0x8).toString(16);
-  });
 
 export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit }: BlockoutFormProps) => {
   const { user, organizationId, generation, isCurrentGeneration } = useAuth();

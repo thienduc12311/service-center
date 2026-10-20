@@ -92,6 +92,8 @@ opportunityClaimsRouter.post('/:id/decision', requireCapability('scheduling.mana
 
 opportunityClaimsRouter.get('/', requireCapability('scheduling.manage'), async (req, res) => {
   const planId = typeof req.query.plan_id === 'string' ? req.query.plan_id : null;
+  // Same lazy expiry as the other F07 lists, so a lapsed hold never reads as awaiting approval.
+  await unwrap(req.db.rpc('expire_f07_allocations', { p_organization: req.orgId, p_limit: 200 }));
   let query = raw(req.db).from('opportunity_claims').select('*, opportunity:signup_opportunities!inner(id,plan_id,team_id,position_id,approval_policy), person:people!inner(first_name,last_name)');
   if (planId) query = query.eq('opportunity.plan_id', planId);
   const rows = (await unwrap(query.order('created_at', { ascending: false }).limit(200))) ?? [];

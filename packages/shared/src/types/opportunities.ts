@@ -1,3 +1,5 @@
+import type { PlanTimeKind } from './database.js';
+
 export type OpportunityPolicy = 'direct' | 'leader_approval';
 export type OpportunityState = 'open' | 'closed';
 export type OpportunityClaimStatus = 'awaiting_approval' | 'confirmed' | 'cancelled' | 'rejected' | 'expired' | 'superseded';
@@ -100,6 +102,15 @@ export type ApprovedSwapRow = {
   updated_at: string;
 }
 
+/** A plan time an opening covers (all plan times when `applicable_time_ids` is empty). */
+export interface SignupOpportunityTime {
+  id: string;
+  name: string | null;
+  kind: PlanTimeKind;
+  starts_at: string;
+  ends_at: string;
+}
+
 export interface SignupOpportunity extends SignupOpportunityRow {
   plan_title: string;
   service_date: string;
@@ -107,7 +118,7 @@ export interface SignupOpportunity extends SignupOpportunityRow {
   position_name: string;
   remaining_capacity: number;
   eligibility: 'eligible' | 'full' | 'closed' | 'unavailable';
-  times: Array<{ id: string; name: string | null; kind: string; starts_at: string; ends_at: string }>;
+  times: SignupOpportunityTime[];
   my_claim: OpportunityClaimRow | null;
 }
 
