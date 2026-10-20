@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   formatDuration,
   resolvePlanItemChartContext,
-  type AssignmentDetail,
   type AssignmentReleasePreview,
   type PlanItemDetail,
 } from '@service-center/shared';
@@ -20,7 +19,6 @@ import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
-  Avatar,
   Button,
   Card,
   Divider,
@@ -29,6 +27,7 @@ import {
   Label,
   Loading,
   Screen,
+  SegmentedControl,
   Tag,
   screenPadding,
 } from '../../src/components/ui';
@@ -41,15 +40,14 @@ import {
 } from '../../src/components/AssignmentResponses';
 import { groupStatus, mergeTimes, planResponsibilities } from '../../src/lib/schedule-groups';
 import { useAssignmentResponses } from '../../src/lib/useAssignmentResponses';
-import { statusAccent, type Theme } from '../../src/lib/theme';
+import { type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { useFormatters } from '../../src/i18n';
+import { PlanTeams } from '../../src/components/PlanTeams';
+import { buildPlanTeams } from '../../src/lib/plan-teams';
 
-/** One team, and everyone on it for this plan. */
-interface TeamGroup {
-  name: string;
-  assignments: AssignmentDetail[];
-}
+/** MOB-008: the two plan views this screen shows (website tabs `order` and `teams`). */
+type PlanView = 'order' | 'teams';
 
 export default function PlanScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -70,14 +68,35 @@ export default function PlanScreen() {
 
   const detail = plan.data;
 
-  const teams = useMemo<TeamGroup[]>(() => {
-    const groups = new Map<string, AssignmentDetail[]>();
-    for (const assignment of detail?.assignments ?? []) {
-      const key = assignment.team?.name ?? t('mobilePlan.unassigned');
-      groups.set(key, [...(groups.get(key) ?? []), assignment]);
-    }
-    return [...groups.entries()].map(([name, assignments]) => ({ name, assignments }));
-  }, [detail?.assignments, t]);
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<PlanView>('order');
+  const [showAllTeams, setShowAllTeams] = useState(false);
+  const [editingNeeds, setEditingNeeds] = useState(false);
+
+  const orgTeams = useQuery({
+    queryKey: queryKeys.teams(queryScope),
+    queryFn: () => api.listTeams(),
+    enabled: Boolean(queryScope),
+  });
+
+  const planTeams = useMemo(
+    () => detail
+      ? buildPlanTeams({ plan: detail, teams: orgTeams.data ?? [], includeEveryTeam: showAllTeams })
+      : [],
+    [detail, orgTeams.data, showAllTeams],
+  );
+
+  // Same scope rules as the website plan page.
+  const target = { serviceTypeId: detail?.service_type_id };
+  const canEditPlan = can('plans.edit', target);
+  const canScheduleTeam = (teamId: string): boolean => can('scheduling.manage', { ...target, teamId });
+
+  // Website parity: each step saves that one position; positions not sent are kept.
+  const setNeed = useMutation({
+    mutationFn: ({ positionId, needed }: { positionId: string; needed: number }) =>
+      api.setPlanPositionNeeds(id!, { needs: [{ position_id: positionId, needed }] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.plan(queryScope, id) }),
+  });
 
   const prepared = useMemo(
     () => (detail?.assignments ?? []).filter((assignment) =>
@@ -253,6 +272,16 @@ export default function PlanScreen() {
           </Reveal>
         ) : null}
 
+        <SegmentedControl<PlanView>
+          options={[
+            { value: 'order', label: t('tabs.order') },
+            { value: 'teams', label: t('tabs.teams') },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+
+        {view === 'order' ? (
         <Reveal index={prepared.length ? 3 : 2}>
           <Card>
             <View style={styles.mineHeader}>
@@ -313,41 +342,30 @@ export default function PlanScreen() {
             )}
           </Card>
         </Reveal>
+        ) : null}
 
-        <Reveal index={3}>
-          <Card>
-            <Label>{t('mobilePlan.whoIsServing')}</Label>
-            {teams.length ? (
-              teams.map((group) => (
-                <View key={group.name} style={styles.teamGroup}>
-                  <Text style={styles.teamName}>{group.name}</Text>
-                  {group.assignments.map((assignment) => (
-                    <View key={assignment.id} style={styles.person}>
-                      <Avatar
-                        name={assignment.person?.full_name ?? assignment.person?.email}
-                        size={32}
-                      />
-                      <View style={styles.flex}>
-                        <Text style={styles.personName}>
-                          {assignment.person?.full_name ?? assignment.person?.email ?? t('common:states.unknown')}
-                        </Text>
-                        {assignment.position ? (
-                          <Text style={styles.personRole}>{assignment.position.name}</Text>
-                        ) : null}
-                      </View>
-                      <Tag
-                        label={t(`common:assignmentStatus.${assignment.status}`)}
-                        accent={statusAccent(theme, assignment.status)}
-                      />
-                    </View>
-                  ))}
-                </View>
-              ))
+        {view === 'teams' ? (
+          <Reveal index={3}>
+            {orgTeams.error ? <ErrorNotice error={orgTeams.error} /> : null}
+            {orgTeams.isLoading ? (
+              <Loading />
             ) : (
-              <Text style={styles.muted}>{t('mobilePlan.nobodyScheduled')}</Text>
+              <PlanTeams
+                teams={planTeams}
+                canScheduleTeam={canScheduleTeam}
+                canEditPlan={canEditPlan}
+                editingNeeds={editingNeeds}
+                onEditingNeedsChange={setEditingNeeds}
+                onNeedChange={(positionId, needed) => setNeed.mutate({ positionId, needed })}
+                savingPositionId={setNeed.isPending ? (setNeed.variables?.positionId ?? null) : null}
+                showAllTeams={showAllTeams}
+                onToggleAllTeams={() => setShowAllTeams((value) => !value)}
+                onAddPeople={() => router.push({ pathname: '/plan/schedule/[id]', params: { id: detail.id } })}
+              />
             )}
-          </Card>
-        </Reveal>
+            <ErrorNotice error={setNeed.error} />
+          </Reveal>
+        ) : null}
 
         {detail.notes ? (
           <Reveal index={4}>
@@ -398,9 +416,6 @@ const makeStyles = (theme: Theme) =>
     itemNote: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: 2 },
     itemLength: { ...theme.type.numeric, color: theme.color.inkFaint, minWidth: 46, textAlign: 'right' },
 
-    teamGroup: { gap: theme.space.md },
-    teamName: { ...theme.type.heading, color: theme.color.ink },
-    person: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     personName: { ...theme.type.body, color: theme.color.ink },
     personRole: { ...theme.type.bodySmall, color: theme.color.inkMuted },
 
