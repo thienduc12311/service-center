@@ -1,10 +1,14 @@
-# Implementation prompts: missing Services capabilities
+# Services capabilities: implementation and remaining gates
 
 Covers **F00–F17** in the [Services plan](../../plans/services-feature-gap-plan.md), [specification](../../specs/services-feature-specification.md) and [user stories](../../specs/services-user-stories.md). Read [execution rules](../IMPLEMENTATION-RULES.md) and one selected epic prompt. Each epic separates core passes from extensions; execute one pass per invocation.
 
 ```text
 Work on F00 Pass A. Read docs/prompts/IMPLEMENTATION-RULES.md, docs/prompts/services-capabilities/README.md and docs/prompts/services-capabilities/F00.md. Inspect the current implementation and both relevant progress ledgers. Reuse shared work already completed through mobile tasks. Implement and verify the selected pass, preserve compatibility and existing changes, and report evidence, remaining gates and the exact next pass. Do not mark the whole epic complete after one pass.
 ```
+
+## Current baseline
+
+F00–F17 core/selected passes have implementation in this checkout. Start with [the current audit](../../plans/services-mobile-contract-audit.md) and [progress ledger](../../plans/services-capabilities-progress.md); choose an unresolved gate rather than rerunning completed migrations. Historical instructions below describe scope, not current missing work. Mobile follows [the shared contract rules](../MOBILE-CONTRACTS.md).
 
 ## Epic index
 
@@ -29,7 +33,7 @@ Work on F00 Pass A. Read docs/prompts/IMPLEMENTATION-RULES.md, docs/prompts/serv
 | F16 | [Attendance, reports, feeds and sharing](F16.md) | Defined metrics/source access; public/custom stages separate |
 | F17 | [Providers, licensing and external API](F17.md) | Select/verify one adapter before implementation estimates |
 
-## Suggested execution order
+## Original dependency order (not a restart queue)
 
 1. F00 delivery boundary and atomic operations; F11's ordinary editor/effective-key fix can run independently.
 2. F01 scoped capability/private preparation foundation; F02 identity; F03 basic availability/preference contract; F04 stable assigned-time model; F08 versioned release and reminders. Permission state, identity and time selection precede new scheduling writers.

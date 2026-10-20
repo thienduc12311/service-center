@@ -1,12 +1,10 @@
-# Implementation prompts: remaining mobile tasks
+# Mobile tasks on the existing website contracts
 
-Covers **MOB-011–MOB-033** from the [mobile backlog](../../plans/mobile-feature-tasks.md). Read [execution rules](../IMPLEMENTATION-RULES.md), the selected prompt and its named [mobile specification](../../specs/mobile-feature-specification.md) section. The [first ten tasks](../mobile-first-10/README.md) remain separate and unchanged.
+Revised 2026-10-19 after reviewing F00–F17. Read [mobile contract rules](../MOBILE-CONTRACTS.md), [execution rules](../IMPLEMENTATION-RULES.md), [the audit](../../plans/services-mobile-contract-audit.md), then the selected prompt and its existing progress entry. This pack integrates native features with the website's implemented APIs and shapes.
 
 ```text
-Work on MOB-012 Pass A. Read docs/prompts/IMPLEMENTATION-RULES.md, docs/prompts/mobile-remaining/README.md and docs/prompts/mobile-remaining/MOB-012.md. Check current source and progress before changing anything. Complete that pass, implement missing named prerequisites as bounded shared work, run relevant checks, and record evidence and the next pass. Preserve existing UI fixes. Report partial gates honestly.
+Work on the next unfinished pass of MOB-019. Read docs/prompts/MOBILE-CONTRACTS.md, docs/prompts/IMPLEMENTATION-RULES.md and its task prompt. Verify and reuse the implemented Services contracts and existing native work. Implement the native gap, test both clients against the same shapes, and record exact evidence and remaining device/deployment gates. Do not recreate completed shared prerequisites.
 ```
-
-Choose a different task/pass by replacing the ID and letter. Start MOB-012's existing-API browser, MOB-021 settings or existing-filter portion of MOB-022 independently when their access/session prerequisites are satisfied. Advanced workflows wait for the named Services pass, not the entire corresponding epic.
 
 | Task | Prompt | Shared prerequisite / boundary |
 |---|---|---|
@@ -34,10 +32,13 @@ Choose a different task/pass by replacing the ID and letter. Start MOB-012's exi
 | MOB-032 | [Combined own-organizations schedule](MOB-032.md) | F03 aggregate/self access; MOB-003 isolation |
 | MOB-033 | [Widgets](MOB-033.md) | Stable schedule/player APIs; platform extension feasibility |
 
-## Dependency handling
 
-Use [Services prompts](../services-capabilities/README.md) to implement missing shared foundations. Reuse shared work already delivered through MOB-005–MOB-010. Mobile adds client behavior; neither pack authorizes a second implementation of the same capability. F12 precedes MOB-023; F13 precedes general file access; F13→F14→MOB-024 precedes cache/advanced playback/widgets. Household delegation, public sharing and optional providers are independently selected scopes.
+## Resume from current progress
 
-Reference boundaries come from the [mobile research](../../research/planning-center-services-mobile-reference.md). Full Matrix, recurring-series maintenance, custom report design and media-record authoring remain web workflows initially. Existing native songbooks stay available. New-person onboarding, OCR restoration and provider imports are not implied by unrelated mobile tasks.
+MOB-001–008 have existing native implementation with remaining verification gates. MOB-005 A–D are complete in the ledger; F11 supplied MOB-002 sequence support; F07 supplied MOB-009/010 Pass A. The next first-ten implementation is **MOB-009 Pass B**, then MOB-010 Pass B, while available device QA for earlier tasks can proceed independently.
 
-Implementation updates go to `docs/plans/mobile-remaining-progress.md`; future creation of that ledger does not replace the first-ten ledger. Save required device evidence separately from build/export results.
+MOB-011–033 consume the existing F03/F09/F10/F11/F12/F13/F14/F15/F16 APIs. Select a native task based on its actual native prerequisites, rather than restarting its F epic. Chat notification completion spans MOB-019 and MOB-020; every new message is required to notify unmuted eligible members. Full Matrix, custom report design and integration administration remain web workflows initially. Optional platform/provider work needs its specific feasibility stage.
+
+Update `docs/plans/mobile-remaining-progress.md` only for implementation/verification actually performed. Create the remaining-mobile ledger when work starts; this prompt rewrite does not claim those native features are implemented. Preserve historical pass labels and evidence. Shared fixes are recorded once in the Services ledger and linked from mobile.
+
+The task's original acceptance requirements remain binding alongside the common contract/device gates. Specs describe intended scope; current source defines the available API. Record differences explicitly.

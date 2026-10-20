@@ -335,6 +335,32 @@ select pg_temp.check(exists (select 1 from public.deliveries d join public.deliv
   where e.conversation_message_id = pg_temp.fx('m2') and d.recipient_person_id = pg_temp.fx('sam')), 'reply notifies the replied-to author');
 set local role authenticated;
 
+-- Every-message notification contract: ordinary messages notify participants,
+-- reply authors receive push too, and mentions never create a second job.
+reset role;
+select pg_temp.check((select count(*) from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('m1') and d.recipient_person_id = pg_temp.fx('riley')) = 2,
+  'mention plus ordinary membership produces exactly one job per channel after retry');
+select pg_temp.check(exists (select 1 from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('m2') and d.recipient_person_id = pg_temp.fx('sam') and d.channel = 'push'),
+  'a reply creates a push as well as the feed job');
+set local role authenticated;
+set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
+insert into f09_fx values ('ordinary_message', gen_random_uuid());
+select public.post_conversation_message(pg_temp.fx('ordinary_message'), pg_temp.fx('band_chat'), 'See everyone at rehearsal', null, null);
+reset role;
+select pg_temp.check((select count(*) from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('ordinary_message') and d.recipient_id = pg_temp.fx('jordan')) = 2,
+  'an ordinary message notifies an eligible leader without a mention or reply');
+select pg_temp.check(not exists (select 1 from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('ordinary_message') and d.recipient_id in ('33333333-3333-4333-8333-333333333333'::uuid, '44444444-4444-4444-8444-444444444444'::uuid)),
+  'ordinary message excludes sender and muted recipient');
+select pg_temp.check(not exists (select 1 from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('ordinary_message')
+    and (d.recipient_id is null or not private.can_access_conversation(d.recipient_id, pg_temp.fx('band_chat')))),
+  'all notification recipients have current conversation access');
+set local role authenticated;
+
 -- Report and moderation.
 set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
 insert into f09_fx select 'report', (public.report_conversation_message(pg_temp.fx('m2'), 'spam', 'not about band')).id;

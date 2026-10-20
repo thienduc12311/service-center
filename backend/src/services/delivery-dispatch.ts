@@ -306,7 +306,7 @@ const sendPush = async (
 
   const badge = await unreadCount(job.recipientId);
   const { t } = recipientLanguage(job.locale);
-  const text = { title: t('push.title'), body: t('push.body') };
+  const text = { title: t('push.title'), body: t(newest.type.startsWith('conversation_') ? 'push.chatBody' : 'push.body') };
   // One push per recipient per action, however many positions it covers.
   const messages: PushMessage[] = devices.map((device) => toPushMessage(newest, device.token, badge, text));
   const transport = pushTransport();
@@ -725,7 +725,7 @@ const dispatchOperationalMessage = async (effect: DeliveryEffect, job: DeliveryJ
 };
 
 /**
- * F09 conversation mention/reply. Rechecked at send time: the message is
+ * F09 conversation messages, mentions and replies. Rechecked at send time: the message is
  * still visible, the recipient is still a participant (team/plan state,
  * youth gate) and has not muted the conversation since.
  */
@@ -738,13 +738,16 @@ const dispatchConversationMessage = async (effect: DeliveryEffect, job: Delivery
     return finished('cancelled', 'recipient_not_eligible');
   }
   const { t } = recipientLanguage(job.locale);
-  const [state, conversation, mention, author] = await Promise.all([
+  const [state, conversation, mention, author, reply] = await Promise.all([
     unwrap(adminDb.from('conversation_member_states').select('muted').eq('conversation_id', message.conversation_id)
       .eq('user_id', job.recipientId).maybeSingle()),
     unwrap(adminDb.from('conversations').select('kind, team_id, plan_id').eq('id', message.conversation_id).maybeSingle()),
     unwrap(adminDb.from('conversation_message_mentions').select('person_id').eq('message_id', message.id)
       .eq('person_id', job.recipientPersonId).maybeSingle()),
     authorName(message.organization_id, message.author_person_id, message.author_id, t('feed.someone')),
+    message.reply_to_id
+      ? unwrap(adminDb.from('conversation_messages').select('author_id').eq('id', message.reply_to_id).maybeSingle())
+      : Promise.resolve(null),
   ]);
   if (state?.muted) return finished('cancelled', 'conversation_muted');
   const place = conversation?.team_id
@@ -756,8 +759,8 @@ const dispatchConversationMessage = async (effect: DeliveryEffect, job: Delivery
   return deliverFeedOrPush(job, [{
     organizationId: message.organization_id,
     userId: job.recipientId,
-    type: mention ? 'conversation_mention' : 'conversation_reply',
-    title: mention ? t('feed.conversationMention', { name: author, place: where }) : t('feed.conversationReply', { name: author, place: where }),
+    type: mention ? 'conversation_mention' : reply?.author_id === job.recipientId ? 'conversation_reply' : 'conversation_message',
+    title: t(mention ? 'feed.conversationMention' : reply?.author_id === job.recipientId ? 'feed.conversationReply' : 'feed.conversationMessage', { name: author, place: where }),
     body: excerpt(message.body),
     planId: conversation?.plan_id ?? null,
     conversationId: message.conversation_id,

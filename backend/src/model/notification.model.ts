@@ -1,4 +1,4 @@
-import type { NotificationRow, NotificationType } from '@service-center/shared';
+import type { NotificationRow, NotificationType, PushNavigationPayload } from '@service-center/shared';
 
 /**
  * One notification about to be written, in domain terms. Callers describe the
@@ -65,12 +65,7 @@ export interface PushMessage {
   badge?: number;
 }
 
-export interface PushPayload {
-  notification_id: string;
-  type: NotificationType;
-  organization_id: string;
-  plan_id: string | null;
-}
+export type PushPayload = PushNavigationPayload;
 
 /** The generic, recipient-language push wording. */
 export interface PushText {
