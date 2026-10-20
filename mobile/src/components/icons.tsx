@@ -10,6 +10,7 @@ import type { ColorValue } from 'react-native';
 export type IconName =
   | 'schedule'
   | 'calendar'
+  | 'clock'
   | 'music'
   | 'book'
   | 'person'
@@ -51,6 +52,12 @@ const paths: Record<IconName, (stroke: number) => ReactElement> = {
       <Line x1={3} y1={10} x2={21} y2={10} strokeWidth={w} />
       <Line x1={8.5} y1={2.8} x2={8.5} y2={6.5} strokeWidth={w} />
       <Line x1={15.5} y1={2.8} x2={15.5} y2={6.5} strokeWidth={w} />
+    </>
+  ),
+  clock: (w) => (
+    <>
+      <Circle cx={12} cy={12} r={9} strokeWidth={w} />
+      <Polyline points="12,7 12,12 15.5,14" strokeWidth={w} />
     </>
   ),
   music: (w) => (

@@ -10,6 +10,7 @@ import type {
 /** One position a person holds on a plan, with their own answer to it. */
 export interface ScheduleResponsibility {
   assignmentId: string;
+  planId: string;
   status: AssignmentStatus;
   /** Exact per-time answers may differ even though the legacy aggregate is pending. */
   scopeStatus: ScheduleGroupStatus;
@@ -135,6 +136,7 @@ const toResponsibility = (
   const exactStatuses = timeResponses.map((response) => response.status);
   return {
     assignmentId: assignment.id,
+    planId: assignment.plan_id,
     status: assignment.status,
     scopeStatus: exactStatuses.length ? groupStatus(exactStatuses) : assignment.status,
     responseNote,

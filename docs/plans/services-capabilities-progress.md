@@ -435,6 +435,13 @@ Schedule dialog: Times (All times / Only these times, with untimed notice), live
 - New rollback-only `supabase/tests/mob009-signup-claims.sql` covers full, cancel/reject restoring capacity once, stale version, closed, single-record lazy expiry and inactive-member refusal. See the mobile ledger, MOB-009 Pass B.
 - Still open: F08 transition templates and durable scheduled expiry.
 
+### F07 shared fixes from MOB-010 Pass B — 2026-10-20
+- **Capacity gap closed.** A manual (or any other) assignment writer only checked capacity when the position had an open signup opening, and replacement finalization never rechecked it. With `needed = 1`, a manual fill was accepted during a candidate's consent hold and the leader's approval then confirmed a second person. Migration `20261106000000_mob010_replacement_capacity.sql` replaces `private.f07_enforce_assignment_capacity` (refuses `capacity_full` while a live replacement hold covers the place) and `private.f07_finalize_offer` (rechecks occupancy, excluding its own hold, against `plan_position_needs.needed`, 1 when unset). No table/policy/grant change; behavior is unchanged when no hold is live.
+- `replacementRequestExpiry` / `replacementRequiredTimes` in `packages/shared/src/lib/replacements.ts` (+6 tests). The website's replacement request now uses the same expiry as native (seven days, capped at the first required time).
+- New rollback-only `supabase/tests/mob010-replacements.sql`; `f07-signups-replacements.sql`, `mob009-signup-claims.sql` and `f07-concurrent-allocation.sh` rerun and pass. See the mobile ledger, MOB-010 Pass B.
+- Applied locally with `psql`; local migration history still lacks the F15 `20261101*` and `20261105*` records, so `supabase migration up --local` refuses. Replay from an empty database before a shared environment remains the F07 gate.
+- Still open: F08 transition templates and durable scheduled expiry.
+
 ## F08 — 2026-10-18
 
 **Pre-existing state.** `main` at `125cbbb` (F07 merged), clean; new branch `feature/f08-release-reminders`. F07's migration `20261023000000` had been applied to the local database by hand earlier and was unrecorded, so `supabase migration up` stopped on it; it was marked applied with `supabase migration repair --status applied 20261023000000 --local` (no reset) after `f07-signups-replacements.sql` passed against it. All three passes were selected in this invocation.

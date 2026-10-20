@@ -8,13 +8,13 @@ import {
   type OpportunityClaimDetail,
   type OpportunityClaimRow,
   type SignupOpportunity,
-  type SignupOpportunityTime,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { newIdempotencyKey } from '../../src/lib/idempotency';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { Button, Card, EmptyState, ErrorNotice, Label, ListRow, Loading, Screen, Tag, screenPadding } from '../../src/components/ui';
+import { StatusBanner, TimeSlotList } from '../../src/components/StaffingParts';
 import {
   ClaimAttempts,
   canCancelClaim,
@@ -165,13 +165,6 @@ export default function OpeningScreen() {
 
   const status = openingStatus(data);
   const title = t('common:format.teamPosition', { team: data.team_name, position: data.position_name });
-  const timeLabel = (time: SignupOpportunityTime): string =>
-    t('reports:attendance.timeLabel', {
-      name: time.name || t(`reports:attendance.timeKinds.${time.kind}`),
-      date: format.date(time.starts_at, 'short'),
-      start: format.time(time.starts_at),
-      end: format.time(time.ends_at),
-    });
 
   const startReview = () => {
     if (!owner) return;
@@ -226,21 +219,21 @@ export default function OpeningScreen() {
 
         <Card>
           <Label>{t('openPositions.requiredTimes')}</Label>
-          {data.times.length === 0
-            ? <Text style={styles.muted}>{t('openPositions.noTimes')}</Text>
-            : data.times.map((time) => <Text key={time.id} style={styles.body}>{timeLabel(time)}</Text>)}
+          <TimeSlotList times={data.times} emptyText={t('openPositions.noTimes')} />
         </Card>
 
         {myClaim ? (
-          <Card>
-            <Text style={styles.body} accessibilityLiveRegion="polite">
-              {myClaim.status === 'confirmed'
-                ? t('openPositions.status.confirmed')
-                : myClaim.status === 'awaiting_approval' && myClaim.reservation_expires_at
-                  ? t('openPositions.status.awaiting_approval', { time: format.dateTime(myClaim.reservation_expires_at) })
-                  : t('openPositions.status.ended')}
-            </Text>
-            {claimEnded(myClaim) ? null : <Text style={styles.muted}>{t('opportunities.description')}</Text>}
+          <StatusBanner
+            live
+            accent={myClaim.status === 'confirmed' ? 'green' : myClaim.status === 'awaiting_approval' ? 'yellow' : 'neutral'}
+            icon={myClaim.status === 'confirmed' ? 'check' : myClaim.status === 'awaiting_approval' ? 'clock' : 'close'}
+            title={myClaim.status === 'confirmed'
+              ? t('openPositions.status.confirmed')
+              : myClaim.status === 'awaiting_approval' && myClaim.reservation_expires_at
+                ? t('openPositions.status.awaiting_approval', { time: format.dateTime(myClaim.reservation_expires_at) })
+                : t('openPositions.status.ended')}
+            body={claimEnded(myClaim) ? null : t('opportunities.description')}
+          >
             <ErrorNotice error={cancel.error} />
             {canCancelClaim(myClaim) ? (
               <Button
@@ -251,17 +244,16 @@ export default function OpeningScreen() {
                 onPress={() => confirmCancel(myClaim)}
               />
             ) : null}
-          </Card>
+          </StatusBanner>
         ) : null}
 
         {failure ? (
-          <Card>
-            <Text style={styles.warn} accessibilityRole="alert">{t(`openPositions.failure.${failure}`)}</Text>
+          <StatusBanner live accent="yellow" icon="alert" title={t(`openPositions.failure.${failure}`)}>
             {failure === 'failed' ? <ErrorNotice error={claim.error} /> : null}
             {failureNeedsRefetch(failure) ? (
               <Button variant="secondary" title={t('openPositions.checkAgain')} loading={opening.isRefetching} onPress={() => void opening.refetch()} />
             ) : null}
-          </Card>
+          </StatusBanner>
         ) : null}
 
         {canClaim(data) && !reviewing ? (
@@ -269,23 +261,25 @@ export default function OpeningScreen() {
         ) : null}
 
         {canClaim(data) && reviewing ? (
-          <Card>
-            <Text style={styles.heading}>{t('openPositions.reviewTitle')}</Text>
-            <Text style={styles.body}>
-              {data.approval_policy === 'direct'
-                ? t('openPositions.reviewDirect', { position: title })
-                : t('openPositions.reviewApproval', { time: format.dateTime(reservationEndsAt(data, new Date())) })}
-            </Text>
+          <StatusBanner
+            accent={data.approval_policy === 'direct' ? 'green' : 'blue'}
+            icon={data.approval_policy === 'direct' ? 'check' : 'clock'}
+            title={t('openPositions.reviewTitle')}
+            body={data.approval_policy === 'direct'
+              ? t('openPositions.reviewDirect', { position: title })
+              : t('openPositions.reviewApproval', { time: format.dateTime(reservationEndsAt(data, new Date())) })}
+          >
             <View style={styles.actions}>
-              <Button variant="secondary" title={t('common:actions.cancel')} disabled={claim.isPending} onPress={() => setReviewing(false)} />
+              <Button variant="secondary" title={t('common:actions.cancel')} disabled={claim.isPending} onPress={() => setReviewing(false)} style={styles.flex} />
               <Button
                 title={claim.isPending ? t('openPositions.submitting') : t('openPositions.signUp')}
                 loading={claim.isPending}
                 disabled={claim.isPending}
                 onPress={submit}
+                style={styles.flex}
               />
             </View>
-          </Card>
+          </StatusBanner>
         ) : null}
 
         {mayLead ? (
@@ -324,11 +318,11 @@ export default function OpeningScreen() {
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
+    flex: { flex: 1 },
     gap: { gap: theme.space.md },
     rowTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: theme.space.sm },
     heading: { ...theme.type.body, fontWeight: '600', color: theme.color.ink, flex: 1 },
     body: { ...theme.type.body, color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-    warn: { ...theme.type.body, fontWeight: '600', color: theme.accent.yellow.fg },
     actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: theme.space.sm, marginTop: theme.space.sm },
   });

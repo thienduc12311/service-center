@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { LocalizedError, type ApprovedSwapRow, type AssignmentDetail, type OpportunityClaimDetail, type ReplacementRequestDetail, type SignupOpportunity } from '@service-center/shared';
+import { LocalizedError, replacementRequestExpiry, replacementRequiredTimes, type ApprovedSwapRow, type AssignmentDetail, type OpportunityClaimDetail, type PlanTimeRow, type ReplacementRequestDetail, type SignupOpportunity } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { keys, useInvalidateOrg, usePeople } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
@@ -21,13 +21,15 @@ interface OpportunityPanelProps {
   planId: string;
   options: SignupSetupOption[];
   assignments: AssignmentDetail[];
+  /** The plan's times; a replacement request closes when the first required one starts. */
+  times: PlanTimeRow[];
   currentPersonId: string | null;
 }
 
 const newKey = (): string => crypto.randomUUID();
 const inDays = (days: number): string => new Date(Date.now() + days * 86_400_000).toISOString();
 
-export const OpportunityPanel = ({ planId, options, assignments, currentPersonId }: OpportunityPanelProps) => {
+export const OpportunityPanel = ({ planId, options, assignments, times, currentPersonId }: OpportunityPanelProps) => {
   const { t } = useTranslation(['staffing', 'common']);
   const { dateTime } = useFormatters();
   const { organizationId, user } = useAuth();
@@ -68,9 +70,14 @@ export const OpportunityPanel = ({ planId, options, assignments, currentPersonId
     if (!person) throw new LocalizedError({ key: 'staffing:errors.chooseCandidate' });
     return api.issueReplacementOffer(request.id, { candidate_person_id: person, expected_version: request.version, idempotency_key: newKey() });
   }, onSuccess: refresh });
-  const requestReplacement = useMutation({ mutationFn: (assignment: AssignmentDetail) => api.createReplacementRequest({
-    assignment_id: assignment.id, expected_revision: assignment.request_revision, idempotency_key: newKey(), expires_at: inDays(7),
-  }), onSuccess: refresh });
+  const requestReplacement = useMutation({ mutationFn: (assignment: AssignmentDetail) => {
+    const required = replacementRequiredTimes({ applicable_time_ids: assignment.attendance_mode === 'all' ? [] : assignment.attendance_times.map((time) => time.plan_time_id) }, times);
+    const expiresAt = replacementRequestExpiry(new Date(), required);
+    if (!expiresAt) throw new LocalizedError({ key: 'staffing:errors.replacementTooLate' });
+    return api.createReplacementRequest({
+      assignment_id: assignment.id, expected_revision: assignment.request_revision, idempotency_key: newKey(), expires_at: expiresAt,
+    });
+  }, onSuccess: refresh });
   const cancelReplacement = useMutation({ mutationFn: (request: ReplacementRequestDetail) => api.cancelReplacementRequest(request.id, {
     expected_version: request.version,
   }), onSuccess: refresh });

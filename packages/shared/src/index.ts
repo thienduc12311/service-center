@@ -27,6 +27,7 @@ export * from './lib/service-song-book.js';
 export * from './lib/assignment-responses.js';
 export * from './lib/delivery.js';
 export * from './lib/reminders.js';
+export * from './lib/replacements.js';
 export * from './lib/message-templates.js';
 export * from './lib/access.js';
 export * from './lib/staffing-proposals.js';
