@@ -20,11 +20,24 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 | MOB-006 Pass B — bounded recurrence + web maintenance | implemented; QA pending | `feature/mob-006-availability` | Signed-in web maintenance matrix below |
 | MOB-006 Pass C — native editor + conflict review | implemented; QA pending | `feature/mob-006-availability` | Signed-in iOS/Android interaction matrix below |
 | MOB-007 — team scheduling preferences (native) | implemented; QA pending | `feature/mob-007-team-preferences` | Signed-in iOS/Android device check (below); next task: MOB-008 |
-| MOB-008 | not started | — | Next task: MOB-008 |
+| MOB-008 Pass A — native Teams view + needs editing | implemented; QA pending | `feature/mob-008-plan-staffing` | Signed-in device check (below); then Pass B |
+| MOB-008 Pass B — candidate picker + scheduling commit | not started | — | Mirror website `SchedulePeopleModal` on its existing endpoints |
 | MOB-009 Pass A — shared opportunity allocator/API | implemented; QA pending | delivered by F07 on `feature/f07-signups-replacements` | Reuse for native Pass B; F08 transition delivery remains a gate |
 | MOB-009 Pass B — native opportunities/review | not started | — | Build on F07 contracts; iOS/Android device QA |
 | MOB-010 Pass A — shared replacement allocator/API | implemented; QA pending | delivered by F07 on `feature/f07-signups-replacements` | Reuse for native Pass B; F08 transition delivery remains a gate |
 | MOB-010 Pass B — native replacement tracking | not started | — | Build on F07 contracts; iOS/Android device QA |
+
+## MOB-008 Pass A — 2026-10-19
+
+**Website is the reference.** Per the user, the website staffing work is finished, so native mirrors it on existing contracts: no new migration, schema or endpoint. `mobile/src/lib/plan-teams.ts` mirrors the website's `buildPlanTeams` (`frontend/src/components/plan/types.ts`) and keep the two in step. The website's `staffing` strings and `plans:tabs.*` labels are reused.
+
+**Count semantics (website):** per team, confirmed and declined by status; pending means released and unconfirmed; prepared is listed separately and visible only to the team's schedulers (RLS). Per position, `scheduled/needed` counts every request on that position, the same as the website.
+
+**Needs editing:** the "Needed positions" toggle matches the website. Each stepper tap PUTs that one position (`setPlanPositionNeeds`), so positions that weren't sent are kept. Values are bounded 0–99, and the stepper waits while its save is in flight. Who can edit is the same as on the website: `plans.edit`, or `scheduling.manage` scoped to that team. The server keeps the existing `requireManager` and per-team RLS. There is no stale-value check beyond what the website has.
+
+**Native:** the plan screen has an Order/Teams switch (`SegmentedControl`). Teams replaces the old "Who is serving" card and offers show-all-teams, per-team counts, positions, plan-only suffix, unpositioned, prepared tags and 44pt steppers. Release review stays where it was.
+
+**Checks:** mobile `tsc` is clean; mobile tests pass 55/55, including `plan-teams.test.ts` (4: team filter, counts, visibility, plan-only); iOS and Android Expo export pass. **Not verified:** signed-in device interaction, light/dark mode, a team-scoped leader on device.
 
 ## F08 shared release/reminder foundation — 2026-10-18
 
