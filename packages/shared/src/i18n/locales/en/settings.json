@@ -524,7 +524,22 @@
     "avoidedDates": "Dates to avoid",
     "warningHint": "Schedulers see these as warnings. Use blockout dates for times you truly can’t serve.",
     "save": "Save preferences",
-    "useAllTeams": "Use all-teams preferences"
+    "useAllTeams": "Use all-teams preferences",
+    "screenTitle": "Team scheduling preferences",
+    "entry": "Team scheduling preferences",
+    "entryDescription": "How often and which weeks you'd like to serve on each team.",
+    "noTeams": "You're not on any team in this church yet. Preferences appear here once a leader adds you to a team.",
+    "noPerson": "Your login isn't linked to a person in this church yet, so there are no team preferences to set.",
+    "preferredTimesHint": "Local start times like 09:00, 11:00. Leave empty for any time.",
+    "maxPerMonthHint": "A whole number from 1 to 31. Leave empty for no limit. Several positions on one service count once.",
+    "invalidMax": "Enter a whole number from 1 to 31, or leave it empty.",
+    "invalidTimes": "Use 24-hour times like 09:00, separated by commas.",
+    "stale": "These preferences changed somewhere else. Your edits are still here — reload to see the latest, then save again.",
+    "reload": "Load latest",
+    "saved": "Preferences saved.",
+    "warningVsUnavailable": "Preferences are warnings for schedulers; you can still be scheduled. Blockout dates on your profile are when you truly can't serve.",
+    "datesOnWebsite": "Specific preferred or avoided dates are kept and can be changed on the website.",
+    "custom": "Custom"
   },
   "serviceTypeFiles": {
     "title": "Service type default files",

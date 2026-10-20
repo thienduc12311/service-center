@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { isAdmin, STORAGE_BUCKETS, type BlockoutRow } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
@@ -18,6 +19,7 @@ import {
   Field,
   IconButton,
   Label,
+  ListRow,
   Loading,
   Screen,
   SegmentedControl,
@@ -54,6 +56,7 @@ export default function ProfileScreen() {
     switchOrganization,
   } = useAuth();
   const theme = useTheme();
+  const router = useRouter();
   const styles = useThemedStyles(makeStyles);
   const queryClient = useQueryClient();
   const { scheme, setScheme } = useColorSchemeControl();
@@ -243,6 +246,15 @@ export default function ProfileScreen() {
             <Label>{t('profile.appearance.title')}</Label>
             <Text style={styles.body}>{t('profile.appearance.description')}</Text>
             <SegmentedControl options={schemes} value={scheme} onChange={setScheme} />
+          </Card>
+        </Reveal>
+
+        <Reveal index={3}>
+          <Card>
+            <ListRow onPress={() => router.push('/team-preferences')} showChevron>
+              <Label>{t('preferences.entry')}</Label>
+              <Text style={styles.body}>{t('preferences.entryDescription')}</Text>
+            </ListRow>
           </Card>
         </Reveal>
 

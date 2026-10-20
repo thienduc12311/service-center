@@ -514,7 +514,22 @@
     "avoidedDates": "Ngày muốn tránh",
     "warningHint": "Người phân công sẽ thấy đây là cảnh báo. Hãy dùng ngày bận cho những lúc bạn thật sự không thể phục vụ.",
     "save": "Lưu tùy chọn",
-    "useAllTeams": "Dùng tùy chọn chung cho mọi ban"
+    "useAllTeams": "Dùng tùy chọn chung cho mọi ban",
+    "screenTitle": "Tùy chọn lịch phục vụ theo ban",
+    "entry": "Tùy chọn lịch phục vụ theo ban",
+    "entryDescription": "Bạn muốn phục vụ thường xuyên thế nào và vào những tuần nào cho từng ban.",
+    "noTeams": "Bạn chưa thuộc ban nào trong hội thánh này. Tùy chọn sẽ hiện ở đây khi người lãnh đạo thêm bạn vào một ban.",
+    "noPerson": "Tài khoản của bạn chưa được liên kết với một người trong hội thánh này, nên chưa có tùy chọn ban để thiết lập.",
+    "preferredTimesHint": "Giờ bắt đầu theo giờ địa phương, ví dụ 09:00, 11:00. Để trống nếu giờ nào cũng được.",
+    "maxPerMonthHint": "Số nguyên từ 1 đến 31. Để trống nếu không giới hạn. Nhiều vị trí trong cùng một buổi chỉ tính một lần.",
+    "invalidMax": "Nhập số nguyên từ 1 đến 31, hoặc để trống.",
+    "invalidTimes": "Dùng giờ 24 tiếng như 09:00, cách nhau bằng dấu phẩy.",
+    "stale": "Tùy chọn này vừa được thay đổi ở nơi khác. Nội dung bạn sửa vẫn còn — hãy tải bản mới nhất rồi lưu lại.",
+    "reload": "Tải bản mới nhất",
+    "saved": "Đã lưu tùy chọn.",
+    "warningVsUnavailable": "Tùy chọn chỉ là cảnh báo cho người xếp lịch; bạn vẫn có thể được xếp lịch. Ngày bận trong hồ sơ là khi bạn thật sự không thể phục vụ.",
+    "datesOnWebsite": "Các ngày cụ thể muốn hoặc tránh được giữ nguyên và có thể chỉnh trên trang web.",
+    "custom": "Riêng"
   },
   "serviceTypeFiles": {
     "title": "Tệp mặc định của loại buổi nhóm",

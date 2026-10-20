@@ -36,6 +36,10 @@ export const queryKeys = {
   ) => [...privateRoot(scope), 'calendar', range, calendarScope] as const,
   blockouts: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'blockouts'] as const,
+  schedulingPreferences: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'scheduling-preferences'] as const,
+  teams: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'teams'] as const,
   songbooks: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'songbooks'] as const,
   songbookSongs: (scope: ProtectedQueryScope | null) =>
