@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { isAuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { LocalizedError, type QualifiedTranslationKey } from '@service-center/shared';
 import { supabase } from '../lib/supabase';
-import { AnonymousLanguageToggle } from '../i18n';
+import { LocaleSwitcher } from '../i18n';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice } from '../components/ui';
 
@@ -89,7 +89,7 @@ export const LoginPage = () => {
   return (
     <div className="relative grid min-h-full place-items-center px-4 py-12">
       <div className="absolute right-4 top-4">
-        <AnonymousLanguageToggle />
+        <LocaleSwitcher />
       </div>
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">

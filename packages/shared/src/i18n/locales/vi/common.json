@@ -19,7 +19,8 @@
     "offline": "Bạn đang ngoại tuyến. Hãy kết nối mạng để lưu ngôn ngữ.",
     "linkRequired": "Tài khoản của bạn chưa được liên kết với một thành viên trong hội thánh này nên chưa thể lưu ngôn ngữ. Hãy nhờ quản trị viên hội thánh liên kết tài khoản của bạn.",
     "retry": "Thử lại",
-    "toggleLabel": "Đổi ngôn ngữ"
+    "toggleLabel": "Đổi ngôn ngữ",
+    "displayOnlyHint": "Chỉ áp dụng cho cửa sổ này. Ngôn ngữ đã lưu nằm trong phần Cài đặt."
   },
   "actions": {
     "save": "Lưu",

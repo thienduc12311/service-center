@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import {
   directionFor,
+  localeRegistry,
   formatLocaleFor,
   resolveLocale,
   selectedPreference,
@@ -28,7 +29,32 @@ export interface LanguageContextValue {
   dismissError: () => void;
   /** What Automatic resolves to on this browser right now. */
   automaticLocale: SupportedLocale;
+  /** Top-bar switch for this tab only; null shows the resolved preference. Never saved. */
+  displayOverride: SupportedLocale | null;
+  setDisplayOverride: (value: SupportedLocale | null) => void;
 }
+
+/** Per-tab, so the switch never touches the saved preference or other tabs. */
+const DISPLAY_OVERRIDE_KEY = 'service-center.language.display';
+
+const readDisplayOverride = (): SupportedLocale | null => {
+  try {
+    const stored = sessionStorage.getItem(DISPLAY_OVERRIDE_KEY);
+    return localeRegistry.isSupported(stored) ? stored : null;
+  } catch (error) {
+    console.warn('[i18n] session storage unavailable', error);
+    return null;
+  }
+};
+
+const writeDisplayOverride = (value: SupportedLocale | null): void => {
+  try {
+    if (value) sessionStorage.setItem(DISPLAY_OVERRIDE_KEY, value);
+    else sessionStorage.removeItem(DISPLAY_OVERRIDE_KEY);
+  } catch (error) {
+    console.warn('[i18n] could not store display language', error);
+  }
+};
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
@@ -43,6 +69,12 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const state = useSyncExternalStore(languageController.subscribe, languageController.getState);
   const profileId = user?.profile.id ?? null;
   const signedIn = Boolean(session);
+  const [displayOverride, setOverrideState] = useState<SupportedLocale | null>(readDisplayOverride);
+
+  const setDisplayOverride = useCallback((value: SupportedLocale | null) => {
+    writeDisplayOverride(value);
+    setOverrideState(value);
+  }, []);
 
   useEffect(() => {
     if (loading && signedIn) return;
@@ -70,7 +102,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const locale = state.resolution.locale;
+  const locale = displayOverride ?? state.resolution.locale;
   useEffect(() => {
     if (i18n.language !== locale) void i18n.changeLanguage(locale);
     document.documentElement.lang = locale;
@@ -84,12 +116,21 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
       formatLocale: formatLocaleFor(locale),
       selected: selectedPreference(state),
       member: state.context.kind === 'member',
-      save: (next) => languageController.save(next),
-      setAnonymousChoice: (next) => languageController.setAnonymousChoice(next),
+      // An explicit choice in Settings replaces the temporary top-bar switch.
+      save: (next) => {
+        setDisplayOverride(null);
+        return languageController.save(next);
+      },
+      setAnonymousChoice: (next) => {
+        setDisplayOverride(null);
+        return languageController.setAnonymousChoice(next);
+      },
       dismissError: () => languageController.dismissError(),
       automaticLocale: resolveLocale({ member: true, saved: null, detected: browserLanguages() }).locale,
+      displayOverride,
+      setDisplayOverride,
     }),
-    [state, locale],
+    [state, locale, displayOverride, setDisplayOverride],
   );
 
   return (

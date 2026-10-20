@@ -5,11 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { LocalizedError } from '@service-center/shared';
 import { api } from '../lib/api';
 import { Button, ErrorNotice, Loading } from '../components/ui';
-import { AnonymousLanguageToggle, useFormatters, useRecipientLanguage } from '../i18n';
+import { LocaleSwitcher, useFormatters, useRecipientLanguage } from '../i18n';
 
 const LanguageCorner = () => (
   <div className="flex justify-end pb-4">
-    <AnonymousLanguageToggle />
+    <LocaleSwitcher />
   </div>
 );
 

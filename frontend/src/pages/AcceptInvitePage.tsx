@@ -6,7 +6,7 @@ import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Loading } from '../components/ui';
-import { AnonymousLanguageToggle, useRecipientLanguage } from '../i18n';
+import { LocaleSwitcher, useRecipientLanguage } from '../i18n';
 import { localizeAuthError } from './LoginPage';
 
 type Stage =
@@ -122,7 +122,7 @@ export const AcceptInvitePage = () => {
   return (
     <div className="relative grid min-h-full place-items-center px-4 py-12">
       <div className="absolute right-4 top-4">
-        <AnonymousLanguageToggle />
+        <LocaleSwitcher />
       </div>
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">

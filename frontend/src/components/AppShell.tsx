@@ -6,6 +6,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { Avatar } from './ui';
 import { GlobalSearch } from './GlobalSearch';
 import { useTheme } from '../providers/ThemeProvider';
+import { LocaleSwitcher } from '../i18n';
 
 /** One entry of the main navigation; `label` is a common `nav.*` key. */
 interface NavItem {
@@ -83,6 +84,8 @@ export const AppShell = () => {
                 ))}
               </select>
             )}
+
+            <LocaleSwitcher />
 
             <div className="relative">
               <button

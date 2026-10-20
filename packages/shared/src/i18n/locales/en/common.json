@@ -19,7 +19,8 @@
     "offline": "You are offline. Connect to the internet to save your language.",
     "linkRequired": "Your account is not linked to a person in this church yet, so a language cannot be saved here. Ask a church administrator to link your account.",
     "retry": "Try again",
-    "toggleLabel": "Change language"
+    "toggleLabel": "Change language",
+    "displayOnlyHint": "Applies to this window only. Your saved language is in Settings."
   },
   "actions": {
     "save": "Save",
