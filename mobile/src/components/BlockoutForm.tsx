@@ -19,6 +19,8 @@ interface BlockoutFormProps {
   editing?: BlockoutRow | null;
   onSaved: () => Promise<void>;
   onCancelEdit?: () => void;
+  /** MOB-011: the Person helped under an availability grant; omitted for yourself. The server rechecks the grant. */
+  personId?: string;
 }
 
 type Repeat = 'none' | 'weekly' | 'monthly';
@@ -40,7 +42,7 @@ const dateForPicker = (date: string, time = '12:00'): Date => {
 };
 const initialDate = (): string => civilDate(new Date());
 
-export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit }: BlockoutFormProps) => {
+export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit, personId }: BlockoutFormProps) => {
   const { user, organizationId, generation, isCurrentGeneration } = useAuth();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation(['scheduling', 'common']);
@@ -82,6 +84,7 @@ export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit }: Blockout
   }, [editing]);
 
   const intent = () => ({
+    ...(personId ? { person_id: personId } : {}),
     all_day: allDay, timezone, local_start_date: startDate,
     local_start_time: allDay ? null : startTime, local_end_date: endDate,
     local_end_time: allDay ? null : endTime, ambiguous_time_policy: ambiguousPolicy,
@@ -103,6 +106,7 @@ export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit }: Blockout
         localEndDate: endDate, localEndTime: allDay ? null : endTime, ambiguousTimePolicy: ambiguousPolicy,
       });
       return { occurrences: [], affected_assignments: await api.previewAffectedAssignments({
+        ...(personId ? { person_id: personId } : {}),
         occurrences: [{ starts_at: resolved.startsAt, ends_at: resolved.endsAt }],
       }) };
     },
@@ -152,7 +156,7 @@ export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit }: Blockout
   };
 
   return <View style={styles.form}>
-    <Text style={styles.description}>{t('blockoutForm.description', { timezone })}</Text>
+    {personId ? null : <Text style={styles.description}>{t('blockoutForm.description', { timezone })}</Text>}
     <View style={styles.switchRow}><Text style={styles.label}>{t('blockoutForm.allDay')}</Text><Switch value={allDay} onValueChange={(value) => { setAllDay(value); setAffected(null); }} /></View>
     <View style={styles.row}><Button title={t('blockoutForm.start', { date: f.calendarDate(startDate, 'medium') })} variant="secondary" onPress={() => setPicker('startDate')} /><Button title={t('blockoutForm.end', { date: f.calendarDate(endDate, 'medium') })} variant="secondary" onPress={() => setPicker('endDate')} /></View>
     {!allDay ? <View style={styles.row}><Button title={t('blockoutForm.from', { time: startTime })} variant="secondary" onPress={() => setPicker('startTime')} /><Button title={t('blockoutForm.to', { time: endTime })} variant="secondary" onPress={() => setPicker('endTime')} /></View> : <Text style={styles.hint}>{t('blockoutForm.endExclusiveHint')}</Text>}

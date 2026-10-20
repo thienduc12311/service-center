@@ -61,6 +61,15 @@
     "withdraw": "Rút lại",
     "noRequests": "Không có yêu cầu nào sắp tới.",
     "availability": "Lịch rảnh",
-    "schedulingPreferences": "Tùy chọn phân công"
+    "schedulingPreferences": "Tùy chọn phân công",
+    "privateBoundary": "Chi tiết chương trình, ghi chú và tệp vẫn là riêng tư của {{name}}.",
+    "noTimes": "Không có giờ nào.",
+    "stale": "Yêu cầu này đã thay đổi từ khi bạn mở. Đã làm mới — hãy kiểm tra và thử lại.",
+    "viewOnly": "Bạn có thể xem các yêu cầu này nhưng không thể trả lời.",
+    "withdrawTitle": "Rút lui?",
+    "withdrawMessage": "Rút {{name}} khỏi {{plan}}? Người trưởng nhóm sẽ được báo.",
+    "noBlockouts": "Không có ngày bận.",
+    "seriesTheirs": "Chỉ {{name}} mới có thể thay đổi ngày bận lặp lại.",
+    "preferencesFor": "Mức độ {{name}} muốn phục vụ, theo từng nhóm."
   }
 }
