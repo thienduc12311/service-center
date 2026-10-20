@@ -55,6 +55,14 @@ describe('preference draft', () => {
     expect(result.ok && 'expected_revision' in result.request).toBe(false);
   });
 
+  it('names the helped Person only when saving under a delegation (MOB-011)', () => {
+    const person = '00000000-0000-4000-8000-0000000000a9';
+    const delegated = requestFromDraft(draftFromRow(undefined), TEAM_A, undefined, person);
+    expect(delegated.ok && delegated.request.person_id).toBe(person);
+    const own = requestFromDraft(draftFromRow(undefined), TEAM_A, undefined, null);
+    expect(own.ok && 'person_id' in own.request).toBe(false);
+  });
+
   it('never leaves a week both preferred and avoided', () => {
     const draft = toggleWeek(draftFromRow(row()), 'avoidedWeeks', 1);
     expect(draft.preferredWeeks).toEqual([3]);

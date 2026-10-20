@@ -61,6 +61,15 @@
     "withdraw": "Withdraw",
     "noRequests": "No upcoming requests.",
     "availability": "Availability",
-    "schedulingPreferences": "Scheduling preferences"
+    "schedulingPreferences": "Scheduling preferences",
+    "privateBoundary": "Plan details, notes and files stay private to {{name}}.",
+    "noTimes": "No times listed.",
+    "stale": "This request changed since you opened it. It has been refreshed — check it and try again.",
+    "viewOnly": "You can see these requests but not answer them.",
+    "withdrawTitle": "Withdraw?",
+    "withdrawMessage": "Withdraw {{name}} from {{plan}}? The leader will be told.",
+    "noBlockouts": "No blockout dates.",
+    "seriesTheirs": "Only {{name}} can change a repeating blockout.",
+    "preferencesFor": "How often {{name}} prefers to serve, per team."
   }
 }

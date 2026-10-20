@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError, type SchedulingFrequency, type SchedulingPreferenceRow } from '@service-center/shared';
 import { api } from '../src/lib/api';
@@ -16,6 +17,8 @@ import {
   type WeekList,
 } from '../src/lib/preference-draft';
 import { useAuth } from '../src/providers/AuthProvider';
+import { activeReceivedGrant } from '../src/lib/delegations';
+import { useDelegations } from '../src/lib/useDelegations';
 import {
   Button,
   Card,
@@ -45,21 +48,29 @@ const isStale = (error: unknown): boolean => error instanceof ApiError && error.
 
 /**
  * MOB-007: the signed-in Person's own per-team preferences (F03 contract).
+ * MOB-011: with `?delegation=`, the same form for the Person who granted the
+ * signed-in account an availability right; only their teams are offered and
+ * every save names them (`person_id`), rechecked against the live grant.
  * They are scheduler warnings only; blockouts stay the hard "unavailable".
  * Mounted under the session-generation Stack key, so switching organization
  * remounts it and drops any unsaved draft.
  */
 export default function TeamPreferencesScreen() {
-  const { t } = useTranslation(['settings', 'common']);
+  const { t } = useTranslation(['settings', 'home', 'common']);
   const styles = useThemedStyles(makeStyles);
   const theme = useTheme();
   const queryClient = useQueryClient();
   const { user, queryScope, generation, isCurrentGeneration } = useAuth();
+  const { delegation: delegationId } = useLocalSearchParams<{ delegation?: string }>();
+  const delegations = useDelegations();
+  const grant = delegationId ? activeReceivedGrant(delegations.data, delegationId) : null;
+  const personId = grant?.can_manage_availability ? grant.target_person_id : null;
+  const waitingForGrant = Boolean(delegationId) && !personId;
 
   const preferences = useQuery({
-    queryKey: queryKeys.schedulingPreferences(queryScope),
-    queryFn: () => api.listSchedulingPreferences(),
-    enabled: Boolean(queryScope),
+    queryKey: queryKeys.schedulingPreferences(queryScope, personId),
+    queryFn: () => api.listSchedulingPreferences(personId ? { person_id: personId } : undefined),
+    enabled: Boolean(queryScope) && !waitingForGrant,
   });
   const teams = useQuery({
     queryKey: queryKeys.teams(queryScope),
@@ -83,14 +94,14 @@ export default function TeamPreferencesScreen() {
 
   const scopes = useMemo<ScopeOption[]>(() => {
     const myTeams = (teams.data ?? []).filter((team) =>
-      team.members.some((member) => member.user_id === user?.profile.id));
+      team.members.some((member) => (personId ? member.person_id === personId : member.user_id === user?.profile.id)));
     const customized = (teamId: string): boolean =>
       Boolean(preferences.data?.some((row: SchedulingPreferenceRow) => row.team_id === teamId));
     return [
       { id: ALL_TEAMS, name: t('preferences.allTeams'), custom: false },
       ...myTeams.map((team) => ({ id: team.id, name: team.name, custom: customized(team.id) })),
     ];
-  }, [teams.data, preferences.data, user?.profile.id, t]);
+  }, [teams.data, preferences.data, personId, user?.profile.id, t]);
 
   const save = useMutation({
     mutationFn: (request: Parameters<typeof api.saveSchedulingPreference>[0]) =>
@@ -98,14 +109,14 @@ export default function TeamPreferencesScreen() {
     onSuccess: async () => {
       if (!isCurrentGeneration(generation)) return;
       setSaved(true);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.schedulingPreferences(queryScope) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.schedulingPreferences(queryScope, personId) });
     },
   });
   const remove = useMutation({
     mutationFn: (id: string) => api.deleteSchedulingPreference(id),
     onSuccess: async () => {
       if (!isCurrentGeneration(generation)) return;
-      await queryClient.invalidateQueries({ queryKey: queryKeys.schedulingPreferences(queryScope) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.schedulingPreferences(queryScope, personId) });
     },
   });
 
@@ -116,7 +127,7 @@ export default function TeamPreferencesScreen() {
   };
 
   const submit = (): void => {
-    const result = requestFromDraft(draft, scope, current);
+    const result = requestFromDraft(draft, scope, current, personId);
     if (!result.ok) {
       setFieldError(result.field);
       return;
@@ -126,12 +137,25 @@ export default function TeamPreferencesScreen() {
 
   const reloadLatest = async (): Promise<void> => {
     save.reset();
-    await queryClient.invalidateQueries({ queryKey: queryKeys.schedulingPreferences(queryScope) });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.schedulingPreferences(queryScope, personId) });
     if (!isCurrentGeneration(generation)) return;
-    const latest = queryClient.getQueryData<SchedulingPreferenceRow[]>(queryKeys.schedulingPreferences(queryScope));
+    const latest = queryClient.getQueryData<SchedulingPreferenceRow[]>(queryKeys.schedulingPreferences(queryScope, personId));
     setDraft(draftFromRow(latest?.find((row) => (row.team_id ?? ALL_TEAMS) === scope)));
   };
 
+  const title = grant ? t('home:help.title', { name: grant.target_name }) : t('preferences.screenTitle');
+
+  if (delegations.isLoading && delegationId) return <Loading />;
+  if (waitingForGrant) {
+    // Stopped, expired, never ours, or no availability right: nothing to edit here.
+    return (
+      <Screen>
+        <View style={styles.padded}>
+          <EmptyState title={t('home:help.notFoundTitle')} description={t('home:help.notFoundDescription')} />
+        </View>
+      </Screen>
+    );
+  }
   if (preferences.isLoading || teams.isLoading) return <Loading />;
 
   if (preferences.error instanceof ApiError && preferences.error.status === 404) {
@@ -182,7 +206,9 @@ export default function TeamPreferencesScreen() {
 
   return (
     <Screen>
+      <Stack.Screen options={{ title }} />
       <ScrollView contentContainerStyle={[styles.padded, styles.gap]} keyboardShouldPersistTaps="handled">
+        {grant ? <Text style={styles.hint}>{t('home:help.subtitle')}</Text> : null}
         <Text style={styles.body}>{t('preferences.warningVsUnavailable')}</Text>
 
         <Card>

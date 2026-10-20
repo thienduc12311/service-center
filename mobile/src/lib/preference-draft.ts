@@ -60,10 +60,13 @@ export const requestFromDraft = (
   draft: PreferenceDraft,
   teamId: string,
   current: SchedulingPreferenceRow | undefined,
+  /** MOB-011: the Person helped under an availability grant; omitted for yourself. */
+  personId?: string | null,
 ): DraftResult => {
   const max = draft.maxPerMonth.trim();
   const maxPerMonth = max ? Number(max) : null;
   const request: SaveSchedulingPreferenceRequest = {
+    ...(personId ? { person_id: personId } : {}),
     team_id: teamId || null,
     frequency: draft.frequency || null,
     max_per_month: maxPerMonth,

@@ -36,8 +36,19 @@ export const queryKeys = {
   ) => [...privateRoot(scope), 'calendar', range, calendarScope] as const,
   blockouts: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'blockouts'] as const,
-  schedulingPreferences: (scope: ProtectedQueryScope | null) =>
-    [...privateRoot(scope), 'scheduling-preferences'] as const,
+  /** MOB-011: a delegate's view of another Person's blockouts sits under the same prefix. */
+  blockoutsFor: (scope: ProtectedQueryScope | null, personId: string) =>
+    [...privateRoot(scope), 'blockouts', 'person', personId] as const,
+  /** Own preferences when `personId` is omitted; a delegated Person's otherwise. */
+  schedulingPreferences: (scope: ProtectedQueryScope | null, personId?: string | null) =>
+    [...privateRoot(scope), 'scheduling-preferences', personId ?? 'self'] as const,
+  availabilityReview: (scope: ProtectedQueryScope | null, personId: string) =>
+    [...privateRoot(scope), 'availability-review', personId] as const,
+  /** MOB-011: grants given and received; invalidate this after a grant, revoke or delegated answer. */
+  delegations: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'delegations'] as const,
+  delegatedSchedule: (scope: ProtectedQueryScope | null, delegationId: string | null | undefined) =>
+    [...privateRoot(scope), 'delegations', 'schedule', delegationId ?? null] as const,
   people: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'people'] as const,
   teams: (scope: ProtectedQueryScope | null) =>
