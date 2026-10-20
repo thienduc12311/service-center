@@ -18,11 +18,14 @@ import type {
 } from '../lib/schedule-groups';
 import { statusAccent, type Theme } from '../lib/theme';
 import { useTheme, useThemedStyles } from '../lib/useTheme';
-import { Button, Divider, Field, Tag } from './ui';
+import { Button, Divider, Field, ListRow, Tag } from './ui';
 import { Icon } from './icons';
 import { api } from '../lib/api';
 import { queryKeys } from '../lib/query-keys';
 import { useAuth } from '../providers/AuthProvider';
+import { useRouter } from 'expo-router';
+import { useReplacementRequests } from '../lib/useReplacements';
+import { canRequestReplacement, requestForAssignment } from '../lib/replacements';
 import { useErrorText, useFormatters } from '../i18n';
 
 /** "Band — Keys"; team and position names are the church's own words. */
@@ -471,9 +474,7 @@ const ResponsibilityRow = ({ item, responses, canRespond }: ResponsibilityRowPro
         </View>
       ) : null}
 
-      {canRespond && item.status === 'declined' ? (
-        <Text style={styles.muted}>{t('responses.askScheduler')}</Text>
-      ) : null}
+      {canRespond && item.status === 'declined' ? <ReplacementEntry item={item} /> : null}
 
       {draft.error ? (
         <View style={styles.errorWrap} accessibilityLiveRegion="polite">
@@ -495,9 +496,56 @@ const ResponsibilityRow = ({ item, responses, canRespond }: ResponsibilityRowPro
   );
 };
 
+interface ReplacementEntryProps {
+  item: ScheduleResponsibility;
+}
+
+/**
+ * MOB-010: after a deliberate decline or withdrawal, ask for a replacement or
+ * follow the request already open. The decline itself is never changed.
+ */
+const ReplacementEntry = ({ item }: ReplacementEntryProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation(['staffing', 'scheduling']);
+  const router = useRouter();
+  const requests = useReplacementRequests();
+  const current = requestForAssignment(requests.data ?? [], item.assignmentId);
+  // A position-less request cannot be replaced (F07 binds a request to one position).
+  if (!item.position) return <Text style={styles.muted}>{t('scheduling:responses.askScheduler')}</Text>;
+  if (current && !canRequestReplacement({ status: item.status, positionId: item.position.id }, current)) {
+    return (
+      <ListRow showChevron onPress={() => router.push({ pathname: '/replacements/[id]', params: { id: current.id } })}>
+        <View style={styles.replacementRow}>
+          <Text style={styles.replacementTitle}>{t('replacements.title')}</Text>
+          <Tag
+            label={t(`replacements.requestStatus.${current.status}`)}
+            accent={current.status === 'filled' ? theme.accent.green : theme.accent.blue}
+          />
+        </View>
+        <Text style={styles.note}>{t('replacements.askedCount', { count: current.offers.length })}</Text>
+      </ListRow>
+    );
+  }
+  return (
+    <View style={styles.review}>
+      <Text style={styles.note}>{t('replacements.findHint')}</Text>
+      <Button
+        title={t('replacements.find')}
+        icon="search"
+        variant="secondary"
+        disabled={requests.isLoading}
+        onPress={() => router.push({ pathname: '/replacements/new', params: { assignment: item.assignmentId, plan: item.planId } })}
+      />
+    </View>
+  );
+};
+
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
+    replacementRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.space.sm },
+    replacementTitle: { ...theme.type.heading, color: theme.color.ink },
     list: { gap: theme.space.md },
     item: { gap: theme.space.md },
     row: { gap: theme.space.md },

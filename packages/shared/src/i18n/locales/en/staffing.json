@@ -218,7 +218,8 @@
     "choosePosition": "Choose a position.",
     "claimNotFound": "That claim could not be found. Refresh and try again.",
     "chooseCandidate": "Choose a candidate.",
-    "chooseTwoCommitments": "Choose two commitments to swap."
+    "chooseTwoCommitments": "Choose two commitments to swap.",
+    "replacementTooLate": "This service has already started, so a replacement can't be requested."
   },
   "opportunities": {
     "title": "Open positions and replacements",
@@ -665,5 +666,106 @@
       "rotation_skipped": "Rotation “{{rotation}}” is skipped on {{date}}; fairness decides.",
       "rotation_exception": "Rotation “{{rotation}}” uses an exception on {{date}}."
     }
+  },
+  "replacements": {
+    "title": "Replacements",
+    "description": "Find someone to serve in your place, and answer requests to fill in. Nothing is confirmed until the replacement and a leader both agree.",
+    "entry": "Replacements",
+    "entryHint": "Requests to fill in, and help you asked for",
+    "sections": {
+      "forYou": "Asked of you",
+      "toReview": "Waiting on leaders",
+      "yours": "Your requests",
+      "past": "Earlier"
+    },
+    "empty": "No replacement requests right now.",
+    "loading": "Loading replacements…",
+    "notAvailable": "This replacement request isn't available to you.",
+    "checkAgain": "Check again",
+    "find": "Find a replacement",
+    "findHint": "Your decline stays recorded. A leader can offer your place to someone eligible.",
+    "requiredTimes": "Times the replacement would serve",
+    "noTimes": "This plan has no times yet.",
+    "reviewTitle": "Ask for a replacement",
+    "reviewBody": "Your decline for {{position}} stays on record. A leader can offer the place to someone eligible; they get their own request and must agree before it's confirmed.",
+    "openUntil": "The request stays open until {{time}}.",
+    "tooLate": "This service has already started, so a replacement can't be requested.",
+    "submit": "Ask for a replacement",
+    "submitting": "Sending request…",
+    "requestStatus": {
+      "open": "Looking for a replacement",
+      "filled": "Replacement confirmed",
+      "cancelled": "Request cancelled",
+      "expired": "Request expired"
+    },
+    "requestedBy": "Asked by {{name}}",
+    "expiresAt": "Open until {{time}}",
+    "offers": "Who's been asked",
+    "noOffers": "No one has been asked yet.",
+    "stage": {
+      "awaiting_both": "Waiting for them and a leader",
+      "awaiting_candidate": "Leader approved · waiting for them",
+      "awaiting_leader": "Agreed · waiting for a leader",
+      "confirmed": "Confirmed",
+      "declined": "Declined",
+      "rejected": "Not approved",
+      "expired": "Expired",
+      "superseded": "No longer needed"
+    },
+    "heldUntil": "Place held until {{time}}",
+    "you": {
+      "asked": "You've been asked to fill {{position}}.",
+      "needsLeader": "If you agree, your place is held while a leader approves.",
+      "approvedFirst": "A leader already approved you. If you agree, you're confirmed right away.",
+      "awaiting": "You agreed. Waiting for a leader; your place is held until {{time}}.",
+      "confirmed": "You're confirmed. It's on your schedule.",
+      "ended": "This request is no longer open to you."
+    },
+    "acceptReview": "Review and agree",
+    "acceptTitle": "Check before you agree",
+    "acceptBody": "You'd serve {{position}} at the times above, on your own assignment.",
+    "accept": "Agree to serve",
+    "accepting": "Sending…",
+    "decline": "Decline",
+    "declineTitle": "Decline this request?",
+    "declineBody": "A leader can ask someone else. You can't be asked for this request again.",
+    "keep": "Keep it",
+    "cancelRequest": "Cancel request",
+    "cancelTitle": "Cancel this request?",
+    "cancelBody": "Anyone asked will see it's no longer needed. Your decline stays recorded.",
+    "keepRequest": "Keep looking",
+    "noNotifications": "People aren't notified of this automatically yet. Let them know directly.",
+    "unnamed": "Unnamed person",
+    "leader": {
+      "title": "Offer this place",
+      "hint": "Team members who can serve this position. Eligibility, conflicts and capacity are checked when you send and again when they agree.",
+      "none": "No other team members can serve this position.",
+      "review": "Offer {{position}} to {{name}}? They must agree before it's confirmed.",
+      "send": "Send offer",
+      "sending": "Sending…",
+      "approve": "Approve",
+      "reject": "Reject",
+      "rejectTitle": "Reject {{name}}?",
+      "rejectBody": "Their offer ends and any place they're holding is released.",
+      "unavailable": {
+        "blockout": "Blocked out",
+        "overlapping_commitment": "Already scheduled"
+      },
+      "available": "Available"
+    },
+    "failure": {
+      "full": "Someone else has already taken this place.",
+      "changed": "This didn't go through. It may have changed, or it clashes with something you're already scheduled for. Here's the latest.",
+      "not_allowed": "You can't do that for this request.",
+      "not_found": "This request is no longer available to you.",
+      "uncertain": "We couldn't confirm that went through. Check again — it won't be done twice.",
+      "failed": "That didn't go through."
+    },
+    "progress": {
+      "agreed": "Agreed",
+      "approved": "Leader approved"
+    },
+    "askedCount_one": "{{count}} person asked",
+    "askedCount_other": "{{count}} people asked"
   }
 }

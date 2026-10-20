@@ -455,7 +455,7 @@ export const PlanDetailPage = () => {
 
           {tab === 'teams' && (
             <>
-            <OpportunityPanel planId={planId} options={signupOptions} assignments={allAssignments} currentPersonId={currentPersonId} />
+            <OpportunityPanel planId={planId} options={signupOptions} assignments={allAssignments} times={plan.data?.times ?? []} currentPersonId={currentPersonId} />
             <TeamsTab
               teams={showAllTeams ? everyTeam : serviceTeams}
               canScheduleTeam={canScheduleTeam}

@@ -57,6 +57,9 @@ export const queryKeys = {
     [...privateRoot(scope), 'opportunities', 'detail', opportunityId ?? null] as const,
   opportunityClaims: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'opportunities', 'claims', planId ?? null] as const,
+  /** MOB-010: the replacement requests this Person may see (requester, candidate or scheduler). */
+  replacements: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'replacements'] as const,
   notifications: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'notifications'] as const,
   notificationUnread: (scope: ProtectedQueryScope | null) =>

@@ -126,6 +126,10 @@ export default function MyScheduleScreen() {
                 <Text style={styles.entryTitle}>{t('staffing:openPositions.entry')}</Text>
                 <Text style={styles.entryHint}>{t('staffing:openPositions.entryHint')}</Text>
               </ListRow>
+              <ListRow divided showChevron onPress={() => router.push('/replacements')}>
+                <Text style={styles.entryTitle}>{t('staffing:replacements.entry')}</Text>
+                <Text style={styles.entryHint}>{t('staffing:replacements.entryHint')}</Text>
+              </ListRow>
             </Card>
             <ErrorNotice error={schedule.error} />
           </View>

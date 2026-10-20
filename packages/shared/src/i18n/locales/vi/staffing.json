@@ -203,7 +203,8 @@
     "choosePosition": "Hãy chọn một vị trí.",
     "claimNotFound": "Không tìm thấy lượt đăng ký này. Hãy tải lại rồi thử lại.",
     "chooseCandidate": "Hãy chọn một người thay thế.",
-    "chooseTwoCommitments": "Hãy chọn hai phân công để hoán đổi."
+    "chooseTwoCommitments": "Hãy chọn hai phân công để hoán đổi.",
+    "replacementTooLate": "Buổi lễ đã bắt đầu nên không thể nhờ người thay."
   },
   "opportunities": {
     "title": "Vị trí đang mở và người thay thế",
@@ -625,5 +626,105 @@
       "rotation_skipped": "Luân phiên “{{rotation}}” bị bỏ qua vào {{date}}; hệ thống chọn theo tính công bằng.",
       "rotation_exception": "Luân phiên “{{rotation}}” dùng ngoại lệ vào {{date}}."
     }
+  },
+  "replacements": {
+    "title": "Người thay",
+    "description": "Tìm người phục vụ thay bạn và trả lời lời nhờ thay người khác. Chỉ được xác nhận khi cả người thay và trưởng nhóm đồng ý.",
+    "entry": "Người thay",
+    "entryHint": "Lời nhờ thay và yêu cầu bạn đã gửi",
+    "sections": {
+      "forYou": "Nhờ bạn",
+      "toReview": "Chờ trưởng nhóm",
+      "yours": "Yêu cầu của bạn",
+      "past": "Trước đó"
+    },
+    "empty": "Hiện chưa có yêu cầu người thay nào.",
+    "loading": "Đang tải yêu cầu người thay…",
+    "notAvailable": "Bạn không xem được yêu cầu người thay này.",
+    "checkAgain": "Kiểm tra lại",
+    "find": "Tìm người thay",
+    "findHint": "Việc bạn từ chối vẫn được ghi lại. Trưởng nhóm có thể mời một người đủ điều kiện thay chỗ bạn.",
+    "requiredTimes": "Các giờ người thay sẽ phục vụ",
+    "noTimes": "Kế hoạch này chưa có giờ.",
+    "reviewTitle": "Nhờ người thay",
+    "reviewBody": "Việc bạn từ chối {{position}} vẫn được ghi lại. Trưởng nhóm có thể mời một người đủ điều kiện; người đó nhận phân công riêng và phải đồng ý trước khi được xác nhận.",
+    "openUntil": "Yêu cầu mở đến {{time}}.",
+    "tooLate": "Buổi lễ đã bắt đầu nên không thể nhờ người thay.",
+    "submit": "Nhờ người thay",
+    "submitting": "Đang gửi yêu cầu…",
+    "requestStatus": {
+      "open": "Đang tìm người thay",
+      "filled": "Đã có người thay",
+      "cancelled": "Đã hủy yêu cầu",
+      "expired": "Yêu cầu đã hết hạn"
+    },
+    "requestedBy": "{{name}} nhờ",
+    "expiresAt": "Mở đến {{time}}",
+    "offers": "Những người đã được mời",
+    "noOffers": "Chưa mời ai.",
+    "stage": {
+      "awaiting_both": "Chờ người được mời và trưởng nhóm",
+      "awaiting_candidate": "Trưởng nhóm đã duyệt · chờ người được mời",
+      "awaiting_leader": "Đã đồng ý · chờ trưởng nhóm",
+      "confirmed": "Đã xác nhận",
+      "declined": "Đã từ chối",
+      "rejected": "Không được duyệt",
+      "expired": "Đã hết hạn",
+      "superseded": "Không còn cần"
+    },
+    "heldUntil": "Giữ chỗ đến {{time}}",
+    "you": {
+      "asked": "Bạn được nhờ thay {{position}}.",
+      "needsLeader": "Nếu bạn đồng ý, chỗ được giữ trong khi chờ trưởng nhóm duyệt.",
+      "approvedFirst": "Trưởng nhóm đã duyệt bạn. Nếu bạn đồng ý, bạn được xác nhận ngay.",
+      "awaiting": "Bạn đã đồng ý. Đang chờ trưởng nhóm; chỗ được giữ đến {{time}}.",
+      "confirmed": "Bạn đã được xác nhận. Việc này đã có trong lịch của bạn.",
+      "ended": "Yêu cầu này không còn mở cho bạn."
+    },
+    "acceptReview": "Xem lại và đồng ý",
+    "acceptTitle": "Kiểm tra trước khi đồng ý",
+    "acceptBody": "Bạn sẽ phục vụ {{position}} vào các giờ ở trên, theo phân công riêng của bạn.",
+    "accept": "Đồng ý phục vụ",
+    "accepting": "Đang gửi…",
+    "decline": "Từ chối",
+    "declineTitle": "Từ chối lời nhờ này?",
+    "declineBody": "Trưởng nhóm có thể mời người khác. Bạn sẽ không được mời lại cho yêu cầu này.",
+    "keep": "Giữ lại",
+    "cancelRequest": "Hủy yêu cầu",
+    "cancelTitle": "Hủy yêu cầu này?",
+    "cancelBody": "Những người được mời sẽ thấy yêu cầu không còn cần. Việc bạn từ chối vẫn được ghi lại.",
+    "keepRequest": "Tiếp tục tìm",
+    "noNotifications": "Hiện mọi người chưa được tự động thông báo. Hãy báo trực tiếp cho họ.",
+    "unnamed": "Người chưa có tên",
+    "leader": {
+      "title": "Mời người thay",
+      "hint": "Thành viên trong nhóm có thể phục vụ vị trí này. Điều kiện, trùng lịch và số chỗ được kiểm tra khi bạn gửi và khi họ đồng ý.",
+      "none": "Không còn thành viên nào khác có thể phục vụ vị trí này.",
+      "review": "Mời {{name}} thay {{position}}? Họ phải đồng ý trước khi được xác nhận.",
+      "send": "Gửi lời mời",
+      "sending": "Đang gửi…",
+      "approve": "Duyệt",
+      "reject": "Từ chối",
+      "rejectTitle": "Từ chối {{name}}?",
+      "rejectBody": "Lời mời kết thúc và chỗ họ đang giữ được trả lại.",
+      "unavailable": {
+        "blockout": "Đã báo bận",
+        "overlapping_commitment": "Đã có lịch khác"
+      },
+      "available": "Rảnh"
+    },
+    "failure": {
+      "full": "Đã có người khác nhận chỗ này.",
+      "changed": "Không thực hiện được. Yêu cầu có thể đã thay đổi, hoặc trùng với việc bạn đã được xếp lịch. Đây là thông tin mới nhất.",
+      "not_allowed": "Bạn không thể làm việc này với yêu cầu này.",
+      "not_found": "Yêu cầu này không còn dành cho bạn.",
+      "uncertain": "Chưa xác nhận được việc này đã thành công. Hãy kiểm tra lại — sẽ không bị làm hai lần.",
+      "failed": "Không thực hiện được."
+    },
+    "progress": {
+      "agreed": "Đã đồng ý",
+      "approved": "Trưởng nhóm đã duyệt"
+    },
+    "askedCount_other": "Đã mời {{count}} người"
   }
 }
