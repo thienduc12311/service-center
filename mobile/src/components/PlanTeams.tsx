@@ -29,6 +29,8 @@ export interface PlanTeamsProps {
   savingPositionId: string | null;
   showAllTeams: boolean;
   onToggleAllTeams: () => void;
+  /** Opens "Schedule people" (website: Add people). */
+  onAddPeople: () => void;
 }
 
 export const PlanTeams = ({
@@ -41,6 +43,7 @@ export const PlanTeams = ({
   savingPositionId,
   showAllTeams,
   onToggleAllTeams,
+  onAddPeople,
 }: PlanTeamsProps) => {
   const { t } = useTranslation(['staffing', 'common']);
   const styles = useThemedStyles(makeStyles);
@@ -58,11 +61,14 @@ export const PlanTeams = ({
           editingNeeds ? (
             <Button title={t('common:actions.done')} onPress={() => onEditingNeedsChange(false)} />
           ) : (
-            <Button
-              variant="secondary"
-              title={t('teamsTab.neededPositions')}
-              onPress={() => onEditingNeedsChange(true)}
-            />
+            <View style={styles.actions}>
+              <Button
+                variant="secondary"
+                title={t('teamsTab.neededPositions')}
+                onPress={() => onEditingNeedsChange(true)}
+              />
+              <Button variant="secondary" title={t('teamsTab.addPeople')} onPress={onAddPeople} />
+            </View>
           )
         ) : null}
       </View>
@@ -271,6 +277,7 @@ const makeStyles = (theme: Theme) =>
       justifyContent: 'space-between',
       gap: theme.space.sm,
     },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
     hintTitle: { ...theme.type.body, fontWeight: '600', color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     empty: { ...theme.type.bodySmall, color: theme.color.inkFaint, textAlign: 'center', paddingVertical: theme.space.lg },

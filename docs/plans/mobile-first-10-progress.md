@@ -21,7 +21,7 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 | MOB-006 Pass C — native editor + conflict review | implemented; QA pending | `feature/mob-006-availability` | Signed-in iOS/Android interaction matrix below |
 | MOB-007 — team scheduling preferences (native) | implemented; QA pending | `feature/mob-007-team-preferences` | Signed-in iOS/Android device check (below); next task: MOB-008 |
 | MOB-008 Pass A — native Teams view + needs editing | implemented; QA pending | `feature/mob-008-plan-staffing` | Signed-in device check (below); then Pass B |
-| MOB-008 Pass B — candidate picker + scheduling commit | not started | — | Mirror website `SchedulePeopleModal` on its existing endpoints |
+| MOB-008 Pass B — candidate picker + scheduling commit | implemented; QA pending | `feature/mob-008-plan-staffing` | Signed-in device check (below); next task: MOB-009 Pass B |
 | MOB-009 Pass A — shared opportunity allocator/API | implemented; QA pending | delivered by F07 on `feature/f07-signups-replacements` | Reuse for native Pass B; F08 transition delivery remains a gate |
 | MOB-009 Pass B — native opportunities/review | not started | — | Build on F07 contracts; iOS/Android device QA |
 | MOB-010 Pass A — shared replacement allocator/API | implemented; QA pending | delivered by F07 on `feature/f07-signups-replacements` | Reuse for native Pass B; F08 transition delivery remains a gate |
@@ -38,6 +38,16 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 **Native:** the plan screen has an Order/Teams switch (`SegmentedControl`). Teams replaces the old "Who is serving" card and offers show-all-teams, per-team counts, positions, plan-only suffix, unpositioned, prepared tags and 44pt steppers. Release review stays where it was.
 
 **Checks:** mobile `tsc` is clean; mobile tests pass 55/55, including `plan-teams.test.ts` (4: team filter, counts, visibility, plan-only); iOS and Android Expo export pass. **Not verified:** signed-in device interaction, light/dark mode, a team-scoped leader on device.
+
+## MOB-008 Pass B — 2026-10-19
+
+**Mirrors the website's `SchedulePeopleModal`** on its existing endpoints: `listTeams`, `listPeople`, `checkAssignmentConflicts`, `deliveryReadiness`, `preferenceWarnings` and `createAssignments`. No backend or schema change. The route is `mobile/app/plan/schedule/[id].tsx`, opened from Teams → "Add people". Pure rules live in `mobile/src/lib/schedule-people.ts`: candidate order and filter, time scope, the exact commit body, and when commit is enabled.
+
+**Behavior (website parity):** teams are limited to those the user has `scheduling.manage` for. Positions include the plan-only ones. Times are all or selected (at least one). The people list puts team members first with an "on team" label and marks no-login people. Prepare privately follows the team's default visibility. A warning appears when a released request can't reach someone. Blocking conflicts need `scheduling.override_conflicts` plus a reason; same-plan warnings don't block. Preference warnings never block and take an optional reason. A 409 `scheduling_conflict` at commit replaces the preview with the server's conflicts and keeps the selection. On success the plan and schedule queries are invalidated and the screen closes.
+
+**Left on the website (outside initial native parity, per the prompt):** creating a plan-only position, creating a new Person ("Someone new"), removing an assignment, and editing per-assignment times. Delivery outcomes after commit are not shown, because the website doesn't show them either.
+
+**Checks:** mobile `tsc` is clean; tests pass 60/60, including `schedule-people.test.ts` (5); iOS and Android Expo export pass. **Not verified:** signed-in device interaction, a forced 409 on device, an override user, dark mode, Android.
 
 ## F08 shared release/reminder foundation — 2026-10-18
 

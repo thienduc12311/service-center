@@ -360,6 +360,7 @@ export default function PlanScreen() {
                 savingPositionId={setNeed.isPending ? (setNeed.variables?.positionId ?? null) : null}
                 showAllTeams={showAllTeams}
                 onToggleAllTeams={() => setShowAllTeams((value) => !value)}
+                onAddPeople={() => router.push({ pathname: '/plan/schedule/[id]', params: { id: detail.id } })}
               />
             )}
             <ErrorNotice error={setNeed.error} />
