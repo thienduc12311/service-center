@@ -1,4 +1,5 @@
-import { WIZARD_STEPS, WIZARD_STEP_LABELS, type WizardStep } from './types';
+import { useTranslation } from 'react-i18next';
+import { WIZARD_STEPS, WIZARD_STEP_LABEL_KEYS, type WizardStep } from './types';
 
 export interface WizardProgressProps {
   current: WizardStep;
@@ -6,6 +7,7 @@ export interface WizardProgressProps {
 
 /** The three-dot rail above the wizard card; filled up to the current step. */
 export const WizardProgress = ({ current }: WizardProgressProps) => {
+  const { t } = useTranslation('teams');
   const currentIndex = WIZARD_STEPS.indexOf(current);
 
   return (
@@ -35,7 +37,7 @@ export const WizardProgress = ({ current }: WizardProgressProps) => {
                 step === current ? 'font-medium text-slate-900' : 'text-slate-500'
               }`}
             >
-              {WIZARD_STEP_LABELS[step]}
+              {t(WIZARD_STEP_LABEL_KEYS[step])}
             </span>
           </li>
         );

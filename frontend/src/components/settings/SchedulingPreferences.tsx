@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
-  SCHEDULING_FREQUENCY_LABELS,
   type SchedulingFrequency,
   type SchedulingPreferenceRow,
 } from '@service-center/shared';
@@ -19,7 +19,7 @@ export interface SchedulingPreferencesProps {
 
 const ALL_TEAMS = '';
 const WEEKS = [1, 2, 3, 4, 5] as const;
-const FREQUENCIES = Object.keys(SCHEDULING_FREQUENCY_LABELS) as SchedulingFrequency[];
+const FREQUENCIES: readonly SchedulingFrequency[] = ['every_week', 'every_other_week', 'every_third_week', 'once_a_month'];
 
 interface PreferenceDraft {
   frequency: SchedulingFrequency | '';
@@ -47,6 +47,7 @@ const splitList = (value: string): string[] => value.split(',').map((item) => it
  * warnings for schedulers, never hard blocks — blockouts are the hard "no".
  */
 export const SchedulingPreferences = ({ personId, memberPersonId }: SchedulingPreferencesProps) => {
+  const { t } = useTranslation('settings');
   const invalidate = useInvalidateOrg();
   const preferences = useSchedulingPreferences(personId);
   const teams = useTeams();
@@ -102,70 +103,71 @@ export const SchedulingPreferences = ({ personId, memberPersonId }: SchedulingPr
       onSubmit={(event: FormEvent) => { event.preventDefault(); save.mutate(); }}
     >
       <label className="label">
-        Applies to
+        {t('preferences.appliesTo')}
         <select className="input mt-1" value={scope} onChange={(e) => setScope(e.target.value)}>
-          <option value={ALL_TEAMS}>All my teams</option>
+          <option value={ALL_TEAMS}>{t('preferences.allTeams')}</option>
           {teamOptions.map((team) => (
             <option key={team.id} value={team.id}>
-              {team.name}{preferences.data?.some((row) => row.team_id === team.id) ? ' (custom)' : ''}
+              {preferences.data?.some((row) => row.team_id === team.id) ? t('preferences.customTeam', { name: team.name }) : team.name}
             </option>
           ))}
         </select>
       </label>
       {scope && !current && (
-        <p className="text-xs text-slate-500">Uses your all-teams preferences until you save something specific to this team.</p>
+        <p className="text-xs text-slate-500">{t('preferences.inheritsHint')}</p>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="label">
-          How often
+          {t('preferences.howOften')}
           <select className="input mt-1" value={draft.frequency} onChange={(e) => setDraft({ ...draft, frequency: e.target.value as SchedulingFrequency | '' })}>
-            <option value="">No preference</option>
-            {FREQUENCIES.map((frequency) => <option key={frequency} value={frequency}>{SCHEDULING_FREQUENCY_LABELS[frequency]}</option>)}
+            <option value="">{t('preferences.noPreference')}</option>
+            {FREQUENCIES.map((frequency) => <option key={frequency} value={frequency}>{t(`preferences.frequency.${frequency}`)}</option>)}
           </select>
         </label>
         <label className="label">
-          At most per month
-          <input className="input mt-1" type="number" min={1} max={31} placeholder="No limit" value={draft.maxPerMonth}
+          {t('preferences.maxPerMonth')}
+          <input className="input mt-1" type="number" min={1} max={31} placeholder={t('preferences.noLimit')} value={draft.maxPerMonth}
             onChange={(e) => setDraft({ ...draft, maxPerMonth: e.target.value })} />
         </label>
       </div>
       <fieldset>
-        <legend className="label">Weeks of the month</legend>
+        <legend className="label">{t('preferences.weeksOfMonth')}</legend>
         <div className="mt-1 grid grid-cols-[auto_repeat(5,minmax(0,1fr))] items-center gap-x-2 gap-y-1 text-sm">
           <span />
-          {WEEKS.map((week) => <span key={week} className="text-center text-xs text-slate-500">{week === 5 ? '5th' : `${week}${['st', 'nd', 'rd', 'th'][week - 1]}`}</span>)}
-          <span className="text-xs text-slate-600">Prefer</span>
+          {WEEKS.map((week) => <span key={week} className="text-center text-xs text-slate-500">{t(`preferences.weekOrdinal.${week}`)}</span>)}
+          <span className="text-xs text-slate-600">{t('preferences.prefer')}</span>
           {WEEKS.map((week) => (
             <label key={`p${week}`} className="flex min-h-11 justify-center">
-              <input type="checkbox" aria-label={`Prefer week ${week}`} checked={draft.preferredWeeks.includes(week)} onChange={() => toggleWeek('preferredWeeks', week)} />
+              <input type="checkbox" aria-label={t('preferences.preferWeek', { week })} checked={draft.preferredWeeks.includes(week)} onChange={() => toggleWeek('preferredWeeks', week)} />
             </label>
           ))}
-          <span className="text-xs text-slate-600">Avoid</span>
+          <span className="text-xs text-slate-600">{t('preferences.avoid')}</span>
           {WEEKS.map((week) => (
             <label key={`a${week}`} className="flex min-h-11 justify-center">
-              <input type="checkbox" aria-label={`Avoid week ${week}`} checked={draft.avoidedWeeks.includes(week)} onChange={() => toggleWeek('avoidedWeeks', week)} />
+              <input type="checkbox" aria-label={t('preferences.avoidWeek', { week })} checked={draft.avoidedWeeks.includes(week)} onChange={() => toggleWeek('avoidedWeeks', week)} />
             </label>
           ))}
         </div>
       </fieldset>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="label">
-          Preferred service start times
+          {t('preferences.preferredTimes')}
           <input className="input mt-1" placeholder="09:00, 11:00" value={draft.preferredTimes}
             onChange={(e) => setDraft({ ...draft, preferredTimes: e.target.value })} />
         </label>
         <label className="label">
-          Dates to avoid
+          {t('preferences.avoidedDates')}
           <input className="input mt-1" placeholder="2027-12-24, 2027-12-31" value={draft.avoidedDates}
             onChange={(e) => setDraft({ ...draft, avoidedDates: e.target.value })} />
         </label>
       </div>
-      <p className="text-xs text-slate-500">Schedulers see these as warnings. Use blockout dates for times you truly can’t serve.</p>
+      <p className="text-xs text-slate-500">{t('preferences.warningHint')}</p>
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" loading={save.isPending}>Save preferences</Button>
+        <Button type="submit" loading={save.isPending}>{t('preferences.save')}</Button>
         {scope && current && (
           <Button type="button" variant="ghost" loading={remove.isPending} onClick={() => remove.mutate(current.id)}>
-            Use all-teams preferences
+            {t('preferences.useAllTeams')}
+
           </Button>
         )}
       </div>

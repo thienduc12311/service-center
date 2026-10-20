@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
-  ASSIGNMENT_STATUS_LABELS,
   externalLinkTokenSchema,
-  formatDateTime,
   type AssignmentRespondPreview,
   type AssignmentRespondResult,
 } from '@service-center/shared';
@@ -17,16 +16,17 @@ import { Button, Card, Label, Loading, Screen } from '../src/components/ui';
 import { Reveal } from '../src/components/motion';
 import { useTheme, useThemedStyles } from '../src/lib/useTheme';
 import type { Theme } from '../src/lib/theme';
+import { LanguageSelector, useFormatters, useRecipientLanguage } from '../src/i18n';
 
 type Stage = 'loading' | 'ready' | 'submitting' | 'success' | AssignmentResponseFailure;
 
-const FAILURE_MESSAGE: Record<AssignmentResponseFailure, string> = {
-  invalid: "This response link isn't valid. Ask the scheduler to send a new one.",
-  expired: 'This response link has expired. Ask the scheduler to send a new one.',
-  used: 'This response link has already been used.',
-  stale: 'This request changed after the link was sent. Ask the scheduler to send a fresh response link.',
-  network: "We couldn't check this response link. Check your connection and try again.",
-};
+const FAILURE_MESSAGE_KEY = {
+  invalid: 'respond.failures.invalid',
+  expired: 'respond.failures.expired',
+  used: 'respond.failures.used',
+  stale: 'respond.failures.stale',
+  network: 'respond.failures.network',
+} as const satisfies Record<AssignmentResponseFailure, string>;
 
 /** Public, token-scoped response flow; no account or full plan access is required. */
 export default function RespondScreen() {
@@ -34,12 +34,16 @@ export default function RespondScreen() {
   const parsedToken = externalLinkTokenSchema.safeParse(params.token);
   const token = parsedToken.success ? parsedToken.data : null;
   const router = useRouter();
+  const { t } = useTranslation(['auth', 'common']);
+  const fmt = useFormatters();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [stage, setStage] = useState<Stage>(token ? 'loading' : 'invalid');
   const [preview, setPreview] = useState<AssignmentRespondPreview | null>(null);
   const [result, setResult] = useState<AssignmentRespondResult | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Once the token is verified, show the screen in the recipient's saved language.
+  useRecipientLanguage(preview ? preview.preferred_language : undefined);
 
   useEffect(() => {
     let active = true;
@@ -85,21 +89,21 @@ export default function RespondScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Reveal>
           <View style={styles.masthead}>
-            <Label>Assignment notification</Label>
-            <Text style={styles.title}>Respond to your schedule</Text>
+            <Label>{t('respond.eyebrow')}</Label>
+            <Text style={styles.title}>{t('respond.title')}</Text>
           </View>
         </Reveal>
 
-        {stage === 'loading' ? <Loading label="Checking your assignment" /> : null}
+        {stage === 'loading' ? <Loading label={t('respond.checking')} /> : null}
 
         {stage === 'invalid' || stage === 'expired' || stage === 'used' || stage === 'stale' || stage === 'network' ? (
           <Reveal index={1}>
             <Card>
-              <Text style={styles.body}>{FAILURE_MESSAGE[stage]}</Text>
+              <Text style={styles.body}>{t(FAILURE_MESSAGE_KEY[stage])}</Text>
               {stage === 'network' ? (
-                <Button title="Try again" onPress={() => setAttempt((value) => value + 1)} />
+                <Button title={t('common:actions.retry')} onPress={() => setAttempt((value) => value + 1)} />
               ) : null}
-              <Button title="Open Service Center" variant="secondary" onPress={() => router.replace('/')} />
+              <Button title={t('respond.openApp')} variant="secondary" onPress={() => router.replace('/')} />
             </Card>
           </Reveal>
         ) : null}
@@ -107,13 +111,15 @@ export default function RespondScreen() {
         {(stage === 'ready' || stage === 'submitting') && preview ? (
           <Reveal index={1}>
             <Card>
-              <Text style={styles.heading}>{`Hi ${preview.person_first_name}`}</Text>
+              <Text style={styles.heading}>{preview.person_first_name
+                  ? t('respond.greeting', { name: preview.person_first_name })
+                  : t('respond.greetingGeneric')}</Text>
               <View style={styles.section}>
                 <Text style={styles.planTitle}>{preview.plan_title}</Text>
                 <Text style={styles.body}>
-                  {formatDateTime(preview.service_date)}
+                  {fmt.calendarDate(preview.service_date)}
                   {preview.service_time
-                    ? ` · ${formatDateTime(preview.service_time.starts_at)}`
+                    ? ` · ${fmt.time(preview.service_time.starts_at)}`
                     : ''}
                   {preview.location ? ` · ${preview.location}` : ''}
                 </Text>
@@ -125,26 +131,24 @@ export default function RespondScreen() {
                       {assignment.team_name}
                       {assignment.position_name ? ` — ${assignment.position_name}` : ''}
                     </Text>
-                    <Text style={styles.status}>{ASSIGNMENT_STATUS_LABELS[assignment.status]}</Text>
+                    <Text style={styles.status}>{t(`common:assignmentStatus.${assignment.status}`)}</Text>
                     {assignment.times.map((time) => (
                       <Text key={time.id} style={styles.status}>
-                        {time.name ?? time.kind} · {formatDateTime(time.starts_at)}
+                        {time.name ?? t(`respond.timeKinds.${time.kind}`)} · {fmt.dateTime(time.starts_at)}
                       </Text>
                     ))}
                   </View>
                 ))}
               </View>
-              <Text style={styles.scopeNotice}>
-                Your answer applies only to the positions and times shown here.
-              </Text>
+              <Text style={styles.scopeNotice}>{t('respond.scopeNotice')}</Text>
               <View style={styles.actions}>
                 <Button
-                  title="Confirm"
+                  title={t('common:actions.confirm')}
                   onPress={() => void respond('confirmed')}
                   loading={stage === 'submitting'}
                 />
                 <Button
-                  title="Decline"
+                  title={t('common:actions.decline')}
                   variant="secondary"
                   onPress={() => void respond('declined')}
                   disabled={stage === 'submitting'}
@@ -157,16 +161,20 @@ export default function RespondScreen() {
         {stage === 'success' && result ? (
           <Reveal index={1}>
             <Card>
-              <Text style={styles.heading}>Thank you</Text>
+              <Text style={styles.heading}>{t('respond.thankYou')}</Text>
               <Text style={styles.body}>
                 {result.status === 'confirmed'
-                  ? 'Your displayed assignments are confirmed.'
-                  : 'Your displayed assignments are declined.'}
+                  ? t('respond.displayedConfirmed')
+                  : t('respond.displayedDeclined')}
               </Text>
-              <Button title="Open Service Center" onPress={() => router.replace('/')} />
+              <Button title={t('respond.openApp')} onPress={() => router.replace('/')} />
             </Card>
           </Reveal>
         ) : null}
+
+        <Reveal index={2}>
+          <LanguageSelector />
+        </Reveal>
       </ScrollView>
     </Screen>
   );

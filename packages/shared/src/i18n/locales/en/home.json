@@ -1,0 +1,66 @@
+{
+  "shell": {
+    "homeLabel": "Service Center home",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme",
+    "signedIn": "Signed in",
+    "footer": "Service Center · Built for every worship community"
+  },
+  "search": {
+    "button": "Search (Ctrl/⌘ K)",
+    "inputLabel": "Search people, teams, plans, songs and files",
+    "placeholder": "People, teams, plans, songs, files…",
+    "minLength": "Type at least two characters.",
+    "nothingFound": "Nothing found.",
+    "archived": "archived",
+    "moreMatches": "More matches — refine your search.",
+    "groups": {
+      "person": "People",
+      "team": "Teams",
+      "position": "Positions",
+      "plan": "Plans",
+      "song": "Songs",
+      "media": "Files"
+    }
+  },
+  "dashboard": {
+    "greeting": "Hi {{name}}",
+    "greetingNoName": "Hi there",
+    "subtitle": "Here’s what’s coming up.",
+    "newPlan": "New plan",
+    "waitingOnYou": "Waiting on you",
+    "accept": "Accept",
+    "upcoming": "Upcoming services",
+    "allPlans": "All plans",
+    "confirmedCount": "{{total}} confirmed",
+    "pendingCount": "{{total}} pending",
+    "noUpcomingTitle": "No upcoming services",
+    "noUpcomingDescription": "Create a plan to start building an order of service and scheduling your team.",
+    "createPlan": "Create a plan",
+    "commitments": "Your next commitments",
+    "rehearsalAt": "rehearsal {{time}}",
+    "nothingScheduled": "Nothing scheduled yet"
+  },
+  "help": {
+    "notFoundTitle": "Nothing to help with here",
+    "notFoundDescription": "This permission was stopped, expired, or was never yours.",
+    "backToSettings": "Back to settings",
+    "title": "Helping {{name}}",
+    "subtitle": "You can only do what they allowed. Changes are recorded as made by you.",
+    "requests": "Requests",
+    "timeKinds": {
+      "service": "Service",
+      "rehearsal": "Rehearsal",
+      "other": "Other"
+    },
+    "timeAt": "{{name}} {{time}}",
+    "awaitingAnswer": "Awaiting answer",
+    "accept": "Accept",
+    "reasonPlaceholder": "Reason (optional)",
+    "reasonLabel": "Decline reason for {{plan}}",
+    "withdraw": "Withdraw",
+    "noRequests": "No upcoming requests.",
+    "availability": "Availability",
+    "schedulingPreferences": "Scheduling preferences"
+  }
+}

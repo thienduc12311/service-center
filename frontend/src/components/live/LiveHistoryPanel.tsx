@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   effectiveTransitionTimes,
@@ -11,23 +12,7 @@ import { api } from '../../lib/api';
 import { keys, useLiveRunHistory } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Loading, Modal } from '../ui';
-import { timeOfDay } from './LiveRunPanel';
-
-const ACTION_LABELS: Record<LiveRunTransitionRow['action'], string> = {
-  create: 'Created',
-  start: 'Started',
-  advance: 'Next item',
-  jump: 'Jumped',
-  pause: 'Paused',
-  resume: 'Resumed',
-  end: 'Ended',
-  take_control: 'Took control',
-  take_over: 'Took over',
-  release_control: 'Released control',
-  set_policy: 'Changed countdown',
-  refresh_snapshot: 'Pinned the current order',
-  discard: 'Discarded',
-};
+import { useTimeOfDay } from './LiveRunPanel';
 
 /** `YYYY-MM-DDTHH:mm:ss` in the browser's timezone, for a datetime-local input. */
 const toLocalInput = (ms: number): string => {
@@ -51,6 +36,8 @@ export interface LiveHistoryPanelProps {
 }
 
 export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => {
+  const { t } = useTranslation(['media', 'common']);
+  const timeOfDay = useTimeOfDay();
   const { organizationId } = useAuth();
   const queryClient = useQueryClient();
   const history = useLiveRunHistory(runId, true);
@@ -80,7 +67,7 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
   useEffect(() => {
     if (heldRevision !== undefined && heldRevision !== revision) void refetch();
   }, [heldRevision, revision, refetch]);
-  if (history.isLoading) return <Loading label="Loading history…" />;
+  if (history.isLoading) return <Loading label={t('live.history.loading')} />;
   if (history.error) return <ErrorNotice error={history.error} />;
   if (!data) return null;
 
@@ -89,19 +76,19 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
   const canCorrect = data.can_control && data.run.status === 'ended';
 
   return (
-    <section className="space-y-4" aria-label="Run history">
+    <section className="space-y-4" aria-label={t('live.history.title')}>
       <div className="card overflow-x-auto">
         <h3 className="border-b border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">
-          Planned versus actual{actuals.corrected ? ' (includes corrected times)' : ''}
+          {actuals.corrected ? t('live.history.plannedVsActualCorrected') : t('live.history.plannedVsActual')}
         </h3>
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-slate-500">
             <tr>
-              <th className="px-4 py-2 font-medium">Item</th>
-              <th className="px-4 py-2 font-medium">Started</th>
-              <th className="px-4 py-2 text-right font-medium">Planned</th>
-              <th className="px-4 py-2 text-right font-medium">Actual</th>
-              <th className="px-4 py-2 text-right font-medium">Difference</th>
+              <th className="px-4 py-2 font-medium">{t('live.history.columns.item')}</th>
+              <th className="px-4 py-2 font-medium">{t('live.history.columns.started')}</th>
+              <th className="px-4 py-2 text-right font-medium">{t('live.history.columns.planned')}</th>
+              <th className="px-4 py-2 text-right font-medium">{t('live.history.columns.actual')}</th>
+              <th className="px-4 py-2 text-right font-medium">{t('live.history.columns.difference')}</th>
             </tr>
           </thead>
           <tbody>
@@ -114,10 +101,10 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
                 <tr key={line.item_id} className="border-t border-slate-100">
                   <td className="px-4 py-2">
                     {line.title}
-                    {line.segment !== 'service' && <span className="ml-2 text-xs text-slate-500">({line.segment === 'pre' ? 'before' : 'after'} service)</span>}
+                    {line.segment !== 'service' && <span className="ml-2 text-xs text-slate-500">{line.segment === 'pre' ? t('live.history.beforeService') : t('live.history.afterService')}</span>}
                     {line.visits > 1 && <span className="ml-2 text-xs text-slate-500">×{line.visits}</span>}
                   </td>
-                  <td className="px-4 py-2 tabular-nums text-slate-600">{line.first_started_at ? timeOfDay(line.first_started_at) : 'not run'}</td>
+                  <td className="px-4 py-2 tabular-nums text-slate-600">{line.first_started_at ? timeOfDay(line.first_started_at) : t('live.history.notRun')}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{formatLiveDuration(line.planned_seconds)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{line.visits > 0 ? formatLiveDuration(line.actual_seconds) : '—'}</td>
                   <td className={`px-4 py-2 text-right tabular-nums ${(line.variance_seconds ?? 0) > 0 ? 'text-rose-700' : 'text-slate-600'}`}>
@@ -129,7 +116,7 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
           </tbody>
           <tfoot className="border-t border-slate-200 text-slate-700">
             <tr>
-              <td className="px-4 py-2 font-medium" colSpan={2}>Service items</td>
+              <td className="px-4 py-2 font-medium" colSpan={2}>{t('live.history.serviceItems')}</td>
               <td className="px-4 py-2 text-right tabular-nums">{formatLiveDuration(actuals.planned_service_seconds)}</td>
               <td className="px-4 py-2 text-right tabular-nums">{formatLiveDuration(actuals.actual_service_seconds)}</td>
               <td className="px-4 py-2 text-right tabular-nums">{variance(actuals.actual_service_seconds - actuals.planned_service_seconds)}</td>
@@ -137,8 +124,18 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
             {actuals.elapsed_seconds !== null && (
               <tr>
                 <td className="px-4 pb-3 text-xs text-slate-500" colSpan={5}>
-                  {timeOfDay(actuals.started_at)} – {timeOfDay(actuals.ended_at)} · {formatLiveDuration(actuals.elapsed_seconds)} start to end
-                  {actuals.paused_seconds > 0 ? `, including ${formatLiveDuration(actuals.paused_seconds)} paused` : ''}
+                  {actuals.paused_seconds > 0
+                    ? t('live.history.elapsedPaused', {
+                        start: timeOfDay(actuals.started_at),
+                        end: timeOfDay(actuals.ended_at),
+                        elapsed: formatLiveDuration(actuals.elapsed_seconds),
+                        paused: formatLiveDuration(actuals.paused_seconds),
+                      })
+                    : t('live.history.elapsed', {
+                        start: timeOfDay(actuals.started_at),
+                        end: timeOfDay(actuals.ended_at),
+                        elapsed: formatLiveDuration(actuals.elapsed_seconds),
+                      })}
                 </td>
               </tr>
             )}
@@ -147,41 +144,49 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
       </div>
 
       <div className="card overflow-hidden">
-        <h3 className="border-b border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">Transitions</h3>
-        {canCorrect && <p className="px-4 pt-2 text-xs text-slate-500">Correcting a time adds a record (who, why, previous value); the original entry stays.</p>}
+        <h3 className="border-b border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">{t('live.history.transitions')}</h3>
+        {canCorrect && <p className="px-4 pt-2 text-xs text-slate-500">{t('live.history.correctHint')}</p>}
         <ol className="divide-y divide-slate-100 text-sm">
-          {data.transitions.map((t) => {
-            const fixes = data.corrections.filter((c) => c.transition_id === t.id);
-            const at = effective.get(t.id) ?? Date.parse(t.occurred_at);
-            const item = t.to_index !== null ? data.run.snapshot[t.to_index]?.title : null;
+          {data.transitions.map((transition) => {
+            const fixes = data.corrections.filter((c) => c.transition_id === transition.id);
+            const at = effective.get(transition.id) ?? Date.parse(transition.occurred_at);
+            const item = transition.to_index !== null ? data.run.snapshot[transition.to_index]?.title : null;
+            const actor = transition.actor_name ?? t('live.history.someone');
+            const moved = item && (transition.action === 'start' || transition.action === 'advance' || transition.action === 'jump');
             return (
-              <li key={t.id} className="flex flex-wrap items-start gap-3 px-4 py-2">
+              <li key={transition.id} className="flex flex-wrap items-start gap-3 px-4 py-2">
                 <span className="w-24 shrink-0 tabular-nums text-slate-600">{timeOfDay(new Date(at).toISOString())}</span>
                 <div className="min-w-0 flex-1">
                   <p>
-                    {ACTION_LABELS[t.action]}
-                    {item && (t.action === 'start' || t.action === 'advance' || t.action === 'jump') ? ` → ${item}` : ''}
-                    <span className="text-slate-500"> · {t.actor_name ?? 'Someone'}</span>
+                    {moved
+                      ? t('live.history.actionTo', { action: t(`live.history.actions.${transition.action}`), item })
+                      : t(`live.history.actions.${transition.action}`)}
+                    <span className="text-slate-500"> · {actor}</span>
                   </p>
-                  {t.reason && <p className="text-xs text-slate-500">“{t.reason}”</p>}
+                  {transition.reason && <p className="text-xs text-slate-500">“{transition.reason}”</p>}
                   {fixes.map((fix) => (
                     <p key={fix.id} className="text-xs text-amber-800">
-                      Corrected from {timeOfDay(fix.previous_at)} to {timeOfDay(fix.corrected_at)} by {fix.actor_name ?? 'someone'}: “{fix.reason}”
+                      {t('live.history.corrected', {
+                        from: timeOfDay(fix.previous_at),
+                        to: timeOfDay(fix.corrected_at),
+                        name: fix.actor_name ?? t('live.history.someone'),
+                        reason: fix.reason,
+                      })}
                     </p>
                   ))}
                 </div>
-                {canCorrect && isLiveTimingAction(t.action) && (
+                {canCorrect && isLiveTimingAction(transition.action) && (
                   <Button
                     variant="ghost"
                     className="px-2 py-1 text-xs"
                     onClick={() => {
-                      setTarget({ transition: t, effectiveMs: at });
+                      setTarget({ transition, effectiveMs: at });
                       setValue(toLocalInput(at));
                       setReason('');
                       correct.reset();
                     }}
                   >
-                    Correct time
+                    {t('live.history.correctTime')}
                   </Button>
                 )}
               </li>
@@ -192,11 +197,11 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
 
       <Modal
         open={target !== null}
-        title="Correct a recorded time"
+        title={t('live.history.correctTitle')}
         onClose={() => setTarget(null)}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setTarget(null)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => setTarget(null)}>{t('common:actions.cancel')}</Button>
             <Button
               loading={correct.isPending}
               disabled={!value || reason.trim().length === 0 || Number.isNaN(new Date(value).getTime())}
@@ -210,7 +215,7 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
                 })
               }
             >
-              Save correction
+              {t('live.history.saveCorrection')}
             </Button>
           </>
         }
@@ -218,16 +223,18 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
         {target && (
           <div className="space-y-3 text-sm text-slate-600">
             <p>
-              {ACTION_LABELS[target.transition.action]} was recorded at {timeOfDay(new Date(target.effectiveMs).toISOString())}. The new
-              time must stay between the entries before and after it. Times are in your browser’s timezone
-              ({Intl.DateTimeFormat().resolvedOptions().timeZone}).
+              {t('live.history.correctBody', {
+                action: t(`live.history.actions.${target.transition.action}`),
+                time: timeOfDay(new Date(target.effectiveMs).toISOString()),
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              })}
             </p>
             <label className="field">
-              Actual time
+              {t('live.history.actualTime')}
               <input type="datetime-local" step={1} className="input" value={value} onChange={(event) => setValue(event.target.value)} />
             </label>
             <label className="field">
-              Why? (required)
+              {t('live.confirm.reasonRequired')}
               <input className="input" value={reason} maxLength={500} onChange={(event) => setReason(event.target.value)} />
             </label>
             <ErrorNotice error={correct.error} />

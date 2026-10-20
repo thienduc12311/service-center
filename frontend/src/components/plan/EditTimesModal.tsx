@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   ApiError,
   toISODate,
@@ -31,11 +32,7 @@ interface TimeDraft {
   to: string;
 }
 
-const TIME_KIND_LABELS: Record<PlanTimeKind, string> = {
-  service: 'Service',
-  rehearsal: 'Rehearsal',
-  other: 'Other',
-};
+const TIME_KINDS: readonly PlanTimeKind[] = ['service', 'rehearsal', 'other'];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -87,6 +84,7 @@ const newDraft = (like?: TimeDraft): TimeDraft => ({
 });
 
 export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => {
+  const { t } = useTranslation(['plans', 'common']);
   const invalidate = useInvalidateOrg();
   // Keyed by plan id so reopening on a different plan starts from its times.
   const [drafts, setDrafts] = useState<TimeDraft[]>(() => draftsFrom(plan));
@@ -147,12 +145,12 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
       ? ((commit.error.details as AttendanceConflict[] | undefined) ?? [])
       : [];
   const nameOf = (personId: string): string =>
-    impact?.assignments.find((assignment) => assignment.person_id === personId)?.person_name ?? 'Someone';
+    impact?.assignments.find((assignment) => assignment.person_id === personId)?.person_name ?? t('common:fallback.someone');
   const unresolved = impact?.assignments.some((assignment) => assignment.orphaned && !resolutions[assignment.assignment_id]) ?? false;
 
   if (impact) {
     return (
-      <Modal open={open} title="Review time changes" onClose={close}>
+      <Modal open={open} title={t('editTimes.reviewTitle')} onClose={close}>
         <div className="space-y-4">
           <TimeImpactReview
             impact={impact}
@@ -164,14 +162,13 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
           />
           {staleImpact ? (
             <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
-              Who this change affects has changed since you reviewed it. Review it again before saving.
+              {t('editTimes.staleImpact')}
             </p>
           ) : commitConflicts.length > 0 ? (
             <>
               <ConflictList conflicts={commitConflicts} nameOf={nameOf} />
               <p className="text-xs text-slate-500">
-                Keeping a request for all times would overlap the above. Choose “Remove the request”, or change its
-                times from the Teams tab afterwards.
+                {t('editTimes.conflictHint')}
               </p>
             </>
           ) : (
@@ -179,15 +176,15 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setImpact(null)}>
-              Back
+              {t('common:actions.back')}
             </Button>
             {staleImpact ? (
               <Button loading={preview.isPending} onClick={() => preview.mutate()}>
-                Review again
+                {t('editTimes.reviewAgain')}
               </Button>
             ) : (
               <Button loading={commit.isPending} disabled={unresolved} onClick={() => commit.mutate(impact)}>
-                Save times
+                {t('editTimes.saveTimes')}
               </Button>
             )}
           </div>
@@ -202,11 +199,11 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
     );
 
   return (
-    <Modal open={open} title="Service & rehearsal times" onClose={close}>
+    <Modal open={open} title={t('editTimes.title')} onClose={close}>
       <div className="space-y-3">
         {drafts.length === 0 && (
           <p className="text-sm text-slate-400">
-            This plan has no times yet — a plan without a service time never reaches the calendar.
+            {t('editTimes.empty')}
           </p>
         )}
 
@@ -214,28 +211,28 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
           <div key={draft.id} className="space-y-2 rounded-lg bg-slate-50 p-3">
             <div className="flex items-center gap-2">
               <select
-                aria-label={`Kind for time ${index + 1}`}
+                aria-label={t('editTimes.kindFor', { number: index + 1 })}
                 className="input w-36"
                 value={draft.kind}
                 onChange={(event) => update(draft.id, { kind: event.target.value as PlanTimeKind })}
               >
-                {Object.entries(TIME_KIND_LABELS).map(([kind, label]) => (
+                {TIME_KINDS.map((kind) => (
                   <option key={kind} value={kind}>
-                    {label}
+                    {t(`timeKind.${kind}`)}
                   </option>
                 ))}
               </select>
               <input
-                aria-label={`Label for time ${index + 1}`}
+                aria-label={t('editTimes.labelFor', { number: index + 1 })}
                 className="input flex-1"
                 value={draft.name}
-                placeholder="Label (optional)"
+                placeholder={t('editTimes.labelPlaceholder')}
                 maxLength={120}
                 onChange={(event) => update(draft.id, { name: event.target.value })}
               />
               <button
                 type="button"
-                aria-label={`Remove time ${index + 1}`}
+                aria-label={t('editTimes.removeTime', { number: index + 1 })}
                 onClick={() => setDrafts((current) => current.filter((d) => d.id !== draft.id))}
                 className="px-1 text-lg text-slate-400 hover:text-rose-500"
               >
@@ -245,27 +242,27 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
             <div className="flex flex-wrap items-center gap-2">
               <input
                 type="date"
-                aria-label={`Date for time ${index + 1}`}
+                aria-label={t('editTimes.dateFor', { number: index + 1 })}
                 className="input flex-1"
                 value={draft.date}
                 onChange={(event) => update(draft.id, { date: event.target.value })}
               />
               <input
                 type="time"
-                aria-label={`Start for time ${index + 1}`}
+                aria-label={t('editTimes.startFor', { number: index + 1 })}
                 className="input w-28"
                 value={draft.from}
                 onChange={(event) => update(draft.id, { from: event.target.value })}
               />
-              <span className="text-sm text-slate-500">to</span>
+              <span className="text-sm text-slate-500">{t('editTimes.to')}</span>
               <input
                 type="time"
-                aria-label={`End for time ${index + 1}`}
+                aria-label={t('editTimes.endFor', { number: index + 1 })}
                 className="input w-28"
                 value={draft.to}
                 onChange={(event) => update(draft.id, { to: event.target.value })}
               />
-              {endsNextDay(draft) && <span className="text-xs text-slate-500">next day</span>}
+              {endsNextDay(draft) && <span className="text-xs text-slate-500">{t('editTimes.nextDay')}</span>}
             </div>
           </div>
         ))}
@@ -275,20 +272,20 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
           variant="secondary"
           onClick={() => setDrafts((current) => [...current, newDraft(current.at(-1))])}
         >
-          + Add a time
+          {t('editTimes.addTime')}
         </Button>
 
         {!valid && (
-          <p className="text-sm text-amber-600">Every time needs a date, a start and a different end.</p>
+          <p className="text-sm text-amber-600">{t('editTimes.invalid')}</p>
         )}
         <ErrorNotice error={preview.error ?? commit.error} />
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={close}>
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
           <Button loading={preview.isPending || commit.isPending} disabled={!valid} onClick={() => preview.mutate()}>
-            Save times
+            {t('editTimes.saveTimes')}
           </Button>
         </div>
       </div>

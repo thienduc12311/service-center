@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import {
   CAPO_POSITIONS,
@@ -10,6 +11,7 @@ import { useInvalidateOrg } from '../../hooks/queries';
 import { Button, ErrorNotice, Modal } from '../ui';
 import { KeySelect } from '../KeySelect';
 import {
+  NEW_ARRANGEMENT_NAME_KEY,
   arrangementFormFrom,
   newArrangementForm,
   toCreateArrangementInput,
@@ -39,6 +41,8 @@ export const ArrangementModal = ({
   onClose,
   onSaved,
 }: ArrangementModalProps) => {
+  const { t } = useTranslation(['songs', 'common']);
+  const defaultName = t(NEW_ARRANGEMENT_NAME_KEY);
   const invalidate = useInvalidateOrg();
   const [form, setForm] = useState<ArrangementFormValues>(() =>
     arrangement ? arrangementFormFrom(arrangement) : newArrangementForm(song),
@@ -55,10 +59,10 @@ export const ArrangementModal = ({
 
   const save = useMutation({
     mutationFn: (): Promise<ArrangementRow> => {
-      if (!arrangement) return api.createArrangement(song.id, toCreateArrangementInput(form));
+      if (!arrangement) return api.createArrangement(song.id, toCreateArrangementInput(form, defaultName));
 
       return api.updateArrangement(arrangement.id, {
-        ...toUpdateArrangementInput(form),
+        ...toUpdateArrangementInput(form, defaultName),
         // Only ever promote: sending `false` for the current default would
         // leave the song with none.
         ...(form.isDefault && !arrangement.is_default ? { is_default: true } : {}),
@@ -85,34 +89,34 @@ export const ArrangementModal = ({
   return (
     <Modal
       open={open}
-      title={arrangement ? 'Edit Arrangement' : 'Add Arrangement'}
+      title={arrangement ? t('arrangement.editTitle') : t('arrangement.addTitle')}
       onClose={close}
     >
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="label" htmlFor="arrangement-name">Arrangement Name</label>
+          <label className="label" htmlFor="arrangement-name">{t('arrangement.fields.name')}</label>
           <input
             id="arrangement-name"
             className="input"
             value={form.name}
             onChange={(event) => update('name', event.target.value)}
-            placeholder="Default Arrangement"
+            placeholder={t('arrangement.defaultName')}
             autoFocus
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="label" htmlFor="arrangement-key">Key</label>
+            <label className="label" htmlFor="arrangement-key">{t('arrangement.fields.key')}</label>
             <KeySelect
               id="arrangement-key"
               value={form.songKey}
               onChange={(key) => update('songKey', key)}
-              resetLabel="No key"
+              resetLabel={t('arrangement.noKey')}
             />
           </div>
           <div>
-            <label className="label" htmlFor="arrangement-capo">Capo</label>
+            <label className="label" htmlFor="arrangement-capo">{t('arrangement.fields.capo')}</label>
             <select
               id="arrangement-capo"
               className="input"
@@ -121,7 +125,7 @@ export const ArrangementModal = ({
                 update('capo', event.target.value ? Number(event.target.value) : null)
               }
             >
-              <option value="">None</option>
+              <option value="">{t('common:states.none')}</option>
               {CAPO_POSITIONS.map((fret) => (
                 <option key={fret} value={fret}>{fret}</option>
               ))}
@@ -131,7 +135,7 @@ export const ArrangementModal = ({
 
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="label" htmlFor="arrangement-length">Length</label>
+            <label className="label" htmlFor="arrangement-length">{t('arrangement.fields.length')}</label>
             <input
               id="arrangement-length"
               className="input"
@@ -141,7 +145,7 @@ export const ArrangementModal = ({
             />
           </div>
           <div>
-            <label className="label" htmlFor="arrangement-bpm">BPM</label>
+            <label className="label" htmlFor="arrangement-bpm">{t('arrangement.fields.bpm')}</label>
             <input
               id="arrangement-bpm"
               className="input"
@@ -152,7 +156,7 @@ export const ArrangementModal = ({
             />
           </div>
           <div>
-            <label className="label" htmlFor="arrangement-meter">Meter</label>
+            <label className="label" htmlFor="arrangement-meter">{t('arrangement.fields.meter')}</label>
             <input
               id="arrangement-meter"
               className="input"
@@ -164,7 +168,7 @@ export const ArrangementModal = ({
         </div>
 
         <div>
-          <label className="label" htmlFor="arrangement-sequence">Sequence</label>
+          <label className="label" htmlFor="arrangement-sequence">{t('arrangement.fields.sequence')}</label>
           <input
             id="arrangement-sequence"
             className="input"
@@ -173,7 +177,7 @@ export const ArrangementModal = ({
             placeholder="Intro, V1, C1, V2, C1, B, C2, E"
           />
           <p className="mt-1 text-xs text-slate-500">
-            The order the sections are played in, separated by commas.
+            {t('arrangement.sequenceHelp')}
           </p>
         </div>
 
@@ -185,17 +189,17 @@ export const ArrangementModal = ({
             disabled={arrangement?.is_default ?? song.arrangements.length === 0}
             onChange={(event) => update('isDefault', event.target.checked)}
           />
-          Use as the default arrangement
+          {t('arrangement.useAsDefault')}
         </label>
 
         <ErrorNotice error={save.error} />
 
         <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
           <Button type="button" variant="secondary" onClick={close}>
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
           <Button type="submit" loading={save.isPending}>
-            Submit
+            {t('arrangement.submit')}
           </Button>
         </div>
       </form>

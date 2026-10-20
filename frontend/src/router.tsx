@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AppShell } from './components/AppShell';
 import { Loading } from './components/ui';
 import { useAuth } from './providers/AuthProvider';
@@ -41,10 +42,11 @@ import { ReportsPage } from './pages/ReportsPage';
  * organization is sent to onboarding rather than an empty dashboard.
  */
 const RequireAuth = () => {
+  const { t } = useTranslation();
   const { session, user, organizationId, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <Loading label="Signing you in…" />;
+  if (loading) return <Loading label={t('states.signingIn')} />;
   if (!session) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (user && !organizationId && location.pathname !== '/welcome') {
     return <Navigate to="/welcome" replace />;

@@ -1,29 +1,38 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { formatDate, listSongsQuerySchema, type ListSongsQuery, type SongListItem } from '@service-center/shared';
+import { listSongsQuerySchema, type ListSongsQuery, type SongListItem } from '@service-center/shared';
 import { useSongs } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { SongBulkEditor } from '../components/song/SongBulkEditor';
 import { AddSongModal } from '../components/AddSongModal';
-
-const DAY = { month: 'short', day: 'numeric', year: 'numeric' } as const;
+import { useFormatters } from '../i18n';
 
 /** A free-text song filter: the query parameter it sets and its caption. */
 interface TextFilter {
   name: keyof ListSongsQuery;
-  label: string;
+  label: TextFilterLabelKey;
 }
+
+/** Catalog keys for the free-text filter captions. */
+type TextFilterLabelKey =
+  | 'songsPage.filters.key'
+  | 'songsPage.filters.theme'
+  | 'songsPage.filters.songType'
+  | 'songsPage.filters.style'
+  | 'songsPage.filters.speed'
+  | 'songsPage.filters.author';
 
 const NOT_FILTERS = new Set(['archive', 'sort', 'page', 'per_page', 'q']);
 
 const TEXT_FILTERS: TextFilter[] = [
-  { name: 'key', label: 'Key' },
-  { name: 'theme', label: 'Theme' },
-  { name: 'song_type', label: 'Song type' },
-  { name: 'style', label: 'Style' },
-  { name: 'speed', label: 'Speed' },
-  { name: 'author', label: 'Author' },
+  { name: 'key', label: 'songsPage.filters.key' },
+  { name: 'theme', label: 'songsPage.filters.theme' },
+  { name: 'song_type', label: 'songsPage.filters.songType' },
+  { name: 'style', label: 'songsPage.filters.style' },
+  { name: 'speed', label: 'songsPage.filters.speed' },
+  { name: 'author', label: 'songsPage.filters.author' },
 ];
 
 /** The keys a song is actually played in — its arrangements, not just the default. */
@@ -37,6 +46,8 @@ const songBpm = (song: SongListItem): number | null =>
   song.default_bpm ?? song.arrangements.find((arrangement) => arrangement.bpm)?.bpm ?? null;
 
 export const SongsPage = () => {
+  const { t } = useTranslation(['songs', 'common']);
+  const formatters = useFormatters();
   const { canAnywhere } = useAuth();
   // The song library is organization-wide; leading a team never implies it.
   const canManage = canAnywhere('songs.manage');
@@ -61,20 +72,20 @@ export const SongsPage = () => {
   return (
     <div>
       <PageHeader
-        title="Songs"
-        subtitle="Your library, with arrangements and chord charts."
+        title={t('common:nav.songs')}
+        subtitle={t('songsPage.subtitle')}
         actions={
           <div className="flex items-center gap-2">
             <select
-              aria-label="Sort songs"
+              aria-label={t('songsPage.sortLabel')}
               className="input w-48"
               value={sort}
               onChange={(event) => { setSort(event.target.value as 'title' | 'recent'); resetPage(); }}
             >
-              <option value="title">A–Z</option>
-              <option value="recent">Recently updated</option>
+              <option value="title">{t('songsPage.sortTitle')}</option>
+              <option value="recent">{t('songsPage.sortRecent')}</option>
             </select>
-            {canManage && <><Link className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300" to="/imports?kind=songs">Import CSV</Link><Button onClick={() => setAdding(true)}>Add a song</Button></>}
+            {canManage && <><Link className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300" to="/imports?kind=songs">{t('songsPage.importCsv')}</Link><Button onClick={() => setAdding(true)}>{t('songsPage.addSong')}</Button></>}
           </div>
         }
       />
@@ -84,15 +95,17 @@ export const SongsPage = () => {
           className="input min-w-48 max-w-sm flex-1"
           value={query}
           onChange={(event) => { setQuery(event.target.value); resetPage(); }}
-          placeholder="Add text filter"
-          aria-label="Search songs"
+          placeholder={t('songsPage.searchPlaceholder')}
+          aria-label={t('songsPage.searchLabel')}
         />
         <Button variant="secondary" aria-expanded={showFilters} onClick={() => setShowFilters((open) => !open)}>
-          {showFilters ? 'Hide filters' : 'Filters'}{activeFilterCount ? ` (${activeFilterCount})` : ''}
+          {activeFilterCount
+            ? t(showFilters ? 'songsPage.hideFiltersCount' : 'songsPage.filtersCount', { count: activeFilterCount })
+            : t(showFilters ? 'songsPage.hideFilters' : 'songsPage.filters.toggle')}
         </Button>
         {songs.data && (
           <span className="ml-auto text-sm text-slate-500">
-            {songs.data.total} song{songs.data.total === 1 ? '' : 's'}
+            {t('common:count.songs', { count: songs.data.total })}
           </span>
         )}
       </div>
@@ -111,20 +124,20 @@ export const SongsPage = () => {
         setFilterError(null); setFilters(parsed.data); resetPage();
       }} onReset={() => { setFilterError(null); setFilters({}); resetPage(); }}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="field">Library<select name="archive" className="input"><option value="active">Active songs</option><option value="archived">Archived songs</option><option value="all">All songs</option></select></label>
-          {TEXT_FILTERS.map((filter) => <label key={filter.name} className="field">{filter.label}<input className="input" name={filter.name} /></label>)}
-          <label className="field">Minimum BPM<input className="input" name="bpm_min" type="number" min="20" max="300" /></label>
-          <label className="field">Maximum BPM<input className="input" name="bpm_max" type="number" min="20" max="300" /></label>
-          <label className="field">Scheduled from (UTC)<input className="input" name="scheduled_from" type="date" /></label>
-          <label className="field">Scheduled before (UTC)<input className="input" name="scheduled_to" type="date" /></label>
+          <label className="field">{t('songsPage.filters.library')}<select name="archive" className="input"><option value="active">{t('songsPage.filters.activeSongs')}</option><option value="archived">{t('songsPage.filters.archivedSongs')}</option><option value="all">{t('songsPage.filters.allSongs')}</option></select></label>
+          {TEXT_FILTERS.map((filter) => <label key={filter.name} className="field">{t(filter.label)}<input className="input" name={filter.name} /></label>)}
+          <label className="field">{t('songsPage.filters.bpmMin')}<input className="input" name="bpm_min" type="number" min="20" max="300" /></label>
+          <label className="field">{t('songsPage.filters.bpmMax')}<input className="input" name="bpm_max" type="number" min="20" max="300" /></label>
+          <label className="field">{t('songsPage.filters.scheduledFrom')}<input className="input" name="scheduled_from" type="date" /></label>
+          <label className="field">{t('songsPage.filters.scheduledTo')}<input className="input" name="scheduled_to" type="date" /></label>
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          <Button type="reset" variant="ghost">Clear</Button>
-          <Button type="submit">Apply filters</Button>
+          <Button type="reset" variant="ghost">{t('common:actions.clear')}</Button>
+          <Button type="submit">{t('songsPage.applyFilters')}</Button>
         </div>
       </form>
       <ErrorNotice error={filterError ?? songs.error} />
-      {canManage && selected.length > 0 && !editing && <div className="mb-4"><Button onClick={() => setEditing(true)}>Edit {selected.length} selected songs</Button></div>}
+      {canManage && selected.length > 0 && !editing && <div className="mb-4"><Button onClick={() => setEditing(true)}>{t('songsPage.editSelected', { count: selected.length })}</Button></div>}
       {canManage && editing && <SongBulkEditor songs={rows.filter((row) => selected.includes(row.id))} onDone={() => { setEditing(false); setSelected([]); }} />}
 
 
@@ -135,20 +148,20 @@ export const SongsPage = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                {canManage && <th scope="col" className="px-4 py-3">Select</th>}
-                <th scope="col" className="px-4 py-3 font-medium">Title</th>
-                <th scope="col" className="px-4 py-3 font-medium">BPM</th>
-                <th scope="col" className="px-4 py-3 font-medium">Keys</th>
-                <th scope="col" className="px-4 py-3 font-medium">Last scheduled</th>
-                <th scope="col" className="px-4 py-3 font-medium">Created</th>
+                {canManage && <th scope="col" className="px-4 py-3">{t('common:actions.select')}</th>}
+                <th scope="col" className="px-4 py-3 font-medium">{t('songsPage.columns.title')}</th>
+                <th scope="col" className="px-4 py-3 font-medium">{t('songsPage.columns.bpm')}</th>
+                <th scope="col" className="px-4 py-3 font-medium">{t('songsPage.columns.keys')}</th>
+                <th scope="col" className="px-4 py-3 font-medium">{t('songsPage.columns.lastScheduled')}</th>
+                <th scope="col" className="px-4 py-3 font-medium">{t('songsPage.columns.created')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.map((song) => (
                 <tr key={song.id} className="transition hover:bg-slate-50">
-                  {canManage && <td className="px-4 py-3"><input type="checkbox" aria-label={`Select ${song.title}`} checked={selected.includes(song.id)} disabled={editing} onChange={(event) => setSelected((current) => event.target.checked ? [...current, song.id] : current.filter((id) => id !== song.id))} /></td>}
+                  {canManage && <td className="px-4 py-3"><input type="checkbox" aria-label={t('songsPage.selectSong', { title: song.title })} checked={selected.includes(song.id)} disabled={editing} onChange={(event) => setSelected((current) => event.target.checked ? [...current, song.id] : current.filter((id) => id !== song.id))} /></td>}
                   <td className="px-4 py-3">
-                    {song.archived_at && <span className="mr-2 text-xs text-slate-500">Archived</span>}
+                    {song.archived_at && <span className="mr-2 text-xs text-slate-500">{t('songsPage.archivedBadge')}</span>}
                     <Link to={`/songs/${song.id}`} className="font-medium text-slate-900 hover:text-brand-700">
                       {song.title}
                     </Link>
@@ -157,9 +170,9 @@ export const SongsPage = () => {
                   <td className="px-4 py-3 tabular-nums text-slate-600">{songBpm(song) ?? ''}</td>
                   <td className="px-4 py-3 font-medium text-slate-700">{songKeys(song)}</td>
                   <td className="px-4 py-3 text-slate-600">
-                    {song.last_scheduled_at ? formatDate(song.last_scheduled_at, DAY) : ''}
+                    {song.last_scheduled_at ? formatters.date(song.last_scheduled_at, 'medium') : ''}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{formatDate(song.created_at, DAY)}</td>
+                  <td className="px-4 py-3 text-slate-500">{formatters.date(song.created_at, 'medium')}</td>
                 </tr>
               ))}
             </tbody>
@@ -167,16 +180,16 @@ export const SongsPage = () => {
         </div>
       ) : (
         <EmptyState
-          title={query ? 'No songs match that search' : 'No songs yet'}
-          description="Add songs to build the library your plans draw from."
-          action={canManage ? <Button onClick={() => setAdding(true)}>Add a song</Button> : undefined}
+          title={query ? t('songsPage.emptySearch') : t('songsPage.empty')}
+          description={t('songsPage.emptyDescription')}
+          action={canManage ? <Button onClick={() => setAdding(true)}>{t('songsPage.addSong')}</Button> : undefined}
         />
       )}
 
       <div className="my-4 flex items-center justify-end gap-3">
-        <Button variant="secondary" disabled={page <= 1 || songs.isFetching || editing} onClick={() => { setPage(page - 1); setSelected([]); }}>Previous</Button>
-        <span className="text-sm text-slate-500">Page {page}</span>
-        <Button variant="secondary" disabled={!songs.data || page * 50 >= songs.data.total || songs.isFetching || editing} onClick={() => { setPage(page + 1); setSelected([]); }}>Next</Button>
+        <Button variant="secondary" disabled={page <= 1 || songs.isFetching || editing} onClick={() => { setPage(page - 1); setSelected([]); }}>{t('songsPage.previousPage')}</Button>
+        <span className="text-sm text-slate-500">{t('songsPage.page', { page })}</span>
+        <Button variant="secondary" disabled={!songs.data || page * 50 >= songs.data.total || songs.isFetching || editing} onClick={() => { setPage(page + 1); setSelected([]); }}>{t('common:actions.next')}</Button>
       </div>
       <AddSongModal
         open={adding}

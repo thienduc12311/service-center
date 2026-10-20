@@ -4,6 +4,9 @@ import {
   type ProposalChoice,
   type ProposalExclusionCode,
   type ProposalFairnessMetrics,
+  type ProposalReasonDetail,
+  type ProposalTextParams,
+  type ProposalTieBreak,
   type ProposalSnapshotAssignment,
   type ProposalSnapshotPlan,
   type ProposalSnapshotRotation,
@@ -56,6 +59,14 @@ const EXCLUSION_LABELS: Record<ProposalExclusionCode, string> = {
 };
 
 export const proposalExclusionLabel = (code: ProposalExclusionCode): string => EXCLUSION_LABELS[code];
+
+/** English wording of each tie-break in the legacy `reasons` text. */
+const TIE_BREAK_TEXT: Record<ProposalTieBreak, string> = {
+  preference_warnings: 'preference warnings',
+  fewer_plans_served: 'fewer plans served',
+  served_less_recently: 'served less recently',
+  seeded_tie_break: 'the seeded tie-break',
+};
 
 /** The actual ordering policy, shown verbatim to reviewers. */
 export const describeProposalPolicy = (lookbackDays: number): string[] => [
@@ -232,15 +243,16 @@ export const runStaffingProposal = ({ snapshot, edits, seed }: ProposalRunInput)
       if (choice.source !== 'existing') {
         proposedServing.set(choice.person_id, [...(proposedServing.get(choice.person_id) ?? []), { plan_id: plan.id, date: plan.service_date.slice(0, 10) }]);
         if (rankingCodes(codes).length) warnings.push({ code: 'preference', plan_id: plan.id, position_id: choice.position_id, person_id: choice.person_id,
-          message: `${nameOf(choice.person_id)} has preference warnings for ${plan.title}: ${rankingCodes(codes).join(', ')}.` });
+          message: `${nameOf(choice.person_id)} has preference warnings for ${plan.title}: ${rankingCodes(codes).join(', ')}.`,
+          params: { person_id: choice.person_id, person_name: nameOf(choice.person_id), plan_title: plan.title, preference_codes: rankingCodes(codes) } });
       }
       choices.push({ ...choice, person_name: nameOf(choice.person_id), preference_codes: codes });
     };
 
-    const vacate = (teamId: string, positionId: string, slotKey: string, code: ProposalVacancyCode, reason: string): void => {
+    const vacate = (teamId: string, positionId: string, slotKey: string, code: ProposalVacancyCode, reason: string, params?: ProposalTextParams): void => {
       const counts: Partial<Record<ProposalExclusionCode, number>> = {};
       for (const item of explainAll(teamId, positionId)) if (item.excluded) counts[item.excluded] = (counts[item.excluded] ?? 0) + 1;
-      vacancies.push({ slot_key: slotKey, plan_id: plan.id, team_id: teamId, position_id: positionId, code, reason, exclusion_counts: counts });
+      vacancies.push({ slot_key: slotKey, plan_id: plan.id, team_id: teamId, position_id: positionId, code, reason, ...(params ? { params } : {}), exclusion_counts: counts });
     };
 
     for (const need of needs) {
@@ -258,7 +270,8 @@ export const runStaffingProposal = ({ snapshot, edits, seed }: ProposalRunInput)
         choose({ slot_key: nextKey(), plan_id: plan.id, team_id: teamId, position_id: positionId, person_id: row.person_id,
           source: 'existing', assignment_id: row.id, assignment_status: row.status, assignment_visibility: row.visibility,
           metrics: null, alternatives: [],
-          reasons: [`Kept: existing ${row.visibility === 'prepared' ? 'prepared' : row.status} request.`] });
+          reasons: [`Kept: existing ${row.visibility === 'prepared' ? 'prepared' : row.status} request.`],
+          reason_details: [{ code: 'kept_existing', state: row.visibility === 'prepared' ? 'prepared' : row.status }] });
       }
 
       const locks = edits.locks
@@ -271,15 +284,17 @@ export const runStaffingProposal = ({ snapshot, edits, seed }: ProposalRunInput)
         const key = nextKey();
         const excluded = exclusionFor(teamId, positionId, personId, true);
         if (excluded) {
+          const params: ProposalTextParams = { person_id: personId, person_name: nameOf(personId), plan_title: plan.title, exclusion: excluded };
           warnings.push({ code: 'locked_choice_invalid', plan_id: plan.id, position_id: positionId, person_id: personId,
-            message: `Your locked choice ${nameOf(personId)} is no longer eligible for ${plan.title}: ${EXCLUSION_LABELS[excluded]}.` });
+            message: `Your locked choice ${nameOf(personId)} is no longer eligible for ${plan.title}: ${EXCLUSION_LABELS[excluded]}.`, params });
           vacate(teamId, positionId, key, 'locked_choice_invalid',
-            `Left open: your locked choice ${nameOf(personId)} is ${EXCLUSION_LABELS[excluded]}. Unlock to let the engine choose.`);
+            `Left open: your locked choice ${nameOf(personId)} is ${EXCLUSION_LABELS[excluded]}. Unlock to let the engine choose.`, params);
           continue;
         }
         choose({ slot_key: key, plan_id: plan.id, team_id: teamId, position_id: positionId, person_id: personId,
           source: 'locked', assignment_id: null, assignment_status: null, assignment_visibility: null,
-          metrics: metricsFor(plan, teamId, positionId, personId), alternatives: [], reasons: ['Locked by you; kept on every recompute.'] });
+          metrics: metricsFor(plan, teamId, positionId, personId), alternatives: [], reasons: ['Locked by you; kept on every recompute.'],
+          reason_details: [{ code: 'locked' }] });
       }
 
       const rotation = (rotationsByTeam.get(teamId) ?? []).find((item) =>
@@ -290,7 +305,8 @@ export const runStaffingProposal = ({ snapshot, edits, seed }: ProposalRunInput)
           warnings.push({ code: 'rotation_exception', plan_id: plan.id, position_id: positionId, person_id: null,
             message: pick.source === 'skipped'
               ? `Rotation “${rotation.name}” is skipped on ${plan.local_date}; fairness decides.`
-              : `Rotation “${rotation.name}” uses an exception on ${plan.local_date}.` });
+              : `Rotation “${rotation.name}” uses an exception on ${plan.local_date}.`,
+            params: { rotation_name: rotation.name, date: plan.local_date, skipped: pick.source === 'skipped' } });
         }
         for (const personId of pick.person_ids) {
           if (ordinal >= slots) break;
@@ -301,18 +317,22 @@ export const runStaffingProposal = ({ snapshot, edits, seed }: ProposalRunInput)
               source: 'rotation', assignment_id: null, assignment_status: null, assignment_visibility: null,
               metrics: metricsFor(plan, teamId, positionId, personId), alternatives: rankedEligible(teamId, positionId).slice(0, MAX_ALTERNATIVES)
                 .map((item) => ({ person_id: item.person_id, person_name: nameOf(item.person_id), excluded: null, metrics: item.metrics })),
-              reasons: [`Rotation “${rotation.name}”, ${pick.source === 'exception' ? `exception for ${plan.local_date}` : `week ${pick.week_index + 1} of ${rotation.cycle_weeks}`}.`] });
+              reasons: [`Rotation “${rotation.name}”, ${pick.source === 'exception' ? `exception for ${plan.local_date}` : `week ${pick.week_index + 1} of ${rotation.cycle_weeks}`}.`],
+              reason_details: [pick.source === 'exception'
+                ? { code: 'rotation_exception', rotation_name: rotation.name, date: plan.local_date }
+                : { code: 'rotation_week', rotation_name: rotation.name, week: pick.week_index + 1, cycle_weeks: rotation.cycle_weeks }] });
             continue;
           }
           // A reviewer's exclusion is an adjustment, not an availability problem: fairness decides.
           if (excluded === 'excluded_by_reviewer') continue;
           const missing = excluded === 'not_position_member';
           const code = missing ? 'rotation_member_missing' : 'rotation_member_unavailable';
+          const params: ProposalTextParams = { person_id: personId, person_name: nameOf(personId), rotation_name: rotation.name, date: plan.local_date, exclusion: excluded };
           warnings.push({ code, plan_id: plan.id, position_id: positionId, person_id: personId,
-            message: `Rotation “${rotation.name}” names ${nameOf(personId)} for ${plan.local_date}, but they are ${EXCLUSION_LABELS[excluded]}.` });
+            message: `Rotation “${rotation.name}” names ${nameOf(personId)} for ${plan.local_date}, but they are ${EXCLUSION_LABELS[excluded]}.`, params });
           if (rotation.substitute_policy === 'vacancy') {
             vacate(teamId, positionId, nextKey(), code,
-              `Left open: rotation “${rotation.name}” names ${nameOf(personId)}, who is ${EXCLUSION_LABELS[excluded]}. This rotation leaves such weeks open.`);
+              `Left open: rotation “${rotation.name}” names ${nameOf(personId)}, who is ${EXCLUSION_LABELS[excluded]}. This rotation leaves such weeks open.`, params);
           }
         }
       }
@@ -332,17 +352,22 @@ export const runStaffingProposal = ({ snapshot, edits, seed }: ProposalRunInput)
           best.metrics.has_preference_warning ? 'Every eligible member has a preference warning; chosen by fairness among them.' : 'No preference warnings.',
           `${best.metrics.assigned_count} plan${best.metrics.assigned_count === 1 ? '' : 's'} served in the last ${snapshot.lookback_days} days${best.metrics.last_served_on ? `, last on ${best.metrics.last_served_on}` : ', none recently'}.`,
         ];
+        const reasonDetails: ProposalReasonDetail[] = [
+          { code: best.metrics.has_preference_warning ? 'all_have_preference_warnings' : 'no_preference_warnings' },
+          { code: 'served_count', count: best.metrics.assigned_count, lookback_days: snapshot.lookback_days, last_served_on: best.metrics.last_served_on },
+        ];
         if (runnerUp) {
-          const decided = runnerUp.metrics.has_preference_warning !== best.metrics.has_preference_warning ? 'preference warnings'
-            : runnerUp.metrics.assigned_count !== best.metrics.assigned_count ? 'fewer plans served'
-              : (runnerUp.metrics.last_served_on ?? '') !== (best.metrics.last_served_on ?? '') ? 'served less recently'
-                : 'the seeded tie-break';
-          reasons.push(`Chosen over ${nameOf(runnerUp.person_id)} by ${decided}.`);
+          const decidedBy: ProposalTieBreak = runnerUp.metrics.has_preference_warning !== best.metrics.has_preference_warning ? 'preference_warnings'
+            : runnerUp.metrics.assigned_count !== best.metrics.assigned_count ? 'fewer_plans_served'
+              : (runnerUp.metrics.last_served_on ?? '') !== (best.metrics.last_served_on ?? '') ? 'served_less_recently'
+                : 'seeded_tie_break';
+          reasons.push(`Chosen over ${nameOf(runnerUp.person_id)} by ${TIE_BREAK_TEXT[decidedBy]}.`);
+          reasonDetails.push({ code: 'chosen_over', person_id: runnerUp.person_id, person_name: nameOf(runnerUp.person_id), decided_by: decidedBy });
         }
         choose({ slot_key: key, plan_id: plan.id, team_id: teamId, position_id: positionId, person_id: best.person_id,
           source: 'fairness', assignment_id: null, assignment_status: null, assignment_visibility: null, metrics: best.metrics,
           alternatives: ranked.slice(1, 1 + MAX_ALTERNATIVES).map((item) => ({ person_id: item.person_id, person_name: nameOf(item.person_id), excluded: null, metrics: item.metrics })),
-          reasons });
+          reasons, reason_details: reasonDetails });
       }
     }
   }

@@ -1,13 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
-import type { IdentityReconciliationReason } from '@service-center/shared';
+import { Trans, useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
 import { useIdentityReconciliations, useInvalidateOrg } from '../../hooks/queries';
 import { Button, ErrorNotice, Loading } from '../ui';
-
-const REASONS: Record<IdentityReconciliationReason, string> = {
-  email_match: 'has the same email as',
-  invitation_conflict: 'accepted an invitation meant for',
-};
 
 /**
  * Possible duplicate people, never merged automatically. Merging moves the
@@ -15,6 +10,7 @@ const REASONS: Record<IdentityReconciliationReason, string> = {
  * Person; keeping them separate just closes the report.
  */
 export const IdentityReconciliationSettings = () => {
+  const { t } = useTranslation('settings');
   const invalidate = useInvalidateOrg();
   const reports = useIdentityReconciliations(true);
   const resolve = useMutation({
@@ -27,23 +23,26 @@ export const IdentityReconciliationSettings = () => {
 
   return (
     <section className="card p-5">
-      <h2 className="text-base font-semibold">Possible duplicate people</h2>
-      <p className="mb-3 text-sm text-slate-500">
-        We never combine people just because their details match. Decide here whether two records are the same person.
-      </p>
+      <h2 className="text-base font-semibold">{t('identity.title')}</h2>
+      <p className="mb-3 text-sm text-slate-500">{t('identity.description')}</p>
       <ErrorNotice error={reports.error ?? resolve.error} />
       {reports.isLoading ? (
         <Loading />
       ) : open.length === 0 ? (
-        <p className="text-sm text-slate-500">Nothing to review.</p>
+        <p className="text-sm text-slate-500">{t('identity.empty')}</p>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
           {open.map((report) => (
             <li key={report.id} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
               <span>
-                <strong>{report.person_name}</strong> {REASONS[report.reason]} <strong>{report.candidate_name}</strong>
+                <Trans
+                  t={t}
+                  i18nKey={`identity.reason.${report.reason}`}
+                  values={{ person: report.person_name, candidate: report.candidate_name }}
+                  components={[<strong key="person" />, <strong key="candidate" />]}
+                />
                 <span className="block text-xs text-slate-500">
-                  Merging moves {report.candidate_name}’s requests and history to {report.person_name}.
+                  {t('identity.mergeHint', { person: report.person_name, candidate: report.candidate_name })}
                 </span>
               </span>
               <span className="flex gap-2">
@@ -52,13 +51,14 @@ export const IdentityReconciliationSettings = () => {
                   loading={resolve.isPending && resolve.variables?.id === report.id && resolve.variables.action === 'keep_separate'}
                   onClick={() => resolve.mutate({ id: report.id, action: 'keep_separate' })}
                 >
-                  Different people
+                  {t('identity.keepSeparate')}
                 </Button>
                 <Button
                   loading={resolve.isPending && resolve.variables?.id === report.id && resolve.variables.action === 'merge'}
                   onClick={() => resolve.mutate({ id: report.id, action: 'merge' })}
                 >
-                  Same person — merge
+                  {t('identity.merge')}
+
                 </Button>
               </span>
             </li>

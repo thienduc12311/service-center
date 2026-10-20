@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
 import { View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
-import { ApiError } from '@service-center/shared';
+import { ApiError, LocalizedError } from '@service-center/shared';
 import { AuthProvider, useAuth } from '../src/providers/AuthProvider';
 import { NotificationsProvider } from '../src/providers/NotificationsProvider';
+import { LanguageProvider } from '../src/i18n';
 import { NavigationIntentProvider } from '../src/providers/NavigationIntentProvider';
 import { Button, ErrorNotice, Loading } from '../src/components/ui';
 import { fonts } from '../src/lib/theme';
@@ -34,6 +36,7 @@ const RootNavigator = () => {
   const segments = useSegments();
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation(['auth', 'common']);
 
   useEffect(() => {
     if (loading) return;
@@ -51,7 +54,7 @@ const RootNavigator = () => {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.color.canvas, justifyContent: 'center' }}>
-        <Loading label="Signing you in" />
+        <Loading label={t('common:states.signingIn')} />
       </View>
     );
   }
@@ -59,8 +62,8 @@ const RootNavigator = () => {
   if (session && !ready) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.color.canvas, justifyContent: 'center', padding: 24, gap: 16 }}>
-        <ErrorNotice error={error ?? new Error('Your account could not be loaded.')} />
-        <Button title="Try again" onPress={() => void retry()} />
+        <ErrorNotice error={error ?? new LocalizedError({ key: 'auth:root.accountLoadFailed' })} />
+        <Button title={t('common:actions.retry')} onPress={() => void retry()} />
       </View>
     );
   }
@@ -73,20 +76,20 @@ const RootNavigator = () => {
         headerShadowVisible: true,
         headerTintColor: theme.color.brandText,
         headerTitleStyle: { fontFamily: fonts.sansMedium, fontWeight: '600', fontSize: 16, color: theme.color.ink },
-        headerBackTitle: 'Back',
+        headerBackTitle: t('common:actions.back'),
         contentStyle: { backgroundColor: theme.color.canvas },
       }}
     >
       <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
       <Stack.Screen name="accept-invite" options={{ headerShown: false }} />
       <Stack.Screen name="respond" options={{ headerShown: false }} />
-      <Stack.Screen name="link-result" options={{ title: 'Link' }} />
+      <Stack.Screen name="link-result" options={{ title: t('link.screenTitle') }} />
       <Stack.Screen name="open/plan/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="plan/[id]" options={{ title: 'Plan' }} />
-      <Stack.Screen name="song/[id]" options={{ title: 'Song' }} />
-      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
-      <Stack.Screen name="songbooks/[id]" options={{ title: 'Song book' }} />
+      <Stack.Screen name="plan/[id]" options={{ title: t('root.screens.plan') }} />
+      <Stack.Screen name="song/[id]" options={{ title: t('root.screens.song') }} />
+      <Stack.Screen name="notifications" options={{ title: t('common:nav.notifications') }} />
+      <Stack.Screen name="songbooks/[id]" options={{ title: t('root.screens.songbook') }} />
     </Stack>
   );
 };
@@ -100,12 +103,14 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <NotificationsProvider>
-            <NavigationIntentProvider>
-              <StatusBar style="auto" />
-              <RootNavigator />
-            </NavigationIntentProvider>
-          </NotificationsProvider>
+          <LanguageProvider>
+            <NotificationsProvider>
+              <NavigationIntentProvider>
+                <StatusBar style="auto" />
+                <RootNavigator />
+              </NavigationIntentProvider>
+            </NotificationsProvider>
+          </LanguageProvider>
         </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

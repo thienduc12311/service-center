@@ -1,0 +1,96 @@
+{
+  "push": {
+    "title": "Service Center",
+    "body": "Open the app to view a schedule update."
+  },
+  "feed": {
+    "scheduled": "You're scheduled for {{plan}}",
+    "reminder": "Reminder: {{plan}}",
+    "comingUp": "Coming up: {{plan}}",
+    "roleAndDate": "{{role}} — {{date}}",
+    "responseConfirmed": "{{name}} confirmed {{plan}}",
+    "responseDeclined": "{{name}} declined {{plan}}",
+    "responseWithdrew": "{{name}} withdrew from {{plan}}",
+    "availabilityTitle": "Please update your availability",
+    "availabilityBody": "{{start}} to {{end}}",
+    "availabilityBodyRespondBy": "{{start}} to {{end}} · respond by {{respondBy}}",
+    "commentMention": "{{name}} mentioned you on “{{item}}”",
+    "commentReply": "{{name}} commented on “{{item}}”",
+    "anItem": "an item",
+    "conversationMention": "{{name}} mentioned you in {{place}}",
+    "conversationReply": "{{name}} replied to you in {{place}}",
+    "placeChat": "{{place}} chat",
+    "aConversation": "a conversation",
+    "someone": "Someone"
+  },
+  "email": {
+    "greeting": "Hi {{name}},",
+    "greetingAnonymous": "Hi,",
+    "teamFallback": "Team",
+    "rolePosition": "{{team}} — {{position}}",
+    "yourAssignments": "Your assignments: {{roles}}.",
+    "schedule": {
+      "subject": "Assignment for {{plan}}",
+      "reminderSubject": "Reminder: please answer for {{plan}}",
+      "lead": "You are scheduled for {{plan}} on {{date}}.",
+      "reminderLead": "Reminder: you have not yet answered your request for {{plan}} on {{date}}.",
+      "respondText": "Confirm or decline: {{url}}",
+      "respondLink": "Confirm or decline this assignment"
+    },
+    "consolidated": {
+      "subject_one": "You're scheduled for {{count}} service",
+      "subject_other": "You're scheduled for {{count}} services",
+      "reminderSubject_one": "Reminder: {{count}} request waiting for your answer",
+      "reminderSubject_other": "Reminder: {{count}} requests waiting for your answer",
+      "intro_one": "You have been scheduled for {{count}} service.",
+      "intro_other": "You have been scheduled for {{count}} services.",
+      "reminderIntro_one": "Reminder: you have not yet answered {{count}} request.",
+      "reminderIntro_other": "Reminder: you have not yet answered {{count}} requests.",
+      "separateLinks": "Each service has its own link; answering one does not answer the others.",
+      "planHeading": "{{plan}} — {{date}}",
+      "respondText": "Confirm or decline this service: {{url}}",
+      "respondLink": "Confirm or decline {{plan}}",
+      "calendarName": "Service requests"
+    },
+    "serviceReminder": {
+      "subject": "Coming up: {{plan}}",
+      "lead": "Hi {{name}}, this is a reminder that you are confirmed for {{plan}}.",
+      "leadAnonymous": "Hi, this is a reminder that you are confirmed for {{plan}}.",
+      "firstTime": "First time you're needed: {{when}}.",
+      "location": "Location: {{location}}.",
+      "detailsText": "Details: {{url}}",
+      "detailsLink": "View details"
+    },
+    "response": {
+      "declinedSubject": "{{plan}} — assignment declined",
+      "withdrawnSubject": "{{plan}} — confirmation withdrawn",
+      "declinedLead": "{{name}} declined {{plan}} on {{date}}.",
+      "withdrawnLead": "{{name}} withdrew from {{plan}} on {{date}}.",
+      "openText": "Open the plan: {{url}}",
+      "openLink": "Open the plan"
+    },
+    "availability": {
+      "subject": "{{organization}}: please update your availability",
+      "lead": "{{organization}} is planning {{start}} to {{end}}. Please add any dates you can't serve, or confirm that your availability is up to date.",
+      "message": "Message: {{message}}",
+      "respondBy": "Please respond by {{date}}.",
+      "linkText": "Update your availability: {{url}}",
+      "link": "Update your availability"
+    },
+    "operational": {
+      "footer": "Sent by {{sender}} at {{organization}}. Reply to this email to reach them.",
+      "aLeader": "a leader",
+      "viewText": "View in Service Center: {{url}}",
+      "viewLink": "View in Service Center"
+    },
+    "invitation": {
+      "subject": "Join {{organization}}",
+      "lead": "You have been invited to join {{organization}}.",
+      "linkText": "Join the organization: {{url}}",
+      "link": "Join the organization"
+    }
+  },
+  "calendar": {
+    "feedName": "Service Center schedule"
+  }
+}

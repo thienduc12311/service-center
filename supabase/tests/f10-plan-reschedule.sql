@@ -152,6 +152,11 @@ begin
      or preview #>> '{plans,0,conflicts,0,plan_title}' <> 'F10R busy' then
     raise exception 'overlap not shown: %', preview #> '{plans,0}';
   end if;
+  -- i18n: the count behind the sentence travels as a parameter.
+  if not exists (select 1 from jsonb_array_elements(preview #> '{plans,0,warnings}') w
+                  where w ->> 'code' = 'conflicts' and (w #>> '{params,count}')::int >= 1) then
+    raise exception 'conflicts notice has no count param: %', preview #> '{plans,0,warnings}';
+  end if;
   begin
     perform public.reschedule_plans(pg_temp.fx('org'), 'shift', preview ->> 'preview_hash', 'f10r-rollback', moves, null, true, true, null);
     raise exception 'failing batch applied';

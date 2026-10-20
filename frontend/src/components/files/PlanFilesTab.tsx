@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import type { FileOwnerRef, PlanDetail, PlanFileEntry, SetFileLinkPinInput } from '@service-center/shared';
 import { api } from '../../lib/api';
@@ -12,25 +13,25 @@ export interface PlanFilesTabProps {
   plan: PlanDetail;
 }
 
-const SOURCE_LABELS: Record<PlanFileEntry['source'], string | null> = {
-  plan: null,
-  item: null,
-  song: 'From the song',
-  arrangement: 'From the arrangement',
-  link: null,
-};
+interface EntryBadgesProps {
+  entry: PlanFileEntry;
+}
 
-const EntryBadges = ({ entry }: { entry: PlanFileEntry }) => (
-  <>
-    {SOURCE_LABELS[entry.source] && <Badge tone="bg-sky-50 text-sky-800 ring-sky-600/20">{SOURCE_LABELS[entry.source]}</Badge>}
-    {entry.link?.source === 'service_type_default' && <Badge tone="bg-violet-50 text-violet-800 ring-violet-600/20">Service type default</Badge>}
-    {entry.link && entry.link.source === 'manual' && <Badge tone="bg-violet-50 text-violet-800 ring-violet-600/20">Linked</Badge>}
-    {entry.link?.pinned_version_id && entry.version?.version_number && (
-      <Badge tone="bg-slate-50 text-slate-700 ring-slate-500/20">Pinned to v{entry.version.version_number}</Badge>
-    )}
-    {entry.newer_version_available && <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">Newer version available</Badge>}
-  </>
-);
+const EntryBadges = ({ entry }: EntryBadgesProps) => {
+  const { t } = useTranslation('media');
+  return (
+    <>
+      {entry.source === 'song' && <Badge tone="bg-sky-50 text-sky-800 ring-sky-600/20">{t('planFiles.fromSong')}</Badge>}
+      {entry.source === 'arrangement' && <Badge tone="bg-sky-50 text-sky-800 ring-sky-600/20">{t('planFiles.fromArrangement')}</Badge>}
+      {entry.link?.source === 'service_type_default' && <Badge tone="bg-violet-50 text-violet-800 ring-violet-600/20">{t('planFiles.serviceTypeDefault')}</Badge>}
+      {entry.link && entry.link.source === 'manual' && <Badge tone="bg-violet-50 text-violet-800 ring-violet-600/20">{t('planFiles.linked')}</Badge>}
+      {entry.link?.pinned_version_id && entry.version?.version_number && (
+        <Badge tone="bg-slate-50 text-slate-700 ring-slate-500/20">{t('planFiles.pinnedTo', { number: entry.version.version_number })}</Badge>
+      )}
+      {entry.newer_version_available && <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">{t('planFiles.newerAvailable')}</Badge>}
+    </>
+  );
+};
 
 /**
  * Everything this plan uses, grouped by plan and item. Song/arrangement files
@@ -38,6 +39,7 @@ const EntryBadges = ({ entry }: { entry: PlanFileEntry }) => (
  * a plan editor deliberately moves them on.
  */
 export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
+  const { t } = useTranslation(['media', 'common']);
   const files = usePlanFiles(plan.id);
   const invalidate = useInvalidateFiles();
   const [adding, setAdding] = useState<{ owner: FileOwnerRef; mode: AddFileMode } | null>(null);
@@ -55,7 +57,7 @@ export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
     onError: (cause) => setError(fileErrorMessage(cause)),
   });
 
-  if (files.isLoading) return <Loading label="Loading files…" />;
+  if (files.isLoading) return <Loading label={t('filesPanel.loading')} />;
   if (files.error) return <ErrorNotice error={files.error} />;
   const data = files.data;
   if (!data) return null;
@@ -64,12 +66,12 @@ export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
   const canEdit = data.can_edit;
   const addMenu = (owner: FileOwnerRef) =>
     canEdit && (
-      <Menu label="Add">
+      <Menu label={t('common:actions.add')}>
         {(close) => (
           <>
-            <MenuItem onClick={() => { close(); setAdding({ owner, mode: 'upload' }); }}>Upload a file…</MenuItem>
-            <MenuItem onClick={() => { close(); setAdding({ owner, mode: 'link' }); }}>Add a link…</MenuItem>
-            <MenuItem onClick={() => { close(); setAdding({ owner, mode: 'document' }); }}>New text document…</MenuItem>
+            <MenuItem onClick={() => { close(); setAdding({ owner, mode: 'upload' }); }}>{t('addFile.menu.upload')}</MenuItem>
+            <MenuItem onClick={() => { close(); setAdding({ owner, mode: 'link' }); }}>{t('addFile.menu.link')}</MenuItem>
+            <MenuItem onClick={() => { close(); setAdding({ owner, mode: 'document' }); }}>{t('addFile.menu.document')}</MenuItem>
           </>
         )}
       </Menu>
@@ -82,19 +84,19 @@ export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
       <>
         {entry.newer_version_available && (
           <MenuItem onClick={() => { close(); pin.mutate({ linkId: link.id, body: { mode: 'current' } }); }}>
-            Use the newest version here
+            {t('planFiles.useNewest')}
           </MenuItem>
         )}
         {link.pinned_version_id ? (
           <MenuItem onClick={() => { close(); pin.mutate({ linkId: link.id, body: { mode: 'follow' } }); }}>
-            Always follow the newest version
+            {t('planFiles.followNewest')}
           </MenuItem>
         ) : (
           <MenuItem onClick={() => { close(); pin.mutate({ linkId: link.id, body: { mode: 'current' } }); }}>
-            Pin the current version
+            {t('planFiles.pinCurrent')}
           </MenuItem>
         )}
-        <MenuItem onClick={() => { close(); unlink.mutate(link.id); }}>Remove from this plan</MenuItem>
+        <MenuItem onClick={() => { close(); unlink.mutate(link.id); }}>{t('planFiles.removeFromPlan')}</MenuItem>
       </>
     );
   };
@@ -121,9 +123,7 @@ export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-slate-500">
-        Each file shows only to the people its audience allows; people see files here only after their request is sent.
-      </p>
+      <p className="text-sm text-slate-500">{t('planFiles.intro')}</p>
       {error && (
         <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-rose-600/20">
           {error}
@@ -132,24 +132,24 @@ export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
 
       <section className="card p-5">
         <div className="mb-2 flex items-center justify-between gap-3">
-          <h2 className="font-semibold">This plan</h2>
+          <h2 className="font-semibold">{t('planFiles.thisPlan')}</h2>
           <div className="flex gap-2">
             {canEdit && plan.service_type_id && (
               <Button variant="secondary" onClick={() => setLinking(true)}>
-                Add a default file
+                {t('planFiles.addDefault')}
               </Button>
             )}
             {addMenu({ kind: 'plan', id: plan.id })}
           </div>
         </div>
-        {planLevel.length ? renderEntries(planLevel) : <p className="py-3 text-sm text-slate-500">No plan files yet.</p>}
+        {planLevel.length ? renderEntries(planLevel) : <p className="py-3 text-sm text-slate-500">{t('planFiles.noPlanFiles')}</p>}
       </section>
 
       <section className="card p-5">
-        <h2 className="mb-2 font-semibold">Items</h2>
-        {!items.length && <p className="text-sm text-slate-500">This plan has no items.</p>}
+        <h2 className="mb-2 font-semibold">{t('planFiles.items')}</h2>
+        {!items.length && <p className="text-sm text-slate-500">{t('planFiles.noItems')}</p>}
         {items.length > 0 && !anyItemFiles && !canEdit && (
-          <EmptyState title="No item files you can open" description="Song and item files you are allowed to see appear here." />
+          <EmptyState title={t('planFiles.noItemFilesTitle')} description={t('planFiles.noItemFilesDescription')} />
         )}
         <ul className="space-y-5">
           {items.map((item) => {
@@ -161,7 +161,7 @@ export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
                   <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{item.title}</h3>
                   {addMenu({ kind: 'plan_item', id: item.id })}
                 </div>
-                {list.length ? renderEntries(list) : <p className="py-2 text-xs text-slate-500">No files.</p>}
+                {list.length ? renderEntries(list) : <p className="py-2 text-xs text-slate-500">{t('planFiles.noFiles')}</p>}
               </li>
             );
           })}
@@ -200,6 +200,7 @@ interface LinkDefaultModalProps {
 
 /** Puts one of the service type's default files on this plan, pinned to its current version. */
 const LinkDefaultModal = ({ planId, serviceTypeId, linkedIds, onClose, onLinked }: LinkDefaultModalProps) => {
+  const { t } = useTranslation(['media', 'common']);
   const defaults = useParentFiles('service_type', serviceTypeId);
   const link = useMutation({
     mutationFn: (fileId: string) => api.linkFileToPlan(planId, { file_id: fileId, pin: true }),
@@ -211,22 +212,22 @@ const LinkDefaultModal = ({ planId, serviceTypeId, linkedIds, onClose, onLinked 
   const options = (defaults.data?.files ?? []).filter((file) => !file.archived_at && !linkedIds.has(file.id) && (file.current_version || file.kind === 'link'));
 
   return (
-    <Modal open title="Add a default file" onClose={onClose}>
+    <Modal open title={t('planFiles.addDefault')} onClose={onClose}>
       {defaults.isLoading && <Loading />}
       <ErrorNotice error={defaults.error} />
-      {defaults.data && !options.length && <p className="text-sm text-slate-500">Every default file of this service type is already on the plan.</p>}
+      {defaults.data && !options.length && <p className="text-sm text-slate-500">{t('planFiles.allDefaultsLinked')}</p>}
       <ul className="divide-y divide-slate-100">
         {options.map((file) => (
           <li key={file.id} className="flex items-center justify-between gap-3 py-2 text-sm">
             <span>{file.title}</span>
             <Button variant="secondary" loading={link.isPending && link.variables === file.id} onClick={() => link.mutate(file.id)}>
-              Add
+              {t('common:actions.add')}
             </Button>
           </li>
         ))}
       </ul>
       {link.error && <p role="alert" className="mt-3 text-sm text-rose-700">{fileErrorMessage(link.error)}</p>}
-      <p className="mt-4 text-xs text-slate-500">The plan keeps the version you add now, even if the default is replaced later.</p>
+      <p className="mt-4 text-xs text-slate-500">{t('planFiles.defaultPinHint')}</p>
     </Modal>
   );
 };

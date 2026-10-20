@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { avatarColor, initials } from '../lib/format';
+import { useErrorText } from '../i18n';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -99,9 +101,11 @@ export const EmptyState = ({
   </div>
 );
 
+/** Shows any thrown value as localized, user-safe text (never raw database/provider errors). */
 export const ErrorNotice = ({ error }: { error: unknown }) => {
+  const errorText = useErrorText();
   if (!error) return null;
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorText(error);
   return (
     <div role="alert" className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-600/20">
       {message}
@@ -109,12 +113,15 @@ export const ErrorNotice = ({ error }: { error: unknown }) => {
   );
 };
 
-export const Loading = ({ label = 'Loading…' }: { label?: string }) => (
-  <div className="flex items-center justify-center gap-3 py-16 text-slate-400">
-    <Spinner />
-    <span className="text-sm">{label}</span>
-  </div>
-);
+export const Loading = ({ label }: { label?: string }) => {
+  const { t } = useTranslation();
+  return (
+    <div role="status" className="flex items-center justify-center gap-3 py-16 text-slate-400">
+      <Spinner />
+      <span className="text-sm">{label ?? t('states.loading')}</span>
+    </div>
+  );
+};
 
 /** How wide the dialog is. `wide` is for the two-pane dialogs, e.g. Sequence. */
 type ModalSize = 'default' | 'wide';
@@ -171,6 +178,7 @@ export const Menu = ({
   children: (close: () => void) => ReactNode;
   align?: 'left' | 'right';
 }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
 
@@ -192,7 +200,7 @@ export const Menu = ({
         <>
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label={t('actions.closeMenu')}
             className="fixed inset-0 z-40 cursor-default"
             onClick={close}
           />

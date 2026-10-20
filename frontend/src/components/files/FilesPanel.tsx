@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { FileOwnerRef } from '@service-center/shared';
 import { useInvalidateFiles, useParentFiles } from '../../hooks/queries';
 import { ErrorNotice, Loading, Menu, MenuItem } from '../ui';
@@ -15,7 +16,8 @@ export interface FilesPanelProps {
 }
 
 /** The files one parent owns, with add/replace/archive for people who may change them. */
-export const FilesPanel = ({ owner, title = 'Files', description, planId = null, emptyText }: FilesPanelProps) => {
+export const FilesPanel = ({ owner, title, description, planId = null, emptyText }: FilesPanelProps) => {
+  const { t } = useTranslation(['media', 'common']);
   const files = useParentFiles(owner.kind, owner.id);
   const invalidate = useInvalidateFiles();
   const [adding, setAdding] = useState<AddFileMode | null>(null);
@@ -29,27 +31,27 @@ export const FilesPanel = ({ owner, title = 'Files', description, planId = null,
     <section className="card p-5">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-semibold text-slate-900 dark:text-white">{title}</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-white">{title ?? t('filesPanel.title')}</h2>
           {description && <p className="text-sm text-slate-500">{description}</p>}
         </div>
         {files.data?.can_add && (
-          <Menu label="Add">
+          <Menu label={t('common:actions.add')}>
             {(close) => (
               <>
-                <MenuItem onClick={() => { close(); setAdding('upload'); }}>Upload a file…</MenuItem>
-                <MenuItem onClick={() => { close(); setAdding('link'); }}>Add a link…</MenuItem>
-                <MenuItem onClick={() => { close(); setAdding('document'); }}>New text document…</MenuItem>
+                <MenuItem onClick={() => { close(); setAdding('upload'); }}>{t('addFile.menu.upload')}</MenuItem>
+                <MenuItem onClick={() => { close(); setAdding('link'); }}>{t('addFile.menu.link')}</MenuItem>
+                <MenuItem onClick={() => { close(); setAdding('document'); }}>{t('addFile.menu.document')}</MenuItem>
               </>
             )}
           </Menu>
         )}
       </div>
 
-      {files.isLoading && <Loading label="Loading files…" />}
+      {files.isLoading && <Loading label={t('filesPanel.loading')} />}
       <ErrorNotice error={files.error} />
       {files.data && visible.length === 0 && (
         <p className="py-4 text-sm text-slate-500">
-          {emptyText ?? (files.data.can_add ? 'No files yet.' : 'No files you can open here.')}
+          {emptyText ?? (files.data.can_add ? t('filesPanel.empty') : t('filesPanel.emptyReader'))}
         </p>
       )}
       {visible.length > 0 && (
@@ -61,7 +63,7 @@ export const FilesPanel = ({ owner, title = 'Files', description, planId = null,
       )}
       {archivedCount > 0 && (
         <button type="button" className="mt-2 text-xs text-slate-500 underline" onClick={() => setShowArchived((value) => !value)}>
-          {showArchived ? 'Hide archived files' : `Show ${archivedCount} archived file${archivedCount === 1 ? '' : 's'}`}
+          {showArchived ? t('filesPanel.hideArchived') : t('filesPanel.showArchived', { count: archivedCount })}
         </button>
       )}
 

@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ASSIGNMENT_STATUS_LABELS,
-  formatDate,
-  formatDateTime,
-} from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
 import { useMySchedule, usePlans, useRespondToAssignment } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { assignmentTone, planTone } from '../lib/format';
+import { useFormatters } from '../i18n';
 
 export const DashboardPage = () => {
+  const { t } = useTranslation(['home', 'common']);
+  const f = useFormatters();
   const { user, canAnywhere } = useAuth();
   const canManage = canAnywhere('plans.edit');
   const [openedAt] = useState(() => new Date().toISOString());
@@ -19,17 +18,17 @@ export const DashboardPage = () => {
   const respond = useRespondToAssignment();
 
   const awaitingReply = (mine.data ?? []).filter((entry) => entry.assignment.status === 'unconfirmed');
-  const firstName = user?.profile.full_name?.split(' ')[0] ?? 'there';
+  const firstName = user?.profile.full_name?.trim().split(' ')[0];
 
   return (
     <div className="space-y-8">
       <PageHeader
-        title={`Hi ${firstName}`}
-        subtitle="Here’s what’s coming up."
+        title={firstName ? t('dashboard.greeting', { name: firstName }) : t('dashboard.greetingNoName')}
+        subtitle={t('dashboard.subtitle')}
         actions={
           canManage && (
             <Link to="/plans">
-              <Button>New plan</Button>
+              <Button>{t('dashboard.newPlan')}</Button>
             </Link>
           )
         }
@@ -38,7 +37,7 @@ export const DashboardPage = () => {
       {awaitingReply.length > 0 && (
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Waiting on you
+            {t('dashboard.waitingOnYou')}
           </h2>
           <ul className="space-y-3">
             {awaitingReply.map((entry) => (
@@ -48,7 +47,7 @@ export const DashboardPage = () => {
                     {entry.plan.title}
                   </Link>
                   <p className="text-sm text-slate-500">
-                    {formatDateTime(entry.plan.service_date)}
+                    {f.dateTime(entry.plan.service_date)}
                     {entry.position ? ` · ${entry.position.name}` : ''}
                     {entry.team ? ` · ${entry.team.name}` : ''}
                   </p>
@@ -61,7 +60,7 @@ export const DashboardPage = () => {
                       respond.mutate({ id: entry.assignment.id, status: 'declined' })
                     }
                   >
-                    Decline
+                    {t('common:actions.decline')}
                   </Button>
                   <Button
                     loading={respond.isPending}
@@ -69,7 +68,7 @@ export const DashboardPage = () => {
                       respond.mutate({ id: entry.assignment.id, status: 'confirmed' })
                     }
                   >
-                    Accept
+                    {t('dashboard.accept')}
                   </Button>
                 </div>
               </li>
@@ -82,10 +81,10 @@ export const DashboardPage = () => {
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Upcoming services
+            {t('dashboard.upcoming')}
           </h2>
           <Link to="/plans" className="text-sm font-medium text-brand-600 hover:underline">
-            All plans
+            {t('dashboard.allPlans')}
           </Link>
         </div>
 
@@ -101,19 +100,19 @@ export const DashboardPage = () => {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{plan.title}</span>
-                        <Badge tone={planTone[plan.status]}>{plan.status}</Badge>
+                        <Badge tone={planTone[plan.status]}>{t(`common:planStatus.${plan.status}`)}</Badge>
                       </div>
                       <p className="text-sm text-slate-500">
-                        {formatDateTime(plan.service_date)}
+                        {f.dateTime(plan.service_date)}
                         {plan.location ? ` · ${plan.location}` : ''}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-500">
-                      <span>{plan.counts.songs} songs</span>
+                      <span>{t('common:count.songs', { count: plan.counts.songs })}</span>
                       <span aria-hidden="true">·</span>
-                      <span>{plan.counts.confirmed} confirmed</span>
+                      <span>{t('dashboard.confirmedCount', { total: plan.counts.confirmed })}</span>
                       {outstanding > 0 && (
-                        <Badge tone={assignmentTone.unconfirmed}>{outstanding} pending</Badge>
+                        <Badge tone={assignmentTone.unconfirmed}>{t('dashboard.pendingCount', { total: outstanding })}</Badge>
                       )}
                     </div>
                   </Link>
@@ -123,12 +122,12 @@ export const DashboardPage = () => {
           </ul>
         ) : (
           <EmptyState
-            title="No upcoming services"
-            description="Create a plan to start building an order of service and scheduling your team."
+            title={t('dashboard.noUpcomingTitle')}
+            description={t('dashboard.noUpcomingDescription')}
             action={
               canManage ? (
                 <Link to="/plans">
-                  <Button>Create a plan</Button>
+                  <Button>{t('dashboard.createPlan')}</Button>
                 </Link>
               ) : undefined
             }
@@ -138,14 +137,14 @@ export const DashboardPage = () => {
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Your next commitments
+          {t('dashboard.commitments')}
         </h2>
         {mine.isLoading ? (
           <Loading />
         ) : mine.data?.length ? (
           <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
             {mine.data.slice(0, 6).map((entry) => {
-              const rehearsal = entry.times.find((t) => t.kind === 'rehearsal');
+              const rehearsal = entry.times.find((time) => time.kind === 'rehearsal');
               return (
                 <li key={entry.assignment.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <span
@@ -158,22 +157,22 @@ export const DashboardPage = () => {
                       {entry.plan.title}
                     </Link>
                     <p className="text-xs text-slate-500">
-                      {formatDate(entry.plan.service_date)}
+                      {f.date(entry.plan.service_date)}
                       {entry.position ? ` · ${entry.position.name}` : ''}
                       {rehearsal
-                        ? ` · rehearsal ${formatDateTime(rehearsal.starts_at)}`
+                        ? ` · ${t('dashboard.rehearsalAt', { time: f.dateTime(rehearsal.starts_at) })}`
                         : ''}
                     </p>
                   </div>
                   <Badge tone={assignmentTone[entry.assignment.status]}>
-                    {ASSIGNMENT_STATUS_LABELS[entry.assignment.status]}
+                    {t(`common:assignmentStatus.${entry.assignment.status}`)}
                   </Badge>
                 </li>
               );
             })}
           </ul>
         ) : (
-          <EmptyState title="Nothing scheduled yet" />
+          <EmptyState title={t('dashboard.nothingScheduled')} />
         )}
       </section>
     </div>

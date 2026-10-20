@@ -72,16 +72,23 @@ export interface PushPayload {
   plan_id: string | null;
 }
 
+/** The generic, recipient-language push wording. */
+export interface PushText {
+  title: string;
+  body: string;
+}
+
 export const toPushMessage = (
   row: NotificationRow,
   token: string,
   badge: number | undefined,
+  text: PushText,
 ): PushMessage => ({
   to: token,
   // Lock screens can be visible to anyone holding the device. Detailed plan,
   // team and person wording stays in the authenticated in-app feed.
-  title: 'Service Center',
-  body: 'Open the app to view a schedule update.',
+  title: text.title,
+  body: text.body,
   badge,
   data: {
     notification_id: row.id,

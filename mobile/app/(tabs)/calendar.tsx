@@ -1,13 +1,11 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ASSIGNMENT_STATUS_LABELS,
   addMonths,
   endOfMonth,
-  formatDate,
-  formatTime,
   startOfMonth,
   toISODate,
   type CalendarEvent,
@@ -32,13 +30,11 @@ import { NotificationBell } from '../../src/components/NotificationBell';
 import { PressableScale, Reveal } from '../../src/components/motion';
 import { statusAccent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
+import { useFormatters } from '../../src/i18n';
 
 type CalendarScope = 'all' | 'mine';
 
-const SCOPES: readonly SegmentOption<CalendarScope>[] = [
-  { value: 'all', label: 'Everyone' },
-  { value: 'mine', label: 'Only me' },
-];
+const SCOPES: readonly CalendarScope[] = ['all', 'mine'];
 
 /** One day, and everything happening on it. */
 interface AgendaDay {
@@ -57,6 +53,12 @@ export default function CalendarScreen() {
   const styles = useThemedStyles(makeStyles);
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [scope, setScope] = useState<CalendarScope>('all');
+  const { t } = useTranslation('scheduling');
+  const f = useFormatters();
+  const scopeOptions = useMemo<readonly SegmentOption<CalendarScope>[]>(
+    () => SCOPES.map((value) => ({ value, label: t(`calendar.scope.${value}`) })),
+    [t],
+  );
 
   const range = useMemo(
     () => ({ from: startOfMonth(cursor).toISOString(), to: endOfMonth(cursor).toISOString() }),
@@ -88,21 +90,21 @@ export default function CalendarScreen() {
       <View style={styles.toolbar}>
         <View style={styles.monthRow}>
           <View style={styles.monthLabel}>
-            <Text style={styles.monthName}>{formatDate(cursor, { month: 'long' })}</Text>
-            <Text style={styles.monthYear}>{formatDate(cursor, { year: 'numeric' })}</Text>
+            <Text style={styles.monthName}>{f.months('long')[cursor.getMonth()]}</Text>
+            <Text style={styles.monthYear}>{f.number(cursor.getFullYear(), { useGrouping: false })}</Text>
           </View>
           <IconButton
             name="chevronLeft"
-            accessibilityLabel="Previous month"
+            accessibilityLabel={t('calendar.previousMonth')}
             onPress={() => setCursor(startOfMonth(addMonths(cursor, -1)))}
           />
           <IconButton
             name="chevronRight"
-            accessibilityLabel="Next month"
+            accessibilityLabel={t('calendar.nextMonth')}
             onPress={() => setCursor(startOfMonth(addMonths(cursor, 1)))}
           />
         </View>
-        <SegmentedControl options={SCOPES} value={scope} onChange={setScope} />
+        <SegmentedControl options={scopeOptions} value={scope} onChange={setScope} />
       </View>
 
       <FlatList
@@ -115,8 +117,8 @@ export default function CalendarScreen() {
             <Loading />
           ) : (
             <EmptyState
-              title="An open month"
-              description={`Nothing is on the calendar for ${formatDate(cursor, { month: 'long', year: 'numeric' })}.`}
+              title={t('calendar.openMonthTitle')}
+              description={t('calendar.openMonthDescription', { month: f.date(cursor, 'monthYear') })}
             />
           )
         }
@@ -138,17 +140,20 @@ interface AgendaDayCardProps {
 const AgendaDayCard = ({ day, onOpen }: AgendaDayCardProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const date = `${day.isoDate}T12:00:00`;
+  const { t } = useTranslation('common');
+  const f = useFormatters();
+  // Local noon of the civil day, as before, so the weekday never shifts.
+  const date = new Date(`${day.isoDate}T12:00:00`);
 
   return (
     <Card>
       <View style={styles.dayHeader}>
-        <Text style={styles.dayNumber}>{formatDate(date, { day: 'numeric' })}</Text>
+        <Text style={styles.dayNumber}>{f.number(date.getDate())}</Text>
         <View>
           <Text style={styles.dayWeekday}>
-            {formatDate(date, { weekday: 'long' })}
+            {f.weekdays('long')[date.getDay()]}
           </Text>
-          <Text style={styles.dayMonth}>{formatDate(date, { month: 'long' })}</Text>
+          <Text style={styles.dayMonth}>{f.months('long')[date.getMonth()]}</Text>
         </View>
       </View>
 
@@ -173,13 +178,13 @@ const AgendaDayCard = ({ day, onOpen }: AgendaDayCardProps) => {
               <View style={styles.flex}>
                 <Text style={styles.eventTitle}>{event.title}</Text>
                 <Text style={styles.eventTime}>
-                  {formatTime(event.starts_at)} – {formatTime(event.ends_at)}
+                  {t('format.dateRange', { start: f.time(event.starts_at), end: f.time(event.ends_at) })}
                   {event.location ? ` · ${event.location}` : ''}
                 </Text>
               </View>
               {event.my_assignment_status ? (
                 <Tag
-                  label={ASSIGNMENT_STATUS_LABELS[event.my_assignment_status]}
+                  label={t(`assignmentStatus.${event.my_assignment_status}`)}
                   accent={statusAccent(theme, event.my_assignment_status)}
                 />
               ) : null}

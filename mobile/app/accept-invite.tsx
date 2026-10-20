@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   ApiError,
   externalLinkTokenSchema,
@@ -21,6 +22,8 @@ import {
 import { Reveal } from '../src/components/motion';
 import type { Theme } from '../src/lib/theme';
 import { useThemedStyles } from '../src/lib/useTheme';
+import { LanguageSelector, useRecipientLanguage } from '../src/i18n';
+import { localizeAuthError } from './(auth)/login';
 
 type Stage =
   | 'loading'
@@ -31,11 +34,13 @@ type Stage =
   | 'already-used'
   | 'existing-account';
 
-const STAGE_MESSAGE: Partial<Record<Stage, string>> = {
-  invalid: "This invitation link isn't valid. Ask whoever invited you to send a new one.",
-  expired: 'This invitation has expired. Ask whoever invited you to send a new one.',
-  'already-used': 'This invitation has already been used.',
-};
+type FailedStage = Extract<Stage, 'invalid' | 'expired' | 'already-used'>;
+
+const STAGE_MESSAGE_KEY = {
+  invalid: 'invite.invalid',
+  expired: 'invite.expired',
+  'already-used': 'invite.alreadyUsed',
+} as const satisfies Record<FailedStage, string>;
 
 /**
  * Reached via the servicecenter:// custom scheme today, and (once
@@ -43,6 +48,7 @@ const STAGE_MESSAGE: Partial<Record<Stage, string>> = {
  * https://…/accept-invite link the invite email already sends for web.
  */
 export default function AcceptInviteScreen() {
+  const { t } = useTranslation(['auth', 'common']);
   const { session } = useAuth();
   const router = useRouter();
   const styles = useThemedStyles(makeStyles);
@@ -55,6 +61,8 @@ export default function AcceptInviteScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+  // Once the token is verified, show the screen in the invited Person's saved language.
+  useRecipientLanguage(preview ? preview.preferred_language : undefined);
 
   useEffect(() => {
     let active = true;
@@ -105,7 +113,7 @@ export default function AcceptInviteScreen() {
       // No manual navigation — the root layout redirects to (tabs) once the
       // new session lands, same as a normal sign-in on the login screen.
     } catch (err) {
-      setError(err);
+      setError(localizeAuthError(err, 'signIn'));
     } finally {
       setBusy(false);
     }
@@ -113,8 +121,10 @@ export default function AcceptInviteScreen() {
 
   const headline =
     stage === 'preview' && preview
-      ? `${preview.person_first_name}, you're invited`
-      : 'Set up your account';
+      ? preview.person_first_name
+        ? t('invite.invitedHeadline', { name: preview.person_first_name })
+        : t('invite.invitedHeadlineGeneric')
+      : t('invite.setUpTitle');
 
   return (
     <Screen>
@@ -125,17 +135,17 @@ export default function AcceptInviteScreen() {
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <Reveal>
             <View style={styles.masthead}>
-              <Label>Service Center</Label>
+              <Label>{t('common:app.name')}</Label>
               <Text style={styles.title}>{headline}</Text>
             </View>
           </Reveal>
 
-          {stage === 'loading' ? <Loading label="Checking your invitation" /> : null}
+          {stage === 'loading' ? <Loading label={t('invite.checking')} /> : null}
 
           {stage === 'invalid' || stage === 'expired' || stage === 'already-used' ? (
             <Reveal index={1}>
               <Card>
-                <Text style={styles.body}>{STAGE_MESSAGE[stage]}</Text>
+                <Text style={styles.body}>{t(STAGE_MESSAGE_KEY[stage])}</Text>
               </Card>
             </Reveal>
           ) : null}
@@ -143,8 +153,8 @@ export default function AcceptInviteScreen() {
           {stage === 'already-signed-in' ? (
             <Reveal index={1}>
               <Card>
-                <Text style={styles.body}>You&apos;re already signed in.</Text>
-                <Button title="Go to the app" onPress={() => router.replace('/(tabs)')} />
+                <Text style={styles.body}>{t('invite.alreadySignedIn')}</Text>
+                <Button title={t('invite.goToApp')} onPress={() => router.replace('/(tabs)')} />
               </Card>
             </Reveal>
           ) : null}
@@ -152,11 +162,8 @@ export default function AcceptInviteScreen() {
           {stage === 'existing-account' ? (
             <Reveal index={1}>
               <Card>
-                <Text style={styles.body}>
-                  An account with this email already exists — sign in with your existing password
-                  instead.
-                </Text>
-                <Button title="Go to sign in" onPress={() => router.replace('/(auth)/login')} />
+                <Text style={styles.body}>{t('invite.existingAccount')}</Text>
+                <Button title={t('invite.goToSignIn')} onPress={() => router.replace('/(auth)/login')} />
               </Card>
             </Reveal>
           ) : null}
@@ -165,10 +172,14 @@ export default function AcceptInviteScreen() {
             <Reveal index={1}>
               <Card>
                 <Text style={styles.body}>
-                  {`You've been invited to join ${preview.organization_name} as a ${preview.role}. Choose a password for ${preview.email} to finish.`}
+                  {t('invite.invitedGenericPlain', {
+                    organization: preview.organization_name,
+                    role: t(`common:roles.${preview.role}`),
+                    email: preview.email,
+                  })}
                 </Text>
                 <Field
-                  label="Password"
+                  label={t('invite.password')}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
@@ -176,8 +187,14 @@ export default function AcceptInviteScreen() {
                   autoComplete="new-password"
                 />
                 <ErrorNotice error={error} />
-                <Button title="Create my account" onPress={() => void submit()} loading={busy} />
+                <Button title={t('invite.createAccount')} onPress={() => void submit()} loading={busy} />
               </Card>
+            </Reveal>
+          ) : null}
+
+          {stage !== 'already-signed-in' ? (
+            <Reveal index={2}>
+              <LanguageSelector />
             </Reveal>
           ) : null}
         </ScrollView>

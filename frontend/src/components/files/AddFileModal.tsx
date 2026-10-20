@@ -1,7 +1,8 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import {
-  FILE_CATEGORY_LABELS,
+  FILE_MAX_BYTES,
   formatFileSize,
   type FileCategory,
   type FileOwnerRef,
@@ -10,7 +11,7 @@ import {
 import { api } from '../../lib/api';
 import { Button, Modal } from '../ui';
 import { AudienceFields, type FileAudienceValue } from './AudienceFields';
-import { fileErrorMessage } from './fileActions';
+import { FILE_CATEGORIES, fileErrorMessage, fileUploadFailureText } from './fileActions';
 import { useFileUpload } from './useFileUpload';
 
 /** Upload a file, add a web link or write a text document under one parent. */
@@ -24,13 +25,8 @@ export interface AddFileModalProps {
   onAdded: (file: FileSummary) => void;
 }
 
-const TITLES: Record<AddFileMode, string> = {
-  upload: 'Upload a file',
-  link: 'Add a link',
-  document: 'New text document',
-};
-
 export const AddFileModal = ({ owner, planId = null, mode, onClose, onAdded }: AddFileModalProps) => {
+  const { t } = useTranslation(['media', 'common']);
   const [audience, setAudience] = useState<FileAudienceValue>({ audience: 'organization', teamIds: [], positionIds: [] });
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<FileCategory | ''>('');
@@ -92,11 +88,11 @@ export const AddFileModal = ({ owner, planId = null, mode, onClose, onAdded }: A
   };
 
   return (
-    <Modal open title={TITLES[mode]} onClose={close} size={mode === 'document' ? 'wide' : 'default'}>
+    <Modal open title={t(`addFile.titles.${mode}`)} onClose={close} size={mode === 'document' ? 'wide' : 'default'}>
       <form className="space-y-4" onSubmit={submit}>
         {mode === 'upload' && (
           <label className="block">
-            <span className="label">File</span>
+            <span className="label">{t('addFile.file')}</span>
             <input
               type="file"
               className="input"
@@ -106,25 +102,25 @@ export const AddFileModal = ({ owner, planId = null, mode, onClose, onAdded }: A
                 setPicked(event.target.files?.[0] ?? null);
               }}
             />
-            <span className="mt-1 block text-xs text-slate-500">PDF, images, audio, video, text and Office documents up to 25 MB.</span>
+            <span className="mt-1 block text-xs text-slate-500">{t('addFile.fileHint', { size: formatFileSize(FILE_MAX_BYTES) })}</span>
           </label>
         )}
 
         <label className="block">
-          <span className="label">Title{mode === 'upload' ? ' (optional)' : ''}</span>
+          <span className="label">{mode === 'upload' ? t('addFile.titleOptional') : t('addFile.title')}</span>
           <input
             className="input"
             value={title}
             maxLength={200}
             required={mode !== 'upload'}
-            placeholder={mode === 'upload' ? picked?.name ?? 'The file name' : ''}
+            placeholder={mode === 'upload' ? picked?.name ?? t('addFile.titlePlaceholder') : ''}
             onChange={(event) => setTitle(event.target.value)}
           />
         </label>
 
         {mode === 'link' && (
           <label className="block">
-            <span className="label">Web address</span>
+            <span className="label">{t('addFile.url')}</span>
             <input
               className="input"
               type="url"
@@ -133,34 +129,30 @@ export const AddFileModal = ({ owner, planId = null, mode, onClose, onAdded }: A
               value={url}
               onChange={(event) => setUrl(event.target.value)}
             />
-            <span className="mt-1 block text-xs text-slate-500">
-              Opens the other site directly. Service Center never downloads it, and that site decides who can play or save it.
-            </span>
+            <span className="mt-1 block text-xs text-slate-500">{t('addFile.urlHint')}</span>
           </label>
         )}
 
         {mode === 'document' && (
           <label className="block">
-            <span className="label">Text</span>
+            <span className="label">{t('addFile.text')}</span>
             <textarea
               className="input min-h-64 font-mono text-sm"
               value={body}
               maxLength={100_000}
               onChange={(event) => setBody(event.target.value)}
             />
-            <span className="mt-1 block text-xs text-slate-500">
-              Formatting: # Heading, - bullet, 1. numbered, **bold**, *italic*. Anything else is shown as plain text.
-            </span>
+            <span className="mt-1 block text-xs text-slate-500">{t('addFile.textHint')}</span>
           </label>
         )}
 
         <label className="block">
-          <span className="label">Category</span>
+          <span className="label">{t('files.category')}</span>
           <select className="input" value={category} onChange={(event) => setCategory(event.target.value as FileCategory | '')}>
-            <option value="">{mode === 'upload' ? 'From the file type' : 'Choose…'}</option>
-            {Object.entries(FILE_CATEGORY_LABELS).map(([value, label]) => (
+            <option value="">{mode === 'upload' ? t('addFile.categoryFromType') : t('addFile.categoryChoose')}</option>
+            {FILE_CATEGORIES.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {t(`files.categories.${value}`)}
               </option>
             ))}
           </select>
@@ -172,18 +164,18 @@ export const AddFileModal = ({ owner, planId = null, mode, onClose, onAdded }: A
           <div role="status" aria-live="polite">
             <progress className="w-full" max={upload.state.total} value={upload.state.loaded} />
             <p className="text-xs text-slate-500">
-              Uploading {formatFileSize(upload.state.loaded)} of {formatFileSize(upload.state.total)} — not saved until it finishes.
+              {t('upload.progress', { loaded: formatFileSize(upload.state.loaded), total: formatFileSize(upload.state.total) })}
             </p>
           </div>
         )}
-        {upload.state.phase === 'preparing' && <p role="status" className="text-sm text-slate-500">Preparing the upload…</p>}
-        {upload.state.phase === 'finalizing' && <p role="status" className="text-sm text-slate-500">Checking the stored file…</p>}
+        {upload.state.phase === 'preparing' && <p role="status" className="text-sm text-slate-500">{t('upload.preparing')}</p>}
+        {upload.state.phase === 'finalizing' && <p role="status" className="text-sm text-slate-500">{t('upload.finalizing')}</p>}
         {upload.state.phase === 'failed' && (
           <div role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-rose-600/20">
-            {upload.state.message}
+            {fileUploadFailureText(upload.state.failure)}
             {upload.state.retryable && (
               <Button type="button" variant="secondary" className="ml-2" onClick={() => void upload.retry()}>
-                Retry
+                {t('common:actions.retry')}
               </Button>
             )}
           </div>
@@ -196,14 +188,14 @@ export const AddFileModal = ({ owner, planId = null, mode, onClose, onAdded }: A
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={close}>
-            {busy ? 'Cancel upload' : 'Cancel'}
+            {busy ? t('upload.cancel') : t('common:actions.cancel')}
           </Button>
           <Button
             type="submit"
             loading={busy || save.isPending}
             disabled={targetsMissing || (mode === 'upload' && !picked)}
           >
-            {mode === 'upload' ? 'Upload' : 'Save'}
+            {mode === 'upload' ? t('common:actions.upload') : t('common:actions.save')}
           </Button>
         </div>
       </form>

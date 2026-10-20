@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
@@ -17,6 +18,7 @@ import {
 import { api } from '../../lib/api';
 import { keys } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
+import { useErrorText } from '../../i18n';
 
 const CLIENT_KEY = 'service-center.live-client-id';
 
@@ -78,31 +80,38 @@ export interface LiveRunHandle {
   /** Re-sends the last failed command with the same action id (safe: a repeat is never applied twice). */
   retry: (() => void) | null;
   pending: LiveCommand | null;
-  /** Why the last command was not applied. */
-  commandError: string | null;
+  /** Why the last command was not applied (the refusal or failure; null when none). Shown with `useLiveRefusalText`. */
+  commandError: unknown;
   clearCommandError: () => void;
 }
 
 const isAccessLoss = (error: unknown): boolean =>
   error instanceof ApiError && (error.status === 404 || error.status === 403);
 
-/** Messages for refusals: each one means nothing was applied. */
-const describeRefusal = (error: unknown): string => {
-  if (error instanceof ApiError) {
-    switch (error.code) {
-      case 'run_revision_stale':
-        return 'The run moved on before your command arrived. Nothing was applied; the screen now shows the latest state.';
-      case 'run_control_lost':
-        return 'You are not controlling this run any more. Nothing was applied.';
-      case 'run_control_held':
-      case 'run_state_invalid':
-      case 'idempotency_key_reused':
-        return `${error.message} Nothing was applied.`;
-      default:
-        return error.message;
-    }
-  }
-  return 'The command could not be sent. It was not applied — check your connection and retry.';
+/** Text for refusals, in the displayed language: each one means nothing was applied. */
+export const useLiveRefusalText = (): ((error: unknown) => string) => {
+  const { t } = useTranslation('media');
+  const errorText = useErrorText();
+  return useCallback(
+    (error: unknown) => {
+      if (error instanceof ApiError) {
+        switch (error.code) {
+          case 'run_revision_stale':
+            return t('live.refusal.revisionStale');
+          case 'run_control_lost':
+            return t('live.refusal.controlLost');
+          case 'run_control_held':
+          case 'run_state_invalid':
+          case 'idempotency_key_reused':
+            return t('live.refusal.notApplied', { reason: errorText(error) });
+          default:
+            return errorText(error);
+        }
+      }
+      return t('live.refusal.network');
+    },
+    [t, errorText],
+  );
 };
 
 export const useLiveRun = (runId: string | null): LiveRunHandle => {
@@ -115,7 +124,7 @@ export const useLiveRun = (runId: string | null): LiveRunHandle => {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   const [localNow, setLocalNow] = useState(() => Date.now());
   const [pending, setPending] = useState<LiveCommand | null>(null);
-  const [commandError, setCommandError] = useState<string | null>(null);
+  const [commandError, setCommandError] = useState<unknown>(null);
   const failed = useRef<LiveRunActionInput | null>(null);
   const [canRetry, setCanRetry] = useState(false);
 
@@ -191,7 +200,7 @@ export const useLiveRun = (runId: string | null): LiveRunHandle => {
       const networkFailure = !(error instanceof ApiError);
       failed.current = networkFailure ? input : null;
       setCanRetry(networkFailure);
-      setCommandError(describeRefusal(error));
+      setCommandError(error);
       void queryClient.invalidateQueries({ queryKey, exact: true });
     },
     onSettled: () => setPending(null),
@@ -229,7 +238,7 @@ export const useLiveRun = (runId: string | null): LiveRunHandle => {
         accept(await api.liveRunAction(runId, { action: 'renew', client_id: clientId }), requestStartedAt);
       } catch (error) {
         if (error instanceof ApiError) {
-          setCommandError(describeRefusal(error));
+          setCommandError(error);
           void queryClient.invalidateQueries({ queryKey, exact: true });
         }
       }

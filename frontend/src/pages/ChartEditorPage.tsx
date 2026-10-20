@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { renderChartHtml, type ChartDocument, type ChartFormatting } from '@service-center/shared';
@@ -7,6 +8,7 @@ import { openChartInNewTab } from '../lib/chart-export';
 import { useChartPdfExport } from '../hooks/chart-export';
 import { useInvalidateOrg, useSong } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
+import { useLanguage } from '../i18n';
 import { Button, EmptyState, ErrorNotice, Loading } from '../components/ui';
 import { ChartNotationSelect, ORIGINAL_KEY_VIEW, type ChartView } from '../components/ChartNotationSelect';
 import { ChartSourceEditor } from '../components/chart-editor/ChartSourceEditor';
@@ -34,6 +36,8 @@ type ChartDialog = 'sequence' | 'formatting';
  * the band gets is the page that was on screen.
  */
 export const ChartEditorPage = () => {
+  const { t } = useTranslation(['songs', 'common']);
+  const { locale } = useLanguage();
   const { songId, arrangementId } = useParams<{ songId: string; arrangementId: string }>();
   const { canAnywhere } = useAuth();
   // The song library is organization-wide; leading a team never implies it.
@@ -66,8 +70,8 @@ export const ChartEditorPage = () => {
   // document rather than as its HTML so the export can name the file after it.
   const chart = useMemo<ChartDocument | null>(() => {
     if (!form || !song.data) return null;
-    return chartDocumentFrom({ values: form, song: song.data, view });
-  }, [form, song.data, view]);
+    return chartDocumentFrom({ values: form, song: song.data, view, untitledTitle: t('chartEditor.untitledSong'), locale });
+  }, [form, song.data, view, t, locale]);
 
   const html = useMemo(() => (chart ? renderChartHtml(chart) : ''), [chart]);
 
@@ -77,7 +81,7 @@ export const ChartEditorPage = () => {
       if (form.title.trim() && form.title.trim() !== song.data.title) {
         await api.updateSong(song.data.id, toChartSongInput(form));
       }
-      await api.updateArrangement(arrangement.id, toChartArrangementInput(form));
+      await api.updateArrangement(arrangement.id, toChartArrangementInput(form, t('arrangement.defaultName')));
     },
     onSuccess: async () => {
       setSaved(form);
@@ -87,13 +91,13 @@ export const ChartEditorPage = () => {
 
   if (song.isLoading) return <Loading />;
   if (song.error) return <ErrorNotice error={song.error} />;
-  if (!song.data) return <EmptyState title="Song not found" />;
+  if (!song.data) return <EmptyState title={t('songDetail.notFound')} />;
   if (!arrangement) {
     return (
       <EmptyState
-        title="Arrangement not found"
-        description="It may have been deleted."
-        action={<Link className="text-brand-600 hover:underline" to={`/songs/${songId}`}>Back to the song</Link>}
+        title={t('chartEditor.arrangementNotFound')}
+        description={t('chartEditor.arrangementNotFoundDescription')}
+        action={<Link className="text-brand-600 hover:underline" to={`/songs/${songId}`}>{t('chartEditor.backToSong')}</Link>}
       />
     );
   }
@@ -107,7 +111,7 @@ export const ChartEditorPage = () => {
   const dirty = chartEditorIsDirty(form, saved);
 
   const leave = () => {
-    if (dirty && !window.confirm('Leave without saving this chart?')) return;
+    if (dirty && !window.confirm(t('chartEditor.leaveConfirm'))) return;
     navigate(`/songs/${songId}`);
   };
 
@@ -123,7 +127,7 @@ export const ChartEditorPage = () => {
           onClick={leave}
           className="text-sm text-slate-600 transition hover:text-slate-900 dark:text-slate-300"
         >
-          ‹ Back
+          {t('chartEditor.back')}
         </button>
 
         <h1 className="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-white">
@@ -133,20 +137,20 @@ export const ChartEditorPage = () => {
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => setDialog('sequence')} disabled={!canManage}>
-            Sequence
+            {t('chartEditor.sequence')}
           </Button>
           <Button variant="secondary" onClick={() => setDialog('formatting')} disabled={!canManage}>
-            Formatting
+            {t('chartEditor.formatting')}
           </Button>
           <Button variant="secondary" onClick={openInTab}>
-            Open in new tab
+            {t('chartEditor.openInNewTab')}
           </Button>
           <Button
             variant="secondary"
             onClick={() => chart && pdf.download(chart)}
             loading={pdf.isExporting}
           >
-            Download PDF
+            {t('chartEditor.downloadPdf')}
           </Button>
           {canManage && (
             <Button
@@ -154,7 +158,7 @@ export const ChartEditorPage = () => {
               loading={save.isPending}
               disabled={!dirty || !form.title.trim()}
             >
-              {dirty ? 'Save' : 'Saved'}
+              {dirty ? t('common:actions.save') : t('chartEditor.saved')}
             </Button>
           )}
         </div>
@@ -166,7 +170,7 @@ export const ChartEditorPage = () => {
           <ErrorNotice error={pdf.error} />
           {popupBlocked && (
             <div role="alert" className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
-              Your browser blocked the new tab. Allow pop-ups for this site, or use Download PDF.
+              {t('chartEditor.popupBlocked')}
             </div>
           )}
         </div>
@@ -192,10 +196,10 @@ export const ChartEditorPage = () => {
                 checked={autoRefresh}
                 onChange={(event) => setAutoRefresh(event.target.checked)}
               />
-              Auto-refresh
+              {t('chartEditor.autoRefresh')}
             </label>
             <span className="ml-auto text-xs text-slate-400">
-              {form.formatting.columns === 2 ? 'Two columns' : 'One column'}
+              {form.formatting.columns === 2 ? t('chartEditor.twoColumns') : t('chartEditor.oneColumn')}
             </span>
           </div>
 

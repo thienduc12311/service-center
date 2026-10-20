@@ -1,3 +1,4 @@
+import { useErrorText } from '../i18n/useErrorText';
 import { forwardRef, type ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -454,13 +455,15 @@ export interface ErrorNoticeProps {
   error: unknown;
 }
 
+/** Any thrown value as localized, user-safe text (never raw database/provider errors). */
 export const ErrorNotice = ({ error }: ErrorNoticeProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const errorText = useErrorText();
   if (!error) return null;
-  const message = error instanceof Error ? error.message : String(error);
+  const message = errorText(error);
   return (
-    <View style={styles.notice}>
+    <View accessibilityRole="alert" style={styles.notice}>
       <Icon name="alert" size={17} color={theme.accent.red.fg} />
       <Text style={styles.noticeText}>{message}</Text>
     </View>

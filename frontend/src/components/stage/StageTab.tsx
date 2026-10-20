@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
-  STAGE_BACKGROUND_LABELS,
-  STAGE_ISSUE_LABELS,
   STAGE_MAX_OBJECTS,
   refreshStageObjects,
   stageLayoutIssues,
@@ -18,23 +17,31 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../providers/AuthProvider';
 import { Badge, Button, EmptyState, ErrorNotice, Loading, Modal } from '../ui';
 import { StageCanvas } from './StageCanvas';
+import { useErrorText, useFormatters } from '../../i18n';
 
 export interface StageTabProps {
   plan: PlanDetail;
 }
 
-const GEAR = ['Drums', 'Keys', 'Guitar amp', 'Bass amp', 'Mic', 'Monitor', 'Podium', 'Screen'] as const;
+/** Gear presets; the label is written into the layout in the editor's language and is then the leader's own text. */
+const GEAR = ['drums', 'keys', 'guitarAmp', 'bassAmp', 'mic', 'monitor', 'podium', 'screen'] as const;
+type GearPreset = (typeof GEAR)[number];
+const isGearPreset = (value: string): value is GearPreset => (GEAR as readonly string[]).includes(value);
+
+const BACKGROUNDS: readonly StageBackground[] = ['blank', 'stage', 'thrust', 'round'];
 
 const newId = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `obj-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-const layoutError = (error: unknown): string | null => {
-  if (!error) return null;
-  if (error instanceof ApiError) {
-    if (error.code === 'layout_revision_stale') return 'Someone else saved this layout. Your draft is kept — reload to see theirs, or discard yours.';
-    return error.message;
-  }
-  return error instanceof Error ? error.message : 'Something went wrong';
+/** Text for a failed layout change; a stale revision gets its own explanation. */
+const useLayoutErrorText = (): ((error: unknown) => string | null) => {
+  const { t } = useTranslation('media');
+  const errorText = useErrorText();
+  return (error) => {
+    if (!error) return null;
+    if (error instanceof ApiError && error.code === 'layout_revision_stale') return t('stage.errors.revisionStale');
+    return errorText(error);
+  };
 };
 
 /**
@@ -43,6 +50,7 @@ const layoutError = (error: unknown): string | null => {
  * refreshes deliberately and saves.
  */
 export const StageTab = ({ plan }: StageTabProps) => {
+  const { t } = useTranslation('media');
   const layouts = usePlanStageLayouts(plan.id);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -50,7 +58,7 @@ export const StageTab = ({ plan }: StageTabProps) => {
   const list = layouts.data?.layouts ?? [];
   const selected = list.find((view) => view.layout.id === selectedId) ?? list[0] ?? null;
 
-  if (layouts.isLoading) return <Loading label="Loading stage layouts…" />;
+  if (layouts.isLoading) return <Loading label={t('stage.loading')} />;
   if (layouts.error) return <ErrorNotice error={layouts.error} />;
   const canEdit = layouts.data?.can_edit ?? false;
 
@@ -66,24 +74,20 @@ export const StageTab = ({ plan }: StageTabProps) => {
             className={`rounded-full px-3 py-1 text-sm ${selected?.layout.id === view.layout.id ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}
           >
             {view.layout.name}
-            {view.issues.some((issue) => issue.kind !== 'unplaced') && <span aria-label="needs attention"> •</span>}
+            {view.issues.some((issue) => issue.kind !== 'unplaced') && <span aria-label={t('stage.needsAttention')}> •</span>}
           </button>
         ))}
         {canEdit && list.length < 10 && (
           <Button variant="secondary" onClick={() => setCreating(true)}>
-            New layout
+            {t('stage.newLayout')}
           </Button>
         )}
       </div>
 
       {!selected ? (
         <EmptyState
-          title="No stage layout yet"
-          description={
-            canEdit
-              ? 'Start from a template or a blank stage, then place the people scheduled on this plan and their gear.'
-              : 'Plan editors can add stage layouts here.'
-          }
+          title={t('stage.emptyTitle')}
+          description={canEdit ? t('stage.emptyEditor') : t('stage.emptyReader')}
         />
       ) : (
         <LayoutEditor key={`${selected.layout.id}:${selected.layout.revision}`} plan={plan} view={selected} canEdit={canEdit} />
@@ -102,11 +106,18 @@ export const StageTab = ({ plan }: StageTabProps) => {
   );
 };
 
-const CreateLayoutModal = ({ plan, onClose, onCreated }: { plan: PlanDetail; onClose: () => void; onCreated: (id: string) => void }) => {
+interface CreateLayoutModalProps {
+  plan: PlanDetail;
+  onClose: () => void;
+  onCreated: (id: string) => void;
+}
+
+const CreateLayoutModal = ({ plan, onClose, onCreated }: CreateLayoutModalProps) => {
+  const { t } = useTranslation(['media', 'common']);
   const { organizationId } = useAuth();
   const queryClient = useQueryClient();
   const templates = useStageTemplates();
-  const [name, setName] = useState('Stage');
+  const [name, setName] = useState(() => t('stage.defaultName'));
   const [templateId, setTemplateId] = useState('');
   const [background, setBackground] = useState<StageBackground>('stage');
   const create = useMutation({
@@ -123,7 +134,7 @@ const CreateLayoutModal = ({ plan, onClose, onCreated }: { plan: PlanDetail; onC
   });
   const live = (templates.data?.templates ?? []).filter((template) => !template.archived_at);
   return (
-    <Modal open title="New stage layout" onClose={onClose}>
+    <Modal open title={t('stage.createTitle')} onClose={onClose}>
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -132,42 +143,51 @@ const CreateLayoutModal = ({ plan, onClose, onCreated }: { plan: PlanDetail; onC
         }}
       >
         <label className="block">
-          <span className="label">Name</span>
+          <span className="label">{t('stage.name')}</span>
           <input className="input" required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} />
         </label>
         <label className="block">
-          <span className="label">Start from</span>
+          <span className="label">{t('stage.startFrom')}</span>
           <select className="input" value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
-            <option value="">A blank layout</option>
+            <option value="">{t('stage.blankLayout')}</option>
             {live.map((template) => (
               <option key={template.id} value={template.id}>
-                Template: {template.name}
+                {t('stage.templateOption', { name: template.name })}
               </option>
             ))}
           </select>
-          {templateId && <span className="mt-1 block text-xs text-slate-500">The template's gear is copied; later template changes do not change this plan.</span>}
+          {templateId && <span className="mt-1 block text-xs text-slate-500">{t('stage.templateHint')}</span>}
         </label>
         {!templateId && (
           <label className="block">
-            <span className="label">Background</span>
+            <span className="label">{t('stage.background')}</span>
             <select className="input" value={background} onChange={(event) => setBackground(event.target.value as StageBackground)}>
-              {Object.entries(STAGE_BACKGROUND_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+              {BACKGROUNDS.map((value) => (
+                <option key={value} value={value}>{t(`stage.backgrounds.${value}`)}</option>
               ))}
             </select>
           </label>
         )}
         <ErrorNotice error={create.error} />
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={create.isPending} disabled={!name.trim()}>Create</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button>
+          <Button type="submit" loading={create.isPending} disabled={!name.trim()}>{t('common:actions.create')}</Button>
         </div>
       </form>
     </Modal>
   );
 };
 
-const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanStageLayoutView; canEdit: boolean }) => {
+interface LayoutEditorProps {
+  plan: PlanDetail;
+  view: PlanStageLayoutView;
+  canEdit: boolean;
+}
+
+const LayoutEditor = ({ plan, view, canEdit }: LayoutEditorProps) => {
+  const { t } = useTranslation(['media', 'common']);
+  const formatters = useFormatters();
+  const layoutError = useLayoutErrorText();
   const { organizationId } = useAuth();
   const queryClient = useQueryClient();
   const [objects, setObjects] = useState<StageObject[]>(view.layout.objects);
@@ -217,13 +237,13 @@ const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanSta
   const saveTemplate = useMutation({
     mutationFn: () =>
       api.createStageTemplate({
-        name: `${name.trim()} template`.slice(0, 120),
+        name: t('stage.templateName', { name: name.trim() }).slice(0, 120),
         background,
         // People belong to a plan; templates keep gear and labels only.
         objects: objects.filter((object) => object.kind !== 'person').map(({ person_id: _person, ...rest }) => rest),
       }),
     onSuccess: async (template) => {
-      setNotice(`Saved “${template.name}” as a template (gear and labels only).`);
+      setNotice(t('stage.templateSaved', { name: template.name }));
       await queryClient.invalidateQueries({ queryKey: keys.stageTemplates(organizationId) });
     },
   });
@@ -232,7 +252,7 @@ const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanSta
     setObjects((list) => list.map((object) => (object.id === id ? { ...object, ...patch } : object)));
   const add = (object: Omit<StageObject, 'id'>) => {
     if (objects.length >= STAGE_MAX_OBJECTS) {
-      setNotice(`A layout holds at most ${STAGE_MAX_OBJECTS} objects.`);
+      setNotice(t('stage.maxObjects', { count: STAGE_MAX_OBJECTS }));
       return;
     }
     const id = newId();
@@ -247,16 +267,17 @@ const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanSta
     const markup = new XMLSerializer().serializeToString(svg.current);
     const win = window.open('', '_blank');
     if (!win) {
-      setNotice('Allow pop-ups for this site to print or save the layout as a PDF.');
+      setNotice(t('stage.allowPopups'));
       return;
     }
     const doc = win.document;
-    doc.title = `${plan.title} — ${name}`;
+    doc.title = t('stage.printTitle', { plan: plan.title, layout: name });
+    doc.documentElement.lang = document.documentElement.lang;
     const style = doc.createElement('style');
     style.textContent = '@page{size:landscape;margin:12mm}body{font-family:system-ui,sans-serif;margin:0}h1{font-size:16px;margin:0 0 8px}svg{width:100%;height:auto}';
     doc.head.appendChild(style);
     const heading = doc.createElement('h1');
-    heading.textContent = `${plan.title} · ${name}`;
+    heading.textContent = t('stage.printHeading', { plan: plan.title, layout: name });
     doc.body.appendChild(heading);
     // Re-parse the serialized SVG (labels are XML-escaped by the serializer).
     const parsed = new DOMParser().parseFromString(markup, 'image/svg+xml').documentElement;
@@ -269,22 +290,24 @@ const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanSta
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_18rem]">
-      <section className="card space-y-3 p-4" aria-label="Stage layout">
+      <section className="card space-y-3 p-4" aria-label={t('stage.layoutLabel')}>
         <div className="flex flex-wrap items-center gap-2">
           {canEdit ? (
-            <input aria-label="Layout name" className="input max-w-xs" value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />
+            <input aria-label={t('stage.layoutName')} className="input max-w-xs" value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />
           ) : (
             <h3 className="font-semibold">{view.layout.name}</h3>
           )}
           {canEdit && (
-            <select aria-label="Background" className="input w-auto" value={background} onChange={(event) => setBackground(event.target.value as StageBackground)}>
-              {Object.entries(STAGE_BACKGROUND_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+            <select aria-label={t('stage.background')} className="input w-auto" value={background} onChange={(event) => setBackground(event.target.value as StageBackground)}>
+              {BACKGROUNDS.map((value) => (
+                <option key={value} value={value}>{t(`stage.backgrounds.${value}`)}</option>
               ))}
             </select>
           )}
           <span className="ml-auto text-xs text-slate-500">
-            {view.layout.refreshed_at ? `Matched to staffing ${new Date(view.layout.refreshed_at).toLocaleString()}` : 'Not refreshed since created'}
+            {view.layout.refreshed_at
+              ? t('stage.matchedAt', { time: formatters.dateTime(view.layout.refreshed_at) })
+              : t('stage.notRefreshed')}
           </span>
         </div>
         <StageCanvas
@@ -300,34 +323,37 @@ const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanSta
         {canEdit && (
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-sm">
-              <span className="sr-only">Add gear</span>
+              <span className="sr-only">{t('stage.addGear')}</span>
               <select
                 className="input w-auto"
                 value=""
                 onChange={(event) => {
-                  if (event.target.value) add({ kind: 'gear', x: 0.5, y: 0.35, w: 0.12, h: 0.09, rotation: 0, label: event.target.value, color: '#64748b' });
+                  const preset = event.target.value;
+                  if (isGearPreset(preset)) {
+                    add({ kind: 'gear', x: 0.5, y: 0.35, w: 0.12, h: 0.09, rotation: 0, label: t(`stage.gear.${preset}`), color: '#64748b' });
+                  }
                 }}
               >
-                <option value="">Add gear…</option>
+                <option value="">{t('stage.addGearOption')}</option>
                 {GEAR.map((gear) => (
-                  <option key={gear} value={gear}>{gear}</option>
+                  <option key={gear} value={gear}>{t(`stage.gear.${gear}`)}</option>
                 ))}
               </select>
             </label>
-            <Button variant="secondary" onClick={() => add({ kind: 'label', x: 0.5, y: 0.1, w: 0.2, h: 0.06, rotation: 0, label: 'Label', color: null })}>
-              Add label
+            <Button variant="secondary" onClick={() => add({ kind: 'label', x: 0.5, y: 0.1, w: 0.2, h: 0.06, rotation: 0, label: t('stage.kinds.label'), color: null })}>
+              {t('stage.addLabel')}
             </Button>
-            <Button variant="secondary" onClick={() => setRefreshing(true)}>Refresh from staffing…</Button>
-            <Button variant="secondary" onClick={exportPdf}>Print / PDF</Button>
-            <Button variant="secondary" loading={saveTemplate.isPending} onClick={() => saveTemplate.mutate()}>Save as template</Button>
+            <Button variant="secondary" onClick={() => setRefreshing(true)}>{t('stage.refreshFromStaffing')}</Button>
+            <Button variant="secondary" onClick={exportPdf}>{t('stage.printPdf')}</Button>
+            <Button variant="secondary" loading={saveTemplate.isPending} onClick={() => saveTemplate.mutate()}>{t('stage.saveAsTemplate')}</Button>
             <Button
               variant="danger"
               loading={remove.isPending}
               onClick={() => {
-                if (window.confirm(`Delete the layout “${view.layout.name}”?`)) remove.mutate();
+                if (window.confirm(t('stage.deleteConfirm', { name: view.layout.name }))) remove.mutate();
               }}
             >
-              Delete
+              {t('common:actions.delete')}
             </Button>
             <span className="ml-auto flex gap-2">
               {dirty && (
@@ -341,23 +367,23 @@ const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanSta
                     save.reset();
                   }}
                 >
-                  Discard changes
+                  {t('stage.discardChanges')}
                 </Button>
               )}
               <Button loading={save.isPending} disabled={!dirty || !name.trim()} onClick={() => save.mutate()}>
-                Save layout
+                {t('stage.saveLayout')}
               </Button>
             </span>
           </div>
         )}
-        {!canEdit && <Button variant="secondary" onClick={exportPdf}>Print / PDF</Button>}
+        {!canEdit && <Button variant="secondary" onClick={exportPdf}>{t('stage.printPdf')}</Button>}
         {notice && <p role="status" className="text-sm text-slate-600">{notice}</p>}
         {[save.error, remove.error, saveTemplate.error].map((error, index) =>
           error ? (
             <p key={index} role="alert" className="text-sm text-rose-700">
               {layoutError(error)}{' '}
               {error instanceof ApiError && error.code === 'layout_revision_stale' && (
-                <button type="button" className="underline" onClick={() => void invalidate()}>Reload their version</button>
+                <button type="button" className="underline" onClick={() => void invalidate()}>{t('stage.reloadTheirs')}</button>
               )}
             </p>
           ) : null,
@@ -370,27 +396,27 @@ const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanSta
 
       <aside className="space-y-4">
         <section className="card p-4">
-          <h3 className="mb-2 text-sm font-semibold">Compared with current staffing</h3>
+          <h3 className="mb-2 text-sm font-semibold">{t('stage.compared')}</h3>
           {issues.filter((issue) => issue.kind !== 'unplaced').length === 0 ? (
-            <p className="text-sm text-slate-500">Everyone placed is still scheduled.</p>
+            <p className="text-sm text-slate-500">{t('stage.allStillScheduled')}</p>
           ) : (
             <ul className="space-y-1 text-sm">
               {issues
                 .filter((issue) => issue.kind !== 'unplaced')
                 .map((issue) => (
                   <li key={`${issue.kind}:${issue.person_id}`}>
-                    <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">{STAGE_ISSUE_LABELS[issue.kind]}</Badge>{' '}
+                    <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">{t(`stage.issues.${issue.kind}`)}</Badge>{' '}
                     {issue.name}
                   </li>
                 ))}
             </ul>
           )}
-          <p className="mt-2 text-xs text-slate-500">Nobody is moved automatically. Use “Refresh from staffing” to update deliberately.</p>
+          <p className="mt-2 text-xs text-slate-500">{t('stage.noAutoMove')}</p>
         </section>
         <section className="card p-4">
-          <h3 className="mb-2 text-sm font-semibold">Scheduled, not placed</h3>
+          <h3 className="mb-2 text-sm font-semibold">{t('stage.unplacedTitle')}</h3>
           {unplaced.length === 0 ? (
-            <p className="text-sm text-slate-500">Everyone scheduled is on the layout.</p>
+            <p className="text-sm text-slate-500">{t('stage.allPlaced')}</p>
           ) : (
             <ul className="space-y-1 text-sm">
               {unplaced.map((person) => (
@@ -399,12 +425,12 @@ const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanSta
                     <span className="block truncate">{person.name}</span>
                     <span className="text-xs text-slate-500">
                       {person.roles.join(', ')}
-                      {person.prepared ? ' · not yet asked' : ''}
+                      {person.prepared ? ` · ${t('stage.notYetAsked')}` : ''}
                     </span>
                   </span>
                   {canEdit && (
-                    <Button variant="secondary" onClick={() => placePerson(person)} aria-label={`Place ${person.name}`}>
-                      Place
+                    <Button variant="secondary" onClick={() => placePerson(person)} aria-label={t('stage.placeLabel', { name: person.name })}>
+                      {t('stage.place')}
                     </Button>
                   )}
                 </li>
@@ -423,7 +449,7 @@ const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanSta
             setObjects(next);
             setRefreshed(true);
             setRefreshing(false);
-            setNotice('Refreshed in your draft. Review the layout, then save it.');
+            setNotice(t('stage.refreshedNotice'));
           }}
         />
       )}
@@ -431,76 +457,83 @@ const LayoutEditor = ({ plan, view, canEdit }: { plan: PlanDetail; view: PlanSta
   );
 };
 
-const RefreshModal = ({
-  objects,
-  roster,
-  onClose,
-  onApply,
-}: {
+interface RefreshModalProps {
   objects: StageObject[];
   roster: StageRosterPerson[];
   onClose: () => void;
   onApply: (objects: StageObject[]) => void;
-}) => {
+}
+
+const RefreshModal = ({ objects, roster, onClose, onApply }: RefreshModalProps) => {
+  const { t } = useTranslation(['media', 'common']);
   const [removeUnscheduled, setRemove] = useState(true);
   const [addUnplaced, setAdd] = useState(true);
   const issues = stageLayoutIssues(objects, roster);
   const count = (kind: string) => issues.filter((issue) => issue.kind === kind).length;
   return (
-    <Modal open title="Refresh from current staffing" onClose={onClose}>
+    <Modal open title={t('stage.refresh.title')} onClose={onClose}>
       <div className="space-y-3 text-sm">
-        <p>People who are still scheduled keep exactly where they stand; only their names are updated.</p>
+        <p>{t('stage.refresh.intro')}</p>
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={removeUnscheduled} onChange={(event) => setRemove(event.target.checked)} />
-          Remove {count('not_scheduled') + count('departed')} people no longer scheduled or no longer on the roster
+          {t('stage.refresh.remove', { count: count('not_scheduled') + count('departed') })}
         </label>
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={addUnplaced} onChange={(event) => setAdd(event.target.checked)} />
-          Place {count('unplaced')} scheduled people along the front edge
+          {t('stage.refresh.add', { count: count('unplaced') })}
         </label>
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => onApply(refreshStageObjects(objects, roster, { removeUnscheduled, addUnplaced }, newId))}>Apply to draft</Button>
+          <Button variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button>
+          <Button onClick={() => onApply(refreshStageObjects(objects, roster, { removeUnscheduled, addUnplaced }, newId))}>{t('stage.refresh.apply')}</Button>
         </div>
       </div>
     </Modal>
   );
 };
 
-const Inspector = ({ object, onChange, onRemove }: { object: StageObject; onChange: (patch: Partial<StageObject>) => void; onRemove: () => void }) => {
+interface InspectorProps {
+  object: StageObject;
+  onChange: (patch: Partial<StageObject>) => void;
+  onRemove: () => void;
+}
+
+const Inspector = ({ object, onChange, onRemove }: InspectorProps) => {
+  const { t } = useTranslation(['media', 'common']);
   const number = (value: string, min: number, max: number, fallback: number): number => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
   };
   return (
     <fieldset className="grid gap-3 rounded-lg border border-slate-200 p-3 text-sm sm:grid-cols-5 dark:border-slate-700">
-      <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Selected {object.kind}</legend>
+      <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{t(`stage.inspector.selected.${object.kind}`)}</legend>
       <label className="sm:col-span-2">
-        <span className="label">Label</span>
+        <span className="label">{t('stage.inspector.label')}</span>
         <input className="input" maxLength={80} value={object.label} onChange={(event) => onChange({ label: event.target.value })} />
       </label>
       <label>
-        <span className="label">Width %</span>
+        <span className="label">{t('stage.inspector.width')}</span>
         <input className="input" type="number" min={2} max={100} value={Math.round(object.w * 100)} onChange={(event) => onChange({ w: number(event.target.value, 2, 100, object.w * 100) / 100 })} />
       </label>
       <label>
-        <span className="label">Height %</span>
+        <span className="label">{t('stage.inspector.height')}</span>
         <input className="input" type="number" min={2} max={100} value={Math.round(object.h * 100)} onChange={(event) => onChange({ h: number(event.target.value, 2, 100, object.h * 100) / 100 })} />
       </label>
       <label>
-        <span className="label">Rotation °</span>
+        <span className="label">{t('stage.inspector.rotation')}</span>
         <input className="input" type="number" min={-360} max={360} value={Math.round(object.rotation)} onChange={(event) => onChange({ rotation: number(event.target.value, -360, 360, object.rotation) })} />
       </label>
       <label>
-        <span className="label">Colour</span>
+        <span className="label">{t('stage.inspector.color')}</span>
         <input className="input h-9 p-1" type="color" value={object.color ?? '#94a3b8'} onChange={(event) => onChange({ color: event.target.value })} />
       </label>
       <label className="sm:col-span-2">
-        <span className="label">Nudge (arrow keys move the selected object)</span>
-        <span className="text-xs text-slate-500">x {Math.round(object.x * 100)}% · y {Math.round(object.y * 100)}%</span>
+        <span className="label">{t('stage.inspector.nudge')}</span>
+        <span className="text-xs text-slate-500">
+          {t('stage.inspector.position', { x: Math.round(object.x * 100), y: Math.round(object.y * 100) })}
+        </span>
       </label>
       <div className="flex items-end">
-        <Button variant="danger" onClick={onRemove}>Remove</Button>
+        <Button variant="danger" onClick={onRemove}>{t('common:actions.remove')}</Button>
       </div>
     </fieldset>
   );

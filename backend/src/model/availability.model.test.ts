@@ -19,6 +19,20 @@ describe('toPreferenceWarnings', () => {
     ]);
     expect(warnings.map((w) => w.code)).toEqual(['frequency']);
   });
+
+  it('keeps well-formed structured params and drops anything else', () => {
+    const [monthly, frequency, stale, legacy] = toPreferenceWarnings([
+      { person_id: 'p', code: 'monthly_max', detail: 'Already serving 2 of at most 2 this month', preference_team_id: null, params: { served: 2, max: 2, extra: 'x' } },
+      { person_id: 'p', code: 'frequency', detail: 'x', preference_team_id: null, params: { frequency: 'every_fortnight', week: -1 } },
+      { person_id: 'p', code: 'availability_stale', detail: 'x', preference_team_id: null, params: { reviewed_on: '2027-01-31' } },
+      // Rows from a database without the structured-notices migration.
+      { person_id: 'p', code: 'avoided_week', detail: 'Asked not to serve in week 2 of the month', preference_team_id: null },
+    ]);
+    expect(monthly?.params).toEqual({ served: 2, max: 2 });
+    expect(frequency?.params).toEqual({});
+    expect(stale?.params).toEqual({ reviewed_on: '2027-01-31' });
+    expect(legacy).toMatchObject({ params: {}, detail: 'Asked not to serve in week 2 of the month' });
+  });
 });
 
 describe('busyElsewhereWarnings', () => {
@@ -30,7 +44,7 @@ describe('busyElsewhereWarnings', () => {
       { person_id: 'a', starts_at: '2027-05-09T15:00:00Z', ends_at: '2027-05-09T16:00:00Z' },
       { person_id: 'b', starts_at: '2027-05-09T15:30:00Z', ends_at: '2027-05-09T16:00:00Z' },
     ], times);
-    expect(warnings).toEqual([{ person_id: 'a', code: 'busy_elsewhere', detail: 'Busy at this time in another organization', preference_team_id: null }]);
+    expect(warnings).toEqual([{ person_id: 'a', code: 'busy_elsewhere', detail: 'Busy at this time in another organization', params: {}, preference_team_id: null }]);
   });
 
   it('treats touching boundaries as free (half-open intervals)', () => {

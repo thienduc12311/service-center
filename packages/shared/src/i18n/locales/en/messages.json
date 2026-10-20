@@ -1,0 +1,267 @@
+{
+  "messagesPage": {
+    "title": "Messages",
+    "subtitle": "Operational messages from leaders. Replies go to the sender’s email.",
+    "compose": "Message team members",
+    "tabs": {
+      "sent": "Sent",
+      "received": "Received"
+    },
+    "empty": {
+      "sentTitle": "No messages sent yet",
+      "sentDescription": "Message a team or the people on a plan from the plan’s Teams tab.",
+      "receivedTitle": "No messages for you"
+    },
+    "recipients_one": "{{count}} recipient",
+    "recipients_other": "{{count}} recipients",
+    "from": "From {{name}}",
+    "fromUnknown": "From a leader",
+    "listMeta": "{{summary}} · {{date}}"
+  },
+  "messageDetail": {
+    "notAvailableTitle": "Message not available",
+    "notAvailableDescription": "It was not sent to you, or you are no longer an active member.",
+    "back": "← Messages",
+    "fromLine": "From {{name}} · {{date}}",
+    "fromLineUnknown": "From a leader · {{date}}",
+    "variablesNote": "Shown as written; each recipient received it with their own variables filled in.",
+    "recipientsHeading": "Recipients · {{included}} included",
+    "recipientsHeadingWithExcluded": "Recipients · {{included}} included, {{excluded}} not included",
+    "retry_one": "Retry {{count}} failed",
+    "retry_other": "Retry {{count}} failed",
+    "requeued_one": "Re-queued {{count}} delivery.",
+    "requeued_other": "Re-queued {{count}} deliveries.",
+    "simulatedNote": "“Simulated” means no email provider is configured — the email was not sent. Only failed or uncertain deliveries can be retried.",
+    "notSentNoAddress": "Not sent · no email or sign-in",
+    "removedBeforeSending": "Removed before sending",
+    "channelStatus": "{{channel}}: {{status}}"
+  },
+  "audienceReasons": {
+    "team_member": "Team member",
+    "scheduled_confirmed": "Confirmed",
+    "scheduled_pending": "Awaiting reply",
+    "signup": "Signed up"
+  },
+  "audienceInclude": {
+    "team_members": "Team members",
+    "scheduled_confirmed": "Confirmed on this plan",
+    "scheduled_pending": "Not yet answered on this plan",
+    "signups": "Signed up for an opening"
+  },
+  "delivery": {
+    "channels": {
+      "in_app": "In-app",
+      "push": "Push",
+      "email": "Email"
+    },
+    "status": {
+      "queued": "Queued",
+      "sending": "Sending",
+      "simulated": "Simulated — not sent",
+      "provider_accepted": "Accepted by provider",
+      "delivered": "Delivered",
+      "failed": "Failed",
+      "ambiguous": "Outcome unknown",
+      "skipped": "Not sent",
+      "cancelled": "Cancelled"
+    },
+    "errors": {
+      "no_email_address": "No email address on file",
+      "no_active_device": "No registered device",
+      "recipient_not_eligible": "No longer scheduled or no longer a member",
+      "scheduler_not_active": "Scheduler is no longer active in this organization",
+      "plan_missing": "The plan no longer exists",
+      "request_missing": "The availability request no longer exists",
+      "already_reviewed": "Already updated their availability",
+      "provider_rate_limited": "Provider rate limit — will retry",
+      "provider_unavailable": "Provider unavailable — will retry",
+      "provider_rejected": "Provider rejected the message",
+      "provider_misconfigured": "Email provider is misconfigured",
+      "provider_timeout": "Provider did not answer in time",
+      "outcome_unknown": "Interrupted while sending; it may have been sent",
+      "worker_lease_expired": "Worker stopped before sending; will retry",
+      "internal_error": "Unexpected error",
+      "reminder_obsolete": "Reminder no longer applied when it was about to be sent",
+      "provider_duplicate_key": "Provider already has an earlier attempt of this message; it may have been sent",
+      "content_removed": "The comment or message was removed before it was sent",
+      "conversation_muted": "The recipient muted this conversation",
+      "channel_not_used": "Not sent on this channel"
+    }
+  },
+  "chatPage": {
+    "title": "Chat",
+    "subtitle": "Team and plan conversations.",
+    "openTeamChat": "Open a team chat",
+    "openTeamChatOption": "Open a team chat…",
+    "noConversations": "No conversations yet. Open your team’s chat, or a plan’s chat from the plan page.",
+    "muted": "Muted",
+    "reports_one": "{{count}} report",
+    "reports_other": "{{count}} reports",
+    "unread_one": "{{count}} unread",
+    "unread_other": "{{count}} unread",
+    "choose": "Choose a conversation.",
+    "planConversation": "{{title}} · {{date}}"
+  },
+  "conversation": {
+    "notAvailableTitle": "Conversation not available",
+    "notAvailableDescription": "Conversations are open to the people on that team or plan. If you were removed, you can no longer read it.",
+    "kinds": {
+      "team": "Team",
+      "plan": "Plan"
+    },
+    "openPlan": "Open plan",
+    "searchPlaceholder": "Search…",
+    "searchLabel": "Search this conversation",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "reportsHeading": "Reports to review ({{count}})",
+    "reportLine": "{{reporter}} reported {{author}} · {{reason}}",
+    "reportLineNoAuthor": "{{reporter}} reported a message · {{reason}}",
+    "reportDetails": "“{{details}}”",
+    "alreadyRemoved": "Already removed",
+    "hideMessage": "Hide message",
+    "dismiss": "Dismiss",
+    "noMatches": "No messages match.",
+    "noMessages": "No messages yet. Say hello to the team.",
+    "hiddenByModerator": "Hidden by a moderator",
+    "messageDeleted": "Message deleted",
+    "quote": "{{author}}: {{body}}",
+    "quoteRemoved": "{{author}}: (removed)",
+    "reply": "Reply",
+    "report": "Report",
+    "deleteConfirm": "Delete this message?",
+    "showingLatest_one": "Showing the latest {{count}} message.",
+    "showingLatest_other": "Showing the latest {{count}} messages.",
+    "composerPlaceholder": "Message {{name}}…",
+    "replyingTo": "Replying to {{name}}",
+    "replyingToUnknown": "Replying to someone",
+    "privacyNote": "Only current team or plan members can read this. Muting stops notifications. Direct messages and attachments are not available yet."
+  },
+  "reportModal": {
+    "title": "Report message",
+    "thanks": "Thanks. The conversation’s moderators will review it. Reporting again does not create a second report.",
+    "reason": "Reason",
+    "reasons": {
+      "spam": "Spam",
+      "harassment": "Harassment or bullying",
+      "inappropriate": "Inappropriate content",
+      "safety": "Safety concern",
+      "other": "Something else"
+    },
+    "detailsPlaceholder": "Anything moderators should know (optional)",
+    "submit": "Report"
+  },
+  "composer": {
+    "mentionsLabel": "Will be notified",
+    "removeMention": "Remove mention",
+    "notSent": "Not sent: {{reason}} Your text is kept; sending again will not post twice.",
+    "mentionLabel": "Mention someone",
+    "mentionPrompt": "@ Mention…",
+    "noOneToMention": "No one else to mention"
+  },
+  "entry": {
+    "edited": "{{time}} · edited",
+    "mentionOutcome": "@{{name}}: {{outcome}}",
+    "resolution": {
+      "no_access": "not notified — no access here",
+      "no_login": "not notified — no sign-in",
+      "muted": "not notified — muted"
+    }
+  },
+  "itemDiscussion": {
+    "title": "Discuss “{{item}}”",
+    "itemNotes": "Item notes",
+    "addNote": "Add note",
+    "noItemNotes": "No notes on this item for you.",
+    "discussion": "Discussion",
+    "unavailable": "This discussion is open to plan leaders and the people scheduled on this plan.",
+    "showOlder": "Show older comments",
+    "noComments": "No comments yet. Ask a question or leave a cue for the team.",
+    "commentDeleted": "Comment deleted",
+    "deleteConfirm": "Delete this comment? The thread keeps a “deleted” placeholder.",
+    "placeholder": "Write a comment…",
+    "submit": "Comment",
+    "mentionNote": "Mentioning someone does not give them access; only people on this plan are notified."
+  },
+  "messageComposer": {
+    "templateNamePrompt": "Template name",
+    "sentTitle": "Message sent",
+    "replayed": "This message had already been sent; nothing was sent twice.",
+    "queued_one": "Queued for {{count}} person.",
+    "queued_other": "Queued for {{count}} people.",
+    "queuedWithExcluded_one": "Queued for {{count}} person; {{excluded}} not included.",
+    "queuedWithExcluded_other": "Queued for {{count}} people; {{excluded}} not included.",
+    "outcomesNote": "Delivery outcomes appear as each channel finishes.",
+    "viewOutcomes": "View outcomes",
+    "planTitle": "Message people on {{plan}}",
+    "teamTitle": "Message team members",
+    "who": "Who",
+    "limitTeamsHint": "Limit to teams (optional; required for team members):",
+    "teamsLabel": "Teams:",
+    "previewRecipients": "Preview recipients",
+    "refreshRecipients": "Refresh recipients",
+    "staleNotice": "The audience changed since your preview. Nothing was sent — review the updated list, then send again.",
+    "willReceive_one": "{{count}} will receive it",
+    "willReceive_other": "{{count}} will receive it",
+    "willReceiveWithExcluded_one": "{{count}} will receive it · {{excluded}} not included",
+    "willReceiveWithExcluded_other": "{{count}} will receive it · {{excluded}} not included",
+    "nobodyMatches": "Nobody matches this selection.",
+    "includeName": "Include {{name}}",
+    "unreachable": "No email or sign-in — can’t be reached",
+    "appOnly": "App only (no email)",
+    "emailOnly": "Email only",
+    "messageHeading": "Message",
+    "templateLabel": "Template",
+    "noTemplate": "No template",
+    "sharedTemplate": "{{name}} (shared)",
+    "subjectPlaceholder": "Subject",
+    "bodyPlaceholder": "Write your message…",
+    "variables": {
+      "first_name": "Recipient first name",
+      "last_name": "Recipient last name",
+      "full_name": "Recipient full name",
+      "organization_name": "Organization name",
+      "plan_title": "Plan title",
+      "plan_date": "Plan date",
+      "sender_name": "Your name"
+    },
+    "unknownVariables_one": "Unknown variable: {{names}}",
+    "unknownVariables_other": "Unknown variables: {{names}}",
+    "previewFor": "Preview for {{name}}",
+    "repliesNote": "Replies go to your email address. They are not shown in the app.",
+    "saveMine": "Save as my template",
+    "saveShared": "Save as shared template",
+    "sendTo_one": "Send to {{count}} person",
+    "sendTo_other": "Send to {{count}} people"
+  },
+  "noteEditor": {
+    "editTitle": "Edit note",
+    "addItemTitle": "Add item note",
+    "addPlanTitle": "Add plan note",
+    "category": "Category",
+    "general": "General",
+    "whoCanRead": "Who can read it",
+    "audience": {
+      "organization": "Everyone in the organization",
+      "scheduled": "People scheduled on this plan",
+      "teams": "Selected teams",
+      "leaders": "Plan leaders only"
+    },
+    "audienceHint": "Plan leaders can always read every note. Only “Everyone” notes appear in older apps.",
+    "teams": "Teams",
+    "note": "Note",
+    "placeholder": "Cues, logistics or anything this audience should read.",
+    "deleteConfirm": "Delete this note?",
+    "save": "Save note"
+  },
+  "notesPanel": {
+    "title": "Notes",
+    "empty": "There are no notes for this plan.",
+    "audienceShort": {
+      "organization": "Everyone",
+      "scheduled": "Scheduled",
+      "teams": "Teams",
+      "leaders": "Leaders"
+    }
+  }
+}

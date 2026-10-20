@@ -196,7 +196,10 @@ export interface PersonDetail extends PersonRow {
 
 export interface InvitationPreview {
   organization_name: string;
+  /** Empty when the Person has no first name; clients use a generic greeting. */
   person_first_name: string;
+  /** The invited Person's saved language (set by a manager), shown once the token is verified. */
+  preferred_language: string | null;
   email: string;
   role: OrgRole;
   expires_at: string;
@@ -209,7 +212,10 @@ export interface AssignmentRespondPreview {
   service_date: string;
   service_time: { starts_at: string; ends_at: string } | null;
   location: string | null;
+  /** Empty when the Person has no first name; clients use a generic greeting. */
   person_first_name: string;
+  /** The recipient Person's saved language, shown once the token is verified. */
+  preferred_language: string | null;
   assignments: Array<{
     assignment_id: string;
     team_name: string;

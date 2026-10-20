@@ -1,18 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import type { GlobalSearchKind } from '@service-center/shared';
 import { useGlobalSearch } from '../hooks/queries';
 import { ErrorNotice, Modal, Spinner } from './ui';
-
-const GROUP_LABELS: Record<GlobalSearchKind, string> = {
-  person: 'People',
-  team: 'Teams',
-  position: 'Positions',
-  plan: 'Plans',
-  song: 'Songs',
-  media: 'Files',
-};
 
 /** Waits for typing to pause before searching. */
 const useDebounced = (value: string, delayMs: number): string => {
@@ -30,6 +22,7 @@ const useDebounced = (value: string, delayMs: number): string => {
  * reveals how many hidden matches exist.
  */
 export const GlobalSearch = () => {
+  const { t } = useTranslation(['home', 'common']);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -60,8 +53,8 @@ export const GlobalSearch = () => {
         type="button"
         onClick={() => setOpen(true)}
         className="grid size-9 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-        aria-label="Search"
-        title="Search (Ctrl/⌘ K)"
+        aria-label={t('common:actions.search')}
+        title={t('search.button')}
       >
         <svg
           viewBox="0 0 20 20"
@@ -78,31 +71,31 @@ export const GlobalSearch = () => {
       {/* Portaled: the sticky header's backdrop blur would otherwise become the
           containing block for the fixed dialog and clip it. */}
       {createPortal(
-        <Modal open={open} title="Search" onClose={close}>
+        <Modal open={open} title={t('common:actions.search')} onClose={close}>
           <div className="space-y-3">
             <input
               autoFocus
-              aria-label="Search people, teams, plans, songs and files"
+              aria-label={t('search.inputLabel')}
               className="input"
-              placeholder="People, teams, plans, songs, files…"
+              placeholder={t('search.placeholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <ErrorNotice error={results.error} />
             {!searching ? (
-              <p className="text-sm text-slate-500">Type at least two characters.</p>
+              <p className="text-sm text-slate-500">{t('search.minLength')}</p>
             ) : results.isFetching && !results.data ? (
               <div className="flex justify-center py-4">
                 <Spinner />
               </div>
             ) : (results.data?.groups.length ?? 0) === 0 ? (
-              <p className="text-sm text-slate-500">Nothing found.</p>
+              <p className="text-sm text-slate-500">{t('search.nothingFound')}</p>
             ) : (
               <div className="max-h-96 space-y-3 overflow-y-auto">
                 {results.data?.groups.map((group) => (
                   <section key={group.kind}>
                     <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {GROUP_LABELS[group.kind]}
+                      {t(`search.groups.${group.kind satisfies GlobalSearchKind}`)}
                     </h3>
                     <ul>
                       {group.hits.map((hit) => (
@@ -117,7 +110,7 @@ export const GlobalSearch = () => {
                           >
                             <span>
                               {hit.title}
-                              {hit.archived && <span className="ml-2 text-xs text-amber-700">archived</span>}
+                              {hit.archived && <span className="ml-2 text-xs text-amber-700">{t('search.archived')}</span>}
                             </span>
                             {hit.subtitle && <span className="truncate text-xs text-slate-500">{hit.subtitle}</span>}
                           </button>
@@ -125,7 +118,7 @@ export const GlobalSearch = () => {
                       ))}
                     </ul>
                     {group.has_more && (
-                      <p className="px-2 text-xs text-slate-500">More matches — refine your search.</p>
+                      <p className="px-2 text-xs text-slate-500">{t('search.moreMatches')}</p>
                     )}
                   </section>
                 ))}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { RosterPerson } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useAuth } from '../../providers/AuthProvider';
@@ -25,6 +26,7 @@ const EMPTY: GuestDraft = { firstName: '', lastName: '', email: '', invite: fals
  * team and are not invited unless an administrator ticks the separate box.
  */
 export const AddGuestForm = ({ onCreated, onCancel }: AddGuestFormProps) => {
+  const { t } = useTranslation(['staffing', 'common']);
   const { isAdmin } = useAuth();
   const [draft, setDraft] = useState<GuestDraft>(EMPTY);
   const email = draft.email.trim();
@@ -53,11 +55,11 @@ export const AddGuestForm = ({ onCreated, onCancel }: AddGuestFormProps) => {
         create.mutate();
       }}
     >
-      <p className="text-sm font-medium">Someone new</p>
+      <p className="text-sm font-medium">{t('addGuest.title')}</p>
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="label" htmlFor="guest-first">
-            First name
+            {t('addGuest.firstName')}
           </label>
           <input
             id="guest-first"
@@ -70,7 +72,7 @@ export const AddGuestForm = ({ onCreated, onCancel }: AddGuestFormProps) => {
         </div>
         <div>
           <label className="label" htmlFor="guest-last">
-            Last name
+            {t('addGuest.lastName')}
           </label>
           <input
             id="guest-last"
@@ -83,7 +85,7 @@ export const AddGuestForm = ({ onCreated, onCancel }: AddGuestFormProps) => {
       </div>
       <div>
         <label className="label" htmlFor="guest-email">
-          Email <span className="font-normal text-slate-500">(optional)</span>
+          {t('addGuest.email')} <span className="font-normal text-slate-500">{t('addGuest.optional')}</span>
         </label>
         <input
           id="guest-email"
@@ -94,7 +96,7 @@ export const AddGuestForm = ({ onCreated, onCancel }: AddGuestFormProps) => {
         />
         {!email && (
           <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-            Without an email they can’t be notified — you’ll need to tell them yourself.
+            {t('addGuest.noEmailHint')}
           </p>
         )}
       </div>
@@ -108,9 +110,9 @@ export const AddGuestForm = ({ onCreated, onCancel }: AddGuestFormProps) => {
             onChange={(e) => setDraft({ ...draft, invite: e.target.checked })}
           />
           <span>
-            Also invite them to join the organization
+            {t('addGuest.alsoInvite')}
             <span className="block text-xs text-slate-500">
-              Separate from this request. If they accept, their history stays with them.
+              {t('addGuest.alsoInviteHint')}
             </span>
           </span>
         </label>
@@ -118,10 +120,10 @@ export const AddGuestForm = ({ onCreated, onCancel }: AddGuestFormProps) => {
       {create.error && <ErrorNotice error={create.error} />}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
+          {t('common:actions.cancel')}
         </Button>
         <Button type="submit" variant="secondary" loading={create.isPending} disabled={!draft.firstName.trim()}>
-          Add and select
+          {t('addGuest.submit')}
         </Button>
       </div>
     </form>

@@ -2,11 +2,11 @@ import { useCallback, useRef, useState } from 'react';
 import {
   FILE_MAX_BYTES,
   fileCategoryForMimeType,
-  fileUploadOutcomeMessage,
-  formatFileSize,
   resolveFileMimeType,
   type FileAudience,
   type FileCategory,
+  type FileFailureReason,
+  type FileFinalizeOutcome,
   type FileMimeType,
   type FileOwnerRef,
   type FileSummary,
@@ -29,6 +29,15 @@ export type FileUploadDestination =
     }
   | { kind: 'replace'; file: FileSummary };
 
+/** Why an upload did not become a file version; turned into text when shown. */
+export type FileUploadFailure =
+  | { kind: 'outcome'; outcome: FileFinalizeOutcome; reason: FileFailureReason | null }
+  | { kind: 'unsupportedType' }
+  | { kind: 'empty' }
+  | { kind: 'tooLarge'; maxBytes: number }
+  /** The request failed before the server answered (network, storage error). */
+  | { kind: 'interrupted'; error: unknown };
+
 /** Each step is shown as it happens; only `done` means a file version exists. */
 export type FileUploadState =
   | { phase: 'idle' }
@@ -39,7 +48,7 @@ export type FileUploadState =
   | {
       phase: 'failed';
       filename: string;
-      message: string;
+      failure: FileUploadFailure;
       /** The same intent can be retried (network failure, bytes not stored yet). */
       retryable: boolean;
     };
@@ -83,8 +92,6 @@ const putBytes = (
 
 const alreadyStored = (error: unknown): boolean =>
   error instanceof UploadHttpError && (error.status === 409 || /already exists/i.test(error.body));
-
-const messageOf = (error: unknown): string => (error instanceof Error ? error.message : 'Something went wrong');
 
 /**
  * Upload intent → bytes to the exact signed path → finalize. A retry reuses
@@ -163,7 +170,7 @@ export const useFileUpload = (onFinished?: (file: FileSummary) => void): FileUpl
       setState({
         phase: 'failed',
         filename,
-        message: fileUploadOutcomeMessage(result.outcome, result.reason) ?? 'The upload was not saved.',
+        failure: { kind: 'outcome', outcome: result.outcome, reason: result.reason ?? null },
         retryable: result.outcome === 'not_uploaded',
       });
       if (result.outcome !== 'not_uploaded') pendingRef.current = null;
@@ -173,7 +180,7 @@ export const useFileUpload = (onFinished?: (file: FileSummary) => void): FileUpl
       setState({
         phase: 'failed',
         filename,
-        message: `${messageOf(error)}. Nothing was saved yet — retry to continue the same upload.`,
+        failure: { kind: 'interrupted', error },
         retryable: true,
       });
       return null;
@@ -186,14 +193,14 @@ export const useFileUpload = (onFinished?: (file: FileSummary) => void): FileUpl
     async (picked: File, destination: FileUploadDestination): Promise<FileSummary | null> => {
       const mimeType = resolveFileMimeType(picked.name, picked.type);
       if (!mimeType) {
-        setState({ phase: 'failed', filename: picked.name, message: 'This file type is not supported.', retryable: false });
+        setState({ phase: 'failed', filename: picked.name, failure: { kind: 'unsupportedType' }, retryable: false });
         return null;
       }
       if (picked.size === 0 || picked.size > FILE_MAX_BYTES) {
         setState({
           phase: 'failed',
           filename: picked.name,
-          message: picked.size === 0 ? 'This file is empty.' : `Files are limited to ${formatFileSize(FILE_MAX_BYTES)}.`,
+          failure: picked.size === 0 ? { kind: 'empty' } : { kind: 'tooLarge', maxBytes: FILE_MAX_BYTES },
           retryable: false,
         });
         return null;

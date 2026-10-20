@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
-import type { MentionCandidate } from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
+import { LocalizedError, type MentionCandidate } from '@service-center/shared';
+import { useErrorText } from '../../i18n';
 import { Button, ErrorNotice } from '../ui';
 
 export interface DiscussionSubmission {
@@ -32,6 +34,8 @@ export const DiscussionComposer = ({
   context,
   onClearContext,
 }: DiscussionComposerProps) => {
+  const { t } = useTranslation(['messages', 'common']);
+  const errorText = useErrorText();
   const draftId = useRef<string>(crypto.randomUUID());
   const [body, setBody] = useState('');
   const [mentionIds, setMentionIds] = useState<string[]>([]);
@@ -74,7 +78,7 @@ export const DiscussionComposer = ({
         <p className="flex items-center gap-2 text-xs text-slate-500">
           {context}
           {onClearContext && (
-            <button type="button" className="hover:underline" onClick={onClearContext}>Cancel</button>
+            <button type="button" className="hover:underline" onClick={onClearContext}>{t('common:actions.cancel')}</button>
           )}
         </p>
       )}
@@ -93,13 +97,13 @@ export const DiscussionComposer = ({
         }}
       />
       {mentionIds.length > 0 && (
-        <ul className="flex flex-wrap gap-1 text-xs" aria-label="Will be notified">
+        <ul className="flex flex-wrap gap-1 text-xs" aria-label={t('composer.mentionsLabel')}>
           {mentionIds.map((id) => (
             <li key={id} className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-brand-700">
-              @{candidates.find((candidate) => candidate.person_id === id)?.name ?? 'Someone'}
+              @{candidates.find((candidate) => candidate.person_id === id)?.name ?? t('common:fallback.someone')}
               <button
                 type="button"
-                aria-label="Remove mention"
+                aria-label={t('composer.removeMention')}
                 onClick={() => setMentionIds((current) => current.filter((value) => value !== id))}
               >
                 ×
@@ -108,21 +112,21 @@ export const DiscussionComposer = ({
           ))}
         </ul>
       )}
-      <ErrorNotice error={error ? new Error(`Not sent: ${error instanceof Error ? error.message : 'try again'}. Your text is kept; sending again will not post twice.`) : null} />
+      <ErrorNotice error={error ? new LocalizedError({ key: 'messages:composer.notSent', values: { reason: errorText(error) } }) : null} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <select
           className="input !w-auto text-sm"
           value=""
-          aria-label="Mention someone"
+          aria-label={t('composer.mentionLabel')}
           disabled={candidates.length === 0}
           onChange={(event) => mention(event.target.value)}
         >
-          <option value="">{candidates.length ? '@ Mention…' : 'No one else to mention'}</option>
+          <option value="">{candidates.length ? t('composer.mentionPrompt') : t('composer.noOneToMention')}</option>
           {candidates.map((candidate) => (
             <option key={candidate.person_id} value={candidate.person_id}>{candidate.name}</option>
           ))}
         </select>
-        <Button type="submit" loading={sending} disabled={!body.trim()}>{error ? 'Retry' : submitLabel}</Button>
+        <Button type="submit" loading={sending} disabled={!body.trim()}>{error ? t('common:actions.retry') : submitLabel}</Button>
       </div>
     </form>
   );

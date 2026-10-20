@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { ArrangementRow } from '@service-center/shared';
 import { Button } from '../ui';
 import type { SongPane } from './types';
@@ -10,7 +11,12 @@ export interface SongArrangementSidebarProps {
   onAdd: () => void;
 }
 
-const SectionLabel = ({ children }: { children: string }) => (
+/** Props of a sidebar group caption. */
+interface SectionLabelProps {
+  children: string;
+}
+
+const SectionLabel = ({ children }: SectionLabelProps) => (
   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{children}</p>
 );
 
@@ -25,6 +31,7 @@ export const SongArrangementSidebar = ({
   onSelect,
   onAdd,
 }: SongArrangementSidebarProps) => {
+  const { t } = useTranslation(['songs', 'common']);
   const rowClass = (selected: boolean) =>
     `block w-full truncate rounded-lg px-3 py-2 text-left text-sm transition ${
       selected
@@ -35,23 +42,23 @@ export const SongArrangementSidebar = ({
   return (
     <aside className="space-y-6">
       <section>
-        <SectionLabel>Song</SectionLabel>
+        <SectionLabel>{t('sidebar.song')}</SectionLabel>
         <button
           type="button"
           onClick={() => onSelect({ kind: 'all' })}
           aria-current={pane.kind === 'all' ? 'true' : undefined}
           className={rowClass(pane.kind === 'all')}
         >
-          All Arrangements
+          {t('songDetail.allArrangements')}
         </button>
       </section>
 
       <section>
-        <SectionLabel>Arrangements</SectionLabel>
+        <SectionLabel>{t('sidebar.arrangements')}</SectionLabel>
 
         {arrangements.length === 0 ? (
           <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-400">
-            This song has no arrangements yet.
+            {t('sidebar.empty')}
           </p>
         ) : (
           <ul className="space-y-1">
@@ -67,7 +74,7 @@ export const SongArrangementSidebar = ({
                     className={rowClass(selected)}
                   >
                     {arrangement.name}
-                    {arrangement.archived_at && <span className="ml-1 text-xs text-slate-400">(Archived)</span>}
+                    {arrangement.archived_at && <span className="ml-1 text-xs text-slate-400">{t('sidebar.archived')}</span>}
                     {arrangement.song_key && (
                       <span className="ml-1 text-xs text-slate-400">[{arrangement.song_key}]</span>
                     )}
@@ -80,7 +87,7 @@ export const SongArrangementSidebar = ({
 
         {canManage && (
           <Button variant="secondary" className="mt-2 !py-1 text-xs" onClick={onAdd}>
-            Add
+            {t('common:actions.add')}
           </Button>
         )}
       </section>

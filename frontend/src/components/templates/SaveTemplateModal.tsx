@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   PLAN_TEMPLATE_COMPONENTS,
-  TEMPLATE_COMPONENT_LABELS,
   type PlanDetail,
   type PlanTemplateComponent,
   type PlanTemplateKind,
@@ -27,6 +27,7 @@ type SaveTarget = 'new' | string;
  * left out of a roster pattern.
  */
 export const SaveTemplateModal = ({ plan, onClose, onSaved }: SaveTemplateModalProps) => {
+  const { t } = useTranslation(['templates', 'common']);
   const invalidate = useInvalidateOrg();
   const { can } = useAuth();
   const existing = usePlanTemplates(plan.service_type_id ? { service_type_id: plan.service_type_id } : {});
@@ -63,15 +64,15 @@ export const SaveTemplateModal = ({ plan, onClose, onSaved }: SaveTemplateModalP
   });
 
   return (
-    <Modal open title="Save as template" onClose={onClose}>
+    <Modal open title={t('save.title')} onClose={onClose}>
       <div className="space-y-4">
         <div>
-          <label className="label" htmlFor="save-template-target">Save to</label>
+          <label className="label" htmlFor="save-template-target">{t('save.saveTo')}</label>
           <select id="save-template-target" className="input" value={target} onChange={(event) => setTarget(event.target.value)}>
-            <option value="new">A new template</option>
+            <option value="new">{t('save.newTemplate')}</option>
             {(existing.data ?? []).map((template) => (
               <option key={template.id} value={template.id}>
-                New revision of “{template.name}” (now rev {template.current_revision})
+                {t('save.newRevision', { name: template.name, revision: template.current_revision })}
               </option>
             ))}
           </select>
@@ -80,28 +81,28 @@ export const SaveTemplateModal = ({ plan, onClose, onSaved }: SaveTemplateModalP
         {target === 'new' && (
           <>
             <fieldset className="flex flex-wrap gap-4 text-sm">
-              <legend className="label">Kind</legend>
+              <legend className="label">{t('save.kind')}</legend>
               <label className="flex items-center gap-2">
                 <input type="radio" name="template-kind" checked={kind === 'plan'} onChange={() => setKind('plan')} />
-                Plan template
+                {t('save.kindPlan')}
               </label>
               <label className="flex items-center gap-2">
                 <input type="radio" name="template-kind" checked={kind === 'section'} onChange={() => setKind('section')} />
-                Reusable section (order items only)
+                {t('save.kindSection')}
               </label>
             </fieldset>
             <div>
-              <label className="label" htmlFor="save-template-name">Name</label>
+              <label className="label" htmlFor="save-template-name">{t('save.name')}</label>
               <input id="save-template-name" className="input" maxLength={120} value={name} onChange={(event) => setName(event.target.value)} />
             </div>
             <div>
-              <label className="label" htmlFor="save-template-description">Description</label>
+              <label className="label" htmlFor="save-template-description">{t('save.description')}</label>
               <input id="save-template-description" className="input" maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} />
             </div>
             {plan.service_type && mayUseEveryType && (
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" className="size-4 rounded border-slate-300" checked={everyServiceType} onChange={(event) => setEveryServiceType(event.target.checked)} />
-                Offer it to every service type, not only {plan.service_type.name}
+                {t('save.everyServiceType', { serviceType: plan.service_type.name })}
               </label>
             )}
           </>
@@ -109,7 +110,7 @@ export const SaveTemplateModal = ({ plan, onClose, onSaved }: SaveTemplateModalP
 
         {effectiveKind === 'plan' ? (
           <fieldset className="space-y-2">
-            <legend className="label">Include</legend>
+            <legend className="label">{t('save.include')}</legend>
             {PLAN_TEMPLATE_COMPONENTS.map((component) => (
               <label key={component} className="flex items-center gap-2 text-sm">
                 <input
@@ -120,29 +121,28 @@ export const SaveTemplateModal = ({ plan, onClose, onSaved }: SaveTemplateModalP
                     setChosen((current) => event.target.checked ? [...current, component] : current.filter((c) => c !== component))
                   }
                 />
-                {TEMPLATE_COMPONENT_LABELS[component]}
+                {t(`components.${component}`)}
               </label>
             ))}
             {chosen.includes('roster') && (
               <p className="ml-6 text-xs text-slate-500">
-                The people scheduled here (not those who declined) become a pattern. Applying it creates new prepared,
-                unconfirmed requests; nobody is notified until you release them.
+                {t('save.rosterHint')}
               </p>
             )}
             {chosen.includes('times') && (
-              <p className="ml-6 text-xs text-slate-500">Times are saved as local clock times relative to the service date.</p>
+              <p className="ml-6 text-xs text-slate-500">{t('save.timesHint')}</p>
             )}
           </fieldset>
         ) : (
-          <p className="text-sm text-slate-500">This plan’s {plan.items.length} order item(s) become the section.</p>
+          <p className="text-sm text-slate-500">{t('save.sectionItems', { count: plan.items.length })}</p>
         )}
 
         <ErrorNotice error={save.error} />
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button>
           <Button loading={save.isPending} disabled={components.length === 0 || (target === 'new' && !name.trim())} onClick={() => save.mutate()}>
-            Save
+            {t('common:actions.save')}
           </Button>
         </div>
       </div>

@@ -4,7 +4,9 @@ import type {
   PlanTimeImpactAssignment,
   PlanTimeImpactTime,
 } from '@service-center/shared';
-import { formatTime } from '@service-center/shared';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
+import { useFormatters } from '../../i18n';
 import { ConflictList, timeLabel } from './attendance';
 
 export interface TimeImpactReviewProps {
@@ -13,26 +15,25 @@ export interface TimeImpactReviewProps {
   onResolve: (assignmentId: string, action: OrphanResolutionAction) => void;
 }
 
-const CHANGE_LABELS: Record<PlanTimeImpactTime['change'], string> = {
-  added: 'New',
-  removed: 'Removed',
-  changed: 'Moved',
-  renamed: 'Renamed',
-  unchanged: 'Unchanged',
-};
+/** What `describe` needs to put times into words. */
+interface DescribeContext {
+  t: TFunction<['plans', 'common']>;
+  clock: (instant: string) => string;
+}
 
-const timeNames = (impact: PlanTimeImpact, ids: readonly string[]): string =>
+const timeNames = ({ t, clock }: DescribeContext, impact: PlanTimeImpact, ids: readonly string[]): string =>
   ids
     .map((id) => impact.times.find((time) => time.id === id))
     .filter((time): time is PlanTimeImpactTime => Boolean(time))
-    .map((time) => `${time.name || time.kind} ${formatTime(time.starts_at)}`)
+    .map((time) => t('timeImpact.timeName', { name: time.name || t(`timeKind.${time.kind}`), time: clock(time.starts_at) }))
     .join(', ');
 
-const describe = (impact: PlanTimeImpact, assignment: PlanTimeImpactAssignment): string => {
+const describe = (context: DescribeContext, impact: PlanTimeImpact, assignment: PlanTimeImpactAssignment): string => {
+  const { t } = context;
   const parts: string[] = [];
-  if (assignment.gains.length) parts.push(`adds ${timeNames(impact, assignment.gains)}`);
-  if (assignment.loses.length) parts.push(`drops ${timeNames(impact, assignment.loses)}`);
-  if (assignment.changed.length) parts.push(`${timeNames(impact, assignment.changed)} moves`);
+  if (assignment.gains.length) parts.push(t('timeImpact.adds', { times: timeNames(context, impact, assignment.gains) }));
+  if (assignment.loses.length) parts.push(t('timeImpact.drops', { times: timeNames(context, impact, assignment.loses) }));
+  if (assignment.changed.length) parts.push(t('timeImpact.moves', { times: timeNames(context, impact, assignment.changed) }));
   return parts.join('; ');
 };
 
@@ -42,25 +43,29 @@ const describe = (impact: PlanTimeImpact, assignment: PlanTimeImpactAssignment):
  * be resolved), outstanding requests that become stale and who is re-sent.
  */
 export const TimeImpactReview = ({ impact, resolutions, onResolve }: TimeImpactReviewProps) => {
+  const { t } = useTranslation(['plans', 'common']);
+  const format = useFormatters();
+  const context: DescribeContext = { t, clock: (instant) => format.time(instant) };
+  const someone = t('common:fallback.someone');
   const changedTimes = impact.times.filter((time) => time.change !== 'unchanged');
-  const names = new Map(impact.assignments.map((assignment) => [assignment.person_id, assignment.person_name ?? 'Someone']));
+  const names = new Map(impact.assignments.map((assignment) => [assignment.person_id, assignment.person_name ?? someone]));
   return (
     <div className="space-y-4 text-sm">
       {impact.becomes_untimed && (
         <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 ring-1 ring-amber-600/20">
-          With no times left, requests cover an approximate two-hour window from the service date.
+          {t('timeImpact.untimed')}
         </p>
       )}
       {changedTimes.length > 0 && (
         <div>
-          <p className="label">Times</p>
+          <p className="label">{t('timeImpact.times')}</p>
           <ul className="space-y-0.5 text-xs text-slate-600">
             {changedTimes.map((time) => (
               <li key={time.id}>
-                <span className="font-medium">{CHANGE_LABELS[time.change]}</span> — {timeLabel(time)}
+                <span className="font-medium">{t(`timeImpact.change.${time.change}`)}</span> — {timeLabel(time)}
                 {time.change === 'changed' && time.previous_starts_at && time.previous_ends_at && (
                   <span className="text-slate-400">
-                    {' '}(was {formatTime(time.previous_starts_at)}–{formatTime(time.previous_ends_at)})
+                    {' '}{t('timeImpact.was', { start: format.time(time.previous_starts_at), end: format.time(time.previous_ends_at) })}
                   </span>
                 )}
               </li>
@@ -71,21 +76,23 @@ export const TimeImpactReview = ({ impact, resolutions, onResolve }: TimeImpactR
 
       {impact.assignments.length > 0 && (
         <div>
-          <p className="label">Requests that change</p>
+          <p className="label">{t('timeImpact.requestsThatChange')}</p>
           <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
             {impact.assignments.map((assignment) => (
               <li key={assignment.assignment_id} className="space-y-1 px-3 py-2">
                 <p>
-                  <span className="font-medium">{assignment.person_name ?? 'Someone'}</span>
+                  <span className="font-medium">{assignment.person_name ?? someone}</span>
                   <span className="text-xs text-slate-500">
-                    {' '}· {assignment.team_name ?? 'Team'}
-                    {assignment.position_name ? ` · ${assignment.position_name}` : ''}
-                    {assignment.visibility === 'prepared' ? ' · prepared' : ''}
+                    {' '}· {[
+                      assignment.team_name ?? t('common:fallback.team'),
+                      ...(assignment.position_name ? [assignment.position_name] : []),
+                      ...(assignment.visibility === 'prepared' ? [t('timeImpact.prepared')] : []),
+                    ].join(' · ')}
                   </span>
                 </p>
                 {assignment.orphaned ? (
                   <div className="space-y-1">
-                    <p className="text-xs text-amber-700">Every time this request covers is being removed.</p>
+                    <p className="text-xs text-amber-700">{t('timeImpact.orphaned')}</p>
                     <div className="flex flex-wrap gap-3 text-xs">
                       <label className="flex items-center gap-1">
                         <input
@@ -94,7 +101,7 @@ export const TimeImpactReview = ({ impact, resolutions, onResolve }: TimeImpactR
                           checked={resolutions[assignment.assignment_id] === 'all'}
                           onChange={() => onResolve(assignment.assignment_id, 'all')}
                         />
-                        Keep for all times
+                        {t('timeImpact.keepAll')}
                       </label>
                       <label className="flex items-center gap-1">
                         <input
@@ -103,12 +110,12 @@ export const TimeImpactReview = ({ impact, resolutions, onResolve }: TimeImpactR
                           checked={resolutions[assignment.assignment_id] === 'remove'}
                           onChange={() => onResolve(assignment.assignment_id, 'remove')}
                         />
-                        Remove the request
+                        {t('timeImpact.removeRequest')}
                       </label>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-600">{describe(impact, assignment)}</p>
+                  <p className="text-xs text-slate-600">{describe(context, impact, assignment)}</p>
                 )}
               </li>
             ))}
@@ -118,24 +125,21 @@ export const TimeImpactReview = ({ impact, resolutions, onResolve }: TimeImpactR
 
       {impact.hidden_affected > 0 && (
         <p className="text-xs text-slate-500">
-          {impact.hidden_affected} more {impact.hidden_affected === 1 ? 'request' : 'requests'} on teams you don’t
-          schedule will change too.
+          {t('timeImpact.hiddenAffected', { count: impact.hidden_affected })}
         </p>
       )}
       <p className="text-xs text-slate-500">
-        {impact.notify_people > 0
-          ? `${impact.notify_people} ${impact.notify_people === 1 ? 'person gets' : 'people get'} an updated request. `
-          : 'Nobody is notified. '}
-        {impact.live_requests > 0
-          ? `${impact.live_requests} unanswered ${impact.live_requests === 1 ? 'request link stops' : 'request links stop'} working and must be answered from the new one. `
-          : ''}
-        Answers already given are kept.
+        {[
+          impact.notify_people > 0 ? t('timeImpact.notifyPeople', { count: impact.notify_people }) : t('timeImpact.notifyNobody'),
+          ...(impact.live_requests > 0 ? [t('timeImpact.liveRequests', { count: impact.live_requests })] : []),
+          t('timeImpact.answersKept'),
+        ].join(' ')}
       </p>
 
       {impact.conflicts.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-slate-700">These times would create overlaps:</p>
-          <ConflictList conflicts={impact.conflicts} nameOf={(personId) => names.get(personId) ?? 'Someone'} />
+          <p className="text-xs font-medium text-slate-700">{t('timeImpact.conflicts')}</p>
+          <ConflictList conflicts={impact.conflicts} nameOf={(personId) => names.get(personId) ?? someone} />
         </div>
       )}
     </div>

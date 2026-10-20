@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { nonEmpty } from './common.js';
 import { orgRoleSchema } from './organization.js';
+import { preferredLanguageSchema } from './language.js';
 
 export const personTypeSchema = z.enum(['adult', 'child']);
 export const genderSchema = z.enum(['male', 'female']);
@@ -29,6 +30,8 @@ export const createPersonSchema = z.object({
   anniversary_date: z.string().date().nullish(),
   school: z.string().trim().max(120).nullish(),
   medical_note: z.string().trim().max(2000).nullish(),
+  /** Omitted or null on create leaves it Automatic; on update, omitted keeps it and null clears it. */
+  preferred_language: preferredLanguageSchema.optional(),
 });
 
 // `.partial()` alone would keep re-applying `person_type`'s create-time

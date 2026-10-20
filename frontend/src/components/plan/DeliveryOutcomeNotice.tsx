@@ -1,12 +1,45 @@
-import {
-  DELIVERY_CHANNEL_LABELS,
-  DELIVERY_STATUS_LABELS,
-  deliveryErrorLabel,
-  type AssignmentNotificationSendResult,
-  type DeliveryChannel,
-  type DeliveryStatus,
-  type DeliveryStatusCounts,
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import type {
+  AssignmentNotificationSendResult,
+  DeliveryChannel,
+  DeliveryStatus,
+  DeliveryStatusCounts,
 } from '@service-center/shared';
+
+/** Machine error codes the server records on a delivery (see `lib/delivery.ts`). */
+const DELIVERY_ERROR_CODES = [
+  'no_email_address',
+  'no_active_device',
+  'recipient_not_eligible',
+  'scheduler_not_active',
+  'plan_missing',
+  'request_missing',
+  'already_reviewed',
+  'provider_rate_limited',
+  'provider_unavailable',
+  'provider_rejected',
+  'provider_misconfigured',
+  'provider_timeout',
+  'outcome_unknown',
+  'worker_lease_expired',
+  'internal_error',
+  'reminder_obsolete',
+  'provider_duplicate_key',
+  'content_removed',
+  'conversation_muted',
+  'channel_not_used',
+] as const;
+type DeliveryErrorCode = (typeof DELIVERY_ERROR_CODES)[number];
+
+const isDeliveryErrorCode = (code: string): code is DeliveryErrorCode =>
+  (DELIVERY_ERROR_CODES as readonly string[]).includes(code);
+
+/** Plain-language reason for a delivery error code; an unknown code is shown as-is. */
+export const deliveryErrorText = (code: string | null, t: TFunction<['staffing', 'common']>): string | null => {
+  if (!code) return null;
+  return isDeliveryErrorCode(code) ? t(`staffing:deliveryError.${code}`) : code;
+};
 
 export interface DeliveryOutcomeNoticeProps {
   result: AssignmentNotificationSendResult;
@@ -17,20 +50,22 @@ export interface DeliveryOutcomeNoticeProps {
 const CHANNELS: readonly DeliveryChannel[] = ['email', 'push', 'in_app'];
 const PROBLEM_STATUSES: readonly DeliveryStatus[] = ['failed', 'ambiguous'];
 
-const describeCounts = (counts: DeliveryStatusCounts): string =>
+const describeCounts = (counts: DeliveryStatusCounts, t: TFunction<['staffing', 'common']>): string =>
   (Object.entries(counts) as Array<[DeliveryStatus, number]>)
-    .map(([status, count]) => `${count} ${DELIVERY_STATUS_LABELS[status].toLowerCase()}`)
-    .join(', ');
+    .map(([status, count]) => t(`staffing:deliveryStatusCount.${status}`, { count }))
+    .join(t('common:format.listSeparator'));
 
 /**
  * What actually happened when a plan was notified, per channel. A simulated
  * email is reported as simulated, never as sent.
  */
 export const DeliveryOutcomeNotice = ({ result, canRetry }: DeliveryOutcomeNoticeProps) => {
+  const { t } = useTranslation(['staffing', 'common']);
+
   if (result.outcomes.length === 0) {
     return (
       <p className="rounded-lg bg-slate-50 px-4 py-2 text-sm text-slate-600">
-        Nobody is waiting for a reply, so nothing was sent.
+        {t('deliveryOutcome.nothingSent')}
       </p>
     );
   }
@@ -42,27 +77,35 @@ export const DeliveryOutcomeNotice = ({ result, canRetry }: DeliveryOutcomeNotic
     <div className={`space-y-1 rounded-lg px-4 py-2 text-sm ${tone}`} role="status">
       {CHANNELS.filter((channel) => Object.keys(result.summary[channel]).length > 0).map((channel) => (
         <p key={channel}>
-          <span className="font-medium">{DELIVERY_CHANNEL_LABELS[channel]}:</span>{' '}
-          {describeCounts(result.summary[channel])}
+          <span className="font-medium">{t('deliveryOutcome.channelLabel', { channel: t(`deliveryChannel.${channel}`) })}</span>{' '}
+          {describeCounts(result.summary[channel], t)}
         </p>
       ))}
-      {result.email_mode === 'simulated' && (
-        <p>Email isn’t configured on this server, so no email was actually sent.</p>
+      {result.email_mode === 'simulated' && <p>{t('deliveryOutcome.emailSimulated')}</p>}
+      {result.skipped.length > 0 && (
+        <p>{t('deliveryOutcome.noEmailFor', { names: result.skipped.join(t('common:format.listSeparator')) })}</p>
       )}
-      {result.skipped.length > 0 && <p>No email address for {result.skipped.join(', ')}.</p>}
       {problems.length > 0 && (
         <ul className="list-disc pl-5">
-          {problems.map((outcome) => (
-            <li key={outcome.id}>
-              {outcome.recipient_name ?? 'Someone'} · {DELIVERY_CHANNEL_LABELS[outcome.channel]} —{' '}
-              {DELIVERY_STATUS_LABELS[outcome.status]}
-              {outcome.error_code ? ` (${deliveryErrorLabel(outcome.error_code)})` : ''}
-            </li>
-          ))}
+          {problems.map((outcome) => {
+            const reason = deliveryErrorText(outcome.error_code, t);
+            const values = {
+              name: outcome.recipient_name ?? t('common:fallback.someone'),
+              channel: t(`deliveryChannel.${outcome.channel}`),
+              status: t(`deliveryStatus.${outcome.status}`),
+            };
+            return (
+              <li key={outcome.id}>
+                {reason
+                  ? t('deliveryOutcome.problemWithReason', { ...values, reason })
+                  : t('deliveryOutcome.problem', values)}
+              </li>
+            );
+          })}
         </ul>
       )}
       {problems.length > 0 && (
-        <p>{canRetry ? 'Retry these from Settings → Delivery.' : 'An organization admin can retry these.'}</p>
+        <p>{canRetry ? t('deliveryOutcome.retryFromSettings') : t('deliveryOutcome.adminCanRetry')}</p>
       )}
     </div>
   );

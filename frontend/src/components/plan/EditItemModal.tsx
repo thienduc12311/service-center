@@ -1,7 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   ApiError,
+  LocalizedError,
   formatDuration,
   parseChordPro,
   parseDuration,
@@ -44,11 +46,7 @@ interface ItemDraft {
   segment: PlanItemSegment;
 }
 
-const SEGMENT_LABELS: Record<PlanItemSegment, string> = {
-  pre: 'Before the service',
-  service: 'During the service',
-  post: 'After the service',
-};
+const SEGMENTS: readonly PlanItemSegment[] = ['pre', 'service', 'post'];
 
 const draftFrom = (item: PlanItemDetail): ItemDraft => ({
   itemType: item.item_type,
@@ -70,19 +68,19 @@ const parseSequence = (value: string): string[] =>
   value.split(',').map((step) => step.trim()).filter(Boolean);
 
 /** Errors the form can catch before the server does; null when valid. */
-const validate = (draft: ItemDraft): string | null => {
-  if (draft.itemType !== 'song' && !draft.title.trim()) return 'Give the item a title.';
-  if (draft.itemType === 'song' && !draft.songId) return 'Choose a song.';
-  if (draft.length.trim() && parseDuration(draft.length) === null) return 'Enter the length as minutes:seconds, e.g. 4:30.';
+const validate = (draft: ItemDraft): LocalizedError | null => {
+  if (draft.itemType !== 'song' && !draft.title.trim()) return new LocalizedError({ key: 'plans:editItem.errors.titleRequired' });
+  if (draft.itemType === 'song' && !draft.songId) return new LocalizedError({ key: 'plans:editItem.errors.songRequired' });
+  if (draft.length.trim() && parseDuration(draft.length) === null) return new LocalizedError({ key: 'plans:editItem.errors.lengthFormat' });
   const length = parseDuration(draft.length) ?? 0;
-  if (length < 0 || length > 36_000) return 'The length must be between 0 and 10 hours.';
+  if (length < 0 || length > 36_000) return new LocalizedError({ key: 'plans:editItem.errors.lengthRange' });
   if (!draft.inheritSequence) {
     const steps = parseSequence(draft.sequence);
-    if (steps.length > 60) return 'A sequence can have at most 60 steps.';
-    if (steps.some((step) => step.length > 20)) return 'Each sequence step can be at most 20 characters.';
+    if (steps.length > 60) return new LocalizedError({ key: 'plans:editItem.errors.sequenceTooLong' });
+    if (steps.some((step) => step.length > 20)) return new LocalizedError({ key: 'plans:editItem.errors.sequenceStepTooLong' });
   }
-  if (draft.leaderMode === 'person' && !draft.leaderPersonId) return 'Choose who leads this item.';
-  if (draft.leaderMode === 'position' && !draft.leaderPositionId) return 'Choose the position that leads this item.';
+  if (draft.leaderMode === 'person' && !draft.leaderPersonId) return new LocalizedError({ key: 'plans:editItem.errors.leaderPersonRequired' });
+  if (draft.leaderMode === 'position' && !draft.leaderPositionId) return new LocalizedError({ key: 'plans:editItem.errors.leaderPositionRequired' });
   return null;
 };
 
@@ -118,13 +116,14 @@ const changesFrom = (draft: ItemDraft, item: PlanItemDetail): UpdatePlanItemRequ
  * opened with, so someone else's change is shown instead of overwritten.
  */
 export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps) => {
+  const { t } = useTranslation(['plans', 'common']);
   const queryClient = useQueryClient();
   const { organizationId, user } = useAuth();
   const [draft, setDraft] = useState<ItemDraft>(() => draftFrom(item));
   const [baseRevision, setBaseRevision] = useState(plan.content_revision);
   const [songQuery, setSongQuery] = useState('');
   const [changingSong, setChangingSong] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<LocalizedError | null>(null);
   const song = useSong(draft.itemType === 'song' ? (draft.songId ?? undefined) : undefined);
   const songs = useSongs({ q: songQuery || undefined, per_page: 10 });
   const people = usePeople();
@@ -145,6 +144,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
   const chosenArrangement =
     arrangements.find((candidate) => candidate.id === draft.arrangementId) ??
     (draft.arrangementId ? null : (arrangements.find((candidate) => candidate.is_default) ?? arrangements[0] ?? null));
+  const defaultArrangementName = (arrangements.find((a) => a.is_default) ?? arrangements[0])?.name;
   const sectionLabels = useMemo(() => {
     const chart = chosenArrangement?.chord_chart;
     if (!chart) return [];
@@ -154,14 +154,14 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
 
   const positions = useMemo(() => {
     const options = teams.flatMap((team) =>
-      team.positions.filter((position) => !position.plan_id).map((position) => ({ id: position.id, label: `${team.name} · ${position.name}` })),
+      team.positions.filter((position) => !position.plan_id).map((position) => ({ id: position.id, label: t('common:format.teamPosition', { team: team.name, position: position.name }) })),
     );
     for (const position of plan.plan_positions) {
       const team = teams.find((candidate) => candidate.id === position.team_id);
-      options.push({ id: position.id, label: `${team?.name ?? 'Team'} · ${position.name} (this plan)` });
+      options.push({ id: position.id, label: t('editItem.positionThisPlan', { team: team?.name ?? t('common:fallback.team'), position: position.name }) });
     }
     return options;
-  }, [teams, plan.plan_positions]);
+  }, [teams, plan.plan_positions, t]);
   const roster = (people.data ?? []).filter((person) => person.person_id && !person.archived);
 
   const save = useMutation({
@@ -190,36 +190,36 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
   };
 
   const close = () => {
-    if (dirty && !window.confirm('Discard your changes to this item?')) return;
+    if (dirty && !window.confirm(t('editItem.discardConfirm'))) return;
     onClose();
   };
 
   return (
-    <Modal open title={`Edit “${item.title}”`} onClose={close} size="wide">
+    <Modal open title={t('editItem.title', { title: item.title })} onClose={close} size="wide">
       <form onSubmit={submit} className="space-y-4" noValidate>
         {planChanged && !stale && (
           <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-amber-600/20">
-            This plan changed while you were editing. Saving will be checked against the version you opened.
+            {t('editItem.planChanged')}
           </p>
         )}
 
         <fieldset>
-          <legend className="label">Type</legend>
+          <legend className="label">{t('editItem.type')}</legend>
           <div className="flex gap-2">
             {(['song', 'item', 'header'] as const).map((value) => (
-              <label key={value} className={`cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium capitalize ${draft.itemType === value ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              <label key={value} className={`cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium ${draft.itemType === value ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                 <input type="radio" name="item-type" value={value} checked={draft.itemType === value} onChange={() => set('itemType', value)} className="sr-only" />
-                {value}
+                {t(`itemKind.${value}`)}
               </label>
             ))}
           </div>
           {item.item_type === 'song' && draft.itemType !== 'song' && (
-            <p className="mt-1 text-xs text-amber-700">The song, arrangement, key and sequence will be removed from this item.</p>
+            <p className="mt-1 text-xs text-amber-700">{t('editItem.songWillBeRemoved')}</p>
           )}
         </fieldset>
 
         <div>
-          <label className="label" htmlFor="edit-item-title">Title</label>
+          <label className="label" htmlFor="edit-item-title">{t('editItem.fieldTitle')}</label>
           <input id="edit-item-title" className="input" value={draft.title} onChange={(event) => set('title', event.target.value)} maxLength={200} />
         </div>
 
@@ -227,17 +227,17 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
           <div className="space-y-3 rounded-lg border border-slate-200 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm">
-                <span className="text-slate-500">Song: </span>
-                <span className="font-medium">{song.data?.title ?? item.song?.title ?? 'None chosen'}</span>
+                <span className="text-slate-500">{t('editItem.songLabel')} </span>
+                <span className="font-medium">{song.data?.title ?? item.song?.title ?? t('editItem.noneChosen')}</span>
               </p>
               <Button type="button" variant="secondary" onClick={() => setChangingSong((open) => !open)} aria-expanded={changingSong}>
-                {changingSong ? 'Keep this song' : 'Change song'}
+                {changingSong ? t('editItem.keepSong') : t('editItem.changeSong')}
               </Button>
             </div>
             {changingSong && (
               <div>
-                <label className="label" htmlFor="edit-item-song">Find a song</label>
-                <input id="edit-item-song" className="input" value={songQuery} onChange={(event) => setSongQuery(event.target.value)} placeholder="Search by title" />
+                <label className="label" htmlFor="edit-item-song">{t('editItem.findSong')}</label>
+                <input id="edit-item-song" className="input" value={songQuery} onChange={(event) => setSongQuery(event.target.value)} placeholder={t('editItem.searchPlaceholder')} />
                 <ul className="mt-1 max-h-40 overflow-y-auto">
                   {(songs.data?.data ?? []).map((candidate) => (
                     <li key={candidate.id}>
@@ -266,7 +266,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
             )}
 
             <div>
-              <label className="label" htmlFor="edit-item-arrangement">Arrangement</label>
+              <label className="label" htmlFor="edit-item-arrangement">{t('editItem.arrangement')}</label>
               <select
                 id="edit-item-arrangement"
                 className="input"
@@ -274,56 +274,66 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
                 onChange={(event) => set('arrangementId', event.target.value || null)}
                 disabled={song.isLoading}
               >
-                <option value="">Song default{arrangements.length ? ` (${(arrangements.find((a) => a.is_default) ?? arrangements[0])?.name})` : ''}</option>
+                <option value="">{defaultArrangementName ? t('editItem.songDefaultNamed', { name: defaultArrangementName }) : t('editItem.songDefault')}</option>
                 {arrangements.map((arrangement) => (
                   <option key={arrangement.id} value={arrangement.id}>
-                    {arrangement.name}{arrangement.song_key ? ` — ${arrangement.song_key}` : ''}{arrangement.is_default ? ' (default)' : ''}
+                    {arrangement.song_key
+                      ? t(arrangement.is_default ? 'editItem.arrangementWithKeyDefault' : 'editItem.arrangementWithKey', { name: arrangement.name, key: arrangement.song_key })
+                      : arrangement.is_default
+                        ? t('editItem.arrangementDefault', { name: arrangement.name })
+                        : arrangement.name}
                   </option>
                 ))}
                 {draft.arrangementId && !song.isLoading && !arrangements.some((a) => a.id === draft.arrangementId) && (
-                  <option value={draft.arrangementId}>Unavailable arrangement</option>
+                  <option value={draft.arrangementId}>{t('editItem.unavailableArrangement')}</option>
                 )}
               </select>
               {draft.arrangementId && !song.isLoading && !arrangements.some((a) => a.id === draft.arrangementId) && (
-                <p className="mt-1 text-xs text-rose-700">The chosen arrangement no longer belongs to this song. Pick another.</p>
+                <p className="mt-1 text-xs text-rose-700">{t('editItem.arrangementGone')}</p>
               )}
             </div>
 
             <div>
-              <label className="label" htmlFor="edit-item-key">Service key</label>
+              <label className="label" htmlFor="edit-item-key">{t('editItem.serviceKey')}</label>
               <KeySelect
                 id="edit-item-key"
                 value={draft.keyOverride}
                 onChange={(value) => set('keyOverride', value)}
-                placeholder={chosenArrangement?.song_key ? `Arrangement key (${chosenArrangement.song_key})` : 'Arrangement key'}
-                resetLabel="Use the arrangement key"
+                placeholder={chosenArrangement?.song_key ? t('editItem.arrangementKeyNamed', { key: chosenArrangement.song_key }) : t('editItem.arrangementKey')}
+                resetLabel={t('editItem.useArrangementKey')}
               />
               {!!labeledKeys.data?.keys.length && <div className="mt-2">
-                <label className="label" htmlFor="edit-item-labeled-key">Labeled library key</label>
+                <label className="label" htmlFor="edit-item-labeled-key">{t('editItem.labeledKey')}</label>
                 <select className="input" id="edit-item-labeled-key" value={labeledKeys.data.keys.some((k) => k.song_key === draft.keyOverride) ? draft.keyOverride! : ''} onChange={(e) => set('keyOverride', e.target.value || null)}>
-                  <option value="">Use arrangement key / choose another service key</option>
-                  {labeledKeys.data.keys.map((k) => <option key={k.id} value={k.song_key}>{k.label} · {k.song_key}{k.capo ? ` · capo ${k.capo}` : ''}{k.vocal_label ? ` · ${k.vocal_label}` : ''}</option>)}
+                  <option value="">{t('editItem.labeledKeyNone')}</option>
+                  {labeledKeys.data.keys.map((k) => (
+                    <option key={k.id} value={k.song_key}>
+                      {[k.label, k.song_key, ...(k.capo ? [t('editItem.capo', { capo: k.capo })] : []), ...(k.vocal_label ? [k.vocal_label] : [])].join(' · ')}
+                    </option>
+                  ))}
                 </select>
               </div>}
               <ErrorNotice error={labeledKeys.error} />
-              <p className="mt-1 text-xs text-slate-500">For this plan only. The library arrangement stays in {chosenArrangement?.song_key ?? 'its own key'}.</p>
+              <p className="mt-1 text-xs text-slate-500">{chosenArrangement?.song_key ? t('editItem.planOnlyKeyHint', { key: chosenArrangement.song_key }) : t('editItem.planOnlyKeyHintOwnKey')}</p>
             </div>
 
             <fieldset>
-              <legend className="label">Sequence</legend>
+              <legend className="label">{t('editItem.sequence')}</legend>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={draft.inheritSequence} onChange={(event) => setDraft((current) => ({
                   ...current,
                   inheritSequence: event.target.checked,
                   sequence: current.sequence || (chosenArrangement?.sequence ?? []).join(', '),
                 }))} />
-                Use the arrangement’s sequence{chosenArrangement?.sequence.length ? `: ${chosenArrangement.sequence.join(', ')}` : ' (none set)'}
+                {chosenArrangement?.sequence.length
+                  ? t('editItem.useArrangementSequence', { sequence: chosenArrangement.sequence.join(', ') })
+                  : t('editItem.useArrangementSequenceNone')}
               </label>
               {!draft.inheritSequence && (
                 <div className="mt-2">
-                  <label className="sr-only" htmlFor="edit-item-sequence">Sequence for this plan, separated by commas</label>
+                  <label className="sr-only" htmlFor="edit-item-sequence">{t('editItem.sequenceLabel')}</label>
                   <input id="edit-item-sequence" className="input" value={draft.sequence} onChange={(event) => set('sequence', event.target.value)} placeholder="Intro, V1, C, V2, C" aria-describedby="edit-item-sequence-help" />
-                  <p id="edit-item-sequence-help" className="mt-1 text-xs text-slate-500">Separate steps with commas. Leave empty for no sequence in this plan.</p>
+                  <p id="edit-item-sequence-help" className="mt-1 text-xs text-slate-500">{t('editItem.sequenceHelp')}</p>
                   {sectionLabels.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {sectionLabels.map((label) => (
@@ -342,14 +352,14 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
         {draft.itemType !== 'header' && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="label" htmlFor="edit-item-length">Length</label>
+              <label className="label" htmlFor="edit-item-length">{t('editItem.length')}</label>
               <input id="edit-item-length" className="input" value={draft.length} onChange={(event) => set('length', event.target.value)} placeholder="4:30" inputMode="numeric" />
             </div>
             <div>
-              <label className="label" htmlFor="edit-item-segment">When</label>
+              <label className="label" htmlFor="edit-item-segment">{t('editItem.when')}</label>
               <select id="edit-item-segment" className="input" value={draft.segment} onChange={(event) => set('segment', event.target.value as PlanItemSegment)}>
-                {(Object.keys(SEGMENT_LABELS) as PlanItemSegment[]).map((segment) => (
-                  <option key={segment} value={segment}>{SEGMENT_LABELS[segment]}</option>
+                {SEGMENTS.map((segment) => (
+                  <option key={segment} value={segment}>{t(`segment.${segment}`)}</option>
                 ))}
               </select>
             </div>
@@ -358,42 +368,42 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
 
         {draft.itemType !== 'header' && (
           <div>
-            <label className="label" htmlFor="edit-item-description">Description</label>
+            <label className="label" htmlFor="edit-item-description">{t('editItem.description')}</label>
             <textarea id="edit-item-description" className="input" rows={2} maxLength={4000} value={draft.description} onChange={(event) => set('description', event.target.value)} />
           </div>
         )}
 
         {draft.itemType !== 'header' && (
           <fieldset>
-            <legend className="label">Leader</legend>
+            <legend className="label">{t('editItem.leader')}</legend>
             <div className="flex flex-wrap gap-4 text-sm">
               {(['none', 'person', 'position'] as const).map((mode) => (
                 <label key={mode} className="flex items-center gap-1.5">
                   <input type="radio" name="leader-mode" checked={draft.leaderMode === mode} onChange={() => set('leaderMode', mode)} />
-                  {mode === 'none' ? 'Nobody' : mode === 'person' ? 'A person' : 'Whoever holds a position'}
+                  {t(`editItem.leaderMode.${mode}`)}
                 </label>
               ))}
             </div>
             {draft.leaderMode === 'person' && (
-              <select aria-label="Person who leads" className="input mt-2" value={draft.leaderPersonId} onChange={(event) => set('leaderPersonId', event.target.value)}>
-                <option value="">Choose a person</option>
+              <select aria-label={t('editItem.personWhoLeads')} className="input mt-2" value={draft.leaderPersonId} onChange={(event) => set('leaderPersonId', event.target.value)}>
+                <option value="">{t('editItem.choosePerson')}</option>
                 {roster.map((person) => (
-                  <option key={person.person_id!} value={person.person_id!}>{person.full_name ?? 'Unnamed'}</option>
+                  <option key={person.person_id!} value={person.person_id!}>{person.full_name ?? t('common:fallback.unnamed')}</option>
                 ))}
                 {draft.leaderPersonId && !roster.some((person) => person.person_id === draft.leaderPersonId) && (
-                  <option value={draft.leaderPersonId}>{item.leader_person?.full_name ?? 'Current leader'}</option>
+                  <option value={draft.leaderPersonId}>{item.leader_person?.full_name ?? t('editItem.currentLeader')}</option>
                 )}
               </select>
             )}
             {draft.leaderMode === 'position' && (
               <>
-                <select aria-label="Position that leads" className="input mt-2" value={draft.leaderPositionId} onChange={(event) => set('leaderPositionId', event.target.value)}>
-                  <option value="">Choose a position</option>
+                <select aria-label={t('editItem.positionWhoLeads')} className="input mt-2" value={draft.leaderPositionId} onChange={(event) => set('leaderPositionId', event.target.value)}>
+                  <option value="">{t('editItem.choosePosition')}</option>
                   {positions.map((position) => (
                     <option key={position.id} value={position.id}>{position.label}</option>
                   ))}
                 </select>
-                <p className="mt-1 text-xs text-slate-500">The leader follows this plan’s staffing: whoever holds the position now.</p>
+                <p className="mt-1 text-xs text-slate-500">{t('editItem.positionFollowsHint')}</p>
               </>
             )}
           </fieldset>
@@ -402,9 +412,9 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
         <ErrorNotice error={formError} />
         {stale ? (
           <div role="alert" className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-600/20">
-            <p>Someone else changed this plan after you opened this item. Your edits are still here.</p>
+            <p>{t('editItem.stale')}</p>
             <Button type="button" variant="secondary" className="mt-2" onClick={() => void reloadLatest()}>
-              Load the latest plan and keep my edits
+              {t('editItem.loadLatest')}
             </Button>
           </div>
         ) : (
@@ -412,9 +422,9 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
         )}
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          {!dirty && <span className="mr-auto text-xs text-slate-500">No changes yet</span>}
-          <Button type="button" variant="secondary" onClick={close}>Cancel</Button>
-          <Button type="submit" loading={save.isPending} disabled={!dirty || stale}>Save changes</Button>
+          {!dirty && <span className="mr-auto text-xs text-slate-500">{t('editItem.noChanges')}</span>}
+          <Button type="button" variant="secondary" onClick={close}>{t('common:actions.cancel')}</Button>
+          <Button type="submit" loading={save.isPending} disabled={!dirty || stale}>{t('common:actions.saveChanges')}</Button>
         </div>
       </form>
     </Modal>

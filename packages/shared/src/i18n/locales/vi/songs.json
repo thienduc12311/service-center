@@ -1,0 +1,587 @@
+{
+  "songsPage": {
+    "subtitle": "Thư viện bài hát của bạn, kèm bản phối và bảng hợp âm.",
+    "sortLabel": "Sắp xếp bài hát",
+    "sortTitle": "A–Z",
+    "sortRecent": "Cập nhật gần đây",
+    "importCsv": "Nhập CSV",
+    "addSong": "Thêm bài hát",
+    "searchPlaceholder": "Thêm bộ lọc văn bản",
+    "searchLabel": "Tìm bài hát",
+    "hideFilters": "Ẩn bộ lọc",
+    "filtersCount_other": "Bộ lọc ({{count}})",
+    "hideFiltersCount_other": "Ẩn bộ lọc ({{count}})",
+    "filters": {
+      "toggle": "Bộ lọc",
+      "key": "Tông",
+      "theme": "Chủ đề",
+      "songType": "Thể loại bài hát",
+      "style": "Phong cách",
+      "speed": "Tốc độ",
+      "author": "Tác giả",
+      "library": "Thư viện",
+      "activeSongs": "Bài hát đang dùng",
+      "archivedSongs": "Bài hát đã lưu trữ",
+      "allSongs": "Tất cả bài hát",
+      "bpmMin": "BPM tối thiểu",
+      "bpmMax": "BPM tối đa",
+      "scheduledFrom": "Đã xếp lịch từ ngày (UTC)",
+      "scheduledTo": "Đã xếp lịch trước ngày (UTC)"
+    },
+    "applyFilters": "Áp dụng bộ lọc",
+    "editSelected_other": "Sửa {{count}} bài hát đã chọn",
+    "columns": {
+      "title": "Tên bài",
+      "bpm": "BPM",
+      "keys": "Tông",
+      "lastScheduled": "Lần xếp lịch gần nhất",
+      "created": "Ngày tạo"
+    },
+    "selectSong": "Chọn {{title}}",
+    "archivedBadge": "Đã lưu trữ",
+    "emptySearch": "Không có bài hát nào khớp với tìm kiếm",
+    "empty": "Chưa có bài hát nào",
+    "emptyDescription": "Thêm bài hát để xây dựng thư viện cho các chương trình.",
+    "previousPage": "Trang trước",
+    "page": "Trang {{page}}"
+  },
+  "songDetail": {
+    "notFound": "Không tìm thấy bài hát",
+    "allArrangements": "Tất cả bản phối",
+    "deleteSongConfirm": "Xóa “{{title}}”? Thao tác này không thể hoàn tác.",
+    "mergedInto": "Đã gộp vào bài hát khác · mở bài hát được giữ lại",
+    "archivedSong": "Bài hát đã lưu trữ · các chương trình và bảng hợp âm hiện có vẫn dùng được.",
+    "restoreSong": "Khôi phục bài hát",
+    "archiveSong": "Lưu trữ bài hát",
+    "restoreArrangement": "Khôi phục bản phối",
+    "archiveArrangement": "Lưu trữ bản phối",
+    "archivedArrangement": "Bản phối đã lưu trữ · các chương trình và bảng hợp âm hiện có vẫn dùng được.",
+    "deleteArrangementConfirm": "Xóa bản phối “{{name}}”? Thao tác này không thể hoàn tác.",
+    "arrangementFiles": "Tệp của {{name}}",
+    "arrangementFilesDescription": "Bảng hợp âm và bản nhạc của bản phối này. Các chương trình dùng bản phối này sẽ hiển thị chúng dưới bài hát.",
+    "songFiles": "Tệp của bài hát",
+    "songFilesDescription": "Dùng chung cho mọi bản phối. Các chương trình dùng bài hát này sẽ hiển thị chúng dưới bài hát."
+  },
+  "chartEditor": {
+    "arrangementNotFound": "Không tìm thấy bản phối",
+    "arrangementNotFoundDescription": "Có thể bản phối đã bị xóa.",
+    "backToSong": "Quay lại bài hát",
+    "leaveConfirm": "Rời đi mà không lưu bảng hợp âm này?",
+    "back": "‹ Quay lại",
+    "sequence": "Trình tự",
+    "formatting": "Định dạng",
+    "openInNewTab": "Mở trong thẻ mới",
+    "downloadPdf": "Tải PDF",
+    "saved": "Đã lưu",
+    "popupBlocked": "Trình duyệt đã chặn thẻ mới. Hãy cho phép cửa sổ bật lên cho trang này, hoặc dùng Tải PDF.",
+    "autoRefresh": "Tự động làm mới",
+    "twoColumns": "Hai cột",
+    "oneColumn": "Một cột",
+    "untitledSong": "Bài hát chưa đặt tên",
+    "previewTitle": "Xem trước bảng hợp âm",
+    "currentKey": "Tông hiện tại",
+    "addSequence": "Thêm trình tự",
+    "lyricsAndChords": "Lời và hợp âm",
+    "sourcePlaceholder": "C            G\nƠn lạ lùng thay Chúa đã ban",
+    "sourceHelp": "Đặt hợp âm trên một dòng riêng phía trên lời, hoặc viết ChordPro ngay trong lời — <0>Ơn [G]lạ lùng</0>. Cách nào cũng được lưu dưới dạng ChordPro."
+  },
+  "errors": {
+    "chooseDocument": "Hãy chọn một tài liệu PDF, Word hoặc văn bản.",
+    "songbookNotFound": "Không tìm thấy sách bài hát",
+    "csvTooLarge": "Tệp CSV vượt quá 256 KiB",
+    "csvUnreadable": "Không thể đọc tệp CSV",
+    "chartLayoutFailed": "Không thể dàn trang bảng hợp âm để xuất.",
+    "chartEmpty": "Bảng hợp âm xuất ra bị trống.",
+    "chartPrepareFailed": "Không thể chuẩn bị bảng hợp âm để xuất.",
+    "chartPrepareTimeout": "Chuẩn bị bảng hợp âm để xuất mất quá nhiều thời gian.",
+    "chartFontFailed": "Không thể tải phông chữ mà bảng hợp âm này cần ({{status}}).",
+    "chooseDocumentFirst": "Hãy chọn tài liệu trước.",
+    "accountChanged": "Tài khoản của bạn đã thay đổi. Hãy thử lại."
+  },
+  "songbooksPage": {
+    "subtitle": "Tuyển chọn từ thư viện hoặc đính kèm một tài liệu hoàn chỉnh cho cả cộng đoàn.",
+    "create": "Tạo sách bài hát",
+    "sourceType": {
+      "manual": "Tự chọn",
+      "document": "Tài liệu"
+    },
+    "defaultDescription": "Sẵn sàng cho thờ phượng, tập luyện và học hỏi.",
+    "empty": "Chưa có sách bài hát nào",
+    "emptyDescription": "Gom các bài hát thành một tuyển tập dễ chia sẻ và sẵn sàng để in.",
+    "createFirst": "Tạo sách bài hát đầu tiên",
+    "modalTitle": "Tạo sách bài hát",
+    "fields": {
+      "title": "Tên sách",
+      "titlePlaceholder": "Bài hát yêu thích Chúa Nhật",
+      "description": "Mô tả"
+    },
+    "chooseSongs": "Chọn bài hát",
+    "attachDocument": "Đính kèm tài liệu",
+    "chooseDocument": "Chọn tài liệu",
+    "documentHint": "PDF, DOCX hoặc TXT · tối đa 50 MB",
+    "submit": "Tạo sách"
+  },
+  "songbookPage": {
+    "opening": "Đang mở sách bài hát…",
+    "print": "In / xuất PDF",
+    "previewUnavailable": "Không thể xem trước tài liệu.",
+    "songNumber": "Bài {{number}}",
+    "authorAndKey": "{{author}} · Tông {{key}}",
+    "keyOnly": "Tông {{key}}",
+    "noChart": "Bài hát này chưa có bảng hợp âm."
+  },
+  "imports": {
+    "existingId": "ID thành viên/bài hát hiện có",
+    "permissionRequired": "Bạn cần quyền nhập dữ liệu",
+    "title": "Nhập dữ liệu có cấu trúc",
+    "subtitle": "Xem lại cách ánh xạ cột CSV và từng dòng trước khi lưu. Tối đa 100 bản ghi và 256 KiB cho mỗi lần nhập trọn gói.",
+    "intro": "Nhập thành viên chỉ cập nhật hồ sơ danh sách. Thao tác này không tạo tài khoản hay gửi lời mời tham gia. Tệp PDF và Word của sách bài hát vẫn được giữ là tài liệu.",
+    "importType": "Loại dữ liệu nhập",
+    "kind": {
+      "songs": "Thông tin bài hát",
+      "people": "Thành viên"
+    },
+    "csvFile": "Tệp CSV UTF-8",
+    "fileSummary_other": "{{filename}} · {{count}} cột.",
+    "mappingHelp": "Giá trị trống ở cột đã ánh xạ sẽ xóa trường cho phép để trống; các trường không ánh xạ được giữ nguyên khi cập nhật. Phân tách các thẻ bằng dấu chấm phẩy.",
+    "doNotImport": "Không nhập",
+    "refreshPreview": "Làm mới bản xem trước",
+    "previewRows": "Xem trước các dòng",
+    "readingCsv": "Đang đọc CSV…",
+    "previewLabel": "Xem trước dữ liệu nhập",
+    "previewTitle": "Bản xem trước (chỉ đọc)",
+    "previewHelp": "Bản xem trước không ghi bản ghi hay tác vụ nào. Hãy xử lý mọi lỗi và các bản ghi có thể trùng trước khi lưu; khi thử lại sẽ dùng lại đúng bản đã xem xét.",
+    "recordAction": "Bản ghi {{number}}: {{action}}",
+    "action": {
+      "create": "tạo mới",
+      "update": "cập nhật",
+      "skip": "bỏ qua",
+      "unresolved": "chưa xử lý",
+      "error": "lỗi"
+    },
+    "status": {
+      "reviewed": "đã xem xét",
+      "committed": "đã lưu"
+    },
+    "fieldChange": "{{field}}: {{before}} → {{after}}",
+    "fieldValue": "{{field}}: {{value}}",
+    "resolution": "Cách xử lý",
+    "resolutionDefault": "Dùng ID đã ánh xạ / xem các kết quả khớp",
+    "resolutionCreate": "Chủ động tạo bản ghi mới",
+    "resolutionSkip": "Bỏ qua bản ghi này",
+    "updateCandidate": "Cập nhật {{label}} · {{id}}",
+    "updateCandidateArchived": "Cập nhật {{label}} (đã lưu trữ) · {{id}}",
+    "candidatesTruncated_other": "Đang hiển thị 10 trong {{count}} kết quả khớp. Dùng đúng ID cố định trong tệp CSV để chọn bản ghi khác.",
+    "resolutionChanged": "Cách xử lý đã thay đổi. Hãy làm mới bản xem trước để xem kết quả mới.",
+    "saveReviewed": "Lưu dữ liệu nhập đã xem xét",
+    "jobHeading": "{{filename}} · {{status}}",
+    "jobId": "Tác vụ {{id}}.",
+    "jobReviewed": "Đã lưu phần xem xét. Việc ghi dữ liệu đang chờ hoặc chưa được xác nhận; hãy kiểm tra trạng thái hoặc thử lại cả lô.",
+    "jobCommitted": "Mọi kết quả đã xem xét đều đã được lưu. Thử lại tác vụ này sẽ không tạo bản ghi trùng.",
+    "mappedColumns": "Cột đã ánh xạ: {{mapping}}",
+    "mappedColumn": "{{header}} → {{field}}",
+    "recordResult": "Bản ghi {{number}}: {{action}} {{id}}",
+    "checkStatus": "Kiểm tra trạng thái đã lưu",
+    "retryCommit": "Thử ghi lại dữ liệu đã xem xét",
+    "startNew": "Bắt đầu bản xem trước mới",
+    "startNewHelp": "Nếu bản ghi đích đã thay đổi, hãy bắt đầu bản xem trước mới từ nguồn đã lưu này. Bản xem xét cũ vẫn được giữ nguyên trong lịch sử.",
+    "recent": "Các lần nhập gần đây của bạn (tối đa 50)",
+    "noneSaved": "Chưa có lần nhập nào được lưu.",
+    "resumeFromUrl": "Tiếp tục tác vụ từ URL này",
+    "jobSummary": "{{filename}} · {{kind}} · {{status}}",
+    "openReview": "Mở bản xem xét"
+  },
+  "arrangement": {
+    "defaultName": "Bản phối mặc định",
+    "defaultNewName": "Bản phối mới",
+    "editTitle": "Sửa bản phối",
+    "addTitle": "Thêm bản phối",
+    "fields": {
+      "name": "Tên bản phối",
+      "key": "Tông",
+      "capo": "Capo",
+      "length": "Thời lượng",
+      "bpm": "BPM",
+      "meter": "Nhịp",
+      "sequence": "Trình tự"
+    },
+    "noKey": "Không có tông",
+    "sequenceHelp": "Thứ tự các đoạn được chơi, phân tách bằng dấu phẩy.",
+    "useAsDefault": "Dùng làm bản phối mặc định",
+    "submit": "Lưu",
+    "defaultBadge": "Mặc định",
+    "capoValue": "Capo {{capo}}",
+    "bpmValue": "{{bpm}} bpm"
+  },
+  "addSong": {
+    "title": "Thêm bài hát",
+    "fields": {
+      "title": "Tên bài",
+      "type": "Thể loại",
+      "style": "Phong cách",
+      "speed": "Tốc độ",
+      "tags": "Thẻ",
+      "chart": "Lời & hợp âm"
+    },
+    "chartHelp": "Dán bảng hợp âm có hợp âm nằm trên một dòng riêng phía trên lời bài hát, hoặc viết ChordPro với hợp âm trong ngoặc vuông — <0>Ơn [G]lạ lùng</0>. Bạn có thể để trống và thêm bảng hợp âm sau."
+  },
+  "songInfo": {
+    "title": "Thông tin bài hát",
+    "fields": {
+      "title": "Tên bài hát",
+      "ccli": "Số CCLI",
+      "authors": "Tác giả",
+      "defaultKey": "Tông mặc định",
+      "copyright": "Bản quyền",
+      "administration": "Đơn vị quản lý bản quyền",
+      "notes": "Ghi chú",
+      "themes": "Chủ đề"
+    },
+    "noDefaultKey": "Không có tông mặc định"
+  },
+  "keySelect": {
+    "quality": {
+      "major": "Trưởng",
+      "minor": "Thứ"
+    },
+    "placeholder": "Chọn tông",
+    "close": "Đóng bảng chọn tông"
+  },
+  "vocabulary": {
+    "type": {
+      "hymn": "Thánh ca",
+      "chorus": "Điệp ca",
+      "praise": "Ca ngợi",
+      "worship": "Thờ phượng",
+      "communion": "Tiệc Thánh",
+      "offering": "Dâng hiến",
+      "response": "Đáp ca",
+      "christmas": "Giáng Sinh",
+      "easter": "Phục Sinh",
+      "special": "Đặc biệt"
+    },
+    "style": {
+      "traditional": "Truyền thống",
+      "contemporary": "Đương đại",
+      "gospel": "Phúc âm",
+      "modern": "Hiện đại",
+      "acoustic": "Mộc",
+      "classical": "Cổ điển"
+    },
+    "speed": {
+      "fast": "Nhanh",
+      "medium": "Vừa",
+      "slow": "Chậm"
+    }
+  },
+  "notation": {
+    "chords": "Hợp âm",
+    "numbers": "Số",
+    "numerals": "Số La Mã",
+    "lyrics": "Lời bài hát",
+    "originalKey": "Tông gốc",
+    "selectLabel": "Tông và cách ghi của bảng hợp âm",
+    "close": "Đóng tùy chọn bảng hợp âm"
+  },
+  "chordChart": {
+    "empty": "Chưa có bảng hợp âm."
+  },
+  "formatting": {
+    "text": "Chữ",
+    "font": "Phông chữ",
+    "fontLabel": "Phông chữ của bảng hợp âm",
+    "default": "Mặc định: {{value}}",
+    "size": "Cỡ chữ",
+    "sizeLabel": "Cỡ chữ của bảng hợp âm",
+    "chordColor": "Màu hợp âm",
+    "chordColorLabel": "Màu hợp âm",
+    "layout": "Bố cục",
+    "columns": "Số cột",
+    "columnsLabel": "Số cột của bảng hợp âm",
+    "columnsHelp": "Hai cột giúp bảng hợp âm dài vừa một trang. Các đoạn không bao giờ bị tách qua cột hay ngắt trang.",
+    "save": "Lưu bảng hợp âm này",
+    "colors": {
+      "black": "Đen",
+      "blue": "Xanh dương",
+      "red": "Đỏ",
+      "green": "Xanh lá",
+      "grey": "Xám"
+    }
+  },
+  "sequence": {
+    "title": "Sửa trình tự",
+    "empty": "Thêm nhãn đoạn từ bên phải để tạo trình tự.",
+    "moveEarlier": "Đưa {{label}} lên trước",
+    "moveLater": "Đưa {{label}} ra sau",
+    "remove": "Xóa {{label}} khỏi trình tự",
+    "sectionLabels": "Nhãn đoạn",
+    "newLabelPlaceholder": "Thêm nhãn mới",
+    "newLabelAria": "Thêm nhãn đoạn mới"
+  },
+  "allArrangements": {
+    "heading_other": "Bản phối ({{count}})",
+    "add": "Thêm bản phối",
+    "empty": "Chưa có bản phối nào",
+    "emptyDescription": "Một bản phối gồm tông, nhịp độ và bảng hợp âm mà chương trình sử dụng.",
+    "chartAdded": "Đã có bảng hợp âm",
+    "noChart": "Chưa có bảng hợp âm"
+  },
+  "arrangementPanel": {
+    "stat": "{{label}}: <0>{{value}}</0>",
+    "sequence": "Trình tự: <0>{{sequence}}</0>",
+    "edit": "Sửa bản phối này",
+    "delete": "Xóa bản phối này",
+    "transposed_other": "đã dịch giọng {{count}} nửa cung",
+    "viewPage": "Xem trang",
+    "addChart": "Thêm bảng hợp âm",
+    "emptyTitle": "Chưa có bảng hợp âm",
+    "emptyDescription": "Viết bảng hợp âm trong trình soạn để dịch giọng, xuất tệp và đọc dưới dạng số hoặc số La Mã."
+  },
+  "curation": {
+    "copyName": "{{name}} (bản sao)",
+    "keySaved": "Đã lưu tông có nhãn.",
+    "sectionLabel": "Tông của bản phối và việc dùng lại",
+    "title": "Tông có nhãn và tệp",
+    "intro": "Tông ở đây là tông thực tế khi nghe. Capo và nhãn giọng hát mô tả một phiên bản; dịch giọng bảng hợp âm và lựa chọn trong chương trình dùng tông thực tế. Mỗi bản phối có một nhãn cho mỗi tông.",
+    "filesForKey": "Tệp theo tông",
+    "generalFiles": "Tệp chung",
+    "capoValue": "capo {{capo}}",
+    "noFiles": "Chưa chọn tệp nào cho tông này.",
+    "editKeySummary": "Thêm hoặc sửa tông có nhãn",
+    "newKey": "Tông mới",
+    "editKey": "Sửa {{label}}",
+    "label": "Nhãn",
+    "soundingKey": "Tông thực tế",
+    "pitchHelp": "Cao độ đã lưu được giữ cố định để các chương trình cũ vẫn đúng. Hãy thêm tông mới cho cao độ khác.",
+    "capoFret": "Phím capo",
+    "vocalLabel": "Nhãn giọng hát",
+    "filesForThisKey": "Tệp cho tông này",
+    "fileScopeHelp": "Gán một tệp của bản phối cho một tông sẽ giới hạn việc tự động chọn tệp trong chương trình theo cao độ đó. Bỏ mọi liên kết tông sẽ đưa tệp về dùng chung. Quyền xem và quyền phát của tệp vẫn được áp dụng.",
+    "saveKey": "Lưu tông có nhãn",
+    "reloadKeys": "Tải lại danh sách tông trước khi thử lại",
+    "duplicateSummary": "Nhân bản bản phối",
+    "newName": "Tên bản phối mới",
+    "includeMetadata": "Tông, capo, nhịp độ, nhịp và thời lượng",
+    "includeSections": "Trình tự / các đoạn",
+    "includeChart": "Bảng hợp âm và cài đặt in (giữ tông thực tế gốc)",
+    "keysToDuplicate": "Tông có nhãn cần nhân bản",
+    "keyOption": "{{label}} · {{key}}",
+    "filesToReuse": "Tệp dùng lại",
+    "previewDuplicate": "Xem trước bản nhân bản",
+    "previewCreate": "Tạo “{{name}}” như một bản phối mới.",
+    "previewMetadataIncluded": "Có kèm thông tin.",
+    "previewMetadataOmitted": "Không kèm thông tin.",
+    "previewSectionsIncluded": "Có kèm các đoạn.",
+    "previewSectionsOmitted": "Không kèm các đoạn.",
+    "previewChartIncluded": "Có kèm bảng hợp âm với tông thực tế gốc.",
+    "previewChartOmitted": "Không kèm bảng hợp âm.",
+    "previewKeepDefault": "Giữ nguyên bản phối mặc định hiện tại.",
+    "keyWithPitch": "{{label}} ({{key}})",
+    "previewKeys_other": "{{count}} tông mới: {{keys}}.",
+    "previewFiles_other": "{{count}} tệp được tham chiếu: {{files}}.",
+    "previewReuseNote": "Tệp dùng lại vẫn giữ chủ sở hữu, người được xem, các phiên bản và quyền phát ban đầu.",
+    "createDuplicate": "Tạo bản nhân bản đã xem xét",
+    "changeSelection": "Đổi lựa chọn / làm mới bản xem trước",
+    "retryHelp": "Nếu chưa rõ kết quả, hãy thử lại bản nhân bản đã xem xét này với cùng yêu cầu. Bản xem xét đã cũ cần được xem trước lại.",
+    "loadingFile": "Đang tải {{title}}…",
+    "reusedBadge": "Tệp dùng lại · chỉnh sửa sẽ ảnh hưởng đến tệp gốc"
+  },
+  "merge": {
+    "summary": "Tìm bài hát trùng / gộp",
+    "intro": "Gợi ý dựa trên tên bài (đã bỏ khoảng trắng thừa) hoặc số CCLI trùng khớp. Hãy xem xét kỹ; bài hát này sẽ trở thành bản lưu lịch sử chỉ đọc. Bài hát được chọn sẽ giữ thông tin và bản phối mặc định của nó.",
+    "finding": "Đang tìm bài hát trùng…",
+    "noSuggestions": "Không có gợi ý nào trùng tên hoặc số CCLI.",
+    "songToKeep": "Bài hát được giữ lại",
+    "chooseDuplicate": "Chọn bài hát trùng",
+    "matchingTitle": "{{title}} · trùng tên",
+    "matchingCcli": "{{title}} · trùng CCLI",
+    "preview": "Xem trước việc gộp",
+    "keepAndMerge": "Giữ “{{winner}}”; gộp “{{loser}}”.",
+    "coverage": "Phần xem xét gồm cả hai bài hát: {{arrangements}} bản phối, {{keys}} tông có nhãn, {{files}} tệp, {{planItems}} mục chương trình, {{songbookItems}} mục trong sách bài hát và {{templateRevisions}} phiên bản mẫu.",
+    "inspect": "Xem thông tin, giá trị mặc định, tệp và các tham chiếu",
+    "metadataCaption": "Cách xử lý xung đột thông tin",
+    "columns": {
+      "field": "Trường",
+      "kept": "Giữ lại",
+      "losing": "Giá trị bị thay, được lưu trong lịch sử"
+    },
+    "arrangementsNote": "Các bản phối giữ nguyên ID. Tên và nhãn tông có thể trùng giữa các bản phối khác nhau. Các tham chiếu cũ dùng bản phối kế thừa sẽ được cố định vào bản phối mặc định ban đầu. Tệp chung của bài hát sẽ được dùng chung bởi bài hát được giữ lại.",
+    "inheritsSongKey": "theo tông của bài hát",
+    "movesToKept": "chuyển sang bài hát được giữ",
+    "stays": "giữ nguyên",
+    "keptDefault": "mặc định được giữ",
+    "losingDefaultFrozen": "mặc định cũ được cố định trong các tham chiếu",
+    "archivedHistory": "lịch sử đã lưu trữ",
+    "capo": "capo {{capo}}",
+    "noVocalLabel": "không có nhãn giọng hát",
+    "arrangementId": "bản phối {{id}}",
+    "audience": "người được xem: {{audience}}",
+    "generalSongFile": "tệp chung của bài hát",
+    "remap": "ánh xạ lại",
+    "keep": "giữ nguyên",
+    "songDefault": "mặc định của bài hát",
+    "keyValue": "tông {{key}}",
+    "inherited": "kế thừa",
+    "itemId": "mục {{id}}",
+    "songbookId": "Sách bài hát {{id}}",
+    "remapKeepVersion": "ánh xạ lại và giữ phiên bản",
+    "entryId": "mục {{id}}",
+    "templateRevision": "Mẫu {{template}} phiên bản {{revision}} được giữ nguyên; các lần dùng sau sẽ chọn bài hát được giữ và bản phối ban đầu.",
+    "liveHistory_other": "{{count}} bản chụp trực tiếp đã ghim được giữ nguyên. Các bản ngoại tuyến hiện có sẽ làm mới khi ứng dụng đồng bộ lần tới.",
+    "mergeReviewed": "Gộp các bài hát đã xem xét",
+    "changeReview": "Thay đổi / làm mới phần xem xét",
+    "retryHelp": "Nếu chưa rõ kết quả, hãy thử lại yêu cầu này. Tham chiếu đã thay đổi cần được xem xét lại. Không có dòng nào bị gộp dở dang."
+  },
+  "bulk": {
+    "fields": {
+      "author": "Tác giả",
+      "ccliNumber": "Số CCLI",
+      "copyright": "Bản quyền",
+      "administration": "Đơn vị quản lý bản quyền",
+      "defaultKey": "Tông mặc định",
+      "defaultBpm": "BPM mặc định",
+      "meter": "Nhịp",
+      "themes": "Chủ đề",
+      "songTypes": "Thể loại bài hát",
+      "style": "Phong cách",
+      "speed": "Tốc độ",
+      "notes": "Ghi chú"
+    },
+    "sectionLabel": "Sửa thông tin hàng loạt",
+    "title_other": "Sửa thông tin cho {{count}} bài hát đã chọn",
+    "field": "Trường",
+    "value": "Giá trị thay thế",
+    "help": "Các thẻ phân tách bằng dấu phẩy. Giá trị trống sẽ xóa trường. Các trường không chọn được giữ nguyên.",
+    "preview": "Xem trước thay đổi",
+    "saved": "Đã lưu thay đổi.",
+    "reviewHelp": "Hãy xem lại từng giá trị thay thế trước khi lưu. Chưa có gì bị thay đổi.",
+    "change": "{{field}}: {{before}} → {{after}}",
+    "save": "Lưu các thay đổi đã xem xét"
+  },
+  "sidebar": {
+    "song": "Bài hát",
+    "arrangements": "Bản phối",
+    "empty": "Bài hát này chưa có bản phối nào.",
+    "archived": "(Đã lưu trữ)"
+  },
+  "notes": {
+    "label": "Ghi chú bài hát",
+    "empty": "Bài hát này chưa có ghi chú."
+  },
+  "schedule": {
+    "title": "Lịch sử dụng",
+    "limitLabel": "Khoảng thời gian xem lại lịch",
+    "limitOption_other": "{{count}} lần gần nhất",
+    "loading": "Đang tìm các buổi nhóm gần đây…",
+    "emptyArrangement": "Bản phối này chưa được xếp lịch lần nào.",
+    "emptySong": "Bài hát này chưa được xếp lịch lần nào."
+  },
+  "tags": {
+    "empty": "Bài hát này chưa có thẻ nào.",
+    "emptyManage": "Bài hát này chưa có thẻ nào. Bấm Thêm để gán thẻ."
+  },
+  "header": {
+    "back": "‹ Bài hát",
+    "actions": "Thao tác",
+    "editInformation": "Sửa thông tin bài hát",
+    "deleteSong": "Xóa bài hát"
+  },
+  "mobileSongs": {
+    "inLibrary_other": "{{count}} bài trong thư viện",
+    "description": "Tìm trong thư viện, rồi mở bảng hợp âm để dịch giọng ngay trên sân khấu.",
+    "searchPlaceholder": "Tìm theo tên bài",
+    "noMatch": "Không có kết quả",
+    "emptyLibrary": "Thư viện còn trống",
+    "noMatchDescription": "Không có bài hát nào khớp với \"{{query}}\".",
+    "emptyLibraryDescription": "Thêm bài hát từ ứng dụng web để xây dựng thư viện.",
+    "authorUnknown": "Chưa rõ tác giả"
+  },
+  "mobileArrangements": {
+    "label": "Bản phối",
+    "inPlan": "Trong chương trình này"
+  },
+  "mobileSongbooks": {
+    "description": "Các tuyển tập mà ban có thể mang vào buổi tập — một bộ bảng hợp âm hoặc một tài liệu đính kèm.",
+    "new": "Sách bài hát mới",
+    "emptyDescription": "Gom các bài hát thường hát cùng nhau thành một sách, để không ai phải đi tìm bảng hợp âm vào sáng Chúa Nhật.",
+    "attachedDocument": "Tài liệu đính kèm",
+    "collectedCharts": "Bộ bảng hợp âm",
+    "pickSongs": "Chọn bài hát",
+    "attachFile": "Đính kèm tệp",
+    "composeTitle": "Sách bài hát mới",
+    "composeDescription": "Đặt tên, rồi chọn các bảng hợp âm cho sách hoặc đính kèm tài liệu bạn đã có.",
+    "name": "Tên",
+    "namePlaceholder": "Bài hát sáng Chúa Nhật",
+    "songsChosen_other": "Bài hát · đã chọn {{count}}",
+    "documentHint": "PDF, DOCX hoặc văn bản thuần",
+    "openDocument": "Mở tài liệu"
+  },
+  "mobileChart": {
+    "opening": "Đang mở bảng hợp âm",
+    "screenTitle": "Bảng hợp âm",
+    "unavailable": {
+      "invalidLink": {
+        "title": "Liên kết bảng hợp âm này không hợp lệ",
+        "description": "Hãy mở lại bài hát từ chương trình hoặc từ thư viện bài hát."
+      },
+      "itemMissing": {
+        "title": "Mục này không còn trong chương trình",
+        "description": "Có thể mục đã bị xóa hoặc thay thế. Hãy mở lại chương trình để xem thứ tự hiện tại."
+      },
+      "notASong": {
+        "title": "Mục này trong chương trình không phải bài hát",
+        "description": "Hãy mở lại chương trình để xem thứ tự hiện tại."
+      },
+      "songMismatch": {
+        "title": "Mục này trong chương trình là một bài hát khác",
+        "description": "Chương trình đã thay đổi từ khi liên kết này được mở. Hãy mở lại chương trình."
+      },
+      "arrangementMissing": {
+        "title": "Bản phối của chương trình không còn",
+        "description": "Bản phối được chọn cho chương trình này đã bị xóa. Người lập chương trình có thể chọn bản khác trên web."
+      }
+    },
+    "render": {
+      "noChart": {
+        "title": "Chưa có bảng hợp âm",
+        "description": "Thêm bảng hợp âm từ ứng dụng web để xem tại đây."
+      },
+      "keyUnknown": {
+        "title": "Không thể đổi tông của bảng hợp âm này",
+        "description": "Không đọc được tông gốc của bảng hợp âm hoặc tông của buổi nhóm, nên hợp âm sẽ bị sai. Lời bài hát vẫn xem được; người lập chương trình có thể đặt tông trên web."
+      }
+    },
+    "noArrangementsDescription": "Thêm bản phối từ ứng dụng web để xem bảng hợp âm tại đây.",
+    "keyIndependent": "Không phụ thuộc tông",
+    "keyNotSet": "Chưa đặt tông · hiển thị như bản gốc",
+    "keyUnavailable": "Không xác định được tông",
+    "shiftFromService_other": "{{shift}} nửa cung so với tông của buổi nhóm",
+    "shiftFromOriginal_other": "{{shift}} nửa cung so với tông gốc",
+    "serviceKey": "Tông của buổi nhóm",
+    "serviceKeyWrittenIn": "Tông của buổi nhóm · bản gốc viết ở {{key}}",
+    "originalKey": "Tông gốc",
+    "viewAnother": "Xem bản phối khác",
+    "temporaryView": "Đang tạm xem {{viewing}}. Chương trình này dùng {{planArrangement}}; không có gì được lưu. Người lập chương trình đổi bản phối trên web.",
+    "backTo": "Quay lại {{name}}",
+    "backToPlanArrangement": "Quay lại bản phối của chương trình",
+    "transposeDown": "Hạ nửa cung",
+    "transposeUp": "Nâng nửa cung",
+    "backToServiceKey": "Quay lại tông của buổi nhóm",
+    "backToOriginalKey": "Quay lại tông gốc",
+    "notation": "Cách ghi"
+  },
+  "chartDocument": {
+    "byline": "[{{arrangement}}] của {{author}}"
+  },
+  "songBook": {
+    "documentTitle": "{{title}} - Sách bài hát",
+    "continued": "{{title}} - Thứ tự bài hát (tiếp theo)",
+    "noSongs": "Buổi nhóm này chưa có bài hát nào.",
+    "noChart": "Bài hát này chưa có bảng hợp âm.",
+    "arrangementUnavailable": "Bản phối đã chọn cho mục này không còn nữa.",
+    "keyUnknown": "Tông gốc của bảng hợp âm này bị thiếu hoặc không đọc được, nên không thể hiển thị ở tông {{key}}.",
+    "keyUnknownNoKey": "Tông gốc của bảng hợp âm này bị thiếu hoặc không đọc được, nên không thể hiển thị ở tông của buổi nhóm.",
+    "bpm": "{{bpm}} bpm",
+    "arrangementAtBpm": "{{arrangement}} với {{bpm}}"
+  }
+}

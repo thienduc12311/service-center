@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import type { MaintainBlockoutSeriesInput, PreviewBlockoutSeriesInput } from '@service-center/shared';
+import { LocalizedError, type MaintainBlockoutSeriesInput, type PreviewBlockoutSeriesInput } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { keys } from '../hooks/queries';
+import { useFormatters } from '../i18n';
 
 type Scope = 'occurrence' | 'future' | 'series';
 
@@ -13,6 +15,8 @@ export const BlockoutSeriesPage = () => {
   const { seriesId } = useParams();
   const { organizationId } = useAuth();
   const queryClient = useQueryClient();
+  const { t } = useTranslation('scheduling');
+  const f = useFormatters();
   const query = useQuery({
     queryKey: [...keys.blockouts(organizationId, { scope: 'mine' }), 'series', seriesId],
     queryFn: () => api.getBlockoutSeries(seriesId!), enabled: Boolean(organizationId && seriesId),
@@ -85,19 +89,21 @@ export const BlockoutSeriesPage = () => {
   };
 
   if (query.isLoading || actualRows.isLoading) return <Loading />;
-  if (!series) return <div className="space-y-4"><ErrorNotice error={query.error ?? new Error('Repeating blockout not found.')} /><Link to="/settings">Back to settings</Link></div>;
+  if (!series) return <div className="space-y-4"><ErrorNotice error={query.error ?? new LocalizedError({ key: 'scheduling:blockoutSeries.notFound' })} /><Link to="/settings">{t('blockoutSeries.backToSettings')}</Link></div>;
 
   return <div className="max-w-3xl space-y-6">
-    <PageHeader title="Manage repeating blockout" subtitle={`${series.frequency === 'weekly' ? 'Weekly' : 'Monthly'} in ${series.timezone}`} />
-    <Link className="text-sm text-brand-700 underline" to="/settings">← Back to settings</Link>
+    <PageHeader title={t('blockoutSeries.title')} subtitle={t(`blockoutSeries.subtitle.${series.frequency}`, { timezone: series.timezone })} />
+    <Link className="text-sm text-brand-700 underline" to="/settings">{t('blockoutSeries.backToSettingsArrow')}</Link>
     <section className="card p-5"><form className="space-y-4" onSubmit={submitUpdate}>
-      <label className="label">Change<select className="input mt-1" value={scope} onChange={(e) => setScope(e.target.value as Scope)}><option value="occurrence">This occurrence</option><option value="future">This and future occurrences</option><option value="series">Whole series</option></select></label>
-      {scope !== 'series' && <label className="label">Occurrence<select className="input mt-1" value={occurrenceId} onChange={(e) => { const id = e.target.value; setOccurrenceId(id); const row = seriesRows.find((item) => item.id === id); if (row) { setStartDate(row.local_start_date!); setEndDate(row.local_end_date!); setStartTime(row.local_start_time?.slice(0,5) ?? '09:00'); setEndTime(row.local_end_time?.slice(0,5) ?? '17:00'); } }}>{seriesRows.map((row) => <option key={row.id} value={row.id}>{row.local_start_date}</option>)}</select></label>}
-      <div className="grid gap-3 sm:grid-cols-2"><label className="label">Start date<input className="input mt-1" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label><label className="label">End date {series.all_day && '(exclusive)'}<input className="input mt-1" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></label>{!series.all_day && <><label className="label">Start time<input className="input mt-1" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></label><label className="label">End time<input className="input mt-1" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></label></>}</div>
-      <label className="label">Reason<input className="input mt-1" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></label>
-      <div className="flex flex-wrap gap-2"><Button type="submit" loading={change.isPending}>Save {scope === 'series' ? 'series' : 'change'}</Button><Button type="button" variant="danger" loading={change.isPending} onClick={submitDelete}>Delete {scope === 'occurrence' ? 'occurrence' : scope === 'future' ? 'this and future' : 'series'}</Button></div>
+      <label className="label">{t('blockoutSeries.changeLabel')}<select className="input mt-1" value={scope} onChange={(e) => setScope(e.target.value as Scope)}><option value="occurrence">{t('blockoutSeries.scope.occurrence')}</option><option value="future">{t('blockoutSeries.scope.future')}</option><option value="series">{t('blockoutSeries.scope.series')}</option></select></label>
+      {scope !== 'series' && <label className="label">{t('blockoutSeries.occurrenceLabel')}<select className="input mt-1" value={occurrenceId} onChange={(e) => { const id = e.target.value; setOccurrenceId(id); const row = seriesRows.find((item) => item.id === id); if (row) { setStartDate(row.local_start_date!); setEndDate(row.local_end_date!); setStartTime(row.local_start_time?.slice(0,5) ?? '09:00'); setEndTime(row.local_end_time?.slice(0,5) ?? '17:00'); } }}>{seriesRows.map((row) => <option key={row.id} value={row.id}>{row.local_start_date ? f.calendarDate(row.local_start_date, 'medium') : ''}</option>)}</select></label>}
+      <div className="grid gap-3 sm:grid-cols-2"><label className="label">{t('blockoutSeries.startDate')}<input className="input mt-1" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label><label className="label">{series.all_day ? t('blockoutSeries.endDateExclusive') : t('blockoutSeries.endDate')}<input className="input mt-1" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></label>{!series.all_day && <><label className="label">{t('blockoutSeries.startTime')}<input className="input mt-1" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></label><label className="label">{t('blockoutSeries.endTime')}<input className="input mt-1" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></label></>}</div>
+      <label className="label">{t('blockoutSeries.reason')}<input className="input mt-1" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></label>
+      <div className="flex flex-wrap gap-2"><Button type="submit" loading={change.isPending}>{t(`blockoutSeries.save.${scope}`)}</Button><Button type="button" variant="danger" loading={change.isPending} onClick={submitDelete}>{t(`blockoutSeries.delete.${scope}`)}</Button></div>
       <ErrorNotice error={change.error} />
     </form></section>
-    <section className="card p-5"><h2 className="mb-3 font-semibold">Saved occurrences</h2><ul className="divide-y divide-slate-100">{seriesRows.map((row) => <li key={row.id} className="py-2 text-sm">{row.local_start_date}{row.all_day ? ' · all day' : ` · ${row.local_start_time?.slice(0,5)}–${row.local_end_time?.slice(0,5)}`}</li>)}</ul></section>
+    <section className="card p-5"><h2 className="mb-3 font-semibold">{t('blockoutSeries.savedOccurrences')}</h2><ul className="divide-y divide-slate-100">{seriesRows.map((row) => <li key={row.id} className="py-2 text-sm">{row.all_day
+      ? t('blockoutSeries.occurrenceAllDay', { date: row.local_start_date ? f.calendarDate(row.local_start_date, 'medium') : '' })
+      : t('blockoutSeries.occurrenceTimed', { date: row.local_start_date ? f.calendarDate(row.local_start_date, 'medium') : '', start: row.local_start_time?.slice(0, 5) ?? '', end: row.local_end_time?.slice(0, 5) ?? '' })}</li>)}</ul></section>
   </div>;
 };

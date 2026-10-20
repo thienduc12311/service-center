@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   ApiError,
   type AssignmentDetail,
@@ -33,6 +34,7 @@ const sameScope = (a: TimeScope, b: TimeScope): boolean =>
  * of overwritten; a released request whose times change is sent again.
  */
 export const AssignmentTimesModal = ({ plan, assignment, onClose }: AssignmentTimesModalProps) => {
+  const { t } = useTranslation(['staffing', 'common']);
   const invalidate = useInvalidateOrg();
   const { can, organizationId } = useAuth();
   const [editing, setEditing] = useState<string | null>(null);
@@ -49,7 +51,7 @@ export const AssignmentTimesModal = ({ plan, assignment, onClose }: AssignmentTi
     setCommitConflicts(null);
   }
 
-  const name = assignment?.person?.full_name ?? 'This person';
+  const name = assignment?.person?.full_name ?? t('assignmentTimes.thisPerson');
   const changed = assignment ? !sameScope(scope, scopeOf(assignment)) : false;
 
   const check = useQuery({
@@ -106,16 +108,17 @@ export const AssignmentTimesModal = ({ plan, assignment, onClose }: AssignmentTi
   const stale = save.error instanceof ApiError && save.error.code === 'assignment_revision_stale';
 
   return (
-    <Modal open={Boolean(assignment)} title={`Times for ${name}`} onClose={onClose}>
+    <Modal open={Boolean(assignment)} title={t('assignmentTimes.title', { name })} onClose={onClose}>
       {assignment && (
         <div className="space-y-4">
           <p className="text-sm text-slate-500">
-            {assignment.team?.name ?? 'Team'}
-            {assignment.position ? ` · ${assignment.position.name}` : ''}
-            {assignment.visibility === 'released' && assignment.status !== 'declined'
-              ? ' — changing the times sends them an updated request; their earlier answer stays as it was.'
-              : ''}
+            {assignment.position
+              ? t('common:format.teamPosition', { team: assignment.team?.name ?? t('common:fallback.team'), position: assignment.position.name })
+              : assignment.team?.name ?? t('common:fallback.team')}
           </p>
+          {assignment.visibility === 'released' && assignment.status !== 'declined' && (
+            <p className="text-sm text-slate-500">{t('assignmentTimes.resendHint')}</p>
+          )}
           <TimeScopePicker
             idPrefix={`assignment-${assignment.id}`}
             times={plan.times}
@@ -128,19 +131,19 @@ export const AssignmentTimesModal = ({ plan, assignment, onClose }: AssignmentTi
           {conflicts.length > 0 && <ConflictList conflicts={conflicts} nameOf={() => name} />}
           {blocking.length > 0 && (mayOverride ? (
             <input
-              aria-label="Reason for keeping these times despite the conflicts"
+              aria-label={t('assignmentTimes.reasonLabel')}
               className="input"
-              placeholder="Reason (required, kept with the request)"
+              placeholder={t('assignmentTimes.reasonPlaceholder')}
               maxLength={500}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
           ) : (
-            <p className="text-xs text-slate-500">You can’t schedule over a conflict here. Choose other times.</p>
+            <p className="text-xs text-slate-500">{t('assignmentTimes.cannotOverride')}</p>
           ))}
           {stale ? (
             <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
-              This request changed since you opened it. Close and open it again to see the latest times.
+              {t('assignmentTimes.stale')}
             </p>
           ) : (
             save.error && !(save.error instanceof ApiError && save.error.code === 'scheduling_conflict') && (
@@ -149,7 +152,7 @@ export const AssignmentTimesModal = ({ plan, assignment, onClose }: AssignmentTi
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={onClose}>
-              Cancel
+              {t('common:actions.cancel')}
             </Button>
             <Button
               loading={save.isPending}
@@ -158,7 +161,7 @@ export const AssignmentTimesModal = ({ plan, assignment, onClose }: AssignmentTi
               }
               onClick={() => save.mutate()}
             >
-              {blocking.length > 0 ? 'Save anyway' : 'Save times'}
+              {blocking.length > 0 ? t('assignmentTimes.saveAnyway') : t('assignmentTimes.save')}
             </Button>
           </div>
         </div>

@@ -1,5 +1,5 @@
+import { useTranslation } from 'react-i18next';
 import {
-  FILE_AUDIENCE_LABELS,
   fileAudiencesFor,
   type FileAudience,
   type FileOwnerKind,
@@ -25,12 +25,13 @@ const toggle = (list: string[], id: string): string[] =>
   list.includes(id) ? list.filter((value) => value !== id) : [...list, id];
 
 export const AudienceFields = ({ ownerKind, value, onChange, planId = null }: AudienceFieldsProps) => {
+  const { t } = useTranslation('media');
   const teams = useTeams();
   const audiences = fileAudiencesFor(ownerKind);
 
   return (
     <fieldset className="space-y-3">
-      <legend className="label">Who can open it</legend>
+      <legend className="label">{t('audience.legend')}</legend>
       <select
         className="input"
         value={value.audience}
@@ -38,18 +39,18 @@ export const AudienceFields = ({ ownerKind, value, onChange, planId = null }: Au
       >
         {audiences.map((audience) => (
           <option key={audience} value={audience}>
-            {FILE_AUDIENCE_LABELS[audience]}
+            {t(`files.audiences.${audience}`)}
           </option>
         ))}
       </select>
       <p className="text-xs text-slate-500">
-        Leaders of this {ownerKind === 'song' || ownerKind === 'arrangement' ? 'song library' : 'plan'} can always open
-        it. {value.audience === 'scheduled' ? 'Only people whose request has been sent count — prepared requests do not.' : ''}
+        {ownerKind === 'song' || ownerKind === 'arrangement' ? t('audience.songLeaders') : t('audience.planLeaders')}
+        {value.audience === 'scheduled' ? ` ${t('audience.scheduledHint')}` : ''}
       </p>
 
       {value.audience === 'teams' && (
         <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg p-2 ring-1 ring-slate-200">
-          {teams.isLoading && <p className="text-sm text-slate-500">Loading teams…</p>}
+          {teams.isLoading && <p className="text-sm text-slate-500">{t('audience.loadingTeams')}</p>}
           {(teams.data ?? []).map((team) => (
             <label key={team.id} className="flex items-center gap-2 text-sm">
               <input
@@ -65,7 +66,7 @@ export const AudienceFields = ({ ownerKind, value, onChange, planId = null }: Au
 
       {value.audience === 'positions' && (
         <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg p-2 ring-1 ring-slate-200">
-          {teams.isLoading && <p className="text-sm text-slate-500">Loading positions…</p>}
+          {teams.isLoading && <p className="text-sm text-slate-500">{t('audience.loadingPositions')}</p>}
           {(teams.data ?? []).map((team) => {
             const positions = team.positions.filter((position) => position.plan_id === null || position.plan_id === planId);
             if (!positions.length) return null;

@@ -5,6 +5,7 @@ describe('operationalMessageEmail', () => {
   it('escapes sender text and variable values, keeps paragraphs and the reply hint', () => {
     const content = operationalMessageEmail({
       to: 'sam@example.com',
+      locale: 'en',
       personName: 'Sam',
       organizationName: 'Riverside',
       subject: 'Parking for\n<Sunday>',

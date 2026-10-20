@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
-import { FILE_CATEGORY_LABELS, type FileCategory, type FilePlaybackRights, type FileSummary } from '@service-center/shared';
+import { type FileCategory, type FilePlaybackRights, type FileSummary } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { Button, Modal } from '../ui';
 import { AudienceFields, type FileAudienceValue } from './AudienceFields';
-import { fileErrorMessage } from './fileActions';
+import { FILE_CATEGORIES, fileErrorMessage } from './fileActions';
 
 export interface FileDetailsModalProps {
   file: FileSummary;
@@ -15,6 +16,7 @@ export interface FileDetailsModalProps {
 
 /** Title, category, audience and (for links) the address. Saved against the revision it was opened at. */
 export const FileDetailsModal = ({ file, planId = null, onClose, onSaved }: FileDetailsModalProps) => {
+  const { t } = useTranslation(['media', 'common']);
   const [title, setTitle] = useState(file.title);
   const [category, setCategory] = useState<FileCategory>(file.category);
   const [url, setUrl] = useState(file.external_url ?? '');
@@ -58,48 +60,44 @@ export const FileDetailsModal = ({ file, planId = null, onClose, onSaved }: File
   };
 
   return (
-    <Modal open title="File details" onClose={onClose}>
+    <Modal open title={t('details.title')} onClose={onClose}>
       <form className="space-y-4" onSubmit={submit}>
         <label className="block">
-          <span className="label">Title</span>
+          <span className="label">{t('addFile.title')}</span>
           <input className="input" required maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)} />
         </label>
         {file.kind === 'link' && (
           <label className="block">
-            <span className="label">Web address</span>
+            <span className="label">{t('addFile.url')}</span>
             <input className="input" type="url" required value={url} onChange={(event) => setUrl(event.target.value)} />
           </label>
         )}
         <label className="block">
-          <span className="label">Category</span>
+          <span className="label">{t('files.category')}</span>
           <select className="input" value={category} onChange={(event) => setCategory(event.target.value as FileCategory)}>
-            {Object.entries(FILE_CATEGORY_LABELS).map(([value, label]) => (
+            {FILE_CATEGORIES.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {t(`files.categories.${value}`)}
               </option>
             ))}
           </select>
         </label>
         {file.kind === 'upload' && (
           <label className="block">
-            <span className="label">Readers may</span>
+            <span className="label">{t('details.rights')}</span>
             <select className="input" value={rights} onChange={(event) => setRights(event.target.value as FilePlaybackRights)}>
-              <option value="download">Play, open and download</option>
-              <option value="stream_only">Play and open only (no download or offline copy)</option>
+              <option value="download">{t('details.rightsOptions.download')}</option>
+              <option value="stream_only">{t('details.rightsOptions.stream_only')}</option>
             </select>
             {rights === 'stream_only' && (
-              <span className="mt-1 block text-xs text-slate-500">
-                Download buttons and offline packs leave this file out. Anything a browser plays can still be recorded, so
-                this is not copy protection.
-              </span>
+              <span className="mt-1 block text-xs text-slate-500">{t('details.streamOnlyHint')}</span>
             )}
           </label>
         )}
         <AudienceFields ownerKind={file.owner.kind} planId={planId} value={audience} onChange={setAudience} />
         {narrowing && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-600/20">
-            The new audience applies to every version and to plans that use this file. Links already opened stay valid for a
-            few minutes, and copies people downloaded cannot be recalled.
+            {t('details.narrowingHint')}
           </p>
         )}
         {save.error && (
@@ -109,7 +107,7 @@ export const FileDetailsModal = ({ file, planId = null, onClose, onSaved }: File
         )}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
           <Button
             type="submit"
@@ -119,7 +117,7 @@ export const FileDetailsModal = ({ file, planId = null, onClose, onSaved }: File
               (audience.audience === 'positions' && !audience.positionIds.length)
             }
           >
-            Save
+            {t('common:actions.save')}
           </Button>
         </div>
       </form>

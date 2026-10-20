@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   ApiError,
   type RosterBulkAction,
@@ -17,18 +18,8 @@ export interface BulkRosterPanelProps {
   onDone: () => void;
 }
 
-const ACTION_LABELS: Record<RosterBulkAction, string> = {
-  add_tag: 'Add tag',
-  remove_tag: 'Remove tag',
-  add_to_team: 'Add to team',
-  remove_from_team: 'Remove from team',
-};
-
-const PROBLEM_LABELS: Record<RosterBulkProblem, string> = {
-  not_found: 'not found',
-  archived: 'archived — restore first',
-  not_eligible: 'needs a current eligibility record for this team',
-};
+/** Bulk actions in display order; labels come from `bulk.actions.*`. */
+const BULK_ACTIONS: readonly RosterBulkAction[] = ['add_tag', 'remove_tag', 'add_to_team', 'remove_from_team'];
 
 const isTagAction = (action: RosterBulkAction): boolean => action === 'add_tag' || action === 'remove_tag';
 
@@ -38,6 +29,7 @@ const isTagAction = (action: RosterBulkAction): boolean => action === 'add_tag' 
  * moved in between, the server refuses and asks for a fresh preview.
  */
 export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => {
+  const { t } = useTranslation(['people', 'common']);
   const { canAnywhere, can } = useAuth();
   const invalidate = useInvalidateOrg();
   const teams = useTeams();
@@ -95,11 +87,11 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
     <div className="card mb-4 space-y-3 p-4" aria-live="polite">
       <div className="flex flex-wrap items-end gap-2">
         <p className="w-full text-sm font-medium">
-          {personIds.length} selected
+          {t('common:count.selected', { count: personIds.length })}
         </p>
         <div>
           <label className="label" htmlFor="bulk-action">
-            Change
+            {t('bulk.change')}
           </label>
           <select
             id="bulk-action"
@@ -110,11 +102,11 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
               resetPreview();
             }}
           >
-            {(Object.keys(ACTION_LABELS) as RosterBulkAction[])
+            {BULK_ACTIONS
               .filter((value) => (isTagAction(value) ? canTags : manageableTeams.length > 0))
               .map((value) => (
                 <option key={value} value={value}>
-                  {ACTION_LABELS[value]}
+                  {t(`bulk.actions.${value}`)}
                 </option>
               ))}
           </select>
@@ -122,7 +114,7 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
         {isTagAction(action) ? (
           <div>
             <label className="label" htmlFor="bulk-tag">
-              Tag
+              {t('bulk.tag')}
             </label>
             <input
               id="bulk-tag"
@@ -139,7 +131,7 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
           <>
             <div>
               <label className="label" htmlFor="bulk-team">
-                Team
+                {t('bulk.team')}
               </label>
               <select
                 id="bulk-team"
@@ -151,7 +143,7 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
                   resetPreview();
                 }}
               >
-                <option value="">Choose a team</option>
+                <option value="">{t('bulk.chooseTeam')}</option>
                 {manageableTeams.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
@@ -162,7 +154,7 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
             {team && team.positions.length > 0 && (
               <div>
                 <label className="label" htmlFor="bulk-position">
-                  Position
+                  {t('bulk.position')}
                 </label>
                 <select
                   id="bulk-position"
@@ -173,7 +165,7 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
                     resetPreview();
                   }}
                 >
-                  <option value="">{action === 'add_to_team' ? 'No specific position' : 'Any position'}</option>
+                  <option value="">{action === 'add_to_team' ? t('bulk.noSpecificPosition') : t('bulk.anyPosition')}</option>
                   {team.positions.map((position) => (
                     <option key={position.id} value={position.id}>
                       {position.name}
@@ -185,10 +177,10 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
           </>
         )}
         <Button variant="secondary" disabled={!ready} loading={runPreview.isPending} onClick={() => runPreview.mutate()}>
-          Preview
+          {t('common:actions.preview')}
         </Button>
         <Button variant="ghost" onClick={onDone}>
-          Clear selection
+          {t('bulk.clearSelection')}
         </Button>
       </div>
 
@@ -197,18 +189,18 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
       {preview && (
         <div className="space-y-2">
           <p className="text-sm">
-            <strong>{preview.changes}</strong> will change · {preview.unchanged} already match
+            {t('bulk.willChangeCount', { changes: preview.changes, unchanged: preview.unchanged })}
             {preview.errors > 0 && (
               <>
-                {' '}
-                · <strong className="text-app-danger">{preview.errors} can’t be changed</strong>
+                {' · '}
+                <strong className="text-app-danger">{t('bulk.cannotChangeCount', { errors: preview.errors })}</strong>
               </>
             )}
           </p>
           <ul className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 text-sm dark:divide-slate-800 dark:border-slate-700">
             {preview.rows.map((row) => (
               <li key={row.person_id} className="flex justify-between gap-3 px-3 py-1.5">
-                <span>{row.display_name ?? 'Unknown person'}</span>
+                <span>{row.display_name ?? t('bulk.unknownPerson')}</span>
                 <span
                   className={
                     row.outcome === 'error'
@@ -219,17 +211,17 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
                   }
                 >
                   {row.outcome === 'error' && row.problem
-                    ? PROBLEM_LABELS[row.problem]
+                    ? t(`bulk.problems.${row.problem satisfies RosterBulkProblem}`)
                     : row.outcome === 'change'
-                      ? 'will change'
-                      : 'no change'}
+                      ? t('bulk.willChange')
+                      : t('bulk.noChange')}
                 </span>
               </li>
             ))}
           </ul>
           {stale ? (
             <p className="text-sm text-amber-700 dark:text-amber-400">
-              The roster changed since this preview. Preview again before applying.
+              {t('bulk.stale')}
             </p>
           ) : (
             apply.error && <ErrorNotice error={apply.error} />
@@ -240,7 +232,7 @@ export const BulkRosterPanel = ({ personIds, onDone }: BulkRosterPanelProps) => 
               loading={apply.isPending}
               onClick={() => apply.mutate()}
             >
-              Apply to {preview.changes}
+              {t('bulk.applyTo', { changes: preview.changes })}
             </Button>
           </div>
         </div>

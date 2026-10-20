@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface TagSelectProps {
   /** The vocabulary offered. Callers pass one of the SONG_* constants. */
@@ -7,6 +8,8 @@ export interface TagSelectProps {
   onChange: (value: string[]) => void;
   id?: string;
   placeholder?: string;
+  /** Display text for a vocabulary value (the value itself is what is stored). */
+  optionLabel?: (option: string) => string;
 }
 
 /**
@@ -14,14 +17,15 @@ export interface TagSelectProps {
  * selection ("2 tags") rather than listing it, so the row stays one line wide
  * however many are picked.
  */
-export const TagSelect = ({ options, value, onChange, id, placeholder = 'None' }: TagSelectProps) => {
+export const TagSelect = ({ options, value, onChange, id, placeholder, optionLabel = (option) => option }: TagSelectProps) => {
+  const { t } = useTranslation('people');
   const [open, setOpen] = useState(false);
 
   const toggle = (option: string) =>
     onChange(value.includes(option) ? value.filter((tag) => tag !== option) : [...value, option]);
 
   const label =
-    value.length === 0 ? placeholder : value.length === 1 ? value[0]! : `${value.length} tags`;
+    value.length === 0 ? (placeholder ?? t('tagSelect.none')) : value.length === 1 ? optionLabel(value[0]!) : t('tagSelect.count', { count: value.length });
 
   return (
     <div className="relative">
@@ -41,7 +45,7 @@ export const TagSelect = ({ options, value, onChange, id, placeholder = 'None' }
         <>
           <button
             type="button"
-            aria-label="Close options"
+            aria-label={t('tagSelect.closeOptions')}
             className="fixed inset-0 z-40 cursor-default"
             onClick={() => setOpen(false)}
           />
@@ -63,7 +67,7 @@ export const TagSelect = ({ options, value, onChange, id, placeholder = 'None' }
                   >
                     {value.includes(option) ? '✓' : ''}
                   </span>
-                  {option}
+                  {optionLabel(option)}
                 </button>
               </li>
             ))}
@@ -82,7 +86,8 @@ export interface TagInputProps {
 }
 
 /** Free-form chips. Enter or comma commits the tag being typed. */
-export const TagInput = ({ value, onChange, id, placeholder = 'Add Tag' }: TagInputProps) => {
+export const TagInput = ({ value, onChange, id, placeholder }: TagInputProps) => {
+  const { t } = useTranslation('people');
   const [draft, setDraft] = useState('');
 
   const commit = () => {
@@ -112,7 +117,7 @@ export const TagInput = ({ value, onChange, id, placeholder = 'Add Tag' }: TagIn
           <button
             type="button"
             onClick={() => onChange(value.filter((current) => current !== tag))}
-            aria-label={`Remove ${tag}`}
+            aria-label={t('tagSelect.remove', { tag })}
             className="text-slate-400 transition hover:text-rose-600"
           >
             ×
@@ -123,7 +128,7 @@ export const TagInput = ({ value, onChange, id, placeholder = 'Add Tag' }: TagIn
         id={id}
         className="input w-40"
         value={draft}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t('tagSelect.addTag')}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={onKeyDown}
         onBlur={commit}

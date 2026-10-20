@@ -11,6 +11,7 @@ import type {
   WebhookEndpointSummary,
 } from '../types/integrations.js';
 import type { CreateApiCredentialRequest, CreateWebhookEndpointInput, SetWebhookEnabledInput } from '../schemas/integrations.js';
+import type { LanguagePreferenceResponse, UpdateLanguagePreferenceInput } from '../schemas/language.js';
 /**
  * Typed client for the Express API. Shared verbatim by the web app and the
  * React Native app — the only difference is how each supplies the access token.
@@ -494,6 +495,11 @@ const REPORT_PATHS: Record<ReportKind, string> = {
   schedule: 'schedule',
 };
 
+/** Pins one call to a church instead of the client's current one. */
+export interface RequestScope {
+  organizationId: string;
+}
+
 export class ServiceCenterApi {
   constructor(private readonly options: ApiClientOptions) {}
 
@@ -502,6 +508,7 @@ export class ServiceCenterApi {
     path: string,
     body?: unknown,
     query?: Query,
+    scope?: RequestScope,
   ): Promise<T> {
     const fetchImpl = this.options.fetchImpl ?? globalThis.fetch;
     const context = this.options.getRequestContext
@@ -511,7 +518,8 @@ export class ServiceCenterApi {
           organizationId: this.options.getOrganizationId?.() ?? null,
         };
     const token = context.accessToken;
-    const orgId = context.organizationId;
+    // An explicitly scoped call never follows a church switch made while it was being prepared.
+    const orgId = scope?.organizationId ?? context.organizationId;
 
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -570,6 +578,12 @@ export class ServiceCenterApi {
   me = () => this.request<CurrentUser>('GET', '/api/v1/me');
   updateMe = (body: Partial<Pick<ProfileRow, 'full_name' | 'phone' | 'avatar_url'>>) =>
     this.request<ProfileRow>('PATCH', '/api/v1/me', body);
+  /** The caller's saved language in the active church (X-Organization-Id); null = Automatic. */
+  getLanguagePreference = (scope?: RequestScope) =>
+    this.request<LanguagePreferenceResponse>('GET', '/api/v1/me/language-preference', undefined, undefined, scope);
+  /** Saves only the caller's own language in the given (or active) church. */
+  updateLanguagePreference = (body: UpdateLanguagePreferenceInput, scope?: RequestScope) =>
+    this.request<LanguagePreferenceResponse>('PATCH', '/api/v1/me/language-preference', body, undefined, scope);
 
   // ------------------------------------------------------ organizations --
   listOrganizations = () =>

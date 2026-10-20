@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   chartFormattingFromRow,
@@ -9,6 +10,7 @@ import {
   type SongWithArrangements,
 } from '@service-center/shared';
 import { openChartInNewTab } from '../../lib/chart-export';
+import { useLanguage } from '../../i18n';
 import { useChartPdfExport } from '../../hooks/chart-export';
 import { Badge, Button, EmptyState, ErrorNotice } from '../ui';
 import { ChordChart } from '../ChordChart';
@@ -22,11 +24,25 @@ export interface ArrangementPanelProps {
   onDelete: () => void;
 }
 
-const Stat = ({ label, value }: { label: string; value: string }) => (
-  <span className="text-slate-500">
-    {label}: <span className="font-medium text-slate-800 dark:text-slate-200">{value}</span>
-  </span>
-);
+/** One labelled readout in the arrangement header. */
+interface StatProps {
+  label: string;
+  value: string;
+}
+
+const Stat = ({ label, value }: StatProps) => {
+  const { t } = useTranslation('songs');
+  return (
+    <span className="text-slate-500">
+      <Trans
+        t={t}
+        i18nKey="arrangementPanel.stat"
+        values={{ label, value }}
+        components={[<span key="value" className="font-medium text-slate-800 dark:text-slate-200" />]}
+      />
+    </span>
+  );
+};
 
 const ICON_BUTTON =
   'grid size-8 place-items-center rounded-lg text-slate-500 ring-1 ring-slate-300 transition hover:bg-slate-50 disabled:opacity-40';
@@ -43,6 +59,8 @@ export const ArrangementPanel = ({
   onEdit,
   onDelete,
 }: ArrangementPanelProps) => {
+  const { t } = useTranslation(['songs', 'common']);
+  const { locale } = useLanguage();
   const [view, setView] = useState<ChartView>(ORIGINAL_KEY_VIEW);
   const pdf = useChartPdfExport();
 
@@ -67,6 +85,7 @@ export const ArrangementPanel = ({
     copyright: song.copyright,
     chordpro: rendered.chordpro,
     formatting: chartFormattingFromRow(arrangement),
+    locale,
   });
 
   return (
@@ -78,40 +97,42 @@ export const ArrangementPanel = ({
               {arrangement.name}
             </h2>
             {arrangement.is_default && (
-              <Badge tone="bg-brand-50 text-brand-700 ring-brand-600/20">Default</Badge>
+              <Badge tone="bg-brand-50 text-brand-700 ring-brand-600/20">{t('arrangement.defaultBadge')}</Badge>
             )}
           </div>
 
           <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             {arrangement.length_seconds !== null && (
-              <Stat label="Length" value={formatDuration(arrangement.length_seconds)} />
+              <Stat label={t('arrangement.fields.length')} value={formatDuration(arrangement.length_seconds)} />
             )}
-            {arrangement.bpm !== null && <Stat label="BPM" value={String(arrangement.bpm)} />}
-            {arrangement.meter && <Stat label="Meter" value={arrangement.meter} />}
-            <Stat label="Key" value={sourceKey ?? '—'} />
-            {arrangement.capo !== null && <Stat label="Capo" value={String(arrangement.capo)} />}
+            {arrangement.bpm !== null && <Stat label={t('arrangement.fields.bpm')} value={String(arrangement.bpm)} />}
+            {arrangement.meter && <Stat label={t('arrangement.fields.meter')} value={arrangement.meter} />}
+            <Stat label={t('arrangement.fields.key')} value={sourceKey ?? '—'} />
+            {arrangement.capo !== null && <Stat label={t('arrangement.fields.capo')} value={String(arrangement.capo)} />}
           </div>
 
           {arrangement.sequence.length > 0 && (
             <p className="mt-1.5 text-sm text-slate-500">
-              Sequence:{' '}
-              <span className="text-slate-700 dark:text-slate-300">
-                {arrangement.sequence.join(', ')}
-              </span>
+              <Trans
+                t={t}
+                i18nKey="arrangementPanel.sequence"
+                values={{ sequence: arrangement.sequence.join(', ') }}
+                components={[<span key="sequence" className="text-slate-700 dark:text-slate-300" />]}
+              />
             </p>
           )}
         </div>
 
         {canManage && (
           <div className="flex items-center gap-2">
-            <button type="button" className={ICON_BUTTON} onClick={onEdit} aria-label="Edit this arrangement">
+            <button type="button" className={ICON_BUTTON} onClick={onEdit} aria-label={t('arrangementPanel.edit')}>
               ✎
             </button>
             <button
               type="button"
               className={`${ICON_BUTTON} hover:text-rose-600`}
               onClick={onDelete}
-              aria-label="Delete this arrangement"
+              aria-label={t('arrangementPanel.delete')}
             >
               🗑
             </button>
@@ -124,8 +145,9 @@ export const ArrangementPanel = ({
 
         {rendered.semitones !== 0 && (
           <span className="text-xs text-slate-400">
-            transposed {rendered.semitones > 6 ? rendered.semitones - 12 : rendered.semitones}{' '}
-            semitones
+            {t('arrangementPanel.transposed', {
+              count: rendered.semitones > 6 ? rendered.semitones - 12 : rendered.semitones,
+            })}
           </span>
         )}
 
@@ -133,21 +155,21 @@ export const ArrangementPanel = ({
           {arrangement.chord_chart && (
             <>
               <Button variant="secondary" onClick={() => openChartInNewTab(chartDocument())}>
-                View page
+                {t('arrangementPanel.viewPage')}
               </Button>
               <Button
                 variant="secondary"
                 onClick={() => pdf.download(chartDocument())}
                 loading={pdf.isExporting}
               >
-                Download PDF
+                {t('chartEditor.downloadPdf')}
               </Button>
             </>
           )}
           {canManage && (
             <Link to={chartEditorPath}>
               <Button variant="secondary">
-                {arrangement.chord_chart ? 'Lyrics & Chords' : 'Add chart'}
+                {arrangement.chord_chart ? t('addSong.fields.chart') : t('arrangementPanel.addChart')}
               </Button>
             </Link>
           )}
@@ -166,12 +188,12 @@ export const ArrangementPanel = ({
           />
         ) : (
           <EmptyState
-            title="No chord chart yet"
-            description="Write one in the chart editor to transpose it, export it, and read it as numbers or numerals."
+            title={t('arrangementPanel.emptyTitle')}
+            description={t('arrangementPanel.emptyDescription')}
             action={
               canManage ? (
                 <Link to={chartEditorPath}>
-                  <Button variant="secondary">Add chart</Button>
+                  <Button variant="secondary">{t('arrangementPanel.addChart')}</Button>
                 </Link>
               ) : undefined
             }

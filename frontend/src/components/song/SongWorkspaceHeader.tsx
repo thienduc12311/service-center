@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { SongWithArrangements } from '@service-center/shared';
 import { Menu, MenuItem } from '../ui';
 
@@ -23,10 +24,12 @@ export const SongWorkspaceHeader = ({
   onEditInformation,
   onAddArrangement,
   onDelete,
-}: SongWorkspaceHeaderProps) => (
+}: SongWorkspaceHeaderProps) => {
+  const { t } = useTranslation('songs');
+  return (
   <header className="border-b border-slate-200 pb-4 dark:border-slate-800">
     <Link to="/songs" className="text-sm text-slate-400 transition hover:text-brand-600">
-      ‹ Songs
+      {t('header.back')}
     </Link>
 
     <div className="mt-1 flex flex-wrap items-start justify-between gap-4">
@@ -38,7 +41,7 @@ export const SongWorkspaceHeader = ({
       </div>
 
       {canManage && (
-        <Menu label="Actions">
+        <Menu label={t('header.actions')}>
           {(close) => (
             <>
               <MenuItem
@@ -47,7 +50,7 @@ export const SongWorkspaceHeader = ({
                   close();
                 }}
               >
-                Edit song information
+                {t('header.editInformation')}
               </MenuItem>
               <MenuItem
                 onClick={() => {
@@ -55,7 +58,7 @@ export const SongWorkspaceHeader = ({
                   close();
                 }}
               >
-                Add an arrangement
+                {t('allArrangements.add')}
               </MenuItem>
               <MenuItem
                 tone="danger"
@@ -64,7 +67,7 @@ export const SongWorkspaceHeader = ({
                   close();
                 }}
               >
-                Delete song
+                {t('header.deleteSong')}
               </MenuItem>
             </>
           )}
@@ -72,4 +75,5 @@ export const SongWorkspaceHeader = ({
       )}
     </div>
   </header>
-);
+  );
+};

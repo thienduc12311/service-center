@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from 'react-i18next';
 import { KeySelect } from '../KeySelect';
 import type { ChartEditorFormValues } from './types';
 
@@ -22,12 +23,14 @@ export const ChartSourceEditor = ({
   disabled,
   onChange,
   onEditSequence,
-}: ChartSourceEditorProps) => (
+}: ChartSourceEditorProps) => {
+  const { t } = useTranslation(['songs', 'common']);
+  return (
   <div className="flex h-full flex-col gap-4">
     <div className="grid gap-3 sm:grid-cols-2">
       <div>
         <label className="label" htmlFor="chart-title">
-          Song Title
+          {t('songInfo.fields.title')}
         </label>
         <input
           id="chart-title"
@@ -40,7 +43,7 @@ export const ChartSourceEditor = ({
 
       <div>
         <label className="label" htmlFor="chart-arrangement-name">
-          Arrangement Name
+          {t('arrangement.fields.name')}
         </label>
         <input
           id="chart-arrangement-name"
@@ -53,19 +56,19 @@ export const ChartSourceEditor = ({
 
       <div>
         <label className="label" htmlFor="chart-key">
-          Current Key
+          {t('chartEditor.currentKey')}
         </label>
         <KeySelect
           id="chart-key"
           value={values.songKey}
           disabled={disabled}
           onChange={(key) => onChange('songKey', key)}
-          resetLabel="No key"
+          resetLabel={t('arrangement.noKey')}
         />
       </div>
 
       <div>
-        <span className="label">Sequence</span>
+        <span className="label">{t('arrangement.fields.sequence')}</span>
         <button
           type="button"
           className="input flex w-full items-center justify-between text-left disabled:opacity-60"
@@ -73,10 +76,10 @@ export const ChartSourceEditor = ({
           disabled={disabled}
         >
           <span className={values.sequence.length ? '' : 'text-slate-400'}>
-            {values.sequence.length ? values.sequence.join(', ') : 'Add a sequence'}
+            {values.sequence.length ? values.sequence.join(', ') : t('chartEditor.addSequence')}
           </span>
           <span aria-hidden="true" className="ml-2 shrink-0 text-xs text-slate-400">
-            Edit
+            {t('common:actions.edit')}
           </span>
         </button>
       </div>
@@ -84,7 +87,7 @@ export const ChartSourceEditor = ({
 
     <div className="flex min-h-0 flex-1 flex-col">
       <label className="label" htmlFor="chart-source">
-        Lyrics and Chords
+        {t('chartEditor.lyricsAndChords')}
       </label>
       <textarea
         id="chart-source"
@@ -92,14 +95,17 @@ export const ChartSourceEditor = ({
         spellCheck={false}
         value={values.source}
         disabled={disabled}
-        placeholder={'C                 G\n Amazing grace how sweet the sound'}
+        placeholder={t('chartEditor.sourcePlaceholder')}
         onChange={(event) => onChange('source', event.target.value)}
       />
       <p className="mt-1.5 text-xs text-slate-500">
-        Put the chords on their own line above the words, or write ChordPro inline —{' '}
-        <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">A[G]mazing grace</code>.
-        Either way it is saved as ChordPro.
+        <Trans
+          t={t}
+          i18nKey="chartEditor.sourceHelp"
+          components={[<code key="example" className="rounded bg-slate-100 px-1 dark:bg-slate-800" />]}
+        />
       </p>
     </div>
   </div>
-);
+  );
+};

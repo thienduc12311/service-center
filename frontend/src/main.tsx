@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
 import { ApiError } from '@service-center/shared';
 import { AuthProvider } from './providers/AuthProvider';
+import { LanguageProvider } from './i18n';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { router } from './router';
 import { applyDesignTokens } from './lib/design-tokens';
@@ -30,7 +31,9 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <RouterProvider router={router} />
+          <LanguageProvider>
+            <RouterProvider router={router} />
+          </LanguageProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

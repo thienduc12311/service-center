@@ -1,0 +1,247 @@
+{
+  "timeKind": {
+    "service": "Service",
+    "rehearsal": "Rehearsal",
+    "other": "Time"
+  },
+  "eventKind": {
+    "service": "Service",
+    "rehearsal": "Rehearsal",
+    "other": "Other"
+  },
+  "mySchedule": {
+    "title": "My schedule",
+    "subtitle": "Everything you’ve been asked to serve on.",
+    "mobileDescription": "Every plan you're on, with each of your positions.",
+    "includePast": "Include past",
+    "accept": "Accept",
+    "timeLine": "{{label}} · {{date}} {{time}}",
+    "emptyTitle": "You’re not scheduled for anything",
+    "emptyDescription": "When a scheduler adds you to a plan it will show up here, and you can accept or decline.",
+    "loading": "Loading your schedule",
+    "window": {
+      "upcoming": "Upcoming",
+      "history": "History"
+    },
+    "filter": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "declined": "Declined"
+    },
+    "emptyFilter": {
+      "pending": "Nothing is waiting for your reply.",
+      "confirmed": "You have not confirmed any positions here.",
+      "declined": "You have not declined any positions here."
+    },
+    "summary_one": "{{count}} upcoming",
+    "summary_other": "{{count}} upcoming",
+    "summaryAwaiting_one": "{{count}} upcoming · {{awaiting}} awaiting your reply",
+    "summaryAwaiting_other": "{{count}} upcoming · {{awaiting}} awaiting your reply",
+    "noMatchingTitle": "No matching plans",
+    "noPastTitle": "No past plans",
+    "noPastDescription": "Plans you served on in the last year show up here.",
+    "nothingScheduledTitle": "Nothing scheduled",
+    "nothingScheduledDescription": "When someone puts you on a plan it lands here, and you can accept or decline without leaving this screen.",
+    "openPlan": "Open {{title}}",
+    "positions_one": "{{count}} position",
+    "positions_other": "{{count}} positions"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "subtitle": "Services and rehearsals across every team.",
+    "view": {
+      "month": "Month",
+      "agenda": "Agenda"
+    },
+    "onlyMine": "Only mine",
+    "filterByTeam": "Filter by team",
+    "allTeams": "All teams",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "updating": "Updating…",
+    "moreEvents_one": "+{{count}} more",
+    "moreEvents_other": "+{{count}} more",
+    "emptyMonth": "Nothing scheduled this month",
+    "scope": {
+      "all": "Everyone",
+      "mine": "Only me"
+    },
+    "openMonthTitle": "An open month",
+    "openMonthDescription": "Nothing is on the calendar for {{month}}."
+  },
+  "layers": {
+    "legend": "Layers",
+    "chooseTeam": "Choose a team to show layers",
+    "label": {
+      "blockouts": "Blockouts",
+      "birthdays": "Birthdays",
+      "anniversaries": "Anniversaries"
+    },
+    "event": {
+      "blockouts": "Unavailable: {{name}}",
+      "birthdays": "Birthday: {{name}}",
+      "anniversaries": "Anniversary: {{name}}"
+    }
+  },
+  "feeds": {
+    "heading": "Team and service-type calendar feeds",
+    "help": "Subscribe in Google, Apple or Outlook Calendar. Your calendar app decides how often it refreshes (often every few hours), so a last-minute change may not appear at once. Access is checked on every refresh.",
+    "newFeed": "New feed",
+    "empty": "No feeds yet.",
+    "fallbackName": "Feed",
+    "scopeTeam": "team",
+    "scopeServiceType": "service type",
+    "withRehearsals": "with rehearsals",
+    "newLink": "New link",
+    "createTitle": "New calendar feed",
+    "scopeLabel": "Scope",
+    "scopeOption": {
+      "team": "A team (people on it, or teams I schedule)",
+      "service_type": "A service type (published plans)"
+    },
+    "teamLabel": "Team",
+    "serviceTypeLabel": "Service type",
+    "choose": "Choose…",
+    "includeRehearsals": "Include rehearsals",
+    "layersHint": "Layers (only what you are allowed to see is included)",
+    "nameLabel": "Name (optional)",
+    "linkTitle": "Your feed link",
+    "linkOnce": "Copy it now — it is shown only once. Anyone with this link sees this calendar, so keep it private.",
+    "urlLabel": "Feed URL",
+    "openInApp": "Open in my calendar app"
+  },
+  "blockoutSeries": {
+    "notFound": "Repeating blockout not found.",
+    "backToSettings": "Back to settings",
+    "backToSettingsArrow": "← Back to settings",
+    "title": "Manage repeating blockout",
+    "subtitle": {
+      "weekly": "Weekly in {{timezone}}",
+      "monthly": "Monthly in {{timezone}}"
+    },
+    "changeLabel": "Change",
+    "scope": {
+      "occurrence": "This occurrence",
+      "future": "This and future occurrences",
+      "series": "Whole series"
+    },
+    "occurrenceLabel": "Occurrence",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "endDateExclusive": "End date (exclusive)",
+    "startTime": "Start time",
+    "endTime": "End time",
+    "reason": "Reason",
+    "save": {
+      "occurrence": "Save change",
+      "future": "Save change",
+      "series": "Save series"
+    },
+    "delete": {
+      "occurrence": "Delete occurrence",
+      "future": "Delete this and future",
+      "series": "Delete series"
+    },
+    "savedOccurrences": "Saved occurrences",
+    "occurrenceAllDay": "{{date}} · all day",
+    "occurrenceTimed": "{{date}} · {{start}}–{{end}}"
+  },
+  "blockoutForm": {
+    "repeat": {
+      "none": "Once",
+      "weekly": "Weekly",
+      "monthly": "Monthly"
+    },
+    "endKind": {
+      "count": "After",
+      "until": "Until"
+    },
+    "ambiguous": {
+      "earlier": "Earlier",
+      "later": "Later"
+    },
+    "errors": {
+      "count": "Choose 1 to 120 occurrences.",
+      "invalid": "Check the blockout details."
+    },
+    "description": "Organization timezone: {{timezone}}. Existing assignments are reviewed, never declined automatically.",
+    "allDay": "All day",
+    "start": "Start · {{date}}",
+    "end": "End · {{date}}",
+    "from": "From · {{time}}",
+    "to": "To · {{time}}",
+    "endExclusiveHint": "End date is exclusive: a one-day blockout ends at the following local midnight.",
+    "ambiguousLabel": "If the clock repeats this time",
+    "skippedHint": "A time skipped when the clock moves forward is rejected.",
+    "repeatLabel": "Repeat",
+    "endsLabel": "Ends",
+    "occurrences": "Occurrences",
+    "until": "Until · {{date}}",
+    "monthlySkipHint": "Monthly dates missing from a month are skipped.",
+    "reasonLabel": "Reason (private)",
+    "reasonPlaceholder": "Away for a wedding",
+    "reviewButton": "Review blockout",
+    "reviewHeading": "Review",
+    "occurrenceAllDay": "{{date}} · all day",
+    "occurrenceTimed": "{{date}} · {{time}}",
+    "overlaps_one": "{{count}} existing commitment time overlaps. Its answer will stay unchanged.",
+    "overlaps_other": "{{count}} existing commitment times overlap. Their answers will stay unchanged.",
+    "noOverlaps": "No existing commitments overlap.",
+    "commitment": "{{plan}} · {{time}}",
+    "saveBlockout": "Save blockout",
+    "createSeries": "Create series",
+    "cancelEdit": "Cancel edit"
+  },
+  "responses": {
+    "mixedReplies": "Mixed replies",
+    "mixedTimes": "Mixed times",
+    "noTimes": "Time not set yet — shown by service date",
+    "timeLine": "{{label}} · {{date}}, {{time}}",
+    "timeLineFor": "{{label}} · {{date}}, {{time}} · {{positions}}",
+    "batch": {
+      "review_one": "Review {{count}} pending response",
+      "review_other": "Review {{count}} pending responses",
+      "intro": "Review every position and time before submitting",
+      "timeNotSpecified": "Plan time not specified",
+      "reasonLabel": "Reason for declined times (optional)",
+      "refresh": "Refresh review",
+      "submit": "Submit reviewed responses",
+      "changed": "This request changed. Refresh the review before submitting.",
+      "loadFailed": "Could not prepare the response review.",
+      "saveFailed": "The reviewed responses were not saved."
+    },
+    "reasonTooLong": "Keep the reason under {{max}} characters.",
+    "reasonLabel": "Reason (optional)",
+    "reasonPlaceholder": "Let your scheduler know why",
+    "reasonHint": "Up to {{max}} characters",
+    "schedulerNote": "Note from your scheduler: {{note}}",
+    "yourReason": "Your reason: {{reason}}",
+    "accept": "Accept",
+    "declineConfirm": "Decline {{position}}?",
+    "withdrawOpen": "Withdraw…",
+    "withdrawConfirm": "Withdraw your confirmation for {{position}}?",
+    "withdrawExplain": "Your scheduler will be told. Your other positions on this plan stay as they are. To serve in this position again, a scheduler has to ask you again.",
+    "keep": "Keep",
+    "withdraw": "Withdraw",
+    "askScheduler": "Ask a scheduler if you can serve in this position after all.",
+    "failure": {
+      "stale": "This position changed since you opened it. It has been refreshed — review it and answer again.",
+      "unavailable": "This position is no longer available to you.",
+      "network": "Your answer may not have been saved. Check your connection and try again."
+    }
+  },
+  "notifications": {
+    "unreadCount_one": "{{count}} unread",
+    "unreadCount_other": "{{count}} unread",
+    "allCaughtUp": "All caught up",
+    "description": "Every time you're scheduled, reminded, or someone answers a request you sent.",
+    "markAllRead": "Mark all read",
+    "loading": "Loading notifications",
+    "emptyTitle": "Nothing yet",
+    "emptyDescription": "When you're scheduled onto a plan it lands here, and on your phone if you've allowed notifications.",
+    "unreadItem": "Unread: {{title}}",
+    "bellLabel_zero": "Notifications",
+    "bellLabel_one": "Notifications, {{count}} unread",
+    "bellLabel_other": "Notifications, {{count}} unread"
+  }
+}

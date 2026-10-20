@@ -191,6 +191,11 @@ begin
   if not exists (select 1 from jsonb_array_elements(preview -> 'warnings') w where w ->> 'code' = 'already_applied') then
     raise exception 'second application not flagged as duplicate intent';
   end if;
+  -- i18n: the count behind the sentence travels as a parameter.
+  if not exists (select 1 from jsonb_array_elements(preview -> 'warnings') w
+                  where w ->> 'code' = 'already_applied' and (w #>> '{params,count}')::int = 1) then
+    raise exception 'already_applied notice has no count param: %', preview -> 'warnings';
+  end if;
 end $$;
 
 -- ---------------------------- editing the template never changes the plan --

@@ -24,6 +24,7 @@ export const PERSON_COLUMNS = [
   'email', 'phone', 'phone_carrier', 'address_line1', 'address_line2', 'city', 'state_province',
   'postal_code', 'country', 'campus', 'person_type', 'gender', 'birthdate', 'marital_status',
   'anniversary_date', 'school', 'created_by', 'created_at', 'updated_at', 'archived_at', 'archived_by',
+  'preferred_language',
 ].join(', ');
 
 /** Profile columns an API role may select; contact comes from `member_contacts`. */

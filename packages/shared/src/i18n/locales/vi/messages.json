@@ -1,0 +1,255 @@
+{
+  "messagesPage": {
+    "title": "Tin nhắn",
+    "subtitle": "Tin nhắn công việc từ các trưởng ban. Thư trả lời sẽ gửi đến email của người gửi.",
+    "compose": "Nhắn cho thành viên ban",
+    "tabs": {
+      "sent": "Đã gửi",
+      "received": "Đã nhận"
+    },
+    "empty": {
+      "sentTitle": "Chưa gửi tin nhắn nào",
+      "sentDescription": "Nhắn cho một ban hoặc những người trong chương trình từ thẻ Các ban của chương trình.",
+      "receivedTitle": "Bạn chưa có tin nhắn nào"
+    },
+    "recipients_other": "{{count}} người nhận",
+    "from": "Từ {{name}}",
+    "fromUnknown": "Từ một trưởng ban",
+    "listMeta": "{{summary}} · {{date}}"
+  },
+  "messageDetail": {
+    "notAvailableTitle": "Không xem được tin nhắn",
+    "notAvailableDescription": "Tin nhắn này không được gửi cho bạn, hoặc bạn không còn là thành viên đang hoạt động.",
+    "back": "← Tin nhắn",
+    "fromLine": "Từ {{name}} · {{date}}",
+    "fromLineUnknown": "Từ một trưởng ban · {{date}}",
+    "variablesNote": "Hiển thị đúng như khi soạn; mỗi người nhận đã nhận tin với các biến được điền thông tin của riêng họ.",
+    "recipientsHeading": "Người nhận · {{included}} người được gửi",
+    "recipientsHeadingWithExcluded": "Người nhận · {{included}} người được gửi, {{excluded}} người không được gửi",
+    "retry_other": "Thử gửi lại {{count}} tin lỗi",
+    "requeued_other": "Đã xếp lại {{count}} lượt gửi.",
+    "simulatedNote": "“Mô phỏng” nghĩa là chưa cấu hình nhà cung cấp email — email chưa được gửi. Chỉ có thể gửi lại các lượt gửi bị lỗi hoặc chưa rõ kết quả.",
+    "notSentNoAddress": "Chưa gửi · không có email hoặc tài khoản",
+    "removedBeforeSending": "Đã bỏ ra trước khi gửi",
+    "channelStatus": "{{channel}}: {{status}}"
+  },
+  "audienceReasons": {
+    "team_member": "Thành viên ban",
+    "scheduled_confirmed": "Đã xác nhận",
+    "scheduled_pending": "Đang chờ trả lời",
+    "signup": "Đã đăng ký"
+  },
+  "audienceInclude": {
+    "team_members": "Thành viên ban",
+    "scheduled_confirmed": "Đã xác nhận trong chương trình này",
+    "scheduled_pending": "Chưa trả lời trong chương trình này",
+    "signups": "Đã đăng ký vị trí còn trống"
+  },
+  "delivery": {
+    "channels": {
+      "in_app": "Trong ứng dụng",
+      "push": "Thông báo đẩy",
+      "email": "Email"
+    },
+    "status": {
+      "queued": "Đang chờ gửi",
+      "sending": "Đang gửi",
+      "simulated": "Mô phỏng — chưa gửi",
+      "provider_accepted": "Nhà cung cấp đã nhận",
+      "delivered": "Đã gửi đến",
+      "failed": "Thất bại",
+      "ambiguous": "Chưa rõ kết quả",
+      "skipped": "Không gửi",
+      "cancelled": "Đã hủy"
+    },
+    "errors": {
+      "no_email_address": "Chưa có địa chỉ email",
+      "no_active_device": "Chưa đăng ký thiết bị nào",
+      "recipient_not_eligible": "Không còn được phân công hoặc không còn là thành viên",
+      "scheduler_not_active": "Người phân công không còn hoạt động trong Hội thánh này",
+      "plan_missing": "Chương trình không còn tồn tại",
+      "request_missing": "Yêu cầu lịch rảnh không còn tồn tại",
+      "already_reviewed": "Đã cập nhật lịch rảnh",
+      "provider_rate_limited": "Nhà cung cấp giới hạn tốc độ — sẽ thử lại",
+      "provider_unavailable": "Nhà cung cấp không khả dụng — sẽ thử lại",
+      "provider_rejected": "Nhà cung cấp đã từ chối tin nhắn",
+      "provider_misconfigured": "Nhà cung cấp email bị cấu hình sai",
+      "provider_timeout": "Nhà cung cấp không phản hồi kịp",
+      "outcome_unknown": "Bị gián đoạn khi đang gửi; có thể tin đã được gửi",
+      "worker_lease_expired": "Tiến trình dừng trước khi gửi; sẽ thử lại",
+      "internal_error": "Lỗi không mong muốn",
+      "reminder_obsolete": "Lời nhắc không còn áp dụng vào lúc sắp gửi",
+      "provider_duplicate_key": "Nhà cung cấp đã có một lần gửi trước của tin nhắn này; có thể tin đã được gửi",
+      "content_removed": "Bình luận hoặc tin nhắn đã bị xóa trước khi gửi",
+      "conversation_muted": "Người nhận đã tắt thông báo cuộc trò chuyện này",
+      "channel_not_used": "Không gửi qua kênh này"
+    }
+  },
+  "chatPage": {
+    "title": "Trò chuyện",
+    "subtitle": "Trò chuyện của ban và chương trình.",
+    "openTeamChat": "Mở trò chuyện của ban",
+    "openTeamChatOption": "Mở trò chuyện của ban…",
+    "noConversations": "Chưa có cuộc trò chuyện nào. Hãy mở trò chuyện của ban bạn, hoặc trò chuyện của chương trình từ trang chương trình.",
+    "muted": "Đã tắt thông báo",
+    "reports_other": "{{count}} báo cáo",
+    "unread_other": "{{count}} chưa đọc",
+    "choose": "Chọn một cuộc trò chuyện.",
+    "planConversation": "{{title}} · {{date}}"
+  },
+  "conversation": {
+    "notAvailableTitle": "Không xem được cuộc trò chuyện",
+    "notAvailableDescription": "Cuộc trò chuyện dành cho những người trong ban hoặc chương trình đó. Nếu bạn đã bị gỡ ra, bạn sẽ không đọc được nữa.",
+    "kinds": {
+      "team": "Ban",
+      "plan": "Chương trình"
+    },
+    "openPlan": "Mở chương trình",
+    "searchPlaceholder": "Tìm kiếm…",
+    "searchLabel": "Tìm trong cuộc trò chuyện này",
+    "mute": "Tắt thông báo",
+    "unmute": "Bật thông báo",
+    "reportsHeading": "Báo cáo cần xem xét ({{count}})",
+    "reportLine": "{{reporter}} đã báo cáo {{author}} · {{reason}}",
+    "reportLineNoAuthor": "{{reporter}} đã báo cáo một tin nhắn · {{reason}}",
+    "reportDetails": "“{{details}}”",
+    "alreadyRemoved": "Đã bị xóa",
+    "hideMessage": "Ẩn tin nhắn",
+    "dismiss": "Bỏ qua",
+    "noMatches": "Không có tin nhắn phù hợp.",
+    "noMessages": "Chưa có tin nhắn nào. Hãy chào cả ban nhé.",
+    "hiddenByModerator": "Đã bị người điều hành ẩn",
+    "messageDeleted": "Tin nhắn đã bị xóa",
+    "quote": "{{author}}: {{body}}",
+    "quoteRemoved": "{{author}}: (đã xóa)",
+    "reply": "Trả lời",
+    "report": "Báo cáo",
+    "deleteConfirm": "Xóa tin nhắn này?",
+    "showingLatest_other": "Đang hiển thị {{count}} tin nhắn mới nhất.",
+    "composerPlaceholder": "Nhắn cho {{name}}…",
+    "replyingTo": "Đang trả lời {{name}}",
+    "replyingToUnknown": "Đang trả lời một người",
+    "privacyNote": "Chỉ thành viên hiện tại của ban hoặc chương trình mới đọc được. Tắt thông báo sẽ ngừng gửi thông báo. Tin nhắn riêng và tệp đính kèm hiện chưa hỗ trợ."
+  },
+  "reportModal": {
+    "title": "Báo cáo tin nhắn",
+    "thanks": "Cảm ơn bạn. Người điều hành cuộc trò chuyện sẽ xem xét. Báo cáo lần nữa sẽ không tạo thêm báo cáo thứ hai.",
+    "reason": "Lý do",
+    "reasons": {
+      "spam": "Tin rác",
+      "harassment": "Quấy rối hoặc bắt nạt",
+      "inappropriate": "Nội dung không phù hợp",
+      "safety": "Lo ngại về an toàn",
+      "other": "Lý do khác"
+    },
+    "detailsPlaceholder": "Điều người điều hành cần biết (không bắt buộc)",
+    "submit": "Báo cáo"
+  },
+  "composer": {
+    "mentionsLabel": "Sẽ được thông báo",
+    "removeMention": "Bỏ nhắc tên",
+    "notSent": "Chưa gửi được: {{reason}} Nội dung của bạn vẫn được giữ; gửi lại sẽ không bị đăng hai lần.",
+    "mentionLabel": "Nhắc tên ai đó",
+    "mentionPrompt": "@ Nhắc tên…",
+    "noOneToMention": "Không còn ai để nhắc tên"
+  },
+  "entry": {
+    "edited": "{{time}} · đã chỉnh sửa",
+    "mentionOutcome": "@{{name}}: {{outcome}}",
+    "resolution": {
+      "no_access": "không được thông báo — không có quyền truy cập ở đây",
+      "no_login": "không được thông báo — chưa có tài khoản",
+      "muted": "không được thông báo — đã tắt thông báo"
+    }
+  },
+  "itemDiscussion": {
+    "title": "Thảo luận “{{item}}”",
+    "itemNotes": "Ghi chú của mục",
+    "addNote": "Thêm ghi chú",
+    "noItemNotes": "Không có ghi chú nào của mục này dành cho bạn.",
+    "discussion": "Thảo luận",
+    "unavailable": "Phần thảo luận này dành cho người phụ trách chương trình và những người được phân công trong chương trình.",
+    "showOlder": "Xem bình luận cũ hơn",
+    "noComments": "Chưa có bình luận nào. Hãy đặt câu hỏi hoặc để lại lưu ý cho ban.",
+    "commentDeleted": "Bình luận đã bị xóa",
+    "deleteConfirm": "Xóa bình luận này? Chuỗi thảo luận sẽ giữ một dòng “đã xóa”.",
+    "placeholder": "Viết bình luận…",
+    "submit": "Bình luận",
+    "mentionNote": "Nhắc tên không cấp quyền truy cập; chỉ những người trong chương trình này được thông báo."
+  },
+  "messageComposer": {
+    "templateNamePrompt": "Tên mẫu",
+    "sentTitle": "Đã gửi tin nhắn",
+    "replayed": "Tin nhắn này đã được gửi trước đó; không có gì bị gửi hai lần.",
+    "queued_other": "Đã xếp hàng gửi cho {{count}} người.",
+    "queuedWithExcluded_other": "Đã xếp hàng gửi cho {{count}} người; {{excluded}} người không được gửi.",
+    "outcomesNote": "Kết quả gửi sẽ hiện khi từng kênh hoàn tất.",
+    "viewOutcomes": "Xem kết quả",
+    "planTitle": "Nhắn cho những người trong {{plan}}",
+    "teamTitle": "Nhắn cho thành viên ban",
+    "who": "Người nhận",
+    "limitTeamsHint": "Giới hạn theo ban (không bắt buộc; bắt buộc khi gửi cho thành viên ban):",
+    "teamsLabel": "Các ban:",
+    "previewRecipients": "Xem trước người nhận",
+    "refreshRecipients": "Làm mới người nhận",
+    "staleNotice": "Danh sách người nhận đã thay đổi kể từ lúc xem trước. Chưa có gì được gửi — hãy xem lại danh sách mới rồi gửi lại.",
+    "willReceive_other": "{{count}} người sẽ nhận",
+    "willReceiveWithExcluded_other": "{{count}} người sẽ nhận · {{excluded}} người không được gửi",
+    "nobodyMatches": "Không có ai phù hợp với lựa chọn này.",
+    "includeName": "Gửi cho {{name}}",
+    "unreachable": "Không có email hoặc tài khoản — không thể liên lạc",
+    "appOnly": "Chỉ trong ứng dụng (không có email)",
+    "emailOnly": "Chỉ email",
+    "messageHeading": "Tin nhắn",
+    "templateLabel": "Mẫu",
+    "noTemplate": "Không dùng mẫu",
+    "sharedTemplate": "{{name}} (dùng chung)",
+    "subjectPlaceholder": "Tiêu đề",
+    "bodyPlaceholder": "Viết tin nhắn của bạn…",
+    "variables": {
+      "first_name": "Tên của người nhận",
+      "last_name": "Họ của người nhận",
+      "full_name": "Họ tên đầy đủ của người nhận",
+      "organization_name": "Tên Hội thánh",
+      "plan_title": "Tên chương trình",
+      "plan_date": "Ngày của chương trình",
+      "sender_name": "Tên của bạn"
+    },
+    "unknownVariables_other": "Biến không hợp lệ: {{names}}",
+    "previewFor": "Xem trước cho {{name}}",
+    "repliesNote": "Thư trả lời sẽ gửi đến địa chỉ email của bạn. Chúng không hiển thị trong ứng dụng.",
+    "saveMine": "Lưu thành mẫu của tôi",
+    "saveShared": "Lưu thành mẫu dùng chung",
+    "sendTo_other": "Gửi cho {{count}} người"
+  },
+  "noteEditor": {
+    "editTitle": "Chỉnh sửa ghi chú",
+    "addItemTitle": "Thêm ghi chú cho mục",
+    "addPlanTitle": "Thêm ghi chú cho chương trình",
+    "category": "Danh mục",
+    "general": "Chung",
+    "whoCanRead": "Ai được đọc",
+    "audience": {
+      "organization": "Mọi người trong Hội thánh",
+      "scheduled": "Những người được phân công trong chương trình này",
+      "teams": "Các ban được chọn",
+      "leaders": "Chỉ người phụ trách chương trình"
+    },
+    "audienceHint": "Người phụ trách chương trình luôn đọc được mọi ghi chú. Chỉ ghi chú “Mọi người” hiển thị trên các phiên bản ứng dụng cũ.",
+    "teams": "Các ban",
+    "note": "Ghi chú",
+    "placeholder": "Lưu ý, hậu cần hoặc bất cứ điều gì nhóm người đọc này cần biết.",
+    "deleteConfirm": "Xóa ghi chú này?",
+    "save": "Lưu ghi chú"
+  },
+  "notesPanel": {
+    "title": "Ghi chú",
+    "empty": "Chương trình này chưa có ghi chú nào.",
+    "audienceShort": {
+      "organization": "Mọi người",
+      "scheduled": "Được phân công",
+      "teams": "Các ban",
+      "leaders": "Người phụ trách"
+    }
+  }
+}

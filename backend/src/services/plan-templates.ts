@@ -199,7 +199,7 @@ const resolveApplyTimes = async (
   const timeZone = await organizationTimeZone(ctx);
   const localDate = localDateAt(plan.service_date, timeZone);
   const resolution = resolveTemplateTimes(content.times, localDate, timeZone, input.ambiguous_time);
-  if (!resolution.ok) throw new HttpError(400, resolution.message, 'template_time_unresolvable');
+  if (!resolution.ok) throw new HttpError(400, resolution.message, 'template_time_unresolvable', { problem: resolution.problem });
   return { planId, times: resolution.times };
 };
 
@@ -420,7 +420,7 @@ const rescheduleArgs = async (ctx: PlanTemplateContext, input: ReschedulePreview
     const plan = plans.get(move.plan_id);
     if (!plan) throw HttpError.notFound('Plan not found');
     const shifted = shiftPlanToDate(plan, move.new_date, timeZone, input.ambiguous_time);
-    if (!shifted.ok) throw new HttpError(400, shifted.message, 'reschedule_time_unresolvable');
+    if (!shifted.ok) throw new HttpError(400, shifted.message, 'reschedule_time_unresolvable', { problem: shifted.problem });
     return { plan_id: plan.id, new_local_date: move.new_date, ...shifted.plan };
   });
   return {

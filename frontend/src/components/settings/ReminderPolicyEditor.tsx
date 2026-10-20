@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
-  DELIVERY_CHANNEL_LABELS,
-  REMINDER_KIND_DESCRIPTIONS,
-  REMINDER_KIND_LABELS,
-  REMINDER_POLICY_SOURCE_LABELS,
-  formatReminderOffset,
   isPolicySetAtScope,
   toWallClockInput,
   type DeliveryChannel,
@@ -16,6 +13,7 @@ import {
 import { api } from '../../lib/api';
 import { useInvalidateOrg, useReminderPolicies } from '../../hooks/queries';
 import { Button, ErrorNotice, Spinner } from '../ui';
+import { useFormatters } from '../../i18n';
 
 const CHANNELS: readonly DeliveryChannel[] = ['in_app', 'push', 'email'];
 const KINDS: readonly ReminderKind[] = ['pending_response', 'confirmed_service'];
@@ -40,7 +38,23 @@ interface PolicyFormProps {
 /** Offsets are edited in hours; stored in minutes. */
 const hoursOf = (minutes: number): string => String(Math.round((minutes / 60) * 100) / 100);
 
+/** 1500 → "1 day 1 hour", in the displayed language. */
+const formatOffset = (t: TFunction<'common'>, minutes: number): string => {
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  const parts = [
+    days ? t('duration.days', { count: days }) : '',
+    hours ? t('duration.hours', { count: hours }) : '',
+    mins ? t('duration.minutes', { count: mins }) : '',
+  ].filter(Boolean);
+  return parts.length ? parts.join(' ') : t('duration.minutes', { count: 0 });
+};
+
 const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId, scopeLabel }: PolicyFormProps) => {
+  const { t } = useTranslation(['settings', 'common']);
+  const { t: tCommon } = useTranslation('common');
+  const { list } = useFormatters();
   const invalidate = useInvalidateOrg();
   const [enabled, setEnabled] = useState(effective.enabled);
   const [hours, setHours] = useState(hoursOf(effective.offset_minutes));
@@ -86,16 +100,27 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
 
   return (
     <fieldset className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-      <legend className="px-1 text-sm font-medium">{REMINDER_KIND_LABELS[kind]}</legend>
-      <p className="mb-2 text-sm text-slate-500">{REMINDER_KIND_DESCRIPTIONS[kind]}</p>
+      <legend className="px-1 text-sm font-medium">{t(`reminders.kind.${kind}`)}</legend>
+      <p className="mb-2 text-sm text-slate-500">{t(`reminders.kindDescription.${kind}`)}</p>
       <p className="mb-3 text-sm">
-        In effect: {effective.enabled
-          ? `${formatReminderOffset(effective.offset_minutes)} before, by ${effective.channels.map((c) => DELIVERY_CHANNEL_LABELS[c]).join(', ')}`
-          : 'Off'}
-        {effective.quiet_start && ` · quiet ${toWallClockInput(effective.quiet_start)}–${toWallClockInput(effective.quiet_end)}`}
-        {` · at most ${effective.max_per_day} a day per channel`}
+        {t('reminders.inEffect', {
+          summary: [
+            effective.enabled
+              ? t('reminders.offsetBy', {
+                  offset: formatOffset(tCommon, effective.offset_minutes),
+                  channels: list(effective.channels.map((c) => t(`delivery.channel.${c}`))),
+                })
+              : t('common:states.off'),
+            effective.quiet_start
+              ? t('reminders.quietRange', { start: toWallClockInput(effective.quiet_start), end: toWallClockInput(effective.quiet_end) })
+              : null,
+            t('reminders.maxPerDay', { count: effective.max_per_day }),
+          ]
+            .filter(Boolean)
+            .join(' · '),
+        })}
         <span className="ml-2 text-slate-500">
-          ({isPolicySetAtScope(effective.source, { serviceTypeId, teamId }) ? `Set here for ${scopeLabel}` : REMINDER_POLICY_SOURCE_LABELS[effective.source]})
+          ({isPolicySetAtScope(effective.source, { serviceTypeId, teamId }) ? t('reminders.setHere', { scope: scopeLabel }) : t(`reminders.source.${effective.source}`)})
         </span>
       </p>
 
@@ -103,11 +128,11 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
         <div className="space-y-3 text-sm">
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
-            Send this reminder for {scopeLabel}
+            {t('reminders.sendFor', { scope: scopeLabel })}
           </label>
           <div className="flex flex-wrap items-end gap-4">
             <label className="field">
-              Hours before
+              {t('reminders.hoursBefore')}
               <input
                 className="input w-28"
                 type="number"
@@ -120,7 +145,7 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
               />
             </label>
             <label className="field">
-              Per person per day
+              {t('reminders.perPersonPerDay')}
               <input
                 className="input w-24"
                 type="number"
@@ -131,7 +156,7 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
               />
             </label>
           </div>
-          <div className="flex flex-wrap gap-4" role="group" aria-label="Channels">
+          <div className="flex flex-wrap gap-4" role="group" aria-label={t('reminders.channels')}>
             {CHANNELS.map((channel) => (
               <label key={channel} className="flex items-center gap-2">
                 <input
@@ -140,24 +165,24 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
                   onChange={(e) => setChannels((current) =>
                     e.target.checked ? [...current, channel] : current.filter((c) => c !== channel))}
                 />
-                {DELIVERY_CHANNEL_LABELS[channel]}
+                {t(`delivery.channel.${channel}`)}
               </label>
             ))}
           </div>
           <div className="flex flex-wrap items-end gap-4">
             <label className="flex items-center gap-2 pb-2">
               <input type="checkbox" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} />
-              Quiet hours (organization time zone)
+              {t('reminders.quietHours')}
             </label>
             {quiet && (
               <>
-                <label className="field">From<input className="input" type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} /></label>
-                <label className="field">Until<input className="input" type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)} /></label>
+                <label className="field">{t('reminders.quietFrom')}<input className="input" type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} /></label>
+                <label className="field">{t('reminders.quietUntil')}<input className="input" type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)} /></label>
               </>
             )}
           </div>
-          {invalidOffset && <p className="text-red-600">Choose between 15 minutes and 30 days.</p>}
-          {invalidQuiet && <p className="text-red-600">Quiet hours must start and end at different times.</p>}
+          {invalidOffset && <p className="text-red-600">{t('reminders.invalidOffset')}</p>}
+          {invalidQuiet && <p className="text-red-600">{t('reminders.invalidQuiet')}</p>}
           <ErrorNotice error={save.error ?? reset.error} />
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -165,18 +190,19 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
               disabled={invalidOffset || invalidQuiet || channels.length === 0}
               onClick={() => save.mutate()}
             >
-              Save for {scopeLabel}
+              {t('reminders.saveFor', { scope: scopeLabel })}
             </Button>
             {explicit && (
               <Button variant="ghost" loading={reset.isPending} onClick={() => reset.mutate()}>
-                Use inherited setting
+                {t('reminders.useInherited')}
               </Button>
             )}
-            {save.isSuccess && <span className="text-emerald-600">Saved. Upcoming reminders will be recomputed.</span>}
+            {save.isSuccess && <span className="text-emerald-600">{t('reminders.savedRecomputed')}</span>}
           </div>
         </div>
       ) : (
-        <p className="text-sm text-slate-500">You can see this setting but not change it.</p>
+        <p className="text-sm text-slate-500">{t('reminders.readOnly')}</p>
+
       )}
     </fieldset>
   );

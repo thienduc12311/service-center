@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { RosterTagCatalog } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { keys, useTagCatalog } from '../../hooks/queries';
@@ -16,6 +17,7 @@ export interface TagGroupsModalProps {
  * on people; deleting a group only ungroups its tags.
  */
 export const TagGroupsModal = ({ open, onClose }: TagGroupsModalProps) => {
+  const { t } = useTranslation(['people', 'common']);
   const { organizationId } = useAuth();
   const client = useQueryClient();
   const catalog = useTagCatalog(open);
@@ -45,7 +47,7 @@ export const TagGroupsModal = ({ open, onClose }: TagGroupsModalProps) => {
   const groups = catalog.data?.groups ?? [];
 
   return (
-    <Modal open={open} title="Tags and groups" onClose={onClose}>
+    <Modal open={open} title={t('tagGroups.title')} onClose={onClose}>
       <div className="space-y-4">
         <ErrorNotice error={catalog.error ?? createGroup.error ?? deleteGroup.error ?? setGroup.error} />
         <form
@@ -56,15 +58,15 @@ export const TagGroupsModal = ({ open, onClose }: TagGroupsModalProps) => {
           }}
         >
           <input
-            aria-label="New group name"
+            aria-label={t('tagGroups.newGroupLabel')}
             className="input flex-1"
-            placeholder="New group, e.g. Instruments"
+            placeholder={t('tagGroups.newGroupPlaceholder')}
             maxLength={60}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <Button type="submit" variant="secondary" disabled={!name.trim()} loading={createGroup.isPending}>
-            Add group
+            {t('tagGroups.addGroup')}
           </Button>
         </form>
 
@@ -75,7 +77,7 @@ export const TagGroupsModal = ({ open, onClose }: TagGroupsModalProps) => {
                 {group.name}
                 <button
                   type="button"
-                  aria-label={`Delete group ${group.name}`}
+                  aria-label={t('tagGroups.deleteGroup', { name: group.name })}
                   className="rounded-full px-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
                   onClick={() => deleteGroup.mutate(group.id)}
                 >
@@ -89,7 +91,7 @@ export const TagGroupsModal = ({ open, onClose }: TagGroupsModalProps) => {
         {catalog.isLoading ? (
           <Loading />
         ) : (catalog.data?.tags.length ?? 0) === 0 ? (
-          <p className="text-sm text-slate-500">No tags yet. Add tags on a person’s page or with a bulk change.</p>
+          <p className="text-sm text-slate-500">{t('tagGroups.empty')}</p>
         ) : (
           <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto text-sm dark:divide-slate-800">
             {catalog.data?.tags.map((entry) => (
@@ -97,16 +99,16 @@ export const TagGroupsModal = ({ open, onClose }: TagGroupsModalProps) => {
                 <span className="flex-1">
                   {entry.tag}
                   <span className="ml-2 text-xs text-slate-500">
-                    {entry.people} {entry.people === 1 ? 'person' : 'people'}
+                    {t('common:count.people', { count: entry.people })}
                   </span>
                 </span>
                 <select
-                  aria-label={`Group for ${entry.tag}`}
+                  aria-label={t('tagGroups.groupFor', { tag: entry.tag })}
                   className="input w-40"
                   value={entry.group_id ?? ''}
                   onChange={(e) => setGroup.mutate({ tag: entry.tag, groupId: e.target.value || null })}
                 >
-                  <option value="">No group</option>
+                  <option value="">{t('tagGroups.noGroup')}</option>
                   {groups.map((group) => (
                     <option key={group.id} value={group.id}>
                       {group.name}

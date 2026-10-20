@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { parseDuration, type PlanItemType } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useSongs, useInvalidateOrg } from '../../hooks/queries';
@@ -13,6 +14,7 @@ export interface AddItemModalProps {
 }
 
 export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
+  const { t } = useTranslation(['plans', 'common']);
   const invalidate = useInvalidateOrg();
   const [itemType, setItemType] = useState<PlanItemType>('song');
   const [songQuery, setSongQuery] = useState('');
@@ -32,7 +34,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
     mutationFn: () => {
       return api.addPlanItem(planId, {
         item_type: itemType,
-        title: itemType === 'song' ? (selectedSong?.title ?? 'Song') : title,
+        title: itemType === 'song' ? (selectedSong?.title ?? t('itemKind.song')) : title,
         song_id: itemType === 'song' ? songId : null,
         arrangement_id: itemType === 'song' ? (selectedArrangement?.id ?? null) : null,
         key_override: itemType === 'song' ? mainKey : null,
@@ -59,7 +61,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
   };
 
   return (
-    <Modal open={open} title="Add to the order" onClose={onClose}>
+    <Modal open={open} title={t('addItem.title')} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <div className="flex gap-2">
           {(['song', 'item', 'header'] as const).map((value) => (
@@ -67,11 +69,11 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
               key={value}
               type="button"
               onClick={() => setItemType(value)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium capitalize ${
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                 itemType === value ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'
               }`}
             >
-              {value}
+              {t(`itemKind.${value}`)}
             </button>
           ))}
         </div>
@@ -80,14 +82,14 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
           <>
             <div>
               <label className="label" htmlFor="song-search">
-                Find a song
+                {t('addItem.findSong')}
               </label>
               <input
                 id="song-search"
                 className="input"
                 value={songQuery}
                 onChange={(e) => setSongQuery(e.target.value)}
-                placeholder="Search by title"
+                placeholder={t('addItem.searchPlaceholder')}
               />
             </div>
             <div className="max-h-56 space-y-1 overflow-y-auto">
@@ -114,22 +116,22 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
                 </button>
               ))}
               {songs.data?.data.length === 0 && (
-                <p className="px-3 py-2 text-sm text-slate-400">No songs match that search.</p>
+                <p className="px-3 py-2 text-sm text-slate-400">{t('addItem.noSongs')}</p>
               )}
             </div>
             {selectedSong && (
               <div>
                 <label className="label" htmlFor="song-main-key">
-                  Main key
+                  {t('addItem.mainKey')}
                 </label>
                 <KeySelect
                   id="song-main-key"
                   value={mainKey}
                   onChange={setMainKey}
-                  placeholder="Choose the service key"
+                  placeholder={t('addItem.chooseKey')}
                 />
                 <p className="mt-1 text-xs text-slate-400">
-                  The song book will transpose this chart to the selected key.
+                  {t('addItem.transposeHint')}
                 </p>
               </div>
             )}
@@ -137,14 +139,14 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
         ) : (
           <div>
             <label className="label" htmlFor="item-title">
-              Title
+              {t('addItem.fieldTitle')}
             </label>
             <input
               id="item-title"
               className="input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder={itemType === 'header' ? 'Worship Set' : 'Welcome'}
+              placeholder={itemType === 'header' ? t('addItem.headerPlaceholder') : t('addItem.itemPlaceholder')}
               required
             />
           </div>
@@ -154,7 +156,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
           <>
             <div>
               <label className="label" htmlFor="item-length">
-                Length
+                {t('addItem.length')}
               </label>
               <input
                 id="item-length"
@@ -166,7 +168,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
             </div>
             <div>
               <label className="label" htmlFor="item-notes">
-                Notes
+                {t('addItem.notes')}
               </label>
               <textarea
                 id="item-notes"
@@ -183,10 +185,10 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
           <Button type="submit" loading={create.isPending} disabled={itemType === 'song' && !songId}>
-            Add
+            {t('common:actions.add')}
           </Button>
         </div>
       </form>

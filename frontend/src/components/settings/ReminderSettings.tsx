@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { DELIVERY_CHANNEL_LABELS, type DeliveryChannel, type ReminderPreferences } from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
+import { type DeliveryChannel, type ReminderPreferences } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useInvalidateOrg, useMyReminderPreferences, useServiceTypes } from '../../hooks/queries';
 import { ErrorNotice, Spinner } from '../ui';
@@ -14,23 +15,19 @@ const CHANNELS: readonly DeliveryChannel[] = ['in_app', 'push', 'email'];
  * after any change.
  */
 export const ReminderPolicySettings = () => {
+  const { t } = useTranslation('settings');
   const serviceTypes = useServiceTypes();
   const [serviceTypeId, setServiceTypeId] = useState('');
   const selected = (serviceTypes.data ?? []).find((type) => type.id === serviceTypeId);
 
   return (
     <section className="card p-5">
-      <h2 className="mb-1 font-semibold">Reminders</h2>
-      <p className="mb-4 text-sm text-slate-500">
-        Automatic reminders for unanswered requests and upcoming confirmed services. A team setting overrides its
-        service type, which overrides the organization; without any, Service Center sends one reminder 3 days
-        before an unanswered request and one 1 day before a confirmed person is needed. Reminders stop on their
-        own when someone answers, is removed, or the time changes.
-      </p>
+      <h2 className="mb-1 font-semibold">{t('reminders.title')}</h2>
+      <p className="mb-4 text-sm text-slate-500">{t('reminders.description')}</p>
       <label className="field mb-4">
-        Scope
+        {t('reminders.scope')}
         <select className="input" value={serviceTypeId} onChange={(e) => setServiceTypeId(e.target.value)}>
-          <option value="">Whole organization</option>
+          <option value="">{t('reminders.wholeOrganization')}</option>
           {(serviceTypes.data ?? []).map((type) => (
             <option key={type.id} value={type.id}>{type.name}</option>
           ))}
@@ -39,7 +36,7 @@ export const ReminderPolicySettings = () => {
       <ReminderPolicyEditor
         key={serviceTypeId || 'organization'}
         serviceTypeId={serviceTypeId || null}
-        scopeLabel={selected ? selected.name : 'the organization'}
+        scopeLabel={selected ? selected.name : t('reminders.theOrganization')}
       />
     </section>
   );
@@ -47,6 +44,7 @@ export const ReminderPolicySettings = () => {
 
 /** Everyone: which channels reminders may use for me. Requests themselves are not affected. */
 export const MyReminderSettings = () => {
+  const { t } = useTranslation('settings');
   const preferences = useMyReminderPreferences();
   const invalidate = useInvalidateOrg();
   const save = useMutation({
@@ -56,14 +54,12 @@ export const MyReminderSettings = () => {
 
   return (
     <section className="card p-5">
-      <h2 className="mb-1 font-semibold">My reminders</h2>
-      <p className="mb-4 text-sm text-slate-500">
-        Choose how automatic reminders reach you. New requests and changes are still sent.
-      </p>
+      <h2 className="mb-1 font-semibold">{t('myReminders.title')}</h2>
+      <p className="mb-4 text-sm text-slate-500">{t('myReminders.description')}</p>
       {preferences.isLoading ? (
         <Spinner />
       ) : preferences.data ? (
-        <div className="flex flex-wrap gap-4 text-sm" role="group" aria-label="Reminder channels">
+        <div className="flex flex-wrap gap-4 text-sm" role="group" aria-label={t('myReminders.channels')}>
           {CHANNELS.map((channel) => (
             <label key={channel} className="flex items-center gap-2">
               <input
@@ -72,15 +68,16 @@ export const MyReminderSettings = () => {
                 disabled={save.isPending}
                 onChange={(e) => save.mutate({ ...preferences.data!, [channel]: e.target.checked })}
               />
-              {DELIVERY_CHANNEL_LABELS[channel]}
+              {t(`delivery.channel.${channel}`)}
             </label>
           ))}
-          {save.isSuccess && <span className="text-emerald-600">Saved.</span>}
+          {save.isSuccess && <span className="text-emerald-600">{t('settingsPage.saved')}</span>}
         </div>
       ) : null}
       <ErrorNotice error={preferences.error ?? save.error} />
       {preferences.data && !preferences.data.email && !preferences.data.push && !preferences.data.in_app && (
-        <p className="mt-2 text-sm text-amber-700">You will not receive automatic reminders.</p>
+        <p className="mt-2 text-sm text-amber-700">{t('myReminders.none')}</p>
+
       )}
     </section>
   );

@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from 'react-i18next';
 import { Button } from '../ui';
 import type { ServiceTimeDraft } from './types';
 
@@ -19,6 +20,7 @@ export const emptyServiceTime = (like?: ServiceTimeDraft): ServiceTimeDraft => (
 });
 
 export const TimesStep = ({ serviceTypeName, times, onChange }: TimesStepProps) => {
+  const { t } = useTranslation('teams');
   const update = (id: string, patch: Partial<ServiceTimeDraft>) =>
     onChange(times.map((time) => (time.id === id ? { ...time, ...patch } : time)));
 
@@ -26,11 +28,15 @@ export const TimesStep = ({ serviceTypeName, times, onChange }: TimesStepProps) 
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-          Set up your service times
+          {t('timesStep.title')}
         </h1>
         <p className="mt-3 text-slate-600">
-          When can people attend <strong className="font-semibold">{serviceTypeName}</strong>? Add
-          the service time(s) for the first date you would like to plan below.
+          <Trans
+            t={t}
+            i18nKey="timesStep.intro"
+            values={{ name: serviceTypeName }}
+            components={[<strong key="name" className="font-semibold" />]}
+          />
         </p>
       </div>
 
@@ -42,25 +48,25 @@ export const TimesStep = ({ serviceTypeName, times, onChange }: TimesStepProps) 
           >
             <input
               type="date"
-              aria-label={`Date for service time ${index + 1}`}
+              aria-label={t('timesStep.dateFor', { number: index + 1 })}
               className="input flex-1 sm:min-w-56"
               value={time.date}
               onChange={(event) => update(time.id, { date: event.target.value })}
               required
             />
-            <span className="text-sm text-slate-500">from</span>
+            <span className="text-sm text-slate-500">{t('timesStep.from')}</span>
             <input
               type="time"
-              aria-label={`Start time for service time ${index + 1}`}
+              aria-label={t('timesStep.startFor', { number: index + 1 })}
               className="input w-32"
               value={time.from}
               onChange={(event) => update(time.id, { from: event.target.value })}
               required
             />
-            <span className="text-sm text-slate-500">to</span>
+            <span className="text-sm text-slate-500">{t('timesStep.to')}</span>
             <input
               type="time"
-              aria-label={`End time for service time ${index + 1}`}
+              aria-label={t('timesStep.endFor', { number: index + 1 })}
               className="input w-32"
               value={time.to}
               onChange={(event) => update(time.id, { to: event.target.value })}
@@ -69,7 +75,7 @@ export const TimesStep = ({ serviceTypeName, times, onChange }: TimesStepProps) 
             {times.length > 1 && (
               <button
                 type="button"
-                aria-label={`Remove service time ${index + 1}`}
+                aria-label={t('timesStep.removeFor', { number: index + 1 })}
                 onClick={() => onChange(times.filter((candidate) => candidate.id !== time.id))}
                 className="px-1 text-lg text-slate-400 hover:text-rose-500"
               >
@@ -86,13 +92,12 @@ export const TimesStep = ({ serviceTypeName, times, onChange }: TimesStepProps) 
           variant="secondary"
           onClick={() => onChange([...times, emptyServiceTime(times.at(-1))])}
         >
-          + Add another service time
+          {t('timesStep.addAnother')}
         </Button>
       </div>
 
       <p className="text-center text-sm text-slate-400">
-        *If your service happens at 9am and 11am, add both times here. Do not add rehearsals or
-        other times.
+        {t('timesStep.footnote')}
       </p>
     </div>
   );

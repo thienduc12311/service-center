@@ -1,0 +1,239 @@
+{
+  "timeKind": {
+    "service": "Buổi nhóm",
+    "rehearsal": "Buổi tập",
+    "other": "Thời gian"
+  },
+  "eventKind": {
+    "service": "Buổi nhóm",
+    "rehearsal": "Buổi tập",
+    "other": "Khác"
+  },
+  "mySchedule": {
+    "title": "Lịch của tôi",
+    "subtitle": "Tất cả những việc bạn được mời phục vụ.",
+    "mobileDescription": "Mọi chương trình bạn tham gia, cùng từng vị trí của bạn.",
+    "includePast": "Bao gồm lịch đã qua",
+    "accept": "Nhận",
+    "timeLine": "{{label}} · {{date}} {{time}}",
+    "emptyTitle": "Bạn chưa được phân công việc nào",
+    "emptyDescription": "Khi người phân công thêm bạn vào một chương trình, chương trình đó sẽ hiện ở đây và bạn có thể nhận hoặc từ chối.",
+    "loading": "Đang tải lịch của bạn",
+    "window": {
+      "upcoming": "Sắp tới",
+      "history": "Đã qua"
+    },
+    "filter": {
+      "pending": "Chờ trả lời",
+      "confirmed": "Đã xác nhận",
+      "declined": "Đã từ chối"
+    },
+    "emptyFilter": {
+      "pending": "Không có phân công nào đang chờ bạn trả lời.",
+      "confirmed": "Bạn chưa xác nhận vị trí nào ở đây.",
+      "declined": "Bạn chưa từ chối vị trí nào ở đây."
+    },
+    "summary_other": "{{count}} sắp tới",
+    "summaryAwaiting_other": "{{count}} sắp tới · {{awaiting}} đang chờ bạn trả lời",
+    "noMatchingTitle": "Không có chương trình phù hợp",
+    "noPastTitle": "Chưa có chương trình đã qua",
+    "noPastDescription": "Các chương trình bạn đã phục vụ trong năm qua sẽ hiện ở đây.",
+    "nothingScheduledTitle": "Chưa có lịch",
+    "nothingScheduledDescription": "Khi có người phân công bạn vào một chương trình, chương trình đó sẽ hiện ở đây và bạn có thể nhận hoặc từ chối ngay trên màn hình này.",
+    "openPlan": "Mở {{title}}",
+    "positions_other": "{{count}} vị trí"
+  },
+  "calendar": {
+    "title": "Lịch",
+    "subtitle": "Các buổi nhóm và buổi tập của mọi ban.",
+    "view": {
+      "month": "Tháng",
+      "agenda": "Danh sách"
+    },
+    "onlyMine": "Chỉ của tôi",
+    "filterByTeam": "Lọc theo ban",
+    "allTeams": "Tất cả các ban",
+    "previousMonth": "Tháng trước",
+    "nextMonth": "Tháng sau",
+    "updating": "Đang cập nhật…",
+    "moreEvents_other": "+{{count}} mục khác",
+    "emptyMonth": "Tháng này chưa có lịch",
+    "scope": {
+      "all": "Mọi người",
+      "mine": "Chỉ tôi"
+    },
+    "openMonthTitle": "Tháng này còn trống",
+    "openMonthDescription": "Chưa có gì trên lịch cho {{month}}."
+  },
+  "layers": {
+    "legend": "Lớp hiển thị",
+    "chooseTeam": "Chọn một ban để hiện các lớp",
+    "label": {
+      "blockouts": "Ngày bận",
+      "birthdays": "Sinh nhật",
+      "anniversaries": "Kỷ niệm"
+    },
+    "event": {
+      "blockouts": "Bận: {{name}}",
+      "birthdays": "Sinh nhật: {{name}}",
+      "anniversaries": "Kỷ niệm: {{name}}"
+    }
+  },
+  "feeds": {
+    "heading": "Lịch đăng ký theo ban và loại buổi nhóm",
+    "help": "Đăng ký trong Google, Apple hoặc Outlook Calendar. Ứng dụng lịch của bạn tự quyết định tần suất làm mới (thường vài giờ một lần), nên thay đổi vào phút chót có thể chưa hiện ngay. Quyền truy cập được kiểm tra mỗi lần làm mới.",
+    "newFeed": "Lịch đăng ký mới",
+    "empty": "Chưa có lịch đăng ký nào.",
+    "fallbackName": "Lịch đăng ký",
+    "scopeTeam": "ban",
+    "scopeServiceType": "loại buổi nhóm",
+    "withRehearsals": "kèm buổi tập",
+    "newLink": "Tạo liên kết mới",
+    "createTitle": "Lịch đăng ký mới",
+    "scopeLabel": "Phạm vi",
+    "scopeOption": {
+      "team": "Một ban (thành viên trong ban, hoặc các ban tôi phân công)",
+      "service_type": "Một loại buổi nhóm (các chương trình đã công bố)"
+    },
+    "teamLabel": "Ban",
+    "serviceTypeLabel": "Loại buổi nhóm",
+    "choose": "Chọn…",
+    "includeRehearsals": "Bao gồm buổi tập",
+    "layersHint": "Các lớp (chỉ gồm những gì bạn được phép xem)",
+    "nameLabel": "Tên (không bắt buộc)",
+    "linkTitle": "Liên kết lịch đăng ký của bạn",
+    "linkOnce": "Hãy sao chép ngay — liên kết chỉ hiện một lần. Bất kỳ ai có liên kết này đều xem được lịch, vì vậy hãy giữ kín.",
+    "urlLabel": "URL lịch đăng ký",
+    "openInApp": "Mở trong ứng dụng lịch của tôi"
+  },
+  "blockoutSeries": {
+    "notFound": "Không tìm thấy ngày bận lặp lại.",
+    "backToSettings": "Quay lại cài đặt",
+    "backToSettingsArrow": "← Quay lại cài đặt",
+    "title": "Quản lý ngày bận lặp lại",
+    "subtitle": {
+      "weekly": "Hằng tuần, theo múi giờ {{timezone}}",
+      "monthly": "Hằng tháng, theo múi giờ {{timezone}}"
+    },
+    "changeLabel": "Thay đổi",
+    "scope": {
+      "occurrence": "Chỉ lần này",
+      "future": "Lần này và các lần sau",
+      "series": "Toàn bộ chuỗi"
+    },
+    "occurrenceLabel": "Lần",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc",
+    "endDateExclusive": "Ngày kết thúc (không tính ngày này)",
+    "startTime": "Giờ bắt đầu",
+    "endTime": "Giờ kết thúc",
+    "reason": "Lý do",
+    "save": {
+      "occurrence": "Lưu thay đổi",
+      "future": "Lưu thay đổi",
+      "series": "Lưu chuỗi"
+    },
+    "delete": {
+      "occurrence": "Xóa lần này",
+      "future": "Xóa lần này và các lần sau",
+      "series": "Xóa chuỗi"
+    },
+    "savedOccurrences": "Các lần đã lưu",
+    "occurrenceAllDay": "{{date}} · cả ngày",
+    "occurrenceTimed": "{{date}} · {{start}}–{{end}}"
+  },
+  "blockoutForm": {
+    "repeat": {
+      "none": "Một lần",
+      "weekly": "Hằng tuần",
+      "monthly": "Hằng tháng"
+    },
+    "endKind": {
+      "count": "Sau số lần",
+      "until": "Đến ngày"
+    },
+    "ambiguous": {
+      "earlier": "Lần sớm hơn",
+      "later": "Lần muộn hơn"
+    },
+    "errors": {
+      "count": "Chọn từ 1 đến 120 lần.",
+      "invalid": "Vui lòng kiểm tra lại thông tin ngày bận."
+    },
+    "description": "Múi giờ của Hội thánh: {{timezone}}. Các phân công hiện có sẽ được xem lại, không bao giờ bị tự động từ chối.",
+    "allDay": "Cả ngày",
+    "start": "Bắt đầu · {{date}}",
+    "end": "Kết thúc · {{date}}",
+    "from": "Từ · {{time}}",
+    "to": "Đến · {{time}}",
+    "endExclusiveHint": "Ngày kết thúc không được tính: ngày bận một ngày sẽ kết thúc lúc nửa đêm hôm sau theo giờ địa phương.",
+    "ambiguousLabel": "Nếu giờ này lặp lại khi đổi giờ",
+    "skippedHint": "Giờ bị bỏ qua khi đồng hồ chỉnh tiến sẽ không được chấp nhận.",
+    "repeatLabel": "Lặp lại",
+    "endsLabel": "Kết thúc",
+    "occurrences": "Số lần",
+    "until": "Đến · {{date}}",
+    "monthlySkipHint": "Nếu tháng không có ngày đó, lần lặp hằng tháng sẽ được bỏ qua.",
+    "reasonLabel": "Lý do (riêng tư)",
+    "reasonPlaceholder": "Đi dự đám cưới",
+    "reviewButton": "Xem lại ngày bận",
+    "reviewHeading": "Xem lại",
+    "occurrenceAllDay": "{{date}} · cả ngày",
+    "occurrenceTimed": "{{date}} · {{time}}",
+    "overlaps_other": "Có {{count}} thời gian phân công hiện có bị trùng. Câu trả lời của bạn cho các phân công đó vẫn giữ nguyên.",
+    "noOverlaps": "Không có phân công hiện có nào bị trùng.",
+    "commitment": "{{plan}} · {{time}}",
+    "saveBlockout": "Lưu ngày bận",
+    "createSeries": "Tạo chuỗi",
+    "cancelEdit": "Hủy chỉnh sửa"
+  },
+  "responses": {
+    "mixedReplies": "Trả lời khác nhau",
+    "mixedTimes": "Thời gian khác nhau",
+    "noTimes": "Chưa có giờ — hiển thị theo ngày buổi nhóm",
+    "timeLine": "{{label}} · {{date}}, {{time}}",
+    "timeLineFor": "{{label}} · {{date}}, {{time}} · {{positions}}",
+    "batch": {
+      "review_other": "Xem lại {{count}} phân công đang chờ trả lời",
+      "intro": "Xem lại từng vị trí và thời gian trước khi gửi",
+      "timeNotSpecified": "Chưa có giờ trong chương trình",
+      "reasonLabel": "Lý do từ chối (không bắt buộc)",
+      "refresh": "Tải lại phần xem lại",
+      "submit": "Gửi các câu trả lời",
+      "changed": "Yêu cầu này đã thay đổi. Hãy tải lại phần xem lại trước khi gửi.",
+      "loadFailed": "Không thể chuẩn bị phần xem lại câu trả lời.",
+      "saveFailed": "Chưa lưu được các câu trả lời."
+    },
+    "reasonTooLong": "Lý do không được dài quá {{max}} ký tự.",
+    "reasonLabel": "Lý do (không bắt buộc)",
+    "reasonPlaceholder": "Cho người phân công biết lý do",
+    "reasonHint": "Tối đa {{max}} ký tự",
+    "schedulerNote": "Ghi chú từ người phân công: {{note}}",
+    "yourReason": "Lý do của bạn: {{reason}}",
+    "accept": "Nhận",
+    "declineConfirm": "Từ chối {{position}}?",
+    "withdrawOpen": "Rút lại…",
+    "withdrawConfirm": "Rút lại xác nhận của bạn cho {{position}}?",
+    "withdrawExplain": "Người phân công sẽ được thông báo. Các vị trí khác của bạn trong chương trình này vẫn giữ nguyên. Để phục vụ lại ở vị trí này, người phân công cần mời bạn lần nữa.",
+    "keep": "Giữ nguyên",
+    "withdraw": "Rút lại",
+    "askScheduler": "Hãy hỏi người phân công nếu bạn vẫn có thể phục vụ ở vị trí này.",
+    "failure": {
+      "stale": "Vị trí này đã thay đổi từ lúc bạn mở. Thông tin đã được làm mới — hãy xem lại và trả lời lần nữa.",
+      "unavailable": "Vị trí này không còn dành cho bạn.",
+      "network": "Câu trả lời của bạn có thể chưa được lưu. Hãy kiểm tra kết nối và thử lại."
+    }
+  },
+  "notifications": {
+    "unreadCount_other": "{{count}} chưa đọc",
+    "allCaughtUp": "Bạn đã xem hết",
+    "description": "Mỗi khi bạn được phân công, được nhắc lịch, hoặc có người trả lời yêu cầu bạn đã gửi.",
+    "markAllRead": "Đánh dấu tất cả đã đọc",
+    "loading": "Đang tải thông báo",
+    "emptyTitle": "Chưa có gì",
+    "emptyDescription": "Khi bạn được phân công vào một chương trình, thông báo sẽ hiện ở đây, và trên điện thoại nếu bạn đã cho phép thông báo.",
+    "unreadItem": "Chưa đọc: {{title}}",
+    "bellLabel_zero": "Thông báo",
+    "bellLabel_other": "Thông báo, {{count}} chưa đọc"
+  }
+}

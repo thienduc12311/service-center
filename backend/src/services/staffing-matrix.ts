@@ -12,11 +12,25 @@ import {
   type StaffingMatrixPreview,
   type StaffingMatrixPreviewItem,
   type StaffingMatrixQueryInput,
+  type PreferenceWarning,
+  type StaffingMatrixWarning,
 } from '@service-center/shared';
 import { raw, unwrap } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { checkConflicts } from './attendance.js';
 import { preferenceWarnings } from './availability.js';
+
+/** The English sentence older clients show for a structured preview warning. */
+const matrixWarningEnglish = (warning: StaffingMatrixWarning): string => {
+  switch (warning.kind) {
+    case 'preference':
+      return warning.warning.detail;
+    case 'copy_resets_answers':
+      return 'Answers and delivery timestamps will be reset on the copied request.';
+    case 'team_unavailable':
+      return 'The selected team is unavailable.';
+  }
+};
 
 interface MatrixTeamRow { id: string; name: string; service_type_id: string | null }
 interface MatrixNeedRow {
@@ -222,7 +236,7 @@ export const previewStaffingMatrix = async (req: Request, actions: readonly Staf
   const checked = await checkConflicts({ db: req.db, orgId: req.orgId }, candidates);
   const conflictsByIndex = new Map<string, AttendanceConflict[]>();
   for (const conflict of checked.conflicts) conflictsByIndex.set(conflict.candidate_key, [...(conflictsByIndex.get(conflict.candidate_key) ?? []), conflict]);
-  const preferenceWarningsByIndex = new Map<number, string[]>();
+  const preferenceWarningsByIndex = new Map<number, PreferenceWarning[]>();
   for (const [index, action] of actions.entries()) {
     if (action.kind !== 'assign' && action.kind !== 'copy') continue;
     const source = action.kind === 'copy' ? byAssignment.get(action.source_assignment_id) : null;
@@ -236,7 +250,7 @@ export const previewStaffingMatrix = async (req: Request, actions: readonly Staf
       { db: req.db, orgId: req.orgId, userId: req.auth.userId, access: req.access },
       { plan_id: planId, team_id: selectedTeamId, person_ids: [personId], plan_time_ids: selectedTimeIds },
     );
-    preferenceWarningsByIndex.set(index, warnings.map((warning) => warning.detail));
+    preferenceWarningsByIndex.set(index, warnings);
   }
 
   const items: StaffingMatrixPreviewItem[] = actions.map((action, index) => {
@@ -245,13 +259,15 @@ export const previewStaffingMatrix = async (req: Request, actions: readonly Staf
     const planId = action.kind === 'copy' ? action.destination_plan_id : action.plan_id;
     const notify = (action.kind === 'assign' || action.kind === 'copy' || action.kind === 'release') && action.notify;
     const released = action.kind === 'release' || ((action.kind === 'assign' || action.kind === 'copy') && action.visibility === 'released');
-    const warnings = [...(preferenceWarningsByIndex.get(index) ?? [])];
-    if (action.kind === 'copy') warnings.push('Answers and delivery timestamps will be reset on the copied request.');
-    if (action.kind === 'assign' && !teamName.has(action.team_id)) warnings.push('The selected team is unavailable.');
+    const warningDetails: StaffingMatrixWarning[] = (preferenceWarningsByIndex.get(index) ?? [])
+      .map((warning) => ({ kind: 'preference', warning }));
+    if (action.kind === 'copy') warningDetails.push({ kind: 'copy_resets_answers' });
+    if (action.kind === 'assign' && !teamName.has(action.team_id)) warningDetails.push({ kind: 'team_unavailable' });
+    const warnings = warningDetails.map(matrixWarningEnglish);
     return { index, action, person_id: personId, person_name: personName.get(personId) ?? 'Person',
       plan_id: planId, plan_title: plans.find((plan) => plan.id === planId)?.title ?? 'Plan',
       delivery_intent: notify && released ? 'assignment_request' : 'none',
-      conflicts: conflictsByIndex.get(String(index)) ?? [], warnings };
+      conflicts: conflictsByIndex.get(String(index)) ?? [], warnings, warning_details: warningDetails };
   });
   const base_revisions: StaffingMatrixPlanRevision[] = plans
     .map((plan) => ({ plan_id: plan.id, staffing_revision: plan.staffing_revision })).sort((a, b) => a.plan_id.localeCompare(b.plan_id));

@@ -1,8 +1,10 @@
+import { LanguageSelector, useFormatters } from '../../src/i18n';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import { formatDate, isAdmin, STORAGE_BUCKETS, type BlockoutRow } from '@service-center/shared';
+import { isAdmin, STORAGE_BUCKETS, type BlockoutRow } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { supabase } from '../../src/lib/supabase';
@@ -30,12 +32,16 @@ import type { ColorSchemeName, Theme } from '../../src/lib/theme';
 import { useColorSchemeControl, useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { env } from '../../src/lib/env';
 
-const SCHEMES: readonly SegmentOption<ColorSchemeName>[] = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-];
-
 export default function ProfileScreen() {
+  const { t } = useTranslation(['settings', 'common']);
+  const { calendarDate, date } = useFormatters();
+  const schemes = useMemo<readonly SegmentOption<ColorSchemeName>[]>(
+    () => [
+      { value: 'light', label: t('profile.appearance.light') },
+      { value: 'dark', label: t('profile.appearance.dark') },
+    ],
+    [t],
+  );
   const {
     user,
     role,
@@ -74,7 +80,7 @@ export default function ProfileScreen() {
       if (!isCurrentGeneration(generation)) return;
       await refreshUser();
       if (!isCurrentGeneration(generation)) return;
-      Alert.alert('Saved', 'Your profile has been updated.');
+      Alert.alert(t('profile.savedTitle'), t('profile.savedMessage'));
     },
   });
 
@@ -127,7 +133,7 @@ export default function ProfileScreen() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!isCurrentGeneration(generation)) return;
     if (!permission.granted) {
-      Alert.alert('Permission needed', 'Allow photo access to choose a logo.');
+      Alert.alert(t('profile.photoPermissionTitle'), t('profile.photoPermissionMessage'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -197,11 +203,13 @@ export default function ProfileScreen() {
             ) : (
               <Avatar name={user?.profile.full_name ?? user?.profile.email} size={64} />
             )}
-            <Text style={styles.name}>{user?.profile.full_name ?? 'Your profile'}</Text>
+            <Text style={styles.name}>{user?.profile.full_name ?? t('profile.yourProfile')}</Text>
             <Text style={styles.email}>{user?.profile.email}</Text>
             {organization ? (
               <Text style={styles.membership}>
-                {`${organization.name}${role ? ` · ${role}` : ''}`}
+                {role
+                  ? t('common:format.nameWithRole', { name: organization.name, role: t(`common:roles.${role}`) })
+                  : organization.name}
               </Text>
             ) : null}
           </View>
@@ -209,33 +217,38 @@ export default function ProfileScreen() {
 
         <Reveal index={1}>
           <Card>
-            <Label>Your details</Label>
-            <Field label="Full name" value={fullName} onChangeText={setFullName} placeholder="Full name" />
+            <Label>{t('profile.yourDetails')}</Label>
+            <Field label={t('settingsPage.profile.fullName')} value={fullName} onChangeText={setFullName} placeholder={t('settingsPage.profile.fullName')} />
             <Field
-              label="Phone"
+              label={t('settingsPage.profile.phone')}
               value={phone}
               onChangeText={setPhone}
-              placeholder="Optional"
+              placeholder={t('common:states.optional')}
               keyboardType="phone-pad"
             />
             <ErrorNotice error={save.error} />
-            <Button title="Save changes" onPress={() => save.mutate()} loading={save.isPending} />
+            <Button title={t('common:actions.saveChanges')} onPress={() => save.mutate()} loading={save.isPending} />
           </Card>
         </Reveal>
 
         <Reveal index={2}>
           <Card>
-            <Label>Appearance</Label>
-            <Text style={styles.body}>
-              A light page for planning at a desk, a dark one for a dim stage.
-            </Text>
-            <SegmentedControl options={SCHEMES} value={scheme} onChange={setScheme} />
+            <Label>Language / Ngôn ngữ</Label>
+            <LanguageSelector organizationName={organization?.name} />
+          </Card>
+        </Reveal>
+
+        <Reveal index={2}>
+          <Card>
+            <Label>{t('profile.appearance.title')}</Label>
+            <Text style={styles.body}>{t('profile.appearance.description')}</Text>
+            <SegmentedControl options={schemes} value={scheme} onChange={setScheme} />
           </Card>
         </Reveal>
 
         <Reveal index={3}>
           <Card>
-            <Label>Blockout dates</Label>
+            <Label>{t('blockouts.title')}</Label>
             <BlockoutForm
               editing={editingBlockout}
               onSaved={async () => { setEditingBlockout(null); await refreshBlockouts(); }}
@@ -251,8 +264,20 @@ export default function ProfileScreen() {
                     <View style={styles.blockout}>
                       <View style={styles.flex}>
                         <Text style={styles.blockoutRange}>
-                          {blockout.local_start_date ?? formatDate(blockout.starts_at)}
-                          {blockout.all_day ? ' · all day' : blockout.local_start_time ? ` · ${blockout.local_start_time.slice(0, 5)}–${blockout.local_end_time?.slice(0, 5)}` : ` – ${formatDate(blockout.ends_at)}`}
+                          {blockout.all_day
+                            ? t('blockouts.occurrenceAllDay', {
+                                date: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
+                              })
+                            : blockout.local_start_time
+                              ? t('blockouts.rowTimes', {
+                                  date: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
+                                  start: blockout.local_start_time.slice(0, 5),
+                                  end: blockout.local_end_time?.slice(0, 5) ?? '',
+                                })
+                              : t('common:format.dateRange', {
+                                  start: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
+                                  end: date(blockout.ends_at),
+                                })}
                         </Text>
                         {blockout.reason ? (
                           <Text style={styles.blockoutReason}>{blockout.reason}</Text>
@@ -260,16 +285,18 @@ export default function ProfileScreen() {
                       </View>
                       {blockout.series_id ? (
                         <Button
-                          title="Manage on website"
+                          title={t('profile.manageOnWebsite')}
                           variant="quiet"
                           onPress={() => void Linking.openURL(`${env.webAppDomain ? `https://${env.webAppDomain}` : 'http://localhost:5173'}/settings/blockouts/${blockout.series_id}`)}
                         />
                       ) : (
                         <View style={styles.blockoutActions}>
-                          <Button title="Edit" variant="quiet" onPress={() => setEditingBlockout(blockout)} />
+                          <Button title={t('common:actions.edit')} variant="quiet" onPress={() => setEditingBlockout(blockout)} />
                           <IconButton
                             name="trash"
-                            accessibilityLabel={`Remove blockout from ${blockout.local_start_date ?? formatDate(blockout.starts_at)}`}
+                            accessibilityLabel={t('profile.removeBlockout', {
+                              date: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
+                            })}
                             onPress={() => removeBlockout.mutate(blockout)}
                           />
                         </View>
@@ -279,7 +306,7 @@ export default function ProfileScreen() {
                 ))}
               </View>
             ) : (
-              <Text style={styles.body}>You have no blockout dates.</Text>
+              <Text style={styles.body}>{t('profile.noBlockouts')}</Text>
             )}
           </Card>
         </Reveal>
@@ -287,7 +314,7 @@ export default function ProfileScreen() {
         {memberships.length > 1 ? (
           <Reveal index={4}>
             <Card>
-              <Label>Switch organization</Label>
+              <Label>{t('common:nav.switchOrganization')}</Label>
               {memberships.map((membership) => (
                 <Button
                   key={membership.organization.id}
@@ -304,13 +331,11 @@ export default function ProfileScreen() {
 
         <Reveal index={5}>
           <Card>
-            <Label>Organizations</Label>
-            <Text style={styles.body}>
-              Start another church or ministry whenever you need one — you stay signed in to both.
-            </Text>
+            <Label>{t('profile.organizations.title')}</Label>
+            <Text style={styles.body}>{t('profile.organizations.description')}</Text>
             {isAdmin(role) ? (
               <Button
-                title={uploadingLogo ? 'Uploading' : 'Change the logo'}
+                title={uploadingLogo ? t('organization.uploading') : t('profile.organizations.changeLogo')}
                 icon="image"
                 variant="secondary"
                 onPress={() => void updateLogo()}
@@ -318,14 +343,14 @@ export default function ProfileScreen() {
               />
             ) : null}
             <Field
-              label="New organization"
+              label={t('organization.new')}
               value={newOrganizationName}
               onChangeText={setNewOrganizationName}
-              placeholder="Grace Community Church"
+              placeholder={t('profile.organizations.namePlaceholder')}
             />
             <ErrorNotice error={organizationError} />
             <Button
-              title="Create organization"
+              title={t('organization.create')}
               onPress={() => void createOrganization()}
               loading={creatingOrganization}
               disabled={newOrganizationName.trim().length < 2}
@@ -337,7 +362,8 @@ export default function ProfileScreen() {
           <View style={styles.signOut}>
             <ErrorNotice error={signOutError} />
             <Button
-              title="Sign out"
+              title={t('common:actions.signOut')}
+
               icon="signOut"
               variant="danger"
               loading={signingOut}

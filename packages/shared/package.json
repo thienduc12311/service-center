@@ -19,9 +19,11 @@
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "rm -rf dist",
-    "test": "vitest run"
+    "test": "vitest run",
+    "i18n:check": "npm run build && node scripts/check-catalogs.mjs"
   },
   "dependencies": {
+    "i18next": "^26.4.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
-  CHART_NOTATION_LABELS,
   canTransposeChartContext,
   parseChordPro,
   renderChartContext,
@@ -15,6 +15,7 @@ import {
   type PlanDetail,
   type PlanItemDetail,
   type SongWithArrangements,
+  type TranslationKey,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
@@ -39,9 +40,15 @@ import { Reveal } from '../../src/components/motion';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
-const NOTATIONS: readonly SegmentOption<ChartNotation>[] = (
-  ['chords', 'numbers', 'numerals', 'lyrics'] as const
-).map((notation) => ({ value: notation, label: CHART_NOTATION_LABELS[notation] }));
+const NOTATION_ORDER: readonly ChartNotation[] = ['chords', 'numbers', 'numerals', 'lyrics'];
+
+/** Catalog keys for the notation names, by value (replaces CHART_NOTATION_LABELS for display). */
+const NOTATION_LABEL_KEYS: Readonly<Record<ChartNotation, TranslationKey<'songs'>>> = {
+  chords: 'notation.chords',
+  numbers: 'notation.numbers',
+  numerals: 'notation.numerals',
+  lyrics: 'notation.lyrics',
+};
 
 /** Route params as they arrive: untrusted, and possibly repeated. */
 interface SongRouteParams {
@@ -58,37 +65,31 @@ type ChartRoute =
 
 type ChartUnavailableReason = ChartContextUnavailableReason | 'invalid_link' | 'item_missing';
 
-const UNAVAILABLE_COPY: Record<ChartUnavailableReason, { title: string; description: string }> = {
-  invalid_link: {
-    title: 'This chart link isn’t valid',
-    description: 'Open the song again from its plan or the song library.',
-  },
-  item_missing: {
-    title: 'This item is no longer in the plan',
-    description: 'It may have been removed or replaced. Open the plan again to see its current order.',
-  },
-  not_a_song: {
-    title: 'This plan item isn’t a song',
-    description: 'Open the plan again to see its current order.',
-  },
-  song_mismatch: {
-    title: 'This plan item is a different song',
-    description: 'The plan has changed since this link was opened. Open the plan again.',
-  },
+/** The catalog keys of an empty state's title and description. */
+interface EmptyCopyKeys {
+  title: TranslationKey<'songs'>;
+  description: TranslationKey<'songs'>;
+}
+
+const UNAVAILABLE_COPY: Record<ChartUnavailableReason, EmptyCopyKeys> = {
+  invalid_link: { title: 'mobileChart.unavailable.invalidLink.title', description: 'mobileChart.unavailable.invalidLink.description' },
+  item_missing: { title: 'mobileChart.unavailable.itemMissing.title', description: 'mobileChart.unavailable.itemMissing.description' },
+  not_a_song: { title: 'mobileChart.unavailable.notASong.title', description: 'mobileChart.unavailable.notASong.description' },
+  song_mismatch: { title: 'mobileChart.unavailable.songMismatch.title', description: 'mobileChart.unavailable.songMismatch.description' },
   arrangement_missing: {
-    title: 'The plan’s arrangement isn’t available',
-    description:
-      'The arrangement chosen for this plan has been removed. A planner can choose another on the web.',
+    title: 'mobileChart.unavailable.arrangementMissing.title',
+    description: 'mobileChart.unavailable.arrangementMissing.description',
   },
 };
 
-const RENDER_COPY: Record<ChartRenderUnavailableReason, { title: string; description: string }> = {
-  no_chart: { title: 'No chart yet', description: 'Add one from the web app to read it here.' },
-  key_unknown: {
-    title: 'Can’t change the key of this chart',
-    description:
-      'The chart’s written key or the service key can’t be read, so these chords would be wrong. Lyrics are still available; a planner can set the key on the web.',
-  },
+const RENDER_COPY: Record<ChartRenderUnavailableReason, EmptyCopyKeys> = {
+  no_chart: { title: 'mobileChart.render.noChart.title', description: 'mobileChart.render.noChart.description' },
+  key_unknown: { title: 'mobileChart.render.keyUnknown.title', description: 'mobileChart.render.keyUnknown.description' },
+};
+
+const NO_ARRANGEMENTS_COPY: EmptyCopyKeys = {
+  title: 'allArrangements.empty',
+  description: 'mobileChart.noArrangementsDescription',
 };
 
 const single = (value: string | string[] | undefined): string | undefined =>
@@ -114,6 +115,7 @@ const parseChartRoute = (params: SongRouteParams): ChartRoute => {
 };
 
 export default function SongScreen() {
+  const { t } = useTranslation('songs');
   const params: SongRouteParams = useLocalSearchParams();
   const route = parseChartRoute(params);
   const { organizationId, queryScope } = useAuth();
@@ -140,7 +142,7 @@ export default function SongScreen() {
   if (song.isLoading || (route.kind === 'plan' && plan.isLoading)) {
     return (
       <Screen>
-        <Loading label="Opening the chart" />
+        <Loading label={t('mobileChart.opening')} />
       </Screen>
     );
   }
@@ -182,14 +184,15 @@ interface UnavailableProps {
 }
 
 const Unavailable = ({ reason, title }: UnavailableProps) => {
+  const { t } = useTranslation('songs');
   const theme = useTheme();
   const copy = UNAVAILABLE_COPY[reason];
   return (
     <Screen>
-      <Stack.Screen options={{ title: title ?? 'Chart' }} />
+      <Stack.Screen options={{ title: title ?? t('mobileChart.screenTitle') }} />
       <ScrollView contentContainerStyle={screenPadding(theme)}>
         <Card>
-          <EmptyState title={copy.title} description={copy.description} />
+          <EmptyState title={t(copy.title)} description={t(copy.description)} />
         </Card>
       </ScrollView>
     </Screen>
@@ -204,6 +207,11 @@ interface ChartViewProps {
 
 /** Transposing on stage is a one-tap operation, so it stays a pair of steppers. */
 const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
+  const { t } = useTranslation('songs');
+  const notations: readonly SegmentOption<ChartNotation>[] = NOTATION_ORDER.map((value) => ({
+    value,
+    label: t(NOTATION_LABEL_KEYS[value]),
+  }));
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [shift, setShift] = useState(0);
@@ -238,31 +246,36 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
   const canShift = keyed && transposable && rendered?.status === 'ready';
 
   const keyValue = !keyed
-    ? CHART_NOTATION_LABELS[notation]
+    ? t(NOTATION_LABEL_KEYS[notation])
     : rendered?.status === 'ready'
       ? (rendered.key ?? '—')
       : '—';
+  const signedShift = `${shift > 0 ? '+' : ''}${shift}`;
   const keyNote = !keyed
-    ? 'Key-independent'
+    ? t('mobileChart.keyIndependent')
     : !transposable
       ? rendered?.status === 'ready'
-        ? 'Key not set · shown as written'
-        : 'Key unavailable'
+        ? t('mobileChart.keyNotSet')
+        : t('mobileChart.keyUnavailable')
       : shift !== 0
-        ? `${shift > 0 ? '+' : ''}${shift} semitones from ${fromPlan ? 'the service key' : 'the original key'}`
+        ? t(fromPlan ? 'mobileChart.shiftFromService' : 'mobileChart.shiftFromOriginal', { count: shift, shift: signedShift })
         : context.keyFromPlan
           ? context.displayKey === context.sourceKey
-            ? 'Service key'
-            : `Service key · written in ${context.sourceKey}`
-          : 'Original key';
+            ? t('mobileChart.serviceKey')
+            : t('mobileChart.serviceKeyWrittenIn', { key: context.sourceKey ?? '' })
+          : t('mobileChart.originalKey');
 
   const meta = [
     arrangement?.name,
-    arrangement?.bpm ? `${arrangement.bpm} bpm` : null,
+    arrangement?.bpm ? t('arrangement.bpmValue', { bpm: arrangement.bpm }) : null,
     arrangement?.meter ?? song.meter,
   ]
     .filter(Boolean)
     .join('  ·  ');
+
+  const emptyCopy = arrangement
+    ? RENDER_COPY[rendered?.status === 'unavailable' ? rendered.reason : 'no_chart']
+    : NO_ARRANGEMENTS_COPY;
 
   const selectArrangement = (id: string) => {
     // Another version may be written in another key, so a shift made against
@@ -287,7 +300,7 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
         {song.arrangements.length > 1 ? (
           <Reveal index={1}>
             <Card>
-              <Label>{fromPlan ? 'View another arrangement' : 'Arrangement'}</Label>
+              <Label>{fromPlan ? t('mobileChart.viewAnother') : t('mobileArrangements.label')}</Label>
               <ArrangementPicker
                 arrangements={song.arrangements}
                 selectedId={arrangement?.id ?? null}
@@ -297,11 +310,10 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
               {context.isTemporaryView ? (
                 <View style={styles.notice}>
                   <Text style={styles.noticeText}>
-                    Viewing {arrangement?.name} for now. This plan uses {planArrangement?.name}; nothing
-                    is saved. Planners change a plan’s arrangement on the web.
+                    {t('mobileChart.temporaryView', { viewing: arrangement?.name ?? '', planArrangement: planArrangement?.name ?? '' })}
                   </Text>
                   <Button
-                    title={`Back to ${planArrangement?.name ?? 'the plan’s arrangement'}`}
+                    title={planArrangement?.name ? t('mobileChart.backTo', { name: planArrangement.name }) : t('mobileChart.backToPlanArrangement')}
                     variant="secondary"
                     onPress={() => {
                       setShift(0);
@@ -316,7 +328,7 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
 
         <Reveal index={1}>
           <Card>
-            <Label>{fromPlan ? 'Service key' : 'Key'}</Label>
+            <Label>{fromPlan ? t('mobileChart.serviceKey') : t('arrangement.fields.key')}</Label>
             <View style={styles.transposeRow}>
               <View style={styles.keyReadout}>
                 <Text style={styles.keyValue}>{keyValue}</Text>
@@ -324,20 +336,20 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
               </View>
               <IconButton
                 name="minus"
-                accessibilityLabel="Transpose down a semitone"
+                accessibilityLabel={t('mobileChart.transposeDown')}
                 disabled={!canShift}
                 onPress={() => setShift((current) => current - 1)}
               />
               <IconButton
                 name="plus"
-                accessibilityLabel="Transpose up a semitone"
+                accessibilityLabel={t('mobileChart.transposeUp')}
                 disabled={!canShift}
                 onPress={() => setShift((current) => current + 1)}
               />
               {keyed && shift !== 0 ? (
                 <IconButton
                   name="close"
-                  accessibilityLabel={fromPlan ? 'Back to the service key' : 'Back to the original key'}
+                  accessibilityLabel={fromPlan ? t('mobileChart.backToServiceKey') : t('mobileChart.backToOriginalKey')}
                   onPress={() => setShift(0)}
                 />
               ) : null}
@@ -347,15 +359,15 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
 
         <Reveal index={2}>
           <Card>
-            <Label>Notation</Label>
-            <SegmentedControl options={NOTATIONS} value={notation} onChange={setNotation} />
+            <Label>{t('mobileChart.notation')}</Label>
+            <SegmentedControl options={notations} value={notation} onChange={setNotation} />
           </Card>
         </Reveal>
 
         {context.sequence.length ? (
           <Reveal index={2}>
             <Card>
-              <Label>Sequence</Label>
+              <Label>{t('arrangement.fields.sequence')}</Label>
               <View style={styles.sequence}>
                 {context.sequence.map((part, index) => (
                   <KeyCap key={`${part}-${index}`}>{part}</KeyCap>
@@ -370,14 +382,7 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
             <ChordChart chart={chart} />
           ) : (
             <Card>
-              <EmptyState
-                {...(arrangement
-                  ? RENDER_COPY[rendered?.status === 'unavailable' ? rendered.reason : 'no_chart']
-                  : {
-                      title: 'No arrangements yet',
-                      description: 'Add an arrangement from the web app to read its chart here.',
-                    })}
-              />
+              <EmptyState title={t(emptyCopy.title)} description={t(emptyCopy.description)} />
             </Card>
           )}
         </Reveal>

@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { formatDateTime, type AffectedAssignmentPreview, type AssignmentStatus } from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
+import { type AffectedAssignmentPreview, type AssignmentStatus } from '@service-center/shared';
+import { useFormatters } from '../../i18n';
 import { api } from '../../lib/api';
 import { Button, ErrorNotice } from '../ui';
 
@@ -24,6 +26,8 @@ interface AffectedAssignmentGroup {
  * decline. Saving the blockout never changes an answer by itself.
  */
 export const AffectedCommitments = ({ rows, canDecline, onChanged }: AffectedCommitmentsProps) => {
+  const { t } = useTranslation(['settings', 'common']);
+  const { dateTime } = useFormatters();
   const [declined, setDeclined] = useState<Set<string>>(new Set());
   const groups = useMemo(() => {
     const byAssignment = new Map<string, AffectedAssignmentGroup>();
@@ -50,14 +54,13 @@ export const AffectedCommitments = ({ rows, canDecline, onChanged }: AffectedCom
     },
   });
 
-  if (groups.length === 0) return <p className="mt-2 text-slate-500">No existing commitments are affected.</p>;
+  if (groups.length === 0) return <p className="mt-2 text-slate-500">{t('affected.none')}</p>;
 
   return (
     <div className="mt-3">
       <p className="text-slate-600">
-        {groups.length === 1 ? 'This overlaps 1 existing commitment.' : `This overlaps ${groups.length} existing commitments.`}{' '}
-        Saving won’t change {groups.length === 1 ? 'its answer' : 'their answers'}
-        {canDecline ? '; decline any you can no longer do.' : '.'}
+        {t('affected.overlaps', { count: groups.length })}{' '}
+        {t(canDecline ? 'affected.unchangedCanDecline' : 'affected.unchanged', { count: groups.length })}
       </p>
       <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
         {groups.map((group) => {
@@ -67,11 +70,11 @@ export const AffectedCommitments = ({ rows, canDecline, onChanged }: AffectedCom
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{group.planTitle}</p>
                 <p className="text-xs text-slate-500">
-                  {[group.role, ...group.times.map((time) => `${time.time_name ?? 'Time'} ${formatDateTime(time.starts_at)}`)]
+                  {[group.role, ...group.times.map((time) => t('affected.time', { name: time.time_name ?? t('affected.timeFallback'), when: dateTime(time.starts_at) }))]
                     .filter(Boolean).join(' · ')}
                 </p>
               </div>
-              <span className="text-xs text-slate-500">{isDeclined ? 'Declined' : group.status === 'confirmed' ? 'Confirmed' : 'Awaiting your answer'}</span>
+              <span className="text-xs text-slate-500">{isDeclined ? t('common:assignmentStatus.declined') : group.status === 'confirmed' ? t('common:assignmentStatus.confirmed') : t('affected.awaiting')}</span>
               {canDecline && !isDeclined && (
                 <Button
                   variant="secondary"
@@ -79,7 +82,8 @@ export const AffectedCommitments = ({ rows, canDecline, onChanged }: AffectedCom
                   loading={decline.isPending && decline.variables?.assignmentId === group.assignmentId}
                   onClick={() => decline.mutate(group)}
                 >
-                  {group.status === 'confirmed' ? 'Withdraw' : 'Decline'}
+                  {group.status === 'confirmed' ? t('affected.withdraw') : t('common:actions.decline')}
+
                 </Button>
               )}
             </li>

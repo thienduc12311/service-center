@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CalendarSharingCard } from '../components/people/CalendarSharingCard';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { ORG_ROLES, type CreatePersonInput, type PersonDetail } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePerson, useInvalidateOrg } from '../hooks/queries';
@@ -9,6 +10,7 @@ import { PersonPolicyPanel } from '../components/PersonPolicyPanel';
 import { Badge, Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { RosterHistoryPanel } from '../components/people/RosterHistoryPanel';
 import { useAuth } from '../providers/AuthProvider';
+import { PersonLanguageField, personLanguageInput, useFormatters } from '../i18n';
 
 /** Editable state for the add/edit person form — a superset of `CreatePersonInput` with '' standing in for unset. */
 interface PersonFormState {
@@ -31,6 +33,8 @@ interface PersonFormState {
   anniversary_date: string;
   school: string;
   medical_note: string;
+  /** '' = Automatic. */
+  preferred_language: string;
 }
 
 const emptyForm: PersonFormState = {
@@ -53,6 +57,7 @@ const emptyForm: PersonFormState = {
   anniversary_date: '',
   school: '',
   medical_note: '',
+  preferred_language: '',
 };
 
 const formFromDetail = (person: PersonDetail): PersonFormState => ({
@@ -75,6 +80,7 @@ const formFromDetail = (person: PersonDetail): PersonFormState => ({
   anniversary_date: person.anniversary_date ?? '',
   school: person.school ?? '',
   medical_note: person.medical_note ?? '',
+  preferred_language: person.preferred_language ?? '',
 });
 
 const toInput = (form: PersonFormState): CreatePersonInput => ({
@@ -97,17 +103,16 @@ const toInput = (form: PersonFormState): CreatePersonInput => ({
   anniversary_date: form.anniversary_date || null,
   school: form.school.trim() || null,
   medical_note: form.medical_note.trim() || null,
+  ...personLanguageInput(form.preferred_language),
 });
 
-const Field = ({
-  id,
-  label,
-  children,
-}: {
+interface FieldProps {
   id: string;
   label: string;
   children: ReactNode;
-}) => (
+}
+
+const Field = ({ id, label, children }: FieldProps) => (
   <div>
     <label className="label" htmlFor={id}>
       {label}
@@ -117,6 +122,8 @@ const Field = ({
 );
 
 export const PersonPage = () => {
+  const { t } = useTranslation(['people', 'common']);
+  const f = useFormatters();
   const { personId } = useParams();
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
@@ -176,25 +183,25 @@ export const PersonPage = () => {
   return (
     <div className="max-w-3xl">
       <PageHeader
-        title={isNew ? 'Add person' : (form.first_name || 'Edit person')}
+        title={isNew ? t('person.addTitle') : (form.first_name || t('person.editTitle'))}
         subtitle={
           isNew
-            ? 'Record their profile — inviting them to create a login is a separate step.'
+            ? t('person.addSubtitle')
             : person.data?.archived_at
-              ? 'Archived — kept in past plans, hidden from scheduling and pickers.'
+              ? t('person.archivedSubtitle')
               : undefined
         }
         actions={
           !isNew &&
           canManage && (
             <div className="flex items-center gap-2">
-              {person.data?.archived_at && <Badge tone="bg-amber-50 text-amber-700 ring-amber-600/20">Archived</Badge>}
+              {person.data?.archived_at && <Badge tone="bg-amber-50 text-amber-700 ring-amber-600/20">{t('person.archived')}</Badge>}
               <Button
                 variant="secondary"
                 loading={archive.isPending}
                 onClick={() => archive.mutate(!person.data?.archived_at)}
               >
-                {person.data?.archived_at ? 'Restore' : 'Archive'}
+                {person.data?.archived_at ? t('common:actions.restore') : t('common:actions.archive')}
               </Button>
             </div>
           )
@@ -212,9 +219,9 @@ export const PersonPage = () => {
         }}
       >
         <section className="card space-y-4 p-5">
-          <h2 className="font-semibold">Basic</h2>
+          <h2 className="font-semibold">{t('person.sections.basic')}</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field id="first-name" label="First name">
+            <Field id="first-name" label={t('person.fields.firstName')}>
               <input
                 id="first-name"
                 className="input"
@@ -223,33 +230,38 @@ export const PersonPage = () => {
                 required
               />
             </Field>
-            <Field id="last-name" label="Last name">
+            <Field id="last-name" label={t('person.fields.lastName')}>
               <input id="last-name" className="input" value={form.last_name} onChange={(e) => set('last_name', e.target.value)} />
             </Field>
-            <Field id="person-type" label="Type">
+            <Field id="person-type" label={t('person.fields.type')}>
               <select
                 id="person-type"
                 className="input"
                 value={form.person_type}
                 onChange={(e) => set('person_type', e.target.value as 'adult' | 'child')}
               >
-                <option value="adult">Adult</option>
-                <option value="child">Child</option>
+                <option value="adult">{t('person.personType.adult')}</option>
+                <option value="child">{t('person.personType.child')}</option>
               </select>
             </Field>
-            <Field id="gender" label="Gender">
+            <Field id="gender" label={t('person.fields.gender')}>
               <select
                 id="gender"
                 className="input"
                 value={form.gender}
                 onChange={(e) => set('gender', e.target.value as PersonFormState['gender'])}
               >
-                <option value="">Not set</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
+                <option value="">{t('person.gender.notSet')}</option>
+                <option value="male">{t('person.gender.male')}</option>
+                <option value="female">{t('person.gender.female')}</option>
               </select>
             </Field>
-            <Field id="birthdate" label="Birthdate">
+            <PersonLanguageField
+              id="preferred-language"
+              value={form.preferred_language}
+              onChange={(value) => set('preferred_language', value)}
+            />
+            <Field id="birthdate" label={t('person.fields.birthdate')}>
               <input
                 id="birthdate"
                 type="date"
@@ -262,15 +274,14 @@ export const PersonPage = () => {
         </section>
 
         <section className="card space-y-4 p-5">
-          <h2 className="font-semibold">Contact</h2>
+          <h2 className="font-semibold">{t('person.sections.contact')}</h2>
           {hasLogin && (
             <p className="text-xs text-slate-500">
-              This person already has a login — name, email and phone are managed from their own profile and shown
-              here read-only.
+              {t('person.loginManagedHint')}
             </p>
           )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field id="email" label="Email">
+            <Field id="email" label={t('person.fields.email')}>
               <input
                 id="email"
                 type="email"
@@ -280,10 +291,10 @@ export const PersonPage = () => {
                 disabled={hasLogin}
               />
             </Field>
-            <Field id="phone" label="Phone">
+            <Field id="phone" label={t('person.fields.phone')}>
               <input id="phone" className="input" value={form.phone} onChange={(e) => set('phone', e.target.value)} disabled={hasLogin} />
             </Field>
-            <Field id="phone-carrier" label="Mobile carrier">
+            <Field id="phone-carrier" label={t('person.fields.phoneCarrier')}>
               <input
                 id="phone-carrier"
                 className="input"
@@ -295,39 +306,39 @@ export const PersonPage = () => {
         </section>
 
         <section className="card space-y-4 p-5">
-          <h2 className="font-semibold">Address</h2>
+          <h2 className="font-semibold">{t('person.sections.address')}</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field id="address1" label="Address line 1">
+            <Field id="address1" label={t('person.fields.address1')}>
               <input id="address1" className="input" value={form.address_line1} onChange={(e) => set('address_line1', e.target.value)} />
             </Field>
-            <Field id="address2" label="Address line 2">
+            <Field id="address2" label={t('person.fields.address2')}>
               <input id="address2" className="input" value={form.address_line2} onChange={(e) => set('address_line2', e.target.value)} />
             </Field>
-            <Field id="city" label="City">
+            <Field id="city" label={t('person.fields.city')}>
               <input id="city" className="input" value={form.city} onChange={(e) => set('city', e.target.value)} />
             </Field>
-            <Field id="state" label="State / Province">
+            <Field id="state" label={t('person.fields.state')}>
               <input id="state" className="input" value={form.state_province} onChange={(e) => set('state_province', e.target.value)} />
             </Field>
-            <Field id="postal" label="Postal code">
+            <Field id="postal" label={t('person.fields.postalCode')}>
               <input id="postal" className="input" value={form.postal_code} onChange={(e) => set('postal_code', e.target.value)} />
             </Field>
-            <Field id="country" label="Country">
+            <Field id="country" label={t('person.fields.country')}>
               <input id="country" className="input" value={form.country} onChange={(e) => set('country', e.target.value)} />
             </Field>
           </div>
         </section>
 
         <section className="card space-y-4 p-5">
-          <h2 className="font-semibold">Other</h2>
+          <h2 className="font-semibold">{t('person.sections.other')}</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field id="campus" label="Campus">
+            <Field id="campus" label={t('person.fields.campus')}>
               <input id="campus" className="input" value={form.campus} onChange={(e) => set('campus', e.target.value)} />
             </Field>
-            <Field id="school" label="School">
+            <Field id="school" label={t('person.fields.school')}>
               <input id="school" className="input" value={form.school} onChange={(e) => set('school', e.target.value)} />
             </Field>
-            <Field id="marital-status" label="Marital status">
+            <Field id="marital-status" label={t('person.fields.maritalStatus')}>
               <input
                 id="marital-status"
                 className="input"
@@ -335,7 +346,7 @@ export const PersonPage = () => {
                 onChange={(e) => set('marital_status', e.target.value)}
               />
             </Field>
-            <Field id="anniversary" label="Anniversary">
+            <Field id="anniversary" label={t('person.fields.anniversary')}>
               <input
                 id="anniversary"
                 type="date"
@@ -345,7 +356,7 @@ export const PersonPage = () => {
               />
             </Field>
           </div>
-          <Field id="medical-note" label="Medical note">
+          <Field id="medical-note" label={t('person.fields.medicalNote')}>
             <textarea
               id="medical-note"
               className="input min-h-24"
@@ -359,10 +370,10 @@ export const PersonPage = () => {
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={() => navigate('/people')}>
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
           <Button type="submit" loading={save.isPending}>
-            {isNew ? 'Add person' : 'Save changes'}
+            {isNew ? t('person.addPerson') : t('common:actions.saveChanges')}
           </Button>
         </div>
       </form>
@@ -370,15 +381,15 @@ export const PersonPage = () => {
       {!isNew && !hasLogin && !person.data?.archived_at && (
         <section className="card mt-6 space-y-4 p-5">
           <div>
-            <h2 className="font-semibold">Invite to create a login</h2>
+            <h2 className="font-semibold">{t('person.invite.title')}</h2>
             <p className="mt-1 text-sm text-slate-500">
               {person.data?.pending_invitation
-                ? `Invite sent to ${person.data.pending_invitation.email}, expires ${new Date(person.data.pending_invitation.expires_at).toLocaleDateString()}.`
-                : 'They can respond to their own assignments and blockouts once they have a login.'}
+                ? t('person.invite.sentTo', { email: person.data.pending_invitation.email, date: f.date(person.data.pending_invitation.expires_at, 'medium') })
+                : t('person.invite.explainer')}
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field id="invite-email" label="Send to">
+            <Field id="invite-email" label={t('person.invite.sendTo')}>
               <input
                 id="invite-email"
                 type="email"
@@ -388,11 +399,11 @@ export const PersonPage = () => {
                 required
               />
             </Field>
-            <Field id="invite-role" label="Role">
+            <Field id="invite-role" label={t('person.invite.role')}>
               <select id="invite-role" className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
                 {ORG_ROLES.filter((r) => r !== 'owner').map((r) => (
                   <option key={r} value={r}>
-                    {r}
+                    {t(`common:roles.${r}`)}
                   </option>
                 ))}
               </select>
@@ -403,17 +414,17 @@ export const PersonPage = () => {
 
           {inviteUrl && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-3 text-sm">
-              <span>No email delivery is configured yet — share this link directly:</span>
+              <span>{t('person.invite.shareHint')}</span>
               <code className="max-w-[16rem] truncate rounded bg-white px-2 py-1 text-xs ring-1 ring-slate-200">{inviteUrl}</code>
               <Button variant="secondary" onClick={() => navigator.clipboard.writeText(inviteUrl)}>
-                Copy
+                {t('common:actions.copy')}
               </Button>
             </div>
           )}
 
           <div className="flex justify-end">
             <Button type="button" loading={invite.isPending} onClick={() => invite.mutate()} disabled={!inviteEmail}>
-              {person.data?.pending_invitation ? 'Resend invite' : 'Send invite'}
+              {person.data?.pending_invitation ? t('person.invite.resend') : t('person.invite.send')}
             </Button>
           </div>
         </section>

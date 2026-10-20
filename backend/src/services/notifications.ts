@@ -1,4 +1,4 @@
-import type { EmailTransportMode } from '@service-center/shared';
+import type { EmailTransportMode, ResponseTransition, SupportedLocale } from '@service-center/shared';
 import { config } from '../config.js';
 
 export interface ScheduleNotificationRole {
@@ -17,6 +17,8 @@ export interface ScheduleNotificationPlan {
 
 export interface ScheduleNotification {
   to: string;
+  /** Recipient language (captured on the delivery for queued messages). */
+  locale: SupportedLocale;
   personName: string | null;
   planTitle: string;
   serviceDate: string;
@@ -36,6 +38,8 @@ export interface ScheduleNotification {
 /** F08: "coming up" reminder for confirmed people; no response action. */
 export interface ServiceReminderNotification {
   to: string;
+  /** Recipient language (captured on the delivery for queued messages). */
+  locale: SupportedLocale;
   personName: string | null;
   organizationName: string;
   planTitle: string;
@@ -52,6 +56,8 @@ export interface ServiceReminderNotification {
 /** F03: a leader asks someone to review their availability. */
 export interface AvailabilityRequestNotification {
   to: string;
+  /** Recipient language (captured on the delivery for queued messages). */
+  locale: SupportedLocale;
   personName: string | null;
   organizationName: string;
   message: string | null;
@@ -66,6 +72,8 @@ export interface AvailabilityRequestNotification {
 /** F09: a leader's targeted message, rendered for one recipient. */
 export interface OperationalMessageNotification {
   to: string;
+  /** Recipient language (captured on the delivery for queued messages). */
+  locale: SupportedLocale;
   personName: string | null;
   organizationName: string;
   /** Final text with variables substituted (plain text, escaped when rendered). */
@@ -78,8 +86,23 @@ export interface OperationalMessageNotification {
   replyTo?: string | null;
 }
 
+/** A response owner hears that someone declined or withdrew (no reason included). */
+export interface SchedulerResponseNotification {
+  to: string;
+  /** Recipient language (captured on the delivery). */
+  locale: SupportedLocale;
+  organizationName?: string;
+  responderName: string;
+  planTitle: string;
+  serviceDate: string;
+  /** `withdrawal` = a confirmation was withdrawn; `response` = a decline. */
+  transition: ResponseTransition;
+  planUrl: string;
+}
+
 export type EmailNotification =
   | ScheduleNotification
+  | SchedulerResponseNotification
   | AvailabilityRequestNotification
   | ServiceReminderNotification
   | OperationalMessageNotification;
@@ -95,6 +118,9 @@ export interface EmailSendOptions {
 
 export const isServiceReminder = (notification: object): notification is ServiceReminderNotification =>
   'planUrl' in notification;
+
+export const isSchedulerResponse = (notification: object): notification is SchedulerResponseNotification =>
+  'responderName' in notification;
 
 export const isOperationalMessage = (notification: object): notification is OperationalMessageNotification =>
   'messageUrl' in notification;
@@ -123,7 +149,9 @@ const consoleTransport: NotificationTransport = {
   mode: 'simulated',
   async send(notification) {
     if (!config.isTest) {
-      console.info(isOperationalMessage(notification)
+      console.info(isSchedulerResponse(notification)
+        ? '[notify] simulated response update email'
+        : isOperationalMessage(notification)
         ? '[notify] simulated operational message email'
         : isAvailabilityRequest(notification)
         ? '[notify] simulated availability request email'
@@ -147,6 +175,8 @@ export const respondUrlFor = (token: string): string => `${config.APP_URL}/respo
 
 export interface PersonInvitationNotification {
   to: string;
+  /** Recipient language (captured on the delivery for queued messages). */
+  locale: SupportedLocale;
   personName: string;
   organizationName: string;
   acceptUrl: string;

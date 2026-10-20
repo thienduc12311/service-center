@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   ApiError,
+  LocalizedError,
   PLAN_TEMPLATE_COMPONENTS,
-  TEMPLATE_COMPONENT_LABELS,
   type AttendanceConflict,
   type PlanDetail,
   type PlanTemplateComponent,
@@ -32,6 +33,7 @@ const STALE_CODES = new Set(['plan_revision_stale', 'template_preview_changed'])
  * one transaction. A changed plan or template sends you back to review.
  */
 export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) => {
+  const { t } = useTranslation(['templates', 'common']);
   const invalidate = useInvalidateOrg();
   const { can } = useAuth();
   const people = usePeople();
@@ -78,7 +80,7 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
 
   const apply = useMutation({
     mutationFn: () => {
-      if (!preview) throw new Error('Review the template first');
+      if (!preview) throw new LocalizedError({ key: 'templates:errors.reviewTemplateFirst' });
       return api.applyTemplate(plan.id, {
         ...request(),
         preview_hash: preview.preview_hash,
@@ -106,21 +108,21 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
   const stale = apply.error instanceof ApiError && apply.error.code !== undefined && STALE_CODES.has(apply.error.code);
   const mayOverride = can('scheduling.override_conflicts', { serviceTypeId: plan.service_type_id });
   const nameOf = (personId: string): string =>
-    people.data?.find((person) => person.person_id === personId)?.full_name ?? 'Someone';
+    people.data?.find((person) => person.person_id === personId)?.full_name ?? t('common:fallback.someone');
   const usable = (templates.data ?? []).filter((candidate) => candidate.current_revision_id);
 
   return (
-    <Modal open title="Apply a template" onClose={onClose}>
+    <Modal open title={t('apply.title')} onClose={onClose}>
       <div className="space-y-4">
         {templates.isLoading ? (
           <div className="flex justify-center py-6 text-slate-400"><Spinner /></div>
         ) : usable.length === 0 ? (
           <p className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 dark:bg-slate-900">
-            No templates yet. Use “Save as template” on a plan you like, or open Templates from the Plans page.
+            {t('apply.empty')}
           </p>
         ) : (
           <div>
-            <label className="label" htmlFor="apply-template">Template</label>
+            <label className="label" htmlFor="apply-template">{t('apply.template')}</label>
             <select
               id="apply-template"
               className="input"
@@ -131,11 +133,15 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
                 resetReview();
               }}
             >
-              <option value="">Choose…</option>
+              <option value="">{t('apply.choose')}</option>
               {usable.map((candidate) => (
                 <option key={candidate.id} value={candidate.id}>
-                  {candidate.kind === 'section' ? 'Section: ' : ''}{candidate.name}
-                  {candidate.service_type ? '' : ' (all service types)'} · rev {candidate.current_revision}
+                  {t('apply.optionWithRevision', {
+                    name: candidate.kind === 'section'
+                      ? t(candidate.service_type ? 'apply.sectionName' : 'apply.sectionAllTypesName', { name: candidate.name })
+                      : candidate.service_type ? candidate.name : t('apply.allTypesName', { name: candidate.name }),
+                    revision: candidate.current_revision,
+                  })}
                 </option>
               ))}
             </select>
@@ -144,7 +150,7 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
 
         {template && !isSection && (
           <fieldset className="space-y-2">
-            <legend className="label">Copy</legend>
+            <legend className="label">{t('apply.copy')}</legend>
             {PLAN_TEMPLATE_COMPONENTS.map((component) => (
               <label key={component} className={`flex items-center gap-2 text-sm ${available.includes(component) ? '' : 'opacity-50'}`}>
                 <input
@@ -157,8 +163,8 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
                     resetReview();
                   }}
                 />
-                {TEMPLATE_COMPONENT_LABELS[component]}
-                {!available.includes(component) && <span className="text-xs text-slate-400">(not in this template)</span>}
+                {t(`components.${component}`)}
+                {!available.includes(component) && <span className="text-xs text-slate-400">{t('apply.notInTemplate')}</span>}
               </label>
             ))}
           </fieldset>
@@ -166,21 +172,21 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
 
         {template && !isSection && (
           <fieldset className="flex flex-wrap gap-4 text-sm">
-            <legend className="label">What is already on the plan</legend>
+            <legend className="label">{t('apply.existingLegend')}</legend>
             <label className="flex items-center gap-2">
               <input type="radio" name="apply-mode" checked={mode === 'append'} onChange={() => { setMode('append'); resetReview(); }} />
-              Keep it and add the template’s content
+              {t('apply.keepAndAdd')}
             </label>
             <label className="flex items-center gap-2">
               <input type="radio" name="apply-mode" checked={mode === 'replace'} onChange={() => { setMode('replace'); setInsertAt(null); resetReview(); }} />
-              Replace the chosen parts
+              {t('apply.replaceParts')}
             </label>
           </fieldset>
         )}
 
         {template && (isSection || (mode === 'append' && chosen.includes('items'))) && plan.items.length > 0 && (
           <div>
-            <label className="label" htmlFor="apply-insert-at">Put the items</label>
+            <label className="label" htmlFor="apply-insert-at">{t('apply.putItems')}</label>
             <select
               id="apply-insert-at"
               className="input"
@@ -190,10 +196,10 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
                 resetReview();
               }}
             >
-              <option value="">At the end</option>
-              <option value={0}>At the start</option>
+              <option value="">{t('apply.atEnd')}</option>
+              <option value={0}>{t('apply.atStart')}</option>
               {plan.items.slice(0, -1).map((item, index) => (
-                <option key={item.id} value={index + 1}>After “{item.title}”</option>
+                <option key={item.id} value={index + 1}>{t('apply.afterItem', { title: item.title })}</option>
               ))}
             </select>
           </div>
@@ -203,7 +209,7 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
 
         {stale && (
           <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-            The plan or template changed since you reviewed it. Review again before applying.
+            {t('apply.stale')}
           </p>
         )}
         {conflicts.length > 0 ? (
@@ -211,15 +217,15 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
             <ConflictList conflicts={conflicts} nameOf={nameOf} />
             {mayOverride ? (
               <input
-                aria-label="Reason for adding the roster over the conflicts"
+                aria-label={t('apply.conflictReasonLabel')}
                 className="input"
-                placeholder="Reason for applying anyway (kept with each request)"
+                placeholder={t('apply.conflictReasonPlaceholder')}
                 maxLength={500}
                 value={conflictReason}
                 onChange={(event) => setConflictReason(event.target.value)}
               />
             ) : (
-              <p className="text-xs text-slate-500">Apply without the roster pattern, or ask someone who may schedule over conflicts.</p>
+              <p className="text-xs text-slate-500">{t('apply.noOverride')}</p>
             )}
           </>
         ) : (
@@ -227,10 +233,10 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button>
           {preview ? (
             <Button loading={apply.isPending} disabled={preview.blocking.length > 0} onClick={() => apply.mutate()}>
-              Apply
+              {t('common:actions.apply')}
             </Button>
           ) : (
             <Button
@@ -238,7 +244,7 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
               disabled={!template || request().components.length === 0}
               onClick={() => review.mutate()}
             >
-              Review changes
+              {t('apply.reviewChanges')}
             </Button>
           )}
         </div>

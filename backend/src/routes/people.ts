@@ -9,6 +9,7 @@ import {
   listPeopleQuerySchema,
   type ListPeopleQuery,
   personTagsSchema,
+  resolveRecipientLocale,
   updateMemberSchema,
   updatePersonSchema,
   type EligibilityRecordInput,
@@ -324,6 +325,8 @@ peopleRouter.post(
     try {
       await sendPersonInvitation({
         to: email,
+        // A manager may have set this before the Person has a login.
+        locale: resolveRecipientLocale(person.preferred_language),
         personName: personDisplayName(person),
         organizationName: organization.name,
         acceptUrl: inviteUrl,

@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
+  LocalizedError,
   computePlanSchedule,
   isAdmin,
   nextOccurrence,
@@ -18,6 +20,7 @@ import { api } from '../lib/api';
 import { printDocument } from '../lib/print-document';
 import { keys, usePlan, usePlanNotes, usePlans, useTeams, useTemplateApplications, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
+import { useLanguage } from '../i18n';
 import { Button, EmptyState, ErrorNotice, Loading } from '../components/ui';
 import { MessageComposerModal } from '../components/collaboration/MessageComposerModal';
 import { PlanWorkspaceHeader } from '../components/plan/PlanWorkspaceHeader';
@@ -42,13 +45,19 @@ import { ApplyTemplateModal } from '../components/templates/ApplyTemplateModal';
 import { SaveTemplateModal } from '../components/templates/SaveTemplateModal';
 import { DeliveryOutcomeNotice } from '../components/plan/DeliveryOutcomeNotice';
 import { OpportunityPanel, type SignupSetupOption } from '../components/plan/OpportunityPanel';
-import { PLAN_TABS, PLAN_TAB_LABELS, buildPlanTeams, type PlanTab } from '../components/plan/types';
+import { PLAN_TABS, buildPlanTeams, type PlanTab } from '../components/plan/types';
+import { useFormatters } from '../i18n';
+
+const PLAN_CHAT_RESTRICTED = new LocalizedError({ key: 'plans:planDetail.errors.planChatRestricted' });
 
 /** Which dialog, if any, is on top of the workspace. */
 type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'import-template' | 'apply-template' | 'save-template' | 'print-order';
 
 export const PlanDetailPage = () => {
   const { planId } = useParams<{ planId: string }>();
+  const { t } = useTranslation(['plans', 'common']);
+  const { locale } = useLanguage();
+  const format = useFormatters();
   const { can, canAnywhere, user, organizationId, role } = useAuth();
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
@@ -256,7 +265,7 @@ export const PlanDetailPage = () => {
 
   if (plan.isLoading) return <Loading />;
   if (plan.error) return <ErrorNotice error={plan.error} />;
-  if (!plan.data || !planId) return <EmptyState title="Plan not found" />;
+  if (!plan.data || !planId) return <EmptyState title={t('planDetail.notFound')} />;
 
   const detail = plan.data;
   const discussing = detail.items.find((item) => item.id === discussingId) ?? null;
@@ -266,7 +275,7 @@ export const PlanDetailPage = () => {
   const canSchedule = can('scheduling.manage', target) || (teams.data ?? []).some((team) => canScheduleTeam(team.id));
   const organizationName =
     user?.memberships.find((membership) => membership.organization.id === organizationId)
-      ?.organization.name ?? 'Service Center';
+      ?.organization.name ?? t('common:app.name');
   const allAssignments = everyTeam.flatMap((view) => [...view.positions.flatMap((position) => position.scheduled), ...view.unpositioned]);
   const currentPersonId = allAssignments.find((assignment) => assignment.user_id === user?.profile.id)?.person_id ?? null;
   const signupOptions: SignupSetupOption[] = everyTeam.flatMap((view) => view.positions.map((position) => ({
@@ -289,8 +298,10 @@ export const PlanDetailPage = () => {
 
   const confirmRemove = (item: PlanItemDetail) => {
     const notesOnItem = itemNoteCounts.get(item.id) ?? 0;
-    const warning = notesOnItem > 0 ? ` Its ${notesOnItem} note${notesOnItem === 1 ? '' : 's'} and discussion will be removed too.` : '';
-    if (window.confirm(`Remove “${item.title}” from this plan?${warning}`)) {
+    const question = notesOnItem > 0
+      ? t('planDetail.removeItemWithNotesConfirm', { title: item.title, count: notesOnItem })
+      : t('planDetail.removeItemConfirm', { title: item.title });
+    if (window.confirm(question)) {
       removeItem.mutate({ itemId: item.id, revision: detail.content_revision });
     }
   };
@@ -307,8 +318,9 @@ export const PlanDetailPage = () => {
     const songBook = serviceSongBookDocumentFromPlan({
       plan: detail,
       organizationName,
+      locale,
     });
-    printDocument(renderServiceSongBookHtml(songBook), 'Service song book print preview');
+    printDocument(renderServiceSongBookHtml(songBook), t('planDetail.songBookFrameTitle'));
   };
 
   return (
@@ -328,7 +340,7 @@ export const PlanDetailPage = () => {
         }
         onNotify={() => notify.mutate(crypto.randomUUID())}
         onDelete={() => {
-          if (window.confirm(`Delete “${detail.title}”? This cannot be undone.`)) {
+          if (window.confirm(t('planDetail.deleteConfirm', { title: detail.title }))) {
             removePlan.mutate();
           }
         }}
@@ -349,22 +361,27 @@ export const PlanDetailPage = () => {
         />
         {notify.isSuccess && <DeliveryOutcomeNotice result={notify.data} canRetry={isAdmin(role)} />}
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => navigate(`/plans/${planId}/live`)}>Live</Button>
-          <Button variant="secondary" loading={openChat.isPending} onClick={() => openChat.mutate()}>Plan chat</Button>
-          {canSchedule && <Button variant="secondary" onClick={() => setComposing(true)}>Message people</Button>}
-          {canEditPlan && <Button variant="secondary" onClick={() => setDialog('apply-template')}>Apply template</Button>}
-          {canEditPlan && <Button variant="secondary" onClick={() => setDialog('save-template')}>Save as template</Button>}
+          <Button variant="secondary" onClick={() => navigate(`/plans/${planId}/live`)}>{t('planDetail.live')}</Button>
+          <Button variant="secondary" loading={openChat.isPending} onClick={() => openChat.mutate()}>{t('planDetail.planChat')}</Button>
+          {canSchedule && <Button variant="secondary" onClick={() => setComposing(true)}>{t('planDetail.messagePeople')}</Button>}
+          {canEditPlan && <Button variant="secondary" onClick={() => setDialog('apply-template')}>{t('planDetail.applyTemplate')}</Button>}
+          {canEditPlan && <Button variant="secondary" onClick={() => setDialog('save-template')}>{t('planDetail.saveAsTemplate')}</Button>}
         </div>
         {(templateApplications.data?.length ?? 0) > 0 && (
           <p className="text-xs text-slate-500">
-            From template{' '}
-            {templateApplications.data!.map((applied) =>
-              `“${applied.template_name}” rev ${applied.template_revision}${applied.template_kind === 'section' ? ' (section)' : ''}`,
-            ).join(', ')}
-            . Later template edits do not change this plan.
+            {t('planDetail.fromTemplates', {
+              templates: format.list(
+                templateApplications.data!.map((applied) =>
+                  t(applied.template_kind === 'section' ? 'planDetail.templateEntrySection' : 'planDetail.templateEntry', {
+                    name: applied.template_name,
+                    revision: applied.template_revision,
+                  }),
+                ),
+              ),
+            })}
           </p>
         )}
-        <ErrorNotice error={openChat.error ? new Error('Plan chat is open to plan leaders and the people scheduled on this plan.') : null} />
+        <ErrorNotice error={openChat.error ? PLAN_CHAT_RESTRICTED : null} />
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[16rem_1fr]">
@@ -403,7 +420,7 @@ export const PlanDetailPage = () => {
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                {PLAN_TAB_LABELS[value]}
+                {t(`tabs.${value}`)}
               </button>
             ))}
           </div>
@@ -412,7 +429,7 @@ export const PlanDetailPage = () => {
             <>
               {orderStale && (
                 <p role="alert" className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-600/20">
-                  Someone else changed this plan, so your last change was not saved. The order below is the latest — check it and try again.
+                  {t('planDetail.orderStale')}
                 </p>
               )}
               <OrderTab

@@ -1,14 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { Trans, useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
-  API_CREDENTIAL_STATE_LABELS,
-  API_SCOPE_LABELS,
-  WEBHOOK_DELIVERY_STATUS_LABELS,
-  WEBHOOK_DISABLED_REASON_LABELS,
-  WEBHOOK_EVENT_LABELS,
-  formatDate,
-  formatDateTime,
-  webhookErrorLabel,
   type ApiCredentialState,
   type ApiCredentialSummary,
   type ApiScope,
@@ -26,6 +20,7 @@ import {
   useWebhookEndpoints,
 } from '../../hooks/queries';
 import { Badge, Button, ErrorNotice, Spinner } from '../ui';
+import { useFormatters } from '../../i18n';
 
 const POSITIVE = 'bg-emerald-50 text-emerald-700 ring-emerald-600/20';
 const NEUTRAL = 'bg-slate-100 text-slate-600 ring-slate-500/20';
@@ -50,6 +45,29 @@ const deliveryTone: Record<WebhookDeliveryStatus, string> = {
 const ALL_SCOPES: ApiScope[] = ['plans.read', 'songs.read'];
 const ALL_EVENTS: WebhookEventType[] = ['plan.published', 'plan.unpublished', 'plan.deleted'];
 
+/** Stored webhook delivery error codes that have a translated explanation. */
+const KNOWN_WEBHOOK_ERRORS = [
+  'timeout',
+  'destination_blocked',
+  'dns_failed',
+  'connection_failed',
+  'redirect_not_followed',
+  'secret_unavailable',
+  'endpoint_disabled',
+  'endpoint_revoked',
+] as const;
+type KnownWebhookError = (typeof KNOWN_WEBHOOK_ERRORS)[number];
+
+const isKnownWebhookError = (code: string): code is KnownWebhookError =>
+  (KNOWN_WEBHOOK_ERRORS as readonly string[]).includes(code);
+
+/** Human text for a stored delivery error code (`http_503` → "Endpoint answered HTTP 503"); unknown codes stay as-is. */
+const webhookErrorText = (t: TFunction<'settings'>, code: string): string => {
+  const http = /^http_(\d{3})$/.exec(code);
+  if (http) return t('integrations.webhookError.http', { status: http[1] });
+  return isKnownWebhookError(code) ? t(`integrations.webhookError.${code}`) : code;
+};
+
 /** Shown once after creation: the value cannot be retrieved again. */
 interface OneTimeSecretProps {
   label: string;
@@ -58,11 +76,12 @@ interface OneTimeSecretProps {
 }
 
 const OneTimeSecret = ({ label, value, onDone }: OneTimeSecretProps) => {
+  const { t } = useTranslation(['settings', 'common']);
   const [copied, setCopied] = useState(false);
   return (
     <div role="status" className="space-y-2 rounded-lg bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-600/20">
       <p className="font-medium">{label}</p>
-      <p>Copy it now and store it somewhere safe. It will not be shown again.</p>
+      <p>{t('integrations.secretOnce')}</p>
       <div className="flex gap-2">
         <input className="input min-w-0 flex-1 font-mono text-xs" readOnly value={value} aria-label={label} onFocus={(event) => event.target.select()} />
         <Button
@@ -71,10 +90,10 @@ const OneTimeSecret = ({ label, value, onDone }: OneTimeSecretProps) => {
             void navigator.clipboard.writeText(value).then(() => setCopied(true));
           }}
         >
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? t('common:actions.copied') : t('common:actions.copy')}
         </Button>
       </div>
-      <Button variant="ghost" onClick={onDone}>I have stored it</Button>
+      <Button variant="ghost" onClick={onDone}>{t('integrations.secretStored')}</Button>
     </div>
   );
 };
@@ -82,14 +101,15 @@ const OneTimeSecret = ({ label, value, onDone }: OneTimeSecretProps) => {
 interface ToggleListProps<T extends string> {
   legend: string;
   options: readonly T[];
-  labels: Record<T, string>;
+  /** Translated description of one option. */
+  labelOf: (option: T) => string;
   selected: T[];
   onChange: (next: T[]) => void;
   /** Rendered as code next to each label (the scope or event name). */
   showValue?: boolean;
 }
 
-const ToggleList = <T extends string>({ legend, options, labels, selected, onChange, showValue = true }: ToggleListProps<T>) => (
+const ToggleList = <T extends string>({ legend, options, labelOf, selected, onChange, showValue = true }: ToggleListProps<T>) => (
   <fieldset>
     <legend className="label">{legend}</legend>
     <div className="space-y-1">
@@ -102,7 +122,7 @@ const ToggleList = <T extends string>({ legend, options, labels, selected, onCha
             onChange={(event) => onChange(event.target.checked ? [...selected, option] : selected.filter((value) => value !== option))}
           />
           <span>
-            {labels[option]}
+            {labelOf(option)}
             {showValue && <code className="ml-2 text-xs text-slate-500">{option}</code>}
           </span>
         </label>
@@ -114,6 +134,8 @@ const ToggleList = <T extends string>({ legend, options, labels, selected, onCha
 // ================================================================ credentials
 
 const CredentialRow = ({ credential }: { credential: ApiCredentialSummary }) => {
+  const { t } = useTranslation('settings');
+  const { date, dateTime } = useFormatters();
   const invalidate = useInvalidateIntegrations();
   const revoke = useMutation({ mutationFn: () => api.revokeApiCredential(credential.id), onSuccess: invalidate });
   return (
@@ -123,26 +145,36 @@ const CredentialRow = ({ credential }: { credential: ApiCredentialSummary }) => 
           {credential.name} <code className="ml-1 text-xs text-slate-500">sck_{credential.key_prefix}_…</code>
         </p>
         <p className="text-slate-500">
-          {credential.scopes.join(', ')} · {credential.rate_limit_per_minute}/min · created {formatDate(credential.created_at)}
-          {credential.created_by_name ? ` by ${credential.created_by_name}` : ''}
+          {credential.created_by_name
+            ? t('integrations.credentialMetaBy', {
+                scopes: credential.scopes.join(', '),
+                rate: credential.rate_limit_per_minute,
+                date: date(credential.created_at),
+                name: credential.created_by_name,
+              })
+            : t('integrations.credentialMeta', {
+                scopes: credential.scopes.join(', '),
+                rate: credential.rate_limit_per_minute,
+                date: date(credential.created_at),
+              })}
         </p>
         <p className="text-slate-500">
-          {credential.last_used_at ? `Last used ${formatDateTime(credential.last_used_at)}` : 'Never used'}
-          {credential.expires_at ? ` · expires ${formatDate(credential.expires_at)}` : ''}
+          {credential.last_used_at ? t('integrations.lastUsed', { when: dateTime(credential.last_used_at) }) : t('integrations.neverUsed')}
+          {credential.expires_at ? ` · ${t('integrations.expires', { date: date(credential.expires_at) })}` : ''}
         </p>
         <ErrorNotice error={revoke.error} />
       </div>
       <div className="flex items-center gap-2">
-        <Badge tone={credentialTone[credential.state]}>{API_CREDENTIAL_STATE_LABELS[credential.state]}</Badge>
+        <Badge tone={credentialTone[credential.state]}>{t(`integrations.credentialState.${credential.state}`)}</Badge>
         {credential.state !== 'revoked' && (
           <Button
             variant="secondary"
             loading={revoke.isPending}
             onClick={() => {
-              if (window.confirm(`Revoke “${credential.name}”? Integrations using it stop working on their next request.`)) revoke.mutate();
+              if (window.confirm(t('integrations.revokeKeyConfirm', { name: credential.name }))) revoke.mutate();
             }}
           >
-            Revoke
+            {t('integrations.revoke')}
           </Button>
         )}
       </div>
@@ -151,6 +183,7 @@ const CredentialRow = ({ credential }: { credential: ApiCredentialSummary }) => 
 };
 
 const NewCredentialForm = ({ onClose }: { onClose: () => void }) => {
+  const { t } = useTranslation(['settings', 'common']);
   const invalidate = useInvalidateIntegrations();
   // One key per form: a double submit or network retry returns the same credential.
   const [requestKey, setRequestKey] = useState(() => crypto.randomUUID());
@@ -174,7 +207,7 @@ const NewCredentialForm = ({ onClose }: { onClose: () => void }) => {
     },
   });
 
-  if (secret) return <OneTimeSecret label="New API key" value={secret} onDone={onClose} />;
+  if (secret) return <OneTimeSecret label={t('integrations.newKeySecret')} value={secret} onDone={onClose} />;
 
   return (
     <form
@@ -185,22 +218,19 @@ const NewCredentialForm = ({ onClose }: { onClose: () => void }) => {
       }}
     >
       <div>
-        <label className="label" htmlFor="api-credential-name">Name</label>
-        <input id="api-credential-name" className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Lobby display" required maxLength={80} />
+        <label className="label" htmlFor="api-credential-name">{t('integrations.keyName')}</label>
+        <input id="api-credential-name" className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder={t('integrations.keyNamePlaceholder')} required maxLength={80} />
       </div>
-      <ToggleList legend="Access" options={ALL_SCOPES} labels={API_SCOPE_LABELS} selected={scopes} onChange={setScopes} />
+      <ToggleList legend={t('integrations.keyAccess')} options={ALL_SCOPES} labelOf={(scope) => t(`integrations.scope.${scope}`)} selected={scopes} onChange={setScopes} />
       <div>
-        <label className="label" htmlFor="api-credential-expiry">Expires (optional)</label>
+        <label className="label" htmlFor="api-credential-expiry">{t('integrations.keyExpires')}</label>
         <input id="api-credential-expiry" type="date" className="input" value={expires} onChange={(event) => setExpires(event.target.value)} />
       </div>
-      <p className="text-xs text-slate-500">
-        Read-only. Keys see published plans, service types and the song library — never people, notes, files or drafts.
-        A key stops working if it is revoked, expires, or you stop being an administrator.
-      </p>
+      <p className="text-xs text-slate-500">{t('integrations.keyHint')}</p>
       <ErrorNotice error={create.error} />
       <div className="flex gap-2">
-        <Button type="submit" loading={create.isPending} disabled={!scopes.length || !name.trim()}>Create key</Button>
-        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button type="submit" loading={create.isPending} disabled={!scopes.length || !name.trim()}>{t('integrations.createKey')}</Button>
+        <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
       </div>
     </form>
   );
@@ -209,26 +239,33 @@ const NewCredentialForm = ({ onClose }: { onClose: () => void }) => {
 // ================================================================== webhooks
 
 const DeliveryRow = ({ delivery }: { delivery: WebhookDeliveryListItem }) => {
+  const { t } = useTranslation('settings');
+  const { dateTime } = useFormatters();
   const invalidate = useInvalidateIntegrations();
   const retry = useMutation({ mutationFn: () => api.retryWebhookDelivery(delivery.id), onSuccess: invalidate });
   const last = delivery.history[delivery.history.length - 1];
   return (
     <li className="flex flex-wrap items-start justify-between gap-2 py-2 text-sm">
       <div className="min-w-0">
-        <p>{WEBHOOK_EVENT_LABELS[delivery.event_type]}</p>
+        <p>{t(`integrations.event.${delivery.event_type}`)}</p>
         <p className="text-slate-500">
-          {formatDateTime(delivery.occurred_at)} · {delivery.attempts} attempt{delivery.attempts === 1 ? '' : 's'}
-          {last?.duration_ms !== null && last?.duration_ms !== undefined ? ` · ${last.duration_ms} ms` : ''}
-          {delivery.status === 'queued' && delivery.attempts > 0 ? ` · next try ${formatDateTime(delivery.next_attempt_at)}` : ''}
+          {[
+            dateTime(delivery.occurred_at),
+            t('integrations.attempts', { count: delivery.attempts }),
+            last?.duration_ms !== null && last?.duration_ms !== undefined ? t('integrations.durationMs', { ms: last.duration_ms }) : null,
+            delivery.status === 'queued' && delivery.attempts > 0 ? t('integrations.nextTry', { when: dateTime(delivery.next_attempt_at) }) : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
-        {delivery.last_error_code && <p className="text-slate-500">{webhookErrorLabel(delivery.last_error_code)}</p>}
+        {delivery.last_error_code && <p className="text-slate-500">{webhookErrorText(t, delivery.last_error_code)}</p>}
         <p className="font-mono text-xs text-slate-400">evt_{delivery.event_id.replace(/-/g, '')}</p>
         <ErrorNotice error={retry.error} />
       </div>
       <div className="flex items-center gap-2">
-        <Badge tone={deliveryTone[delivery.status]}>{WEBHOOK_DELIVERY_STATUS_LABELS[delivery.status]}</Badge>
+        <Badge tone={deliveryTone[delivery.status]}>{t(`integrations.deliveryStatus.${delivery.status}`)}</Badge>
         {delivery.retryable && (
-          <Button variant="secondary" loading={retry.isPending} onClick={() => retry.mutate()}>Retry</Button>
+          <Button variant="secondary" loading={retry.isPending} onClick={() => retry.mutate()}>{t('delivery.retry')}</Button>
         )}
       </div>
     </li>
@@ -236,6 +273,7 @@ const DeliveryRow = ({ delivery }: { delivery: WebhookDeliveryListItem }) => {
 };
 
 const EndpointRow = ({ endpoint }: { endpoint: WebhookEndpointSummary }) => {
+  const { t } = useTranslation('settings');
   const invalidate = useInvalidateIntegrations();
   const [open, setOpen] = useState(false);
   const deliveries = useWebhookDeliveries(endpoint.id, open);
@@ -254,10 +292,15 @@ const EndpointRow = ({ endpoint }: { endpoint: WebhookEndpointSummary }) => {
   const revoke = useMutation({ mutationFn: () => api.revokeWebhookEndpoint(endpoint.id), onSuccess: invalidate });
 
   const status = revoked
-    ? { label: 'Revoked', tone: NEUTRAL }
+    ? { label: t('integrations.endpointState.revoked'), tone: NEUTRAL }
     : endpoint.enabled
-      ? { label: 'Active', tone: POSITIVE }
-      : { label: endpoint.disabled_reason ? WEBHOOK_DISABLED_REASON_LABELS[endpoint.disabled_reason] : 'Paused', tone: WARNING };
+      ? { label: t('integrations.endpointState.active'), tone: POSITIVE }
+      : {
+          label: endpoint.disabled_reason
+            ? t(`integrations.disabledReason.${endpoint.disabled_reason}`)
+            : t('integrations.endpointState.paused'),
+          tone: WARNING,
+        };
 
   return (
     <li className="py-3">
@@ -266,31 +309,36 @@ const EndpointRow = ({ endpoint }: { endpoint: WebhookEndpointSummary }) => {
           <p className="break-all font-medium">{endpoint.url}</p>
           {endpoint.description && <p className="text-slate-500">{endpoint.description}</p>}
           <p className="text-slate-500">
-            {endpoint.event_types.join(', ')} · secret …{endpoint.secret_hint}
-            {endpoint.pending_deliveries ? ` · ${endpoint.pending_deliveries} waiting` : ''}
-            {endpoint.failed_deliveries ? ` · ${endpoint.failed_deliveries} failed` : ''}
+            {[
+              endpoint.event_types.join(', '),
+              t('integrations.secretHint', { hint: endpoint.secret_hint }),
+              endpoint.pending_deliveries ? t('integrations.waitingCount', { count: endpoint.pending_deliveries }) : null,
+              endpoint.failed_deliveries ? t('integrations.failedCount', { count: endpoint.failed_deliveries }) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
         </div>
         <Badge tone={status.tone}>{status.label}</Badge>
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
         <Button variant="ghost" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-          {open ? 'Hide deliveries' : 'Deliveries'}
+          {open ? t('integrations.hideDeliveries') : t('integrations.deliveries')}
         </Button>
         {!revoked && (
           <>
-            <Button variant="secondary" loading={test.isPending} disabled={!endpoint.enabled} onClick={() => test.mutate()}>Send test</Button>
+            <Button variant="secondary" loading={test.isPending} disabled={!endpoint.enabled} onClick={() => test.mutate()}>{t('integrations.sendTest')}</Button>
             <Button variant="secondary" loading={toggle.isPending} onClick={() => toggle.mutate()}>
-              {endpoint.enabled ? 'Pause' : 'Resume'}
+              {endpoint.enabled ? t('integrations.pause') : t('integrations.resume')}
             </Button>
             <Button
               variant="secondary"
               loading={revoke.isPending}
               onClick={() => {
-                if (window.confirm('Revoke this endpoint? It receives nothing further; its delivery history is kept.')) revoke.mutate();
+                if (window.confirm(t('integrations.revokeEndpointConfirm'))) revoke.mutate();
               }}
             >
-              Revoke
+              {t('integrations.revoke')}
             </Button>
           </>
         )}
@@ -305,7 +353,7 @@ const EndpointRow = ({ endpoint }: { endpoint: WebhookEndpointSummary }) => {
               {deliveries.data.map((delivery) => <DeliveryRow key={delivery.id} delivery={delivery} />)}
             </ul>
           ) : (
-            <p className="py-4 text-center text-sm text-slate-400">Nothing has been sent to this endpoint yet.</p>
+            <p className="py-4 text-center text-sm text-slate-400">{t('integrations.noDeliveries')}</p>
           )}
           <ErrorNotice error={deliveries.error} />
         </div>
@@ -315,6 +363,7 @@ const EndpointRow = ({ endpoint }: { endpoint: WebhookEndpointSummary }) => {
 };
 
 const NewEndpointForm = ({ onClose }: { onClose: () => void }) => {
+  const { t } = useTranslation(['settings', 'common']);
   const invalidate = useInvalidateIntegrations();
   const [requestKey, setRequestKey] = useState(() => crypto.randomUUID());
   const [url, setUrl] = useState('');
@@ -331,7 +380,7 @@ const NewEndpointForm = ({ onClose }: { onClose: () => void }) => {
     },
   });
 
-  if (secret) return <OneTimeSecret label="Signing secret" value={secret} onDone={onClose} />;
+  if (secret) return <OneTimeSecret label={t('integrations.signingSecret')} value={secret} onDone={onClose} />;
 
   return (
     <form
@@ -342,22 +391,19 @@ const NewEndpointForm = ({ onClose }: { onClose: () => void }) => {
       }}
     >
       <div>
-        <label className="label" htmlFor="webhook-url">Endpoint URL</label>
+        <label className="label" htmlFor="webhook-url">{t('integrations.endpointUrl')}</label>
         <input id="webhook-url" type="url" className="input" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://example.com/hooks/service-center" required />
       </div>
       <div>
-        <label className="label" htmlFor="webhook-description">Description (optional)</label>
+        <label className="label" htmlFor="webhook-description">{t('integrations.endpointDescription')}</label>
         <input id="webhook-description" className="input" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={200} />
       </div>
-      <ToggleList legend="Events" options={ALL_EVENTS} labels={WEBHOOK_EVENT_LABELS} selected={events} onChange={setEvents} />
-      <p className="text-xs text-slate-500">
-        Events carry only ids; the receiver reads details with an API key. Requests are signed (Standard Webhooks) and
-        retried with the same event id, so receivers should verify the signature and ignore ids they have seen.
-      </p>
+      <ToggleList legend={t('integrations.events')} options={ALL_EVENTS} labelOf={(event) => t(`integrations.event.${event}`)} selected={events} onChange={setEvents} />
+      <p className="text-xs text-slate-500">{t('integrations.endpointHint')}</p>
       <ErrorNotice error={create.error} />
       <div className="flex gap-2">
-        <Button type="submit" loading={create.isPending} disabled={!events.length || !url}>Add endpoint</Button>
-        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button type="submit" loading={create.isPending} disabled={!events.length || !url}>{t('integrations.addEndpoint')}</Button>
+        <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
       </div>
     </form>
   );
@@ -368,6 +414,7 @@ const NewEndpointForm = ({ onClose }: { onClose: () => void }) => {
  * signed webhooks for plan publication changes, with delivery outcomes.
  */
 export const IntegrationSettings = () => {
+  const { t } = useTranslation('settings');
   const status = useIntegrationStatus();
   const credentials = useApiCredentials();
   const endpoints = useWebhookEndpoints();
@@ -377,12 +424,18 @@ export const IntegrationSettings = () => {
   return (
     <section className="card space-y-6 p-5">
       <div>
-        <h2 className="mb-1 font-semibold">Developer API and webhooks</h2>
+        <h2 className="mb-1 font-semibold">{t('integrations.title')}</h2>
         <p className="text-sm text-slate-500">
-          Let an approved integration read published plans and songs, and tell it when plans are published.
+          {t('integrations.description')}
           {status.data && (
             <>
-              {' '}API base URL <code className="break-all text-xs">{status.data.api_base_url}</code> (version {status.data.api_version}).
+              {' '}
+              <Trans
+                t={t}
+                i18nKey="integrations.baseUrl"
+                values={{ url: status.data.api_base_url, version: status.data.api_version }}
+                components={[<code key="url" className="break-all text-xs" />]}
+              />
             </>
           )}
         </p>
@@ -390,8 +443,8 @@ export const IntegrationSettings = () => {
 
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-sm font-medium">API keys</h3>
-          {!creatingKey && <Button variant="secondary" onClick={() => setCreatingKey(true)}>New key</Button>}
+          <h3 className="text-sm font-medium">{t('integrations.apiKeys')}</h3>
+          {!creatingKey && <Button variant="secondary" onClick={() => setCreatingKey(true)}>{t('integrations.newKey')}</Button>}
         </div>
         {creatingKey && <NewCredentialForm onClose={() => setCreatingKey(false)} />}
         {credentials.isLoading ? (
@@ -401,27 +454,23 @@ export const IntegrationSettings = () => {
             {credentials.data.map((credential) => <CredentialRow key={credential.id} credential={credential} />)}
           </ul>
         ) : (
-          !creatingKey && <p className="rounded-lg bg-slate-50 px-4 py-4 text-center text-sm text-slate-400 dark:bg-slate-900/40">No API keys yet.</p>
+          !creatingKey && <p className="rounded-lg bg-slate-50 px-4 py-4 text-center text-sm text-slate-400 dark:bg-slate-900/40">{t('integrations.noKeys')}</p>
         )}
         <ErrorNotice error={credentials.error} />
       </div>
 
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-sm font-medium">Webhooks</h3>
+          <h3 className="text-sm font-medium">{t('integrations.webhooks')}</h3>
           {!creatingEndpoint && status.data?.webhooks_available && (
-            <Button variant="secondary" onClick={() => setCreatingEndpoint(true)}>Add endpoint</Button>
+            <Button variant="secondary" onClick={() => setCreatingEndpoint(true)}>{t('integrations.addEndpoint')}</Button>
           )}
         </div>
         {status.data && !status.data.webhooks_available && (
-          <p className="mb-2 text-sm text-amber-700">
-            Webhooks are not available: the server has no secret-encryption key configured.
-          </p>
+          <p className="mb-2 text-sm text-amber-700">{t('integrations.webhooksUnavailable')}</p>
         )}
         {status.data && !status.data.worker_configured && (
-          <p className="mb-2 text-sm text-amber-700">
-            No scheduled worker is configured, so webhook deliveries wait until an operator runs the worker.
-          </p>
+          <p className="mb-2 text-sm text-amber-700">{t('integrations.noWorker')}</p>
         )}
         {creatingEndpoint && <NewEndpointForm onClose={() => setCreatingEndpoint(false)} />}
         {endpoints.isLoading ? (
@@ -431,7 +480,8 @@ export const IntegrationSettings = () => {
             {endpoints.data.map((endpoint) => <EndpointRow key={endpoint.id} endpoint={endpoint} />)}
           </ul>
         ) : (
-          !creatingEndpoint && <p className="rounded-lg bg-slate-50 px-4 py-4 text-center text-sm text-slate-400 dark:bg-slate-900/40">No webhook endpoints yet.</p>
+          !creatingEndpoint && <p className="rounded-lg bg-slate-50 px-4 py-4 text-center text-sm text-slate-400 dark:bg-slate-900/40">{t('integrations.noEndpoints')}</p>
+
         )}
         <ErrorNotice error={status.error ?? endpoints.error} />
       </div>

@@ -1,0 +1,603 @@
+{
+  "songsPage": {
+    "subtitle": "Your library, with arrangements and chord charts.",
+    "sortLabel": "Sort songs",
+    "sortTitle": "A–Z",
+    "sortRecent": "Recently updated",
+    "importCsv": "Import CSV",
+    "addSong": "Add a song",
+    "searchPlaceholder": "Add text filter",
+    "searchLabel": "Search songs",
+    "hideFilters": "Hide filters",
+    "filtersCount_one": "Filters ({{count}})",
+    "filtersCount_other": "Filters ({{count}})",
+    "hideFiltersCount_one": "Hide filters ({{count}})",
+    "hideFiltersCount_other": "Hide filters ({{count}})",
+    "filters": {
+      "toggle": "Filters",
+      "key": "Key",
+      "theme": "Theme",
+      "songType": "Song type",
+      "style": "Style",
+      "speed": "Speed",
+      "author": "Author",
+      "library": "Library",
+      "activeSongs": "Active songs",
+      "archivedSongs": "Archived songs",
+      "allSongs": "All songs",
+      "bpmMin": "Minimum BPM",
+      "bpmMax": "Maximum BPM",
+      "scheduledFrom": "Scheduled from (UTC)",
+      "scheduledTo": "Scheduled before (UTC)"
+    },
+    "applyFilters": "Apply filters",
+    "editSelected_one": "Edit {{count}} selected song",
+    "editSelected_other": "Edit {{count}} selected songs",
+    "columns": {
+      "title": "Title",
+      "bpm": "BPM",
+      "keys": "Keys",
+      "lastScheduled": "Last scheduled",
+      "created": "Created"
+    },
+    "selectSong": "Select {{title}}",
+    "archivedBadge": "Archived",
+    "emptySearch": "No songs match that search",
+    "empty": "No songs yet",
+    "emptyDescription": "Add songs to build the library your plans draw from.",
+    "previousPage": "Previous",
+    "page": "Page {{page}}"
+  },
+  "songDetail": {
+    "notFound": "Song not found",
+    "allArrangements": "All Arrangements",
+    "deleteSongConfirm": "Delete “{{title}}”? This cannot be undone.",
+    "mergedInto": "Merged into another song · open the kept song",
+    "archivedSong": "Archived song · existing plans and charts remain available.",
+    "restoreSong": "Restore song",
+    "archiveSong": "Archive song",
+    "restoreArrangement": "Restore arrangement",
+    "archiveArrangement": "Archive arrangement",
+    "archivedArrangement": "Archived arrangement · existing plans and charts remain available.",
+    "deleteArrangementConfirm": "Delete the “{{name}}” arrangement? This cannot be undone.",
+    "arrangementFiles": "{{name}} files",
+    "arrangementFilesDescription": "Charts and tracks for this arrangement. Plans using it show them under the song.",
+    "songFiles": "Song files",
+    "songFilesDescription": "Shared by every arrangement. Plans using this song show them under the song."
+  },
+  "chartEditor": {
+    "arrangementNotFound": "Arrangement not found",
+    "arrangementNotFoundDescription": "It may have been deleted.",
+    "backToSong": "Back to the song",
+    "leaveConfirm": "Leave without saving this chart?",
+    "back": "‹ Back",
+    "sequence": "Sequence",
+    "formatting": "Formatting",
+    "openInNewTab": "Open in new tab",
+    "downloadPdf": "Download PDF",
+    "saved": "Saved",
+    "popupBlocked": "Your browser blocked the new tab. Allow pop-ups for this site, or use Download PDF.",
+    "autoRefresh": "Auto-refresh",
+    "twoColumns": "Two columns",
+    "oneColumn": "One column",
+    "untitledSong": "Untitled song",
+    "previewTitle": "Chord chart preview",
+    "currentKey": "Current Key",
+    "addSequence": "Add a sequence",
+    "lyricsAndChords": "Lyrics and Chords",
+    "sourcePlaceholder": "C                 G\n Amazing grace how sweet the sound",
+    "sourceHelp": "Put the chords on their own line above the words, or write ChordPro inline — <0>A[G]mazing grace</0>. Either way it is saved as ChordPro."
+  },
+  "errors": {
+    "chooseDocument": "Choose a PDF, Word, or text document.",
+    "songbookNotFound": "Song book not found",
+    "csvTooLarge": "CSV exceeds 256 KiB",
+    "csvUnreadable": "Could not read CSV",
+    "chartLayoutFailed": "The chart could not be laid out for export.",
+    "chartEmpty": "The chart came out empty.",
+    "chartPrepareFailed": "The chart could not be prepared for export.",
+    "chartPrepareTimeout": "The chart took too long to prepare for export.",
+    "chartFontFailed": "The font this chart needs could not be loaded ({{status}}).",
+    "chooseDocumentFirst": "Choose a document first.",
+    "accountChanged": "Your account changed. Try again."
+  },
+  "songbooksPage": {
+    "subtitle": "Curate your library or attach a finished document for your whole community.",
+    "create": "Create song book",
+    "sourceType": {
+      "manual": "Manual",
+      "document": "Document"
+    },
+    "defaultDescription": "Ready for worship, rehearsal, and study.",
+    "empty": "No song books yet",
+    "emptyDescription": "Combine your songs into a shareable, print-ready collection.",
+    "createFirst": "Create your first song book",
+    "modalTitle": "Create a song book",
+    "fields": {
+      "title": "Title",
+      "titlePlaceholder": "Sunday Favorites",
+      "description": "Description"
+    },
+    "chooseSongs": "Choose songs",
+    "attachDocument": "Attach document",
+    "chooseDocument": "Choose a document",
+    "documentHint": "PDF, DOCX, or TXT · up to 50 MB",
+    "submit": "Create book"
+  },
+  "songbookPage": {
+    "opening": "Opening song book…",
+    "print": "Print / export PDF",
+    "previewUnavailable": "Document preview is unavailable.",
+    "songNumber": "Song {{number}}",
+    "authorAndKey": "{{author}} · Key {{key}}",
+    "keyOnly": "Key {{key}}",
+    "noChart": "No chart has been added for this song."
+  },
+  "imports": {
+    "existingId": "Existing Person/song ID",
+    "permissionRequired": "Import permission required",
+    "title": "Structured imports",
+    "subtitle": "Review CSV mappings and every row before saving. Up to 100 records and 256 KiB per atomic import.",
+    "intro": "People imports maintain roster records. They do not create logins or send invitations. Songbook PDFs and Word files remain documents.",
+    "importType": "Import type",
+    "kind": {
+      "songs": "Song metadata",
+      "people": "People"
+    },
+    "csvFile": "UTF-8 CSV file",
+    "fileSummary_one": "{{filename}} · {{count}} column.",
+    "fileSummary_other": "{{filename}} · {{count}} columns.",
+    "mappingHelp": "Blank mapped values clear nullable fields; unmapped fields stay unchanged on updates. Separate tags with semicolons.",
+    "doNotImport": "Do not import",
+    "refreshPreview": "Refresh preview",
+    "previewRows": "Preview rows",
+    "readingCsv": "Reading CSV…",
+    "previewLabel": "Import preview",
+    "previewTitle": "Read-only preview",
+    "previewHelp": "Preview itself writes no records or jobs. Resolve all errors and possible duplicates before saving; retries reuse the same saved review.",
+    "recordAction": "Record {{number}}: {{action}}",
+    "action": {
+      "create": "create",
+      "update": "update",
+      "skip": "skip",
+      "unresolved": "unresolved",
+      "error": "error"
+    },
+    "status": {
+      "reviewed": "reviewed",
+      "committed": "committed"
+    },
+    "fieldChange": "{{field}}: {{before}} → {{after}}",
+    "fieldValue": "{{field}}: {{value}}",
+    "resolution": "Resolution",
+    "resolutionDefault": "Use mapped ID / review matches",
+    "resolutionCreate": "Create a new record deliberately",
+    "resolutionSkip": "Skip this record",
+    "updateCandidate": "Update {{label}} · {{id}}",
+    "updateCandidateArchived": "Update {{label}} (archived) · {{id}}",
+    "candidatesTruncated_one": "Showing 10 of {{count}} match. Use the exact stable ID in the CSV to choose another target.",
+    "candidatesTruncated_other": "Showing 10 of {{count}} matches. Use the exact stable ID in the CSV to choose another target.",
+    "resolutionChanged": "Resolution changed. Refresh the preview to review the new result.",
+    "saveReviewed": "Save reviewed import",
+    "jobHeading": "{{filename}} · {{status}}",
+    "jobId": "Job {{id}}.",
+    "jobReviewed": "Review saved. Commit is pending or unconfirmed; check status or retry the entire batch.",
+    "jobCommitted": "All reviewed outcomes are saved. Retrying this job cannot duplicate its records.",
+    "mappedColumns": "Mapped columns: {{mapping}}",
+    "mappedColumn": "{{header}} → {{field}}",
+    "recordResult": "Record {{number}}: {{action}} {{id}}",
+    "checkStatus": "Check saved status",
+    "retryCommit": "Retry reviewed commit",
+    "startNew": "Start a new preview",
+    "startNewHelp": "If a target changed, start a fresh preview from this saved source. The old review stays unchanged in history.",
+    "recent": "Your recent imports (up to 50)",
+    "noneSaved": "No saved imports yet.",
+    "resumeFromUrl": "Resume job from this URL",
+    "jobSummary": "{{filename}} · {{kind}} · {{status}}",
+    "openReview": "Open review"
+  },
+  "arrangement": {
+    "defaultName": "Default Arrangement",
+    "defaultNewName": "New Arrangement",
+    "editTitle": "Edit Arrangement",
+    "addTitle": "Add Arrangement",
+    "fields": {
+      "name": "Arrangement Name",
+      "key": "Key",
+      "capo": "Capo",
+      "length": "Length",
+      "bpm": "BPM",
+      "meter": "Meter",
+      "sequence": "Sequence"
+    },
+    "noKey": "No key",
+    "sequenceHelp": "The order the sections are played in, separated by commas.",
+    "useAsDefault": "Use as the default arrangement",
+    "submit": "Submit",
+    "defaultBadge": "Default",
+    "capoValue": "Capo {{capo}}",
+    "bpmValue": "{{bpm}} bpm"
+  },
+  "addSong": {
+    "title": "Add Song",
+    "fields": {
+      "title": "Title",
+      "type": "Type",
+      "style": "Style",
+      "speed": "Speed",
+      "tags": "Tags",
+      "chart": "Lyrics & Chords"
+    },
+    "chartHelp": "Paste a chart with the chords on their own line above the lyrics, or write ChordPro with the chords in square brackets — <0>A[G]mazing grace</0>. Leave it blank to add the chart later."
+  },
+  "songInfo": {
+    "title": "Song Information",
+    "fields": {
+      "title": "Song Title",
+      "ccli": "CCLI#",
+      "authors": "Authors",
+      "defaultKey": "Default key",
+      "copyright": "Copyright",
+      "administration": "Administration",
+      "notes": "Notes",
+      "themes": "Themes"
+    },
+    "noDefaultKey": "No default key"
+  },
+  "keySelect": {
+    "quality": {
+      "major": "Major",
+      "minor": "Minor"
+    },
+    "placeholder": "Select a key",
+    "close": "Close key picker"
+  },
+  "vocabulary": {
+    "type": {
+      "hymn": "Hymn",
+      "chorus": "Chorus",
+      "praise": "Praise",
+      "worship": "Worship",
+      "communion": "Communion",
+      "offering": "Offering",
+      "response": "Response",
+      "christmas": "Christmas",
+      "easter": "Easter",
+      "special": "Special"
+    },
+    "style": {
+      "traditional": "Traditional",
+      "contemporary": "Contemporary",
+      "gospel": "Gospel",
+      "modern": "Modern",
+      "acoustic": "Acoustic",
+      "classical": "Classical"
+    },
+    "speed": {
+      "fast": "Fast",
+      "medium": "Medium",
+      "slow": "Slow"
+    }
+  },
+  "notation": {
+    "chords": "Chords",
+    "numbers": "Numbers",
+    "numerals": "Numerals",
+    "lyrics": "Lyrics",
+    "originalKey": "Original Key",
+    "selectLabel": "Chart key and notation",
+    "close": "Close chart options"
+  },
+  "chordChart": {
+    "empty": "No chord chart yet."
+  },
+  "formatting": {
+    "text": "Text",
+    "font": "Font",
+    "fontLabel": "Chart font",
+    "default": "Default: {{value}}",
+    "size": "Size",
+    "sizeLabel": "Chart font size",
+    "chordColor": "Chord Color",
+    "chordColorLabel": "Chord colour",
+    "layout": "Layout",
+    "columns": "Columns",
+    "columnsLabel": "Chart columns",
+    "columnsHelp": "Two columns fit a long chart onto one page. Sections are never split across a column or a page break.",
+    "save": "Save This Chart",
+    "colors": {
+      "black": "Black",
+      "blue": "Blue",
+      "red": "Red",
+      "green": "Green",
+      "grey": "Grey"
+    }
+  },
+  "sequence": {
+    "title": "Edit Sequence",
+    "empty": "Add section labels from the right to create a sequence.",
+    "moveEarlier": "Move {{label}} earlier",
+    "moveLater": "Move {{label}} later",
+    "remove": "Remove {{label}} from the sequence",
+    "sectionLabels": "Section labels",
+    "newLabelPlaceholder": "Add a new label",
+    "newLabelAria": "Add a new section label"
+  },
+  "allArrangements": {
+    "heading_one": "Arrangements ({{count}})",
+    "heading_other": "Arrangements ({{count}})",
+    "add": "Add an arrangement",
+    "empty": "No arrangements yet",
+    "emptyDescription": "An arrangement holds the key, tempo and chart a plan points at.",
+    "chartAdded": "Chart added",
+    "noChart": "No chart yet"
+  },
+  "arrangementPanel": {
+    "stat": "{{label}}: <0>{{value}}</0>",
+    "sequence": "Sequence: <0>{{sequence}}</0>",
+    "edit": "Edit this arrangement",
+    "delete": "Delete this arrangement",
+    "transposed_one": "transposed {{count}} semitone",
+    "transposed_other": "transposed {{count}} semitones",
+    "viewPage": "View page",
+    "addChart": "Add chart",
+    "emptyTitle": "No chord chart yet",
+    "emptyDescription": "Write one in the chart editor to transpose it, export it, and read it as numbers or numerals."
+  },
+  "curation": {
+    "copyName": "{{name}} copy",
+    "keySaved": "Labeled key saved.",
+    "sectionLabel": "Arrangement keys and reuse",
+    "title": "Labeled keys and files",
+    "intro": "Keys are sounding keys. Capo and vocal labels describe a version; chart transposition and plan selection use the sounding key. Each arrangement has one label per key.",
+    "filesForKey": "Files for key",
+    "generalFiles": "General files",
+    "capoValue": "capo {{capo}}",
+    "noFiles": "No files selected for this key.",
+    "editKeySummary": "Add or edit a labeled key",
+    "newKey": "New key",
+    "editKey": "Edit {{label}}",
+    "label": "Label",
+    "soundingKey": "Sounding key",
+    "pitchHelp": "Saved pitches stay stable for historical plan selection. Add a key for another pitch.",
+    "capoFret": "Capo fret",
+    "vocalLabel": "Vocal label",
+    "filesForThisKey": "Files for this key",
+    "fileScopeHelp": "Assigning an owned file to a key scopes its automatic plan selection to that pitch. Clearing every key association returns owned files to general use. File audience and playback rights still apply.",
+    "saveKey": "Save labeled key",
+    "reloadKeys": "Reload keys before retry",
+    "duplicateSummary": "Duplicate arrangement",
+    "newName": "New arrangement name",
+    "includeMetadata": "Key, capo, tempo, meter and length",
+    "includeSections": "Sequence / sections",
+    "includeChart": "Chart and print settings (retains its source sounding key)",
+    "keysToDuplicate": "Labeled keys to duplicate",
+    "keyOption": "{{label}} · {{key}}",
+    "filesToReuse": "Files to reuse",
+    "previewDuplicate": "Preview duplicate",
+    "previewCreate": "Create “{{name}}” with a new identity.",
+    "previewMetadataIncluded": "Metadata included.",
+    "previewMetadataOmitted": "Metadata omitted.",
+    "previewSectionsIncluded": "Sections included.",
+    "previewSectionsOmitted": "Sections omitted.",
+    "previewChartIncluded": "Chart included with its source sounding key.",
+    "previewChartOmitted": "Chart omitted.",
+    "previewKeepDefault": "Keep the current default.",
+    "keyWithPitch": "{{label}} ({{key}})",
+    "previewKeys_one": "{{count}} new key record: {{keys}}.",
+    "previewKeys_other": "{{count}} new key records: {{keys}}.",
+    "previewFiles_one": "{{count}} file reference: {{files}}.",
+    "previewFiles_other": "{{count}} file references: {{files}}.",
+    "previewReuseNote": "Reused files retain their original owner, audience, versions and playback rights.",
+    "createDuplicate": "Create reviewed duplicate",
+    "changeSelection": "Change selection / refresh preview",
+    "retryHelp": "If the outcome is unknown, retry this reviewed duplicate with the same request. A stale review needs a fresh preview.",
+    "loadingFile": "Loading {{title}}…",
+    "reusedBadge": "Reused file · edits affect its original"
+  },
+  "merge": {
+    "summary": "Find duplicate songs / merge",
+    "intro": "Suggestions match exact trimmed title or CCLI. Review deliberately; this song becomes the retained, read-only historical record. The selected song keeps its metadata and default.",
+    "finding": "Finding duplicates…",
+    "noSuggestions": "No matching title or CCLI suggestions.",
+    "songToKeep": "Song to keep",
+    "chooseDuplicate": "Choose a duplicate",
+    "matchingTitle": "{{title}} · matching title",
+    "matchingCcli": "{{title}} · matching CCLI",
+    "preview": "Preview merge",
+    "keepAndMerge": "Keep “{{winner}}”; merge “{{loser}}”.",
+    "coverage": "Review covers both songs: {{arrangements}} arrangements, {{keys}} labeled keys, {{files}} files, {{planItems}} plan items, {{songbookItems}} songbook entries and {{templateRevisions}} template revisions.",
+    "inspect": "Inspect metadata, defaults, files and references",
+    "metadataCaption": "Metadata conflict policy",
+    "columns": {
+      "field": "Field",
+      "kept": "Kept",
+      "losing": "Losing value retained in history"
+    },
+    "arrangementsNote": "Arrangements retain IDs. Names and key labels may repeat under different arrangements. Existing losing references with an inherited arrangement are fixed to its original default. General song files become shared by the kept song.",
+    "inheritsSongKey": "inherits song key",
+    "movesToKept": "moves to kept song",
+    "stays": "stays",
+    "keptDefault": "kept default",
+    "losingDefaultFrozen": "losing default frozen on references",
+    "archivedHistory": "archived history",
+    "capo": "capo {{capo}}",
+    "noVocalLabel": "no vocal label",
+    "arrangementId": "arrangement {{id}}",
+    "audience": "audience {{audience}}",
+    "generalSongFile": "general song file",
+    "remap": "remap",
+    "keep": "keep",
+    "songDefault": "song default",
+    "keyValue": "key {{key}}",
+    "inherited": "inherited",
+    "itemId": "item {{id}}",
+    "songbookId": "Songbook {{id}}",
+    "remapKeepVersion": "remap and keep version",
+    "entryId": "entry {{id}}",
+    "templateRevision": "Template {{template}} revision {{revision}} remains immutable; later use selects the kept song and original arrangement.",
+    "liveHistory_one": "{{count}} pinned live snapshot remains immutable. Existing offline copies refresh when the client next syncs.",
+    "liveHistory_other": "{{count}} pinned live snapshots remain immutable. Existing offline copies refresh when the client next syncs.",
+    "mergeReviewed": "Merge reviewed songs",
+    "changeReview": "Change / refresh review",
+    "retryHelp": "For an unknown outcome, retry this request. Changed references require a new review. No rows are partially merged."
+  },
+  "bulk": {
+    "fields": {
+      "author": "Author",
+      "ccliNumber": "CCLI number",
+      "copyright": "Copyright",
+      "administration": "Administration",
+      "defaultKey": "Default key",
+      "defaultBpm": "Default BPM",
+      "meter": "Meter",
+      "themes": "Themes",
+      "songTypes": "Song types",
+      "style": "Style",
+      "speed": "Speed",
+      "notes": "Notes"
+    },
+    "sectionLabel": "Bulk song metadata",
+    "title_one": "Edit metadata for {{count}} selected song",
+    "title_other": "Edit metadata for {{count}} selected songs",
+    "field": "Field",
+    "value": "Replacement value",
+    "help": "Tags use commas. An empty value clears the field. Unselected fields stay unchanged.",
+    "preview": "Preview changes",
+    "saved": "Changes saved.",
+    "reviewHelp": "Review each replacement before saving. Nothing has been changed yet.",
+    "change": "{{field}}: {{before}} → {{after}}",
+    "save": "Save reviewed changes"
+  },
+  "sidebar": {
+    "song": "Song",
+    "arrangements": "Arrangements",
+    "empty": "This song has no arrangements yet.",
+    "archived": "(Archived)"
+  },
+  "notes": {
+    "label": "Song notes",
+    "empty": "There are no notes on this song."
+  },
+  "schedule": {
+    "title": "Schedule",
+    "limitLabel": "How far back the schedule looks",
+    "limitOption_one": "Since {{count}} Most Recent",
+    "limitOption_other": "Since {{count}} Most Recent",
+    "loading": "Looking up recent services…",
+    "emptyArrangement": "This arrangement has not been scheduled yet.",
+    "emptySong": "This song has not been scheduled yet."
+  },
+  "tags": {
+    "empty": "There are no tags on this song.",
+    "emptyManage": "There are no tags on this song. Click Add to assign some."
+  },
+  "header": {
+    "back": "‹ Songs",
+    "actions": "Actions",
+    "editInformation": "Edit song information",
+    "deleteSong": "Delete song"
+  },
+  "mobileSongs": {
+    "inLibrary_one": "{{count}} in the library",
+    "inLibrary_other": "{{count}} in the library",
+    "description": "Search the catalogue, then open a chart to transpose it on stage.",
+    "searchPlaceholder": "Search by title",
+    "noMatch": "No match",
+    "emptyLibrary": "An empty library",
+    "noMatchDescription": "Nothing in the catalogue matches \"{{query}}\".",
+    "emptyLibraryDescription": "Add songs from the web app to fill the catalogue.",
+    "authorUnknown": "Author unknown"
+  },
+  "mobileArrangements": {
+    "label": "Arrangement",
+    "inPlan": "In this plan"
+  },
+  "mobileSongbooks": {
+    "description": "Collections your team can carry into a rehearsal — either a set of charts or a single attached document.",
+    "new": "New song book",
+    "emptyDescription": "Group the songs you play together into a book, so nobody is hunting for charts on a Sunday morning.",
+    "attachedDocument": "Attached document",
+    "collectedCharts": "Collected charts",
+    "pickSongs": "Pick songs",
+    "attachFile": "Attach a file",
+    "composeTitle": "A new song book",
+    "composeDescription": "Give it a name, then either pick the charts it holds or attach the document you already have.",
+    "name": "Name",
+    "namePlaceholder": "Sunday morning set",
+    "songsChosen_one": "Songs · {{count}} chosen",
+    "songsChosen_other": "Songs · {{count}} chosen",
+    "documentHint": "PDF, DOCX or plain text",
+    "openDocument": "Open document"
+  },
+  "mobileChart": {
+    "opening": "Opening the chart",
+    "screenTitle": "Chart",
+    "unavailable": {
+      "invalidLink": {
+        "title": "This chart link isn’t valid",
+        "description": "Open the song again from its plan or the song library."
+      },
+      "itemMissing": {
+        "title": "This item is no longer in the plan",
+        "description": "It may have been removed or replaced. Open the plan again to see its current order."
+      },
+      "notASong": {
+        "title": "This plan item isn’t a song",
+        "description": "Open the plan again to see its current order."
+      },
+      "songMismatch": {
+        "title": "This plan item is a different song",
+        "description": "The plan has changed since this link was opened. Open the plan again."
+      },
+      "arrangementMissing": {
+        "title": "The plan’s arrangement isn’t available",
+        "description": "The arrangement chosen for this plan has been removed. A planner can choose another on the web."
+      }
+    },
+    "render": {
+      "noChart": {
+        "title": "No chart yet",
+        "description": "Add one from the web app to read it here."
+      },
+      "keyUnknown": {
+        "title": "Can’t change the key of this chart",
+        "description": "The chart’s written key or the service key can’t be read, so these chords would be wrong. Lyrics are still available; a planner can set the key on the web."
+      }
+    },
+    "noArrangementsDescription": "Add an arrangement from the web app to read its chart here.",
+    "keyIndependent": "Key-independent",
+    "keyNotSet": "Key not set · shown as written",
+    "keyUnavailable": "Key unavailable",
+    "shiftFromService_one": "{{shift}} semitone from the service key",
+    "shiftFromService_other": "{{shift}} semitones from the service key",
+    "shiftFromOriginal_one": "{{shift}} semitone from the original key",
+    "shiftFromOriginal_other": "{{shift}} semitones from the original key",
+    "serviceKey": "Service key",
+    "serviceKeyWrittenIn": "Service key · written in {{key}}",
+    "originalKey": "Original key",
+    "viewAnother": "View another arrangement",
+    "temporaryView": "Viewing {{viewing}} for now. This plan uses {{planArrangement}}; nothing is saved. Planners change a plan’s arrangement on the web.",
+    "backTo": "Back to {{name}}",
+    "backToPlanArrangement": "Back to the plan’s arrangement",
+    "transposeDown": "Transpose down a semitone",
+    "transposeUp": "Transpose up a semitone",
+    "backToServiceKey": "Back to the service key",
+    "backToOriginalKey": "Back to the original key",
+    "notation": "Notation"
+  },
+  "chartDocument": {
+    "byline": "[{{arrangement}}] by {{author}}"
+  },
+  "songBook": {
+    "documentTitle": "{{title}} - Song Book",
+    "continued": "{{title}} - Song order continued",
+    "noSongs": "No songs in this service.",
+    "noChart": "No chord chart has been added for this song.",
+    "arrangementUnavailable": "The arrangement chosen for this item is no longer available.",
+    "keyUnknown": "This chart's written key is missing or unreadable, so it cannot be shown in {{key}}.",
+    "keyUnknownNoKey": "This chart's written key is missing or unreadable, so it cannot be shown in the service key.",
+    "bpm": "{{bpm}}bpm",
+    "arrangementAtBpm": "{{arrangement}} at {{bpm}}"
+  }
+}

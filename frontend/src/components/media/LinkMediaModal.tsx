@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiError, formatDuration, type PlanDetail, type PlanItemDetail } from '@service-center/shared';
@@ -19,6 +20,7 @@ export interface LinkMediaModalProps {
  * until someone deliberately changes it.
  */
 export const LinkMediaModal = ({ plan, item, onClose }: LinkMediaModalProps) => {
+  const { t } = useTranslation('media');
   const { organizationId } = useAuth();
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
@@ -34,28 +36,32 @@ export const LinkMediaModal = ({ plan, item, onClose }: LinkMediaModalProps) => 
   const stale = save.error instanceof ApiError && save.error.code === 'plan_revision_stale';
 
   return (
-    <Modal open title={`Media for “${item.title}”`} onClose={onClose}>
+    <Modal open title={t('linkMedia.title', { title: item.title })} onClose={onClose}>
       <div className="space-y-4">
         {item.media && (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800">
             <span>
-              Linked: <strong>{item.media.title}</strong>
-              {item.media.archived && ' (archived)'}
+              <Trans
+                t={t}
+                i18nKey={item.media.archived ? 'linkMedia.linkedArchived' : 'linkMedia.linked'}
+                values={{ title: item.media.title }}
+                components={[<strong key="title" />]}
+              />
             </span>
             <Button variant="secondary" loading={save.isPending && save.variables === null} onClick={() => save.mutate(null)}>
-              Remove link
+              {t('linkMedia.removeLink')}
             </Button>
           </div>
         )}
         <label className="block">
-          <span className="label">Find media</span>
-          <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Title" />
+          <span className="label">{t('linkMedia.find')}</span>
+          <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('form.title')} />
         </label>
         {list.isLoading ? (
           <Loading />
         ) : (list.data?.media.length ?? 0) === 0 ? (
           <p className="text-sm text-slate-500">
-            No media found. <Link className="underline" to="/media">Open the media library</Link> to add some.
+            <Trans t={t} i18nKey="linkMedia.noneFound" components={[<Link key="library" className="underline" to="/media" />]} />
           </p>
         ) : (
           <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
@@ -75,7 +81,7 @@ export const LinkMediaModal = ({ plan, item, onClose }: LinkMediaModalProps) => 
                   loading={save.isPending && save.variables === media.id}
                   onClick={() => save.mutate(media.id)}
                 >
-                  {item.media?.id === media.id ? 'Linked' : 'Link'}
+                  {item.media?.id === media.id ? t('linkMedia.linkedButton') : t('linkMedia.link')}
                 </Button>
               </li>
             ))}
@@ -83,7 +89,7 @@ export const LinkMediaModal = ({ plan, item, onClose }: LinkMediaModalProps) => 
         )}
         {stale ? (
           <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-600/20">
-            Someone else changed this plan. Close this dialog to load the latest order, then try again — nothing was saved.
+            {t('linkMedia.stale')}
           </p>
         ) : (
           <ErrorNotice error={save.error} />

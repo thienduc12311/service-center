@@ -1,6 +1,5 @@
 import { recipientSequence } from '../model/attendance.model.js';
 import {
-  formatDate,
   messageVariableValues,
   renderMessageTemplate,
   type DeliveryEffectRow,
@@ -33,6 +32,7 @@ import { pushTransport, type PushTicketResult } from './expo-push.js';
 import { activeDeviceTokens } from './device-registrations.js';
 import { deliveryLinkToken } from './assignment-tokens.js';
 import { excerpt } from '../model/collaboration.model.js';
+import { recipientLanguage, type RecipientLanguage } from '../lib/i18n.js';
 
 /**
  * Called by the dispatcher immediately before contacting a provider. Returns
@@ -211,6 +211,7 @@ const eligibleAssignments = async (effect: DeliveryEffect, personId: string): Pr
   });
 };
 
+/** Team and position names are authored content, shown as written. */
 const roleLabel = (row: RecipientAssignment): string =>
   [row.team?.name, row.position?.name].filter(Boolean).join(' · ');
 
@@ -219,20 +220,24 @@ const requestDrafts = (
   plans: ReadonlyMap<string, DispatchPlan>,
   recipientId: string,
   rows: readonly RecipientAssignment[],
+  language: RecipientLanguage,
 ): Array<NotificationDraft & { dedupeKey: string }> => {
+  const { t } = language;
   const type: NotificationType = effect.template === 'assignment_request' ? 'assignment_scheduled' : 'assignment_reminder';
   return rows.flatMap((row) => {
     const plan = plans.get(row.plan_id);
     if (!plan) return [];
     const title = effect.template === 'service_reminder'
-      ? `Coming up: ${plan.title}`
-      : type === 'assignment_reminder' ? `Reminder: ${plan.title}` : `You're scheduled for ${plan.title}`;
+      ? t('feed.comingUp', { plan: plan.title })
+      : type === 'assignment_reminder' ? t('feed.reminder', { plan: plan.title }) : t('feed.scheduled', { plan: plan.title });
+    const role = roleLabel(row);
+    const date = language.date(plan.service_date);
     return [{
       organizationId: plan.organization_id,
       userId: recipientId,
       type,
       title,
-      body: [roleLabel(row), formatDate(plan.service_date)].filter(Boolean).join(' — '),
+      body: role ? t('feed.roleAndDate', { role, date }) : date,
       planId: plan.id,
       assignmentId: row.id,
       createdBy: effect.createdBy,
@@ -241,18 +246,15 @@ const requestDrafts = (
   });
 };
 
-const responseVerb = (effect: DeliveryEffect): string =>
+const responseTitle = (effect: DeliveryEffect, name: string, plan: string, language: RecipientLanguage): string =>
   effect.responseTransition === 'withdrawal'
-    ? 'withdrew from'
+    ? language.t('feed.responseWithdrew', { name, plan })
     : effect.responseStatus === 'confirmed'
-      ? 'confirmed'
-      : 'declined';
+      ? language.t('feed.responseConfirmed', { name, plan })
+      : language.t('feed.responseDeclined', { name, plan });
 
-const responseDrafts = async (
-  effect: DeliveryEffect,
-  plan: DispatchPlan,
-  recipientId: string,
-): Promise<Array<NotificationDraft & { dedupeKey: string }>> => {
+/** The responder's display name as authored, or a translated "Someone". */
+const responderName = async (effect: DeliveryEffect, language: RecipientLanguage): Promise<string> => {
   const [profile, person] = await Promise.all([
     effect.responderId
       ? unwrap(adminDb.from('profiles').select('full_name').eq('id', effect.responderId).maybeSingle())
@@ -261,17 +263,26 @@ const responseDrafts = async (
       ? unwrap(adminDb.from('people').select('first_name, last_name').eq('id', effect.responderPersonId).maybeSingle())
       : Promise.resolve(null),
   ]);
-  const responderName = profile?.full_name
-    ?? [person?.first_name, person?.last_name].filter(Boolean).join(' ')
-    ?? 'Someone';
+  return profile?.full_name
+    || [person?.first_name, person?.last_name].filter(Boolean).join(' ')
+    || language.t('feed.someone');
+};
+
+const responseDrafts = async (
+  effect: DeliveryEffect,
+  plan: DispatchPlan,
+  recipientId: string,
+  language: RecipientLanguage,
+): Promise<Array<NotificationDraft & { dedupeKey: string }>> => {
+  const name = await responderName(effect, language);
   return [
     {
       organizationId: plan.organization_id,
       userId: recipientId,
       type: 'assignment_response',
       // No decline reason here: the feed and push never carry it.
-      title: `${responderName || 'Someone'} ${responseVerb(effect)} ${plan.title}`,
-      body: formatDate(plan.service_date),
+      title: responseTitle(effect, name, plan.title, language),
+      body: language.date(plan.service_date),
       planId: plan.id,
       assignmentId: effect.assignmentIds[0] ?? null,
       createdBy: effect.responderId,
@@ -294,8 +305,10 @@ const sendPush = async (
   if (devices.length === 0) return finished('skipped', 'no_active_device');
 
   const badge = await unreadCount(job.recipientId);
+  const { t } = recipientLanguage(job.locale);
+  const text = { title: t('push.title'), body: t('push.body') };
   // One push per recipient per action, however many positions it covers.
-  const messages: PushMessage[] = devices.map((device) => toPushMessage(newest, device.token, badge));
+  const messages: PushMessage[] = devices.map((device) => toPushMessage(newest, device.token, badge, text));
   const transport = pushTransport();
   if (!(await begin())) return null;
   const tickets = await transport.send(messages);
@@ -428,10 +441,12 @@ const requestEmail = async (
   }
   const first = sections[0];
   if (!first) return finished('cancelled', 'recipient_not_eligible');
+  const language = recipientLanguage(job.locale);
 
   return sendEmail(
     {
       to: email,
+      locale: job.locale,
       personName: name,
       planTitle: first.planTitle,
       serviceDate: first.serviceDate,
@@ -443,18 +458,12 @@ const requestEmail = async (
       reminder: effect.template === 'assignment_reminder',
       schedulerEmail: scheduler?.email ?? null,
       organizationName: organization?.name,
-      ics: renderIcs(events, { calendarName: sections.length > 1 ? 'Service requests' : first.planTitle, productId: `-//${host}//Service Center//EN` }),
+      ics: renderIcs(events, { calendarName: sections.length > 1 ? language.t('email.consolidated.calendarName') : first.planTitle, productId: `-//${host}//Service Center//EN` }),
     },
     begin,
     deterministic ? { idempotencyKey: `delivery-${job.id}` } : {},
   );
 };
-
-/** "Sun, Oct 25, 9:00 AM" in the organization's zone. */
-const formatInZone = (instant: string, timeZone: string): string =>
-  new Intl.DateTimeFormat('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone,
-  }).format(new Date(instant));
 
 /** F08: confirmed-service reminder email. No respond link: nothing to answer. */
 const serviceReminderEmail = async (
@@ -474,15 +483,18 @@ const serviceReminderEmail = async (
       ? unwrap(adminDb.from('reminder_jobs').select('occurrence_starts_at, timezone').eq('id', effect.reminderJobId).maybeSingle())
       : Promise.resolve(null),
   ]);
+  const language = recipientLanguage(job.locale);
   return sendEmail(
     {
       to: email,
+      locale: job.locale,
       personName: name,
       organizationName: organization?.name ?? 'Service Center',
       planTitle: plan.title,
       serviceDate: plan.service_date,
       firstTimeAt: reminder?.occurrence_starts_at ?? null,
-      firstTimeLabel: reminder ? formatInZone(reminder.occurrence_starts_at, reminder.timezone) : null,
+      // Shown in the organization's zone, in the recipient's language.
+      firstTimeLabel: reminder ? language.dateTime(reminder.occurrence_starts_at, reminder.timezone) : null,
       location: plan.location,
       assignments: rows.map((row) => ({ teamName: row.team?.name ?? null, positionName: row.position?.name ?? null })),
       planUrl: `${config.APP_URL}/plans/${plan.id}`,
@@ -501,15 +513,20 @@ const responseEmail = async (
   if (!job.recipientId) return finished('cancelled', 'scheduler_not_active');
   const scheduler = await unwrap(adminDb.from('profiles').select('email').eq('id', job.recipientId).maybeSingle());
   if (!scheduler?.email) return finished('skipped', 'no_email_address');
+  const [organization, name] = await Promise.all([
+    unwrap(adminDb.from('organizations').select('name').eq('id', plan.organization_id).maybeSingle()),
+    responderName(effect, recipientLanguage(job.locale)),
+  ]);
   return sendEmail(
     {
       to: scheduler.email,
-      personName: null,
-      planTitle: `${plan.title} — ${effect.responseTransition === 'withdrawal' ? 'confirmation withdrawn' : 'assignment declined'}`,
+      locale: job.locale,
+      organizationName: organization?.name,
+      responderName: name,
+      planTitle: plan.title,
       serviceDate: plan.service_date,
-      teamName: null,
-      positionName: null,
-      respondUrl: `${config.APP_URL}/plans/${plan.id}`,
+      transition: effect.responseTransition ?? 'response',
+      planUrl: `${config.APP_URL}/plans/${plan.id}`,
     },
     begin,
   );
@@ -561,6 +578,7 @@ const dispatchAvailabilityRequest = async (
       : null;
     return sendEmail({
       to: email,
+      locale: job.locale,
       personName: name,
       organizationName,
       message: request.message,
@@ -572,12 +590,16 @@ const dispatchAvailabilityRequest = async (
     }, begin);
   }
   if (!job.recipientId) return finished('skipped', 'no_active_device');
+  const language = recipientLanguage(job.locale);
+  const window = { start: language.date(request.window_start), end: language.date(request.window_end) };
   const drafts: Array<NotificationDraft & { dedupeKey: string }> = [{
     organizationId: request.organization_id,
     userId: job.recipientId,
     type: 'availability_request',
-    title: 'Please update your availability',
-    body: `${request.window_start} to ${request.window_end}${request.respond_by ? ` · respond by ${request.respond_by}` : ''}`,
+    title: language.t('feed.availabilityTitle'),
+    body: request.respond_by
+      ? language.t('feed.availabilityBodyRespondBy', { ...window, respondBy: language.date(request.respond_by) })
+      : language.t('feed.availabilityBody', window),
     planId: null,
     assignmentId: null,
     createdBy: effect.createdBy,
@@ -603,7 +625,7 @@ const deliverFeedOrPush = async (job: DeliveryJob, drafts: readonly FeedDraft[],
   return sendPush(job, drafts, begin);
 };
 
-const authorName = async (orgId: string, personId: string | null, profileId: string | null): Promise<string> => {
+const authorName = async (orgId: string, personId: string | null, profileId: string | null, someone: string): Promise<string> => {
   const [person, profile] = await Promise.all([
     personId
       ? unwrap(adminDb.from('people').select('first_name, last_name').eq('id', personId).eq('organization_id', orgId).maybeSingle())
@@ -612,7 +634,7 @@ const authorName = async (orgId: string, personId: string | null, profileId: str
       ? unwrap(adminDb.from('profiles').select('full_name').eq('id', profileId).maybeSingle())
       : Promise.resolve(null),
   ]);
-  return [person?.first_name, person?.last_name].filter(Boolean).join(' ') || profile?.full_name || 'Someone';
+  return [person?.first_name, person?.last_name].filter(Boolean).join(' ') || profile?.full_name || someone;
 };
 
 /**
@@ -629,18 +651,19 @@ const dispatchItemComment = async (effect: DeliveryEffect, job: DeliveryJob, beg
       || !(await unwrap(adminDb.rpc('user_can_read_item_thread', { p_user: job.recipientId, p_plan: comment.plan_id })))) {
     return finished('cancelled', 'recipient_not_eligible');
   }
+  const { t } = recipientLanguage(job.locale);
   const [item, mention, author] = await Promise.all([
     unwrap(adminDb.from('plan_items').select('title').eq('id', comment.plan_item_id).maybeSingle()),
     unwrap(adminDb.from('plan_item_comment_mentions').select('person_id').eq('comment_id', comment.id)
       .eq('person_id', job.recipientPersonId).maybeSingle()),
-    authorName(comment.organization_id, comment.author_person_id, comment.author_id),
+    authorName(comment.organization_id, comment.author_person_id, comment.author_id, t('feed.someone')),
   ]);
-  const itemTitle = item?.title ?? 'an item';
+  const itemTitle = item?.title ?? t('feed.anItem');
   return deliverFeedOrPush(job, [{
     organizationId: comment.organization_id,
     userId: job.recipientId,
     type: mention ? 'comment_mention' : 'comment_reply',
-    title: mention ? `${author} mentioned you on “${itemTitle}”` : `${author} commented on “${itemTitle}”`,
+    title: mention ? t('feed.commentMention', { name: author, item: itemTitle }) : t('feed.commentReply', { name: author, item: itemTitle }),
     body: excerpt(comment.body),
     planId: comment.plan_id,
     planItemId: comment.plan_item_id,
@@ -677,6 +700,7 @@ const dispatchOperationalMessage = async (effect: DeliveryEffect, job: DeliveryJ
     const sender = await unwrap(adminDb.from('profiles').select('email').eq('id', message.created_by).maybeSingle());
     return sendEmail({
       to: email,
+      locale: job.locale,
       personName: name,
       organizationName: snapshot.organization_name ?? 'Service Center',
       subject,
@@ -713,13 +737,14 @@ const dispatchConversationMessage = async (effect: DeliveryEffect, job: Delivery
       || !(await unwrap(adminDb.rpc('user_can_access_conversation', { p_user: job.recipientId, p_conversation: message.conversation_id })))) {
     return finished('cancelled', 'recipient_not_eligible');
   }
+  const { t } = recipientLanguage(job.locale);
   const [state, conversation, mention, author] = await Promise.all([
     unwrap(adminDb.from('conversation_member_states').select('muted').eq('conversation_id', message.conversation_id)
       .eq('user_id', job.recipientId).maybeSingle()),
     unwrap(adminDb.from('conversations').select('kind, team_id, plan_id').eq('id', message.conversation_id).maybeSingle()),
     unwrap(adminDb.from('conversation_message_mentions').select('person_id').eq('message_id', message.id)
       .eq('person_id', job.recipientPersonId).maybeSingle()),
-    authorName(message.organization_id, message.author_person_id, message.author_id),
+    authorName(message.organization_id, message.author_person_id, message.author_id, t('feed.someone')),
   ]);
   if (state?.muted) return finished('cancelled', 'conversation_muted');
   const place = conversation?.team_id
@@ -727,12 +752,12 @@ const dispatchConversationMessage = async (effect: DeliveryEffect, job: Delivery
     : conversation?.plan_id
       ? (await unwrap(adminDb.from('plans').select('title').eq('id', conversation.plan_id).maybeSingle()))?.title
       : null;
-  const where = place ? `${place} chat` : 'a conversation';
+  const where = place ? t('feed.placeChat', { place }) : t('feed.aConversation');
   return deliverFeedOrPush(job, [{
     organizationId: message.organization_id,
     userId: job.recipientId,
     type: mention ? 'conversation_mention' : 'conversation_reply',
-    title: mention ? `${author} mentioned you in ${where}` : `${author} replied to you in ${where}`,
+    title: mention ? t('feed.conversationMention', { name: author, place: where }) : t('feed.conversationReply', { name: author, place: where }),
     body: excerpt(message.body),
     planId: conversation?.plan_id ?? null,
     conversationId: message.conversation_id,
@@ -770,7 +795,7 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
       return finished('cancelled', 'scheduler_not_active');
     }
     if (job.channel === 'email') return responseEmail(effect, plan, job, begin);
-    const drafts = await responseDrafts(effect, plan, job.recipientId);
+    const drafts = await responseDrafts(effect, plan, job.recipientId, recipientLanguage(job.locale));
     if (job.channel === 'in_app') {
       await ensureFeedRows(drafts);
       return finished('delivered');
@@ -790,7 +815,7 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
       : requestEmail(effect, plans, job, rows, begin);
   }
   if (!job.recipientId) return finished('skipped', 'no_active_device');
-  const drafts = requestDrafts(effect, plans, job.recipientId, rows);
+  const drafts = requestDrafts(effect, plans, job.recipientId, rows, recipientLanguage(job.locale));
   if (job.channel === 'in_app') {
     await ensureFeedRows(drafts);
     return finished('delivered');

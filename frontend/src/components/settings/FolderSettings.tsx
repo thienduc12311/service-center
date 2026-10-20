@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
-  ACCESS_CAPABILITY_LABELS,
   type AccessMoveChange,
   type ServiceTypeFolderNode,
   type ServiceTypeRow,
@@ -27,6 +27,7 @@ interface PendingMove {
  * gains or loses what and needs an explicit confirmation.
  */
 export const FolderSettings = () => {
+  const { t } = useTranslation(['settings', 'common']);
   const invalidate = useInvalidateOrg();
   const tree = useFolderTree();
   const serviceTypes = useServiceTypes();
@@ -38,8 +39,8 @@ export const FolderSettings = () => {
 
   const folders = flatten(tree.data?.folders ?? []);
   const folderOf = new Map(folders.flatMap(({ node }) => node.service_type_ids.map((id) => [id, node.id] as const)));
-  const memberName = (userId: string) => members.data?.find((m) => m.user_id === userId)?.full_name ?? 'Someone';
-  const typeName = (id: string) => serviceTypes.data?.find((t) => t.id === id)?.name ?? 'a service type';
+  const memberName = (userId: string) => members.data?.find((m) => m.user_id === userId)?.full_name ?? t('common:fallback.someone');
+  const typeName = (id: string) => serviceTypes.data?.find((type) => type.id === id)?.name ?? t('folders.aServiceType');
 
   const create = useMutation({
     mutationFn: () => api.createFolder({ name, parent_id: parentId || null }),
@@ -76,34 +77,34 @@ export const FolderSettings = () => {
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-sm font-semibold">Folders</h3>
-        <p className="text-xs text-slate-500">Group service types by campus or ministry. Permissions on a folder apply to everything inside it.</p>
+        <h3 className="text-sm font-semibold">{t('folders.title')}</h3>
+        <p className="text-xs text-slate-500">{t('folders.description')}</p>
       </div>
 
       {tree.isLoading ? (
         <Spinner />
       ) : folders.length === 0 ? (
-        <p className="text-sm text-slate-500">No folders yet.</p>
+        <p className="text-sm text-slate-500">{t('folders.empty')}</p>
       ) : (
         <ul className="divide-y divide-slate-100 text-sm">
           {folders.map(({ node, depth }) => (
             <li key={node.id} className="flex items-center justify-between gap-2 py-2" style={{ paddingLeft: `${depth * 1.25}rem` }}>
               <span>
                 {node.name}
-                <span className="text-xs text-slate-400"> · {node.service_type_ids.length} service types</span>
+                <span className="text-xs text-slate-400"> · {t('folders.serviceTypeCount', { count: node.service_type_ids.length })}</span>
               </span>
               <span className="flex gap-1">
                 <Button variant="ghost" className="!px-2 text-xs" onClick={() => setAccessFolder(node)}>
-                  Permissions
+                  {t('folders.permissions')}
                 </Button>
                 <Button
                   variant="ghost"
                   className="!px-2 text-xs"
                   disabled={node.children.length > 0 || node.service_type_ids.length > 0}
-                  title={node.children.length > 0 || node.service_type_ids.length > 0 ? 'Empty the folder first' : undefined}
+                  title={node.children.length > 0 || node.service_type_ids.length > 0 ? t('folders.emptyFirst') : undefined}
                   onClick={() => remove.mutate(node.id)}
                 >
-                  Delete
+                  {t('common:actions.delete')}
                 </Button>
               </span>
             </li>
@@ -113,13 +114,13 @@ export const FolderSettings = () => {
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-40 flex-1">
-          <label className="label" htmlFor="folder-name">New folder</label>
-          <input id="folder-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="North Campus" />
+          <label className="label" htmlFor="folder-name">{t('folders.newFolder')}</label>
+          <input id="folder-name" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('folders.namePlaceholder')} />
         </div>
         <div className="min-w-40 flex-1">
-          <label className="label" htmlFor="folder-parent">Inside</label>
+          <label className="label" htmlFor="folder-parent">{t('folders.inside')}</label>
           <select id="folder-parent" className="input" value={parentId} onChange={(e) => setParentId(e.target.value)}>
-            <option value="">Top level</option>
+            <option value="">{t('folders.topLevel')}</option>
             {folders.map(({ node, depth }) => (
               <option key={node.id} value={node.id}>
                 {'— '.repeat(depth)}
@@ -129,25 +130,25 @@ export const FolderSettings = () => {
           </select>
         </div>
         <Button disabled={!name.trim()} loading={create.isPending} onClick={() => create.mutate()}>
-          Add folder
+          {t('folders.add')}
         </Button>
       </div>
 
       {(serviceTypes.data ?? []).length > 0 && folders.length > 0 && (
         <div>
-          <p className="label">Service types</p>
+          <p className="label">{t('folders.serviceTypes')}</p>
           <ul className="space-y-1 text-sm">
             {(serviceTypes.data ?? []).map((type) => (
               <li key={type.id} className="flex items-center justify-between gap-2">
                 <span>{type.name}</span>
                 <select
-                  aria-label={`Folder for ${type.name}`}
+                  aria-label={t('folders.folderFor', { name: type.name })}
                   className="input w-48"
                   value={folderOf.get(type.id) ?? ''}
                   disabled={preview.isPending || confirm.isPending}
                   onChange={(e) => preview.mutate({ serviceType: type, folderId: e.target.value || null })}
                 >
-                  <option value="">No folder</option>
+                  <option value="">{t('folders.noFolder')}</option>
                   {folders.map(({ node, depth }) => (
                     <option key={node.id} value={node.id}>
                       {'— '.repeat(depth)}
@@ -163,30 +164,34 @@ export const FolderSettings = () => {
 
       <ErrorNotice error={tree.error ?? create.error ?? remove.error ?? preview.error ?? confirm.error} />
 
-      <Modal open={Boolean(pending)} title="This move changes who has access" onClose={() => setPending(null)}>
+      <Modal open={Boolean(pending)} title={t('folders.moveTitle')} onClose={() => setPending(null)}>
         {pending && (
           <div className="space-y-3 text-sm">
             <ul className="list-disc space-y-1 pl-5">
               {pending.changes.map((change) => (
                 <li key={`${change.user_id}-${change.capability}-${change.service_type_id}-${change.change}`}>
-                  {memberName(change.user_id)} {change.change === 'gain' ? 'gains' : 'loses'} “
-                  {ACCESS_CAPABILITY_LABELS[change.capability]}” on {typeName(change.service_type_id)}
+                  {t(change.change === 'gain' ? 'folders.gains' : 'folders.loses', {
+                    name: memberName(change.user_id),
+                    permission: t(`capabilities.${change.capability}`),
+                    serviceType: typeName(change.service_type_id),
+                  })}
                 </li>
               ))}
             </ul>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setPending(null)}>
-                Cancel
+                {t('common:actions.cancel')}
               </Button>
               <Button loading={confirm.isPending} onClick={() => confirm.mutate(pending)}>
-                Move anyway
+                {t('folders.moveAnyway')}
               </Button>
             </div>
           </div>
         )}
       </Modal>
 
-      <Modal open={Boolean(accessFolder)} title={`${accessFolder?.name ?? 'Folder'} permissions`} onClose={() => setAccessFolder(null)}>
+      <Modal open={Boolean(accessFolder)} title={accessFolder ? t('folders.permissionsTitle', { name: accessFolder.name }) : t('folders.permissions')}
+ onClose={() => setAccessFolder(null)}>
         {accessFolder && (
           <ScopeAccessEditor
             scopeType="folder"

@@ -1,0 +1,506 @@
+{
+  "library": {
+    "title": "Đa phương tiện",
+    "subtitle": "Video, tín hiệu và hình ảnh dùng lại được, có thể liên kết với các mục trong thứ tự chương trình.",
+    "add": "Thêm đa phương tiện",
+    "searchPlaceholder": "Tìm theo tiêu đề",
+    "searchLabel": "Tìm đa phương tiện",
+    "includeArchived": "Bao gồm mục đã lưu trữ",
+    "emptyTitle": "Chưa có đa phương tiện nào",
+    "emptyDescription": "Thêm một gói, sau đó đính kèm tệp và liên kết với các mục trong thứ tự chương trình.",
+    "columns": {
+      "title": "Tiêu đề",
+      "length": "Thời lượng",
+      "themes": "Chủ đề",
+      "lastUsed": "Dùng gần nhất"
+    },
+    "never": "Chưa dùng",
+    "usageCount_other": "{{count}} lần"
+  },
+  "detail": {
+    "notFound": "Không tìm thấy đa phương tiện.",
+    "allMedia": "Tất cả đa phương tiện",
+    "archived": "Đã lưu trữ: ẩn khỏi danh sách chọn. Chương trình đang dùng vẫn giữ nguyên.",
+    "archivedSince": "Đã lưu trữ từ {{date}}: ẩn khỏi danh sách chọn. Chương trình đang dùng vẫn giữ nguyên.",
+    "filesDescription": "Video, âm thanh, hình ảnh và tài liệu của mục này. Mỗi tệp giữ các phiên bản và đối tượng xem riêng.",
+    "usedIn": "Dùng trong chương trình",
+    "notUsed": "Chưa liên kết với chương trình nào. Hãy liên kết từ nút “Đa phương tiện” của một mục trong thẻ Thứ tự."
+  },
+  "thumbnail": {
+    "title": "Ảnh đại diện",
+    "alt": "Ảnh đại diện của {{title}}",
+    "none": "Chưa có ảnh đại diện.",
+    "selectLabel": "Ảnh dùng làm ảnh đại diện",
+    "uploadHint": "Hãy tải một ảnh lên ở phần Tệp để dùng tại đây."
+  },
+  "form": {
+    "title": "Tiêu đề",
+    "creator": "Tác giả",
+    "length": "Thời lượng (p:gg)",
+    "themes": "Chủ đề (phân cách bằng dấu phẩy)",
+    "tags": "Thẻ (phân cách bằng dấu phẩy)",
+    "notes": "Ghi chú",
+    "archiveOn": "Tự động lưu trữ vào ngày",
+    "archiveOnHint": "Từ ngày này, mục sẽ không còn trong danh sách chọn; chương trình đang dùng vẫn giữ nguyên.",
+    "durationInvalid": "Hãy nhập thời lượng theo dạng phút:giây, ví dụ 2:30.",
+    "readOnlyLabels": "Chủ đề: {{themes}} · Thẻ: {{tags}}",
+    "delete": "Xóa…",
+    "deleteConfirm": "Xóa “{{title}}” cùng các tệp của nó? Cần gỡ liên kết khỏi các chương trình đang dùng trước."
+  },
+  "mediaErrors": {
+    "revisionStale": "Người khác đã thay đổi mục này. Dữ liệu đã được tải lại — hãy kiểm tra rồi thử lại."
+  },
+  "linkMedia": {
+    "title": "Đa phương tiện cho “{{title}}”",
+    "linked": "Đã liên kết: <0>{{title}}</0>",
+    "linkedArchived": "Đã liên kết: <0>{{title}}</0> (đã lưu trữ)",
+    "removeLink": "Gỡ liên kết",
+    "find": "Tìm đa phương tiện",
+    "noneFound": "Không tìm thấy. <0>Mở thư viện đa phương tiện</0> để thêm.",
+    "linkedButton": "Đã liên kết",
+    "link": "Liên kết",
+    "stale": "Người khác đã thay đổi chương trình này. Hãy đóng hộp thoại để tải thứ tự mới nhất rồi thử lại — chưa có gì được lưu."
+  },
+  "filesPanel": {
+    "title": "Tệp",
+    "loading": "Đang tải tệp…",
+    "empty": "Chưa có tệp nào.",
+    "emptyReader": "Không có tệp nào bạn mở được ở đây.",
+    "hideArchived": "Ẩn tệp đã lưu trữ",
+    "showArchived_other": "Hiện {{count}} tệp đã lưu trữ"
+  },
+  "files": {
+    "category": "Loại",
+    "categories": {
+      "chart": "Bảng hợp âm",
+      "lyrics": "Lời bài hát",
+      "audio": "Âm thanh",
+      "video": "Video",
+      "image": "Hình ảnh",
+      "document": "Tài liệu",
+      "other": "Khác"
+    },
+    "audiences": {
+      "organization": "Mọi người trong Hội thánh",
+      "scheduled": "Người được phân công trong chương trình này",
+      "teams": "Các ban được chọn",
+      "positions": "Các vị trí được chọn",
+      "leaders": "Chỉ người lãnh đạo"
+    },
+    "kinds": {
+      "upload": "Tệp",
+      "link": "Liên kết",
+      "document": "Văn bản"
+    },
+    "archived": "Đã lưu trữ",
+    "playOnly": "Chỉ phát",
+    "noFinishedUpload": "Chưa có bản tải lên hoàn tất",
+    "versionNumber": "v{{number}}",
+    "versionUploading": "Đang tải lên",
+    "versionNotSaved": "Chưa lưu",
+    "menu": {
+      "versions": "Các phiên bản",
+      "replace": "Thay bằng phiên bản mới…",
+      "details": "Chi tiết và đối tượng xem…",
+      "delete": "Xóa…"
+    },
+    "deleteConfirm": "Xóa “{{title}}” cùng mọi phiên bản? Không thể hoàn tác.",
+    "replaceLabel": "Thay thế {{title}}",
+    "replaceUploading": "Đang tải phiên bản mới lên — phiên bản hiện tại được giữ cho đến khi hoàn tất.",
+    "replaceSaving": "Đang lưu phiên bản mới…",
+    "pendingUpload": "Bản tải lên chưa xong “{{filename}}” (hết hạn {{time}}) — chưa hiển thị cho ai.",
+    "pendingUploadSoon": "Bản tải lên chưa xong “{{filename}}” (sắp hết hạn) — chưa hiển thị cho ai.",
+    "failedUpload": "Bản tải lên “{{filename}}” chưa được lưu: {{reason}}",
+    "checkAgain": "Kiểm tra lại",
+    "discard": "Bỏ"
+  },
+  "fileErrors": {
+    "revisionStale": "Người khác đã thay đổi tệp này. Danh sách đã được làm mới — hãy kiểm tra rồi thử lại.",
+    "streamOnly": "Tệp này chỉ phát được tại đây, không tải xuống được.",
+    "forbidden": "Bạn không có quyền thay đổi tệp này.",
+    "notFound": "Tệp này không còn dành cho bạn."
+  },
+  "uploadOutcome": {
+    "notUploaded": "Bản tải lên chưa đến nơi lưu trữ. Hãy thử lại.",
+    "expired": "Bản tải lên đã hết hạn trước khi hoàn tất. Hãy tải tệp lên lại.",
+    "sizeMismatch": "Tệp được lưu không đúng kích thước đã báo nên đã bị hủy. Hãy tải lên lại.",
+    "typeMismatch": "Tệp được lưu không đúng loại đã báo nên đã bị hủy. Hãy tải lên lại.",
+    "superseded": "Người khác đã thay tệp này trong lúc bạn tải lên. Bản của bạn chưa được áp dụng; hãy tải lên lại để thay phiên bản mới hơn.",
+    "abandoned": "Bản tải lên này đã bị hủy.",
+    "failed": "Không thể hoàn tất việc tải lên. Hãy tải tệp lên lại.",
+    "notSaved": "Bản tải lên chưa được lưu."
+  },
+  "upload": {
+    "unsupportedType": "Loại tệp này không được hỗ trợ.",
+    "empty": "Tệp này trống.",
+    "tooLarge": "Mỗi tệp tối đa {{size}}.",
+    "interrupted": "{{reason}} Chưa có gì được lưu — hãy thử lại để tiếp tục cùng bản tải lên.",
+    "progress": "Đang tải lên {{loaded}} / {{total}} — chưa được lưu cho đến khi hoàn tất.",
+    "preparing": "Đang chuẩn bị tải lên…",
+    "finalizing": "Đang kiểm tra tệp đã lưu…",
+    "cancel": "Hủy tải lên"
+  },
+  "addFile": {
+    "titles": {
+      "upload": "Tải tệp lên",
+      "link": "Thêm liên kết",
+      "document": "Tài liệu văn bản mới"
+    },
+    "menu": {
+      "upload": "Tải tệp lên…",
+      "link": "Thêm liên kết…",
+      "document": "Tài liệu văn bản mới…"
+    },
+    "file": "Tệp",
+    "fileHint": "PDF, hình ảnh, âm thanh, video, văn bản và tài liệu Office, tối đa {{size}}.",
+    "title": "Tiêu đề",
+    "titleOptional": "Tiêu đề (không bắt buộc)",
+    "titlePlaceholder": "Tên tệp",
+    "url": "Địa chỉ web",
+    "urlHint": "Mở thẳng trang web kia. Service Center không bao giờ tải nội dung đó về, và trang đó quyết định ai được phát hoặc lưu.",
+    "text": "Nội dung",
+    "textHint": "Định dạng: # Tiêu đề, - gạch đầu dòng, 1. đánh số, **đậm**, *nghiêng*. Mọi thứ khác hiển thị như văn bản thường.",
+    "categoryFromType": "Theo loại tệp",
+    "categoryChoose": "Chọn…"
+  },
+  "audience": {
+    "legend": "Ai được mở",
+    "planLeaders": "Người lãnh đạo của chương trình này luôn mở được.",
+    "songLeaders": "Người lãnh đạo của thư viện bài hát luôn mở được.",
+    "scheduledHint": "Chỉ tính những người đã được gửi yêu cầu — yêu cầu mới chuẩn bị thì không tính.",
+    "loadingTeams": "Đang tải các ban…",
+    "loadingPositions": "Đang tải các vị trí…"
+  },
+  "document": {
+    "version": "Phiên bản {{number}}",
+    "versionPinned": "Phiên bản {{number}} — phiên bản chương trình này dùng (đã có bản mới hơn)",
+    "saveHint": "Khi lưu sẽ tạo một phiên bản mới. Chương trình đã ghim phiên bản cũ vẫn giữ phiên bản đó.",
+    "saveNewVersion": "Lưu phiên bản mới"
+  },
+  "details": {
+    "title": "Chi tiết tệp",
+    "rights": "Người xem được",
+    "rightsOptions": {
+      "download": "Phát, mở và tải xuống",
+      "stream_only": "Chỉ phát và mở (không tải xuống hay lưu ngoại tuyến)"
+    },
+    "streamOnlyHint": "Nút tải xuống và gói ngoại tuyến sẽ bỏ qua tệp này. Mọi thứ trình duyệt phát vẫn có thể bị ghi lại, nên đây không phải là biện pháp chống sao chép.",
+    "narrowingHint": "Đối tượng xem mới áp dụng cho mọi phiên bản và các chương trình đang dùng tệp này. Liên kết đã mở vẫn dùng được vài phút, và bản sao người khác đã tải xuống thì không thể thu hồi."
+  },
+  "versions": {
+    "title": "Các phiên bản của {{title}}",
+    "current": "(hiện tại)",
+    "usedOn_other": "Đang dùng trong {{count}} chương trình.",
+    "usedOnPinned_other": "Đang dùng trong {{count}} chương trình, có chương trình ghim phiên bản cũ hơn."
+  },
+  "planFiles": {
+    "fromSong": "Từ bài hát",
+    "fromArrangement": "Từ bản phối",
+    "serviceTypeDefault": "Mặc định của loại buổi nhóm",
+    "linked": "Đã liên kết",
+    "pinnedTo": "Ghim ở v{{number}}",
+    "newerAvailable": "Có phiên bản mới hơn",
+    "useNewest": "Dùng phiên bản mới nhất ở đây",
+    "followNewest": "Luôn theo phiên bản mới nhất",
+    "pinCurrent": "Ghim phiên bản hiện tại",
+    "removeFromPlan": "Gỡ khỏi chương trình này",
+    "intro": "Mỗi tệp chỉ hiển thị cho những người thuộc đối tượng xem của nó; mọi người chỉ thấy tệp ở đây sau khi yêu cầu của họ được gửi.",
+    "thisPlan": "Chương trình này",
+    "addDefault": "Thêm tệp mặc định",
+    "noPlanFiles": "Chưa có tệp nào cho chương trình.",
+    "items": "Các mục",
+    "noItems": "Chương trình này chưa có mục nào.",
+    "noItemFilesTitle": "Không có tệp mục nào bạn mở được",
+    "noItemFilesDescription": "Tệp của bài hát và các mục mà bạn được phép xem sẽ hiện ở đây.",
+    "noFiles": "Không có tệp.",
+    "allDefaultsLinked": "Mọi tệp mặc định của loại buổi nhóm này đã có trong chương trình.",
+    "defaultPinHint": "Chương trình giữ phiên bản bạn thêm lúc này, kể cả khi tệp mặc định được thay sau đó."
+  },
+  "rehearsal": {
+    "unavailable": "Bản thu này không còn dành cho bạn. Các mục khác vẫn phát được.",
+    "loadFailed": "Không tải được bản thu. Hãy kiểm tra kết nối rồi thử lại.",
+    "unsupported": "Trình duyệt này không phát được bản thu. Các mục khác vẫn phát được."
+  },
+  "live": {
+    "service": "Buổi nhóm",
+    "status": {
+      "ready": "Sẵn sàng",
+      "live": "Đang diễn ra",
+      "paused": "Tạm dừng",
+      "ended": "Đã kết thúc",
+      "discarded": "Đã hủy bỏ"
+    },
+    "policies": {
+      "item": "Thời lượng mục",
+      "planned_end": "Giờ kết thúc mục dự kiến",
+      "service_end": "Giờ kết thúc buổi nhóm"
+    },
+    "actions": {
+      "start": "bắt đầu",
+      "advance": "tiếp theo",
+      "pause": "tạm dừng",
+      "resume": "tiếp tục",
+      "end": "kết thúc",
+      "take_control": "nhận điều khiển",
+      "release_control": "nhả điều khiển",
+      "refresh_snapshot": "dùng thứ tự hiện tại",
+      "jump": "chuyển mục",
+      "take_over": "giành quyền điều khiển",
+      "discard": "hủy bỏ",
+      "set_policy": "đổi cách đếm giờ"
+    },
+    "warnings": {
+      "planChanged": "Thứ tự chương trình đã thay đổi sau khi lượt chạy này ghim lại. Lượt chạy vẫn giữ thứ tự đã ghim.",
+      "timeMoved": "Giờ nhóm này đã bị dời sau khi tạo lượt chạy. Việc tính giờ vẫn dùng giờ mà lượt chạy đã ghim.",
+      "timeRemoved": "Giờ nhóm này đã bị xóa khỏi chương trình. Lượt chạy và lịch sử của nó vẫn được giữ."
+    },
+    "connection": {
+      "offline_other": "Ngoại tuyến — đang hiển thị dữ liệu nhận được {{count}} giây trước",
+      "stale_other": "Đang kết nối lại — cập nhật lần cuối {{count}} giây trước",
+      "live_other": "Đã kết nối · cập nhật {{count}} giây trước"
+    },
+    "countdown": {
+      "elapsed": "đã trôi qua · không có thời lượng dự kiến",
+      "over": "quá giờ · {{policy}}",
+      "remaining": "còn lại · {{policy}}"
+    },
+    "finish": {
+      "planned": "Dự kiến kết thúc {{time}}",
+      "onTime": "Dự kiến kết thúc {{planned}} · ước tính {{projected}} (đúng giờ)",
+      "late": "Dự kiến kết thúc {{planned}} · ước tính {{projected}} (trễ {{delta}})",
+      "early": "Dự kiến kết thúc {{planned}} · ước tính {{projected}} (sớm {{delta}})"
+    },
+    "refusal": {
+      "revisionStale": "Lượt chạy đã chuyển tiếp trước khi lệnh của bạn đến. Chưa có gì được áp dụng; màn hình đang hiển thị trạng thái mới nhất.",
+      "controlLost": "Bạn không còn điều khiển lượt chạy này. Chưa có gì được áp dụng.",
+      "notApplied": "{{reason}} Chưa có gì được áp dụng.",
+      "network": "Không gửi được lệnh. Lệnh chưa được áp dụng — hãy kiểm tra kết nối rồi thử lại."
+    },
+    "control": {
+      "you_other": "Bạn đang điều khiển lượt chạy này (quyền được gia hạn tự động; còn {{count}} giây).",
+      "held": "{{name}} đang điều khiển lượt chạy này.",
+      "heldUnknown": "Có người đang điều khiển lượt chạy này.",
+      "finished": "Lượt chạy đã kết thúc thì không ai điều khiển.",
+      "nobody": "Chưa có ai điều khiển lượt chạy này."
+    },
+    "confirm": {
+      "endTitle": "Kết thúc lượt chạy này?",
+      "takeOverTitle": "Giành quyền điều khiển?",
+      "discardTitle": "Hủy bỏ lượt chạy này?",
+      "takeOver": "Giành quyền",
+      "discard": "Hủy bỏ",
+      "endBody": "Kết thúc sẽ ghi lại giờ kết thúc thực tế. Sau đó không ai chuyển tiếp lượt chạy được nữa; các thời điểm đã ghi vẫn có thể chỉnh sửa.",
+      "takeOverBody": "{{name}} sẽ mất quyền điều khiển ngay; lệnh tiếp theo của họ sẽ bị từ chối. Việc giành quyền được ghi lại.",
+      "takeOverBodyUnknown": "Người đang điều khiển sẽ mất quyền ngay; lệnh tiếp theo của họ sẽ bị từ chối. Việc giành quyền được ghi lại.",
+      "discardBody": "Lượt chạy và lịch sử vẫn được giữ nhưng không còn được tính là lượt chạy của buổi nhóm này. Sau đó bạn có thể bắt đầu lượt chạy mới cho cùng giờ nhóm.",
+      "reasonOptional": "Lý do (không bắt buộc)",
+      "reasonRequired": "Lý do? (bắt buộc)"
+    },
+    "panelLabel": "Lượt chạy trực tiếp",
+    "useCurrentOrder": "Dùng thứ tự hiện tại",
+    "discardedReason": "Đã hủy bỏ: {{reason}}",
+    "notStarted": "Chưa bắt đầu. Mục đầu tiên",
+    "nothingToRun": "Không có gì để chạy",
+    "next": "Tiếp theo: {{title}}",
+    "nextNothing": "Tiếp theo: không còn — người điều khiển kết thúc lượt chạy",
+    "endedAt": "Đã kết thúc lúc {{time}}",
+    "wasDiscarded": "Lượt chạy này đã bị hủy bỏ.",
+    "stageDisplay": "Màn hình sân khấu",
+    "takeOverFrom": "Giành quyền từ {{name}}",
+    "takeOverFromController": "Giành quyền từ người đang điều khiển",
+    "takeControl": "Nhận điều khiển",
+    "start": "Bắt đầu",
+    "back": "← Quay lại",
+    "pause": "Tạm dừng",
+    "resume": "Tiếp tục",
+    "nextButton": "Tiếp theo →",
+    "endRun": "Kết thúc lượt chạy",
+    "countdownLabel": "Đếm giờ",
+    "releaseControl": "Nhả điều khiển",
+    "discardRun": "Hủy bỏ lượt chạy…",
+    "sending": "Đang gửi “{{action}}”… chưa áp dụng cho đến khi máy chủ xác nhận.",
+    "offlineCommands": "Không thể ra lệnh khi ngoại tuyến; các nút bạn bấm sẽ không được xếp hàng.",
+    "retryCommand": "Gửi lại đúng lệnh đó",
+    "orderPinned": "Thứ tự (đã ghim)",
+    "goToSection": "Đến phần này",
+    "goHere": "Đến đây",
+    "stage": {
+      "close": "Đóng (Esc)",
+      "unavailable": "Lượt chạy này không còn khả dụng.",
+      "startingWith": "Bắt đầu với {{title}}",
+      "finished": "Buổi nhóm đã chạy xong",
+      "notUpdated_other": "Chưa cập nhật trong {{count}} giây"
+    },
+    "history": {
+      "title": "Lịch sử lượt chạy",
+      "loading": "Đang tải lịch sử…",
+      "plannedVsActual": "Dự kiến so với thực tế",
+      "plannedVsActualCorrected": "Dự kiến so với thực tế (có thời điểm đã chỉnh sửa)",
+      "columns": {
+        "item": "Mục",
+        "started": "Bắt đầu",
+        "planned": "Dự kiến",
+        "actual": "Thực tế",
+        "difference": "Chênh lệch"
+      },
+      "beforeService": "(trước buổi nhóm)",
+      "afterService": "(sau buổi nhóm)",
+      "notRun": "chưa chạy",
+      "serviceItems": "Các mục của buổi nhóm",
+      "elapsed": "{{start}} – {{end}} · {{elapsed}} từ đầu đến cuối",
+      "elapsedPaused": "{{start}} – {{end}} · {{elapsed}} từ đầu đến cuối, gồm {{paused}} tạm dừng",
+      "transitions": "Các bước chuyển",
+      "correctHint": "Chỉnh sửa một thời điểm sẽ thêm một bản ghi (ai, lý do, giá trị cũ); bản ghi gốc vẫn được giữ.",
+      "someone": "Một người",
+      "actionTo": "{{action}} → {{item}}",
+      "actions": {
+        "create": "Đã tạo",
+        "start": "Đã bắt đầu",
+        "advance": "Mục tiếp theo",
+        "jump": "Đã chuyển mục",
+        "pause": "Đã tạm dừng",
+        "resume": "Đã tiếp tục",
+        "end": "Đã kết thúc",
+        "take_control": "Đã nhận điều khiển",
+        "take_over": "Đã giành quyền",
+        "release_control": "Đã nhả điều khiển",
+        "set_policy": "Đã đổi cách đếm giờ",
+        "refresh_snapshot": "Đã ghim thứ tự hiện tại",
+        "discard": "Đã hủy bỏ"
+      },
+      "corrected": "{{name}} đã chỉnh từ {{from}} thành {{to}}: “{{reason}}”",
+      "correctTime": "Chỉnh thời điểm",
+      "correctTitle": "Chỉnh một thời điểm đã ghi",
+      "saveCorrection": "Lưu chỉnh sửa",
+      "correctBody": "“{{action}}” được ghi lúc {{time}}. Thời điểm mới phải nằm giữa bản ghi trước và sau nó. Giờ tính theo múi giờ của trình duyệt ({{timezone}}).",
+      "actualTime": "Thời điểm thực tế"
+    },
+    "page": {
+      "planNotFound": "Không tìm thấy chương trình.",
+      "title": "Trực tiếp — {{title}}",
+      "titleFallback": "Trực tiếp",
+      "back": "← Quay lại chương trình",
+      "planChat": "Trò chuyện chương trình",
+      "planChatDenied": "Trò chuyện chương trình dành cho người lãnh đạo chương trình và những người được phân công.",
+      "serviceTimes": "Giờ nhóm",
+      "noServiceTimes": "Chương trình này chưa có giờ nhóm. Hãy thêm giờ trong chương trình trước khi chạy Trực tiếp.",
+      "showing": "Đang hiển thị · {{status}}",
+      "open": "Mở · {{status}}",
+      "createRun": "Tạo lượt chạy",
+      "noRun": "Chưa có lượt chạy.",
+      "countdownForNew": "Cách đếm giờ cho lượt chạy mới",
+      "chooseTime": "Chọn một giờ nhóm",
+      "chooseTimeController": "Mỗi giờ nhóm có lượt chạy riêng. Hãy tạo một lượt chạy để ghim thứ tự hiện tại và điều khiển tại đây.",
+      "chooseTimeViewer": "Mở lượt chạy của một giờ nhóm để theo dõi. Chỉ người chỉnh sửa được chương trình mới điều khiển Trực tiếp.",
+      "unavailableTitle": "Lượt chạy này không khả dụng",
+      "unavailableDescription": "Lượt chạy đã bị xóa hoặc bạn không còn quyền truy cập.",
+      "loadingRun": "Đang tải lượt chạy…",
+      "hideHistory": "Ẩn lịch sử và thời lượng thực tế",
+      "showHistory": "Lịch sử và thời lượng thực tế",
+      "notThisPlan": "Lượt chạy đó không thuộc chương trình này."
+    }
+  },
+  "stage": {
+    "loading": "Đang tải sơ đồ sân khấu…",
+    "needsAttention": "cần chú ý",
+    "newLayout": "Sơ đồ mới",
+    "emptyTitle": "Chưa có sơ đồ sân khấu",
+    "emptyEditor": "Bắt đầu từ một mẫu hoặc sân khấu trống, rồi xếp những người được phân công trong chương trình và thiết bị của họ.",
+    "emptyReader": "Người chỉnh sửa chương trình có thể thêm sơ đồ sân khấu tại đây.",
+    "createTitle": "Sơ đồ sân khấu mới",
+    "defaultName": "Sân khấu",
+    "name": "Tên",
+    "startFrom": "Bắt đầu từ",
+    "blankLayout": "Sơ đồ trống",
+    "templateOption": "Mẫu: {{name}}",
+    "templateHint": "Thiết bị trong mẫu được sao chép; thay đổi mẫu sau này không làm thay đổi chương trình này.",
+    "background": "Nền",
+    "backgrounds": {
+      "blank": "Trống",
+      "stage": "Sân khấu khung",
+      "thrust": "Sân khấu nhô",
+      "round": "Sân khấu giữa"
+    },
+    "issues": {
+      "not_scheduled": "Không còn được phân công trong chương trình này",
+      "departed": "Đã rời danh sách thành viên",
+      "renamed": "Đã đổi tên sau khi xếp chỗ",
+      "unplaced": "Đã phân công nhưng chưa xếp chỗ"
+    },
+    "kinds": {
+      "person": "Người",
+      "gear": "Thiết bị",
+      "label": "Nhãn"
+    },
+    "gear": {
+      "drums": "Trống",
+      "keys": "Đàn phím",
+      "guitarAmp": "Ampli guitar",
+      "bassAmp": "Ampli bass",
+      "mic": "Micro",
+      "monitor": "Loa kiểm âm",
+      "podium": "Bục giảng",
+      "screen": "Màn hình"
+    },
+    "errors": {
+      "revisionStale": "Người khác đã lưu sơ đồ này. Bản nháp của bạn vẫn được giữ — hãy tải lại để xem bản của họ, hoặc bỏ bản của bạn."
+    },
+    "templateName": "Mẫu {{name}}",
+    "templateSaved": "Đã lưu “{{name}}” làm mẫu (chỉ thiết bị và nhãn).",
+    "maxObjects_other": "Mỗi sơ đồ chứa tối đa {{count}} đối tượng.",
+    "allowPopups": "Hãy cho phép cửa sổ bật lên cho trang này để in hoặc lưu sơ đồ thành PDF.",
+    "printTitle": "{{plan}} — {{layout}}",
+    "printHeading": "{{plan}} · {{layout}}",
+    "layoutLabel": "Sơ đồ sân khấu",
+    "layoutName": "Tên sơ đồ",
+    "matchedAt": "Đã đối chiếu với phân công lúc {{time}}",
+    "notRefreshed": "Chưa làm mới từ khi tạo",
+    "addGear": "Thêm thiết bị",
+    "addGearOption": "Thêm thiết bị…",
+    "addLabel": "Thêm nhãn",
+    "refreshFromStaffing": "Làm mới theo phân công…",
+    "printPdf": "In / PDF",
+    "saveAsTemplate": "Lưu làm mẫu",
+    "deleteConfirm": "Xóa sơ đồ “{{name}}”?",
+    "discardChanges": "Bỏ các thay đổi",
+    "saveLayout": "Lưu sơ đồ",
+    "reloadTheirs": "Tải bản của họ",
+    "compared": "So với phân công hiện tại",
+    "allStillScheduled": "Mọi người đã xếp chỗ vẫn đang được phân công.",
+    "noAutoMove": "Không ai bị tự động di chuyển. Hãy dùng “Làm mới theo phân công” khi bạn muốn cập nhật.",
+    "unplacedTitle": "Đã phân công, chưa xếp chỗ",
+    "allPlaced": "Mọi người được phân công đều đã có trên sơ đồ.",
+    "notYetAsked": "chưa được hỏi",
+    "placeLabel": "Xếp chỗ cho {{name}}",
+    "place": "Xếp chỗ",
+    "refreshedNotice": "Đã làm mới trong bản nháp. Hãy xem lại sơ đồ rồi lưu.",
+    "refresh": {
+      "title": "Làm mới theo phân công hiện tại",
+      "intro": "Người vẫn được phân công giữ nguyên vị trí đứng; chỉ tên của họ được cập nhật.",
+      "remove_other": "Gỡ {{count}} người không còn được phân công hoặc không còn trong danh sách thành viên",
+      "add_other": "Xếp {{count}} người được phân công dọc mép trước sân khấu",
+      "apply": "Áp dụng vào bản nháp"
+    },
+    "inspector": {
+      "selected": {
+        "person": "Người đang chọn",
+        "gear": "Thiết bị đang chọn",
+        "label": "Nhãn đang chọn"
+      },
+      "label": "Nhãn",
+      "width": "Rộng %",
+      "height": "Cao %",
+      "rotation": "Xoay °",
+      "color": "Màu",
+      "nudge": "Dịch chuyển (phím mũi tên di chuyển đối tượng đang chọn)",
+      "position": "x {{x}}% · y {{y}}%"
+    },
+    "canvas": {
+      "audience": "KHÁN GIẢ",
+      "audienceAllSides": "KHÁN GIẢ BỐN PHÍA",
+      "label": "Sơ đồ sân khấu",
+      "object": "{{kind}}: {{label}}",
+      "objectFlagged": "{{kind}}: {{label}} (phân công đã thay đổi)"
+    }
+  }
+}

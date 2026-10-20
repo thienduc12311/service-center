@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, type ColorValue } from 'react-native';
 import { Icon, type IconName } from '../../src/components/icons';
 import { fonts } from '../../src/lib/theme';
@@ -11,6 +12,7 @@ const tabIcon =
 
 export default function TabsLayout() {
   const theme = useTheme();
+  const { t } = useTranslation('common');
   return (
     <Tabs
       screenOptions={{
@@ -27,11 +29,11 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'My Schedule', tabBarIcon: tabIcon('schedule') }} />
-      <Tabs.Screen name="calendar" options={{ title: 'Calendar', tabBarIcon: tabIcon('calendar') }} />
-      <Tabs.Screen name="songs" options={{ title: 'Songs', tabBarIcon: tabIcon('music') }} />
-      <Tabs.Screen name="songbooks" options={{ title: 'Song books', tabBarIcon: tabIcon('book') }} />
-      <Tabs.Screen name="profile" options={{ title: 'Settings', tabBarIcon: tabIcon('person') }} />
+      <Tabs.Screen name="index" options={{ title: t('nav.mySchedule'), tabBarIcon: tabIcon('schedule') }} />
+      <Tabs.Screen name="calendar" options={{ title: t('nav.calendar'), tabBarIcon: tabIcon('calendar') }} />
+      <Tabs.Screen name="songs" options={{ title: t('nav.songs'), tabBarIcon: tabIcon('music') }} />
+      <Tabs.Screen name="songbooks" options={{ title: t('nav.songbooks'), tabBarIcon: tabIcon('book') }} />
+      <Tabs.Screen name="profile" options={{ title: t('nav.settings'), tabBarIcon: tabIcon('person') }} />
     </Tabs>
   );
 }
