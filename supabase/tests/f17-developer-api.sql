@@ -9,6 +9,12 @@
 -- A second organization is created with Sam as its owner.
 begin;
 
+-- Isolate the global worker from existing local integrations. These changes
+-- are visible only in this test transaction and are restored by ROLLBACK.
+update public.webhook_endpoints set enabled = false, disabled_reason = 'administrator' where enabled;
+update public.webhook_deliveries set lease_expires_at = now() + interval '1 day'
+ where status = 'sending';
+
 create temporary table f17_fx (k text primary key, id uuid) on commit drop;
 grant select, insert on f17_fx to authenticated, service_role;
 insert into f17_fx values
@@ -85,7 +91,9 @@ begin
   insert into f17_fx values ('cred_plans', r.credential_id);
 
   -- Admin reads metadata; the hash column is not readable.
-  select count(*) into n from public.api_credentials where organization_id = pg_temp.fx('org');
+  -- Existing local credentials are unrelated to these fixture rows.
+  select count(*) into n from public.api_credentials
+   where organization_id = pg_temp.fx('org') and id in (pg_temp.fx('cred'), pg_temp.fx('cred_plans'));
   if n <> 2 then raise exception 'FAIL: admin sees % credentials', n; end if;
   begin
     perform secret_hash from public.api_credentials limit 1;
@@ -250,7 +258,8 @@ delete from public.plans where id = pg_temp.fx('plan_draft');                   
 update public.plans set status = 'published' where id = pg_temp.fx('plan_other');  -- other tenant, no subscriber
 do $$ declare n int; t text; begin
   select count(*), string_agg(event_type, ',' order by event_type) into n, t
-    from public.webhook_events where organization_id = pg_temp.fx('org');
+    from public.webhook_events e where organization_id = pg_temp.fx('org')
+      and exists (select 1 from public.webhook_deliveries d where d.event_id = e.id and d.endpoint_id = pg_temp.fx('ep'));
   if n <> 3 or t <> 'plan.deleted,plan.published,plan.unpublished' then raise exception 'FAIL: events % %', n, t; end if;
   if exists (select 1 from public.webhook_events where organization_id = pg_temp.fx('org2')) then
     raise exception 'FAIL: event recorded with no subscriber';

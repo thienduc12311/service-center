@@ -209,7 +209,8 @@ export type NotificationType =
   /** F09: someone mentioned you in a team/plan conversation. */
   | 'conversation_mention'
   /** F09: someone replied to your conversation message. */
-  | 'conversation_reply';
+  | 'conversation_reply'
+  | 'conversation_message';
 export type DevicePlatform = 'ios' | 'android' | 'web';
 /** Where a delivery goes: the in-app feed, a device push, or email. */
 export type DeliveryChannel = 'in_app' | 'push' | 'email';

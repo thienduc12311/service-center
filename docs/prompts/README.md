@@ -1,5 +1,7 @@
 # Service Center implementation prompts
 
+**Current execution baseline (2026-10-19):** Read [the Services/mobile audit](../plans/services-mobile-contract-audit.md). Every MOB task follows [one shared contract guide](MOBILE-CONTRACTS.md), reusing the implemented website APIs and shapes. Chat alerts cover every new message for unmuted eligible participants; native thread/device gates remain explicit.
+
 Prepared 2026-10-15. These documents turn the existing assessments, specifications and user stories into implementation instructions for a model with repository access. They do not change feature status or authorize production deployment.
 
 | Pack | Coverage | Start |

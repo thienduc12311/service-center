@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { NotificationRow } from '@service-center/shared';
+import { parsePushNavigationIntent, type NotificationRow } from '@service-center/shared';
 import { toNotificationInsert, toPushMessage } from './notification.model.js';
 
 describe('toNotificationInsert', () => {
@@ -80,4 +80,22 @@ describe('toPushMessage', () => {
       plan_id: 'plan-1',
     });
   });
+  it.each(['conversation_message', 'conversation_mention', 'conversation_reply'] as const)(
+    'produces a mobile-readable %s push without leaking chat content', (type) => {
+      const message = toPushMessage({
+        ...row,
+        id: '11111111-1111-4111-8111-111111111111',
+        organization_id: '22222222-2222-4222-8222-222222222222',
+        plan_id: null,
+        type,
+        title: 'Private team name',
+        body: 'Private message text',
+      }, 'ExponentPushToken[test]', 1, pushText);
+      expect(parsePushNavigationIntent(message.data)).toMatchObject({
+        status: 'accepted', intent: { kind: 'notifications', notificationType: type },
+      });
+      expect(JSON.stringify(message)).not.toContain('Private');
+    },
+  );
+
 });

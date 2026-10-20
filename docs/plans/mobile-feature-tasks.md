@@ -1,5 +1,7 @@
 # Mobile feature comparison and implementation tasks
 
+**2026-10-19 execution update:** The comparison below preserves the original 2026-10-15 baseline. F00–F17 core/selected contracts and MOB-001–008 implementation subsequently landed. Use [the current audit](services-mobile-contract-audit.md), [mobile contract rules](../prompts/MOBILE-CONTRACTS.md) and rewritten task prompts for implementation; old “missing API” observations are not instructions to rebuild those APIs.
+
 Date: **2026-10-15** · Baseline: `7f682d34a3643b635192bc20f53820885805d819` plus the UI changes in this working tree · Branch: `codex/mobile-parity-and-ui`
 
 Read with the [mobile specification](../specs/mobile-feature-specification.md) and [mobile research reference](../research/planning-center-services-mobile-reference.md). This supplements the [overall Services plan](services-feature-gap-plan.md); it does not replace its backend dependencies. Tasks here are a repository backlog, not new Codex chats or published issue-tracker tickets.

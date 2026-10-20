@@ -65,8 +65,8 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F12 epic | in progress | — | Core A/B and three Pass C slices implemented; deployment/device/product gates explicit |
 | F13 Pass A — ownership and access model | implemented; QA pending | `feature/f13-files-audiences` (uncommitted, from `017f67e`) | Production inventory of existing `attachments` rows/objects before deploy (below) |
 | F13 Pass B — upload/finalize/download lifecycle and web | implemented; QA pending | same | Deployed check of signed upload/download URLs through the production Supabase host; keyboard/screen-reader pass |
-| F13 Pass C — service-type defaults, position audiences, text documents | implemented; QA pending | same | Product review of the default pinning rule; key-specific files wait for F15 key records |
-| F13 epic | in progress | — | Core A/B/C implemented; native MOB-026, F15 keys and deployment gates explicit |
+| F13 Pass C — service-type defaults, position audiences, text documents | implemented; QA pending | same | Product review of default pinning; key-specific materials now exist in F15 (verify native selection) |
+| F13 epic | in progress | — | Core A/B/C and F15 key materials implemented; native MOB-026 and deployment gates remain |
 | F14 Pass A — authorized manifest and basic player | implemented; QA pending | `feature/f14-rehearsal-media` (from `e439642`) | Real-device browser audio check (Safari/iOS autoplay, background tab); keyboard/screen-reader pass |
 | F14 Pass B — media bundles and stage layouts | implemented; QA pending | same | Printed PDF inspection of a stage layout; product review of layout visibility (editors/leaders only) |
 | F14 Pass C — offline manifest/cache policy (shared + API) | implemented; QA pending | same | MOB-025 consumes it on device (native file storage not installed); advanced stage tools not selected |
@@ -86,6 +86,12 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F17 Stage B — licensed catalog/usage (SongSelect/CCLI-compatible) | not started (not selected) | — | Blocked on a provider decision: CCLI partner access/commercial permission must be confirmed first (below) |
 | F17 Stage C — specific product/media/presentation handoff | not started (not selected) | — | Blocked on a named use case + owner (Check-Ins attendance, Publishing, presentation software) |
 | F17 epic | in progress | — | One stage (D) implemented; B/C unselected; QA/deployment gates below. **Exact next pass: F17 Stage D QA/deployment closure**, or select B/C explicitly |
+
+## Current cross-feature audit — 2026-10-19
+
+See [the Services/mobile audit](services-mobile-contract-audit.md) for all 18 F tasks, current shared-contract evidence, unresolved implementation gaps and revised MOB-001–033 instructions. The entries below are historical implementation records; later passes supersede their dependency assumptions (notably F15 labeled keys and F16 reports). This audit does not close device, production/provider or optional-stage gates.
+
+**F09 notification extension:** the user selected every new message, respecting mute. This branch adds `20261105000000_conversation_message_notifications.sql`, shared `conversation_message` event support, ordinary-message wording, one shared push payload type, SQL audience/retry checks and dispatcher/mobile-parser regression tests. The existing message transaction/outbox now queues feed and push for all eligible non-sender participants, with enqueue and dispatch mute enforcement. No backfill, no second sender. Migration application, deployed worker/provider and physical iOS/Android receipt remain release gates; native conversation UI/exact taps remain MOB-019/020. The audit also found and repaired an F15 regression introduced by the structured-notices migration: `20261105000100_restore_template_song_resolution.sql` restores canonical merged-song resolution while retaining translated warnings. F17 test fixtures now isolate existing local integrations inside rollback. Final evidence: 605 JavaScript tests, all 32 SQL files, typecheck, web/API build, translations and iOS/Android export passed. See the audit for scope and device/production limits.
 
 ## F00 — 2026-10-16
 
@@ -891,7 +897,7 @@ Save-review and commit are separate transactions behind one UI save action: savi
 - **Not implemented (explicit):** Pass C item 8 custom report definitions (optional, not selected); attendance check-in adapters (F17); F11 leader names in reports; staffing follow-ups as CSV rows (screen/print only); a dedicated public organization page or Church Center publishing (F17); F12 Pass C public limited Live display (can now build on `plan_publications`).
 - **Revocation honesty:** an issued export URL works until it expires (≤ 300 s) and a downloaded CSV cannot be recalled; calendar apps keep events they already fetched until their next refresh; a public page already viewed or cached (`max-age=60`) cannot be recalled.
 
-**Exact next pass:** MOB-017 Pass A — native attendance marking on `attendanceSheet`/`recordAttendance` (same batch, revisions and stale recovery; no new API). Cross-epic, F15 Pass A remains next in the suggested order on `main` (another session's branch exists); within F16 only the optional Pass C item 8 (custom report definitions) remains, and it must be selected explicitly.
+**Exact next pass:** MOB-017 Pass A — native attendance marking on `attendanceSheet`/`recordAttendance` (same batch, revisions and stale recovery; no new API). F15 A–C subsequently landed (see the current audit); within F16 only the optional Pass C item 8 (custom report definitions) remains, and it must be selected explicitly.
 
 ## F17 — 2026-10-19
 

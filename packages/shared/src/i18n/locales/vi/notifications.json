@@ -1,7 +1,8 @@
 {
   "push": {
     "title": "Service Center",
-    "body": "Mở ứng dụng để xem cập nhật lịch phục vụ."
+    "body": "Mở ứng dụng để xem cập nhật lịch phục vụ.",
+    "chatBody": "Mở ứng dụng để xem tin nhắn trò chuyện mới."
   },
   "feed": {
     "scheduled": "Bạn được phân công cho {{plan}}",
@@ -21,7 +22,8 @@
     "conversationReply": "{{name}} đã trả lời bạn trong {{place}}",
     "placeChat": "nhóm trò chuyện {{place}}",
     "aConversation": "một cuộc trò chuyện",
-    "someone": "Một người"
+    "someone": "Một người",
+    "conversationMessage": "{{name}} đã gửi tin nhắn trong {{place}}"
   },
   "email": {
     "greeting": "Chào {{name}},",

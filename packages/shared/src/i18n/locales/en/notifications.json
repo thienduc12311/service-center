@@ -1,7 +1,8 @@
 {
   "push": {
     "title": "Service Center",
-    "body": "Open the app to view a schedule update."
+    "body": "Open the app to view a schedule update.",
+    "chatBody": "Open the app to view a new chat message."
   },
   "feed": {
     "scheduled": "You're scheduled for {{plan}}",
@@ -21,7 +22,8 @@
     "conversationReply": "{{name}} replied to you in {{place}}",
     "placeChat": "{{place}} chat",
     "aConversation": "a conversation",
-    "someone": "Someone"
+    "someone": "Someone",
+    "conversationMessage": "{{name}} sent a message in {{place}}"
   },
   "email": {
     "greeting": "Hi {{name}},",
