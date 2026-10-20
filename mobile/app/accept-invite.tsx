@@ -22,7 +22,7 @@ import {
 import { Reveal } from '../src/components/motion';
 import type { Theme } from '../src/lib/theme';
 import { useThemedStyles } from '../src/lib/useTheme';
-import { LanguageSelector, useRecipientLanguage } from '../src/i18n';
+import { useRecipientLanguage } from '../src/i18n';
 import { localizeAuthError } from './(auth)/login';
 
 type Stage =
@@ -189,12 +189,6 @@ export default function AcceptInviteScreen() {
                 <ErrorNotice error={error} />
                 <Button title={t('invite.createAccount')} onPress={() => void submit()} loading={busy} />
               </Card>
-            </Reveal>
-          ) : null}
-
-          {stage !== 'already-signed-in' ? (
-            <Reveal index={2}>
-              <LanguageSelector />
             </Reveal>
           ) : null}
         </ScrollView>

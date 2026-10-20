@@ -16,7 +16,7 @@ import { Button, Card, Label, Loading, Screen } from '../src/components/ui';
 import { Reveal } from '../src/components/motion';
 import { useTheme, useThemedStyles } from '../src/lib/useTheme';
 import type { Theme } from '../src/lib/theme';
-import { LanguageSelector, useFormatters, useRecipientLanguage } from '../src/i18n';
+import { useFormatters, useRecipientLanguage } from '../src/i18n';
 
 type Stage = 'loading' | 'ready' | 'submitting' | 'success' | AssignmentResponseFailure;
 
@@ -171,10 +171,6 @@ export default function RespondScreen() {
             </Card>
           </Reveal>
         ) : null}
-
-        <Reveal index={2}>
-          <LanguageSelector />
-        </Reveal>
       </ScrollView>
     </Screen>
   );
