@@ -19,7 +19,8 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 | MOB-006 Pass A — one-off availability + timezone contract | implemented; QA pending | `feature/mob-006-availability` | Signed-in timezone/DST matrix below |
 | MOB-006 Pass B — bounded recurrence + web maintenance | implemented; QA pending | `feature/mob-006-availability` | Signed-in web maintenance matrix below |
 | MOB-006 Pass C — native editor + conflict review | implemented; QA pending | `feature/mob-006-availability` | Signed-in iOS/Android interaction matrix below |
-| MOB-007 – MOB-008 | not started | — | Next task: MOB-007 |
+| MOB-007 — team scheduling preferences (native) | implemented; QA pending | `feature/mob-007-team-preferences` | Signed-in iOS/Android device check (below); next task: MOB-008 |
+| MOB-008 | not started | — | Next task: MOB-008 |
 | MOB-009 Pass A — shared opportunity allocator/API | implemented; QA pending | delivered by F07 on `feature/f07-signups-replacements` | Reuse for native Pass B; F08 transition delivery remains a gate |
 | MOB-009 Pass B — native opportunities/review | not started | — | Build on F07 contracts; iOS/Android device QA |
 | MOB-010 Pass A — shared replacement allocator/API | implemented; QA pending | delivered by F07 on `feature/f07-signups-replacements` | Reuse for native Pass B; F08 transition delivery remains a gate |
@@ -28,6 +29,20 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 ## F08 shared release/reminder foundation — 2026-10-18
 
 Services F08 delivered consolidated and scheduled release batches, scoped-link continuity on resends, reminder policies (team → service type → organization → default), per-Person reminder channel preferences, durable revalidated reminder jobs and per-Person/channel delivery history on `feature/f08-release-reminders`; see the F08 section in [services-capabilities-progress.md](services-capabilities-progress.md) for contracts and exact SQL/concurrency/live evidence. Native consumers (MOB-005 release scheduling, MOB-015/020 reminder settings and history) are not implemented; reuse the shared `createReleaseBatch`, `reminderPolicies`, `myReminderPreferences` and `planDeliveryHistory` client methods rather than adding mobile APIs.
+
+## MOB-007 — 2026-10-19
+
+**Reused, not rebuilt.** F03 already ships everything in steps 1–4: `scheduling_preferences` (unique Person + team-or-all scope, same-org FKs, `revision`, RLS), `GET/PUT/DELETE /api/v1/availability/preferences` (self via linked Person; schedulers via `scheduling.manage`; delegates only via an explicit F03 grant — no household inference), and `scheduling_preference_warnings`, which returns typed warnings (`frequency`, `monthly_max`, `avoided_week`, `outside_preferred_weeks`, …) separately from blockouts and counts distinct plans per organization-local month. The prompt's `/people/:id/scheduling-preferences` path was not added; the existing F03 route is the canonical contract.
+
+**Semantics (from the F03 schema, unchanged):** frequency is one of `every_week | every_other_week | every_third_week | once_a_month`, null = no preference. Monthly max is an integer 1–31, null = no limit; 0 is rejected. Week of month is 1–5, where days 1–7 are week 1 and week 5 is days 29–31 (there is no separate "last week"). A week cannot be both preferred and avoided (schema-enforced; the native toggle clears the other side). Preferred times are local `HH:MM` start times, so split services are matched by start time. A team scope overrides the all-teams scope for that team.
+
+**Native.** `mobile/app/team-preferences.tsx`, linked from Profile above Blockouts. It lists "All my teams" plus teams where the signed-in user is a member, and edits frequency, monthly max, preferred/avoided weeks and preferred times. Specific dates set on the web are carried through untouched (`requestFromDraft`). States: loading, unlinked Person (404), no teams, field validation, stale save (409 → keeps edits and offers "Load latest"), pending, retry. A refetch doesn't reset the form; only a scope or revision change does. Switching organization remounts the screen through the session-generation Stack key. Logic lives in `mobile/src/lib/preference-draft.ts`.
+
+**Tests.** `mobile/src/lib/preference-draft.test.ts` (9): unset defaults, round-trip with preserved dates and revision, new scope without revision, week exclusivity, max 0/32/1.5/text rejected, invalid time rejected. Mobile `tsc` is clean and 51/51 tests pass; shared tests 335/335; web typecheck is clean. Backend permission/RLS and cross-organization coverage are the existing F03 suites; no backend code changed.
+
+**Step 6:** there is no native candidate review yet; MOB-008 should consume `POST /api/v1/availability/warnings` (requires `scheduling.manage`) and render warnings apart from blockouts.
+
+**iOS simulator (iPhone 17, light, signed in as owner), 2026-10-19:** the Profile entry opens the screen; it lists "All my teams" plus Worship Band and shows the inherits hint for an unsaved team. Choosing a week on one side clears it on the other. Max `0` shows the inline error and sends nothing. Saving persisted `every_other_week`, max 2, preferred week 3 at revision 1 (checked in Postgres). The first build put five native `Switch`es in a row, which overlapped; they are now 44pt toggle chips. **Not verified:** stale-save (409) on device, reopening after a save, switching organization mid-edit, dark mode, Android.
 
 ## MOB-009/010 shared foundation — 2026-10-18
 

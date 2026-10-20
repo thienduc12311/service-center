@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { isAuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { LocalizedError, type QualifiedTranslationKey } from '@service-center/shared';
 import { supabase } from '../../src/lib/supabase';
-import { LanguageSelector } from '../../src/i18n';
 import {
   Button,
   Card,
@@ -176,10 +175,6 @@ export default function LoginScreen() {
                   : t('login.switchToSignInLong')}
               </Text>
             </Pressable>
-          </Reveal>
-
-          <Reveal index={3}>
-            <LanguageSelector />
           </Reveal>
 
           <Text style={styles.seedHint}>
