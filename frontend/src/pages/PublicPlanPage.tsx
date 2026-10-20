@@ -5,7 +5,7 @@ import { ApiError } from '@service-center/shared';
 import { api } from '../lib/api';
 import { Loading } from '../components/ui';
 import { PublicPlanView } from '../components/PublicPlanView';
-import { AnonymousLanguageToggle } from '../i18n';
+import { LocaleSwitcher } from '../i18n';
 
 export interface PublicPlanPageProps {
   /** `/p/:slug` is one plan; `/s/:slug` is a service type's upcoming/recent link. */
@@ -28,7 +28,7 @@ export const PublicPlanPage = ({ kind }: PublicPlanPageProps) => {
   return (
     <main className="mx-auto min-h-screen max-w-2xl bg-white px-4 py-10 dark:bg-slate-950">
       <div className="flex justify-end pb-4">
-        <AnonymousLanguageToggle />
+        <LocaleSwitcher />
       </div>
       {projection.isLoading ? (
         <Loading />

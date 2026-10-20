@@ -91,30 +91,3 @@ export const LanguageSelect = ({ organizationName, className = '' }: LanguageSel
     </div>
   );
 };
-
-/** Compact language switch for signed-out and token pages; never saves to a Person. */
-export const AnonymousLanguageToggle = () => {
-  const { t } = useTranslation();
-  const id = useId();
-  const { state, setAnonymousChoice } = useLanguage();
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <label htmlFor={id} className="sr-only">
-        {t('language.toggleLabel')}
-      </label>
-      <select
-        id={id}
-        className="input w-auto py-1 text-sm"
-        value={state.anonymousChoice ?? AUTOMATIC}
-        onChange={(event) => void setAnonymousChoice(toChoice(event.target.value))}
-      >
-        <option value={AUTOMATIC}>{t('language.automatic')}</option>
-        {localeRegistry.options().map((option) => (
-          <option key={option.code} value={option.code} lang={option.lang}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-};
