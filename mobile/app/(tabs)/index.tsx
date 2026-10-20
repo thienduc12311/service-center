@@ -11,6 +11,7 @@ import {
   Divider,
   EmptyState,
   ErrorNotice,
+  ListRow,
   Loading,
   Screen,
   ScreenHeader,
@@ -54,7 +55,7 @@ export default function MyScheduleScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [scheduleWindow, setScheduleWindow] = useState<ScheduleWindow>('upcoming');
   const [filter, setFilter] = useState<ScheduleFilter>('all');
-  const { t } = useTranslation(['scheduling', 'common']);
+  const { t } = useTranslation(['scheduling', 'staffing', 'common']);
 
   const windowOptions = useMemo<readonly SegmentOption<ScheduleWindow>[]>(
     () => WINDOWS.map((value) => ({ value, label: t(`mySchedule.window.${value}`) })),
@@ -120,6 +121,12 @@ export default function MyScheduleScreen() {
             />
             <SegmentedControl options={windowOptions} value={scheduleWindow} onChange={setScheduleWindow} />
             <SegmentedControl options={filterOptions} value={filter} onChange={setFilter} />
+            <Card compact>
+              <ListRow showChevron onPress={() => router.push('/opportunities')}>
+                <Text style={styles.entryTitle}>{t('staffing:openPositions.entry')}</Text>
+                <Text style={styles.entryHint}>{t('staffing:openPositions.entryHint')}</Text>
+              </ListRow>
+            </Card>
             <ErrorNotice error={schedule.error} />
           </View>
         }
@@ -209,6 +216,8 @@ const PlanGroupCard = ({ group, responses, canRespond, onOpen }: PlanGroupCardPr
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     header: { gap: theme.space.md, marginBottom: theme.space.md },
+    entryTitle: { ...theme.type.body, fontWeight: '600', color: theme.color.ink },
+    entryHint: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     topRow: {
       flexDirection: 'row',
       alignItems: 'center',

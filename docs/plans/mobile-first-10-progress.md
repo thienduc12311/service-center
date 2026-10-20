@@ -23,9 +23,77 @@ Tracks [the MOB-001–MOB-010 prompt pack](../prompts/mobile-first-10/README.md)
 | MOB-008 Pass A — native Teams view + needs editing | implemented; QA pending | `feature/mob-008-plan-staffing` | Signed-in device check (below); then Pass B |
 | MOB-008 Pass B — candidate picker + scheduling commit | implemented; QA pending | `feature/mob-008-plan-staffing` | Signed-in device check (below); next task: MOB-009 Pass B |
 | MOB-009 Pass A — shared opportunity allocator/API | implemented; QA pending | delivered by F07 on `feature/f07-signups-replacements` | Reuse for native Pass B; F08 transition delivery remains a gate |
-| MOB-009 Pass B — native opportunities/review | not started | — | Build on F07 contracts; iOS/Android device QA |
+| MOB-009 Pass B — native opportunities/review | implemented; QA pending | `feature/mob-009-volunteer-signups` (uncommitted) | Signed-in iOS/Android device matrix (below); F08 transition delivery remains a gate; next task: MOB-010 Pass B |
 | MOB-010 Pass A — shared replacement allocator/API | implemented; QA pending | delivered by F07 on `feature/f07-signups-replacements` | Reuse for native Pass B; F08 transition delivery remains a gate |
 | MOB-010 Pass B — native replacement tracking | not started | — | Build on F07 contracts; iOS/Android device QA |
+
+## MOB-009 Pass B — 2026-10-20
+
+**Baseline.** `main` at `6920fbd`, clean; branch `feature/mob-009-volunteer-signups`. Pass A (F07 allocator/API, web `OpportunityPanel`) was reused, not rebuilt: no migration, no new route, no second state machine. Shared fixes made once for both clients are recorded in the Services ledger (F07, 2026-10-20).
+
+**Contract trace (web → shared → backend → SQL).** All of these use `ServiceCenterApi` and `@service-center/shared` types:
+
+| Action | Method → route | Input / output | Permission and errors |
+|---|---|---|---|
+| Discover | `listSignupOpportunities({plan_id?})` → `GET /opportunities` → `list_signup_opportunities` | → `SignupOpportunity[]`, no pagination, sorted by service date | Org member. Rows are the openings the Person is eligible for and that are open, or every opening on teams they schedule. Runs lazy expiry first. `my_claim` is nullable. `times` covers all plan times when `applicable_time_ids` is empty. |
+| Detail | `getSignupOpportunity(id)` → `GET /opportunities/:id` | → `SignupOpportunity` | Filters the same list; 404 once the opening is closed or hidden from this Person. |
+| Claim | `claimSignupOpportunity(id, {expected_version, idempotency_key})` → `claim_signup_opportunity` | `claimSignupOpportunitySchema` → `OpportunityClaimRow` | A replayed key returns the same row (checked before version, capacity and closing). 409 `capacity_full` / `opportunity_closed` / `opportunity_changed` / `scheduling_conflict`; 409 `conflict` (23505) when the same Person uses a second key; 403 when ineligible or not a member; 404 when not found. |
+| Cancel | `cancelSignupClaim(id, {expected_version})` | → `OpportunityClaimRow` | Claimant or team scheduler. A repeated cancel returns the same cancelled row. Otherwise a stale cancel is 409 `conflict`. |
+| Decide | `decideSignupClaim(id, {expected_version, action})` | → `OpportunityClaimRow` | `scheduling.manage` (route) + `can_schedule_on_plan` (SQL); a stale decision is 409 `conflict`. |
+| Leader list | `listSignupClaims({plan_id})` → `GET /opportunity-claims` | → `OpportunityClaimDetail[]` (limit 200) | `scheduling.manage` + claim RLS. Now runs lazy expiry first (shared fix). |
+| Close | `updateSignupOpportunity(id, {state:'closed', expected_version})` | → `SignupOpportunityRow` | `scheduling.manage` + RLS; a version mismatch is 409. |
+
+**Native.**
+- `app/opportunities/index.tsx` lists openings across the organization, or one plan's when opened from the plan's Teams view. It is reached from My Schedule ("Open positions") and from Teams ("Open positions for this plan").
+- `app/opportunities/[id].tsx` shows the required times, policy and closing time, and how many places are left. Claiming has an explicit review step that states either "confirmed right away" or "a leader must approve; held until …". While the claim is sending, the button reads "Signing you up…".
+- After a claim, the screen reads back the server state: awaiting approval (with when the hold ends), confirmed, or ended. Cancelling asks for confirmation first and warns that the Person can't sign up again, because F07 allows one claim per Person per opening.
+- A leader sees approve/reject (reject asks for confirmation) and close-opening for openings where `can('scheduling.manage', {teamId, serviceTypeId})` holds; the service type comes from the plan. Creating openings stays on the website.
+- Pure rules live in `src/lib/signup-claims.ts`. Status follows the website, where the Person's own claim wins over eligibility. `ClaimAttempts` keeps one idempotency key per (account, organization, opening) until the server shows a claim. A fresh review after a stale version keeps the key and sends the new version. Error classification decides when to read the opening again and when to ask for a new review. Lapsed holds are filtered out of the leader list.
+- A failed or unknown claim triggers a re-read of the opening, the schedule and the plan. Once the server holds a claim, that claim is shown and any earlier failure is cleared.
+- Query keys sit under `opportunities` in the account/org/generation scope. `newIdempotencyKey` was moved from `BlockoutForm` into `src/lib/idempotency.ts`, and both now use it.
+
+**Tests and checks (actual results).**
+- `mobile/src/lib/signup-claims.test.ts`: 12 tests covering status parity, claim/cancel rules, key reuse across retries, stale re-review, key isolation per account/org/opening, error classification and leader filtering.
+- Mobile tests: 72/72. Workspace `npm test`: shared 335, backend 210, mobile 72.
+- `npm run typecheck` is clean, `npm run build` passes (existing Vite chunk advisory only), `git diff --check` passes, and the iOS + Android Expo export passes.
+- New `supabase/tests/mob009-signup-claims.sql` passes and rolls back. It covers: the last direct place allocated once (the loser gets `capacity_full`); a same-key retry returning the same claim; cancel restoring capacity once, with a repeated cancel being a no-op and a reclaim refused (23505); a stale version giving `opportunity_changed`, then the same key succeeding on the new version; an approval hold occupying the place, a member decision refused, a stale decision 409, reject freeing the place for the next claimant, then approve; closed giving `opportunity_closed` and dropping off the member list; a lapsed hold expired by the first read and recorded once; and an inactive member refused for both list and claim (42501).
+- The existing `f07-signups-replacements.sql` and `f07-concurrent-allocation.sh` were rerun and pass, covering real two-session last-slot races for claim/claim, offer/offer and signup/replacement/manual.
+- Local HTTP run of the exact routes as seeded users (scratch script, fixtures removed afterwards):
+  - stale 409 `opportunity_changed`, then the same key on the fresh version returns 201;
+  - a replay returns the same claim id;
+  - member list/decide gets 403;
+  - leader approve gives `confirmed`, and a stale decision gets 409;
+  - read-back `my_claim` is `confirmed`;
+  - cancel twice returns the same `cancelled` row;
+  - a closed opening is 404 for members;
+  - a lapsed hold shows `expired` in the leader list (the backend fix).
+
+**Web/native agreement.** Both clients read the same RPC JSON and send the same versions. The web panel creates a new key on each click; native keeps one key per reviewed opening. Both are safe, because the server enforces one claim per Person per opening. The web status words (`opportunities.claimStatus.*`, `eligibility.*`) are reused unchanged.
+
+**Original acceptance requirements.**
+- Only currently eligible Persons claim the exact offered scope before closing: **passed (SQL/HTTP)**, server-enforced; native only offers the claim when `eligibility = eligible`.
+- One last slot is allocated once under signup/signup and signup/manual contention: **passed** (real-session race script). Approval/replacement contention via MOB-010 is still **pending** on MOB-010 Pass B native, though the shared race already passes.
+- Approval reservations have visible state and a finite lifecycle, and cancel/reject/expire restore capacity once: **passed** (SQL plus native "held until"). Expiry is still lazy on read, and durable scheduled expiry remains an **F08 gate**.
+- Delivery failure does not undo a committed claim or create duplicates on retry: duplicates are **passed** (idempotent key). Transition notifications don't exist yet, so delivery is **pending F08** (templates).
+- The UI distinguishes review, submitting, awaiting approval, confirmed, full, closed and failure, with server authorization: **implemented**. Signed-in device confirmation is **pending**.
+
+**Not verified / remaining gates.**
+- **iOS simulator (iPhone 17, light, Expo Go, signed in as Sam against local services), 2026-10-20 — partly verified:**
+  - The My Schedule "Open positions" entry opens the list, which shows the eligible leader-approval opening (Bass · Nov 8, "1 left", closing time).
+  - The detail screen lists the three required times. Review signup shows the hold end time, and Sign up persisted `awaiting_approval` with a hold (checked in Postgres).
+  - The screen then read back "Awaiting approval", 0 left, held until Oct 21.
+  - Cancel shows the one-claim warning dialog. Confirming persisted `cancelled` at version 2 with the hold cleared. The screen read back 1 left and "can't sign up again".
+- **Not verified on device:**
+  - the leader approve/reject/close UI (a scheduler account was not signed in);
+  - forced full/closed/stale/offline failures (covered by SQL/HTTP only);
+  - the plan Teams entry;
+  - dark mode, Vietnamese and Android.
+- Both themes, Vietnamese text length, VoiceOver/TalkBack, and offline or killed-app retry on device.
+- Organization switch while a review is open. It relies on the MOB-003 generation-keyed stack, which hasn't been observed for these screens.
+- F07/F08 transition notification templates and durable scheduled expiry (shared gap, owner F08).
+- The local dev database still has raised `plan_position_needs` for four seeded plan/position pairs from QA. Originals were unset in the seed, so they were left as is.
+
+**Next pass:** MOB-010 Pass B — native replacement tracking on the F07 replacement/offer contracts.
 
 ## MOB-008 Pass A — 2026-10-19
 

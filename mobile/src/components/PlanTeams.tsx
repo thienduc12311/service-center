@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { AssignmentDetail } from '@service-center/shared';
-import { Avatar, Button, Card, EmptyState, Tag } from './ui';
+import { Avatar, Button, Card, EmptyState, ListRow, Tag } from './ui';
 import {
   MAX_POSITION_NEED,
   visiblePositions,
@@ -31,6 +31,8 @@ export interface PlanTeamsProps {
   onToggleAllTeams: () => void;
   /** Opens "Schedule people" (website: Add people). */
   onAddPeople: () => void;
+  /** Opens this plan's signup openings (website: the Teams tab's open positions panel). */
+  onOpenPositions: () => void;
 }
 
 export const PlanTeams = ({
@@ -44,6 +46,7 @@ export const PlanTeams = ({
   showAllTeams,
   onToggleAllTeams,
   onAddPeople,
+  onOpenPositions,
 }: PlanTeamsProps) => {
   const { t } = useTranslation(['staffing', 'common']);
   const styles = useThemedStyles(makeStyles);
@@ -72,6 +75,12 @@ export const PlanTeams = ({
           )
         ) : null}
       </View>
+
+      <Card compact>
+        <ListRow showChevron onPress={onOpenPositions}>
+          <Text style={styles.hintTitle}>{t('openPositions.planEntry')}</Text>
+        </ListRow>
+      </Card>
 
       {editingNeeds ? (
         <Card compact>

@@ -361,6 +361,7 @@ export default function PlanScreen() {
                 showAllTeams={showAllTeams}
                 onToggleAllTeams={() => setShowAllTeams((value) => !value)}
                 onAddPeople={() => router.push({ pathname: '/plan/schedule/[id]', params: { id: detail.id } })}
+                onOpenPositions={() => router.push({ pathname: '/opportunities', params: { planId: detail.id } })}
               />
             )}
             <ErrorNotice error={setNeed.error} />

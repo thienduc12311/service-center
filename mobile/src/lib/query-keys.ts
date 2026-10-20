@@ -48,6 +48,15 @@ export const queryKeys = {
     [...privateRoot(scope), 'songbook-songs'] as const,
   songbook: (scope: ProtectedQueryScope | null, songbookId: string | null | undefined) =>
     [...privateRoot(scope), 'songbook', songbookId ?? null] as const,
+  /** MOB-009: every signup-opening read; invalidate this after a claim or decision. */
+  opportunities: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'opportunities'] as const,
+  opportunityList: (scope: ProtectedQueryScope | null, planId: string | null) =>
+    [...privateRoot(scope), 'opportunities', 'list', planId] as const,
+  opportunity: (scope: ProtectedQueryScope | null, opportunityId: string | null | undefined) =>
+    [...privateRoot(scope), 'opportunities', 'detail', opportunityId ?? null] as const,
+  opportunityClaims: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
+    [...privateRoot(scope), 'opportunities', 'claims', planId ?? null] as const,
   notifications: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'notifications'] as const,
   notificationUnread: (scope: ProtectedQueryScope | null) =>

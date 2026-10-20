@@ -32,6 +32,7 @@
     "time_impact_required": "Review how this change affects scheduled people before saving.",
     "capacity_full": "All spots are already filled.",
     "opportunity_closed": "This opportunity is closed.",
+    "opportunity_changed": "This opening changed. Review it again before signing up.",
     "rate_limited": "Too many attempts. Wait a moment and try again.",
     "storage_unavailable": "File storage is not available right now.",
     "import_too_large": "That file is too large to import.",

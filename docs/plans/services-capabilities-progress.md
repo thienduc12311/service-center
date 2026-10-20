@@ -428,6 +428,13 @@ Schedule dialog: Times (All times / Only these times, with untimed notice), live
 **Exact next pass:** F08 Pass A — exact request versions and release. F07 remains **in progress**, not complete, until the gates above are closed.
 
 
+### F07 shared fixes from MOB-009 Pass B — 2026-10-20
+- `GET /opportunity-claims` now calls `expire_f07_allocations` before reading, like the opening, replacement and swap lists, so a lapsed hold never reads as awaiting approval to leaders (web and native). Verified over local HTTP: a hold one minute past its end read back as `expired`.
+- Added the `opportunity_changed` API error translation (en/vi). Before this, both clients showed a generic message for a stale claim.
+- `SignupOpportunity.times` is now the named `SignupOpportunityTime` with `kind: PlanTimeKind`, which is what the SQL already returns. Types only; the wire shape is unchanged.
+- New rollback-only `supabase/tests/mob009-signup-claims.sql` covers full, cancel/reject restoring capacity once, stale version, closed, single-record lazy expiry and inactive-member refusal. See the mobile ledger, MOB-009 Pass B.
+- Still open: F08 transition templates and durable scheduled expiry.
+
 ## F08 — 2026-10-18
 
 **Pre-existing state.** `main` at `125cbbb` (F07 merged), clean; new branch `feature/f08-release-reminders`. F07's migration `20261023000000` had been applied to the local database by hand earlier and was unrecorded, so `supabase migration up` stopped on it; it was marked applied with `supabase migration repair --status applied 20261023000000 --local` (no reset) after `f07-signups-replacements.sql` passed against it. All three passes were selected in this invocation.

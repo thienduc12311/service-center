@@ -32,6 +32,7 @@
     "time_impact_required": "Hãy xem lại thay đổi này ảnh hưởng thế nào đến những người đã được phân công trước khi lưu.",
     "capacity_full": "Tất cả các chỗ đã được đăng ký.",
     "opportunity_closed": "Cơ hội phục vụ này đã đóng.",
+    "opportunity_changed": "Vị trí này đã thay đổi. Hãy xem lại trước khi đăng ký.",
     "rate_limited": "Bạn đã thử quá nhiều lần. Vui lòng đợi một chút rồi thử lại.",
     "storage_unavailable": "Kho lưu trữ tệp hiện không hoạt động.",
     "import_too_large": "Tệp quá lớn để nhập.",
