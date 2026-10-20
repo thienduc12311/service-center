@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
-import { ASSIGNMENT_STATUS_LABELS, formatDate, formatTime, type PlanDetail } from '@service-center/shared';
+import { Trans, useTranslation } from 'react-i18next';
+import type { PlanDetail } from '@service-center/shared';
 import { Avatar, Button } from '../ui';
 import { assignmentDot } from '../../lib/format';
 import type { PlanTeamView } from './types';
 import { PlanNotesPanel } from '../collaboration/PlanNotesPanel';
+import { useFormatters } from '../../i18n';
 
 export interface PlanSidebarProps {
   plan: PlanDetail;
@@ -22,15 +24,13 @@ export interface PlanSidebarProps {
   onEditNeededPositions: () => void;
 }
 
-const SectionHeading = ({
-  icon,
-  title,
-  action,
-}: {
+interface SectionHeadingProps {
   icon: string;
   title: string;
   action?: ReactNode;
-}) => (
+}
+
+const SectionHeading = ({ icon, title, action }: SectionHeadingProps) => (
   <div className="mb-2 flex items-center gap-2">
     <span aria-hidden="true" className="text-slate-400">
       {icon}
@@ -53,6 +53,8 @@ export const PlanSidebar = ({
   onAddPeople,
   onEditNeededPositions,
 }: PlanSidebarProps) => {
+  const { t } = useTranslation(['plans', 'common']);
+  const format = useFormatters();
   const teams = showAllTeams ? everyTeam : myTeams;
   const scheduledCount = teams.reduce(
     (total, team) => total + team.confirmed + team.declined + team.pending,
@@ -65,29 +67,32 @@ export const PlanSidebar = ({
       <section>
         <SectionHeading
           icon="◷"
-          title="Times"
+          title={t('sidebar.times')}
           action={
             canEditPlan && (
               <Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={onEditTimes}>
-                Edit
+                {t('common:actions.edit')}
               </Button>
             )
           }
         />
         {plan.times.length === 0 ? (
           <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-400">
-            No times on this plan yet.
+            {t('sidebar.noTimes')}
           </p>
         ) : (
           <ul className="space-y-1.5">
             {plan.times.map((time) => (
               <li key={time.id} className="rounded-lg bg-slate-50 px-3 py-2 text-xs">
                 <p className="font-medium text-slate-700">
-                  {time.name ?? (time.kind === 'service' ? 'Service' : time.kind)}
+                  {time.name ?? t(`timeKind.${time.kind}`)}
                 </p>
                 <p className="text-slate-500">
-                  {formatDate(time.starts_at)} · {formatTime(time.starts_at)}–
-                  {formatTime(time.ends_at)}
+                  {t('sidebar.timeRange', {
+                    date: format.date(time.starts_at),
+                    start: format.time(time.starts_at),
+                    end: format.time(time.ends_at),
+                  })}
                 </p>
               </li>
             ))}
@@ -97,30 +102,29 @@ export const PlanSidebar = ({
 
       {/* ------------------------------------------------------------ teams -- */}
       <section>
-        <SectionHeading icon="⚇" title="Teams" />
+        <SectionHeading icon="⚇" title={t('sidebar.teams')} />
 
         <div className="card p-3">
           {scheduledCount === 0 ? (
             <div className="space-y-3 py-3 text-center">
               <p className="text-sm text-slate-500">
-                No people scheduled to {showAllTeams ? 'any team' : <em>your</em>} teams.
+                {showAllTeams ? t('sidebar.noPeopleAnyTeam') : <Trans t={t} i18nKey="sidebar.noPeopleMyTeams" components={[<em key="your" />]} />}
               </p>
               {!showAllTeams && (
                 <p className="text-xs italic leading-relaxed text-slate-400">
-                  “My Teams” are teams in which you are a leader, assigned to a position, or
-                  scheduled for this plan.
+                  {t('sidebar.myTeamsHint')}
                 </p>
               )}
               {(canEditPlan || canSchedule) && (
                 <div className="flex flex-col items-stretch gap-1.5">
                   {canEditPlan && (
                     <Button variant="secondary" className="!py-1 text-xs" onClick={onImportTemplate}>
-                      Import Template
+                      {t('sidebar.importTemplate')}
                     </Button>
                   )}
                   {canSchedule && (
                     <Button variant="secondary" className="!py-1 text-xs" onClick={onAddPeople}>
-                      Add People
+                      {t('sidebar.addPeople')}
                     </Button>
                   )}
                   <Button
@@ -128,7 +132,7 @@ export const PlanSidebar = ({
                     className="!py-1 text-xs"
                     onClick={onEditNeededPositions}
                   >
-                    Needed Positions
+                    {t('sidebar.neededPositions')}
                   </Button>
                 </div>
               )}
@@ -157,7 +161,7 @@ export const PlanSidebar = ({
                               size="sm"
                             />
                             <span className="min-w-0 flex-1 truncate text-xs">
-                              {assignment.person?.full_name ?? assignment.person?.email ?? 'Unknown'}
+                              {assignment.person?.full_name ?? assignment.person?.email ?? t('common:states.unknown')}
                               {assignment.position && (
                                 <span className="block text-[11px] text-slate-400">
                                   {assignment.position.name}
@@ -166,7 +170,7 @@ export const PlanSidebar = ({
                             </span>
                             <span
                               className={`size-2 shrink-0 rounded-full ${assignmentDot[assignment.status]}`}
-                              title={ASSIGNMENT_STATUS_LABELS[assignment.status]}
+                              title={t(`common:assignmentStatus.${assignment.status}`)}
                             />
                           </li>
                         ),
@@ -183,7 +187,7 @@ export const PlanSidebar = ({
           onClick={onToggleAllTeams}
           className="mt-2 w-full text-center text-xs text-slate-500 hover:text-brand-600 hover:underline"
         >
-          {showAllTeams ? 'Show my teams' : 'Show all teams'}
+          {showAllTeams ? t('sidebar.showMyTeams') : t('sidebar.showAllTeams')}
         </button>
       </section>
 

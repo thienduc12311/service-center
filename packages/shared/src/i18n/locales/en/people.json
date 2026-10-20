@@ -1,0 +1,177 @@
+{
+  "list": {
+    "title": "People",
+    "subtitle": "Everyone in your organization.",
+    "importCsv": "Import CSV",
+    "showArchived": "Show archived",
+    "tags": "Tags",
+    "addPerson": "Add person",
+    "inviteReady": "Invite ready for <0>{{name}}</0>.",
+    "inviteShareHint": "There’s no email delivery configured yet, so share this link directly (by text, chat, or however works):",
+    "selectPerson": "Select {{name}}",
+    "thisPerson": "this person",
+    "personFallback": "person",
+    "archived": "Archived",
+    "inviteSent": "Invite sent",
+    "noLogin": "No login yet",
+    "roleFor": "Role for {{name}}",
+    "addEmailFirst": "Add an email on their profile first",
+    "sendInvite": "Send invite",
+    "resendInvite": "Resend invite",
+    "addDetails": "Add details",
+    "empty": "Nobody here yet"
+  },
+  "person": {
+    "addTitle": "Add person",
+    "editTitle": "Edit person",
+    "addSubtitle": "Record their profile — inviting them to create a login is a separate step.",
+    "archivedSubtitle": "Archived — kept in past plans, hidden from scheduling and pickers.",
+    "archived": "Archived",
+    "sections": {
+      "basic": "Basic",
+      "contact": "Contact",
+      "address": "Address",
+      "other": "Other"
+    },
+    "fields": {
+      "firstName": "First name",
+      "lastName": "Last name",
+      "type": "Type",
+      "gender": "Gender",
+      "birthdate": "Birthdate",
+      "email": "Email",
+      "phone": "Phone",
+      "phoneCarrier": "Mobile carrier",
+      "address1": "Address line 1",
+      "address2": "Address line 2",
+      "city": "City",
+      "state": "State / Province",
+      "postalCode": "Postal code",
+      "country": "Country",
+      "campus": "Campus",
+      "school": "School",
+      "maritalStatus": "Marital status",
+      "anniversary": "Anniversary",
+      "medicalNote": "Medical note"
+    },
+    "personType": {
+      "adult": "Adult",
+      "child": "Child"
+    },
+    "gender": {
+      "notSet": "Not set",
+      "male": "Male",
+      "female": "Female"
+    },
+    "loginManagedHint": "This person already has a login — name, email and phone are managed from their own profile and shown here read-only.",
+    "addPerson": "Add person",
+    "invite": {
+      "title": "Invite to create a login",
+      "sentTo": "Invite sent to {{email}}, expires {{date}}.",
+      "explainer": "They can respond to their own assignments and blockouts once they have a login.",
+      "sendTo": "Send to",
+      "role": "Role",
+      "shareHint": "No email delivery is configured yet — share this link directly:",
+      "send": "Send invite",
+      "resend": "Resend invite"
+    }
+  },
+  "bulk": {
+    "change": "Change",
+    "actions": {
+      "add_tag": "Add tag",
+      "remove_tag": "Remove tag",
+      "add_to_team": "Add to team",
+      "remove_from_team": "Remove from team"
+    },
+    "problems": {
+      "not_found": "not found",
+      "archived": "archived — restore first",
+      "not_eligible": "needs a current eligibility record for this team"
+    },
+    "tag": "Tag",
+    "team": "Team",
+    "chooseTeam": "Choose a team",
+    "position": "Position",
+    "noSpecificPosition": "No specific position",
+    "anyPosition": "Any position",
+    "clearSelection": "Clear selection",
+    "willChangeCount": "{{changes}} will change · {{unchanged}} already match",
+    "cannotChangeCount": "{{errors}} can’t be changed",
+    "unknownPerson": "Unknown person",
+    "willChange": "will change",
+    "noChange": "no change",
+    "stale": "The roster changed since this preview. Preview again before applying.",
+    "applyTo": "Apply to {{changes}}"
+  },
+  "calendarSharing": {
+    "title": "Team calendars",
+    "description": "Show on calendars of teams this person is on (month and day only — never the year).",
+    "birthday": "Birthday",
+    "anniversary": "Anniversary"
+  },
+  "history": {
+    "title": "Roster history",
+    "empty": "No changes recorded yet.",
+    "aTeam": "a team",
+    "events": {
+      "created": "Added to the roster",
+      "archived": "Archived",
+      "restored": "Restored",
+      "linked": "Linked to a login",
+      "unlinked": "Unlinked from their login",
+      "tag_added": "Tagged",
+      "tag_removed": "Untagged",
+      "team_added": "Added to a team",
+      "team_removed": "Removed from a team"
+    },
+    "eventsWithTag": {
+      "tag_added": "Tagged “{{tag}}”",
+      "tag_removed": "Untagged “{{tag}}”"
+    },
+    "eventsWithTeam": {
+      "team_added": "Added to {{team}}",
+      "team_removed": "Removed from {{team}}"
+    },
+    "byActor": "by {{name}}"
+  },
+  "tagGroups": {
+    "title": "Tags and groups",
+    "newGroupLabel": "New group name",
+    "newGroupPlaceholder": "New group, e.g. Instruments",
+    "addGroup": "Add group",
+    "deleteGroup": "Delete group {{name}}",
+    "empty": "No tags yet. Add tags on a person’s page or with a bulk change.",
+    "groupFor": "Group for {{tag}}",
+    "noGroup": "No group"
+  },
+  "policy": {
+    "tags": "Tags",
+    "tagsPlaceholder": "camera, sound",
+    "saveTags": "Save tags",
+    "eligibility": "Eligibility",
+    "noRecords": "No eligibility records.",
+    "status": {
+      "clear": "Clear",
+      "not_clear": "Not clear",
+      "pending": "Pending"
+    },
+    "recordSummary": "{{status}} · verified {{verified}} · expires {{expires}}",
+    "kindLabel": "Eligibility kind",
+    "statusLabel": "Status",
+    "providerLabel": "Provider",
+    "referenceLabel": "Provider reference",
+    "referencePlaceholder": "Reference (optional)",
+    "verified": "Verified",
+    "expires": "Expires",
+    "addRecord": "Add record"
+  },
+  "tagSelect": {
+    "none": "None",
+    "count_one": "{{count}} tag",
+    "count_other": "{{count}} tags",
+    "closeOptions": "Close options",
+    "addTag": "Add tag",
+    "remove": "Remove {{tag}}"
+  }
+}

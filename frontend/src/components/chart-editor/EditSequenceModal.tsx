@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SEQUENCE_LABEL_GROUPS } from '@service-center/shared';
 import { Button, Modal } from '../ui';
 
@@ -24,6 +25,7 @@ const CHIP =
  * rather than toggles, and the running order on the left is what is saved.
  */
 export const EditSequenceModal = ({ open, sequence, onClose, onSave }: EditSequenceModalProps) => {
+  const { t } = useTranslation(['songs', 'common']);
   const [draft, setDraft] = useState<string[]>([...sequence]);
   const [custom, setCustom] = useState('');
 
@@ -61,14 +63,14 @@ export const EditSequenceModal = ({ open, sequence, onClose, onSave }: EditSeque
   };
 
   return (
-    <Modal open={open} title="Edit Sequence" onClose={onClose} size="wide">
+    <Modal open={open} title={t('sequence.title')} onClose={onClose} size="wide">
       <div className="grid gap-4 sm:grid-cols-2">
         <section>
-          <h3 className="label">Sequence</h3>
+          <h3 className="label">{t('arrangement.fields.sequence')}</h3>
           <div className="min-h-56 rounded-xl border border-slate-200 p-2 dark:border-slate-700">
             {draft.length === 0 ? (
               <p className="rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-400">
-                Add section labels from the right to create a sequence.
+                {t('sequence.empty')}
               </p>
             ) : (
               <ol className="space-y-1">
@@ -86,7 +88,7 @@ export const EditSequenceModal = ({ open, sequence, onClose, onSave }: EditSeque
                       className="px-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
                       onClick={() => moveBy(index, -1)}
                       disabled={index === 0}
-                      aria-label={`Move ${label} earlier`}
+                      aria-label={t('sequence.moveEarlier', { label })}
                     >
                       ↑
                     </button>
@@ -95,7 +97,7 @@ export const EditSequenceModal = ({ open, sequence, onClose, onSave }: EditSeque
                       className="px-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
                       onClick={() => moveBy(index, 1)}
                       disabled={index === draft.length - 1}
-                      aria-label={`Move ${label} later`}
+                      aria-label={t('sequence.moveLater', { label })}
                     >
                       ↓
                     </button>
@@ -103,7 +105,7 @@ export const EditSequenceModal = ({ open, sequence, onClose, onSave }: EditSeque
                       type="button"
                       className="px-1 text-slate-400 hover:text-rose-600"
                       onClick={() => removeAt(index)}
-                      aria-label={`Remove ${label} from the sequence`}
+                      aria-label={t('sequence.remove', { label })}
                     >
                       ×
                     </button>
@@ -115,7 +117,7 @@ export const EditSequenceModal = ({ open, sequence, onClose, onSave }: EditSeque
         </section>
 
         <section>
-          <h3 className="label">Section labels</h3>
+          <h3 className="label">{t('sequence.sectionLabels')}</h3>
           <div className="rounded-xl border border-slate-200 p-2 dark:border-slate-700">
             {SEQUENCE_LABEL_GROUPS.map((group, index) => (
               <div
@@ -140,12 +142,12 @@ export const EditSequenceModal = ({ open, sequence, onClose, onSave }: EditSeque
                 className="input !py-1.5 text-sm"
                 value={custom}
                 maxLength={MAX_LABEL_LENGTH}
-                placeholder="Add a new label"
-                aria-label="Add a new section label"
+                placeholder={t('sequence.newLabelPlaceholder')}
+                aria-label={t('sequence.newLabelAria')}
                 onChange={(event) => setCustom(event.target.value)}
               />
               <Button type="submit" variant="secondary" className="!py-1.5" disabled={!custom.trim()}>
-                Add
+                {t('common:actions.add')}
               </Button>
             </form>
           </div>
@@ -154,7 +156,7 @@ export const EditSequenceModal = ({ open, sequence, onClose, onSave }: EditSeque
 
       <div className="mt-6 flex justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-700">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {t('common:actions.cancel')}
         </Button>
         <Button
           onClick={() => {
@@ -162,7 +164,7 @@ export const EditSequenceModal = ({ open, sequence, onClose, onSave }: EditSeque
             onClose();
           }}
         >
-          Save
+          {t('common:actions.save')}
         </Button>
       </div>
     </Modal>

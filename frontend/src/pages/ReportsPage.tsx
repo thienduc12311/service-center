@@ -1,11 +1,9 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addLocalDays,
-  formatDateTime,
   localDateAt,
-  reportTable,
-  REPORT_TITLES,
   type AnyReport,
   type ReportExportSummary,
   type ReportFiltersRequest,
@@ -16,15 +14,37 @@ import { keys, useServiceTypes, useTeams } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { printDocument } from '../lib/print-document';
-import { reportPrintHtml } from '../lib/report-print';
+import {
+  followUpResponse,
+  localizedDefinitions,
+  localizedReportTable,
+  reportPrintHtml,
+  reportScopeNote,
+  reportTitle,
+  type ReportLocalization,
+} from '../lib/report-print';
+import { useFormatters, useLanguage } from '../i18n';
 
 const KINDS: readonly ReportKind[] = ['staffing', 'participation', 'schedule', 'song_usage', 'run_times'];
 const PLAN_STATUSES = ['published', 'draft', 'archived'] as const;
 const RESPONSES = [
-  ['confirmed', 'Confirmed'],
-  ['unconfirmed', 'Pending'],
-  ['declined', 'Declined'],
+  ['confirmed', 'responses.confirmed'],
+  ['unconfirmed', 'responses.pending'],
+  ['declined', 'responses.declined'],
 ] as const;
+
+/** Failure codes a queued export can record (`report_exports.error_code`). */
+type ExportErrorCode = 'access_revoked' | 'invalid_filters' | 'storage_failed' | 'generation_failed';
+const EXPORT_ERROR_CODES: readonly ExportErrorCode[] = ['access_revoked', 'invalid_filters', 'storage_failed', 'generation_failed'];
+const isExportErrorCode = (code: string): code is ExportErrorCode => (EXPORT_ERROR_CODES as readonly string[]).includes(code);
+
+/** Translator, formatters and language for one render of the page. */
+const useReportLocalization = (): ReportLocalization => {
+  const { t } = useTranslation(['reports', 'common']);
+  const formatters = useFormatters();
+  const { locale } = useLanguage();
+  return useMemo(() => ({ t, formatters, locale }), [t, formatters, locale]);
+};
 
 const fetchReport = (kind: ReportKind, filters: ReportFiltersRequest): Promise<AnyReport> => {
   switch (kind) {
@@ -65,6 +85,8 @@ const EXPORT_TONES: Record<ReportExportSummary['status'], string> = {
  */
 export const ReportsPage = () => {
   const { organizationId, canAnywhere, user } = useAuth();
+  const localization = useReportLocalization();
+  const { t, formatters } = localization;
   const timezone = user?.memberships.find((m) => m.organization.id === organizationId)?.organization.timezone ?? 'UTC';
   const today = localDateAt(Date.now(), timezone);
   const available = KINDS.filter((kind) =>
@@ -93,7 +115,7 @@ export const ReportsPage = () => {
     queryFn: () => fetchReport(kind, filters!),
     enabled: Boolean(filters),
   });
-  const table = useMemo(() => (report.data ? reportTable(report.data) : null), [report.data]);
+  const table = useMemo(() => (report.data ? localizedReportTable(report.data, localization) : null), [report.data, localization]);
 
   const csv = useMutation({
     mutationFn: async () => downloadText(await api.reportCsv(kind, filters!), `${kind.replace('_', '-')}-${filters!.from}-to-${filters!.to}.csv`),
@@ -109,7 +131,7 @@ export const ReportsPage = () => {
   });
 
   if (available.length === 0) {
-    return <EmptyState title="Reports are for leaders" description="Ask an administrator for scheduling or planning access." />;
+    return <EmptyState title={t('page.leadersOnlyTitle')} description={t('page.leadersOnlyDescription')} />;
   }
 
   const toggle = <T extends string>(list: T[] | undefined, value: T, on: boolean): T[] =>
@@ -117,9 +139,9 @@ export const ReportsPage = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports" subtitle={`Dates are in ${timezone}. Confirmed answers are planned participation, not attendance.`} />
+      <PageHeader title={t('page.title')} subtitle={t('page.subtitle', { timezone })} />
 
-      <div role="tablist" aria-label="Report" className="flex flex-wrap gap-2">
+      <div role="tablist" aria-label={t('page.tabsLabel')} className="flex flex-wrap gap-2">
         {available.map((value) => (
           <button
             key={value}
@@ -129,7 +151,7 @@ export const ReportsPage = () => {
             onClick={() => setKind(value)}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium ring-1 ring-inset ${kind === value ? 'bg-brand-600 text-white ring-brand-600' : 'text-slate-600 ring-slate-300'}`}
           >
-            {REPORT_TITLES[value]}
+            {reportTitle(value, t)}
           </button>
         ))}
       </div>
@@ -142,54 +164,54 @@ export const ReportsPage = () => {
         }}
       >
         <label className="field">
-          From
+          {t('filters.from')}
           <input type="date" className="input" value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} required />
         </label>
         <label className="field">
-          To
+          {t('filters.to')}
           <input type="date" className="input" value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} required />
         </label>
         <label className="field">
-          Service type
+          {t('filters.serviceType')}
           <select
             className="input"
             value={draft.service_type_ids?.[0] ?? ''}
             onChange={(e) => setDraft({ ...draft, service_type_ids: e.target.value ? [e.target.value] : [] })}
           >
-            <option value="">All I can see</option>
+            <option value="">{t('filters.allVisible')}</option>
             {(serviceTypes.data ?? []).map((st) => (
               <option key={st.id} value={st.id}>{st.name}</option>
             ))}
           </select>
         </label>
         <label className="field">
-          Team
+          {t('filters.team')}
           <select
             className="input"
             value={draft.team_ids?.[0] ?? ''}
             onChange={(e) => setDraft({ ...draft, team_ids: e.target.value ? [e.target.value] : [] })}
           >
-            <option value="">All I can see</option>
+            <option value="">{t('filters.allVisible')}</option>
             {(teams.data ?? []).map((team) => (
               <option key={team.id} value={team.id}>{team.name}</option>
             ))}
           </select>
         </label>
         <fieldset className="text-sm">
-          <legend className="label">Plan status</legend>
+          <legend className="label">{t('filters.planStatus')}</legend>
           {PLAN_STATUSES.map((status) => (
-            <label key={status} className="mr-3 inline-flex items-center gap-1 capitalize">
+            <label key={status} className="mr-3 inline-flex items-center gap-1">
               <input
                 type="checkbox"
                 checked={draft.plan_statuses?.includes(status) ?? false}
                 onChange={(e) => setDraft({ ...draft, plan_statuses: toggle(draft.plan_statuses, status, e.target.checked) })}
               />
-              {status}
+              {t(`common:planStatus.${status}`)}
             </label>
           ))}
         </fieldset>
         <fieldset className="text-sm">
-          <legend className="label">Responses</legend>
+          <legend className="label">{t('filters.responses')}</legend>
           {RESPONSES.map(([value, label]) => (
             <label key={value} className="mr-3 inline-flex items-center gap-1">
               <input
@@ -197,7 +219,7 @@ export const ReportsPage = () => {
                 checked={draft.assignment_statuses?.includes(value) ?? false}
                 onChange={(e) => setDraft({ ...draft, assignment_statuses: toggle(draft.assignment_statuses, value, e.target.checked) })}
               />
-              {label}
+              {t(label)}
             </label>
           ))}
         </fieldset>
@@ -208,7 +230,7 @@ export const ReportsPage = () => {
               checked={draft.include_archived_people ?? true}
               onChange={(e) => setDraft({ ...draft, include_archived_people: e.target.checked })}
             />
-            Include archived people
+            {t('filters.includeArchivedPeople')}
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -216,41 +238,53 @@ export const ReportsPage = () => {
               checked={draft.include_rehearsals ?? false}
               onChange={(e) => setDraft({ ...draft, include_rehearsals: e.target.checked })}
             />
-            Include rehearsals
+            {t('filters.includeRehearsals')}
           </label>
         </div>
         <div className="flex items-end">
-          <Button type="submit">Run report</Button>
+          <Button type="submit">{t('filters.run')}</Button>
         </div>
       </form>
 
       {!filters ? (
-        <EmptyState title="Choose filters and run the report" />
+        <EmptyState title={t('results.choose')} />
       ) : report.isLoading ? (
-        <Loading label="Building report…" />
+        <Loading label={t('results.building')} />
       ) : report.error ? (
         <div className="space-y-2">
           <ErrorNotice error={report.error} />
-          <Button variant="secondary" onClick={() => report.refetch()}>Try again</Button>
+          <Button variant="secondary" onClick={() => report.refetch()}>{t('common:actions.retry')}</Button>
         </div>
       ) : report.data && table ? (
-        <section className="space-y-4" aria-label={report.data.title}>
+        <section className="space-y-4" aria-label={reportTitle(report.data.kind, t)}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-slate-500">
-              Generated {formatDateTime(report.data.generated_at)} · {report.data.filters.timezone}
-              {report.data.scope_note ? ` · ${report.data.scope_note}` : ''}
-              {report.data.truncated ? ' · Truncated: narrow the filters, or queue an export.' : ''}
+              {[
+                t('results.generated', {
+                  time: formatters.dateTime(report.data.generated_at, { timeZone: report.data.filters.timezone }),
+                  timezone: report.data.filters.timezone,
+                }),
+                reportScopeNote(report.data, t),
+                report.data.truncated ? t('results.truncated') : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </p>
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => printDocument(reportPrintHtml(report.data!), report.data!.title)}>Print</Button>
-              <Button variant="secondary" loading={csv.isPending} onClick={() => csv.mutate()}>Download CSV</Button>
-              <Button variant="secondary" loading={queueExport.isPending} onClick={() => queueExport.mutate()}>Queue export</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => printDocument(reportPrintHtml(report.data!, localization), reportTitle(report.data!.kind, t))}
+              >
+                {t('common:actions.print')}
+              </Button>
+              <Button variant="secondary" loading={csv.isPending} onClick={() => csv.mutate()}>{t('results.downloadCsv')}</Button>
+              <Button variant="secondary" loading={queueExport.isPending} onClick={() => queueExport.mutate()}>{t('results.queueExport')}</Button>
             </div>
           </div>
           <ErrorNotice error={csv.error ?? queueExport.error} />
           <ReportSummary report={report.data} />
           {table.rows.length === 0 ? (
-            <EmptyState title="Nothing matches these filters" />
+            <EmptyState title={t('results.noMatches')} />
           ) : (
             <div className="card overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -259,16 +293,16 @@ export const ReportsPage = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {table.rows.map((row, index) => (
-                    <tr key={index}>{row.map((value, i) => <td key={i} className="whitespace-nowrap px-3 py-1.5">{value === null ? '' : String(value)}</td>)}</tr>
+                    <tr key={index}>{row.map((value, i) => <td key={i} className="whitespace-nowrap px-3 py-1.5">{value}</td>)}</tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
           <details className="text-sm">
-            <summary className="cursor-pointer font-medium">How these numbers are counted</summary>
+            <summary className="cursor-pointer font-medium">{t('results.howCounted')}</summary>
             <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[max-content_1fr]">
-              {report.data.definitions.map((d) => (
+              {localizedDefinitions(report.data, t).map((d) => (
                 <div key={d.key} className="contents">
                   <dt className="font-medium">{d.label}</dt>
                   <dd className="text-slate-600">{d.definition}</dd>
@@ -280,13 +314,11 @@ export const ReportsPage = () => {
       ) : null}
 
       <section aria-labelledby="exports-heading" className="space-y-2">
-        <h2 id="exports-heading" className="text-base font-semibold">My exports</h2>
-        <p className="text-xs text-slate-500">
-          Exports are built in the background, kept for 24 hours, and only you can download them while you still have access.
-        </p>
+        <h2 id="exports-heading" className="text-base font-semibold">{t('exports.title')}</h2>
+        <p className="text-xs text-slate-500">{t('exports.help')}</p>
         {exports.error && <ErrorNotice error={exports.error} />}
         <ul className="card divide-y divide-slate-100 text-sm dark:divide-slate-800">
-          {(exports.data ?? []).length === 0 && <li className="px-4 py-3 text-slate-500">No exports yet.</li>}
+          {(exports.data ?? []).length === 0 && <li className="px-4 py-3 text-slate-500">{t('exports.empty')}</li>}
           {(exports.data ?? []).map((row) => (
             <ExportRow key={row.id} row={row} />
           ))}
@@ -296,35 +328,64 @@ export const ReportsPage = () => {
   );
 };
 
-const ReportSummary = ({ report }: { report: AnyReport }) => {
-  const entries: Array<[string, number | string]> =
+/** One summary tile: a translated label and its value. */
+type SummaryKey =
+  | 'plans'
+  | 'needed'
+  | 'confirmed'
+  | 'pending'
+  | 'declined'
+  | 'vacancies'
+  | 'people'
+  | 'assignments'
+  | 'personPlans'
+  | 'present'
+  | 'absent'
+  | 'songs'
+  | 'occurrences'
+  | 'endedRuns'
+  | 'averageDifference';
+
+interface ReportSummaryProps {
+  report: AnyReport;
+}
+
+const ReportSummary = ({ report }: ReportSummaryProps) => {
+  const { t } = useTranslation(['reports', 'common']);
+  const formatters = useFormatters();
+  const entries: Array<[SummaryKey, number]> =
     report.kind === 'staffing'
-      ? [['Plans', report.summary.plans], ['Needed', report.summary.needed], ['Confirmed', report.summary.confirmed], ['Pending', report.summary.pending], ['Declined', report.summary.declined], ['Vacancies', report.summary.vacancies]]
+      ? [['plans', report.summary.plans], ['needed', report.summary.needed], ['confirmed', report.summary.confirmed], ['pending', report.summary.pending], ['declined', report.summary.declined], ['vacancies', report.summary.vacancies]]
       : report.kind === 'participation'
-        ? [['People', report.summary.people], ['Assignments', report.summary.assignments], ['Person-plans', report.summary.person_plans], ['Present', report.summary.present], ['Absent', report.summary.absent]]
+        ? [['people', report.summary.people], ['assignments', report.summary.assignments], ['personPlans', report.summary.person_plans], ['present', report.summary.present], ['absent', report.summary.absent]]
         : report.kind === 'song_usage'
-          ? [['Songs', report.summary.songs], ['Occurrences', report.summary.occurrences], ['Plans', report.summary.plans]]
+          ? [['songs', report.summary.songs], ['occurrences', report.summary.occurrences], ['plans', report.summary.plans]]
           : report.kind === 'run_times'
-            ? [['Ended runs', report.summary.runs], ['Average difference (s)', report.summary.average_difference_seconds]]
-            : [['Plans', report.summary.plans], ['Assignments', report.summary.assignments], ['People', report.summary.people]];
+            ? [['endedRuns', report.summary.runs], ['averageDifference', report.summary.average_difference_seconds]]
+            : [['plans', report.summary.plans], ['assignments', report.summary.assignments], ['people', report.summary.people]];
   return (
     <div className="space-y-3">
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        {entries.map(([label, value]) => (
-          <div key={label} className="card px-3 py-2">
-            <dt className="text-xs text-slate-500">{label}</dt>
-            <dd className="text-lg font-semibold tabular-nums">{value}</dd>
+        {entries.map(([key, value]) => (
+          <div key={key} className="card px-3 py-2">
+            <dt className="text-xs text-slate-500">{t(`summary.${key}`)}</dt>
+            <dd className="text-lg font-semibold tabular-nums">{formatters.number(value)}</dd>
           </div>
         ))}
       </dl>
       {report.kind === 'staffing' && report.summary.follow_ups.length > 0 && (
         <div className="card p-4">
-          <h3 className="mb-2 text-sm font-semibold">Follow up ({report.summary.follow_ups.length})</h3>
+          <h3 className="mb-2 text-sm font-semibold">{t('followUp.title', { total: formatters.number(report.summary.follow_ups.length) })}</h3>
           <ul className="space-y-1 text-sm">
             {report.summary.follow_ups.slice(0, 50).map((row, index) => (
               <li key={index}>
-                {row.person_name} — {row.team_name} · {row.position_name} on {row.plan_title}:{' '}
-                {row.response === 'unconfirmed' ? 'pending' : 'declined'}
+                {t('followUp.line', {
+                  person: row.person_name,
+                  team: row.team_name,
+                  position: row.position_name,
+                  plan: row.plan_title,
+                  response: followUpResponse(row.response, t),
+                })}
               </li>
             ))}
           </ul>
@@ -334,7 +395,13 @@ const ReportSummary = ({ report }: { report: AnyReport }) => {
   );
 };
 
-const ExportRow = ({ row }: { row: ReportExportSummary }) => {
+interface ExportRowProps {
+  row: ReportExportSummary;
+}
+
+const ExportRow = ({ row }: ExportRowProps) => {
+  const { t } = useTranslation(['reports', 'common']);
+  const formatters = useFormatters();
   const { organizationId } = useAuth();
   const queryClient = useQueryClient();
   const download = useMutation({
@@ -350,15 +417,29 @@ const ExportRow = ({ row }: { row: ReportExportSummary }) => {
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
       <span>
-        {REPORT_TITLES[row.kind]} · {String(row.filters.from)} to {String(row.filters.to)}{' '}
-        <Badge tone={EXPORT_TONES[row.status]}>{row.status}</Badge>
-        {row.error_code && <span className="ml-2 text-xs text-rose-600">{row.error_code.replace(/_/g, ' ')}</span>}
-        {row.expires_at && row.status === 'ready' && <span className="ml-2 text-xs text-slate-500">until {formatDateTime(row.expires_at)}</span>}
+        {t('exports.range', {
+          kind: reportTitle(row.kind, t),
+          from: formatters.calendarDate(String(row.filters.from), 'medium'),
+          to: formatters.calendarDate(String(row.filters.to), 'medium'),
+        })}{' '}
+        <Badge tone={EXPORT_TONES[row.status]}>{t(`exports.status.${row.status}`)}</Badge>
+        {row.error_code && (
+          <span className="ml-2 text-xs text-rose-600">
+            {isExportErrorCode(row.error_code) ? t(`exports.errors.${row.error_code}`) : t('exports.errors.other')}
+          </span>
+        )}
+        {row.expires_at && row.status === 'ready' && (
+          <span className="ml-2 text-xs text-slate-500">{t('exports.until', { time: formatters.dateTime(row.expires_at) })}</span>
+        )}
       </span>
       <span className="flex gap-2">
-        {row.status === 'ready' && <Button variant="secondary" loading={download.isPending} onClick={() => download.mutate()}>Download</Button>}
+        {row.status === 'ready' && (
+          <Button variant="secondary" loading={download.isPending} onClick={() => download.mutate()}>
+            {t('common:actions.download')}
+          </Button>
+        )}
         {(row.status === 'failed' || row.status === 'expired') && (
-          <Button variant="ghost" loading={retry.isPending} onClick={() => retry.mutate()}>Build again</Button>
+          <Button variant="ghost" loading={retry.isPending} onClick={() => retry.mutate()}>{t('exports.buildAgain')}</Button>
         )}
       </span>
       <ErrorNotice error={download.error ?? retry.error} />

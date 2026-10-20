@@ -48,3 +48,4 @@ export * from './schemas/arrangement-curation.js';
 export * from './types/integrations.js';
 export * from './schemas/integrations.js';
 export * from './lib/integrations.js';
+export * from './i18n/index.js';

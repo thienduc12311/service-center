@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { formatDateTime, type NotificationFeedItem } from '@service-center/shared';
+import type { NotificationFeedItem } from '@service-center/shared';
 import { api } from '../src/lib/api';
 import { notificationKeys } from '../src/lib/notification-keys';
 import { useAuth } from '../src/providers/AuthProvider';
@@ -20,6 +21,7 @@ import {
 import { PressableScale, Reveal } from '../src/components/motion';
 import type { Theme } from '../src/lib/theme';
 import { useTheme, useThemedStyles } from '../src/lib/useTheme';
+import { useFormatters } from '../src/i18n';
 
 const PAGE_SIZE = 30;
 
@@ -31,6 +33,7 @@ export default function NotificationsScreen() {
   const theme = useTheme();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const { t } = useTranslation(['scheduling', 'common']);
 
   const feed = useInfiniteQuery({
     queryKey: notificationKeys.feed(queryScope),
@@ -87,13 +90,13 @@ export default function NotificationsScreen() {
         ListHeaderComponent={
           <View>
             <ScreenHeader
-              eyebrow={unread ? `${unread} unread` : 'All caught up'}
-              title="Notifications"
-              description="Every time you're scheduled, reminded, or someone answers a request you sent."
+              eyebrow={unread ? t('notifications.unreadCount', { count: unread }) : t('notifications.allCaughtUp')}
+              title={t('common:nav.notifications')}
+              description={t('notifications.description')}
               action={
                 unread ? (
                   <Button
-                    title="Mark all read"
+                    title={t('notifications.markAllRead')}
                     variant="secondary"
                     onPress={() => markRead.mutate(undefined)}
                     loading={markRead.isPending}
@@ -106,11 +109,11 @@ export default function NotificationsScreen() {
         }
         ListEmptyComponent={
           feed.isLoading ? (
-            <Loading label="Loading notifications" />
+            <Loading label={t('notifications.loading')} />
           ) : (
             <EmptyState
-              title="Nothing yet"
-              description="When you're scheduled onto a plan it lands here, and on your phone if you've allowed notifications."
+              title={t('notifications.emptyTitle')}
+              description={t('notifications.emptyDescription')}
             />
           )
         }
@@ -133,10 +136,13 @@ interface NotificationRowProps {
 const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
   const styles = useThemedStyles(makeStyles);
   const unread = !item.read_at;
+  const { t } = useTranslation('scheduling');
+  const f = useFormatters();
 
   return (
     <PressableScale
-      accessibilityLabel={`${unread ? 'Unread: ' : ''}${item.title}`}
+      // Title and body are stored server-side in the recipient's language; shown as-is.
+      accessibilityLabel={unread ? t('notifications.unreadItem', { title: item.title }) : item.title}
       onPress={onPress}
       pressedOpacity={0.6}
       style={styles.row}
@@ -146,7 +152,7 @@ const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
       <View style={styles.body}>
         <Text style={[styles.title, unread ? styles.titleUnread : null]}>{item.title}</Text>
         {item.body ? <Text style={styles.detail}>{item.body}</Text> : null}
-        <Text style={styles.time}>{formatDateTime(item.created_at)}</Text>
+        <Text style={styles.time}>{f.dateTime(item.created_at)}</Text>
       </View>
     </PressableScale>
   );

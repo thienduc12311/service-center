@@ -5,6 +5,7 @@ import {
   type CreateArrangementInput,
   type SongWithArrangements,
   type UpdateArrangementInput,
+  type TranslationKey,
   type UpdateSongInput,
 } from '@service-center/shared';
 
@@ -17,7 +18,39 @@ export type SongPane = { kind: 'all' } | { kind: 'arrangement'; arrangementId: s
 
 export const ALL_ARRANGEMENTS: SongPane = { kind: 'all' };
 
-export const DEFAULT_ARRANGEMENT_NAME = 'New Arrangement';
+/**
+ * Catalog keys for the stored default arrangement name. The name is written in
+ * the creator's language and is user content from then on.
+ */
+export const NEW_ARRANGEMENT_NAME_KEY: TranslationKey<'songs'> = 'arrangement.defaultNewName';
+export const DEFAULT_ARRANGEMENT_NAME_KEY: TranslationKey<'songs'> = 'arrangement.defaultName';
+
+/**
+ * Display keys for the SONG_STYLES / SONG_SPEEDS / SONG_TYPES vocabularies.
+ * The stored value stays the English constant; only its caption is
+ * translated. Unknown (legacy or free-typed) values are shown as stored.
+ */
+export const SONG_VOCABULARY_LABEL_KEYS: Readonly<Record<string, TranslationKey<'songs'>>> = {
+  Hymn: 'vocabulary.type.hymn',
+  Chorus: 'vocabulary.type.chorus',
+  Praise: 'vocabulary.type.praise',
+  Worship: 'vocabulary.type.worship',
+  Communion: 'vocabulary.type.communion',
+  Offering: 'vocabulary.type.offering',
+  Response: 'vocabulary.type.response',
+  Christmas: 'vocabulary.type.christmas',
+  Easter: 'vocabulary.type.easter',
+  Special: 'vocabulary.type.special',
+  Traditional: 'vocabulary.style.traditional',
+  Contemporary: 'vocabulary.style.contemporary',
+  Gospel: 'vocabulary.style.gospel',
+  Modern: 'vocabulary.style.modern',
+  Acoustic: 'vocabulary.style.acoustic',
+  Classical: 'vocabulary.style.classical',
+  Fast: 'vocabulary.speed.fast',
+  Medium: 'vocabulary.speed.medium',
+  Slow: 'vocabulary.speed.slow',
+};
 
 /** Trims a text field down to what the API stores: a value, or nothing. */
 const textOrNull = (value: string): string | null => value.trim() || null;
@@ -111,10 +144,12 @@ const parseBpm = (value: string): number | null => {
   return value.trim() && Number.isFinite(bpm) ? Math.round(bpm) : null;
 };
 
+/** `defaultName` is the localized name a blank name falls back to. */
 export const toUpdateArrangementInput = (
   values: ArrangementFormValues,
+  defaultName: string,
 ): UpdateArrangementInput => ({
-  name: values.name.trim() || DEFAULT_ARRANGEMENT_NAME,
+  name: values.name.trim() || defaultName,
   song_key: values.songKey,
   capo: values.capo,
   bpm: parseBpm(values.bpm),
@@ -125,9 +160,10 @@ export const toUpdateArrangementInput = (
 
 export const toCreateArrangementInput = (
   values: ArrangementFormValues,
+  defaultName: string,
 ): CreateArrangementInput => ({
-  ...toUpdateArrangementInput(values),
-  name: values.name.trim() || DEFAULT_ARRANGEMENT_NAME,
+  ...toUpdateArrangementInput(values, defaultName),
+  name: values.name.trim() || defaultName,
   sequence: parseSequence(values.sequence),
   chord_chart_format: 'chordpro',
   is_default: values.isDefault,

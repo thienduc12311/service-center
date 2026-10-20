@@ -1,0 +1,547 @@
+{
+  "settingsPage": {
+    "title": "Cài đặt",
+    "subtitle": "Hồ sơ, hội thánh, giao diện và lịch rảnh của bạn.",
+    "saved": "Đã lưu.",
+    "profile": {
+      "title": "Hồ sơ",
+      "fullName": "Họ và tên",
+      "phone": "Số điện thoại",
+      "signedInAs": "Đang đăng nhập với {{email}}",
+      "save": "Lưu hồ sơ"
+    },
+    "calendar": {
+      "title": "Đồng bộ lịch",
+      "description": "Đăng ký lịch phục vụ của bạn trong Google, Apple hoặc Outlook Calendar. Khi đổi liên kết, liên kết cũ sẽ bị thu hồi.",
+      "openInApp": "Mở trong ứng dụng lịch",
+      "rotate": "Đổi liên kết",
+      "create": "Tạo liên kết lịch"
+    },
+    "availability": {
+      "title": "Lịch rảnh",
+      "description": "Giúp các trưởng ban nắm thông tin: thêm những ngày bạn không thể phục vụ bên dưới, hoặc xác nhận không có gì thay đổi."
+    },
+    "preferences": {
+      "title": "Tùy chọn phân công",
+      "description": "Bạn muốn phục vụ thường xuyên thế nào và vào lúc nào. Người phân công sẽ thấy đây là cảnh báo, không phải quy định bắt buộc."
+    }
+  },
+  "organization": {
+    "logoAlt": "Logo của {{name}}",
+    "fallbackName": "Hội thánh",
+    "emptyDescription": "Tạo và chuyển đổi giữa các hội thánh bạn quản trị.",
+    "uploading": "Đang tải lên…",
+    "updateLogo": "Cập nhật logo",
+    "editDetails": "Sửa thông tin",
+    "new": "Hội thánh mới",
+    "create": "Tạo hội thánh",
+    "saveDetails": "Lưu thông tin",
+    "fields": {
+      "name": "Tên hội thánh",
+      "namePlaceholder": "Hội thánh Ân Điển",
+      "addressLine1": "Địa chỉ dòng 1",
+      "addressLine2": "Địa chỉ dòng 2",
+      "city": "Thành phố",
+      "stateProvince": "Tỉnh / Bang",
+      "postalCode": "Mã bưu chính",
+      "country": "Quốc gia",
+      "denomination": "Hệ phái",
+      "memberCount": "Số tín hữu"
+    }
+  },
+  "capabilities": {
+    "plans": {
+      "edit": "Sửa chương trình"
+    },
+    "scheduling": {
+      "manage": "Phân công thành viên",
+      "override_conflicts": "Phân công dù bị trùng"
+    },
+    "teams": {
+      "manage": "Quản lý ban"
+    },
+    "people": {
+      "view_private": "Xem thông tin riêng tư của thành viên",
+      "manage": "Quản lý thành viên"
+    },
+    "songs": {
+      "manage": "Quản lý bài hát"
+    },
+    "media": {
+      "manage": "Quản lý tệp đa phương tiện"
+    }
+  },
+  "scopeType": {
+    "organization": "hội thánh",
+    "folder": "thư mục",
+    "service_type": "loại buổi nhóm",
+    "team": "ban"
+  },
+  "access": {
+    "title": "Quyền truy cập",
+    "description": "Giao cho các trưởng ban đúng những phần họ phụ trách. Trưởng ban được thiết lập ở trang Ban; quyền về thư viện và danh bạ áp dụng cho toàn hội thánh.",
+    "members": "Thành viên",
+    "member": "Thành viên",
+    "chooseMember": "Chọn thành viên",
+    "permission": "Quyền",
+    "serviceType": "Loại buổi nhóm",
+    "anyServiceType": "Mọi loại buổi nhóm",
+    "team": "Ban",
+    "anyTeam": "Mọi ban",
+    "checkAccess": "Kiểm tra quyền",
+    "allowed": "Được phép",
+    "notAllowed": "Không được phép",
+    "reason": "{{source}} ({{scope}})",
+    "noExtraGrants": "Không có quyền bổ sung",
+    "schedulerAccessFor": "Quyền phân công của {{name}}",
+    "organizationWide": "Quyền trên toàn hội thánh",
+    "wholeOrganization": "toàn hội thánh",
+    "explainTitle": "Vì sao một người có thể (hoặc không thể) làm một việc?",
+    "mode": {
+      "legacy": "Toàn hội thánh",
+      "scoped": "Chỉ những phần được cấp"
+    },
+    "source": {
+      "owner": "Chủ sở hữu",
+      "admin": "Quản trị viên",
+      "schedulerLegacy": "Người phân công (toàn hội thánh)",
+      "folderGrant": "Quyền theo thư mục",
+      "grant": "Quyền được cấp"
+    },
+    "denial": {
+      "not_a_member": "Không phải thành viên của hội thánh này.",
+      "membership_inactive": "Tư cách thành viên của họ đang tạm ngưng.",
+      "scoped_scheduler_without_grant": "Người phân công giới hạn phạm vi nhưng chưa được cấp quyền cho việc này.",
+      "grant_outside_scope": "Họ có quyền này, nhưng cho một loại buổi nhóm hoặc ban khác.",
+      "no_matching_grant": "Không có vai trò hay quyền nào cho phép việc này."
+    },
+    "rosters": {
+      "title": "Danh sách ban",
+      "restrict": "Thành viên chỉ xem danh sách các ban của mình",
+      "restrictHint": "Cùng với những ban mà trưởng ban mở cho họ xem. Trưởng ban và người phân công vẫn xem được mọi danh sách."
+    }
+  },
+  "scopeAccess": {
+    "empty": "Chưa ai có quyền cho {{scope}}.",
+    "unknownMember": "Thành viên không xác định",
+    "removeLabel": "Gỡ quyền {{permission}} khỏi {{name}}",
+    "grant": "Cấp quyền"
+  },
+  "across": {
+    "title": "Giữa các hội thánh của tôi",
+    "description_other": "Bạn thuộc {{count}} hội thánh. Các tùy chọn này đều tắt cho đến khi bạn bật lên.",
+    "combinedSchedule": "Hiển thị chung lịch của tôi ở mọi hội thánh (chỉ mình tôi thấy)",
+    "shareBusy": "Báo cho người phân công ở các hội thánh khác khi tôi bận (họ chỉ thấy “bận”, không có chi tiết)",
+    "next30Days": "30 ngày tới",
+    "loadFailed": "Không tải được hội thánh này: {{error}}",
+    "item": "{{when}} — {{title}}",
+    "itemAwaiting": "{{when}} — {{title}} · đang chờ bạn trả lời",
+    "unavailable": "Bận",
+    "unavailableWithTitle": "Bận ({{title}})",
+    "nothingScheduled": "Chưa có phân công nào.",
+    "copyTitle": "Sao chép ngày bận sang hội thánh khác",
+    "copyEmpty": "Hãy thêm một ngày bận đơn lẻ ở trên trước.",
+    "blockout": "{{date}}",
+    "blockoutAllDay": "{{date}} · cả ngày",
+    "includeReason": "Kèm lý do của tôi (người phân công bên đó đọc được)",
+    "result": "{{name}}: {{outcome}}",
+    "resultWithCount": "{{name}}: {{outcome}} ({{copied}})",
+    "outcome": {
+      "copied": "Đã sao chép",
+      "already_copied": "Đã sao chép trước đó",
+      "not_member": "Bạn không phải thành viên ở đó",
+      "failed": "Không sao chép được"
+    }
+  },
+  "affected": {
+    "none": "Không ảnh hưởng đến phân công hiện có nào.",
+    "overlaps_other": "Khoảng thời gian này trùng với {{count}} phân công hiện có.",
+    "unchanged_other": "Việc lưu sẽ không thay đổi câu trả lời đã có.",
+    "unchangedCanDecline_other": "Việc lưu sẽ không thay đổi câu trả lời đã có; hãy từ chối những phân công bạn không thể tham gia nữa.",
+    "time": "{{name}} {{when}}",
+    "timeFallback": "Giờ",
+    "awaiting": "Đang chờ bạn trả lời",
+    "withdraw": "Rút lui"
+  },
+  "freshness": {
+    "unknown": "Chưa từng xem lại",
+    "stale": "Cần xem lại",
+    "current": "Đã cập nhật"
+  },
+  "review": {
+    "lastReviewed": "Xem lại lần cuối {{when}}.",
+    "lastReviewedAffirmed": "Xem lại lần cuối {{when}} (đã xác nhận là mới nhất).",
+    "neverReviewed": "Các trưởng ban chưa biết những ngày này có còn đúng không.",
+    "affirmTheirs": "Lịch rảnh của họ đã cập nhật",
+    "affirmMine": "Lịch rảnh của tôi đã cập nhật",
+    "requestTitle": "Một trưởng ban nhờ bạn xem lại lịch rảnh",
+    "respondBy": "trước {{date}}",
+    "quotedMessage": "“{{message}}”",
+    "requestHint": "Thêm ngày bận bên dưới, hoặc xác nhận lịch rảnh của bạn đã cập nhật."
+  },
+  "blockouts": {
+    "title": "Ngày bận",
+    "titleFor": "Ngày bận của {{name}}",
+    "titleTheirs": "Ngày bận của họ",
+    "description": "Những thời gian bạn không thể phục vụ, tính theo múi giờ {{timezone}}. Các phân công hiện có không bao giờ bị tự động từ chối.",
+    "descriptionTheirs": "Những thời gian họ không thể phục vụ, tính theo múi giờ {{timezone}}. Các phân công hiện có không bao giờ bị tự động từ chối.",
+    "allDay": "Cả ngày",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc",
+    "endDateExclusive": "Ngày kết thúc (không tính ngày này)",
+    "startTime": "Giờ bắt đầu",
+    "endTime": "Giờ kết thúc",
+    "repeat": "Lặp lại",
+    "repeatOptions": {
+      "none": "Không lặp lại",
+      "weekly": "Hằng tuần",
+      "monthly": "Hằng tháng"
+    },
+    "ends": "Kết thúc",
+    "endOptions": {
+      "count": "Sau số lần",
+      "until": "Vào một ngày"
+    },
+    "occurrences": "Số lần",
+    "until": "Đến ngày",
+    "reason": "Lý do",
+    "private": "(riêng tư)",
+    "ambiguous": "Nếu giờ này lặp lại khi đổi giờ",
+    "ambiguousOptions": {
+      "earlier": "Dùng mốc giờ sớm hơn",
+      "later": "Dùng mốc giờ muộn hơn"
+    },
+    "clockHint": "Những giờ bị bỏ qua khi đồng hồ chỉnh sớm lên sẽ không được chấp nhận. Ngày hằng tháng không có trong một tháng sẽ được bỏ qua.",
+    "save": "Lưu ngày bận",
+    "occurrenceAt": "{{date}} lúc {{time}}",
+    "occurrenceAllDay": "{{date}} · cả ngày",
+    "rowTimes": "{{date}} · {{start}}–{{end}}",
+    "repeatingFrom": "Lặp lại từ {{date}}",
+    "seriesHint": "Quản lý từng lần, các lần sắp tới hoặc tất cả trên trang chuỗi lặp lại.",
+    "manageSeries": "Quản lý chuỗi"
+  },
+  "delivery": {
+    "title": "Gửi thông báo",
+    "description": "Tình trạng của email lịch phục vụ, thông báo đẩy và thông báo trong ứng dụng. “Nhà cung cấp đã nhận” nghĩa là dịch vụ email hoặc thông báo đẩy đã nhận tin; điều đó không xác nhận người nhận đã xem.",
+    "emailResend": "Gửi qua Resend",
+    "emailSimulated": "Mô phỏng — không gửi (chưa cấu hình nhà cung cấp)",
+    "pushExpo": "Gửi qua Expo",
+    "pushSimulated": "Mô phỏng — không gửi (thông báo đẩy đang tắt)",
+    "pending": "Đang chờ gửi",
+    "needsAttention": "Cần xử lý",
+    "noWorker": "Chưa cấu hình tiến trình gửi định kỳ, nên các lần gửi lại và những tin bị gián đoạn sẽ chờ đến khi có người thao tác lại hoặc người vận hành chạy tiến trình.",
+    "recent": "Lần gửi gần đây",
+    "problems": "Thất bại hoặc chưa rõ",
+    "showProblems": "Chỉ hiện lỗi",
+    "showAll": "Hiện tất cả gần đây",
+    "emptyAll": "Chưa gửi gì.",
+    "emptyProblems": "Không có gì cần xử lý.",
+    "recipientChannel": "{{name}} · {{channel}}",
+    "unknownPerson": "Người không xác định",
+    "deletedPlan": "Chương trình đã xóa",
+    "details_other": "{{plan}} · {{date}} · {{count}} lần thử",
+    "retry": "Gửi lại",
+    "channel": {
+      "in_app": "Trong ứng dụng",
+      "push": "Thông báo đẩy",
+      "email": "Email"
+    },
+    "status": {
+      "queued": "Đang xếp hàng",
+      "sending": "Đang gửi",
+      "simulated": "Mô phỏng — không gửi",
+      "provider_accepted": "Nhà cung cấp đã nhận",
+      "delivered": "Đã gửi đến",
+      "failed": "Thất bại",
+      "ambiguous": "Chưa rõ kết quả",
+      "skipped": "Không gửi",
+      "cancelled": "Đã hủy"
+    },
+    "error": {
+      "no_email_address": "Chưa có địa chỉ email",
+      "no_active_device": "Chưa có thiết bị đăng ký",
+      "recipient_not_eligible": "Không còn được phân công hoặc không còn là thành viên",
+      "scheduler_not_active": "Người phân công không còn hoạt động trong hội thánh này",
+      "plan_missing": "Chương trình không còn tồn tại",
+      "request_missing": "Yêu cầu cập nhật lịch rảnh không còn tồn tại",
+      "already_reviewed": "Đã cập nhật lịch rảnh",
+      "provider_rate_limited": "Nhà cung cấp giới hạn tần suất — sẽ thử lại",
+      "provider_unavailable": "Nhà cung cấp không khả dụng — sẽ thử lại",
+      "provider_rejected": "Nhà cung cấp từ chối tin nhắn",
+      "provider_misconfigured": "Nhà cung cấp email bị cấu hình sai",
+      "provider_timeout": "Nhà cung cấp không phản hồi kịp",
+      "outcome_unknown": "Bị gián đoạn khi đang gửi; có thể đã gửi đi",
+      "worker_lease_expired": "Tiến trình dừng trước khi gửi; sẽ thử lại",
+      "internal_error": "Lỗi không mong muốn",
+      "reminder_obsolete": "Lời nhắc không còn phù hợp vào lúc sắp gửi",
+      "provider_duplicate_key": "Nhà cung cấp đã có một lần gửi trước của tin này; có thể đã gửi đi",
+      "content_removed": "Bình luận hoặc tin nhắn đã bị gỡ trước khi gửi",
+      "conversation_muted": "Người nhận đã tắt thông báo cuộc trò chuyện này",
+      "channel_not_used": "Không gửi qua kênh này"
+    }
+  },
+  "folders": {
+    "title": "Thư mục",
+    "description": "Nhóm các loại buổi nhóm theo cơ sở hoặc mục vụ. Quyền trên một thư mục áp dụng cho mọi thứ bên trong.",
+    "empty": "Chưa có thư mục nào.",
+    "serviceTypeCount_other": "{{count}} loại buổi nhóm",
+    "permissions": "Quyền",
+    "permissionsTitle": "Quyền của thư mục {{name}}",
+    "emptyFirst": "Hãy làm trống thư mục trước",
+    "newFolder": "Thư mục mới",
+    "namePlaceholder": "Cơ sở phía Bắc",
+    "inside": "Nằm trong",
+    "topLevel": "Cấp cao nhất",
+    "add": "Thêm thư mục",
+    "serviceTypes": "Loại buổi nhóm",
+    "folderFor": "Thư mục cho {{name}}",
+    "noFolder": "Không có thư mục",
+    "aServiceType": "một loại buổi nhóm",
+    "moveTitle": "Việc di chuyển này thay đổi quyền truy cập",
+    "gains": "{{name}} được thêm quyền “{{permission}}” trên {{serviceType}}",
+    "loses": "{{name}} mất quyền “{{permission}}” trên {{serviceType}}",
+    "moveAnyway": "Vẫn di chuyển"
+  },
+  "identity": {
+    "title": "Thành viên có thể bị trùng",
+    "description": "Chúng tôi không bao giờ gộp thành viên chỉ vì thông tin giống nhau. Hãy quyết định tại đây hai hồ sơ có phải cùng một người không.",
+    "empty": "Không có gì cần xem xét.",
+    "reason": {
+      "email_match": "<0>{{person}}</0> có cùng email với <1>{{candidate}}</1>",
+      "invitation_conflict": "<0>{{person}}</0> đã nhận lời mời tham gia dành cho <1>{{candidate}}</1>"
+    },
+    "mergeHint": "Khi gộp, các yêu cầu và lịch sử của {{candidate}} sẽ chuyển sang {{person}}.",
+    "keepSeparate": "Hai người khác nhau",
+    "merge": "Cùng một người — gộp lại"
+  },
+  "integrations": {
+    "title": "API cho nhà phát triển và webhook",
+    "description": "Cho phép một ứng dụng tích hợp đã được duyệt đọc các chương trình đã công bố và bài hát, đồng thời báo cho ứng dụng đó khi chương trình được công bố.",
+    "baseUrl": "Địa chỉ gốc của API <0>{{url}}</0> (phiên bản {{version}}).",
+    "secretOnce": "Hãy sao chép ngay và cất giữ ở nơi an toàn. Giá trị này sẽ không hiển thị lại.",
+    "secretStored": "Tôi đã lưu lại",
+    "newKeySecret": "Khóa API mới",
+    "signingSecret": "Khóa bí mật để ký",
+    "credentialMeta": "{{scopes}} · {{rate}}/phút · tạo ngày {{date}}",
+    "credentialMetaBy": "{{scopes}} · {{rate}}/phút · {{name}} tạo ngày {{date}}",
+    "lastUsed": "Dùng lần cuối {{when}}",
+    "neverUsed": "Chưa từng dùng",
+    "expires": "hết hạn {{date}}",
+    "revoke": "Thu hồi",
+    "revokeKeyConfirm": "Thu hồi “{{name}}”? Các ứng dụng tích hợp đang dùng khóa này sẽ ngừng hoạt động ở yêu cầu kế tiếp.",
+    "revokeEndpointConfirm": "Thu hồi địa chỉ nhận này? Địa chỉ sẽ không nhận thêm gì nữa; lịch sử gửi vẫn được giữ lại.",
+    "keyName": "Tên",
+    "keyNamePlaceholder": "Màn hình sảnh",
+    "keyAccess": "Quyền truy cập",
+    "keyExpires": "Ngày hết hạn (không bắt buộc)",
+    "keyHint": "Chỉ đọc. Khóa chỉ thấy các chương trình đã công bố, loại buổi nhóm và thư viện bài hát — không bao giờ thấy thành viên, ghi chú, tệp hay bản nháp. Khóa sẽ ngừng hoạt động khi bị thu hồi, hết hạn, hoặc khi bạn không còn là quản trị viên.",
+    "createKey": "Tạo khóa",
+    "attempts_other": "{{count}} lần thử",
+    "durationMs": "{{ms}} ms",
+    "nextTry": "thử lại lúc {{when}}",
+    "secretHint": "khóa bí mật …{{hint}}",
+    "waitingCount_other": "{{count}} đang chờ",
+    "failedCount_other": "{{count}} thất bại",
+    "hideDeliveries": "Ẩn lịch sử gửi",
+    "deliveries": "Lịch sử gửi",
+    "sendTest": "Gửi thử",
+    "pause": "Tạm dừng",
+    "resume": "Tiếp tục",
+    "noDeliveries": "Chưa gửi gì đến địa chỉ này.",
+    "endpointUrl": "URL địa chỉ nhận",
+    "endpointDescription": "Mô tả (không bắt buộc)",
+    "events": "Sự kiện",
+    "endpointHint": "Sự kiện chỉ chứa mã định danh; bên nhận đọc chi tiết bằng khóa API. Các yêu cầu đều được ký (Standard Webhooks) và được gửi lại với cùng mã sự kiện, vì vậy bên nhận nên kiểm tra chữ ký và bỏ qua những mã đã nhận.",
+    "addEndpoint": "Thêm địa chỉ nhận",
+    "apiKeys": "Khóa API",
+    "newKey": "Khóa mới",
+    "noKeys": "Chưa có khóa API nào.",
+    "webhooks": "Webhook",
+    "webhooksUnavailable": "Không dùng được webhook: máy chủ chưa cấu hình khóa mã hóa bí mật.",
+    "noWorker": "Chưa cấu hình tiến trình định kỳ, nên các lần gửi webhook sẽ chờ đến khi người vận hành chạy tiến trình.",
+    "noEndpoints": "Chưa có địa chỉ nhận webhook nào.",
+    "scope": {
+      "plans": {
+        "read": "Đọc chương trình đã công bố và loại buổi nhóm"
+      },
+      "songs": {
+        "read": "Đọc thư viện bài hát"
+      }
+    },
+    "event": {
+      "plan": {
+        "published": "Một chương trình đã được công bố",
+        "unpublished": "Một chương trình đã công bố bị chuyển về bản nháp hoặc lưu trữ",
+        "deleted": "Một chương trình đã công bố bị xóa"
+      },
+      "webhook": {
+        "test": "Sự kiện thử"
+      }
+    },
+    "deliveryStatus": {
+      "queued": "Đang chờ",
+      "sending": "Đang gửi",
+      "succeeded": "Địa chỉ nhận đã chấp nhận",
+      "failed": "Thất bại",
+      "cancelled": "Đã hủy"
+    },
+    "disabledReason": {
+      "administrator": "Quản trị viên đã tạm dừng",
+      "gone": "Địa chỉ nhận trả về 410 Gone",
+      "failing": "Tạm dừng sau nhiều lần thất bại"
+    },
+    "endpointState": {
+      "active": "Đang hoạt động",
+      "revoked": "Đã thu hồi",
+      "paused": "Tạm dừng"
+    },
+    "credentialState": {
+      "active": "Đang hoạt động",
+      "revoked": "Đã thu hồi",
+      "expired": "Đã hết hạn",
+      "issuer_inactive": "Ngừng hoạt động — người tạo không còn là quản trị viên"
+    },
+    "webhookError": {
+      "http": "Địa chỉ nhận trả về HTTP {{status}}",
+      "timeout": "Địa chỉ nhận không phản hồi kịp",
+      "destination_blocked": "Địa chỉ trỏ đến mạng riêng hoặc mạng dành riêng",
+      "dns_failed": "Không phân giải được tên máy chủ",
+      "connection_failed": "Không kết nối được tới địa chỉ nhận",
+      "redirect_not_followed": "Địa chỉ nhận chuyển hướng; hãy cập nhật URL",
+      "secret_unavailable": "Máy chủ không đọc được khóa bí mật để ký",
+      "endpoint_disabled": "Địa chỉ nhận đã bị tạm dừng",
+      "endpoint_revoked": "Địa chỉ nhận đã bị thu hồi"
+    }
+  },
+  "reminders": {
+    "title": "Lời nhắc",
+    "description": "Lời nhắc tự động cho các yêu cầu chưa trả lời và các buổi nhóm sắp tới đã xác nhận. Cài đặt của ban được ưu tiên hơn loại buổi nhóm, và loại buổi nhóm được ưu tiên hơn hội thánh; nếu không có cài đặt nào, Service Center gửi một lời nhắc 3 ngày trước với yêu cầu chưa trả lời và một lời nhắc 1 ngày trước khi cần người đã xác nhận. Lời nhắc tự dừng khi người đó trả lời, bị gỡ khỏi phân công hoặc khi thời gian thay đổi.",
+    "scope": "Phạm vi",
+    "wholeOrganization": "Toàn hội thánh",
+    "theOrganization": "hội thánh",
+    "kind": {
+      "pending_response": "Yêu cầu chưa trả lời",
+      "confirmed_service": "Buổi nhóm sắp tới đã xác nhận"
+    },
+    "kindDescription": {
+      "pending_response": "Gửi trước giờ nhóm đầu tiên liên quan cho những người chưa trả lời.",
+      "confirmed_service": "Gửi trước lần đầu tiên người đã xác nhận cần có mặt (kể cả buổi tập)."
+    },
+    "source": {
+      "team": "Theo cài đặt của ban",
+      "service_type": "Theo cài đặt của loại buổi nhóm",
+      "organization": "Theo cài đặt của hội thánh",
+      "default": "Mặc định của Service Center"
+    },
+    "inEffect": "Đang áp dụng: {{summary}}",
+    "offsetBy": "{{offset}} trước, qua {{channels}}",
+    "quietRange": "giờ yên lặng {{start}}–{{end}}",
+    "maxPerDay_other": "tối đa {{count}} lần mỗi ngày cho mỗi kênh",
+    "setHere": "Đặt tại đây cho {{scope}}",
+    "sendFor": "Gửi lời nhắc này cho {{scope}}",
+    "hoursBefore": "Số giờ trước",
+    "perPersonPerDay": "Mỗi người mỗi ngày",
+    "channels": "Kênh",
+    "quietHours": "Giờ yên lặng (theo múi giờ của hội thánh)",
+    "quietFrom": "Từ",
+    "quietUntil": "Đến",
+    "invalidOffset": "Hãy chọn trong khoảng từ 15 phút đến 30 ngày.",
+    "invalidQuiet": "Giờ yên lặng phải bắt đầu và kết thúc ở hai thời điểm khác nhau.",
+    "saveFor": "Lưu cho {{scope}}",
+    "useInherited": "Dùng cài đặt kế thừa",
+    "savedRecomputed": "Đã lưu. Các lời nhắc sắp tới sẽ được tính lại.",
+    "readOnly": "Bạn có thể xem cài đặt này nhưng không thể thay đổi."
+  },
+  "myReminders": {
+    "title": "Lời nhắc của tôi",
+    "description": "Chọn cách bạn nhận lời nhắc tự động. Các yêu cầu mới và thay đổi vẫn được gửi.",
+    "channels": "Kênh nhận lời nhắc",
+    "none": "Bạn sẽ không nhận được lời nhắc tự động."
+  },
+  "help": {
+    "title": "Người giúp quản lý lịch của tôi",
+    "description": "Cho phép người bạn tin tưởng trả lời yêu cầu hoặc cập nhật lịch rảnh thay bạn. Họ chỉ thấy những gì bạn cho phép — không bao giờ thấy ghi chú hay tệp của chương trình — và bạn có thể dừng bất cứ lúc nào.",
+    "rights": {
+      "respond": "trả lời yêu cầu",
+      "view": "xem yêu cầu",
+      "availability": "quản lý lịch rảnh"
+    },
+    "theyCan": "Có thể {{rights}}",
+    "youCan": "Bạn có thể {{rights}}",
+    "until": "đến {{date}}",
+    "expired": "đã hết hạn",
+    "stop": "Dừng",
+    "who": "Người có thể giúp",
+    "chooseSomeone": "Chọn một người có tài khoản",
+    "theyCanLegend": "Họ có thể",
+    "allowRespond": "Nhận hoặc từ chối yêu cầu của tôi",
+    "allowView": "Xem yêu cầu của tôi (ngày, giờ và vai trò)",
+    "allowAvailability": "Quản lý ngày bận và tùy chọn của tôi",
+    "untilLabel": "Đến ngày",
+    "optional": "(không bắt buộc)",
+    "allow": "Cho phép",
+    "peopleIHelp": "Những người tôi giúp",
+    "stopHelping": "Ngừng giúp"
+  },
+  "preferences": {
+    "appliesTo": "Áp dụng cho",
+    "allTeams": "Tất cả các ban của tôi",
+    "customTeam": "{{name}} (tùy chỉnh)",
+    "inheritsHint": "Dùng tùy chọn chung cho mọi ban cho đến khi bạn lưu tùy chọn riêng cho ban này.",
+    "howOften": "Mức độ thường xuyên",
+    "noPreference": "Không có tùy chọn",
+    "frequency": {
+      "every_week": "Tối đa mỗi tuần một lần",
+      "every_other_week": "Cách tuần",
+      "every_third_week": "Ba tuần một lần",
+      "once_a_month": "Mỗi tháng một lần"
+    },
+    "maxPerMonth": "Tối đa mỗi tháng",
+    "noLimit": "Không giới hạn",
+    "weeksOfMonth": "Các tuần trong tháng",
+    "weekOrdinal": {
+      "1": "Tuần 1",
+      "2": "Tuần 2",
+      "3": "Tuần 3",
+      "4": "Tuần 4",
+      "5": "Tuần 5"
+    },
+    "prefer": "Ưu tiên",
+    "avoid": "Tránh",
+    "preferWeek": "Ưu tiên tuần {{week}}",
+    "avoidWeek": "Tránh tuần {{week}}",
+    "preferredTimes": "Giờ bắt đầu buổi nhóm ưu tiên",
+    "avoidedDates": "Ngày muốn tránh",
+    "warningHint": "Người phân công sẽ thấy đây là cảnh báo. Hãy dùng ngày bận cho những lúc bạn thật sự không thể phục vụ.",
+    "save": "Lưu tùy chọn",
+    "useAllTeams": "Dùng tùy chọn chung cho mọi ban"
+  },
+  "serviceTypeFiles": {
+    "title": "Tệp mặc định của loại buổi nhóm",
+    "description": "Các chương trình mới thuộc loại buổi nhóm này sẽ tự động có những tệp này, gắn với phiên bản hiện hành lúc tạo. Thay đổi tệp mặc định sau này không ảnh hưởng đến các chương trình đã có.",
+    "panelTitle": "Tệp mặc định"
+  },
+  "profile": {
+    "savedTitle": "Đã lưu",
+    "savedMessage": "Hồ sơ của bạn đã được cập nhật.",
+    "photoPermissionTitle": "Cần quyền truy cập",
+    "photoPermissionMessage": "Hãy cho phép truy cập ảnh để chọn logo.",
+    "yourProfile": "Hồ sơ của bạn",
+    "yourDetails": "Thông tin của bạn",
+    "appearance": {
+      "title": "Giao diện",
+      "description": "Nền sáng để soạn chương trình ở bàn làm việc, nền tối cho sân khấu thiếu sáng.",
+      "light": "Sáng",
+      "dark": "Tối"
+    },
+    "manageOnWebsite": "Quản lý trên trang web",
+    "removeBlockout": "Xóa ngày bận từ {{date}}",
+    "noBlockouts": "Bạn chưa có ngày bận nào.",
+    "organizations": {
+      "title": "Hội thánh",
+      "description": "Bắt đầu một hội thánh hoặc mục vụ khác bất cứ khi nào bạn cần — bạn vẫn đăng nhập ở cả hai.",
+      "changeLogo": "Đổi logo",
+      "namePlaceholder": "Hội thánh Ân Điển"
+    }
+  }
+}

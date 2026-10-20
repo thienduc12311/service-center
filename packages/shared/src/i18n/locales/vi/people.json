@@ -1,0 +1,176 @@
+{
+  "list": {
+    "title": "Thành viên",
+    "subtitle": "Tất cả mọi người trong Hội thánh của bạn.",
+    "importCsv": "Nhập từ CSV",
+    "showArchived": "Hiện người đã lưu trữ",
+    "tags": "Thẻ",
+    "addPerson": "Thêm thành viên",
+    "inviteReady": "Lời mời tham gia cho <0>{{name}}</0> đã sẵn sàng.",
+    "inviteShareHint": "Hiện chưa cấu hình gửi email, vì vậy hãy chia sẻ trực tiếp liên kết này (qua tin nhắn, trò chuyện hoặc cách nào tiện cho bạn):",
+    "selectPerson": "Chọn {{name}}",
+    "thisPerson": "người này",
+    "personFallback": "thành viên",
+    "archived": "Đã lưu trữ",
+    "inviteSent": "Đã gửi lời mời",
+    "noLogin": "Chưa có tài khoản",
+    "roleFor": "Vai trò của {{name}}",
+    "addEmailFirst": "Hãy thêm email vào hồ sơ của người này trước",
+    "sendInvite": "Gửi lời mời",
+    "resendInvite": "Gửi lại lời mời",
+    "addDetails": "Thêm thông tin",
+    "empty": "Chưa có ai ở đây"
+  },
+  "person": {
+    "addTitle": "Thêm thành viên",
+    "editTitle": "Sửa thành viên",
+    "addSubtitle": "Ghi lại hồ sơ của họ — mời họ tạo tài khoản là một bước riêng.",
+    "archivedSubtitle": "Đã lưu trữ — vẫn giữ trong các chương trình cũ, ẩn khỏi việc phân công và danh sách chọn.",
+    "archived": "Đã lưu trữ",
+    "sections": {
+      "basic": "Thông tin cơ bản",
+      "contact": "Liên hệ",
+      "address": "Địa chỉ",
+      "other": "Khác"
+    },
+    "fields": {
+      "firstName": "Tên",
+      "lastName": "Họ",
+      "type": "Loại",
+      "gender": "Giới tính",
+      "birthdate": "Ngày sinh",
+      "email": "Email",
+      "phone": "Điện thoại",
+      "phoneCarrier": "Nhà mạng di động",
+      "address1": "Địa chỉ dòng 1",
+      "address2": "Địa chỉ dòng 2",
+      "city": "Thành phố",
+      "state": "Tỉnh / Bang",
+      "postalCode": "Mã bưu chính",
+      "country": "Quốc gia",
+      "campus": "Cơ sở",
+      "school": "Trường học",
+      "maritalStatus": "Tình trạng hôn nhân",
+      "anniversary": "Ngày kỷ niệm cưới",
+      "medicalNote": "Ghi chú y tế"
+    },
+    "personType": {
+      "adult": "Người lớn",
+      "child": "Trẻ em"
+    },
+    "gender": {
+      "notSet": "Chưa đặt",
+      "male": "Nam",
+      "female": "Nữ"
+    },
+    "loginManagedHint": "Người này đã có tài khoản — tên, email và số điện thoại do họ tự quản lý trong hồ sơ của mình và chỉ hiển thị để xem tại đây.",
+    "addPerson": "Thêm thành viên",
+    "invite": {
+      "title": "Mời tạo tài khoản",
+      "sentTo": "Đã gửi lời mời đến {{email}}, hết hạn vào {{date}}.",
+      "explainer": "Khi có tài khoản, họ có thể tự trả lời phân công và khai báo ngày bận.",
+      "sendTo": "Gửi đến",
+      "role": "Vai trò",
+      "shareHint": "Hiện chưa cấu hình gửi email — hãy chia sẻ trực tiếp liên kết này:",
+      "send": "Gửi lời mời",
+      "resend": "Gửi lại lời mời"
+    }
+  },
+  "bulk": {
+    "change": "Thay đổi",
+    "actions": {
+      "add_tag": "Thêm thẻ",
+      "remove_tag": "Gỡ thẻ",
+      "add_to_team": "Thêm vào ban",
+      "remove_from_team": "Gỡ khỏi ban"
+    },
+    "problems": {
+      "not_found": "không tìm thấy",
+      "archived": "đã lưu trữ — hãy khôi phục trước",
+      "not_eligible": "cần có hồ sơ đủ điều kiện còn hiệu lực cho ban này"
+    },
+    "tag": "Thẻ",
+    "team": "Ban",
+    "chooseTeam": "Chọn một ban",
+    "position": "Vị trí",
+    "noSpecificPosition": "Không chọn vị trí cụ thể",
+    "anyPosition": "Mọi vị trí",
+    "clearSelection": "Bỏ chọn",
+    "willChangeCount": "{{changes}} sẽ thay đổi · {{unchanged}} đã khớp sẵn",
+    "cannotChangeCount": "{{errors}} không thể thay đổi",
+    "unknownPerson": "Thành viên không xác định",
+    "willChange": "sẽ thay đổi",
+    "noChange": "không thay đổi",
+    "stale": "Danh sách thành viên đã thay đổi kể từ lần xem trước này. Hãy xem trước lại trước khi áp dụng.",
+    "applyTo": "Áp dụng cho {{changes}}"
+  },
+  "calendarSharing": {
+    "title": "Lịch của ban",
+    "description": "Hiển thị trên lịch của các ban mà người này tham gia (chỉ ngày và tháng — không bao giờ hiện năm).",
+    "birthday": "Sinh nhật",
+    "anniversary": "Ngày kỷ niệm cưới"
+  },
+  "history": {
+    "title": "Lịch sử danh sách thành viên",
+    "empty": "Chưa ghi nhận thay đổi nào.",
+    "aTeam": "một ban",
+    "events": {
+      "created": "Đã thêm vào danh sách thành viên",
+      "archived": "Đã lưu trữ",
+      "restored": "Đã khôi phục",
+      "linked": "Đã liên kết với một tài khoản",
+      "unlinked": "Đã hủy liên kết với tài khoản",
+      "tag_added": "Đã gắn thẻ",
+      "tag_removed": "Đã gỡ thẻ",
+      "team_added": "Đã thêm vào một ban",
+      "team_removed": "Đã gỡ khỏi một ban"
+    },
+    "eventsWithTag": {
+      "tag_added": "Đã gắn thẻ “{{tag}}”",
+      "tag_removed": "Đã gỡ thẻ “{{tag}}”"
+    },
+    "eventsWithTeam": {
+      "team_added": "Đã thêm vào {{team}}",
+      "team_removed": "Đã gỡ khỏi {{team}}"
+    },
+    "byActor": "bởi {{name}}"
+  },
+  "tagGroups": {
+    "title": "Thẻ và nhóm",
+    "newGroupLabel": "Tên nhóm mới",
+    "newGroupPlaceholder": "Nhóm mới, ví dụ: Nhạc cụ",
+    "addGroup": "Thêm nhóm",
+    "deleteGroup": "Xóa nhóm {{name}}",
+    "empty": "Chưa có thẻ nào. Hãy thêm thẻ trên trang của một thành viên hoặc bằng thay đổi hàng loạt.",
+    "groupFor": "Nhóm cho {{tag}}",
+    "noGroup": "Không có nhóm"
+  },
+  "policy": {
+    "tags": "Thẻ",
+    "tagsPlaceholder": "máy quay, âm thanh",
+    "saveTags": "Lưu thẻ",
+    "eligibility": "Điều kiện phục vụ",
+    "noRecords": "Chưa có hồ sơ điều kiện nào.",
+    "status": {
+      "clear": "Đạt",
+      "not_clear": "Không đạt",
+      "pending": "Đang chờ"
+    },
+    "recordSummary": "{{status}} · xác minh {{verified}} · hết hạn {{expires}}",
+    "kindLabel": "Loại điều kiện",
+    "statusLabel": "Trạng thái",
+    "providerLabel": "Đơn vị cung cấp",
+    "referenceLabel": "Mã tham chiếu của đơn vị cung cấp",
+    "referencePlaceholder": "Mã tham chiếu (không bắt buộc)",
+    "verified": "Ngày xác minh",
+    "expires": "Ngày hết hạn",
+    "addRecord": "Thêm hồ sơ"
+  },
+  "tagSelect": {
+    "none": "Không có",
+    "count_other": "{{count}} thẻ",
+    "closeOptions": "Đóng danh sách lựa chọn",
+    "addTag": "Thêm thẻ",
+    "remove": "Gỡ {{tag}}"
+  }
+}

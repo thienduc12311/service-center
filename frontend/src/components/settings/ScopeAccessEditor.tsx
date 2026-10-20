@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
-  ACCESS_CAPABILITY_LABELS,
   capabilitiesForScope,
   type AccessCapability,
   type AccessScopeType,
@@ -26,6 +26,7 @@ export interface ScopeAccessEditorProps {
  * once (PUT …/access), so what is shown is exactly what is stored.
  */
 export const ScopeAccessEditor = ({ scopeType, scopeId, scopeName, load, save }: ScopeAccessEditorProps) => {
+  const { t } = useTranslation(['settings', 'common']);
   const { organizationId } = useAuth();
   const invalidate = useInvalidateOrg();
   const people = usePeople();
@@ -56,19 +57,22 @@ export const ScopeAccessEditor = ({ scopeType, scopeId, scopeName, load, save }:
       {access.isLoading ? (
         <Spinner />
       ) : grants.length === 0 ? (
-        <p className="text-sm text-slate-500">Nobody has permissions for {scopeName} yet.</p>
+        <p className="text-sm text-slate-500">{t('scopeAccess.empty', { scope: scopeName })}</p>
       ) : (
         <ul className="divide-y divide-slate-100 text-sm">
           {grants.map((grant) => (
             <li key={grant.id} className="flex items-center justify-between gap-3 py-2">
               <span>
-                <span className="font-medium">{grant.full_name ?? 'Unknown member'}</span>
-                <span className="text-slate-500"> · {ACCESS_CAPABILITY_LABELS[grant.capability]}</span>
+                <span className="font-medium">{grant.full_name ?? t('scopeAccess.unknownMember')}</span>
+                <span className="text-slate-500"> · {t(`capabilities.${grant.capability}`)}</span>
               </span>
               <Button
                 variant="ghost"
                 className="!px-2 text-xs"
-                aria-label={`Remove ${ACCESS_CAPABILITY_LABELS[grant.capability]} from ${grant.full_name ?? 'member'}`}
+                aria-label={t('scopeAccess.removeLabel', {
+                  permission: t(`capabilities.${grant.capability}`),
+                  name: grant.full_name ?? t('scopeAccess.unknownMember'),
+                })}
                 loading={replace.isPending}
                 onClick={() =>
                   replace.mutate({
@@ -76,7 +80,7 @@ export const ScopeAccessEditor = ({ scopeType, scopeId, scopeName, load, save }:
                   })
                 }
               >
-                Remove
+                {t('common:actions.remove')}
               </Button>
             </li>
           ))}
@@ -85,23 +89,23 @@ export const ScopeAccessEditor = ({ scopeType, scopeId, scopeName, load, save }:
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-40 flex-1">
-          <label className="label" htmlFor={`grant-member-${scopeType}-${scopeId ?? 'org'}`}>Member</label>
+          <label className="label" htmlFor={`grant-member-${scopeType}-${scopeId ?? 'org'}`}>{t('access.member')}</label>
           <select
             id={`grant-member-${scopeType}-${scopeId ?? 'org'}`}
             className="input"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
           >
-            <option value="">Choose a member</option>
+            <option value="">{t('access.chooseMember')}</option>
             {members.map((person) => (
               <option key={person.id} value={person.profile_id ?? ''}>
-                {person.full_name ?? 'Unnamed'}
+                {person.full_name ?? t('common:fallback.unnamed')}
               </option>
             ))}
           </select>
         </div>
         <div className="min-w-40 flex-1">
-          <label className="label" htmlFor={`grant-capability-${scopeType}-${scopeId ?? 'org'}`}>Permission</label>
+          <label className="label" htmlFor={`grant-capability-${scopeType}-${scopeId ?? 'org'}`}>{t('access.permission')}</label>
           <select
             id={`grant-capability-${scopeType}-${scopeId ?? 'org'}`}
             className="input"
@@ -110,7 +114,7 @@ export const ScopeAccessEditor = ({ scopeType, scopeId, scopeName, load, save }:
           >
             {capabilities.map((value) => (
               <option key={value} value={value}>
-                {ACCESS_CAPABILITY_LABELS[value]}
+                {t(`capabilities.${value}`)}
               </option>
             ))}
           </select>
@@ -120,7 +124,8 @@ export const ScopeAccessEditor = ({ scopeType, scopeId, scopeName, load, save }:
           loading={replace.isPending}
           onClick={() => replace.mutate({ grants: [...current, { user_id: userId, capability }] })}
         >
-          Grant
+          {t('scopeAccess.grant')}
+
         </Button>
       </div>
 

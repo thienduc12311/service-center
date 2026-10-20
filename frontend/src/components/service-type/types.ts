@@ -5,10 +5,13 @@ export type WizardStep = 'name' | 'times' | 'teams';
 
 export const WIZARD_STEPS: readonly WizardStep[] = ['name', 'times', 'teams'];
 
-export const WIZARD_STEP_LABELS: Record<WizardStep, string> = {
-  name: 'Name',
-  times: 'Times',
-  teams: 'Teams',
+/** Catalog keys (`teams` namespace) for each step's label in the progress rail. */
+export type WizardStepLabelKey = `serviceTypeWizard.steps.${WizardStep}`;
+
+export const WIZARD_STEP_LABEL_KEYS: Record<WizardStep, WizardStepLabelKey> = {
+  name: 'serviceTypeWizard.steps.name',
+  times: 'serviceTypeWizard.steps.times',
+  teams: 'serviceTypeWizard.steps.teams',
 };
 
 /**

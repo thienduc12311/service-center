@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  formatDateTime,
-  type RotationPreviewEntry,
-  type TeamRotation,
-  type TeamRotationException,
-  type TeamRotationSlot,
-  type TeamWithPositions,
+import { useTranslation } from 'react-i18next';
+import type {
+  RotationPreviewEntry,
+  TeamRotation,
+  TeamRotationException,
+  TeamRotationSlot,
+  TeamWithPositions,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { keys, useRotations } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Badge, Button, ErrorNotice, Loading } from '../ui';
+import { useFormatters } from '../../i18n';
 
 export interface RotationMember {
   person_id: string;
@@ -45,14 +46,10 @@ const toDraft = (rotation: TeamRotation): RotationDraft => ({
   slots: rotation.slots, exceptions: rotation.exceptions,
 });
 
-const ISSUE_LABEL: Record<NonNullable<RotationPreviewEntry['issue']>, string> = {
-  not_position_member: 'no longer on this position',
-  blockout: 'unavailable (blockout)',
-  overlapping_commitment: 'another commitment',
-};
-
 /** Versioned team rotations: pattern by week × position, exceptions by local date, preview on real plans. */
 export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
+  const { t } = useTranslation(['staffing', 'common']);
+  const { calendarDate, dateTime } = useFormatters();
   const { organizationId } = useAuth();
   const client = useQueryClient();
   const rotations = useRotations(team.id);
@@ -96,58 +93,58 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
       ...(personId === undefined ? [] : [{ local_date: localDate, position_id: positionId, person_id: personId, note: null }])],
   }));
   const exceptionDates = [...new Set(draft?.exceptions.map((item) => item.local_date) ?? [])].sort();
-  const nameOf = (personId: string | null) => members.find((member) => member.person_id === personId)?.name ?? 'Former member';
+  const nameOf = (personId: string | null) => members.find((member) => member.person_id === personId)?.name ?? t('rotations.formerMember');
 
   return (
-    <section className="card space-y-4 p-4" aria-label={`Rotations for ${team.name}`}>
+    <section className="card space-y-4 p-4" aria-label={t('rotations.panelLabel', { team: team.name })}>
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="mr-auto font-semibold">{team.name} rotations</h3>
+        <h3 className="mr-auto font-semibold">{t('rotations.heading', { team: team.name })}</h3>
         {(rotations.data ?? []).map((rotation) => (
           <Button key={rotation.id} variant={draft?.id === rotation.id ? 'primary' : 'secondary'}
             onClick={() => { setDraft(toDraft(rotation)); setPreview(null); }}>{rotation.name}</Button>
         ))}
-        <Button variant="secondary" onClick={() => { setDraft(blankDraft()); setPreview(null); }}>New rotation</Button>
+        <Button variant="secondary" onClick={() => { setDraft(blankDraft()); setPreview(null); }}>{t('rotations.newRotation')}</Button>
       </div>
       {rotations.isLoading && <Loading />}
       <ErrorNotice error={rotations.error ?? save.error ?? archive.error ?? loadPreview.error} />
       {!draft && !rotations.isLoading && (
         <p className="text-sm text-slate-500">
-          A rotation suggests who serves each local week. It never overrides membership, blockouts or conflicts — those weeks are left open or filled fairly, as you choose.
+          {t('rotations.intro')}
         </p>
       )}
       {draft && (
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); save.mutate(draft); }}>
           <div className="grid gap-3 md:grid-cols-4">
-            <label className="field">Name<input className="input" required maxLength={80} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
-            <label className="field">Cycle (weeks)
+            <label className="field">{t('rotations.name')}<input className="input" required maxLength={80} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
+            <label className="field">{t('rotations.cycleWeeks')}
               <select className="input" value={draft.cycle_weeks} onChange={(e) => {
                 const cycle = Number(e.target.value);
                 setDraft({ ...draft, cycle_weeks: cycle, slots: draft.slots.filter((slot) => slot.week_index < cycle) });
               }}>{Array.from({ length: 12 }, (_, index) => index + 1).map((value) => <option key={value} value={value}>{value}</option>)}</select>
             </label>
-            <label className="field">Week 1 starts on (local date)<input className="input" type="date" required value={draft.anchor_date} onChange={(e) => setDraft({ ...draft, anchor_date: e.target.value })} /></label>
-            <label className="field">When the named person can’t serve
+            <label className="field">{t('rotations.anchorDate')}<input className="input" type="date" required value={draft.anchor_date} onChange={(e) => setDraft({ ...draft, anchor_date: e.target.value })} /></label>
+            <label className="field">{t('rotations.substitutePolicy')}
               <select className="input" value={draft.substitute_policy} onChange={(e) => setDraft({ ...draft, substitute_policy: e.target.value as RotationDraft['substitute_policy'] })}>
-                <option value="vacancy">Leave the position open</option>
-                <option value="fairness">Suggest a fair substitute</option>
+                <option value="vacancy">{t('rotations.policy.vacancy')}</option>
+                <option value="fairness">{t('rotations.policy.fairness')}</option>
               </select>
             </label>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead><tr><th className="p-2 text-left">Position</th>{Array.from({ length: draft.cycle_weeks }, (_, week) => <th key={week} className="p-2 text-left">Week {week + 1}</th>)}</tr></thead>
+              <thead><tr><th className="p-2 text-left">{t('rotations.position')}</th>{Array.from({ length: draft.cycle_weeks }, (_, week) => <th key={week} className="p-2 text-left">{t('rotations.week', { number: week + 1 })}</th>)}</tr></thead>
               <tbody>
                 {team.positions.map((position) => (
                   <tr key={position.id} className="border-t">
                     <th className="p-2 text-left font-normal">{position.name}</th>
                     {Array.from({ length: draft.cycle_weeks }, (_, week) => (
                       <td key={week} className="p-1">
-                        <select aria-label={`${position.name}, week ${week + 1}`} className="input" value={slotPerson(week, position.id)}
+                        <select aria-label={t('rotations.slotLabel', { position: position.name, number: week + 1 })} className="input" value={slotPerson(week, position.id)}
                           onChange={(e) => setSlot(week, position.id, e.target.value)}>
                           <option value="">—</option>
                           {membersFor(position.id).map((member) => <option key={member.person_id} value={member.person_id}>{member.name}</option>)}
                           {slotPerson(week, position.id) && !membersFor(position.id).some((member) => member.person_id === slotPerson(week, position.id))
-                            && <option value={slotPerson(week, position.id)}>{nameOf(slotPerson(week, position.id))} (not on this position)</option>}
+                            && <option value={slotPerson(week, position.id)}>{t('rotations.notOnPosition', { name: nameOf(slotPerson(week, position.id)) })}</option>}
                         </select>
                       </td>
                     ))}
@@ -157,10 +154,10 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
             </table>
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">Exceptions (by local date)</p>
+            <p className="text-sm font-medium">{t('rotations.exceptions')}</p>
             {exceptionDates.map((localDate) => (
               <div key={localDate} className="flex flex-wrap items-end gap-2 text-sm">
-                <span className="w-28 pb-2">{localDate}</span>
+                <span className="w-28 pb-2">{calendarDate(localDate, 'medium')}</span>
                 {team.positions.map((position) => {
                   const current = draft.exceptions.find((item) => item.local_date === localDate && item.position_id === position.id);
                   const value = current === undefined ? '__pattern' : current.person_id ?? '__skip';
@@ -168,45 +165,50 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
                     <label key={position.id} className="field">{position.name}
                       <select className="input" value={value} onChange={(e) => setException(localDate, position.id,
                         e.target.value === '__pattern' ? undefined : e.target.value === '__skip' ? null : e.target.value)}>
-                        <option value="__pattern">Use pattern</option>
-                        <option value="__skip">Skip (fair choice)</option>
+                        <option value="__pattern">{t('rotations.usePattern')}</option>
+                        <option value="__skip">{t('rotations.skip')}</option>
                         {membersFor(position.id).map((member) => <option key={member.person_id} value={member.person_id}>{member.name}</option>)}
                       </select>
                     </label>
                   );
                 })}
-                <Button type="button" variant="secondary" onClick={() => setDraft({ ...draft, exceptions: draft.exceptions.filter((item) => item.local_date !== localDate) })}>Remove</Button>
+                <Button type="button" variant="secondary" onClick={() => setDraft({ ...draft, exceptions: draft.exceptions.filter((item) => item.local_date !== localDate) })}>{t('common:actions.remove')}</Button>
               </div>
             ))}
             <div className="flex items-end gap-2">
-              <label className="field">Add exception date<input className="input" type="date" value={exceptionDate} onChange={(e) => setExceptionDate(e.target.value)} /></label>
+              <label className="field">{t('rotations.addExceptionDate')}<input className="input" type="date" value={exceptionDate} onChange={(e) => setExceptionDate(e.target.value)} /></label>
               <Button type="button" variant="secondary" disabled={!exceptionDate || !team.positions.length} onClick={() => {
                 const first = team.positions[0];
                 if (first) setException(exceptionDate, first.id, null);
                 setExceptionDate('');
-              }}>Add</Button>
+              }}>{t('common:actions.add')}</Button>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" loading={save.isPending} disabled={!draft.name.trim()}>{draft.id ? 'Save new version' : 'Create rotation'}</Button>
-            {draft.id && <Button type="button" variant="secondary" loading={loadPreview.isPending} onClick={() => loadPreview.mutate(draft.id!)}>Preview next 12 weeks</Button>}
-            {draft.id && <Button type="button" variant="secondary" loading={archive.isPending} onClick={() => archive.mutate(draft)}>Archive</Button>}
-            {draft.id && <span className="self-center text-xs text-slate-500">Version {draft.revision}</span>}
+            <Button type="submit" loading={save.isPending} disabled={!draft.name.trim()}>{draft.id ? t('rotations.saveVersion') : t('rotations.create')}</Button>
+            {draft.id && <Button type="button" variant="secondary" loading={loadPreview.isPending} onClick={() => loadPreview.mutate(draft.id!)}>{t('rotations.previewWeeks', { count: 12 })}</Button>}
+            {draft.id && <Button type="button" variant="secondary" loading={archive.isPending} onClick={() => archive.mutate(draft)}>{t('common:actions.archive')}</Button>}
+            {draft.id && <span className="self-center text-xs text-slate-500">{t('rotations.version', { number: draft.revision })}</span>}
           </div>
         </form>
       )}
       {preview && (
         <div>
-          <p className="mb-2 text-sm font-medium">Mapping onto planned services</p>
-          {!preview.length ? <p className="text-sm text-slate-500">No upcoming plans need these positions.</p> : (
+          <p className="mb-2 text-sm font-medium">{t('rotations.previewTitle')}</p>
+          {!preview.length ? <p className="text-sm text-slate-500">{t('rotations.previewEmpty')}</p> : (
             <ul className="space-y-1 text-sm">
               {preview.map((entry) => (
                 <li key={`${entry.plan_id}:${entry.position_id}:${entry.person_id ?? 'none'}`}>
-                  {entry.local_date} · {entry.plan_title} · {team.positions.find((p) => p.id === entry.position_id)?.name ?? 'Position'} (week {entry.week_index + 1}):{' '}
-                  <span className="font-medium">{entry.person_name ?? (entry.source === 'skipped' ? 'skipped — fair choice' : 'nobody named')}</span>
-                  {entry.source === 'exception' && <> <Badge tone="bg-sky-50 text-sky-700 ring-sky-600/20">exception</Badge></>}
-                  {entry.issue && <span className="ml-1 text-amber-700">⚠ {ISSUE_LABEL[entry.issue]}</span>}
-                  <span className="ml-1 text-xs text-slate-400">{formatDateTime(entry.service_date)}</span>
+                  {t('rotations.previewEntry', {
+                    date: calendarDate(entry.local_date, 'medium'),
+                    plan: entry.plan_title,
+                    position: team.positions.find((p) => p.id === entry.position_id)?.name ?? t('rotations.position'),
+                    number: entry.week_index + 1,
+                  })}{' '}
+                  <span className="font-medium">{entry.person_name ?? (entry.source === 'skipped' ? t('rotations.previewSkipped') : t('rotations.previewNobody'))}</span>
+                  {entry.source === 'exception' && <> <Badge tone="bg-sky-50 text-sky-700 ring-sky-600/20">{t('rotations.exceptionBadge')}</Badge></>}
+                  {entry.issue && <span className="ml-1 text-amber-700">⚠ {t(`rotations.issue.${entry.issue}`)}</span>}
+                  <span className="ml-1 text-xs text-slate-400">{dateTime(entry.service_date)}</span>
                 </li>
               ))}
             </ul>
@@ -217,8 +219,11 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
   );
 };
 
-/** Position members for the editor, from the team payload (`GET /teams`). */
-export const rotationMembers = (team: TeamWithPositions): RotationMember[] =>
+/**
+ * Position members for the editor, from the team payload (`GET /teams`).
+ * `unnamed` is the caller's translated label for a member without a name.
+ */
+export const rotationMembers = (team: TeamWithPositions, unnamed: string): RotationMember[] =>
   team.members.flatMap((member) => (member.position_id
-    ? [{ person_id: member.person_id, position_id: member.position_id, name: member.profile?.full_name ?? 'Unnamed person' }]
+    ? [{ person_id: member.person_id, position_id: member.position_id, name: member.profile?.full_name ?? unnamed }]
     : []));

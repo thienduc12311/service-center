@@ -1,20 +1,23 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ASSIGNMENT_STATUS_LABELS, formatDate, formatDateTime } from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
 import { useMySchedule, useRespondToAssignment } from '../hooks/queries';
 import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { assignmentTone } from '../lib/format';
+import { useFormatters } from '../i18n';
 
 export const MySchedulePage = () => {
   const [includePast, setIncludePast] = useState(false);
   const schedule = useMySchedule({ include_past: includePast });
   const respond = useRespondToAssignment();
+  const { t } = useTranslation(['scheduling', 'common']);
+  const f = useFormatters();
 
   return (
     <div>
       <PageHeader
-        title="My Schedule"
-        subtitle="Everything you’ve been asked to serve on."
+        title={t('mySchedule.title')}
+        subtitle={t('mySchedule.subtitle')}
         actions={
           <label className="flex items-center gap-2 text-sm text-slate-600">
             <input
@@ -23,7 +26,7 @@ export const MySchedulePage = () => {
               onChange={(e) => setIncludePast(e.target.checked)}
               className="size-4 rounded border-slate-300"
             />
-            Include past
+            {t('mySchedule.includePast')}
           </label>
         }
       />
@@ -45,11 +48,11 @@ export const MySchedulePage = () => {
                         {entry.plan.title}
                       </Link>
                       <Badge tone={assignmentTone[entry.assignment.status]}>
-                        {ASSIGNMENT_STATUS_LABELS[entry.assignment.status]}
+                        {t(`common:assignmentStatus.${entry.assignment.status}`)}
                       </Badge>
                     </div>
                     <p className="mt-1 text-sm text-slate-500">
-                      {formatDateTime(entry.plan.service_date)}
+                      {f.dateTime(entry.plan.service_date)}
                       {entry.plan.location ? ` · ${entry.plan.location}` : ''}
                     </p>
                     <p className="mt-1 text-sm text-slate-600">
@@ -61,10 +64,10 @@ export const MySchedulePage = () => {
                       <ul className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
                         {entry.times.map((time) => (
                           <li key={time.id} className="rounded bg-slate-100 px-2 py-0.5">
-                            {time.name ?? time.kind} · {formatDate(time.starts_at)}{' '}
-                            {new Date(time.starts_at).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
+                            {t('mySchedule.timeLine', {
+                              label: time.name ?? t(`timeKind.${time.kind}`),
+                              date: f.date(time.starts_at),
+                              time: f.time(time.starts_at),
                             })}
                           </li>
                         ))}
@@ -79,7 +82,7 @@ export const MySchedulePage = () => {
                           loading={respond.isPending}
                           onClick={() => respond.mutate({ id: entry.assignment.id, status: 'confirmed' })}
                         >
-                          Accept
+                          {t('mySchedule.accept')}
                         </Button>
                       )}
                       <Button
@@ -87,7 +90,7 @@ export const MySchedulePage = () => {
                         loading={respond.isPending}
                         onClick={() => respond.mutate({ id: entry.assignment.id, status: 'declined' })}
                       >
-                        Decline
+                        {t('common:actions.decline')}
                       </Button>
                     </div>
                   )}
@@ -98,8 +101,8 @@ export const MySchedulePage = () => {
         </ul>
       ) : (
         <EmptyState
-          title="You’re not scheduled for anything"
-          description="When a scheduler adds you to a plan it will show up here, and you can accept or decline."
+          title={t('mySchedule.emptyTitle')}
+          description={t('mySchedule.emptyDescription')}
         />
       )}
     </div>

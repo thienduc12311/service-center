@@ -5,6 +5,8 @@ import { HttpError } from './errors.js';
 const formatIssues = (error: z.ZodError) =>
   error.issues.map((issue) => ({
     path: issue.path.join('.'),
+    // Zod's machine code lets clients show localized field messages.
+    code: issue.code,
     message: issue.message,
   }));
 

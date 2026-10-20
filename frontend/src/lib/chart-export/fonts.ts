@@ -13,6 +13,7 @@
  * that don't never pay it.
  */
 
+import { LocalizedError } from '@service-center/shared';
 import type { ChartPdfDocument, ChartPdfFontFamily } from './types';
 
 /**
@@ -113,7 +114,7 @@ const fetchFace = async (
 ): Promise<UnicodeChartFont> => {
   const response = await fetch(source.url);
   if (!response.ok) {
-    throw new Error(`The font this chart needs could not be loaded (${response.status}).`);
+    throw new LocalizedError({ key: 'songs:errors.chartFontFailed', values: { status: response.status } });
   }
 
   return {

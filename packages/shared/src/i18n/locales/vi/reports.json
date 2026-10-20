@@ -1,0 +1,242 @@
+{
+  "page": {
+    "title": "Báo cáo",
+    "subtitle": "Ngày giờ theo múi giờ {{timezone}}. Câu trả lời xác nhận là dự kiến tham gia, không phải điểm danh.",
+    "tabsLabel": "Báo cáo",
+    "leadersOnlyTitle": "Báo cáo dành cho người lãnh đạo",
+    "leadersOnlyDescription": "Hãy nhờ quản trị viên cấp quyền phân công hoặc lập chương trình."
+  },
+  "kinds": {
+    "staffing": "Nhân sự và theo dõi",
+    "participation": "Tham gia và lịch sử trả lời",
+    "song_usage": "Mức sử dụng bài hát",
+    "run_times": "Thời lượng thực tế",
+    "schedule": "Lịch phân công nhiều chương trình"
+  },
+  "filters": {
+    "from": "Từ ngày",
+    "to": "Đến ngày",
+    "serviceType": "Loại buổi nhóm",
+    "team": "Ban",
+    "allVisible": "Tất cả những gì tôi xem được",
+    "planStatus": "Trạng thái chương trình",
+    "responses": "Câu trả lời",
+    "includeArchivedPeople": "Bao gồm thành viên đã lưu trữ",
+    "includeRehearsals": "Bao gồm buổi tập",
+    "run": "Chạy báo cáo"
+  },
+  "responses": {
+    "confirmed": "Đã xác nhận",
+    "pending": "Đang chờ",
+    "declined": "Đã từ chối"
+  },
+  "results": {
+    "choose": "Chọn bộ lọc rồi chạy báo cáo",
+    "building": "Đang lập báo cáo…",
+    "generated": "Lập lúc {{time}} · {{timezone}}",
+    "truncated": "Đã cắt bớt: hãy thu hẹp bộ lọc hoặc xếp hàng một bản xuất.",
+    "downloadCsv": "Tải CSV",
+    "queueExport": "Xếp hàng bản xuất",
+    "noMatches": "Không có kết quả khớp với bộ lọc này",
+    "howCounted": "Cách tính các con số này"
+  },
+  "scopeNote": {
+    "scheduling": "Chỉ bao gồm các ban và loại buổi nhóm bạn phân công.",
+    "plans": "Chỉ bao gồm chương trình thuộc các loại buổi nhóm bạn chỉnh sửa."
+  },
+  "summary": {
+    "plans": "Chương trình",
+    "needed": "Cần",
+    "confirmed": "Đã xác nhận",
+    "pending": "Đang chờ",
+    "declined": "Đã từ chối",
+    "vacancies": "Còn thiếu",
+    "people": "Thành viên",
+    "assignments": "Phân công",
+    "personPlans": "Lượt người – chương trình",
+    "present": "Có mặt",
+    "absent": "Vắng mặt",
+    "songs": "Bài hát",
+    "occurrences": "Số lần dùng",
+    "endedRuns": "Lượt chạy đã kết thúc",
+    "averageDifference": "Chênh lệch trung bình (giây)"
+  },
+  "followUp": {
+    "title": "Cần theo dõi ({{total}})",
+    "line": "{{person}} — {{team}} · {{position}} trong {{plan}}: {{response}}"
+  },
+  "exports": {
+    "title": "Bản xuất của tôi",
+    "help": "Bản xuất được lập trong nền, lưu trong 24 giờ, và chỉ bạn tải được khi bạn vẫn còn quyền truy cập.",
+    "empty": "Chưa có bản xuất nào.",
+    "range": "{{kind}} · {{from}} đến {{to}}",
+    "until": "đến {{time}}",
+    "buildAgain": "Lập lại",
+    "status": {
+      "queued": "Đang xếp hàng",
+      "running": "Đang lập",
+      "ready": "Sẵn sàng",
+      "failed": "Thất bại",
+      "expired": "Đã hết hạn"
+    },
+    "errors": {
+      "access_revoked": "Bạn không còn quyền xem báo cáo này",
+      "invalid_filters": "Bộ lọc không còn hợp lệ",
+      "storage_failed": "Không lưu được tệp",
+      "generation_failed": "Không lập được báo cáo",
+      "other": "Bản xuất chưa hoàn tất"
+    }
+  },
+  "columns": {
+    "date": "Ngày",
+    "plan": "Chương trình",
+    "serviceType": "Loại buổi nhóm",
+    "team": "Ban",
+    "position": "Vị trí",
+    "needed": "Cần",
+    "confirmed": "Đã xác nhận",
+    "pending": "Đang chờ",
+    "declined": "Đã từ chối",
+    "vacancies": "Còn thiếu",
+    "person": "Thành viên",
+    "archived": "Đã lưu trữ",
+    "teams": "Ban",
+    "assignments": "Phân công",
+    "personPlans": "Lượt người – chương trình",
+    "present": "Có mặt",
+    "absent": "Vắng mặt",
+    "unknown": "Không rõ",
+    "lastScheduled": "Lần phân công gần nhất",
+    "song": "Bài hát",
+    "author": "Tác giả",
+    "occurrences": "Số lần dùng",
+    "plans": "Chương trình",
+    "keys": "Giọng",
+    "firstUsed": "Dùng lần đầu",
+    "lastUsed": "Dùng gần nhất",
+    "time": "Giờ",
+    "planned": "Dự kiến",
+    "actual": "Thực tế",
+    "difference": "Chênh lệch",
+    "items": "Mục",
+    "itemsOver": "Mục quá giờ",
+    "corrected": "Đã chỉnh sửa",
+    "response": "Câu trả lời",
+    "times": "Giờ"
+  },
+  "values": {
+    "yes": "Có",
+    "no": "Không"
+  },
+  "definitions": {
+    "needed": { "label": "Cần", "definition": "Số người chương trình cần cho vị trí đó (nhu cầu vị trí của chương trình)." },
+    "confirmed": { "label": "Đã xác nhận", "definition": "Yêu cầu đã gửi mà người đó đã nhận. Là dự kiến tham gia, không phải điểm danh." },
+    "pending": { "label": "Đang chờ", "definition": "Yêu cầu đã gửi nhưng chưa được trả lời." },
+    "declined": { "label": "Đã từ chối", "definition": "Yêu cầu đã gửi mà người đó đã từ chối." },
+    "vacancies": { "label": "Còn thiếu", "definition": "Số cần trừ đi (đã xác nhận + đang chờ), không bao giờ dưới 0. Yêu cầu đã chuẩn bị (chưa gửi) không được tính vào đây." },
+    "assignments": { "label": "Phân công", "definition": "Số bản ghi yêu cầu. Một người ở hai vị trí trong cùng một chương trình được tính là 2." },
+    "person_plans": { "label": "Lượt người – chương trình", "definition": "Số cặp (người, chương trình) khác nhau. Một người ở hai vị trí trong cùng một chương trình được tính là 1." },
+    "people": { "label": "Thành viên", "definition": "Số người khác nhau." },
+    "present": { "label": "Có mặt", "definition": "Số giờ của chương trình có bản ghi điểm danh “có mặt” — điều thực sự đã diễn ra, do người lãnh đạo ghi nhận." },
+    "absent": { "label": "Vắng mặt", "definition": "Số giờ của chương trình có bản ghi điểm danh “vắng mặt”." },
+    "unknown": { "label": "Không rõ", "definition": "Số giờ của chương trình được ghi là “không rõ”. Giờ chưa có bản ghi thì không được tính." },
+    "occurrences": { "label": "Số lần dùng", "definition": "Số lần một bài hát xuất hiện trong thứ tự chương trình. Hai lần trong một chương trình được tính là 2." },
+    "plans": { "label": "Chương trình", "definition": "Số chương trình khác nhau. Một bài hát xuất hiện hai lần trong một chương trình được tính là 1." },
+    "planned_seconds": { "label": "Dự kiến", "definition": "Tổng thời lượng các mục trong bản thứ tự mà lượt chạy đã ghim." },
+    "actual_seconds": { "label": "Thực tế", "definition": "Từ lúc bắt đầu đến lúc kết thúc đã ghi nhận của một lượt chạy Trực tiếp đã kết thúc, sau các chỉnh sửa có lưu vết. Lượt chạy chưa kết thúc không được tính." },
+    "difference_seconds": { "label": "Chênh lệch", "definition": "Thực tế trừ dự kiến (số dương = kéo dài hơn dự kiến)." },
+    "response": { "label": "Câu trả lời", "definition": "Câu trả lời cho yêu cầu. Là dự kiến tham gia, không phải điểm danh." }
+  },
+  "print": {
+    "followUp": "Cần theo dõi",
+    "range": "{{from}} đến {{to}}",
+    "generated": "Lập lúc {{time}}",
+    "planStatuses": "Trạng thái chương trình: {{list}}",
+    "responses": "Câu trả lời: {{list}}",
+    "archivedIncluded": "Có bao gồm thành viên đã lưu trữ",
+    "archivedExcluded": "Không bao gồm thành viên đã lưu trữ",
+    "rehearsalsIncluded": "Có bao gồm buổi tập",
+    "rehearsalsExcluded": "Không bao gồm buổi tập",
+    "truncated": "Đã cắt bớt: hãy thu hẹp bộ lọc để có kết quả đầy đủ."
+  },
+  "attendance": {
+    "timeKinds": {
+      "service": "Buổi nhóm",
+      "rehearsal": "Buổi tập",
+      "other": "Khác"
+    },
+    "timeLabel": "{{name}} · {{date}} · {{start}}–{{end}}",
+    "intervalShort": "{{name}} {{time}}",
+    "noTimes": "Chưa có giờ",
+    "timeNotSet": "Chưa đặt giờ",
+    "scope": {
+      "noTimes": "Chương trình này chưa có giờ. Cho đến khi thêm giờ, yêu cầu được tính là khoảng hai tiếng kể từ ngày nhóm — việc kiểm tra trùng lịch và lịch đăng ký chỉ chính xác đến mức đó.",
+      "legend": "Giờ",
+      "all": "Tất cả các giờ",
+      "allHint": "Bao gồm cả giờ được thêm vào chương trình sau này.",
+      "selected": "Chỉ những giờ này",
+      "selectedHint": "Giờ được thêm sau sẽ không tự động được bao gồm.",
+      "chooseOne": "Hãy chọn ít nhất một giờ."
+    },
+    "conflicts": {
+      "blockingTitle": "Trùng lịch",
+      "blockout": "{{name}} — có ngày bận · {{window}}",
+      "overlapping": "{{name}} — đã được phân công ({{detail}}) · {{window}}",
+      "warningTitle": "Cũng có trong chương trình này cùng lúc",
+      "samePlan": "{{name}} — {{detail}} · {{window}}",
+      "warningHint": "Được phép giữ vai trò thứ hai trong cùng chương trình; hãy chắc chắn đó là điều bạn muốn.",
+      "window": "{{date}} {{start}}–{{end}}",
+      "windowApproximate": "{{date}} {{start}}–{{end}} (ước lượng — chương trình chưa có giờ)",
+      "anotherCommitment": "Một việc khác đã nhận"
+    },
+    "loading": "Đang tải điểm danh…",
+    "title": "Điểm danh",
+    "intro": "Điều thực sự đã diễn ra. Câu trả lời xác nhận không phải là điểm danh, và việc đánh dấu ai đó vắng mặt không bao giờ thay đổi câu trả lời của họ.",
+    "time": "Giờ",
+    "planTime": "Giờ của chương trình",
+    "timeOption": "{{name}} · {{time}}",
+    "nobody": "Không có ai có yêu cầu đã gửi được phân công vào giờ này.",
+    "nobodyOnYourTeams": "Không có ai có yêu cầu đã gửi được phân công vào giờ này trong các ban bạn phân công.",
+    "markEveryone": "Đánh dấu tất cả những người tôi có thể:",
+    "discardChanges": "Bỏ các thay đổi",
+    "hiddenPeople_other": "Còn {{count}} người khác được phân công trong các ban bạn không phân công.",
+    "orphaned": "Giữ lại từ trước (không còn được phân công vào giờ này): {{list}}",
+    "personStatus": "{{name}} — {{status}}",
+    "unsavedChanges_other": "{{count}} thay đổi chưa lưu",
+    "reviewAndSave": "Xem lại và lưu",
+    "saveTitle": "Lưu điểm danh",
+    "reload": "Tải lại điểm danh",
+    "saveChanges_other": "Lưu {{count}} thay đổi",
+    "changeFrom": "{{name}}: {{from}} →",
+    "changeNew": "{{name}}:",
+    "reason": "Lý do (không bắt buộc; được lưu trong lịch sử)",
+    "allOrNothing": "Tất cả thay đổi được lưu cùng lúc, hoặc không thay đổi nào được lưu.",
+    "stale": "Người khác đã thay đổi điểm danh cho giờ này. Chưa có gì được lưu — hãy tải lại để xem thay đổi của họ.",
+    "counts": {
+      "scheduledPeople": "Người được phân công",
+      "present": "Có mặt",
+      "absent": "Vắng mặt",
+      "unknown": "Không rõ",
+      "notMarked": "Chưa đánh dấu"
+    },
+    "status": {
+      "present": "Có mặt",
+      "absent": "Vắng mặt",
+      "unknown": "Không rõ"
+    },
+    "archived": "(đã lưu trữ)",
+    "recorded": {
+      "present": "{{name}} ghi nhận có mặt · {{time}}",
+      "absent": "{{name}} ghi nhận vắng mặt · {{time}}",
+      "unknown": "{{name}} ghi nhận không rõ · {{time}}"
+    },
+    "someone": "một người",
+    "history": "Lịch sử",
+    "rowLabel": "Điểm danh cho {{name}}",
+    "unsaved": "Chưa lưu",
+    "historyTitle": "Lịch sử điểm danh — {{name}}",
+    "transition": "{{from}} → {{to}}",
+    "by": "bởi {{name}} · {{time}}",
+    "byWithTeam": "bởi {{name}} ({{team}}) · {{time}}"
+  }
+}

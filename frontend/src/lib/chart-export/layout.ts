@@ -13,7 +13,7 @@
  * rasterised — every line of the chart comes out as real, selectable text.
  */
 
-import { CHART_PAGE } from '@service-center/shared';
+import { CHART_PAGE, LocalizedError } from '@service-center/shared';
 import type {
   ChartPdfBox,
   ChartPdfDocument,
@@ -321,7 +321,7 @@ const readPage = ({ view, doc, baselines }: PageReader, page: Element): ChartPdf
 export const readChartPdfDocument = (frame: HTMLIFrameElement, title: string): ChartPdfDocument => {
   const view = frame.contentWindow;
   const doc = frame.contentDocument;
-  if (!view || !doc) throw new Error('The chart could not be laid out for export.');
+  if (!view || !doc) throw new LocalizedError({ key: 'songs:errors.chartLayoutFailed' });
 
   // The preview shrinks the page stack to fit its pane with a transform, and a
   // transform moves every box this module is about to read. Pinning it to 1:1
@@ -334,7 +334,7 @@ export const readChartPdfDocument = (frame: HTMLIFrameElement, title: string): C
   }
 
   const pageElements = Array.from(doc.querySelectorAll('.page'));
-  if (pageElements.length === 0) throw new Error('The chart came out empty.');
+  if (pageElements.length === 0) throw new LocalizedError({ key: 'songs:errors.chartEmpty' });
 
   const probeKeys = new Map<string, ProbeKey>();
   for (const page of pageElements) {
@@ -376,9 +376,9 @@ export const renderChartPdfDocument = async (
 
   const loaded = new Promise<void>((resolve, reject) => {
     frame.onload = () => resolve();
-    frame.onerror = () => reject(new Error('The chart could not be prepared for export.'));
+    frame.onerror = () => reject(new LocalizedError({ key: 'songs:errors.chartPrepareFailed' }));
     window.setTimeout(
-      () => reject(new Error('The chart took too long to prepare for export.')),
+      () => reject(new LocalizedError({ key: 'songs:errors.chartPrepareTimeout' })),
       FRAME_LOAD_TIMEOUT_MS,
     );
   });

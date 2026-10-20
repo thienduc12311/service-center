@@ -76,7 +76,7 @@ assignmentRespondRouter.get('/:token', async (req, res) => {
   if (!notification.snapshot_id) throw new HttpError(409, 'This response link needs to be reissued', 'assignment_request_stale');
   const [plan, person, snapshot] = await Promise.all([
     unwrapOne(adminDb.from('plans').select('title, service_date, location').eq('id', notification.plan_id).single()),
-    unwrap(adminDb.from('people').select('first_name').eq('id', notification.person_id).maybeSingle()),
+    unwrap(adminDb.from('people').select('first_name, preferred_language').eq('id', notification.person_id).maybeSingle()),
     unwrap(adminDb.from('assignment_request_snapshots').select('*').eq('id', notification.snapshot_id).maybeSingle()),
   ]);
   if (!snapshot || snapshot.superseded_at || snapshot.consumed_at) {
@@ -91,7 +91,9 @@ assignmentRespondRouter.get('/:token', async (req, res) => {
     service_date: plan.service_date,
     service_time: serviceTime ? { starts_at: serviceTime.starts_at, ends_at: serviceTime.ends_at } : null,
     location: plan.location,
-    person_first_name: person?.first_name ?? 'there',
+    person_first_name: person?.first_name ?? '',
+    // Token verified above: the recipient's own language may be used for this page.
+    preferred_language: person?.preferred_language ?? null,
     assignments: review.assignments.map((assignment) => ({
       assignment_id: assignment.assignment_id,
       team_name: assignment.team_name,

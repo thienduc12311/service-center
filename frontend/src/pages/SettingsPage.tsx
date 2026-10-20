@@ -1,5 +1,6 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { isAdmin, isLeader, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -17,8 +18,10 @@ import { SchedulingPreferences } from '../components/settings/SchedulingPreferen
 import { ScheduleHelp } from '../components/settings/ScheduleHelp';
 import { AcrossOrganizations } from '../components/settings/AcrossOrganizations';
 import { ServiceTypeFilesSettings } from '../components/settings/ServiceTypeFilesSettings';
+import { LanguageSelect } from '../i18n';
 
 export const SettingsPage = () => {
+  const { t } = useTranslation(['settings', 'common']);
   const { user, organizationId, role, access, canAnywhere, refreshUser, switchOrganization } = useAuth();
   const calendarFeed = useCalendarFeed();
   const rotateFeed = useMutation({ mutationFn: () => api.rotateCalendarFeed(), onSuccess: () => calendarFeed.refetch() });
@@ -40,10 +43,10 @@ export const SettingsPage = () => {
 
   return (
     <div className="max-w-3xl space-y-8">
-      <PageHeader title="Settings" subtitle="Your profile, organizations, appearance and availability." />
+      <PageHeader title={t('settingsPage.title')} subtitle={t('settingsPage.subtitle')} />
 
       <section className="card p-5">
-        <h2 className="mb-4 font-semibold">Profile</h2>
+        <h2 className="mb-4 font-semibold">{t('settingsPage.profile.title')}</h2>
         <form
           className="space-y-4"
           onSubmit={(event: FormEvent) => {
@@ -52,23 +55,30 @@ export const SettingsPage = () => {
           }}
         >
           <div>
-            <label className="label" htmlFor="profile-name">Full name</label>
+            <label className="label" htmlFor="profile-name">{t('settingsPage.profile.fullName')}</label>
             <input id="profile-name" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </div>
           <div>
-            <label className="label" htmlFor="profile-phone">Phone</label>
+            <label className="label" htmlFor="profile-phone">{t('settingsPage.profile.phone')}</label>
             <input id="profile-phone" className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
-          <p className="text-sm text-slate-500">Signed in as {user?.profile.email}</p>
+          <p className="text-sm text-slate-500">{t('settingsPage.profile.signedInAs', { email: user?.profile.email ?? '' })}</p>
 
           <ErrorNotice error={saveProfile.error} />
           <div className="flex items-center gap-3">
             <Button type="submit" loading={saveProfile.isPending}>
-              Save profile
+              {t('settingsPage.profile.save')}
             </Button>
-            {saveProfile.isSuccess && <span className="text-sm text-emerald-600">Saved.</span>}
+            {saveProfile.isSuccess && <span className="text-sm text-emerald-600">{t('settingsPage.saved')}</span>}
           </div>
         </form>
+      </section>
+
+      <section className="card p-5" aria-labelledby="language-settings-heading">
+        <h2 id="language-settings-heading" className="mb-4 font-semibold" lang="en">
+          Language / <span lang="vi">Ngôn ngữ</span>
+        </h2>
+        <LanguageSelect organizationName={organization?.name} />
       </section>
 
       <OrganizationSettings
@@ -96,16 +106,16 @@ export const SettingsPage = () => {
       {isAdmin(role) && <IdentityReconciliationSettings />}
 
       <section className="card p-5">
-        <h2 className="mb-1 font-semibold">Calendar sync</h2>
-        <p className="mb-4 text-sm text-slate-500">Subscribe to your schedule in Google, Apple, or Outlook Calendar. Rotating the link revokes the previous one.</p>
+        <h2 className="mb-1 font-semibold">{t('settingsPage.calendar.title')}</h2>
+        <p className="mb-4 text-sm text-slate-500">{t('settingsPage.calendar.description')}</p>
         {feed?.url ? (
           <div className="space-y-3">
-            <div className="flex gap-2"><input className="input min-w-0 flex-1" readOnly value={feed.url} /><Button variant="secondary" onClick={() => void navigator.clipboard.writeText(feed.url!)}>Copy</Button></div>
-            <a className="text-sm text-brand-700 underline" href={feed.webcal_url ?? undefined}>Open in calendar app</a>
-            <div><Button variant="ghost" loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>Rotate link</Button></div>
+            <div className="flex gap-2"><input className="input min-w-0 flex-1" readOnly value={feed.url} /><Button variant="secondary" onClick={() => void navigator.clipboard.writeText(feed.url!)}>{t('common:actions.copy')}</Button></div>
+            <a className="text-sm text-brand-700 underline" href={feed.webcal_url ?? undefined}>{t('settingsPage.calendar.openInApp')}</a>
+            <div><Button variant="ghost" loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.rotate')}</Button></div>
           </div>
         ) : (
-          <Button loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>Create calendar link</Button>
+          <Button loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.create')}</Button>
         )}
         <ErrorNotice error={calendarFeed.error ?? rotateFeed.error} />
       </section>
@@ -114,15 +124,15 @@ export const SettingsPage = () => {
         <>
           <section className="card space-y-4 p-5">
             <div>
-              <h2 className="mb-1 font-semibold">Availability</h2>
-              <p className="text-sm text-slate-500">Keep leaders informed: add the dates you can’t serve below, or confirm nothing has changed.</p>
+              <h2 className="mb-1 font-semibold">{t('settingsPage.availability.title')}</h2>
+              <p className="text-sm text-slate-500">{t('settingsPage.availability.description')}</p>
             </div>
             <AvailabilityReview />
           </section>
           <AvailabilitySettings timezone={organization.timezone} />
           <section className="card p-5">
-            <h2 className="mb-1 font-semibold">Scheduling preferences</h2>
-            <p className="mb-4 text-sm text-slate-500">How often and when you’d like to serve. Schedulers see these as warnings, not rules.</p>
+            <h2 className="mb-1 font-semibold">{t('settingsPage.preferences.title')}</h2>
+            <p className="mb-4 text-sm text-slate-500">{t('settingsPage.preferences.description')}</p>
             <SchedulingPreferences />
           </section>
           <ScheduleHelp />
@@ -199,6 +209,7 @@ const OrganizationSettings = ({
   onChanged: () => Promise<void>;
   onCreated: (id: string) => Promise<void>;
 }) => {
+  const { t } = useTranslation(['settings', 'common']);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -263,30 +274,30 @@ const OrganizationSettings = ({
     <section className="card overflow-hidden p-5">
       <div className="flex flex-wrap items-center gap-4">
         {organization?.logo_url ? (
-          <img src={organization.logo_url} alt={`${organization.name} logo`} className="size-16 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
+          <img src={organization.logo_url} alt={t('organization.logoAlt', { name: organization.name })} className="size-16 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
         ) : (
           <div className="grid size-16 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-violet-700 text-xl font-bold text-white">SC</div>
         )}
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-slate-900 dark:text-white">{organization?.name ?? 'Organization'}</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-white">{organization?.name ?? t('organization.fallbackName')}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {[organization?.denomination, organization?.city, organization?.country].filter(Boolean).join(' · ') ||
-              'Create and switch between every community you administer.'}
+              t('organization.emptyDescription')}
           </p>
         </div>
         {canEdit && organization && (
           <label className="cursor-pointer rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
-            {uploading ? 'Uploading…' : 'Update logo'}
+            {uploading ? t('organization.uploading') : t('organization.updateLogo')}
             <input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={uploadLogo} disabled={uploading} />
           </label>
         )}
         {canEdit && organization && (
           <Button variant="secondary" onClick={() => setEditingProfile((value) => !value)}>
-            {editingProfile ? 'Cancel' : 'Edit details'}
+            {editingProfile ? t('common:actions.cancel') : t('organization.editDetails')}
           </Button>
         )}
         <Button variant="secondary" onClick={() => setCreating((value) => !value)}>
-          {creating ? 'Cancel' : 'New organization'}
+          {creating ? t('common:actions.cancel') : t('organization.new')}
         </Button>
       </div>
 
@@ -299,46 +310,46 @@ const OrganizationSettings = ({
           className="mt-5 grid grid-cols-1 gap-3 border-t border-slate-100 pt-5 dark:border-slate-800 sm:grid-cols-2"
         >
           <div className="sm:col-span-2">
-            <label className="label" htmlFor="org-profile-name">Organization name</label>
+            <label className="label" htmlFor="org-profile-name">{t('organization.fields.name')}</label>
             <input
               id="org-profile-name"
               className="input"
               value={profile.name}
               onChange={(e) => setProfile((f) => ({ ...f, name: e.target.value }))}
-              placeholder="Grace Church"
+              placeholder={t('organization.fields.namePlaceholder')}
               required
             />
           </div>
           <div>
-            <label className="label" htmlFor="org-address1">Address line 1</label>
+            <label className="label" htmlFor="org-address1">{t('organization.fields.addressLine1')}</label>
             <input id="org-address1" className="input" value={profile.address_line1} onChange={(e) => setProfile((f) => ({ ...f, address_line1: e.target.value }))} />
           </div>
           <div>
-            <label className="label" htmlFor="org-address2">Address line 2</label>
+            <label className="label" htmlFor="org-address2">{t('organization.fields.addressLine2')}</label>
             <input id="org-address2" className="input" value={profile.address_line2} onChange={(e) => setProfile((f) => ({ ...f, address_line2: e.target.value }))} />
           </div>
           <div>
-            <label className="label" htmlFor="org-city">City</label>
+            <label className="label" htmlFor="org-city">{t('organization.fields.city')}</label>
             <input id="org-city" className="input" value={profile.city} onChange={(e) => setProfile((f) => ({ ...f, city: e.target.value }))} />
           </div>
           <div>
-            <label className="label" htmlFor="org-state">State / Province</label>
+            <label className="label" htmlFor="org-state">{t('organization.fields.stateProvince')}</label>
             <input id="org-state" className="input" value={profile.state_province} onChange={(e) => setProfile((f) => ({ ...f, state_province: e.target.value }))} />
           </div>
           <div>
-            <label className="label" htmlFor="org-postal">Postal code</label>
+            <label className="label" htmlFor="org-postal">{t('organization.fields.postalCode')}</label>
             <input id="org-postal" className="input" value={profile.postal_code} onChange={(e) => setProfile((f) => ({ ...f, postal_code: e.target.value }))} />
           </div>
           <div>
-            <label className="label" htmlFor="org-country">Country</label>
+            <label className="label" htmlFor="org-country">{t('organization.fields.country')}</label>
             <input id="org-country" className="input" value={profile.country} onChange={(e) => setProfile((f) => ({ ...f, country: e.target.value }))} />
           </div>
           <div>
-            <label className="label" htmlFor="org-denomination">Denomination</label>
+            <label className="label" htmlFor="org-denomination">{t('organization.fields.denomination')}</label>
             <input id="org-denomination" className="input" value={profile.denomination} onChange={(e) => setProfile((f) => ({ ...f, denomination: e.target.value }))} />
           </div>
           <div>
-            <label className="label" htmlFor="org-member-count">Congregation size</label>
+            <label className="label" htmlFor="org-member-count">{t('organization.fields.memberCount')}</label>
             <input
               id="org-member-count"
               type="number"
@@ -352,7 +363,7 @@ const OrganizationSettings = ({
           <ErrorNotice error={saveProfile.error} />
 
           <div className="sm:col-span-2 flex justify-end">
-            <Button type="submit" loading={saveProfile.isPending}>Save details</Button>
+            <Button type="submit" loading={saveProfile.isPending}>{t('organization.saveDetails')}</Button>
           </div>
         </form>
       )}
@@ -360,10 +371,11 @@ const OrganizationSettings = ({
       {creating && (
         <form onSubmit={create} className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-5 dark:border-slate-800 sm:flex-row sm:items-end">
           <div className="flex-1">
-            <label className="label" htmlFor="new-org-name">Organization name</label>
-            <input id="new-org-name" className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="Grace Church" required />
+            <label className="label" htmlFor="new-org-name">{t('organization.fields.name')}</label>
+            <input id="new-org-name" className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder={t('organization.fields.namePlaceholder')} required />
           </div>
-          <Button type="submit">Create organization</Button>
+          <Button type="submit">{t('organization.create')}</Button>
+
         </form>
       )}
       <ErrorNotice error={error} />

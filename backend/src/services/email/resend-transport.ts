@@ -1,6 +1,7 @@
 import { Resend, type ErrorResponse } from 'resend';
 import {
   isAvailabilityRequest,
+  isSchedulerResponse,
   isOperationalMessage,
   isServiceReminder,
   type AvailabilityRequestNotification,
@@ -11,8 +12,10 @@ import {
   type PersonInvitationNotification,
   type PersonInvitationTransport,
   type ScheduleNotification,
+  type SchedulerResponseNotification,
   type ServiceReminderNotification,
 } from '../notifications.js';
+import { schedulerResponseEmail } from './templates/scheduler-response.js';
 import { availabilityRequestEmail } from './templates/availability.js';
 import { config } from '../../config.js';
 import { DeliveryError } from '../../model/delivery.model.js';
@@ -77,9 +80,17 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
       | AvailabilityRequestNotification
       | ServiceReminderNotification
       | OperationalMessageNotification
+      | SchedulerResponseNotification
       | PersonInvitationNotification,
     options: EmailSendOptions = {},
   ): Promise<EmailSendReceipt> {
+    if (isSchedulerResponse(notification)) {
+      const content = schedulerResponseEmail(notification);
+      return this.deliver({
+        from: `${notification.organizationName ?? config.MAIL_FROM_NAME} <${config.MAIL_FROM_ADDRESS}>`,
+        to: notification.to, subject: content.subject, html: content.html, text: content.text,
+      }, options);
+    }
     if (isOperationalMessage(notification)) {
       const content = operationalMessageEmail(notification);
       return this.deliver({

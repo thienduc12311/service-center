@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { renderRunSheetHtml, runSheetDocumentFromPlan, type PlanDetail } from '@service-center/shared';
 import { usePlanNotes } from '../../hooks/queries';
 import { printDocument } from '../../lib/print-document';
 import { Button, ErrorNotice, Loading, Modal } from '../ui';
+import { useFormatters, useLanguage } from '../../i18n';
 
 export interface PrintOrderModalProps {
   plan: PlanDetail;
@@ -24,11 +26,14 @@ const UNCATEGORIZED = '__none__';
  * default, so a printout never carries notes nobody chose to share.
  */
 export const PrintOrderModal = ({ plan, organizationName, timeZone, serviceTimes, initialTimeId, positionNames, onClose }: PrintOrderModalProps) => {
+  const { t } = useTranslation(['plans', 'common']);
+  const { locale } = useLanguage();
+  const format = useFormatters();
   const notes = usePlanNotes(plan.id);
   const [timeId, setTimeId] = useState<string | null>(initialTimeId);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [includeLeaders, setIncludeLeaders] = useState(true);
-  const clock = (instant: string) => new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date(instant));
+  const clock = (instant: string): string => format.time(instant, { timeZone });
 
   const categories = notes.data?.categories ?? [];
   const hasUncategorized = (notes.data?.notes ?? []).some((note) => !note.category_id);
@@ -51,40 +56,41 @@ export const PrintOrderModal = ({ plan, organizationName, timeZone, serviceTimes
       selectedCategoryIds: [...selected].map((id) => (id === UNCATEGORIZED ? null : id)),
       includeLeaders,
       positionNames,
+      locale,
     });
-    printDocument(renderRunSheetHtml(document), 'Running order print preview');
+    printDocument(renderRunSheetHtml(document), t('printOrder.frameTitle'));
     onClose();
   };
 
   return (
-    <Modal open title="Print the running order" onClose={onClose}>
+    <Modal open title={t('printOrder.title')} onClose={onClose}>
       <div className="space-y-4">
         {serviceTimes.length > 0 ? (
           <div>
-            <label className="label" htmlFor="print-time">Service time</label>
+            <label className="label" htmlFor="print-time">{t('printOrder.serviceTime')}</label>
             <select id="print-time" className="input" value={timeId ?? ''} onChange={(event) => setTimeId(event.target.value)}>
               {serviceTimes.map((time) => (
-                <option key={time.id} value={time.id}>{time.name ?? 'Service'} · {clock(time.starts_at)}</option>
+                <option key={time.id} value={time.id}>{t('printOrder.serviceTimeOption', { name: time.name ?? t('timeKind.service'), time: clock(time.starts_at) })}</option>
               ))}
             </select>
           </div>
         ) : (
-          <p className="text-sm text-slate-500">This plan has no service time, so the printout lists lengths without clock times.</p>
+          <p className="text-sm text-slate-500">{t('printOrder.noServiceTime')}</p>
         )}
 
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={includeLeaders} onChange={(event) => setIncludeLeaders(event.target.checked)} />
-          Include item leaders
+          {t('printOrder.includeLeaders')}
         </label>
 
         <fieldset>
-          <legend className="label">Notes to include</legend>
+          <legend className="label">{t('printOrder.notesToInclude')}</legend>
           {notes.isLoading ? (
-            <Loading label="Loading notes…" />
+            <Loading label={t('printOrder.loadingNotes')} />
           ) : notes.error ? (
             <ErrorNotice error={notes.error} />
           ) : categories.length === 0 && !hasUncategorized ? (
-            <p className="text-sm text-slate-500">There are no notes you can see on this plan.</p>
+            <p className="text-sm text-slate-500">{t('printOrder.noNotes')}</p>
           ) : (
             <div className="space-y-1">
               {categories.map((category) => (
@@ -96,17 +102,17 @@ export const PrintOrderModal = ({ plan, organizationName, timeZone, serviceTimes
               {hasUncategorized && (
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={selected.has(UNCATEGORIZED)} onChange={() => toggle(UNCATEGORIZED)} />
-                  General notes
+                  {t('printOrder.generalNotes')}
                 </label>
               )}
-              <p className="pt-1 text-xs text-slate-500">Only notes you can read are offered. Anyone you hand the printout to will see what you include.</p>
+              <p className="pt-1 text-xs text-slate-500">{t('printOrder.notesHint')}</p>
             </div>
           )}
         </fieldset>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="button" onClick={print} disabled={notes.isLoading}>Print</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button>
+          <Button type="button" onClick={print} disabled={notes.isLoading}>{t('common:actions.print')}</Button>
         </div>
       </div>
     </Modal>

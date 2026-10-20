@@ -1,0 +1,66 @@
+{
+  "shell": {
+    "homeLabel": "Trang chủ Service Center",
+    "switchToLight": "Chuyển sang giao diện sáng",
+    "switchToDark": "Chuyển sang giao diện tối",
+    "signedIn": "Đã đăng nhập",
+    "footer": "Service Center · Dành cho mọi cộng đồng thờ phượng"
+  },
+  "search": {
+    "button": "Tìm kiếm (Ctrl/⌘ K)",
+    "inputLabel": "Tìm thành viên, ban, chương trình, bài hát và tệp",
+    "placeholder": "Thành viên, ban, chương trình, bài hát, tệp…",
+    "minLength": "Nhập ít nhất hai ký tự.",
+    "nothingFound": "Không tìm thấy kết quả.",
+    "archived": "đã lưu trữ",
+    "moreMatches": "Còn nhiều kết quả khác — hãy thu hẹp từ khóa tìm kiếm.",
+    "groups": {
+      "person": "Thành viên",
+      "team": "Ban",
+      "position": "Vị trí",
+      "plan": "Chương trình",
+      "song": "Bài hát",
+      "media": "Tệp"
+    }
+  },
+  "dashboard": {
+    "greeting": "Chào {{name}}",
+    "greetingNoName": "Xin chào bạn",
+    "subtitle": "Đây là những gì sắp diễn ra.",
+    "newPlan": "Chương trình mới",
+    "waitingOnYou": "Đang chờ bạn trả lời",
+    "accept": "Nhận lời",
+    "upcoming": "Buổi nhóm sắp tới",
+    "allPlans": "Tất cả chương trình",
+    "confirmedCount": "{{total}} đã xác nhận",
+    "pendingCount": "{{total}} đang chờ",
+    "noUpcomingTitle": "Chưa có buổi nhóm sắp tới",
+    "noUpcomingDescription": "Tạo một chương trình để bắt đầu sắp xếp thứ tự buổi nhóm và phân công cho ban của bạn.",
+    "createPlan": "Tạo chương trình",
+    "commitments": "Phân công sắp tới của bạn",
+    "rehearsalAt": "buổi tập {{time}}",
+    "nothingScheduled": "Chưa có phân công nào"
+  },
+  "help": {
+    "notFoundTitle": "Không có việc gì cần giúp ở đây",
+    "notFoundDescription": "Quyền này đã bị dừng, đã hết hạn hoặc không dành cho bạn.",
+    "backToSettings": "Quay lại cài đặt",
+    "title": "Đang giúp {{name}}",
+    "subtitle": "Bạn chỉ có thể làm những việc người này cho phép. Các thay đổi được ghi nhận là do bạn thực hiện.",
+    "requests": "Yêu cầu",
+    "timeKinds": {
+      "service": "Buổi nhóm",
+      "rehearsal": "Buổi tập",
+      "other": "Khác"
+    },
+    "timeAt": "{{name}} {{time}}",
+    "awaitingAnswer": "Đang chờ trả lời",
+    "accept": "Nhận lời",
+    "reasonPlaceholder": "Lý do (không bắt buộc)",
+    "reasonLabel": "Lý do từ chối cho {{plan}}",
+    "withdraw": "Rút lại",
+    "noRequests": "Không có yêu cầu nào sắp tới.",
+    "availability": "Lịch rảnh",
+    "schedulingPreferences": "Tùy chọn phân công"
+  }
+}

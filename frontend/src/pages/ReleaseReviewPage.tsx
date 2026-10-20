@@ -1,28 +1,32 @@
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import {
-  DELIVERY_CHANNEL_LABELS,
-  RELEASE_BATCH_STATUS_LABELS,
-  formatDate,
-  formatDateTime,
-  formatTime,
-  releaseFailureLabel,
-  type DeliveryChannel,
-  type PreparedRequestListItem,
-  type ReleaseBatchPreview,
-  type ReleaseBatchSummary,
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import type {
+  DeliveryChannel,
+  PreparedRequestListItem,
+  ReleaseBatchPreview,
+  ReleaseBatchSummary,
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 import { useInvalidateOrg, usePreparedRequests, useReleaseBatches } from '../hooks/queries';
 import { Badge, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
+import { useFormatters } from '../i18n';
 
 const CHANNELS: readonly DeliveryChannel[] = ['email', 'in_app', 'push'];
-const SKIP_LABELS: Record<string, string> = {
-  no_email_address: 'no email address',
-  no_login: 'no login (in-app and push skipped)',
-  recipient_not_eligible: 'not an active member',
-};
+type ReleaseT = TFunction<['staffing', 'common']>;
+
+const SKIP_CODES = ['no_email_address', 'no_login', 'recipient_not_eligible'] as const;
+type SkipCode = (typeof SKIP_CODES)[number];
+const isSkipCode = (code: string): code is SkipCode => (SKIP_CODES as readonly string[]).includes(code);
+const skipText = (code: string, t: ReleaseT): string => (isSkipCode(code) ? t(`staffing:releaseReview.skip.${code}`) : code);
+
+/** Release failure codes the server records (see `lib/reminders.ts`). */
+const FAILURE_CODES = ['scope_changed', 'actor_not_permitted', 'internal_error'] as const;
+type FailureCode = (typeof FAILURE_CODES)[number];
+const isFailureCode = (code: string): code is FailureCode => (FAILURE_CODES as readonly string[]).includes(code);
+const failureText = (code: string, t: ReleaseT): string => (isFailureCode(code) ? t(`staffing:releaseReview.failure.${code}`) : code);
 
 /** `datetime-local` value one hour from now, in the browser's zone. */
 const defaultScheduleValue = (): string => {
@@ -37,7 +41,15 @@ interface ReviewState {
   idempotencyKey: string;
 }
 
-const ReleaseReviewModal = ({ review, onClose, onDone }: { review: ReviewState; onClose: () => void; onDone: () => void }) => {
+interface ReleaseReviewModalProps {
+  review: ReviewState;
+  onClose: () => void;
+  onDone: () => void;
+}
+
+const ReleaseReviewModal = ({ review, onClose, onDone }: ReleaseReviewModalProps) => {
+  const { t } = useTranslation(['staffing', 'common']);
+  const { date, time } = useFormatters();
   const [notify, setNotify] = useState(true);
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
   const [when, setWhen] = useState(defaultScheduleValue);
@@ -56,30 +68,39 @@ const ReleaseReviewModal = ({ review, onClose, onDone }: { review: ReviewState; 
   });
 
   return (
-    <Modal open title="Review release" onClose={onClose} size="wide">
+    <Modal open title={t('releaseReview.modalTitle')} onClose={onClose} size="wide">
       <p className="mb-3 text-sm text-slate-500">
-        {review.preview.assignment_count} request{review.preview.assignment_count === 1 ? '' : 's'} on {review.preview.plan_count} plan
-        {review.preview.plan_count === 1 ? '' : 's'} for {review.preview.recipients.length} people. Each person gets one message; every plan
-        in it has its own response action, so answering one plan never answers another.
+        {t('releaseReview.modalIntro', {
+          requests: t('releaseReview.requestCount', { count: review.preview.assignment_count }),
+          plans: t('common:count.plans', { count: review.preview.plan_count }),
+          people: t('common:count.people', { count: review.preview.recipients.length }),
+        })}
       </p>
       <ul className="max-h-80 space-y-3 overflow-y-auto pr-1">
         {review.preview.recipients.map((recipient) => (
           <li key={recipient.person_id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
             <p className="font-medium">{recipient.person_name}</p>
             <p className="text-slate-500">
-              Channels: {CHANNELS.filter((c) => recipient.channels[c]).map((c) => DELIVERY_CHANNEL_LABELS[c]).join(', ') || 'none'}
-              {recipient.skipped.length > 0 && ` · ${recipient.skipped.map((code) => SKIP_LABELS[code] ?? code).join(', ')}`}
+              {t('releaseReview.channels', {
+                list: CHANNELS.filter((c) => recipient.channels[c]).map((c) => t(`deliveryChannel.${c}`)).join(t('common:format.listSeparator'))
+                  || t('common:states.none'),
+              })}
+              {recipient.skipped.length > 0 && ` · ${recipient.skipped.map((code) => skipText(code, t)).join(t('common:format.listSeparator'))}`}
             </p>
             {recipient.plans.map((plan) => (
               <div key={plan.plan_id} className="mt-2">
-                <p>{plan.plan_title} · {formatDate(plan.service_date)}</p>
+                <p>{t('releaseReview.planWithDate', { plan: plan.plan_title, date: date(plan.service_date) })}</p>
                 <ul className="ml-3 text-slate-600 dark:text-slate-400">
                   {plan.assignments.map((assignment) => (
                     <li key={assignment.assignment_id}>
-                      {assignment.team_name}{assignment.position_name ? ` — ${assignment.position_name}` : ''}
+                      {assignment.position_name
+                        ? t('releaseReview.teamPosition', { team: assignment.team_name, position: assignment.position_name })
+                        : assignment.team_name}
                       {assignment.untimed
-                        ? ' · no times set'
-                        : assignment.times.length > 0 && ` · ${assignment.times.map((t) => `${t.name ?? t.kind} ${formatTime(t.starts_at)}`).join(', ')}`}
+                        ? ` · ${t('releaseReview.noTimes')}`
+                        : assignment.times.length > 0 && ` · ${assignment.times
+                          .map((item) => t('releaseReview.timeEntry', { name: item.name ?? t(`timeKind.${item.kind}`), time: time(item.starts_at) }))
+                          .join(t('common:format.listSeparator'))}`}
                     </li>
                   ))}
                 </ul>
@@ -92,14 +113,14 @@ const ReleaseReviewModal = ({ review, onClose, onDone }: { review: ReviewState; 
       <div className="mt-4 space-y-3 text-sm">
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
-          Notify people when released
+          {t('releaseReview.notify')}
         </label>
-        <div className="flex flex-wrap items-center gap-4" role="radiogroup" aria-label="When">
+        <div className="flex flex-wrap items-center gap-4" role="radiogroup" aria-label={t('releaseReview.when')}>
           <label className="flex items-center gap-2">
-            <input type="radio" name="when" checked={mode === 'now'} onChange={() => setMode('now')} /> Release now
+            <input type="radio" name="when" checked={mode === 'now'} onChange={() => setMode('now')} /> {t('releaseReview.releaseNow')}
           </label>
           <label className="flex items-center gap-2">
-            <input type="radio" name="when" checked={mode === 'scheduled'} onChange={() => setMode('scheduled')} /> Release at
+            <input type="radio" name="when" checked={mode === 'scheduled'} onChange={() => setMode('scheduled')} /> {t('releaseReview.releaseAt')}
           </label>
           {mode === 'scheduled' && (
             <input className="input" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} aria-invalid={invalidWhen} />
@@ -107,16 +128,15 @@ const ReleaseReviewModal = ({ review, onClose, onDone }: { review: ReviewState; 
         </div>
         {mode === 'scheduled' && (
           <p className="text-slate-500">
-            Requests stay private until then. If any of them changes before that time, nothing is released and you will
-            see why here.
+            {t('releaseReview.scheduledHint')}
           </p>
         )}
-        {invalidWhen && <p className="text-red-600">Choose a time in the future.</p>}
+        {invalidWhen && <p className="text-red-600">{t('releaseReview.futureTime')}</p>}
         <ErrorNotice error={commit.error} />
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
           <Button loading={commit.isPending} disabled={invalidWhen} onClick={() => commit.mutate()}>
-            {mode === 'now' ? 'Release' : 'Schedule release'}
+            {mode === 'now' ? t('releaseReview.release') : t('releaseReview.scheduleRelease')}
           </Button>
         </div>
       </div>
@@ -124,26 +144,33 @@ const ReleaseReviewModal = ({ review, onClose, onDone }: { review: ReviewState; 
   );
 };
 
-const BatchRow = ({ batch }: { batch: ReleaseBatchSummary }) => {
+interface BatchRowProps {
+  batch: ReleaseBatchSummary;
+}
+
+const BatchRow = ({ batch }: BatchRowProps) => {
+  const { t } = useTranslation(['staffing', 'common']);
+  const { dateTime } = useFormatters();
   const invalidate = useInvalidateOrg();
   const cancel = useMutation({ mutationFn: () => api.cancelReleaseBatch(batch.id), onSuccess: invalidate });
   return (
     <li className="flex flex-wrap items-start justify-between gap-2 py-3 text-sm">
       <div className="min-w-0">
-        <p className="font-medium">{batch.plan_titles.join(', ') || `${batch.plan_count} plans`}</p>
+        <p className="font-medium">{batch.plan_titles.join(t('common:format.listSeparator')) || t('common:count.plans', { count: batch.plan_count })}</p>
         <p className="text-slate-500">
-          {batch.item_count} request{batch.item_count === 1 ? '' : 's'} ·{' '}
-          {batch.status === 'scheduled' ? `releases ${formatDateTime(batch.scheduled_for)}`
-            : batch.released_at ? `released ${formatDateTime(batch.released_at)}` : formatDateTime(batch.created_at)}
-          {!batch.notify && ' · without notifications'}
+          {t('releaseReview.requestCount', { count: batch.item_count })}
+          {' · '}
+          {batch.status === 'scheduled' ? t('releaseReview.releasesAt', { time: dateTime(batch.scheduled_for) })
+            : batch.released_at ? t('releaseReview.releasedAt', { time: dateTime(batch.released_at) }) : dateTime(batch.created_at)}
+          {!batch.notify && ` · ${t('releaseReview.withoutNotifications')}`}
         </p>
-        {batch.failure_code && <p className="text-red-600">{releaseFailureLabel(batch.failure_code)}</p>}
+        {batch.failure_code && <p className="text-red-600">{failureText(batch.failure_code, t)}</p>}
         <ErrorNotice error={cancel.error} />
       </div>
       <div className="flex items-center gap-2">
-        <Badge tone="bg-slate-100 text-slate-600 ring-slate-500/20">{RELEASE_BATCH_STATUS_LABELS[batch.status]}</Badge>
+        <Badge tone="bg-slate-100 text-slate-600 ring-slate-500/20">{t(`releaseReview.batchStatus.${batch.status}`)}</Badge>
         {batch.status === 'scheduled' && (
-          <Button variant="secondary" loading={cancel.isPending} onClick={() => cancel.mutate()}>Cancel</Button>
+          <Button variant="secondary" loading={cancel.isPending} onClick={() => cancel.mutate()}>{t('common:actions.cancel')}</Button>
         )}
       </div>
     </li>
@@ -155,6 +182,8 @@ const BatchRow = ({ batch }: { batch: ReleaseBatchSummary }) => {
  * scheduled time. Volunteers see nothing until the release actually runs.
  */
 export const ReleaseReviewPage = () => {
+  const { t } = useTranslation(['staffing', 'common']);
+  const { date } = useFormatters();
   const { canAnywhere } = useAuth();
   const allowed = canAnywhere('scheduling.manage');
   const prepared = usePreparedRequests(allowed);
@@ -189,28 +218,28 @@ export const ReleaseReviewPage = () => {
     });
 
   if (!allowed) {
-    return <EmptyState title="Release review" description="You need scheduling permission to release requests." />;
+    return <EmptyState title={t('releaseReview.title')} description={t('releaseReview.noPermission')} />;
   }
 
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader
-        title="Release review"
-        subtitle="Prepared requests are private. Choose what to release; people get one message with a separate response for each plan."
+        title={t('releaseReview.title')}
+        subtitle={t('releaseReview.subtitle')}
         actions={
           <Button disabled={selected.size === 0} loading={preview.isPending} onClick={() => preview.mutate()}>
-            Review {selected.size || ''} request{selected.size === 1 ? '' : 's'}
+            {selected.size === 0 ? t('releaseReview.reviewNone') : t('releaseReview.reviewCount', { count: selected.size })}
           </Button>
         }
       />
       <ErrorNotice error={preview.error} />
 
       <section className="card mt-4 p-5">
-        <h2 className="mb-3 font-semibold">Prepared requests</h2>
+        <h2 className="mb-3 font-semibold">{t('releaseReview.preparedTitle')}</h2>
         {prepared.isLoading ? (
           <Loading />
         ) : byPlan.length === 0 ? (
-          <p className="text-sm text-slate-500">Nothing is waiting to be released in the next 90 days.</p>
+          <p className="text-sm text-slate-500">{t('releaseReview.preparedEmpty', { count: 90 })}</p>
         ) : (
           <ul className="space-y-4">
             {byPlan.map(([planId, plan]) => {
@@ -220,7 +249,7 @@ export const ReleaseReviewPage = () => {
                 <li key={planId}>
                   <label className="flex items-center gap-2 font-medium">
                     <input type="checkbox" checked={all} onChange={(e) => toggle(ids, e.target.checked)} />
-                    {plan.title} · {formatDate(plan.date)}
+                    {t('releaseReview.planWithDate', { plan: plan.title, date: date(plan.date) })}
                   </label>
                   <ul className="ml-6 mt-1 space-y-1 text-sm">
                     {plan.items.map((item) => (
@@ -231,7 +260,9 @@ export const ReleaseReviewPage = () => {
                             checked={selected.has(item.assignment_id)}
                             onChange={(e) => toggle([item.assignment_id], e.target.checked)}
                           />
-                          {item.person_name} — {item.team_name}{item.position_name ? ` · ${item.position_name}` : ''}
+                          {item.position_name
+                            ? t('releaseReview.personTeamPosition', { name: item.person_name, team: item.team_name, position: item.position_name })
+                            : t('releaseReview.personTeam', { name: item.person_name, team: item.team_name })}
                         </label>
                       </li>
                     ))}
@@ -245,14 +276,14 @@ export const ReleaseReviewPage = () => {
       </section>
 
       <section className="card mt-4 p-5">
-        <h2 className="mb-1 font-semibold">Releases</h2>
-        <p className="mb-2 text-sm text-slate-500">Scheduled releases run when due if the delivery worker is running.</p>
+        <h2 className="mb-1 font-semibold">{t('releaseReview.releasesTitle')}</h2>
+        <p className="mb-2 text-sm text-slate-500">{t('releaseReview.releasesHint')}</p>
         {batches.data?.length ? (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {batches.data.map((batch) => <BatchRow key={batch.id} batch={batch} />)}
           </ul>
         ) : (
-          <p className="text-sm text-slate-500">No releases yet.</p>
+          <p className="text-sm text-slate-500">{t('releaseReview.releasesEmpty')}</p>
         )}
         <ErrorNotice error={batches.error} />
       </section>

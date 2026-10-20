@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import type { SongWithArrangements } from '@service-center/shared';
 import { api } from '../../lib/api';
@@ -23,6 +24,7 @@ export interface SongInformationModalProps {
  * the song rather than to any one arrangement.
  */
 export const SongInformationModal = ({ open, song, onClose }: SongInformationModalProps) => {
+  const { t } = useTranslation(['songs', 'common']);
   const invalidate = useInvalidateOrg();
   const [form, setForm] = useState<SongInformationFormValues>(() =>
     songInformationFormFrom(song),
@@ -58,12 +60,12 @@ export const SongInformationModal = ({ open, song, onClose }: SongInformationMod
   };
 
   return (
-    <Modal open={open} title="Song Information" onClose={close}>
+    <Modal open={open} title={t('songInfo.title')} onClose={close}>
       <form onSubmit={submit} className="space-y-4">
         {/* Title and CCLI# identify the song, so they sit together on top. */}
         <div className="grid gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-[2fr_1fr]">
           <div>
-            <label className="label" htmlFor="song-info-title">Song Title</label>
+            <label className="label" htmlFor="song-info-title">{t('songInfo.fields.title')}</label>
             <input
               id="song-info-title"
               className="input"
@@ -74,7 +76,7 @@ export const SongInformationModal = ({ open, song, onClose }: SongInformationMod
             />
           </div>
           <div>
-            <label className="label" htmlFor="song-info-ccli">CCLI#</label>
+            <label className="label" htmlFor="song-info-ccli">{t('songInfo.fields.ccli')}</label>
             <input
               id="song-info-ccli"
               className="input"
@@ -87,7 +89,7 @@ export const SongInformationModal = ({ open, song, onClose }: SongInformationMod
 
         <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
           <div>
-            <label className="label" htmlFor="song-info-authors">Authors</label>
+            <label className="label" htmlFor="song-info-authors">{t('songInfo.fields.authors')}</label>
             <input
               id="song-info-authors"
               className="input"
@@ -96,18 +98,18 @@ export const SongInformationModal = ({ open, song, onClose }: SongInformationMod
             />
           </div>
           <div>
-            <label className="label" htmlFor="song-info-default-key">Default key</label>
+            <label className="label" htmlFor="song-info-default-key">{t('songInfo.fields.defaultKey')}</label>
             <KeySelect
               id="song-info-default-key"
               value={form.defaultKey}
               onChange={(key) => update('defaultKey', key)}
-              resetLabel="No default key"
+              resetLabel={t('songInfo.noDefaultKey')}
             />
           </div>
         </div>
 
         <div>
-          <label className="label" htmlFor="song-info-copyright">Copyright</label>
+          <label className="label" htmlFor="song-info-copyright">{t('songInfo.fields.copyright')}</label>
           <input
             id="song-info-copyright"
             className="input"
@@ -117,7 +119,7 @@ export const SongInformationModal = ({ open, song, onClose }: SongInformationMod
         </div>
 
         <div>
-          <label className="label" htmlFor="song-info-administration">Administration</label>
+          <label className="label" htmlFor="song-info-administration">{t('songInfo.fields.administration')}</label>
           <input
             id="song-info-administration"
             className="input"
@@ -128,7 +130,7 @@ export const SongInformationModal = ({ open, song, onClose }: SongInformationMod
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label" htmlFor="song-info-notes">Notes</label>
+            <label className="label" htmlFor="song-info-notes">{t('songInfo.fields.notes')}</label>
             <textarea
               id="song-info-notes"
               className="input"
@@ -138,7 +140,7 @@ export const SongInformationModal = ({ open, song, onClose }: SongInformationMod
             />
           </div>
           <div>
-            <label className="label" htmlFor="song-info-themes">Themes</label>
+            <label className="label" htmlFor="song-info-themes">{t('songInfo.fields.themes')}</label>
             <TagInput
               id="song-info-themes"
               value={form.themes}
@@ -151,10 +153,10 @@ export const SongInformationModal = ({ open, song, onClose }: SongInformationMod
 
         <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
           <Button type="button" variant="secondary" onClick={close}>
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
           <Button type="submit" loading={save.isPending}>
-            Submit
+            {t('arrangement.submit')}
           </Button>
         </div>
       </form>

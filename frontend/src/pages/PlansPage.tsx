@@ -1,12 +1,16 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { formatDateTime, PLAN_RECURRENCE_LABELS, PLAN_STATUS_LABELS } from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
+import { PLAN_STATUS_LABELS, type PlanStatus } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePlans, useServiceTypes, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Badge, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
 import { assignmentTone, planTone } from '../lib/format';
+import { useFormatters } from '../i18n';
+
+const PLAN_STATUSES = Object.keys(PLAN_STATUS_LABELS) as PlanStatus[];
 
 /** Datetime-local inputs are local-time strings; the API wants ISO instants. */
 const toIso = (localValue: string): string => new Date(localValue).toISOString();
@@ -20,6 +24,8 @@ const defaultServiceDate = () => {
 };
 
 export const PlansPage = () => {
+  const { t } = useTranslation(['plans', 'common']);
+  const format = useFormatters();
   const { canAnywhere } = useAuth();
   const canManage = canAnywhere('plans.edit');
   const canSchedule = canAnywhere('scheduling.manage');
@@ -53,7 +59,7 @@ export const PlansPage = () => {
         location: location || null,
         status: 'draft',
         // A plan with no times never appears on the calendar, so seed one.
-        times: [{ kind: 'service', name: 'Service', starts_at: start, ends_at: end }],
+        times: [{ kind: 'service', name: t('timeKind.service'), starts_at: start, ends_at: end }],
       });
     },
     onSuccess: async () => {
@@ -72,20 +78,20 @@ export const PlansPage = () => {
   return (
     <div>
       <PageHeader
-        title="Plans"
-        subtitle="Every service, its order and its team."
+        title={t('plansPage.title')}
+        subtitle={t('plansPage.subtitle')}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <select
-              aria-label="Filter by status"
+              aria-label={t('plansPage.filterStatus')}
               className="input w-36"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             >
-              <option value="">All statuses</option>
-              {Object.entries(PLAN_STATUS_LABELS).map(([value, label]) => (
+              <option value="">{t('plansPage.allStatuses')}</option>
+              {PLAN_STATUSES.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(`common:planStatus.${value}`)}
                 </option>
               ))}
             </select>
@@ -96,22 +102,22 @@ export const PlansPage = () => {
                 onChange={(e) => setShowPast(e.target.checked)}
                 className="size-4 rounded border-slate-300"
               />
-              Past
+              {t('plansPage.past')}
             </label>
             {canManage && (
               <>
                 <Button variant="secondary" onClick={() => navigate('/service-types/new')}>
-                  New service type
+                  {t('plansPage.newServiceType')}
                 </Button>
-                <Button onClick={() => setCreating(true)}>New plan</Button>
-                <Button variant="secondary" onClick={() => navigate('/plans/templates')}>Templates</Button>
-                <Button variant="secondary" onClick={() => navigate('/plans/generate')}>Create from template</Button>
-                <Button variant="secondary" onClick={() => navigate('/plans/reschedule')}>Reschedule</Button>
+                <Button onClick={() => setCreating(true)}>{t('plansPage.newPlan')}</Button>
+                <Button variant="secondary" onClick={() => navigate('/plans/templates')}>{t('plansPage.templates')}</Button>
+                <Button variant="secondary" onClick={() => navigate('/plans/generate')}>{t('plansPage.createFromTemplate')}</Button>
+                <Button variant="secondary" onClick={() => navigate('/plans/reschedule')}>{t('plansPage.reschedule')}</Button>
               </>
             )}
-            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/matrix')}>Staffing matrix</Button>}
-            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/proposals')}>Propose staffing</Button>}
-            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/releases')}>Release review</Button>}
+            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/matrix')}>{t('plansPage.staffingMatrix')}</Button>}
+            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/proposals')}>{t('plansPage.proposeStaffing')}</Button>}
+            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/releases')}>{t('plansPage.releaseReview')}</Button>}
           </div>
         }
       />
@@ -128,27 +134,27 @@ export const PlansPage = () => {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{plan.title}</span>
-                    <Badge tone={planTone[plan.status]}>{PLAN_STATUS_LABELS[plan.status]}</Badge>
+                    <Badge tone={planTone[plan.status]}>{t(`common:planStatus.${plan.status}`)}</Badge>
                     {plan.service_type && (
                       <span className="text-xs text-slate-400">
-                        {plan.service_type.name} ·{' '}
-                        {PLAN_RECURRENCE_LABELS[plan.service_type.recurrence].toLowerCase()}
+                        {t(`plansPage.serviceTypeRecurrence.${plan.service_type.recurrence}`, { name: plan.service_type.name })}
                       </span>
                     )}
                   </div>
                   <p className="mt-0.5 text-sm text-slate-500">
-                    {formatDateTime(plan.service_date)}
-                    {plan.location ? ` · ${plan.location}` : ''}
+                    {plan.location
+                      ? t('plansPage.dateLocation', { date: format.dateTime(plan.service_date), location: plan.location })
+                      : format.dateTime(plan.service_date)}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-slate-500">
-                  <span>{plan.counts.songs} songs</span>
-                  <span>{plan.counts.confirmed} confirmed</span>
+                  <span>{t('common:count.songs', { count: plan.counts.songs })}</span>
+                  <span>{t('plansPage.confirmedCount', { number: plan.counts.confirmed })}</span>
                   {plan.counts.unconfirmed > 0 && (
-                    <Badge tone={assignmentTone.unconfirmed}>{plan.counts.unconfirmed} pending</Badge>
+                    <Badge tone={assignmentTone.unconfirmed}>{t('plansPage.pendingCount', { number: plan.counts.unconfirmed })}</Badge>
                   )}
                   {plan.counts.declined > 0 && (
-                    <Badge tone={assignmentTone.declined}>{plan.counts.declined} declined</Badge>
+                    <Badge tone={assignmentTone.declined}>{t('plansPage.declinedCount', { number: plan.counts.declined })}</Badge>
                   )}
                 </div>
               </Link>
@@ -157,14 +163,14 @@ export const PlansPage = () => {
         </ul>
       ) : (
         <EmptyState
-          title="No plans yet"
-          description="Start with a Service Type — it names the service, how often it recurs, and the teams that run it, then creates your first plan."
+          title={t('plansPage.emptyTitle')}
+          description={t('plansPage.emptyDescription')}
           action={
             canManage ? (
               <div className="flex flex-wrap justify-center gap-2">
-                <Button onClick={() => navigate('/service-types/new')}>Add a Service Type</Button>
+                <Button onClick={() => navigate('/service-types/new')}>{t('plansPage.addServiceType')}</Button>
                 <Button variant="secondary" onClick={() => setCreating(true)}>
-                  Create a single plan
+                  {t('plansPage.createSinglePlan')}
                 </Button>
               </div>
             ) : undefined
@@ -172,21 +178,21 @@ export const PlansPage = () => {
         />
       )}
 
-      <Modal open={creating} title="New plan" onClose={() => setCreating(false)}>
+      <Modal open={creating} title={t('plansPage.createTitle')} onClose={() => setCreating(false)}>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="label" htmlFor="plan-title">Title</label>
+            <label className="label" htmlFor="plan-title">{t('plansPage.fieldTitle')}</label>
             <input
               id="plan-title"
               className="input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Sunday Morning"
+              placeholder={t('plansPage.titlePlaceholder')}
               required
             />
           </div>
           <div>
-            <label className="label" htmlFor="plan-date">Service date &amp; time</label>
+            <label className="label" htmlFor="plan-date">{t('plansPage.fieldServiceDate')}</label>
             <input
               id="plan-date"
               type="datetime-local"
@@ -197,14 +203,14 @@ export const PlansPage = () => {
             />
           </div>
           <div>
-            <label className="label" htmlFor="plan-type">Service type</label>
+            <label className="label" htmlFor="plan-type">{t('plansPage.fieldServiceType')}</label>
             <select
               id="plan-type"
               className="input"
               value={serviceTypeId}
               onChange={(e) => setServiceTypeId(e.target.value)}
             >
-              <option value="">None</option>
+              <option value="">{t('common:states.none')}</option>
               {(serviceTypes.data ?? []).map((type) => (
                 <option key={type.id} value={type.id}>
                   {type.name}
@@ -213,13 +219,13 @@ export const PlansPage = () => {
             </select>
           </div>
           <div>
-            <label className="label" htmlFor="plan-location">Location</label>
+            <label className="label" htmlFor="plan-location">{t('plansPage.fieldLocation')}</label>
             <input
               id="plan-location"
               className="input"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Main Auditorium"
+              placeholder={t('plansPage.locationPlaceholder')}
             />
           </div>
 
@@ -227,10 +233,10 @@ export const PlansPage = () => {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="secondary" onClick={() => setCreating(false)}>
-              Cancel
+              {t('common:actions.cancel')}
             </Button>
             <Button type="submit" loading={createPlan.isPending}>
-              Create plan
+              {t('plansPage.createPlan')}
             </Button>
           </div>
         </form>

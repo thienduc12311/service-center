@@ -1,0 +1,557 @@
+{
+  "settingsPage": {
+    "title": "Settings",
+    "subtitle": "Your profile, churches, appearance and availability.",
+    "saved": "Saved.",
+    "profile": {
+      "title": "Profile",
+      "fullName": "Full name",
+      "phone": "Phone",
+      "signedInAs": "Signed in as {{email}}",
+      "save": "Save profile"
+    },
+    "calendar": {
+      "title": "Calendar sync",
+      "description": "Subscribe to your schedule in Google, Apple, or Outlook Calendar. Rotating the link revokes the previous one.",
+      "openInApp": "Open in calendar app",
+      "rotate": "Rotate link",
+      "create": "Create calendar link"
+    },
+    "availability": {
+      "title": "Availability",
+      "description": "Keep leaders informed: add the dates you can’t serve below, or confirm nothing has changed."
+    },
+    "preferences": {
+      "title": "Scheduling preferences",
+      "description": "How often and when you’d like to serve. Schedulers see these as warnings, not rules."
+    }
+  },
+  "organization": {
+    "logoAlt": "{{name}} logo",
+    "fallbackName": "Church",
+    "emptyDescription": "Create and switch between every church you administer.",
+    "uploading": "Uploading…",
+    "updateLogo": "Update logo",
+    "editDetails": "Edit details",
+    "new": "New church",
+    "create": "Create church",
+    "saveDetails": "Save details",
+    "fields": {
+      "name": "Church name",
+      "namePlaceholder": "Grace Church",
+      "addressLine1": "Address line 1",
+      "addressLine2": "Address line 2",
+      "city": "City",
+      "stateProvince": "State / Province",
+      "postalCode": "Postal code",
+      "country": "Country",
+      "denomination": "Denomination",
+      "memberCount": "Congregation size"
+    }
+  },
+  "capabilities": {
+    "plans": {
+      "edit": "Edit plans"
+    },
+    "scheduling": {
+      "manage": "Schedule people",
+      "override_conflicts": "Schedule over conflicts"
+    },
+    "teams": {
+      "manage": "Manage teams"
+    },
+    "people": {
+      "view_private": "See private person details",
+      "manage": "Manage people"
+    },
+    "songs": {
+      "manage": "Manage songs"
+    },
+    "media": {
+      "manage": "Manage media"
+    }
+  },
+  "scopeType": {
+    "organization": "church",
+    "folder": "folder",
+    "service_type": "service type",
+    "team": "team"
+  },
+  "access": {
+    "title": "Access",
+    "description": "Give leaders exactly the areas they run. Team leaders are set on the Teams page; library and directory permissions are church-wide.",
+    "members": "Members",
+    "member": "Member",
+    "chooseMember": "Choose a member",
+    "permission": "Permission",
+    "serviceType": "Service type",
+    "anyServiceType": "Any service type",
+    "team": "Team",
+    "anyTeam": "Any team",
+    "checkAccess": "Check access",
+    "allowed": "Allowed",
+    "notAllowed": "Not allowed",
+    "reason": "{{source}} ({{scope}})",
+    "noExtraGrants": "No extra grants",
+    "schedulerAccessFor": "Scheduler access for {{name}}",
+    "organizationWide": "Church-wide permissions",
+    "wholeOrganization": "the whole church",
+    "explainTitle": "Why can (or can’t) someone do something?",
+    "mode": {
+      "legacy": "Church-wide",
+      "scoped": "Only granted areas"
+    },
+    "source": {
+      "owner": "Owner",
+      "admin": "Administrator",
+      "schedulerLegacy": "Scheduler (church-wide)",
+      "folderGrant": "Folder grant",
+      "grant": "Grant"
+    },
+    "denial": {
+      "not_a_member": "Not a member of this church.",
+      "membership_inactive": "Their membership is inactive.",
+      "scoped_scheduler_without_grant": "A scoped scheduler with no grant for this.",
+      "grant_outside_scope": "They have this permission, but for a different service type or team.",
+      "no_matching_grant": "No role or grant gives this permission."
+    },
+    "rosters": {
+      "title": "Team rosters",
+      "restrict": "Members see only their own teams’ rosters",
+      "restrictHint": "Plus teams a team’s leaders open up to them. Leaders and schedulers still see every roster."
+    }
+  },
+  "scopeAccess": {
+    "empty": "Nobody has permissions for {{scope}} yet.",
+    "unknownMember": "Unknown member",
+    "removeLabel": "Remove {{permission}} from {{name}}",
+    "grant": "Grant"
+  },
+  "across": {
+    "title": "Across my churches",
+    "description_one": "You belong to {{count}} church. These options are off unless you turn them on.",
+    "description_other": "You belong to {{count}} churches. These options are off unless you turn them on.",
+    "combinedSchedule": "Show my schedules from every church together (only I see this)",
+    "shareBusy": "Warn schedulers in my other churches when I’m busy (they see only “busy”, no details)",
+    "next30Days": "Next 30 days",
+    "loadFailed": "Couldn’t load this church: {{error}}",
+    "item": "{{when}} — {{title}}",
+    "itemAwaiting": "{{when}} — {{title}} · awaiting your answer",
+    "unavailable": "Unavailable",
+    "unavailableWithTitle": "Unavailable ({{title}})",
+    "nothingScheduled": "Nothing scheduled.",
+    "copyTitle": "Copy blockout dates to another church",
+    "copyEmpty": "Add a one-off blockout above first.",
+    "blockout": "{{date}}",
+    "blockoutAllDay": "{{date}} · all day",
+    "includeReason": "Include my reasons (their schedulers can read them)",
+    "result": "{{name}}: {{outcome}}",
+    "resultWithCount": "{{name}}: {{outcome}} ({{copied}})",
+    "outcome": {
+      "copied": "Copied",
+      "already_copied": "Already copied",
+      "not_member": "Not a member there",
+      "failed": "Could not copy"
+    }
+  },
+  "affected": {
+    "none": "No existing commitments are affected.",
+    "overlaps_one": "This overlaps {{count}} existing commitment.",
+    "overlaps_other": "This overlaps {{count}} existing commitments.",
+    "unchanged_one": "Saving won’t change its answer.",
+    "unchanged_other": "Saving won’t change their answers.",
+    "unchangedCanDecline_one": "Saving won’t change its answer; decline it if you can no longer do it.",
+    "unchangedCanDecline_other": "Saving won’t change their answers; decline any you can no longer do.",
+    "time": "{{name}} {{when}}",
+    "timeFallback": "Time",
+    "awaiting": "Awaiting your answer",
+    "withdraw": "Withdraw"
+  },
+  "freshness": {
+    "unknown": "Never reviewed",
+    "stale": "Needs review",
+    "current": "Up to date"
+  },
+  "review": {
+    "lastReviewed": "Last reviewed {{when}}.",
+    "lastReviewedAffirmed": "Last reviewed {{when}} (confirmed up to date).",
+    "neverReviewed": "Leaders can’t tell yet whether these dates are current.",
+    "affirmTheirs": "Their availability is up to date",
+    "affirmMine": "My availability is up to date",
+    "requestTitle": "A leader asked you to review your availability",
+    "respondBy": "by {{date}}",
+    "quotedMessage": "“{{message}}”",
+    "requestHint": "Add blockout dates below, or confirm your availability is up to date."
+  },
+  "blockouts": {
+    "title": "Blockout dates",
+    "titleFor": "{{name}}’s blockout dates",
+    "titleTheirs": "Their blockout dates",
+    "description": "Times you can’t serve, interpreted in {{timezone}}. Existing assignments are never declined automatically.",
+    "descriptionTheirs": "Times they can’t serve, interpreted in {{timezone}}. Existing assignments are never declined automatically.",
+    "allDay": "All day",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "endDateExclusive": "End date (exclusive)",
+    "startTime": "Start time",
+    "endTime": "End time",
+    "repeat": "Repeat",
+    "repeatOptions": {
+      "none": "Does not repeat",
+      "weekly": "Weekly",
+      "monthly": "Monthly"
+    },
+    "ends": "Ends",
+    "endOptions": {
+      "count": "After a number",
+      "until": "On a date"
+    },
+    "occurrences": "Occurrences",
+    "until": "Until",
+    "reason": "Reason",
+    "private": "(private)",
+    "ambiguous": "If the clock repeats this time",
+    "ambiguousOptions": {
+      "earlier": "Use the earlier offset",
+      "later": "Use the later offset"
+    },
+    "clockHint": "Times skipped when the clock moves forward are rejected. Monthly dates missing from a month are skipped.",
+    "save": "Save blockout",
+    "occurrenceAt": "{{date}} at {{time}}",
+    "occurrenceAllDay": "{{date}} · all day",
+    "rowTimes": "{{date}} · {{start}}–{{end}}",
+    "repeatingFrom": "Repeating from {{date}}",
+    "seriesHint": "Manage individual, future, or all occurrences on the series page.",
+    "manageSeries": "Manage series"
+  },
+  "delivery": {
+    "title": "Delivery",
+    "description": "What happened to schedule emails, pushes and in-app notifications. “Accepted by provider” means the email or push service took the message; it does not confirm the person saw it.",
+    "emailResend": "Sent through Resend",
+    "emailSimulated": "Simulated — not sent (no provider configured)",
+    "pushExpo": "Sent through Expo",
+    "pushSimulated": "Simulated — not sent (push disabled)",
+    "pending": "Waiting to send",
+    "needsAttention": "Need attention",
+    "noWorker": "No scheduled delivery worker is configured, so retries and anything interrupted wait until someone acts again or an operator runs the worker.",
+    "recent": "Recent deliveries",
+    "problems": "Failed or uncertain",
+    "showProblems": "Show only problems",
+    "showAll": "Show all recent",
+    "emptyAll": "Nothing has been sent yet.",
+    "emptyProblems": "Nothing needs attention.",
+    "recipientChannel": "{{name}} · {{channel}}",
+    "unknownPerson": "Unknown person",
+    "deletedPlan": "Deleted plan",
+    "details_one": "{{plan}} · {{date}} · {{count}} attempt",
+    "details_other": "{{plan}} · {{date}} · {{count}} attempts",
+    "retry": "Retry",
+    "channel": {
+      "in_app": "In-app",
+      "push": "Push",
+      "email": "Email"
+    },
+    "status": {
+      "queued": "Queued",
+      "sending": "Sending",
+      "simulated": "Simulated — not sent",
+      "provider_accepted": "Accepted by provider",
+      "delivered": "Delivered",
+      "failed": "Failed",
+      "ambiguous": "Outcome unknown",
+      "skipped": "Not sent",
+      "cancelled": "Cancelled"
+    },
+    "error": {
+      "no_email_address": "No email address on file",
+      "no_active_device": "No registered device",
+      "recipient_not_eligible": "No longer scheduled or no longer a member",
+      "scheduler_not_active": "Scheduler is no longer active in this church",
+      "plan_missing": "The plan no longer exists",
+      "request_missing": "The availability request no longer exists",
+      "already_reviewed": "Already updated their availability",
+      "provider_rate_limited": "Provider rate limit — will retry",
+      "provider_unavailable": "Provider unavailable — will retry",
+      "provider_rejected": "Provider rejected the message",
+      "provider_misconfigured": "Email provider is misconfigured",
+      "provider_timeout": "Provider did not answer in time",
+      "outcome_unknown": "Interrupted while sending; it may have been sent",
+      "worker_lease_expired": "Worker stopped before sending; will retry",
+      "internal_error": "Unexpected error",
+      "reminder_obsolete": "Reminder no longer applied when it was about to be sent",
+      "provider_duplicate_key": "Provider already has an earlier attempt of this message; it may have been sent",
+      "content_removed": "The comment or message was removed before it was sent",
+      "conversation_muted": "The recipient muted this conversation",
+      "channel_not_used": "Not sent on this channel"
+    }
+  },
+  "folders": {
+    "title": "Folders",
+    "description": "Group service types by campus or ministry. Permissions on a folder apply to everything inside it.",
+    "empty": "No folders yet.",
+    "serviceTypeCount_one": "{{count}} service type",
+    "serviceTypeCount_other": "{{count}} service types",
+    "permissions": "Permissions",
+    "permissionsTitle": "{{name}} permissions",
+    "emptyFirst": "Empty the folder first",
+    "newFolder": "New folder",
+    "namePlaceholder": "North Campus",
+    "inside": "Inside",
+    "topLevel": "Top level",
+    "add": "Add folder",
+    "serviceTypes": "Service types",
+    "folderFor": "Folder for {{name}}",
+    "noFolder": "No folder",
+    "aServiceType": "a service type",
+    "moveTitle": "This move changes who has access",
+    "gains": "{{name}} gains “{{permission}}” on {{serviceType}}",
+    "loses": "{{name}} loses “{{permission}}” on {{serviceType}}",
+    "moveAnyway": "Move anyway"
+  },
+  "identity": {
+    "title": "Possible duplicate people",
+    "description": "We never combine people just because their details match. Decide here whether two records are the same person.",
+    "empty": "Nothing to review.",
+    "reason": {
+      "email_match": "<0>{{person}}</0> has the same email as <1>{{candidate}}</1>",
+      "invitation_conflict": "<0>{{person}}</0> accepted an invitation meant for <1>{{candidate}}</1>"
+    },
+    "mergeHint": "Merging moves {{candidate}}’s requests and history to {{person}}.",
+    "keepSeparate": "Different people",
+    "merge": "Same person — merge"
+  },
+  "integrations": {
+    "title": "Developer API and webhooks",
+    "description": "Let an approved integration read published plans and songs, and tell it when plans are published.",
+    "baseUrl": "API base URL <0>{{url}}</0> (version {{version}}).",
+    "secretOnce": "Copy it now and store it somewhere safe. It will not be shown again.",
+    "secretStored": "I have stored it",
+    "newKeySecret": "New API key",
+    "signingSecret": "Signing secret",
+    "credentialMeta": "{{scopes}} · {{rate}}/min · created {{date}}",
+    "credentialMetaBy": "{{scopes}} · {{rate}}/min · created {{date}} by {{name}}",
+    "lastUsed": "Last used {{when}}",
+    "neverUsed": "Never used",
+    "expires": "expires {{date}}",
+    "revoke": "Revoke",
+    "revokeKeyConfirm": "Revoke “{{name}}”? Integrations using it stop working on their next request.",
+    "revokeEndpointConfirm": "Revoke this endpoint? It receives nothing further; its delivery history is kept.",
+    "keyName": "Name",
+    "keyNamePlaceholder": "Lobby display",
+    "keyAccess": "Access",
+    "keyExpires": "Expires (optional)",
+    "keyHint": "Read-only. Keys see published plans, service types and the song library — never people, notes, files or drafts. A key stops working if it is revoked, expires, or you stop being an administrator.",
+    "createKey": "Create key",
+    "attempts_one": "{{count}} attempt",
+    "attempts_other": "{{count}} attempts",
+    "durationMs": "{{ms}} ms",
+    "nextTry": "next try {{when}}",
+    "secretHint": "secret …{{hint}}",
+    "waitingCount_one": "{{count}} waiting",
+    "waitingCount_other": "{{count}} waiting",
+    "failedCount_one": "{{count}} failed",
+    "failedCount_other": "{{count}} failed",
+    "hideDeliveries": "Hide deliveries",
+    "deliveries": "Deliveries",
+    "sendTest": "Send test",
+    "pause": "Pause",
+    "resume": "Resume",
+    "noDeliveries": "Nothing has been sent to this endpoint yet.",
+    "endpointUrl": "Endpoint URL",
+    "endpointDescription": "Description (optional)",
+    "events": "Events",
+    "endpointHint": "Events carry only ids; the receiver reads details with an API key. Requests are signed (Standard Webhooks) and retried with the same event id, so receivers should verify the signature and ignore ids they have seen.",
+    "addEndpoint": "Add endpoint",
+    "apiKeys": "API keys",
+    "newKey": "New key",
+    "noKeys": "No API keys yet.",
+    "webhooks": "Webhooks",
+    "webhooksUnavailable": "Webhooks are not available: the server has no secret-encryption key configured.",
+    "noWorker": "No scheduled worker is configured, so webhook deliveries wait until an operator runs the worker.",
+    "noEndpoints": "No webhook endpoints yet.",
+    "scope": {
+      "plans": {
+        "read": "Read published plans and service types"
+      },
+      "songs": {
+        "read": "Read the song library"
+      }
+    },
+    "event": {
+      "plan": {
+        "published": "A plan was published",
+        "unpublished": "A published plan went back to draft or was archived",
+        "deleted": "A published plan was deleted"
+      },
+      "webhook": {
+        "test": "Test event"
+      }
+    },
+    "deliveryStatus": {
+      "queued": "Waiting",
+      "sending": "Sending",
+      "succeeded": "Accepted by endpoint",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "disabledReason": {
+      "administrator": "Paused by an administrator",
+      "gone": "The endpoint answered 410 Gone",
+      "failing": "Paused after repeated failures"
+    },
+    "endpointState": {
+      "active": "Active",
+      "revoked": "Revoked",
+      "paused": "Paused"
+    },
+    "credentialState": {
+      "active": "Active",
+      "revoked": "Revoked",
+      "expired": "Expired",
+      "issuer_inactive": "Inactive — issuer is no longer an administrator"
+    },
+    "webhookError": {
+      "http": "Endpoint answered HTTP {{status}}",
+      "timeout": "The endpoint did not answer in time",
+      "destination_blocked": "The address resolves to a private or reserved network",
+      "dns_failed": "The host name could not be resolved",
+      "connection_failed": "Could not connect to the endpoint",
+      "redirect_not_followed": "The endpoint redirected; update the URL instead",
+      "secret_unavailable": "The signing secret could not be read on the server",
+      "endpoint_disabled": "The endpoint was paused",
+      "endpoint_revoked": "The endpoint was revoked"
+    }
+  },
+  "reminders": {
+    "title": "Reminders",
+    "description": "Automatic reminders for unanswered requests and upcoming confirmed services. A team setting overrides its service type, which overrides the church; without any, Service Center sends one reminder 3 days before an unanswered request and one 1 day before a confirmed person is needed. Reminders stop on their own when someone answers, is removed, or the time changes.",
+    "scope": "Scope",
+    "wholeOrganization": "Whole church",
+    "theOrganization": "the church",
+    "kind": {
+      "pending_response": "Unanswered request",
+      "confirmed_service": "Upcoming confirmed service"
+    },
+    "kindDescription": {
+      "pending_response": "Sent before the first applicable service time to people who have not answered.",
+      "confirmed_service": "Sent before the first time a confirmed person needs to be there (rehearsals included)."
+    },
+    "source": {
+      "team": "From the team setting",
+      "service_type": "From the service type setting",
+      "organization": "From the church setting",
+      "default": "Service Center default"
+    },
+    "inEffect": "In effect: {{summary}}",
+    "offsetBy": "{{offset}} before, by {{channels}}",
+    "quietRange": "quiet {{start}}–{{end}}",
+    "maxPerDay_one": "at most {{count}} a day per channel",
+    "maxPerDay_other": "at most {{count}} a day per channel",
+    "setHere": "Set here for {{scope}}",
+    "sendFor": "Send this reminder for {{scope}}",
+    "hoursBefore": "Hours before",
+    "perPersonPerDay": "Per person per day",
+    "channels": "Channels",
+    "quietHours": "Quiet hours (church time zone)",
+    "quietFrom": "From",
+    "quietUntil": "Until",
+    "invalidOffset": "Choose between 15 minutes and 30 days.",
+    "invalidQuiet": "Quiet hours must start and end at different times.",
+    "saveFor": "Save for {{scope}}",
+    "useInherited": "Use inherited setting",
+    "savedRecomputed": "Saved. Upcoming reminders will be recomputed.",
+    "readOnly": "You can see this setting but not change it."
+  },
+  "myReminders": {
+    "title": "My reminders",
+    "description": "Choose how automatic reminders reach you. New requests and changes are still sent.",
+    "channels": "Reminder channels",
+    "none": "You will not receive automatic reminders."
+  },
+  "help": {
+    "title": "Help with my schedule",
+    "description": "Let someone you trust answer requests or update your availability for you. They see only what you allow — never plan notes or files — and you can stop it at any time.",
+    "rights": {
+      "respond": "answer requests",
+      "view": "see requests",
+      "availability": "manage availability"
+    },
+    "theyCan": "Can {{rights}}",
+    "youCan": "You can {{rights}}",
+    "until": "until {{date}}",
+    "expired": "expired",
+    "stop": "Stop",
+    "who": "Who can help",
+    "chooseSomeone": "Choose someone with a login",
+    "theyCanLegend": "They can",
+    "allowRespond": "Accept or decline my requests",
+    "allowView": "See my requests (dates, times and roles)",
+    "allowAvailability": "Manage my blockout dates and preferences",
+    "untilLabel": "Until",
+    "optional": "(optional)",
+    "allow": "Allow",
+    "peopleIHelp": "People I help",
+    "stopHelping": "Stop helping"
+  },
+  "preferences": {
+    "appliesTo": "Applies to",
+    "allTeams": "All my teams",
+    "customTeam": "{{name}} (custom)",
+    "inheritsHint": "Uses your all-teams preferences until you save something specific to this team.",
+    "howOften": "How often",
+    "noPreference": "No preference",
+    "frequency": {
+      "every_week": "At most once a week",
+      "every_other_week": "Every other week",
+      "every_third_week": "Every third week",
+      "once_a_month": "Once a month"
+    },
+    "maxPerMonth": "At most per month",
+    "noLimit": "No limit",
+    "weeksOfMonth": "Weeks of the month",
+    "weekOrdinal": {
+      "1": "1st",
+      "2": "2nd",
+      "3": "3rd",
+      "4": "4th",
+      "5": "5th"
+    },
+    "prefer": "Prefer",
+    "avoid": "Avoid",
+    "preferWeek": "Prefer week {{week}}",
+    "avoidWeek": "Avoid week {{week}}",
+    "preferredTimes": "Preferred service start times",
+    "avoidedDates": "Dates to avoid",
+    "warningHint": "Schedulers see these as warnings. Use blockout dates for times you truly can’t serve.",
+    "save": "Save preferences",
+    "useAllTeams": "Use all-teams preferences"
+  },
+  "serviceTypeFiles": {
+    "title": "Service type default files",
+    "description": "New plans of the service type get these files automatically, pinned to the version current at that moment. Changing a default later does not change plans that already exist.",
+    "panelTitle": "Default files"
+  },
+  "profile": {
+    "savedTitle": "Saved",
+    "savedMessage": "Your profile has been updated.",
+    "photoPermissionTitle": "Permission needed",
+    "photoPermissionMessage": "Allow photo access to choose a logo.",
+    "yourProfile": "Your profile",
+    "yourDetails": "Your details",
+    "appearance": {
+      "title": "Appearance",
+      "description": "A light page for planning at a desk, a dark one for a dim stage.",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "manageOnWebsite": "Manage on website",
+    "removeBlockout": "Remove blockout from {{date}}",
+    "noBlockouts": "You have no blockout dates.",
+    "organizations": {
+      "title": "Churches",
+      "description": "Start another church or ministry whenever you need one — you stay signed in to both.",
+      "changeLogo": "Change the logo",
+      "namePlaceholder": "Grace Community Church"
+    }
+  }
+}

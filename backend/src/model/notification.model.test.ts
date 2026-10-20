@@ -60,15 +60,17 @@ describe('toPushMessage', () => {
     dedupe_key: null,
   };
 
+  const pushText = { title: 'Service Center', body: 'Open the app to view a schedule update.' };
+
   it('keeps private schedule wording off the lock screen', () => {
-    const message = toPushMessage(row, 'ExponentPushToken[abc]', 3);
+    const message = toPushMessage(row, 'ExponentPushToken[abc]', 3, pushText);
     expect(message.title).toBe('Service Center');
     expect(message.body).toBe('Open the app to view a schedule update.');
     expect(message.title).not.toContain(row.title);
   });
 
   it('carries the ids the app needs to deep-link', () => {
-    const message = toPushMessage(row, 'ExponentPushToken[abc]', 3);
+    const message = toPushMessage(row, 'ExponentPushToken[abc]', 3, pushText);
     expect(message.to).toBe('ExponentPushToken[abc]');
     expect(message.badge).toBe(3);
     expect(message.data).toEqual({

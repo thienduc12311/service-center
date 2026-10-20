@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
-  REHEARSAL_PLAYBACK_LABELS,
   formatDuration,
   formatFileSize,
   isPlayable,
@@ -20,6 +20,7 @@ import {
   type RehearsalPlayerControls,
   type RehearsalPlayerState,
 } from '../rehearsal/useRehearsalPlayer';
+import { useFormatters } from '../../i18n';
 
 export interface RehearseTabProps {
   plan: PlanDetail;
@@ -32,13 +33,15 @@ export interface RehearseTabProps {
  * asks for a short-lived link only for the track it is about to play.
  */
 export const RehearseTab = ({ plan }: RehearseTabProps) => {
+  const { t } = useTranslation(['plans', 'common']);
+  const format = useFormatters();
   const manifest = useRehearsalManifest(plan.id);
   const media = useRef<HTMLVideoElement>(null);
   const [state, controls] = useRehearsalPlayer(manifest.data, media);
 
   useMediaSession(state, controls, manifest.data?.plan_title ?? plan.title);
 
-  if (manifest.isLoading) return <Loading label="Loading rehearsal…" />;
+  if (manifest.isLoading) return <Loading label={t('rehearse.loading')} />;
   if (manifest.error && !manifest.data) return <ErrorNotice error={manifest.error} />;
   const data = manifest.data;
   if (!data) return null;
@@ -49,8 +52,7 @@ export const RehearseTab = ({ plan }: RehearseTabProps) => {
     <div className="space-y-4">
       {manifest.error && (
         <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-600/20">
-          Could not refresh the rehearsal list — showing what was loaded at{' '}
-          {new Date(data.generated_at).toLocaleTimeString()}. Access is rechecked whenever a recording is played.
+          {t('rehearse.refreshFailed', { time: format.time(data.generated_at) })}
         </p>
       )}
 
@@ -58,10 +60,10 @@ export const RehearseTab = ({ plan }: RehearseTabProps) => {
 
       {!hasContent ? (
         <div className="card px-6 py-16 text-center text-sm text-slate-500">
-          Nothing to rehearse yet. Add songs, or attach recordings and charts on the Files tab.
+          {t('rehearse.empty')}
         </div>
       ) : (
-        <ol className="space-y-4" aria-label="Rehearsal order">
+        <ol className="space-y-4" aria-label={t('rehearse.orderLabel')}>
           {items.map((item) =>
             item.item_type === 'header' ? (
               <li key={item.item_id}>
@@ -85,8 +87,8 @@ export const RehearseTab = ({ plan }: RehearseTabProps) => {
       )}
 
       {data.plan_materials.length > 0 && (
-        <section className="card p-4" aria-label="Plan files">
-          <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">For the whole plan</h3>
+        <section className="card p-4" aria-label={t('rehearse.planFiles')}>
+          <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">{t('rehearse.wholePlan')}</h3>
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {data.plan_materials.map((material) => (
               <MaterialRow key={material.file_id} material={material} />
@@ -95,7 +97,7 @@ export const RehearseTab = ({ plan }: RehearseTabProps) => {
         </section>
       )}
       {data.truncated && (
-        <p className="text-xs text-slate-500">This plan is long; only the first items are shown for rehearsal.</p>
+        <p className="text-xs text-slate-500">{t('rehearse.truncated')}</p>
       )}
     </div>
   );
@@ -103,23 +105,15 @@ export const RehearseTab = ({ plan }: RehearseTabProps) => {
 
 const time = (seconds: number): string => formatDuration(Math.max(0, Math.floor(seconds)));
 
-const REPEAT_LABEL: Record<RehearsalPlayerState['repeat'], string> = {
-  off: 'Repeat: off',
-  all: 'Repeat: all',
-  one: 'Repeat: this track',
-};
-
-const PlayerBar = ({
-  state,
-  controls,
-  media,
-  items,
-}: {
+interface PlayerBarProps {
   state: RehearsalPlayerState;
   controls: RehearsalPlayerControls;
   media: React.RefObject<HTMLVideoElement | null>;
   items: RehearsalManifestItem[];
-}) => {
+}
+
+const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
+  const { t } = useTranslation(['plans', 'common']);
   const { track, status } = state;
   const item = track ? items.find((candidate) => candidate.item_id === track.item_id) : null;
   const isVideo = track?.material.playback === 'video';
@@ -127,7 +121,7 @@ const PlayerBar = ({
   const chartKey = item?.chart?.key;
 
   return (
-    <section className="card sticky top-2 z-10 space-y-3 p-4" aria-label="Rehearsal player">
+    <section className="card sticky top-2 z-10 space-y-3 p-4" aria-label={t('rehearse.player')}>
       {/* The one media element: it plays every inline track, audio or video. */}
       <video
         ref={media}
@@ -138,53 +132,53 @@ const PlayerBar = ({
       />
       {state.tracks.length === 0 ? (
         <p className="text-sm text-slate-500">
-          No recordings you can play on this plan. Charts and files below are still available.
+          {t('rehearse.noTracks')}
         </p>
       ) : (
         <>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <div className="min-w-0">
               <p className="truncate font-medium text-slate-900 dark:text-white" aria-live="polite">
-                {track ? `${state.index + 1}. ${track.title}` : 'Choose a track'}
+                {track ? t('rehearse.trackTitle', { number: state.index + 1, title: track.title }) : t('rehearse.chooseTrack')}
               </p>
               {track && (
                 <p className="truncate text-xs text-slate-500">
                   {track.material.title}
-                  {track.material.version_number ? ` · v${track.material.version_number}` : ''}
-                  {track.material.pinned ? ' (pinned for this plan)' : ''}
+                  {track.material.version_number ? ` · ${t('rehearse.version', { number: track.material.version_number })}` : ''}
+                  {track.material.pinned ? ` ${t('rehearse.pinnedForPlan')}` : ''}
                   {chartKey && track.material.playback === 'audio'
-                    ? ` · Chart in ${chartKey}; the recording plays as recorded (its key is not changed)`
+                    ? ` · ${t('rehearse.chartKeyNote', { key: chartKey })}`
                     : ''}
                 </p>
               )}
             </div>
             <span className="text-xs tabular-nums text-slate-500">
-              {state.tracks.length} track{state.tracks.length === 1 ? '' : 's'}
+              {t('rehearse.tracks', { count: state.tracks.length })}
             </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" onClick={controls.previous} aria-label="Previous track">
+            <Button variant="secondary" onClick={controls.previous} aria-label={t('rehearse.previousTrack')}>
               ⏮
             </Button>
             <Button
               onClick={controls.togglePlay}
               disabled={!state.source || status === 'loading' || Boolean(external)}
-              aria-label={status === 'playing' ? 'Pause' : 'Play'}
+              aria-label={status === 'playing' ? t('rehearse.pause') : t('rehearse.play')}
               loading={status === 'loading'}
             >
-              {status === 'playing' ? 'Pause' : 'Play'}
+              {status === 'playing' ? t('rehearse.pause') : t('rehearse.play')}
             </Button>
-            <Button variant="secondary" onClick={controls.next} aria-label="Next track">
+            <Button variant="secondary" onClick={controls.next} aria-label={t('rehearse.nextTrack')}>
               ⏭
             </Button>
             <Button
               variant="secondary"
               onClick={controls.cycleRepeat}
               aria-pressed={state.repeat !== 'off'}
-              aria-label={REPEAT_LABEL[state.repeat]}
+              aria-label={t(`rehearse.repeat.${state.repeat}`)}
             >
-              {REPEAT_LABEL[state.repeat]}
+              {t(`rehearse.repeat.${state.repeat}`)}
             </Button>
             {!external && (
               <label className="flex min-w-[12rem] flex-1 items-center gap-2 text-xs tabular-nums text-slate-500">
@@ -197,8 +191,8 @@ const PlayerBar = ({
                   step={1}
                   value={Math.floor(state.position)}
                   disabled={!state.duration}
-                  aria-label="Seek"
-                  aria-valuetext={`${time(state.position)} of ${time(state.duration)}`}
+                  aria-label={t('rehearse.seek')}
+                  aria-valuetext={t('rehearse.seekValue', { position: time(state.position), duration: time(state.duration) })}
                   onChange={(event) => controls.seek(Number(event.target.value))}
                 />
                 <span>{time(state.duration)}</span>
@@ -208,10 +202,9 @@ const PlayerBar = ({
 
           {external?.external_url && (
             <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
-              This track is a link to {hostname(external.external_url)}. It plays in that site's own player, in a new tab —
-              Service Center does not import, host or license it.{' '}
+              {t('rehearse.externalTrack', { host: hostname(external.external_url) ?? t('rehearse.anotherSite') })}{' '}
               <a className="font-medium underline" href={external.external_url} target="_blank" rel="noopener noreferrer">
-                Open external player
+                {t('rehearse.openExternal')}
               </a>
             </p>
           )}
@@ -219,7 +212,7 @@ const PlayerBar = ({
             <p role="alert" className="text-sm text-rose-700">
               {state.error}{' '}
               <button type="button" className="underline" onClick={controls.retry}>
-                Try again
+                {t('common:actions.retry')}
               </button>
             </p>
           )}
@@ -229,27 +222,25 @@ const PlayerBar = ({
   );
 };
 
-const hostname = (url: string): string => {
+/** The link's host, or null when it is not a parseable URL. */
+const hostname = (url: string): string | null => {
   try {
     return new URL(url).hostname;
   } catch {
-    return 'another site';
+    return null;
   }
 };
 
-const RehearseItem = ({
-  item,
-  track,
-  current,
-  onPlay,
-  onChoose,
-}: {
+interface RehearseItemProps {
   item: RehearsalManifestItem;
   track: RehearsalTrack | null;
   current: boolean;
   onPlay: () => void;
   onChoose: (fileId: string) => void;
-}) => {
+}
+
+const RehearseItem = ({ item, track, current, onPlay, onChoose }: RehearseItemProps) => {
+  const { t } = useTranslation(['plans', 'common']);
   const playable = item.materials.filter(isPlayable);
   const chart = item.chart;
   return (
@@ -264,31 +255,30 @@ const RehearseItem = ({
         )}
         {chart && (
           <span className="text-sm text-slate-500">
-            <span className="sr-only">Service key </span>
+            <span className="sr-only">{t('rehearse.serviceKey')} </span>
             {chart.key ?? '—'}
           </span>
         )}
         {item.arrangement && <span className="text-sm text-slate-500">{item.arrangement.name}</span>}
-        {item.tempo_bpm && <span className="text-sm text-slate-400">{item.tempo_bpm} bpm</span>}
+        {item.tempo_bpm && <span className="text-sm text-slate-400">{t('rehearse.bpm', { bpm: item.tempo_bpm })}</span>}
         {item.media && (
           <Badge tone="bg-sky-50 text-sky-800 ring-sky-600/20">
-            Media: {item.media.title}
-            {item.media.archived ? ' (archived)' : ''}
+            {t(item.media.archived ? 'rehearse.mediaArchived' : 'rehearse.media', { title: item.media.title })}
           </Badge>
         )}
         <span className="ml-auto text-sm tabular-nums text-slate-400">{formatDuration(item.length_seconds)}</span>
         {track ? (
-          <Button variant={current ? 'primary' : 'secondary'} onClick={onPlay} aria-label={`Play ${item.title}`}>
-            {track.material.playback === 'external' ? 'Select' : current ? 'Restart' : 'Play'}
+          <Button variant={current ? 'primary' : 'secondary'} onClick={onPlay} aria-label={t('rehearse.playItem', { title: item.title })}>
+            {track.material.playback === 'external' ? t('common:actions.select') : current ? t('rehearse.restart') : t('rehearse.play')}
           </Button>
         ) : item.item_type === 'song' || item.media ? (
-          <span className="text-xs text-slate-400">No recording</span>
+          <span className="text-xs text-slate-400">{t('rehearse.noRecording')}</span>
         ) : null}
       </header>
       {playable.length > 1 && (
         <div className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500 dark:border-slate-800">
           <label className="flex items-center gap-2">
-            Recording
+            {t('rehearse.recording')}
             <select
               className="input w-auto py-1 text-xs"
               value={track?.material.file_id ?? ''}
@@ -296,7 +286,7 @@ const RehearseItem = ({
             >
               {playable.map((material) => (
                 <option key={material.file_id} value={material.file_id}>
-                  {material.title} ({REHEARSAL_PLAYBACK_LABELS[material.playback]})
+                  {t('rehearse.recordingOption', { title: material.title, playback: t(`playback.${material.playback}`) })}
                 </option>
               ))}
             </select>
@@ -305,7 +295,7 @@ const RehearseItem = ({
       )}
       {chart && chart.sequence.length > 0 && (
         <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500 dark:border-slate-800">
-          Sequence{chart.sequence_from_plan ? ' for this plan' : ''}: {chart.sequence.join(' · ')}
+          {t(chart.sequence_from_plan ? 'rehearse.sequenceForPlan' : 'rehearse.sequence', { sequence: chart.sequence.join(' · ') })}
         </p>
       )}
       {chart && (
@@ -316,10 +306,10 @@ const RehearseItem = ({
           ) : (
             <p role="status" className={`text-sm ${chart.status === 'arrangement_missing' ? 'text-rose-700' : 'text-slate-500'}`}>
               {chart.status === 'arrangement_missing'
-                ? 'The arrangement chosen for this item is no longer available. Edit the item to choose another.'
+                ? t('rehearse.arrangementMissing')
                 : chart.status === 'no_chart'
-                  ? 'No chord chart on this arrangement yet.'
-                  : "This chart's written key is missing or unreadable, so it can't be shown in the service key. Set the arrangement's key in the song library."}
+                  ? t('rehearse.noChart')
+                  : t('rehearse.keyUnreadable')}
             </p>
           )}
         </div>
@@ -336,8 +326,14 @@ const RehearseItem = ({
 };
 
 /** One file in the list: open/download per its rights, links clearly external. */
-const MaterialRow = ({ material }: { material: RehearsalMaterial }) => {
+interface MaterialRowProps {
+  material: RehearsalMaterial;
+}
+
+const MaterialRow = ({ material }: MaterialRowProps) => {
+  const { t } = useTranslation(['plans', 'common']);
   const errorRef = useRef<HTMLSpanElement>(null);
+  const linkHost = material.external_url ? hostname(material.external_url) : null;
   const open = async (download: boolean) => {
     if (errorRef.current) errorRef.current.textContent = '';
     if (material.kind === 'link' && material.external_url) {
@@ -366,30 +362,32 @@ const MaterialRow = ({ material }: { material: RehearsalMaterial }) => {
       <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-200">
         {material.title}
         <span className="ml-2 text-xs text-slate-400">
-          {REHEARSAL_PLAYBACK_LABELS[material.playback]}
-          {material.version_number ? ` · v${material.version_number}` : ''}
-          {material.size_bytes ? ` · ${formatFileSize(material.size_bytes)}` : ''}
-          {material.pinned ? ' · pinned' : ''}
-          {material.newer_version_available ? ' · newer version exists' : ''}
+          {[
+            t(`playback.${material.playback}`),
+            ...(material.version_number ? [t('rehearse.version', { number: material.version_number })] : []),
+            ...(material.size_bytes ? [formatFileSize(material.size_bytes)] : []),
+            ...(material.pinned ? [t('rehearse.pinned')] : []),
+            ...(material.newer_version_available ? [t('rehearse.newerVersion')] : []),
+          ].join(' · ')}
         </span>
       </span>
       {material.kind === 'link' ? (
         <button type="button" className="text-xs underline" onClick={() => void open(false)}>
-          Open on {material.external_url ? hostname(material.external_url) : 'the web'} ↗
+          {linkHost ? t('rehearse.openOn', { host: linkHost }) : t('rehearse.openOnWeb')}
         </button>
       ) : material.kind === 'document' ? (
-        <span className="text-xs text-slate-400">Open from the Files tab</span>
+        <span className="text-xs text-slate-400">{t('rehearse.openFromFiles')}</span>
       ) : (
         <>
           <button type="button" className="text-xs underline" onClick={() => void open(false)}>
-            Open
+            {t('common:actions.open')}
           </button>
           {material.rights.download ? (
             <button type="button" className="text-xs underline" onClick={() => void open(true)}>
-              Download
+              {t('common:actions.download')}
             </button>
           ) : (
-            <span className="text-xs text-slate-400">Play only</span>
+            <span className="text-xs text-slate-400">{t('rehearse.playOnly')}</span>
           )}
         </>
       )}

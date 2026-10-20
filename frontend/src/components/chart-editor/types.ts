@@ -4,6 +4,7 @@ import {
   toChordPro,
   type ArrangementRow,
   type ChartDocument,
+  type SupportedLocale,
   type ChartFormatting,
   type SongWithArrangements,
   type UpdateArrangementInput,
@@ -40,10 +41,12 @@ export const chartEditorFormFrom = (
 });
 
 /** The arrangement half of a save: its name, key, sequence, chart and layout. */
+/** `defaultName` is the localized name a blank arrangement name falls back to. */
 export const toChartArrangementInput = (
   values: ChartEditorFormValues,
+  defaultName: string,
 ): UpdateArrangementInput => ({
-  name: values.arrangementName.trim() || 'Default Arrangement',
+  name: values.arrangementName.trim() || defaultName,
   song_key: values.songKey,
   sequence: values.sequence,
   chord_chart: toChordPro(values.source),
@@ -70,6 +73,10 @@ export interface ChartDocumentSource {
   song: SongWithArrangements;
   /** The key and notation the preview is being read in. */
   view: ChartView;
+  /** Localized title shown when the song title is blank. */
+  untitledTitle: string;
+  /** Display language of the byline and page. */
+  locale: SupportedLocale;
 }
 
 /**
@@ -79,7 +86,7 @@ export interface ChartDocumentSource {
  * key shown in the heading is the key the chords below it are actually in —
  * including when the preview is transposed or read as numbers.
  */
-export const chartDocumentFrom = ({ values, song, view }: ChartDocumentSource): ChartDocument => {
+export const chartDocumentFrom = ({ values, song, view, untitledTitle, locale }: ChartDocumentSource): ChartDocument => {
   const rendered = renderChordProChart(toChordPro(values.source), {
     sourceKey: values.songKey,
     targetKey: view.targetKey,
@@ -87,7 +94,7 @@ export const chartDocumentFrom = ({ values, song, view }: ChartDocumentSource): 
   });
 
   return {
-    title: values.title.trim() || 'Untitled song',
+    title: values.title.trim() || untitledTitle,
     key: rendered.key,
     arrangementName: values.arrangementName.trim() || null,
     author: song.author,
@@ -95,5 +102,6 @@ export const chartDocumentFrom = ({ values, song, view }: ChartDocumentSource): 
     copyright: song.copyright,
     chordpro: rendered.chordpro,
     formatting: values.formatting,
+    locale,
   };
 };

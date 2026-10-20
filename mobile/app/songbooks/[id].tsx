@@ -1,7 +1,8 @@
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { parseChordPro } from '@service-center/shared';
+import { LocalizedError, parseChordPro } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -21,6 +22,7 @@ import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
 export default function SongbookDetailScreen() {
+  const { t } = useTranslation('songs');
   const { id } = useLocalSearchParams<{ id: string }>();
   const { queryScope } = useAuth();
   const theme = useTheme();
@@ -35,7 +37,7 @@ export default function SongbookDetailScreen() {
   if (book.isLoading) {
     return (
       <Screen>
-        <Loading label="Opening the song book" />
+        <Loading label={t('songbookPage.opening')} />
       </Screen>
     );
   }
@@ -43,7 +45,7 @@ export default function SongbookDetailScreen() {
     return (
       <Screen>
         <View style={styles.errorWrap}>
-          <ErrorNotice error={book.error ?? new Error('That song book could not be found.')} />
+          <ErrorNotice error={book.error ?? new LocalizedError({ key: 'songs:errors.songbookNotFound' })} />
         </View>
       </Screen>
     );
@@ -72,11 +74,11 @@ export default function SongbookDetailScreen() {
                 <IconWell name="document" accent={theme.accent.blue} size={44} />
                 <View style={styles.flex}>
                   <Text style={styles.documentName}>{detail.source_filename}</Text>
-                  <Text style={styles.documentMeta}>Attached document</Text>
+                  <Text style={styles.documentMeta}>{t('mobileSongbooks.attachedDocument')}</Text>
                 </View>
               </View>
               <Button
-                title="Open document"
+                title={t('mobileSongbooks.openDocument')}
                 icon="document"
                 onPress={() => {
                   if (documentUrl) void Linking.openURL(documentUrl);
@@ -97,7 +99,7 @@ export default function SongbookDetailScreen() {
                   <View style={styles.songHead}>
                     <View style={styles.flex}>
                       <Text style={styles.songTitle}>{item.song.title}</Text>
-                      <Text style={styles.songAuthor}>{item.song.author ?? 'Author unknown'}</Text>
+                      <Text style={styles.songAuthor}>{item.song.author ?? t('mobileSongs.authorUnknown')}</Text>
                     </View>
                     {item.arrangement?.song_key ? (
                       <KeyCap>{item.arrangement.song_key}</KeyCap>
@@ -106,7 +108,7 @@ export default function SongbookDetailScreen() {
                   {chart ? (
                     <ChordChart chart={chart} />
                   ) : (
-                    <Text style={styles.songAuthor}>No chart has been added for this song.</Text>
+                    <Text style={styles.songAuthor}>{t('songbookPage.noChart')}</Text>
                   )}
                 </Card>
               </Reveal>

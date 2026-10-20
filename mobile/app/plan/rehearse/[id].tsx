@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   ApiError,
+  LocalizedError,
   REHEARSAL_MANIFEST_TTL_SECONDS,
-  REHEARSAL_PLAYBACK_LABELS,
   formatDuration,
   formatFileSize,
   parseChordPro,
@@ -20,6 +21,11 @@ import { ChordChart } from '../../../src/components/ChordChart';
 import type { Theme } from '../../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
 
+const REHEARSAL_UNAVAILABLE = new LocalizedError({ key: 'plans:mobileRehearse.unavailable' });
+
+/** Why a file could not be opened, as a catalog key. */
+type MaterialOpenError = 'mobileRehearse.fileUnavailable' | 'mobileRehearse.fileOpenFailed';
+
 /**
  * F14 on native: the same rehearsal manifest the web player uses — plan
  * order, the chart in the service key and only the file versions this
@@ -29,6 +35,7 @@ import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
  */
 export default function RehearseScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t } = useTranslation(['plans', 'common']);
   const { queryScope } = useAuth();
   const styles = useThemedStyles(makeStyles);
   const manifest = useQuery({
@@ -41,18 +48,18 @@ export default function RehearseScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: 'Rehearse' }} />
+      <Stack.Screen options={{ title: t('rehearse.title') }} />
       {manifest.isLoading ? (
-        <Loading label="Loading rehearsal…" />
+        <Loading label={t('rehearse.loading')} />
       ) : !manifest.data ? (
         <View style={styles.pad}>
-          <ErrorNotice error={manifest.error ?? new Error('Rehearsal not available')} />
+          <ErrorNotice error={manifest.error ?? REHEARSAL_UNAVAILABLE} />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.title}>{manifest.data.plan_title}</Text>
           {manifest.error ? (
-            <Text style={styles.muted}>Could not refresh — showing the list loaded earlier. Access is rechecked when you open a file.</Text>
+            <Text style={styles.muted}>{t('mobileRehearse.refreshFailed')}</Text>
           ) : null}
           {manifest.data.items
             .filter((item) => item.item_type !== 'header')
@@ -65,7 +72,12 @@ export default function RehearseScreen() {
   );
 }
 
-const RehearseItemCard = ({ item }: { item: RehearsalManifestItem }) => {
+interface RehearseItemCardProps {
+  item: RehearsalManifestItem;
+}
+
+const RehearseItemCard = ({ item }: RehearseItemCardProps) => {
+  const { t } = useTranslation(['plans', 'common']);
   const styles = useThemedStyles(makeStyles);
   const theme = useTheme();
   const [showChart, setShowChart] = useState(false);
@@ -76,38 +88,38 @@ const RehearseItemCard = ({ item }: { item: RehearsalManifestItem }) => {
         <View style={styles.flex}>
           <Text style={styles.itemTitle}>{item.title}</Text>
           <Text style={styles.muted}>
-            {[item.arrangement?.name, item.tempo_bpm ? `${item.tempo_bpm} bpm` : null, formatDuration(item.length_seconds)]
+            {[item.arrangement?.name, item.tempo_bpm ? t('rehearse.bpm', { bpm: item.tempo_bpm }) : null, formatDuration(item.length_seconds)]
               .filter(Boolean)
               .join(' · ')}
           </Text>
         </View>
         {chart ? <KeyCap>{chart.key ?? '—'}</KeyCap> : null}
       </View>
-      {item.media ? <Tag label={`Media: ${item.media.title}${item.media.archived ? ' (archived)' : ''}`} accent={theme.accent.blue} /> : null}
+      {item.media ? <Tag label={t(item.media.archived ? 'rehearse.mediaArchived' : 'rehearse.media', { title: item.media.title })} accent={theme.accent.blue} /> : null}
       {chart && chart.sequence.length ? (
         <Text style={styles.muted}>
-          Sequence{chart.sequence_from_plan ? ' for this plan' : ''}: {chart.sequence.join(' · ')}
+          {t(chart.sequence_from_plan ? 'rehearse.sequenceForPlan' : 'rehearse.sequence', { sequence: chart.sequence.join(' · ') })}
         </Text>
       ) : null}
       {chart ? (
         chart.status === 'ready' && chart.chordpro ? (
           <>
-            <Button variant="quiet" title={showChart ? 'Hide chart' : `Show chart in ${chart.key ?? 'its key'}`} onPress={() => setShowChart((v) => !v)} />
+            <Button variant="quiet" title={showChart ? t('mobileRehearse.hideChart') : chart.key ? t('mobileRehearse.showChartIn', { key: chart.key }) : t('mobileRehearse.showChartOwnKey')} onPress={() => setShowChart((v) => !v)} />
             {showChart ? <ChordChart chart={parseChordPro(chart.chordpro)} /> : null}
           </>
         ) : (
           <Text style={styles.muted}>
             {chart.status === 'arrangement_missing'
-              ? 'The arrangement chosen for this item is no longer available.'
+              ? t('mobileRehearse.arrangementMissing')
               : chart.status === 'no_chart'
-                ? 'No chord chart on this arrangement yet.'
-                : "This chart's key is missing, so it can't be shown in the service key."}
+                ? t('rehearse.noChart')
+                : t('mobileRehearse.keyMissing')}
           </Text>
         )
       ) : null}
       {item.materials.length ? (
         <View>
-          <Label>Materials</Label>
+          <Label>{t('mobileRehearse.materials')}</Label>
           {item.materials.map((material, index) => (
             <View key={material.file_id}>
               {index > 0 ? <Divider /> : null}
@@ -116,16 +128,23 @@ const RehearseItemCard = ({ item }: { item: RehearsalManifestItem }) => {
           ))}
         </View>
       ) : item.item_type === 'song' || item.media ? (
-        <Text style={styles.muted}>No recordings or files you can open.</Text>
+        <Text style={styles.muted}>{t('mobileRehearse.noMaterials')}</Text>
       ) : null}
     </Card>
   );
 };
 
-const MaterialRow = ({ material, isTrack, chartKey }: { material: RehearsalMaterial; isTrack: boolean; chartKey: string | null }) => {
+interface MaterialRowProps {
+  material: RehearsalMaterial;
+  isTrack: boolean;
+  chartKey: string | null;
+}
+
+const MaterialRow = ({ material, isTrack, chartKey }: MaterialRowProps) => {
+  const { t } = useTranslation(['plans', 'common']);
   const styles = useThemedStyles(makeStyles);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<MaterialOpenError | null>(null);
   const open = async () => {
     setError(null);
     if (material.kind === 'link' && material.external_url) {
@@ -142,8 +161,8 @@ const MaterialRow = ({ material, isTrack, chartKey }: { material: RehearsalMater
     } catch (cause) {
       setError(
         cause instanceof ApiError && (cause.status === 403 || cause.status === 404)
-          ? 'This file is no longer available to you.'
-          : 'The file could not be opened. Try again.',
+          ? 'mobileRehearse.fileUnavailable'
+          : 'mobileRehearse.fileOpenFailed',
       );
     } finally {
       setBusy(false);
@@ -155,29 +174,30 @@ const MaterialRow = ({ material, isTrack, chartKey }: { material: RehearsalMater
       <View style={styles.row}>
         <View style={styles.flex}>
           <Text style={styles.materialTitle}>
-            {material.title}
-            {isTrack ? ' · rehearsal track' : ''}
+            {isTrack ? `${material.title} · ${t('mobileRehearse.rehearsalTrack')}` : material.title}
           </Text>
           <Text style={styles.muted}>
-            {REHEARSAL_PLAYBACK_LABELS[material.playback]}
-            {material.version_number ? ` · v${material.version_number}` : ''}
-            {material.size_bytes ? ` · ${formatFileSize(material.size_bytes)}` : ''}
-            {material.pinned ? ' · pinned' : ''}
-            {!external && !material.rights.download ? ' · play only' : ''}
+            {[
+              t(`playback.${material.playback}`),
+              ...(material.version_number ? [t('rehearse.version', { number: material.version_number })] : []),
+              ...(material.size_bytes ? [formatFileSize(material.size_bytes)] : []),
+              ...(material.pinned ? [t('rehearse.pinned')] : []),
+              ...(!external && !material.rights.download ? [t('mobileRehearse.playOnly')] : []),
+            ].join(' · ')}
           </Text>
         </View>
         {material.kind === 'document' ? (
-          <Text style={styles.muted}>On the web</Text>
+          <Text style={styles.muted}>{t('mobileRehearse.onTheWeb')}</Text>
         ) : (
-          <Button variant="secondary" title={external ? 'Open link' : 'Open'} loading={busy} onPress={() => void open()} />
+          <Button variant="secondary" title={external ? t('mobileRehearse.openLink') : t('common:actions.open')} loading={busy} onPress={() => void open()} />
         )}
       </View>
       {external ? (
-        <Text style={styles.muted}>Opens in another app or site; Service Center does not host or license it.</Text>
+        <Text style={styles.muted}>{t('mobileRehearse.externalNote')}</Text>
       ) : material.playback === 'audio' && chartKey ? (
-        <Text style={styles.muted}>Plays as recorded — its key is not changed to {chartKey}.</Text>
+        <Text style={styles.muted}>{t('mobileRehearse.recordedKeyNote', { key: chartKey })}</Text>
       ) : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={styles.error}>{t(error)}</Text> : null}
     </View>
   );
 };

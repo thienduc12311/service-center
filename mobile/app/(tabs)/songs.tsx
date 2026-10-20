@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import type { SongWithArrangements } from '@service-center/shared';
 import { api } from '../../src/lib/api';
@@ -25,6 +26,7 @@ import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
 export default function SongsScreen() {
+  const { t } = useTranslation(['songs', 'common']);
   const { queryScope } = useAuth();
   const router = useRouter();
   const theme = useTheme();
@@ -50,16 +52,16 @@ export default function SongsScreen() {
         ListHeaderComponent={
           <View style={styles.head}>
             <ScreenHeader
-              eyebrow={results.length ? `${results.length} in the library` : undefined}
-              title="Songs"
-              description="Search the catalogue, then open a chart to transpose it on stage."
+              eyebrow={results.length ? t('mobileSongs.inLibrary', { count: results.length }) : undefined}
+              title={t('common:nav.songs')}
+              description={t('mobileSongs.description')}
             />
 
             <View style={styles.search}>
               <Icon name="search" size={18} color={theme.color.inkFaint} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search by title"
+                placeholder={t('mobileSongs.searchPlaceholder')}
                 placeholderTextColor={theme.color.inkFaint}
                 value={query}
                 onChangeText={setQuery}
@@ -77,11 +79,11 @@ export default function SongsScreen() {
             <Loading />
           ) : (
             <EmptyState
-              title={query ? 'No match' : 'An empty library'}
+              title={query ? t('mobileSongs.noMatch') : t('mobileSongs.emptyLibrary')}
               description={
                 query
-                  ? `Nothing in the catalogue matches "${query}".`
-                  : 'Add songs from the web app to fill the catalogue.'
+                  ? t('mobileSongs.noMatchDescription', { query })
+                  : t('mobileSongs.emptyLibraryDescription')
               }
             />
           )
@@ -109,8 +111,9 @@ interface SongRowProps {
 }
 
 const SongRow = ({ song, onPress }: SongRowProps) => {
+  const { t } = useTranslation('songs');
   const styles = useThemedStyles(makeStyles);
-  const detail = [song.author, song.default_bpm ? `${song.default_bpm} bpm` : null]
+  const detail = [song.author, song.default_bpm ? t('arrangement.bpmValue', { bpm: song.default_bpm }) : null]
     .filter(Boolean)
     .join(' · ');
 
@@ -119,7 +122,7 @@ const SongRow = ({ song, onPress }: SongRowProps) => {
       <View style={styles.songRow}>
         <View style={styles.flex}>
           <Text style={styles.songTitle}>{song.title}</Text>
-          <Text style={styles.songDetail}>{detail || 'Author unknown'}</Text>
+          <Text style={styles.songDetail}>{detail || t('mobileSongs.authorUnknown')}</Text>
         </View>
         {song.default_key ? <KeyCap>{song.default_key}</KeyCap> : null}
       </View>

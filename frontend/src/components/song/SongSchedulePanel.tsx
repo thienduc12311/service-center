@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { formatDate } from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
+import { useFormatters } from '../../i18n';
 import { useSongSchedule } from '../../hooks/queries';
 import { ErrorNotice, Spinner } from '../ui';
 
@@ -13,13 +14,13 @@ export interface SongSchedulePanelProps {
 /** How many services back the panel looks. */
 const SCHEDULE_LIMITS: readonly number[] = [3, 6, 12];
 
-const SERVICE_DAY = { month: 'long', day: 'numeric', year: 'numeric' } as const;
-
 /**
  * When the song was last used: the most recent services it was scheduled in,
  * newest first, with the arrangement and key each one played.
  */
 export const SongSchedulePanel = ({ songId, arrangementId }: SongSchedulePanelProps) => {
+  const { t } = useTranslation('songs');
+  const formatters = useFormatters();
   const [limit, setLimit] = useState<number>(SCHEDULE_LIMITS[0]!);
   const schedule = useSongSchedule(songId, {
     limit,
@@ -31,19 +32,19 @@ export const SongSchedulePanel = ({ songId, arrangementId }: SongSchedulePanelPr
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
-        <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">Schedule</h2>
+        <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('schedule.title')}</h2>
         {schedule.isFetching && <Spinner className="size-3 text-slate-300" />}
       </div>
 
       <select
-        aria-label="How far back the schedule looks"
+        aria-label={t('schedule.limitLabel')}
         className="input mb-2"
         value={limit}
         onChange={(event) => setLimit(Number(event.target.value))}
       >
         {SCHEDULE_LIMITS.map((option) => (
           <option key={option} value={option}>
-            Since {option} Most Recent
+            {t('schedule.limitOption', { count: option })}
           </option>
         ))}
       </select>
@@ -54,10 +55,10 @@ export const SongSchedulePanel = ({ songId, arrangementId }: SongSchedulePanelPr
         {entries.length === 0 ? (
           <p className="px-4 py-3 text-xs text-slate-400">
             {schedule.isLoading
-              ? 'Looking up recent services…'
+              ? t('schedule.loading')
               : arrangementId
-                ? 'This arrangement has not been scheduled yet.'
-                : 'This song has not been scheduled yet.'}
+                ? t('schedule.emptyArrangement')
+                : t('schedule.emptySong')}
           </p>
         ) : (
           entries.map((entry) => (
@@ -67,7 +68,7 @@ export const SongSchedulePanel = ({ songId, arrangementId }: SongSchedulePanelPr
               className="block px-4 py-3 transition hover:bg-slate-50"
             >
               <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                {formatDate(entry.service_date, SERVICE_DAY)}
+                {formatters.calendarDate(entry.service_date, 'long')}
               </p>
               {entry.arrangement_name && (
                 <p className="text-xs text-slate-500">

@@ -1,0 +1,168 @@
+{
+  "teamsPage": {
+    "title": "Teams",
+    "subtitle": "Who serves where, and in which position.",
+    "newTeam": "New team",
+    "availability": "Availability",
+    "settings": "Settings",
+    "noMembers": "Nobody on this team yet.",
+    "addPerson": "+ Add person",
+    "empty": {
+      "title": "No teams yet",
+      "description": "Teams group the positions you schedule — Worship Band, Production, Hospitality.",
+      "action": "Create a team"
+    },
+    "create": {
+      "title": "New team",
+      "positions": "Positions",
+      "positionsPlaceholder": "Worship Leader, Acoustic Guitar, Bass, Drums",
+      "positionsHint": "Comma separated. You can add more later.",
+      "submit": "Create team"
+    },
+    "addMember": {
+      "title": "Add to {{team}}",
+      "hint": "Anyone on the roster can join a team, with or without a login. Archived people aren’t listed.",
+      "positionFor": "Position for {{name}}",
+      "addAs": "Add as…",
+      "noPosition": "No position"
+    }
+  },
+  "teamForm": {
+    "name": "Name",
+    "description": "Description",
+    "descriptionPlaceholder": "What this team does, and anything people should know before serving.",
+    "colour": "Colour"
+  },
+  "teamEditor": {
+    "title": "Edit {{team}}",
+    "saveDetails": "Save details",
+    "roles": "Roles",
+    "renameLabel": "Rename {{position}}",
+    "rename": "Rename",
+    "noRoles": "No roles on this team yet.",
+    "newRoleLabel": "New role name",
+    "newRolePlaceholder": "Add a role — Bass, Sound, Greeter…",
+    "addRole": "Add role",
+    "removeConfirm": "Delete the “{{position}}” role? People scheduled in it keep their assignment but lose the role."
+  },
+  "teamPolicy": {
+    "title": "{{team}} settings",
+    "leaders": {
+      "title": "Leaders",
+      "description": "Team leaders can schedule and manage {{team}} only — not other teams, plan order or the song library."
+    },
+    "newRequests": "New requests",
+    "visibility": {
+      "released": "Sent when scheduled",
+      "prepared": "Prepared privately until released"
+    },
+    "secure": {
+      "label": "Secure team",
+      "description": "People need a current eligibility record (for example a background check) before they can be added or scheduled. Missing or expired records block them.",
+      "requiredEligibility": "Required eligibility"
+    },
+    "tagRules": {
+      "label": "Suggest people tagged",
+      "placeholder": "camera, sound",
+      "hint": "Comma separated. Changes future suggestions only."
+    },
+    "viewers": {
+      "label": "Teams that can see this roster",
+      "hint": "Only matters when rosters are limited to teams (Settings → Access)."
+    },
+    "reminders": {
+      "title": "Reminders",
+      "description": "Overrides the service type and organization for this team's requests. Saved separately.",
+      "scope": "this team"
+    }
+  },
+  "availabilityRequests": {
+    "title": "{{team}} availability",
+    "ask": "Ask for availability",
+    "from": "From",
+    "to": "To",
+    "replyBy": "Reply by",
+    "message": "Message",
+    "whoGetsIt": "Who gets it",
+    "emailOnly": "email only",
+    "freshness": {
+      "current": "Up to date",
+      "stale": "Needs review",
+      "unknown": "Never reviewed"
+    },
+    "unreachable_one": "{{count}} selected person has no email or login and won’t be notified.",
+    "unreachable_other": "{{count}} selected people have no email or login and won’t be notified.",
+    "send_one": "Send to {{count}} person",
+    "send_other": "Send to {{count}} people",
+    "earlier": "Earlier requests",
+    "requestSummary": "{{responded}}/{{total}} responded · sent {{date}}",
+    "respondedAffirmed": "Confirmed no changes {{when}}",
+    "respondedUpdated": "Updated dates {{when}}",
+    "noReply": "No reply yet",
+    "noRequests": "No requests sent for this team yet."
+  },
+  "serviceTypeWizard": {
+    "notAllowed": "Only owners, admins and schedulers can add a Service Type.",
+    "fallbackName": "this service",
+    "back": "‹ Back",
+    "nextTimes": "Next: Add Times",
+    "nextTeams": "Next: Add Teams",
+    "finish": "Finish",
+    "timesInvalid": "Every service time needs a date, and must end after it starts.",
+    "steps": {
+      "name": "Name",
+      "times": "Times",
+      "teams": "Teams"
+    }
+  },
+  "nameStep": {
+    "title": "Add a Service Type",
+    "intro": "A Service Type is a type of service that happens at your church. They usually recur weekly and are named using the main name you communicate to your congregation.",
+    "examplesTitle": "Examples",
+    "examplesHint": "Pick one to fill in the name, then edit it freely.",
+    "examples": {
+      "weekend": "Weekend Service",
+      "sunday": "Sunday Service",
+      "specialEvents": "Special Events",
+      "contemporary": "Contemporary Service",
+      "traditional": "Traditional Service",
+      "recovery": "Celebrate Recovery",
+      "children": "Children's Ministry",
+      "highSchool": "High School",
+      "middleSchool": "Middle School"
+    },
+    "nameLabel": "What is your Service Type name?",
+    "namePlaceholder": "Main Service",
+    "recurrenceLabel": "Plans recur",
+    "recurrence": {
+      "weekly": "Weekly",
+      "biweekly": "Every other week",
+      "monthly": "Monthly",
+      "occasionally": "Occasionally"
+    }
+  },
+  "timesStep": {
+    "title": "Set up your service times",
+    "intro": "When can people attend <0>{{name}}</0>? Add the service time(s) for the first date you would like to plan below.",
+    "dateFor": "Date for service time {{number}}",
+    "from": "from",
+    "to": "to",
+    "startFor": "Start time for service time {{number}}",
+    "endFor": "End time for service time {{number}}",
+    "removeFor": "Remove service time {{number}}",
+    "addAnother": "+ Add another service time",
+    "footnote": "*If your service happens at 9am and 11am, add both times here. Do not add rehearsals or other times."
+  },
+  "teamsStep": {
+    "title": "Lastly, add teams you lead",
+    "intro": "Chances are, <0>{{name}}</0> needs some teams to make it happen. Create new teams by choosing any of these common teams. You can edit them, create your own, or copy teams from another Service Type later.",
+    "categories": {
+      "music": "Music",
+      "technical": "Technical",
+      "kids": "Kids",
+      "hospitality": "Hospitality",
+      "other": "Other"
+    },
+    "joinTeams": "Add me to any teams selected."
+  }
+}

@@ -33,12 +33,14 @@ invitationAcceptRouter.get('/:token', async (req, res) => {
 
   const [organization, person] = await Promise.all([
     unwrapOne(adminDb.from('organizations').select('name').eq('id', invitation.organization_id).single()),
-    unwrapOne(adminDb.from('people').select('first_name').eq('id', invitation.person_id).single()),
+    unwrapOne(adminDb.from('people').select('first_name, preferred_language').eq('id', invitation.person_id).single()),
   ]);
 
   const preview: InvitationPreview = {
     organization_name: organization.name,
-    person_first_name: person.first_name || 'there',
+    person_first_name: person.first_name || '',
+    // Token verified above: the invited Person's language may be used for this page.
+    preferred_language: person.preferred_language,
     email: invitation.email,
     role: invitation.role,
     expires_at: invitation.expires_at,

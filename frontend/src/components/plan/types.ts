@@ -10,16 +10,6 @@ export type PlanTab = 'order' | 'teams' | 'rehearse' | 'files' | 'stage' | 'atte
 
 export const PLAN_TABS: readonly PlanTab[] = ['order', 'teams', 'rehearse', 'files', 'stage', 'attendance', 'share'];
 
-export const PLAN_TAB_LABELS: Record<PlanTab, string> = {
-  order: 'Order',
-  teams: 'Teams',
-  rehearse: 'Rehearse',
-  files: 'Files',
-  stage: 'Stage',
-  attendance: 'Attendance',
-  share: 'Share',
-};
-
 /** One position on one team, as the plan's Teams tab shows it. */
 export interface PlanTeamPositionView {
   position: TeamPositionRow;

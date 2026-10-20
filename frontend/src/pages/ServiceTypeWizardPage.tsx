@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   COMMON_TEAM_TEMPLATES,
   toISODate,
@@ -27,6 +28,7 @@ const nextSunday = (): string => {
 const toInstant = (date: string, time: string): string => new Date(`${date}T${time}`).toISOString();
 
 export const ServiceTypeWizardPage = () => {
+  const { t } = useTranslation(['teams', 'common']);
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
   const { canAnywhere } = useAuth();
@@ -41,7 +43,7 @@ export const ServiceTypeWizardPage = () => {
   const [joinTeams, setJoinTeams] = useState(true);
 
   const trimmedName = name.name.trim();
-  const displayName = trimmedName || 'this service';
+  const displayName = trimmedName || t('serviceTypeWizard.fallbackName');
 
   /** Every row needs a date, and each service has to end after it starts. */
   const timesAreValid = useMemo(
@@ -80,7 +82,7 @@ export const ServiceTypeWizardPage = () => {
   if (!canManage) {
     return (
       <div className="card mx-auto max-w-lg p-6 text-center text-sm text-slate-500">
-        Only owners, admins and schedulers can add a Service Type.
+        {t('serviceTypeWizard.notAllowed')}
       </div>
     );
   }
@@ -115,7 +117,7 @@ export const ServiceTypeWizardPage = () => {
         <div className="flex items-center justify-between border-t border-slate-200 px-8 py-4">
           {step === 'name' ? (
             <Button type="button" variant="ghost" onClick={() => navigate('/plans')}>
-              Cancel
+              {t('common:actions.cancel')}
             </Button>
           ) : (
             <Button
@@ -123,23 +125,23 @@ export const ServiceTypeWizardPage = () => {
               variant="ghost"
               onClick={() => setStep(step === 'teams' ? 'times' : 'name')}
             >
-              ‹ Back
+              {t('serviceTypeWizard.back')}
             </Button>
           )}
 
           {step === 'name' && (
             <Button type="button" disabled={!trimmedName} onClick={() => setStep('times')}>
-              Next: Add Times
+              {t('serviceTypeWizard.nextTimes')}
             </Button>
           )}
           {step === 'times' && (
             <Button type="button" disabled={!timesAreValid} onClick={() => setStep('teams')}>
-              Next: Add Teams
+              {t('serviceTypeWizard.nextTeams')}
             </Button>
           )}
           {step === 'teams' && (
             <Button type="button" loading={setUp.isPending} onClick={() => setUp.mutate()}>
-              Finish
+              {t('serviceTypeWizard.finish')}
             </Button>
           )}
         </div>
@@ -147,7 +149,7 @@ export const ServiceTypeWizardPage = () => {
 
       {step === 'times' && !timesAreValid && (
         <p className="mt-3 text-center text-sm text-amber-600">
-          Every service time needs a date, and must end after it starts.
+          {t('serviceTypeWizard.timesInvalid')}
         </p>
       )}
     </div>

@@ -1,0 +1,92 @@
+{
+  "push": {
+    "title": "Service Center",
+    "body": "Mở ứng dụng để xem cập nhật lịch phục vụ."
+  },
+  "feed": {
+    "scheduled": "Bạn được phân công cho {{plan}}",
+    "reminder": "Nhắc nhở: {{plan}}",
+    "comingUp": "Sắp diễn ra: {{plan}}",
+    "roleAndDate": "{{role}} — {{date}}",
+    "responseConfirmed": "{{name}} đã xác nhận {{plan}}",
+    "responseDeclined": "{{name}} đã từ chối {{plan}}",
+    "responseWithdrew": "{{name}} đã rút khỏi {{plan}}",
+    "availabilityTitle": "Vui lòng cập nhật lịch rảnh của bạn",
+    "availabilityBody": "Từ {{start}} đến {{end}}",
+    "availabilityBodyRespondBy": "Từ {{start}} đến {{end}} · trả lời trước {{respondBy}}",
+    "commentMention": "{{name}} đã nhắc đến bạn trong “{{item}}”",
+    "commentReply": "{{name}} đã bình luận về “{{item}}”",
+    "anItem": "một mục",
+    "conversationMention": "{{name}} đã nhắc đến bạn trong {{place}}",
+    "conversationReply": "{{name}} đã trả lời bạn trong {{place}}",
+    "placeChat": "nhóm trò chuyện {{place}}",
+    "aConversation": "một cuộc trò chuyện",
+    "someone": "Một người"
+  },
+  "email": {
+    "greeting": "Chào {{name}},",
+    "greetingAnonymous": "Xin chào,",
+    "teamFallback": "Ban",
+    "rolePosition": "{{team}} — {{position}}",
+    "yourAssignments": "Phần phục vụ của bạn: {{roles}}.",
+    "schedule": {
+      "subject": "Phân công cho {{plan}}",
+      "reminderSubject": "Nhắc nhở: vui lòng trả lời cho {{plan}}",
+      "lead": "Bạn được phân công phục vụ trong {{plan}} vào {{date}}.",
+      "reminderLead": "Nhắc nhở: bạn chưa trả lời yêu cầu phục vụ trong {{plan}} vào {{date}}.",
+      "respondText": "Xác nhận hoặc từ chối: {{url}}",
+      "respondLink": "Xác nhận hoặc từ chối phân công này"
+    },
+    "consolidated": {
+      "subject_other": "Bạn được phân công cho {{count}} buổi nhóm",
+      "reminderSubject_other": "Nhắc nhở: {{count}} yêu cầu đang chờ bạn trả lời",
+      "intro_other": "Bạn đã được phân công cho {{count}} buổi nhóm.",
+      "reminderIntro_other": "Nhắc nhở: bạn chưa trả lời {{count}} yêu cầu.",
+      "separateLinks": "Mỗi buổi nhóm có liên kết riêng; trả lời một buổi không trả lời cho các buổi khác.",
+      "planHeading": "{{plan}} — {{date}}",
+      "respondText": "Xác nhận hoặc từ chối buổi nhóm này: {{url}}",
+      "respondLink": "Xác nhận hoặc từ chối {{plan}}",
+      "calendarName": "Các yêu cầu phục vụ"
+    },
+    "serviceReminder": {
+      "subject": "Sắp diễn ra: {{plan}}",
+      "lead": "Chào {{name}}, xin nhắc bạn đã xác nhận phục vụ trong {{plan}}.",
+      "leadAnonymous": "Xin chào, xin nhắc bạn đã xác nhận phục vụ trong {{plan}}.",
+      "firstTime": "Thời gian bạn cần có mặt đầu tiên: {{when}}.",
+      "location": "Địa điểm: {{location}}.",
+      "detailsText": "Chi tiết: {{url}}",
+      "detailsLink": "Xem chi tiết"
+    },
+    "response": {
+      "declinedSubject": "{{plan}} — phân công bị từ chối",
+      "withdrawnSubject": "{{plan}} — xác nhận đã được rút lại",
+      "declinedLead": "{{name}} đã từ chối {{plan}} vào {{date}}.",
+      "withdrawnLead": "{{name}} đã rút khỏi {{plan}} vào {{date}}.",
+      "openText": "Mở chương trình: {{url}}",
+      "openLink": "Mở chương trình"
+    },
+    "availability": {
+      "subject": "{{organization}}: vui lòng cập nhật lịch rảnh của bạn",
+      "lead": "{{organization}} đang lên kế hoạch cho khoảng thời gian từ {{start}} đến {{end}}. Vui lòng thêm những ngày bạn không thể phục vụ, hoặc xác nhận rằng lịch rảnh của bạn đã được cập nhật.",
+      "message": "Lời nhắn: {{message}}",
+      "respondBy": "Vui lòng trả lời trước {{date}}.",
+      "linkText": "Cập nhật lịch rảnh: {{url}}",
+      "link": "Cập nhật lịch rảnh"
+    },
+    "operational": {
+      "footer": "Được gửi bởi {{sender}} tại {{organization}}. Trả lời email này để liên lạc với người gửi.",
+      "aLeader": "một trưởng ban",
+      "viewText": "Xem trong Service Center: {{url}}",
+      "viewLink": "Xem trong Service Center"
+    },
+    "invitation": {
+      "subject": "Tham gia {{organization}}",
+      "lead": "Bạn đã được mời tham gia {{organization}}.",
+      "linkText": "Tham gia hội thánh: {{url}}",
+      "link": "Tham gia hội thánh"
+    }
+  },
+  "calendar": {
+    "feedName": "Lịch phục vụ Service Center"
+  }
+}

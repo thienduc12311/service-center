@@ -100,7 +100,7 @@ export const buildGenerationPlans = ({
     if (conflicted.has(date.local_date)) continue;
     const resolution = resolveTemplateTimes(content.times, date.local_date, timeZone, ambiguous);
     if (!resolution.ok) {
-      problems.push({ local_date: date.local_date, message: resolution.message });
+      problems.push({ local_date: date.local_date, message: resolution.message, problem: resolution.problem });
       continue;
     }
     plans.push({

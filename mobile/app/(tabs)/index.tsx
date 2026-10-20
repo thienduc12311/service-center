@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { formatDateTime } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -40,25 +40,10 @@ import {
 } from '../../src/lib/useAssignmentResponses';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
+import { useFormatters } from '../../src/i18n';
 
-const WINDOW_OPTIONS: readonly SegmentOption<ScheduleWindow>[] = [
-  { value: 'upcoming', label: 'Upcoming' },
-  { value: 'history', label: 'History' },
-];
-
-const FILTER_OPTIONS: readonly SegmentOption<ScheduleFilter>[] = [
-  { value: 'all', label: 'All' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'declined', label: 'Declined' },
-];
-
-const EMPTY_FILTER_COPY: Record<ScheduleFilter, string> = {
-  all: '',
-  pending: 'Nothing is waiting for your reply.',
-  confirmed: 'You have not confirmed any positions here.',
-  declined: 'You have not declined any positions here.',
-};
+const WINDOWS: readonly ScheduleWindow[] = ['upcoming', 'history'];
+const FILTERS: readonly Exclude<ScheduleFilter, 'all'>[] = ['pending', 'confirmed', 'declined'];
 
 export default function MyScheduleScreen() {
   const { queryScope, generation, isCurrentGeneration } = useAuth();
@@ -69,6 +54,19 @@ export default function MyScheduleScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [scheduleWindow, setScheduleWindow] = useState<ScheduleWindow>('upcoming');
   const [filter, setFilter] = useState<ScheduleFilter>('all');
+  const { t } = useTranslation(['scheduling', 'common']);
+
+  const windowOptions = useMemo<readonly SegmentOption<ScheduleWindow>[]>(
+    () => WINDOWS.map((value) => ({ value, label: t(`mySchedule.window.${value}`) })),
+    [t],
+  );
+  const filterOptions = useMemo<readonly SegmentOption<ScheduleFilter>[]>(
+    () => [
+      { value: 'all', label: t('common:states.all') },
+      ...FILTERS.map((value) => ({ value, label: t(`mySchedule.filter.${value}`) })),
+    ],
+    [t],
+  );
 
   const schedule = useQuery({
     queryKey: queryKeys.scheduleWindow(queryScope, scheduleWindow),
@@ -93,7 +91,9 @@ export default function MyScheduleScreen() {
 
   const summary =
     scheduleWindow === 'upcoming' && groups.length
-      ? `${groups.length} upcoming${awaiting ? ` · ${awaiting} awaiting your reply` : ''}`
+      ? awaiting
+        ? t('mySchedule.summaryAwaiting', { count: groups.length, awaiting })
+        : t('mySchedule.summary', { count: groups.length })
       : undefined;
 
   return (
@@ -115,28 +115,31 @@ export default function MyScheduleScreen() {
           <View style={styles.header}>
             <ScreenHeader
               eyebrow={summary}
-              title="My Schedule"
-              description="Every plan you're on, with each of your positions."
+              title={t('mySchedule.title')}
+              description={t('mySchedule.mobileDescription')}
             />
-            <SegmentedControl options={WINDOW_OPTIONS} value={scheduleWindow} onChange={setScheduleWindow} />
-            <SegmentedControl options={FILTER_OPTIONS} value={filter} onChange={setFilter} />
+            <SegmentedControl options={windowOptions} value={scheduleWindow} onChange={setScheduleWindow} />
+            <SegmentedControl options={filterOptions} value={filter} onChange={setFilter} />
             <ErrorNotice error={schedule.error} />
           </View>
         }
         ListEmptyComponent={
           schedule.isLoading ? (
-            <Loading label="Loading your schedule" />
+            <Loading label={t('mySchedule.loading')} />
           ) : schedule.error ? null : groups.length && filter !== 'all' ? (
-            <EmptyState title="No matching plans" description={EMPTY_FILTER_COPY[filter]} />
+            <EmptyState
+              title={t('mySchedule.noMatchingTitle')}
+              description={t(`mySchedule.emptyFilter.${filter}`)}
+            />
           ) : scheduleWindow === 'history' ? (
             <EmptyState
-              title="No past plans"
-              description="Plans you served on in the last year show up here."
+              title={t('mySchedule.noPastTitle')}
+              description={t('mySchedule.noPastDescription')}
             />
           ) : (
             <EmptyState
-              title="Nothing scheduled"
-              description="When someone puts you on a plan it lands here, and you can accept or decline without leaving this screen."
+              title={t('mySchedule.nothingScheduledTitle')}
+              description={t('mySchedule.nothingScheduledDescription')}
             />
           )
         }
@@ -166,6 +169,8 @@ const PlanGroupCard = ({ group, responses, canRespond, onOpen }: PlanGroupCardPr
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const count = group.responsibilities.length;
+  const { t } = useTranslation('scheduling');
+  const f = useFormatters();
 
   return (
     <Card>
@@ -173,15 +178,15 @@ const PlanGroupCard = ({ group, responses, canRespond, onOpen }: PlanGroupCardPr
         onPress={onOpen}
         pressedOpacity={0.65}
         accessibilityRole="button"
-        accessibilityLabel={`Open ${group.plan.title}`}
+        accessibilityLabel={t('mySchedule.openPlan', { title: group.plan.title })}
       >
         <View style={styles.topRow}>
-          <Text style={styles.date}>{formatDateTime(group.startsAt)}</Text>
+          <Text style={styles.date}>{f.dateTime(group.startsAt)}</Text>
           <GroupStatusTag status={group.status} />
         </View>
         <Text style={styles.title}>{group.plan.title}</Text>
         <Text style={styles.meta}>
-          {[group.plan.location, count > 1 ? `${count} positions` : null].filter(Boolean).join(' · ')}
+          {[group.plan.location, count > 1 ? t('mySchedule.positions', { count }) : null].filter(Boolean).join(' · ')}
         </Text>
         <View style={styles.times}>
           <ScheduleTimes times={group.times} responsibilities={group.responsibilities} />

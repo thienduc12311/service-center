@@ -1,26 +1,37 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TranslationKey } from '@service-center/shared';
 import { useAuth } from '../providers/AuthProvider';
 import { Avatar } from './ui';
 import { GlobalSearch } from './GlobalSearch';
 import { useTheme } from '../providers/ThemeProvider';
 
-const NAV = [
-  { to: '/', label: 'Dashboard', end: true },
-  { to: '/calendar', label: 'Calendar' },
-  { to: '/plans', label: 'Plans' },
-  { to: '/songs', label: 'Songs' },
-  { to: '/media', label: 'Media' },
-  { to: '/teams', label: 'Teams' },
-  { to: '/people', label: 'People' },
-  { to: '/my-schedule', label: 'My Schedule' },
-  { to: '/chat', label: 'Chat' },
-  { to: '/messages', label: 'Messages' },
+/** One entry of the main navigation; `label` is a common `nav.*` key. */
+interface NavItem {
+  to: string;
+  label: Extract<TranslationKey<'common'>, `nav.${string}`>;
+  end?: boolean;
+  leadersOnly?: boolean;
+}
+
+const NAV: readonly NavItem[] = [
+  { to: '/', label: 'nav.dashboard', end: true },
+  { to: '/calendar', label: 'nav.calendar' },
+  { to: '/plans', label: 'nav.plans' },
+  { to: '/songs', label: 'nav.songs' },
+  { to: '/media', label: 'nav.media' },
+  { to: '/teams', label: 'nav.teams' },
+  { to: '/people', label: 'nav.people' },
+  { to: '/my-schedule', label: 'nav.mySchedule' },
+  { to: '/chat', label: 'nav.chat' },
+  { to: '/messages', label: 'nav.messages' },
   // F16: leaders only (the reports API decides each report's access).
-  { to: '/reports', label: 'Reports', leadersOnly: true },
+  { to: '/reports', label: 'nav.reports', leadersOnly: true },
 ];
 
 export const AppShell = () => {
+  const { t } = useTranslation(['home', 'common']);
   const { user, organizationId, role, switchOrganization, signOut, canAnywhere } = useAuth();
   const leader = canAnywhere('scheduling.manage') || canAnywhere('plans.edit') || canAnywhere('songs.manage');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -36,7 +47,7 @@ export const AppShell = () => {
           <button
             onClick={() => navigate('/')}
             className="flex min-w-0 items-center gap-2 text-left"
-            aria-label="Service Center home"
+            aria-label={t('shell.homeLabel')}
           >
             {organization?.logo_url ? (
               <img src={organization.logo_url} alt="" className="size-9 shrink-0 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700" />
@@ -44,7 +55,7 @@ export const AppShell = () => {
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-700 text-sm font-bold text-white shadow-sm">SC</span>
             )}
             <span className="hidden max-w-xs truncate text-sm font-semibold text-slate-900 dark:text-white sm:block">
-              {organization?.name ?? 'Service Center'}
+              {organization?.name ?? t('common:app.name')}
             </span>
           </button>
 
@@ -54,13 +65,13 @@ export const AppShell = () => {
               type="button"
               onClick={() => setMode(resolved === 'dark' ? 'light' : 'dark')}
               className="grid size-9 place-items-center rounded-xl text-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-              aria-label={`Switch to ${resolved === 'dark' ? 'light' : 'dark'} theme`}
+              aria-label={resolved === 'dark' ? t('shell.switchToLight') : t('shell.switchToDark')}
             >
               {resolved === 'dark' ? '☀' : '☾'}
             </button>
             {user && user.memberships.length > 1 && (
               <select
-                aria-label="Active organization"
+                aria-label={t('common:nav.switchOrganization')}
                 className="input hidden w-48 sm:block"
                 value={organizationId ?? ''}
                 onChange={(event) => switchOrganization(event.target.value)}
@@ -90,22 +101,22 @@ export const AppShell = () => {
                   onMouseLeave={() => setMenuOpen(false)}
                 >
                   <div className="border-b border-slate-100 px-4 py-2 dark:border-slate-800">
-                    <p className="font-medium text-slate-800 dark:text-slate-100">{user?.profile.full_name ?? 'Signed in'}</p>
+                    <p className="font-medium text-slate-800 dark:text-slate-100">{user?.profile.full_name ?? t('shell.signedIn')}</p>
                     <p className="truncate text-xs text-slate-500">{user?.profile.email}</p>
-                    {role && <p className="mt-1 text-xs capitalize text-brand-600">{role}</p>}
+                    {role && <p className="mt-1 text-xs text-brand-600">{t(`common:roles.${role}`)}</p>}
                   </div>
                   <NavLink
                     to="/settings"
                     onClick={() => setMenuOpen(false)}
                     className="block px-4 py-2 text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
-                    Settings
+                    {t('common:nav.settings')}
                   </NavLink>
                   <button
                     onClick={() => void signOut()}
                     className="block w-full px-4 py-2 text-left text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
                   >
-                    Sign out
+                    {t('common:actions.signOut')}
                   </button>
                 </div>
               )}
@@ -115,9 +126,9 @@ export const AppShell = () => {
 
         {/* One scrollable row at every width: the full list never fits beside the
             brand and account controls, and wrapping labels break the bar. */}
-        <nav aria-label="Main" className="border-t border-slate-100 dark:border-slate-800">
+        <nav aria-label={t('common:nav.mainNavigation')} className="border-t border-slate-100 dark:border-slate-800">
           <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 py-2 sm:px-6">
-            {NAV.filter((item) => !('leadersOnly' in item) || leader).map((item) => (
+            {NAV.filter((item) => !item.leadersOnly || leader).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -130,7 +141,7 @@ export const AppShell = () => {
                   }`
                 }
               >
-                {item.label}
+                {t(`common:${item.label}`)}
               </NavLink>
             ))}
           </div>
@@ -142,7 +153,7 @@ export const AppShell = () => {
       </main>
 
       <footer className="border-t border-slate-200 px-4 py-4 text-center text-xs text-slate-400 dark:border-slate-800">
-        Service Center · Built for every worship community
+        {t('shell.footer')}
       </footer>
     </div>
   );

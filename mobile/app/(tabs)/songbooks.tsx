@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
-import { STORAGE_BUCKETS, type SongWithArrangements } from '@service-center/shared';
+import { LocalizedError, STORAGE_BUCKETS, type SongWithArrangements } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { supabase } from '../../src/lib/supabase';
@@ -33,10 +34,6 @@ import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
 type SongbookSource = 'manual' | 'document';
 
-const SOURCES: readonly SegmentOption<SongbookSource>[] = [
-  { value: 'manual', label: 'Pick songs' },
-  { value: 'document', label: 'Attach a file' },
-];
 
 const DOCUMENT_TYPES = [
   'application/pdf',
@@ -45,6 +42,7 @@ const DOCUMENT_TYPES = [
 ];
 
 export default function SongbooksScreen() {
+  const { t } = useTranslation(['songs', 'common']);
   const { canManage, queryScope, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
   const theme = useTheme();
@@ -82,11 +80,11 @@ export default function SongbooksScreen() {
         ListHeaderComponent={
           <View>
             <ScreenHeader
-              title="Song books"
-              description="Collections your team can carry into a rehearsal — either a set of charts or a single attached document."
+              title={t('common:nav.songbooks')}
+              description={t('mobileSongbooks.description')}
               action={
                 canManage ? (
-                  <Button title="New song book" icon="plus" onPress={() => setComposing(true)} />
+                  <Button title={t('mobileSongbooks.new')} icon="plus" onPress={() => setComposing(true)} />
                 ) : undefined
               }
             />
@@ -98,8 +96,8 @@ export default function SongbooksScreen() {
             <Loading />
           ) : (
             <EmptyState
-              title="No song books yet"
-              description="Group the songs you play together into a book, so nobody is hunting for charts on a Sunday morning."
+              title={t('songbooksPage.empty')}
+              description={t('mobileSongbooks.emptyDescription')}
             />
           )
         }
@@ -123,6 +121,7 @@ interface SongbookSummaryProps {
 }
 
 const SongbookSummary = ({ title, sourceType }: SongbookSummaryProps) => {
+  const { t } = useTranslation('songs');
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
@@ -134,7 +133,7 @@ const SongbookSummary = ({ title, sourceType }: SongbookSummaryProps) => {
       <View style={styles.flex}>
         <Text style={styles.bookTitle}>{title}</Text>
         <Text style={styles.bookMeta}>
-          {sourceType === 'document' ? 'Attached document' : 'Collected charts'}
+          {sourceType === 'document' ? t('mobileSongbooks.attachedDocument') : t('mobileSongbooks.collectedCharts')}
         </Text>
       </View>
     </View>
@@ -147,6 +146,11 @@ interface ComposeSongbookProps {
 }
 
 const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
+  const { t } = useTranslation(['songs', 'common']);
+  const sources: readonly SegmentOption<SongbookSource>[] = [
+    { value: 'manual', label: t('mobileSongbooks.pickSongs') },
+    { value: 'document', label: t('mobileSongbooks.attachFile') },
+  ];
   const { organizationId, queryScope, generation, isCurrentGeneration } = useAuth();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -169,8 +173,8 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
       let storagePath: string | null = null;
 
       if (source === 'document') {
-        if (!document || !organizationId) throw new Error('Choose a document first.');
-        if (!isCurrentGeneration(generation)) throw new Error('Your account changed. Try again.');
+        if (!document || !organizationId) throw new LocalizedError({ key: 'songs:errors.chooseDocumentFirst' });
+        if (!isCurrentGeneration(generation)) throw new LocalizedError({ key: 'songs:errors.accountChanged' });
         const safeName = document.name.replace(/[^a-zA-Z0-9._-]/g, '-');
         storagePath = `${organizationId}/${Date.now()}-${safeName}`;
         const bytes = new Uint8Array(await (await fetch(document.uri)).arrayBuffer());
@@ -178,10 +182,10 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
           .from(STORAGE_BUCKETS.songbooks)
           .upload(storagePath, bytes, { contentType: document.mimeType ?? 'application/pdf' });
         if (error) throw error;
-        if (!isCurrentGeneration(generation)) throw new Error('Your account changed. Try again.');
+        if (!isCurrentGeneration(generation)) throw new LocalizedError({ key: 'songs:errors.accountChanged' });
       }
 
-      if (!isCurrentGeneration(generation)) throw new Error('Your account changed. Try again.');
+      if (!isCurrentGeneration(generation)) throw new LocalizedError({ key: 'songs:errors.accountChanged' });
       return api.createSongbook({
         title,
         source_type: source,
@@ -220,23 +224,23 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
         automaticallyAdjustKeyboardInsets
       >
         <ScreenHeader
-          title="A new song book"
-          description="Give it a name, then either pick the charts it holds or attach the document you already have."
+          title={t('mobileSongbooks.composeTitle')}
+          description={t('mobileSongbooks.composeDescription')}
         />
 
         <Reveal>
           <Card>
             <Field
-              label="Name"
+              label={t('mobileSongbooks.name')}
               value={title}
               onChangeText={setTitle}
-              placeholder="Sunday morning set"
+              placeholder={t('mobileSongbooks.namePlaceholder')}
             />
-            <SegmentedControl options={SOURCES} value={source} onChange={setSource} />
+            <SegmentedControl options={sources} value={source} onChange={setSource} />
 
             {source === 'manual' ? (
               <View>
-                <Label>{`Songs · ${selected.length} chosen`}</Label>
+                <Label>{t('mobileSongbooks.songsChosen', { count: selected.length })}</Label>
                 {songs.isLoading ? <Loading /> : null}
                 {(songs.data?.data ?? []).map((song, index) => {
                   const active = selected.includes(song.id);
@@ -275,16 +279,16 @@ const ComposeSongbook = ({ onCancel, onCreated }: ComposeSongbookProps) => {
                 style={styles.dropZone}
               >
                 <Icon name="upload" size={26} color={theme.color.inkMuted} />
-                <Text style={styles.dropTitle}>{document?.name ?? 'Choose a document'}</Text>
-                <Text style={styles.dropHint}>PDF, DOCX or plain text</Text>
+                <Text style={styles.dropTitle}>{document?.name ?? t('songbooksPage.chooseDocument')}</Text>
+                <Text style={styles.dropHint}>{t('mobileSongbooks.documentHint')}</Text>
               </PressableScale>
             )}
 
             <ErrorNotice error={create.error} />
             <View style={styles.formActions}>
-              <Button title="Cancel" variant="secondary" onPress={onCancel} style={styles.flex} />
+              <Button title={t('common:actions.cancel')} variant="secondary" onPress={onCancel} style={styles.flex} />
               <Button
-                title="Create"
+                title={t('common:actions.create')}
                 onPress={() => create.mutate()}
                 loading={create.isPending}
                 disabled={incomplete}

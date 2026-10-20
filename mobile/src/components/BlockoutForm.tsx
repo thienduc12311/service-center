@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, Switch, Text, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useMutation } from '@tanstack/react-query';
 import {
-  addLocalDays, resolveOneOffBlockout, type AffectedAssignmentPreview, type BlockoutRow,
-  type PreviewBlockoutSeriesInput,
+  LocalizedError, addLocalDays, resolveOneOffBlockout, type AffectedAssignmentPreview, type BlockoutOccurrencePreview,
+  type BlockoutRow, type PreviewBlockoutSeriesInput,
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 import type { Theme } from '../lib/theme';
 import { useThemedStyles } from '../lib/useTheme';
 import { Button, ErrorNotice, Field, SegmentedControl, type SegmentOption } from './ui';
+import { useFormatters } from '../i18n';
 
 interface BlockoutFormProps {
   editing?: BlockoutRow | null;
@@ -21,16 +23,12 @@ interface BlockoutFormProps {
 type Repeat = 'none' | 'weekly' | 'monthly';
 type EndKind = 'count' | 'until';
 type PickerTarget = 'startDate' | 'endDate' | 'startTime' | 'endTime' | 'untilDate';
+type AmbiguousPolicy = 'earlier' | 'later';
 
-const REPEATS: readonly SegmentOption<Repeat>[] = [
-  { value: 'none', label: 'Once' }, { value: 'weekly', label: 'Weekly' }, { value: 'monthly', label: 'Monthly' },
-];
-const END_KINDS: readonly SegmentOption<EndKind>[] = [
-  { value: 'count', label: 'After' }, { value: 'until', label: 'Until' },
-];
-const AMBIGUOUS_POLICIES: readonly SegmentOption<'earlier' | 'later'>[] = [
-  { value: 'earlier', label: 'Earlier' }, { value: 'later', label: 'Later' },
-];
+// Values are API enums; labels are translated by value in the component.
+const REPEATS: readonly Repeat[] = ['none', 'weekly', 'monthly'];
+const END_KINDS: readonly EndKind[] = ['count', 'until'];
+const AMBIGUOUS_POLICIES: readonly AmbiguousPolicy[] = ['earlier', 'later'];
 const pad = (value: number): string => String(value).padStart(2, '0');
 const civilDate = (value: Date): string => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
 const civilTime = (value: Date): string => `${pad(value.getHours())}:${pad(value.getMinutes())}`;
@@ -49,6 +47,17 @@ const newIdempotencyKey = (): string => globalThis.crypto?.randomUUID?.()
 export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit }: BlockoutFormProps) => {
   const { user, organizationId, generation, isCurrentGeneration } = useAuth();
   const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation(['scheduling', 'common']);
+  const f = useFormatters();
+  const repeatOptions = useMemo<readonly SegmentOption<Repeat>[]>(
+    () => REPEATS.map((value) => ({ value, label: t(`blockoutForm.repeat.${value}`) })), [t],
+  );
+  const endKindOptions = useMemo<readonly SegmentOption<EndKind>[]>(
+    () => END_KINDS.map((value) => ({ value, label: t(`blockoutForm.endKind.${value}`) })), [t],
+  );
+  const ambiguousOptions = useMemo<readonly SegmentOption<AmbiguousPolicy>[]>(
+    () => AMBIGUOUS_POLICIES.map((value) => ({ value, label: t(`blockoutForm.ambiguous.${value}`) })), [t],
+  );
   const timezone = user?.memberships.find((item) => item.organization.id === organizationId)?.organization.timezone ?? 'UTC';
   const [allDay, setAllDay] = useState(true);
   const [startDate, setStartDate] = useState(initialDate());
@@ -60,10 +69,10 @@ export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit }: Blockout
   const [endKind, setEndKind] = useState<EndKind>('count');
   const [countText, setCountText] = useState('4');
   const [untilDate, setUntilDate] = useState(addLocalDays(initialDate(), 28));
-  const [ambiguousPolicy, setAmbiguousPolicy] = useState<'earlier' | 'later'>('earlier');
+  const [ambiguousPolicy, setAmbiguousPolicy] = useState<AmbiguousPolicy>('earlier');
   const [picker, setPicker] = useState<PickerTarget | null>(null);
   const [affected, setAffected] = useState<AffectedAssignmentPreview[] | null>(null);
-  const [occurrenceLabels, setOccurrenceLabels] = useState<string[]>([]);
+  const [occurrences, setOccurrences] = useState<BlockoutOccurrencePreview[]>([]);
   const [validationError, setValidationError] = useState<Error | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
 
@@ -104,7 +113,7 @@ export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit }: Blockout
     onSuccess: (result) => {
       if (!isCurrentGeneration(generation)) return;
       setAffected(result.affected_assignments);
-      setOccurrenceLabels(result.occurrences.slice(0, 8).map((item) => `${item.local_start_date}${item.local_start_time ? ` · ${item.local_start_time}` : ' · all day'}`));
+      setOccurrences(result.occurrences.slice(0, 8));
     },
   });
   const save = useMutation({
@@ -115,7 +124,7 @@ export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit }: Blockout
     },
     onSuccess: async () => {
       if (!isCurrentGeneration(generation)) return;
-      setReason(''); setAffected(null); setOccurrenceLabels([]); setIdempotencyKey(newIdempotencyKey());
+      setReason(''); setAffected(null); setOccurrences([]); setIdempotencyKey(newIdempotencyKey());
       await onSaved();
     },
   });
@@ -142,23 +151,23 @@ export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit }: Blockout
   };
 
   const submitReview = () => {
-    try { if (repeat !== 'none' && endKind === 'count' && (!Number.isInteger(Number(countText)) || Number(countText) < 1 || Number(countText) > 120)) throw new Error('Choose 1 to 120 occurrences.'); setValidationError(null); review.mutate(); }
-    catch (error) { setValidationError(error instanceof Error ? error : new Error('Check the blockout details.')); }
+    try { if (repeat !== 'none' && endKind === 'count' && (!Number.isInteger(Number(countText)) || Number(countText) < 1 || Number(countText) > 120)) throw new LocalizedError({ key: 'scheduling:blockoutForm.errors.count' }); setValidationError(null); review.mutate(); }
+    catch (error) { setValidationError(error instanceof Error ? error : new LocalizedError({ key: 'scheduling:blockoutForm.errors.invalid' })); }
   };
 
   return <View style={styles.form}>
-    <Text style={styles.description}>Organization timezone: {timezone}. Existing assignments are reviewed, never declined automatically.</Text>
-    <View style={styles.switchRow}><Text style={styles.label}>All day</Text><Switch value={allDay} onValueChange={(value) => { setAllDay(value); setAffected(null); }} /></View>
-    <View style={styles.row}><Button title={`Start · ${startDate}`} variant="secondary" onPress={() => setPicker('startDate')} /><Button title={`End · ${endDate}`} variant="secondary" onPress={() => setPicker('endDate')} /></View>
-    {!allDay ? <View style={styles.row}><Button title={`From · ${startTime}`} variant="secondary" onPress={() => setPicker('startTime')} /><Button title={`To · ${endTime}`} variant="secondary" onPress={() => setPicker('endTime')} /></View> : <Text style={styles.hint}>End date is exclusive: a one-day blockout ends at the following local midnight.</Text>}
-    {!allDay ? <><Text style={styles.label}>If the clock repeats this time</Text><SegmentedControl options={AMBIGUOUS_POLICIES} value={ambiguousPolicy} onChange={setAmbiguousPolicy} /><Text style={styles.hint}>A time skipped when the clock moves forward is rejected.</Text></> : null}
-    {!editing ? <><Text style={styles.label}>Repeat</Text><SegmentedControl options={REPEATS} value={repeat} onChange={(value) => { setRepeat(value); setAffected(null); }} />{repeat !== 'none' ? <><Text style={styles.label}>Ends</Text><SegmentedControl options={END_KINDS} value={endKind} onChange={setEndKind} />{endKind === 'count' ? <Field label="Occurrences" value={countText} keyboardType="number-pad" onChangeText={setCountText} /> : <Button title={`Until · ${untilDate}`} variant="secondary" onPress={() => setPicker('untilDate')} />}<Text style={styles.hint}>Monthly dates missing from a month are skipped.</Text></> : null}</> : null}
-    <Field label="Reason (private)" value={reason} onChangeText={(value) => { setReason(value); setAffected(null); }} placeholder="Away for a wedding" maxLength={200} />
+    <Text style={styles.description}>{t('blockoutForm.description', { timezone })}</Text>
+    <View style={styles.switchRow}><Text style={styles.label}>{t('blockoutForm.allDay')}</Text><Switch value={allDay} onValueChange={(value) => { setAllDay(value); setAffected(null); }} /></View>
+    <View style={styles.row}><Button title={t('blockoutForm.start', { date: f.calendarDate(startDate, 'medium') })} variant="secondary" onPress={() => setPicker('startDate')} /><Button title={t('blockoutForm.end', { date: f.calendarDate(endDate, 'medium') })} variant="secondary" onPress={() => setPicker('endDate')} /></View>
+    {!allDay ? <View style={styles.row}><Button title={t('blockoutForm.from', { time: startTime })} variant="secondary" onPress={() => setPicker('startTime')} /><Button title={t('blockoutForm.to', { time: endTime })} variant="secondary" onPress={() => setPicker('endTime')} /></View> : <Text style={styles.hint}>{t('blockoutForm.endExclusiveHint')}</Text>}
+    {!allDay ? <><Text style={styles.label}>{t('blockoutForm.ambiguousLabel')}</Text><SegmentedControl options={ambiguousOptions} value={ambiguousPolicy} onChange={setAmbiguousPolicy} /><Text style={styles.hint}>{t('blockoutForm.skippedHint')}</Text></> : null}
+    {!editing ? <><Text style={styles.label}>{t('blockoutForm.repeatLabel')}</Text><SegmentedControl options={repeatOptions} value={repeat} onChange={(value) => { setRepeat(value); setAffected(null); }} />{repeat !== 'none' ? <><Text style={styles.label}>{t('blockoutForm.endsLabel')}</Text><SegmentedControl options={endKindOptions} value={endKind} onChange={setEndKind} />{endKind === 'count' ? <Field label={t('blockoutForm.occurrences')} value={countText} keyboardType="number-pad" onChangeText={setCountText} /> : <Button title={t('blockoutForm.until', { date: f.calendarDate(untilDate, 'medium') })} variant="secondary" onPress={() => setPicker('untilDate')} />}<Text style={styles.hint}>{t('blockoutForm.monthlySkipHint')}</Text></> : null}</> : null}
+    <Field label={t('blockoutForm.reasonLabel')} value={reason} onChangeText={(value) => { setReason(value); setAffected(null); }} placeholder={t('blockoutForm.reasonPlaceholder')} maxLength={200} />
     {picker ? <DateTimePicker value={pickerValue} mode={picker.includes('Time') ? 'time' : 'date'} display={Platform.OS === 'ios' ? 'inline' : 'default'} timeZoneName={timezone} onChange={onPickerChange} /> : null}
     <ErrorNotice error={validationError ?? review.error ?? save.error} />
-    <Button title="Review blockout" variant="secondary" onPress={submitReview} loading={review.isPending} disabled={save.isPending} />
-    {affected ? <View style={styles.review}><Text style={styles.label}>Review</Text>{occurrenceLabels.map((label) => <Text key={label} style={styles.hint}>{label}</Text>)}<Text style={styles.description}>{affected.length ? `${affected.length} existing commitment time(s) overlap. Their answers will stay unchanged.` : 'No existing commitments overlap.'}</Text>{affected.map((item) => <Text key={`${item.assignment_id}:${item.time_id}`} style={styles.commitment}>{item.plan_title} · {item.time_name ?? item.time_kind ?? 'service'}</Text>)}<Button title={editing ? 'Save changes' : repeat === 'none' ? 'Save blockout' : 'Create series'} onPress={() => save.mutate()} loading={save.isPending} disabled={review.isPending} /></View> : null}
-    {editing && onCancelEdit ? <Button title="Cancel edit" variant="quiet" onPress={onCancelEdit} /> : null}
+    <Button title={t('blockoutForm.reviewButton')} variant="secondary" onPress={submitReview} loading={review.isPending} disabled={save.isPending} />
+    {affected ? <View style={styles.review}><Text style={styles.label}>{t('blockoutForm.reviewHeading')}</Text>{occurrences.map((item) => <Text key={item.occurrence_key} style={styles.hint}>{item.local_start_time ? t('blockoutForm.occurrenceTimed', { date: f.calendarDate(item.local_start_date, 'medium'), time: item.local_start_time }) : t('blockoutForm.occurrenceAllDay', { date: f.calendarDate(item.local_start_date, 'medium') })}</Text>)}<Text style={styles.description}>{affected.length ? t('blockoutForm.overlaps', { count: affected.length }) : t('blockoutForm.noOverlaps')}</Text>{affected.map((item) => <Text key={`${item.assignment_id}:${item.time_id}`} style={styles.commitment}>{t('blockoutForm.commitment', { plan: item.plan_title, time: item.time_name ?? t(`timeKind.${item.time_kind ?? 'service'}`) })}</Text>)}<Button title={editing ? t('common:actions.saveChanges') : repeat === 'none' ? t('blockoutForm.saveBlockout') : t('blockoutForm.createSeries')} onPress={() => save.mutate()} loading={save.isPending} disabled={review.isPending} /></View> : null}
+    {editing && onCancelEdit ? <Button title={t('blockoutForm.cancelEdit')} variant="quiet" onPress={onCancelEdit} /> : null}
   </View>;
 };
 

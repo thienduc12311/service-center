@@ -1,13 +1,21 @@
 import { useState } from 'react';
-import { formatDateTime, type DiscussionMention } from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
+import type { DiscussionMention } from '@service-center/shared';
+import { useErrorText, useFormatters } from '../../i18n';
 import { Avatar, Button } from '../ui';
 
-const RESOLUTION_TEXT: Record<DiscussionMention['resolution'], string | null> = {
-  notified: null,
-  no_access: 'not notified — no access here',
-  no_login: 'not notified — no sign-in',
-  muted: 'not notified — muted',
-};
+/** Mention outcomes worth telling the author about (everything but `notified`). */
+type UnnotifiedResolution = Exclude<DiscussionMention['resolution'], 'notified'>;
+
+const isUnnotified = (resolution: DiscussionMention['resolution']): resolution is UnnotifiedResolution =>
+  resolution !== 'notified';
+
+/** One button under an entry (reply, report, delete…); labels arrive translated. */
+export interface DiscussionEntryAction {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}
 
 export interface DiscussionEntryProps {
   authorName: string | null;
@@ -24,7 +32,7 @@ export interface DiscussionEntryProps {
   canEdit: boolean;
   onSaveEdit?: (body: string) => Promise<unknown>;
   /** Shown even on a removed entry, so a moderator can restore it. */
-  actions?: Array<{ label: string; onClick: () => void; danger?: boolean }>;
+  actions?: DiscussionEntryAction[];
 }
 
 /** One comment or chat message: author, time, text, mentions and actions. */
@@ -41,6 +49,9 @@ export const DiscussionEntry = ({
   onSaveEdit,
   actions = [],
 }: DiscussionEntryProps) => {
+  const { t } = useTranslation(['messages', 'common']);
+  const format = useFormatters();
+  const errorText = useErrorText();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(body);
   const [saving, setSaving] = useState(false);
@@ -51,8 +62,8 @@ export const DiscussionEntry = ({
       <Avatar name={authorName} size="sm" />
       <div className="min-w-0 flex-1 text-sm">
         <p className="flex flex-wrap items-baseline gap-x-2">
-          <span className="font-medium text-slate-800 dark:text-slate-100">{authorName ?? 'Someone'}</span>
-          <span className="text-xs text-slate-400">{formatDateTime(createdAt)}{editedAt && !removedLabel ? ' · edited' : ''}</span>
+          <span className="font-medium text-slate-800 dark:text-slate-100">{authorName ?? t('common:fallback.someone')}</span>
+          <span className="text-xs text-slate-400">{editedAt && !removedLabel ? t('entry.edited', { time: format.dateTime(createdAt) }) : format.dateTime(createdAt)}</span>
         </p>
         {quote && <p className="mt-0.5 border-l-2 border-slate-200 pl-2 text-xs text-slate-500">{quote}</p>}
         {removedLabel ? (
@@ -75,30 +86,32 @@ export const DiscussionEntry = ({
                     await onSaveEdit(draft.trim());
                     setEditing(false);
                   } catch (failure) {
-                    setError(failure instanceof Error ? failure.message : 'Could not save');
+                    setError(errorText(failure));
                   } finally {
                     setSaving(false);
                   }
                 }}
               >
-                Save
+                {t('common:actions.save')}
               </Button>
-              <Button variant="ghost" className="!py-1 text-xs" onClick={() => { setEditing(false); setDraft(body); }}>Cancel</Button>
+              <Button variant="ghost" className="!py-1 text-xs" onClick={() => { setEditing(false); setDraft(body); }}>{t('common:actions.cancel')}</Button>
             </div>
           </div>
         ) : (
           <p className="whitespace-pre-wrap break-words text-slate-700 dark:text-slate-200">{body}</p>
         )}
-        {showMentionOutcomes && mentions.some((m) => RESOLUTION_TEXT[m.resolution]) && (
+        {showMentionOutcomes && mentions.some((m) => isUnnotified(m.resolution)) && (
           <ul className="mt-1 space-y-0.5 text-xs text-amber-700">
-            {mentions.filter((m) => RESOLUTION_TEXT[m.resolution]).map((m) => (
-              <li key={m.person_id}>@{m.name}: {RESOLUTION_TEXT[m.resolution]}</li>
-            ))}
+            {mentions.map((m) =>
+              isUnnotified(m.resolution) ? (
+                <li key={m.person_id}>{t('entry.mentionOutcome', { name: m.name, outcome: t(`entry.resolution.${m.resolution}`) })}</li>
+              ) : null,
+            )}
           </ul>
         )}
         {!editing && ((canEdit && !removedLabel) || actions.length > 0) && (
           <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
-            {canEdit && !removedLabel && <button type="button" className="hover:underline" onClick={() => { setDraft(body); setEditing(true); }}>Edit</button>}
+            {canEdit && !removedLabel && <button type="button" className="hover:underline" onClick={() => { setDraft(body); setEditing(true); }}>{t('common:actions.edit')}</button>}
             {actions.map((action) => (
               <button
                 key={action.label}

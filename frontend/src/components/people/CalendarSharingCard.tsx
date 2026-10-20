@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../lib/api';
 import { keys } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
@@ -13,6 +14,7 @@ export interface CalendarSharingCardProps {
  * profile alone never appears anywhere; only the month and day are shown.
  */
 export const CalendarSharingCard = ({ personId }: CalendarSharingCardProps) => {
+  const { t } = useTranslation('people');
   const { organizationId } = useAuth();
   const queryClient = useQueryClient();
   const key = keys.personSharing(organizationId, personId);
@@ -25,8 +27,8 @@ export const CalendarSharingCard = ({ personId }: CalendarSharingCardProps) => {
   const current = sharing.data!;
   return (
     <section className="card space-y-2 p-5 text-sm">
-      <h2 className="font-semibold">Team calendars</h2>
-      <p className="text-slate-500">Show on calendars of teams this person is on (month and day only — never the year).</p>
+      <h2 className="font-semibold">{t('calendarSharing.title')}</h2>
+      <p className="text-slate-500">{t('calendarSharing.description')}</p>
       <label className="flex items-center gap-2">
         <input
           type="checkbox"
@@ -34,7 +36,7 @@ export const CalendarSharingCard = ({ personId }: CalendarSharingCardProps) => {
           disabled={save.isPending}
           onChange={(event) => save.mutate({ share_birthday: event.target.checked, share_anniversary: current.share_anniversary })}
         />
-        Birthday
+        {t('calendarSharing.birthday')}
       </label>
       <label className="flex items-center gap-2">
         <input
@@ -43,7 +45,7 @@ export const CalendarSharingCard = ({ personId }: CalendarSharingCardProps) => {
           disabled={save.isPending}
           onChange={(event) => save.mutate({ share_birthday: current.share_birthday, share_anniversary: event.target.checked })}
         />
-        Anniversary
+        {t('calendarSharing.anniversary')}
       </label>
       <ErrorNotice error={save.error} />
     </section>

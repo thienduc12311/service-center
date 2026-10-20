@@ -2,9 +2,8 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
-  ASSIGNMENT_STATUS_LABELS,
-  formatDateTime,
   formatDuration,
   resolvePlanItemChartContext,
   type AssignmentDetail,
@@ -44,6 +43,7 @@ import { groupStatus, mergeTimes, planResponsibilities } from '../../src/lib/sch
 import { useAssignmentResponses } from '../../src/lib/useAssignmentResponses';
 import { statusAccent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
+import { useFormatters } from '../../src/i18n';
 
 /** One team, and everyone on it for this plan. */
 interface TeamGroup {
@@ -53,6 +53,8 @@ interface TeamGroup {
 
 export default function PlanScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { t } = useTranslation(['plans', 'common']);
+  const format = useFormatters();
   const { can, user, queryScope } = useAuth();
   const router = useRouter();
   const theme = useTheme();
@@ -71,11 +73,11 @@ export default function PlanScreen() {
   const teams = useMemo<TeamGroup[]>(() => {
     const groups = new Map<string, AssignmentDetail[]>();
     for (const assignment of detail?.assignments ?? []) {
-      const key = assignment.team?.name ?? 'Unassigned';
+      const key = assignment.team?.name ?? t('mobilePlan.unassigned');
       groups.set(key, [...(groups.get(key) ?? []), assignment]);
     }
     return [...groups.entries()].map(([name, assignments]) => ({ name, assignments }));
-  }, [detail?.assignments]);
+  }, [detail?.assignments, t]);
 
   const prepared = useMemo(
     () => (detail?.assignments ?? []).filter((assignment) =>
@@ -138,7 +140,7 @@ export default function PlanScreen() {
   if (plan.isLoading) {
     return (
       <Screen>
-        <Loading label="Opening the plan" />
+        <Loading label={t('mobilePlan.opening')} />
       </Screen>
     );
   }
@@ -162,14 +164,14 @@ export default function PlanScreen() {
         <Reveal>
           <View style={styles.hero}>
             <Text style={styles.heroDate}>
-              {formatDateTime(detail.service_date)}
+              {format.dateTime(detail.service_date)}
             </Text>
             <Text style={styles.heroTitle}>{detail.title}</Text>
             <Text style={styles.heroMeta}>
               {[
                 detail.location,
-                `${formatDuration(detail.total_length_seconds)} programmed`,
-                `${detail.counts.songs} songs`,
+                t('mobilePlan.programmed', { duration: formatDuration(detail.total_length_seconds) }),
+                t('common:count.songs', { count: detail.counts.songs }),
               ]
                 .filter(Boolean)
                 .join('  ·  ')}
@@ -180,7 +182,7 @@ export default function PlanScreen() {
                 {detail.times.map((time) => (
                   <Tag
                     key={time.id}
-                    label={`${time.name ?? time.kind} · ${formatDateTime(time.starts_at)}`}
+                    label={t('mobilePlan.timeTag', { name: time.name ?? t(`timeKind.${time.kind}`), dateTime: format.dateTime(time.starts_at) })}
                     accent={time.kind === 'service' ? theme.accent.blue : theme.accent.yellow}
                   />
                 ))}
@@ -193,7 +195,7 @@ export default function PlanScreen() {
           <Reveal index={1}>
             <Card>
               <View style={styles.mineHeader}>
-                <Label>{mine.length > 1 ? 'Your positions' : 'Your position'}</Label>
+                <Label>{t('mobilePlan.yourPositions', { count: mine.length })}</Label>
                 <GroupStatusTag status={groupStatus(mine.map((item) => item.scopeStatus))} />
               </View>
               <ScheduleTimes times={myTimes} responsibilities={mine} />
@@ -207,10 +209,10 @@ export default function PlanScreen() {
         {prepared.length ? (
           <Reveal index={2}>
             <Card>
-              <Label>Prepared requests</Label>
+              <Label>{t('mobilePlan.preparedRequests')}</Label>
               {releasePreview ? (
                 <View style={styles.releaseReview}>
-                  <Text style={styles.muted}>Review the exact positions and attendance times before release.</Text>
+                  <Text style={styles.muted}>{t('mobilePlan.releaseReviewHint')}</Text>
                   {releasePreview.assignments.map((assignment) => (
                     <View key={assignment.assignment_id} style={styles.releaseItem}>
                       <Text style={styles.personName}>{assignment.person_name}</Text>
@@ -219,20 +221,20 @@ export default function PlanScreen() {
                       </Text>
                       {assignment.times.map((time) => (
                         <Text key={time.id} style={styles.muted}>
-                          {time.name ?? time.kind} · {formatDateTime(time.starts_at)}
+                          {t('mobilePlan.timeTag', { name: time.name ?? t(`timeKind.${time.kind}`), dateTime: format.dateTime(time.starts_at) })}
                         </Text>
                       ))}
                     </View>
                   ))}
                   <View style={styles.releaseActions}>
                     <Button
-                      title="Cancel"
+                      title={t('common:actions.cancel')}
                       variant="secondary"
                       disabled={release.isPending}
                       onPress={() => setReleasePreview(null)}
                     />
                     <Button
-                      title="Release and notify"
+                      title={t('mobilePlan.releaseAndNotify')}
                       loading={release.isPending}
                       onPress={() => release.mutate(releasePreview)}
                     />
@@ -240,7 +242,7 @@ export default function PlanScreen() {
                 </View>
               ) : (
                 <Button
-                  title={`Review and release ${prepared.length}`}
+                  title={t('mobilePlan.reviewAndRelease', { count: prepared.length })}
                   variant="secondary"
                   loading={previewRelease.isPending}
                   onPress={() => previewRelease.mutate()}
@@ -254,12 +256,12 @@ export default function PlanScreen() {
         <Reveal index={prepared.length ? 3 : 2}>
           <Card>
             <View style={styles.mineHeader}>
-              <Label>Order of service</Label>
+              <Label>{t('mobilePlan.orderOfService')}</Label>
               {detail.items.length ? (
                 <Button
                   variant="quiet"
                   icon="music"
-                  title="Rehearse"
+                  title={t('mobilePlan.rehearse')}
                   onPress={() => router.push({ pathname: '/plan/rehearse/[id]', params: { id: detail.id } })}
                 />
               ) : null}
@@ -307,14 +309,14 @@ export default function PlanScreen() {
                 )}
               </View>
             ) : (
-              <Text style={styles.muted}>Nothing has been added to the order yet.</Text>
+              <Text style={styles.muted}>{t('mobilePlan.emptyOrder')}</Text>
             )}
           </Card>
         </Reveal>
 
         <Reveal index={3}>
           <Card>
-            <Label>Who is serving</Label>
+            <Label>{t('mobilePlan.whoIsServing')}</Label>
             {teams.length ? (
               teams.map((group) => (
                 <View key={group.name} style={styles.teamGroup}>
@@ -327,14 +329,14 @@ export default function PlanScreen() {
                       />
                       <View style={styles.flex}>
                         <Text style={styles.personName}>
-                          {assignment.person?.full_name ?? assignment.person?.email ?? 'Unknown'}
+                          {assignment.person?.full_name ?? assignment.person?.email ?? t('common:states.unknown')}
                         </Text>
                         {assignment.position ? (
                           <Text style={styles.personRole}>{assignment.position.name}</Text>
                         ) : null}
                       </View>
                       <Tag
-                        label={ASSIGNMENT_STATUS_LABELS[assignment.status]}
+                        label={t(`common:assignmentStatus.${assignment.status}`)}
                         accent={statusAccent(theme, assignment.status)}
                       />
                     </View>
@@ -342,7 +344,7 @@ export default function PlanScreen() {
                 </View>
               ))
             ) : (
-              <Text style={styles.muted}>Nobody is scheduled yet.</Text>
+              <Text style={styles.muted}>{t('mobilePlan.nobodyScheduled')}</Text>
             )}
           </Card>
         </Reveal>
@@ -350,7 +352,7 @@ export default function PlanScreen() {
         {detail.notes ? (
           <Reveal index={4}>
             <Card>
-              <Label>Notes</Label>
+              <Label>{t('mobilePlan.notes')}</Label>
               <Text style={styles.notes}>{detail.notes}</Text>
             </Card>
           </Reveal>

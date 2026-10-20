@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import { formatDuration, type SongWithArrangements } from '@service-center/shared';
 import { Badge, Button, EmptyState } from '../ui';
+import { SONG_VOCABULARY_LABEL_KEYS } from './types';
 
 export interface AllArrangementsPanelProps {
   song: SongWithArrangements;
@@ -8,8 +10,14 @@ export interface AllArrangementsPanelProps {
   onAdd: () => void;
 }
 
+/** One labelled value of the song information block. */
+interface DetailProps {
+  label: string;
+  value: string | null;
+}
+
 /** One line of the copyright block, shown only when the song carries it. */
-const Detail = ({ label, value }: { label: string; value: string | null }) =>
+const Detail = ({ label, value }: DetailProps) =>
   value ? (
     <div>
       <dt className="text-xs uppercase tracking-wide text-slate-400">{label}</dt>
@@ -26,45 +34,53 @@ export const AllArrangementsPanel = ({
   canManage,
   onSelect,
   onAdd,
-}: AllArrangementsPanelProps) => (
+}: AllArrangementsPanelProps) => {
+  const { t } = useTranslation('songs');
+  /** Caption for a stored style/speed value; unknown values show as stored. */
+  const vocabularyLabel = (value: string | null): string | null => {
+    if (!value) return value;
+    const key = SONG_VOCABULARY_LABEL_KEYS[value];
+    return key ? t(key) : value;
+  };
+  return (
   <div className="space-y-6">
     <section className="card p-5">
       <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
-        Song Information
+        {t('songInfo.title')}
       </h2>
       <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Detail label="Authors" value={song.author} />
-        <Detail label="CCLI#" value={song.ccli_number} />
-        <Detail label="Copyright" value={song.copyright} />
-        <Detail label="Administration" value={song.administration} />
-        <Detail label="Default key" value={song.default_key} />
-        <Detail label="BPM" value={song.default_bpm === null ? null : String(song.default_bpm)} />
-        <Detail label="Meter" value={song.meter} />
-        <Detail label="Style" value={song.style} />
-        <Detail label="Speed" value={song.speed} />
+        <Detail label={t('songInfo.fields.authors')} value={song.author} />
+        <Detail label={t('songInfo.fields.ccli')} value={song.ccli_number} />
+        <Detail label={t('songInfo.fields.copyright')} value={song.copyright} />
+        <Detail label={t('songInfo.fields.administration')} value={song.administration} />
+        <Detail label={t('songInfo.fields.defaultKey')} value={song.default_key} />
+        <Detail label={t('arrangement.fields.bpm')} value={song.default_bpm === null ? null : String(song.default_bpm)} />
+        <Detail label={t('arrangement.fields.meter')} value={song.meter} />
+        <Detail label={t('addSong.fields.style')} value={vocabularyLabel(song.style)} />
+        <Detail label={t('addSong.fields.speed')} value={vocabularyLabel(song.speed)} />
       </dl>
     </section>
 
     <section>
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-          Arrangements ({song.arrangements.length})
+          {t('allArrangements.heading', { count: song.arrangements.length })}
         </h2>
         {canManage && (
           <Button variant="secondary" className="!py-1 text-xs" onClick={onAdd}>
-            Add an arrangement
+            {t('allArrangements.add')}
           </Button>
         )}
       </div>
 
       {song.arrangements.length === 0 ? (
         <EmptyState
-          title="No arrangements yet"
-          description="An arrangement holds the key, tempo and chart a plan points at."
+          title={t('allArrangements.empty')}
+          description={t('allArrangements.emptyDescription')}
           action={
             canManage ? (
               <Button variant="secondary" onClick={onAdd}>
-                Add an arrangement
+                {t('allArrangements.add')}
               </Button>
             ) : undefined
           }
@@ -83,15 +99,15 @@ export const AllArrangementsPanel = ({
                     {arrangement.name}
                   </span>
                   {arrangement.is_default && (
-                    <Badge tone="bg-brand-50 text-brand-700 ring-brand-600/20">Default</Badge>
+                    <Badge tone="bg-brand-50 text-brand-700 ring-brand-600/20">{t('arrangement.defaultBadge')}</Badge>
                   )}
                 </div>
 
                 <p className="mt-1 text-xs text-slate-500">
                   {[
-                    arrangement.song_key ?? 'No key',
-                    arrangement.capo === null ? null : `Capo ${arrangement.capo}`,
-                    arrangement.bpm === null ? null : `${arrangement.bpm} bpm`,
+                    arrangement.song_key ?? t('arrangement.noKey'),
+                    arrangement.capo === null ? null : t('arrangement.capoValue', { capo: arrangement.capo }),
+                    arrangement.bpm === null ? null : t('arrangement.bpmValue', { bpm: arrangement.bpm }),
                     arrangement.meter,
                     arrangement.length_seconds === null
                       ? null
@@ -105,8 +121,8 @@ export const AllArrangementsPanel = ({
                   {arrangement.sequence.length > 0
                     ? arrangement.sequence.join(', ')
                     : arrangement.chord_chart
-                      ? 'Chart added'
-                      : 'No chart yet'}
+                      ? t('allArrangements.chartAdded')
+                      : t('allArrangements.noChart')}
                 </p>
               </button>
             </li>
@@ -115,4 +131,5 @@ export const AllArrangementsPanel = ({
       )}
     </section>
   </div>
-);
+  );
+};

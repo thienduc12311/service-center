@@ -20,6 +20,8 @@
  * as a single unbroken column.
  */
 
+import { translatorFor } from '../i18n/engine.js';
+import type { SupportedLocale } from '../i18n/locales.js';
 import type { ChartColumns } from '../types/database.js';
 import { parseChordPro, renderLineAsText, type ChordProSection } from './chordpro.js';
 
@@ -73,6 +75,8 @@ export interface ChartDocument {
   /** The chart itself, in ChordPro. */
   chordpro: string;
   formatting: ChartFormatting;
+  /** Language of the application-owned byline wording and the page; defaults to English. */
+  locale?: SupportedLocale;
 }
 
 /** The reusable pieces of a chart document after its display text is resolved. */
@@ -100,11 +104,12 @@ export const chartDocumentTitle = ({ title, key }: Pick<ChartDocument, 'title' |
   key ? `${title} [${key}]` : title;
 
 /** `[Default Arrangement] by Jonathan Hunt`, with either half optional. */
-const byline = ({ arrangementName, author }: ChartDocument): string | null => {
-  const parts: string[] = [];
-  if (arrangementName) parts.push(`[${arrangementName}]`);
-  if (author) parts.push(parts.length ? `by ${author}` : author);
-  return parts.length ? parts.join(' ') : null;
+const byline = ({ arrangementName, author, locale }: ChartDocument): string | null => {
+  if (arrangementName && author) {
+    return translatorFor(locale ?? 'en', 'songs')('chartDocument.byline', { arrangement: arrangementName, author });
+  }
+  if (arrangementName) return `[${arrangementName}]`;
+  return author;
 };
 
 /** One line of a chart: chords on top, the words they sit over underneath. */
@@ -606,7 +611,7 @@ export const renderChartHtml = (doc: ChartDocument): string => {
   const markup = chartDocumentMarkup(doc);
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${doc.locale ?? 'en'}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

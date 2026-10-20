@@ -1,4 +1,5 @@
 import { useRef, type KeyboardEvent, type PointerEvent, type Ref } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { StageBackground, StageObject } from '@service-center/shared';
 
 /** Drawing units; objects are stored as fractions of this box. */
@@ -19,7 +20,12 @@ export interface StageCanvasProps {
 
 const clamp = (value: number): number => Math.min(1, Math.max(0, value));
 
-const Background = ({ kind }: { kind: StageBackground }) => {
+interface BackgroundProps {
+  kind: StageBackground;
+}
+
+const Background = ({ kind }: BackgroundProps) => {
+  const { t } = useTranslation('media');
   const line = { fill: 'none', stroke: '#94a3b8', strokeWidth: 3 } as const;
   switch (kind) {
     case 'stage':
@@ -27,21 +33,21 @@ const Background = ({ kind }: { kind: StageBackground }) => {
         <g>
           <rect x={60} y={40} width={880} height={430} rx={8} {...line} />
           <line x1={60} y1={470} x2={940} y2={470} stroke="#64748b" strokeWidth={6} />
-          <text x={500} y={570} textAnchor="middle" fontSize={22} fill="#64748b">AUDIENCE</text>
+          <text x={500} y={570} textAnchor="middle" fontSize={22} fill="#64748b">{t('stage.canvas.audience')}</text>
         </g>
       );
     case 'thrust':
       return (
         <g>
           <path d="M60 40 H940 V330 H700 V500 H300 V330 H60 Z" {...line} />
-          <text x={500} y={570} textAnchor="middle" fontSize={22} fill="#64748b">AUDIENCE</text>
+          <text x={500} y={570} textAnchor="middle" fontSize={22} fill="#64748b">{t('stage.canvas.audience')}</text>
         </g>
       );
     case 'round':
       return (
         <g>
           <circle cx={500} cy={300} r={230} {...line} />
-          <text x={500} y={30} textAnchor="middle" fontSize={20} fill="#64748b">AUDIENCE ALL SIDES</text>
+          <text x={500} y={30} textAnchor="middle" fontSize={20} fill="#64748b">{t('stage.canvas.audienceAllSides')}</text>
         </g>
       );
     default:
@@ -54,6 +60,7 @@ const Background = ({ kind }: { kind: StageBackground }) => {
  * arrow keys when selected (Shift for bigger steps); nothing here saves.
  */
 export const StageCanvas = ({ ref, background, objects, selectedId, editable, flagged, onSelect, onMove }: StageCanvasProps) => {
+  const { t } = useTranslation('media');
   const box = useRef<SVGSVGElement | null>(null);
   const dragging = useRef<{ id: string; dx: number; dy: number } | null>(null);
 
@@ -106,7 +113,7 @@ export const StageCanvas = ({ ref, background, objects, selectedId, editable, fl
       viewBox={`0 0 ${W} ${H}`}
       xmlns="http://www.w3.org/2000/svg"
       role="group"
-      aria-label="Stage diagram"
+      aria-label={t('stage.canvas.label')}
       className="w-full touch-none select-none rounded-lg bg-white ring-1 ring-slate-200 dark:ring-slate-700"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onSelect(null);
@@ -129,7 +136,11 @@ export const StageCanvas = ({ ref, background, objects, selectedId, editable, fl
             tabIndex={0}
             role="button"
             aria-pressed={selected}
-            aria-label={`${object.kind === 'person' ? 'Person' : object.kind === 'gear' ? 'Gear' : 'Label'}: ${object.label}${flaggedObject ? ' (staffing changed)' : ''}`}
+            aria-label={
+              flaggedObject
+                ? t('stage.canvas.objectFlagged', { kind: t(`stage.kinds.${object.kind}`), label: object.label })
+                : t('stage.canvas.object', { kind: t(`stage.kinds.${object.kind}`), label: object.label })
+            }
             style={{ cursor: editable ? 'move' : 'default', outline: 'none' }}
             onPointerDown={(event) => startDrag(event, object)}
             onPointerMove={drag}

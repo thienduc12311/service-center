@@ -11,7 +11,10 @@ import type { PlanSchedule } from '../types/plan-order.js';
 import { escapeHtml } from './chart-html.js';
 import { resolvePlanItemChartContext } from './chart-context.js';
 import { formatDuration } from './dates.js';
-import { computePlanSchedule, describeItemLeader, resolveItemLeader, selectServiceTime } from './plan-order.js';
+import { computePlanSchedule, resolveItemLeader, selectServiceTime } from './plan-order.js';
+import type { ItemLeader } from '../types/plan-order.js';
+import { translatorFor, type FixedTranslator } from '../i18n/engine.js';
+import { formatLocaleFor, type SupportedLocale } from '../i18n/locales.js';
 
 export interface RunSheetRow {
   itemId: string;
@@ -31,6 +34,8 @@ export interface RunSheetRow {
 }
 
 export interface RunSheetDocument {
+  /** Language of every application-owned label; authored content is unchanged. */
+  locale: SupportedLocale;
   title: string;
   subtitle: string;
   timeZone: string;
@@ -58,20 +63,49 @@ export interface RunSheetInput {
   includeLeaders: boolean;
   /** Position names from teams, for unfilled leader positions. */
   positionNames?: ReadonlyMap<string, string>;
+  /** Language for labels, warnings and clock formatting; defaults to English. */
+  locale?: SupportedLocale;
 }
 
-const clock = (instant: string, timeZone: string): string =>
-  new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date(instant));
+type PlansTranslator = FixedTranslator<'plans'>;
+
+/** A resolved leader in words, in the printer's language. Names stay as authored. */
+export const itemLeaderText = (leader: ItemLeader, t: PlansTranslator): string | null => {
+  switch (leader.kind) {
+    case 'none':
+      return null;
+    case 'person':
+      return leader.name ?? t('runSheet.leader.someoneOnRoster');
+    case 'position': {
+      const position = leader.position_name ?? t('runSheet.leader.position');
+      if (leader.holders.length === 0) return t('runSheet.leader.unfilled', { position });
+      const names = leader.holders.map((holder) => {
+        const name = holder.name ?? t('runSheet.leader.someone');
+        return holder.prepared ? t('runSheet.leader.notYetAsked', { name }) : name;
+      });
+      return t('runSheet.leader.holders', { position, names: names.join(', ') });
+    }
+  }
+};
+
+/** Clock times always in the organization's zone; only the presentation follows the language. */
+const clock = (instant: string, timeZone: string, locale: SupportedLocale): string =>
+  new Intl.DateTimeFormat(formatLocaleFor(locale), { timeZone, hour: 'numeric', minute: '2-digit' }).format(new Date(instant));
 
 export const runSheetDocumentFromPlan = (input: RunSheetInput): { document: RunSheetDocument; schedule: PlanSchedule } => {
   const { plan, timeZone } = input;
+  const locale = input.locale ?? 'en';
+  const t = translatorFor(locale, 'plans');
   const time = selectServiceTime(plan.times, input.timeId) ?? null;
   const schedule = computePlanSchedule({ items: plan.items, time });
   const timing = new Map(schedule.items.map((row) => [row.item_id, row]));
   const selected = new Set(input.selectedCategoryIds);
   const categoryName = new Map(input.categories.map((category) => [category.id, category.name]));
   const noteLine = (note: PlanNote): string =>
-    `${note.category_id ? (categoryName.get(note.category_id) ?? 'Note') : 'Note'}: ${note.body}`;
+    t('runSheet.noteLine', {
+      category: (note.category_id ? categoryName.get(note.category_id) : undefined) ?? t('runSheet.note'),
+      body: note.body,
+    });
   const printable = input.notes.filter((note) => selected.has(note.category_id));
 
   const rows: RunSheetRow[] = plan.items.map((item) => {
@@ -79,13 +113,13 @@ export const runSheetDocumentFromPlan = (input: RunSheetInput): { document: RunS
     const ready = context.status === 'ready' ? context : null;
     const slot = timing.get(item.id);
     const leader = input.includeLeaders
-      ? describeItemLeader(resolveItemLeader({ item, assignments: plan.assignments, positionNames: input.positionNames }))
+      ? itemLeaderText(resolveItemLeader({ item, assignments: plan.assignments, positionNames: input.positionNames }), t)
       : null;
     return {
       itemId: item.id,
       kind: item.item_type,
       segment: item.service_segment ?? 'service',
-      start: slot && item.item_type !== 'header' ? clock(slot.starts_at, timeZone) : null,
+      start: slot && item.item_type !== 'header' ? clock(slot.starts_at, timeZone, locale) : null,
       durationSeconds: item.item_type === 'header' ? 0 : item.length_seconds,
       title: item.title,
       key: ready?.displayKey ?? null,
@@ -100,12 +134,12 @@ export const runSheetDocumentFromPlan = (input: RunSheetInput): { document: RunS
   const warnings = schedule.warnings.map((warning) => {
     switch (warning.code) {
       case 'runs_over':
-        return `The service items run ${formatDuration(warning.seconds ?? 0)} past the scheduled end.`;
+        return t('runSheet.warnings.runsOver', { duration: formatDuration(warning.seconds ?? 0) });
       case 'no_service_time':
-        return 'This plan has no service time, so no clock times are shown.';
+        return t('runSheet.warnings.noServiceTime');
       case 'segment_out_of_order': {
-        const title = plan.items.find((item) => item.id === warning.item_id)?.title ?? 'An item';
-        return `“${title}” is marked before/after the service but listed among service items.`;
+        const title = plan.items.find((item) => item.id === warning.item_id)?.title ?? t('runSheet.anItem');
+        return t('runSheet.warnings.segmentOutOfOrder', { title });
       }
     }
   });
@@ -113,13 +147,17 @@ export const runSheetDocumentFromPlan = (input: RunSheetInput): { document: RunS
   return {
     schedule,
     document: {
+      locale,
       title: plan.title,
       subtitle: [input.organizationName, plan.location].filter(Boolean).join(' · '),
       timeZone,
       serviceTimeLabel: time
-        ? `${time.name ?? 'Service'} — ${new Intl.DateTimeFormat('en-US', { timeZone, dateStyle: 'full', timeStyle: 'short' }).format(new Date(time.starts_at))}`
+        ? t('runSheet.serviceTimeLabel', {
+            name: time.name ?? t('runSheet.serviceFallback'),
+            when: new Intl.DateTimeFormat(formatLocaleFor(locale), { timeZone, dateStyle: 'full', timeStyle: 'short' }).format(new Date(time.starts_at)),
+          })
         : null,
-      plannedFinish: schedule.planned_finish_at ? clock(schedule.planned_finish_at, timeZone) : null,
+      plannedFinish: schedule.planned_finish_at ? clock(schedule.planned_finish_at, timeZone, locale) : null,
       totals: { pre: schedule.pre_seconds, service: schedule.service_seconds, post: schedule.post_seconds },
       warnings,
       rows,
@@ -128,14 +166,12 @@ export const runSheetDocumentFromPlan = (input: RunSheetInput): { document: RunS
   };
 };
 
-const SEGMENT_LABEL = { pre: 'Before the service', service: 'Service', post: 'After the service' } as const;
-
-const renderRow = (row: RunSheetRow): string => {
+const renderRow = (row: RunSheetRow, t: PlansTranslator): string => {
   if (row.kind === 'header') {
     return `<tr class="header"><td></td><td></td><th colspan="2" scope="row">${escapeHtml(row.title)}</th></tr>`;
   }
   const details = [
-    row.key ? `Key ${escapeHtml(row.key)}` : '',
+    row.key ? escapeHtml(t('runSheet.key', { key: row.key })) : '',
     row.arrangementName ? escapeHtml(row.arrangementName) : '',
     row.sequence.length ? escapeHtml(row.sequence.join(' · ')) : '',
   ].filter(Boolean).join(' — ');
@@ -149,15 +185,16 @@ const renderRow = (row: RunSheetRow): string => {
 };
 
 export const renderRunSheetHtml = (doc: RunSheetDocument): string => {
+  const t = translatorFor(doc.locale, 'plans');
   const segments = (['pre', 'service', 'post'] as const)
     .map((segment) => {
       const rows = doc.rows.filter((row) => row.segment === segment);
       if (!rows.length) return '';
-      return `<tbody><tr class="segment"><th colspan="4" scope="rowgroup">${SEGMENT_LABEL[segment]} · ${escapeHtml(formatDuration(doc.totals[segment]))}</th></tr>${rows.map(renderRow).join('')}</tbody>`;
+      return `<tbody><tr class="segment"><th colspan="4" scope="rowgroup">${escapeHtml(t(`runSheet.segment.${segment}`))} · ${escapeHtml(formatDuration(doc.totals[segment]))}</th></tr>${rows.map((row) => renderRow(row, t)).join('')}</tbody>`;
     })
     .join('');
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(doc.title)} — running order</title>
+<html lang="${doc.locale}"><head><meta charset="utf-8"><title>${escapeHtml(t('runSheet.documentTitle', { title: doc.title }))}</title>
 <style>
   @page { size: letter portrait; margin: 0.5in; }
   body { font: 11pt/1.35 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #111; margin: 0; }
@@ -176,11 +213,11 @@ export const renderRunSheetHtml = (doc: RunSheetDocument): string => {
 </style></head>
 <body>
   <h1>${escapeHtml(doc.title)}</h1>
-  <p class="sub">${escapeHtml([doc.subtitle, doc.serviceTimeLabel].filter(Boolean).join(' · '))}${doc.plannedFinish ? ` · Planned finish ${escapeHtml(doc.plannedFinish)}` : ''} · Times in ${escapeHtml(doc.timeZone)}</p>
+  <p class="sub">${escapeHtml([doc.subtitle, doc.serviceTimeLabel].filter(Boolean).join(' · '))}${doc.plannedFinish ? ` · ${escapeHtml(t('runSheet.plannedFinish', { time: doc.plannedFinish }))}` : ''} · ${escapeHtml(t('runSheet.timesIn', { zone: doc.timeZone }))}</p>
   ${doc.warnings.map((warning) => `<p class="warn">${escapeHtml(warning)}</p>`).join('')}
   ${doc.planNotes.map((note) => `<div class="note">${escapeHtml(note)}</div>`).join('')}
   <table>
-    <thead><tr><th scope="col">Start</th><th scope="col">Length</th><th scope="col">Item</th><th scope="col">Leader</th></tr></thead>
+    <thead><tr><th scope="col">${escapeHtml(t('runSheet.columns.start'))}</th><th scope="col">${escapeHtml(t('runSheet.columns.length'))}</th><th scope="col">${escapeHtml(t('runSheet.columns.item'))}</th><th scope="col">${escapeHtml(t('runSheet.columns.leader'))}</th></tr></thead>
     ${segments}
   </table>
 </body></html>`;

@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { ASSIGNMENT_STATUS_LABELS, type AssignmentDetail } from '@service-center/shared';
+import { Trans, useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import type { AssignmentDetail } from '@service-center/shared';
 import { Avatar, Button, EmptyState } from '../ui';
 import { assignmentDot } from '../../lib/format';
 import type { PlanTeamPositionView, PlanTeamView } from './types';
 import { attendanceSummary } from './attendance';
 
 /** "All times" stays explicit so a later-added time's effect is visible. */
-const attendanceLabel = (assignment: AssignmentDetail): string =>
+const attendanceLabel = (assignment: AssignmentDetail, t: TFunction<'staffing'>): string =>
   assignment.attendance_mode === 'all' && assignment.attendance.some((interval) => interval.source === 'plan_time')
-    ? `All times · ${attendanceSummary(assignment.attendance)}`
+    ? t('teamsTab.allTimesSummary', { summary: attendanceSummary(assignment.attendance) })
     : attendanceSummary(assignment.attendance);
 
 export interface TeamsTabProps {
@@ -52,7 +54,9 @@ export const TeamsTab = ({
   overrideReasons,
   showAllTeams,
   onToggleAllTeams,
-}: TeamsTabProps) => (
+}: TeamsTabProps) => {
+  const { t } = useTranslation(['staffing', 'common']);
+  return (
   <div>
     <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
       <button
@@ -60,18 +64,18 @@ export const TeamsTab = ({
         onClick={onToggleAllTeams}
         className="text-sm text-slate-500 hover:text-brand-600 hover:underline"
       >
-        {showAllTeams ? 'Show this service’s teams' : 'Show all teams'}
+        {showAllTeams ? t('teamsTab.showServiceTeams') : t('teamsTab.showAllTeams')}
       </button>
       {(canEditPlan || teams.some((team) => canScheduleTeam(team.team.id))) &&
         (editingNeeds ? (
-          <Button onClick={() => onEditingNeedsChange(false)}>Done</Button>
+          <Button onClick={() => onEditingNeedsChange(false)}>{t('common:actions.done')}</Button>
         ) : (
           <>
             <Button variant="secondary" onClick={() => onEditingNeedsChange(true)}>
-              Needed positions
+              {t('teamsTab.neededPositions')}
             </Button>
             <Button variant="secondary" onClick={onAddPeople}>
-              Add people
+              {t('teamsTab.addPeople')}
             </Button>
           </>
         ))}
@@ -83,10 +87,9 @@ export const TeamsTab = ({
           ⓘ
         </span>
         <div>
-          <p className="font-medium text-slate-700">Edit needed positions</p>
+          <p className="font-medium text-slate-700">{t('teamsTab.editNeedsTitle')}</p>
           <p className="text-slate-500">
-            Changes save as you go. Click <strong className="font-medium">Done</strong> when you’re
-            finished.
+            <Trans t={t} i18nKey="teamsTab.editNeedsHint" components={[<strong key="done" className="font-medium" />]} />
           </p>
         </div>
       </div>
@@ -94,8 +97,8 @@ export const TeamsTab = ({
 
     {teams.length === 0 ? (
       <EmptyState
-        title="No teams for this service yet"
-        description="Teams created for this service type show up here. Add one from the Teams page, or turn on “Show all teams”."
+        title={t('teamsTab.emptyTitle')}
+        description={t('teamsTab.emptyDescription')}
       />
     ) : (
       <div className="flex gap-3 overflow-x-auto pb-3">
@@ -119,7 +122,8 @@ export const TeamsTab = ({
       </div>
     )}
   </div>
-);
+  );
+};
 
 interface TeamColumnProps {
   team: PlanTeamView;
@@ -150,6 +154,7 @@ const TeamColumn = ({
   onEditTimes,
   overrideReasons,
 }: TeamColumnProps) => {
+  const { t } = useTranslation(['staffing', 'common']);
   // Outside the editor a position only shows when it is staffed or wanted, so
   // a team can have positions and still have nothing worth drawing.
   const hasVisibleRows =
@@ -169,22 +174,22 @@ const TeamColumn = ({
         <h3 className="font-semibold">{team.team.name}</h3>
       </div>
       <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
-        <span title="Confirmed">
+        <span title={t('common:assignmentStatus.confirmed')}>
           <span className="mr-1 text-emerald-600">✓</span>
           {team.confirmed}
         </span>
-        <span title="Declined">
+        <span title={t('common:assignmentStatus.declined')}>
           <span className="mr-1 text-rose-500">✕</span>
           {team.declined}
         </span>
-        <span title="Awaiting reply">
+        <span title={t('teamsTab.awaitingReply')}>
           <span className="mr-1 text-amber-500">?</span>
           {team.pending}
         </span>
         {team.prepared.length > 0 && (
-          <span title="Prepared privately — not sent yet" className="text-slate-600">
+          <span title={t('teamsTab.preparedTitle')} className="text-slate-600">
             <span className="mr-1" aria-hidden="true">◌</span>
-            {team.prepared.length} prepared
+            {t('teamsTab.preparedCount', { count: team.prepared.length })}
           </span>
         )}
       </div>
@@ -195,11 +200,11 @@ const TeamColumn = ({
 
     {team.positions.length === 0 && team.unpositioned.length === 0 ? (
       <p className="px-4 py-6 text-center text-xs text-slate-400">
-        This team has no positions yet.
+        {t('teamsTab.noPositions')}
       </p>
     ) : !hasVisibleRows ? (
       <p className="px-4 py-6 text-center text-xs text-slate-400">
-        Nobody scheduled, and no positions needed.
+        {t('teamsTab.nothingNeeded')}
       </p>
     ) : (
       <div>
@@ -222,7 +227,7 @@ const TeamColumn = ({
         {team.unpositioned.length > 0 && (
           <div>
             <p className="bg-slate-50 px-4 py-1.5 text-xs font-medium text-slate-500">
-              No position
+              {t('teamsTab.noPosition')}
             </p>
             <ul className="divide-y divide-slate-50">
               {team.unpositioned.map((assignment) => (
@@ -271,6 +276,7 @@ const PositionBlock = ({
   onEditTimes,
   overrideReasons,
 }: PositionBlockProps) => {
+  const { t } = useTranslation('staffing');
   // A position with nobody on it and nothing asked for is noise outside the editor.
   if (!editingNeeds && position.scheduled.length === 0 && position.needed === 0) return null;
 
@@ -279,7 +285,7 @@ const PositionBlock = ({
       <div className="flex items-center justify-between bg-slate-50 px-4 py-1.5">
         <p className="text-xs font-medium text-slate-500">
           {position.position.name}
-          {position.planOnly && <span className="ml-1.5 font-normal text-slate-400">· this plan only</span>}
+          {position.planOnly && <span className="ml-1.5 font-normal text-slate-400">{t('teamsTab.planOnlySuffix')}</span>}
         </p>
         {!editingNeeds && position.needed > 0 && (
           <p
@@ -287,7 +293,7 @@ const PositionBlock = ({
               position.scheduled.length >= position.needed ? 'text-emerald-600' : 'text-amber-600'
             }`}
           >
-            {position.scheduled.length}/{position.needed}
+            {t('teamsTab.staffedOfNeeded', { scheduled: position.scheduled.length, needed: position.needed })}
           </p>
         )}
       </div>
@@ -295,7 +301,7 @@ const PositionBlock = ({
       {editingNeeds && (
         <div className="flex items-center justify-between px-4 py-2">
           <span className="text-xs text-slate-400">
-            {position.scheduled.length} scheduled
+            {t('teamsTab.scheduledCount', { count: position.scheduled.length })}
           </span>
           <NeededStepper
             label={position.position.name}
@@ -329,22 +335,21 @@ const PositionBlock = ({
 const STEPPER_BUTTON =
   'grid size-6 place-items-center rounded border border-slate-300 text-slate-500 transition hover:bg-slate-50 disabled:opacity-30';
 
-const NeededStepper = ({
-  label,
-  needed,
-  disabled,
-  onChange,
-}: {
+interface NeededStepperProps {
   label: string;
   needed: number;
   disabled: boolean;
   onChange: (needed: number) => void;
-}) => (
+}
+
+const NeededStepper = ({ label, needed, disabled, onChange }: NeededStepperProps) => {
+  const { t } = useTranslation('staffing');
+  return (
   <div className="flex items-center gap-1.5 text-xs">
-    <span className="text-slate-500">Needed</span>
+    <span className="text-slate-500">{t('teamsTab.needed')}</span>
     <button
       type="button"
-      aria-label={`One fewer ${label}`}
+      aria-label={t('teamsTab.oneFewer', { position: label })}
       className={STEPPER_BUTTON}
       disabled={disabled || needed === 0}
       onClick={() => onChange(needed - 1)}
@@ -356,7 +361,7 @@ const NeededStepper = ({
     </span>
     <button
       type="button"
-      aria-label={`One more ${label}`}
+      aria-label={t('teamsTab.oneMore', { position: label })}
       className={STEPPER_BUTTON}
       disabled={disabled || needed >= 99}
       onClick={() => onChange(needed + 1)}
@@ -364,7 +369,8 @@ const NeededStepper = ({
       +
     </button>
   </div>
-);
+  );
+};
 
 interface ScheduledPersonProps {
   assignment: AssignmentDetail;
@@ -386,7 +392,8 @@ const ScheduledPerson = ({
   onEditTimes,
   overrideReason,
 }: ScheduledPersonProps) => {
-  const name = assignment.person?.full_name ?? assignment.person?.email ?? 'Unknown';
+  const { t } = useTranslation(['staffing', 'common']);
+  const name = assignment.person?.full_name ?? assignment.person?.email ?? t('common:states.unknown');
   const isMine = assignment.user_id === currentUserId;
   const prepared = assignment.visibility === 'prepared';
   const ownerName = assignment.response_owner?.full_name;
@@ -397,11 +404,11 @@ const ScheduledPerson = ({
       <span className="min-w-0 flex-1">
         <span
           className="block truncate text-sm"
-          title={canManage && ownerName ? `Answers go to ${ownerName}` : undefined}
+          title={canManage && ownerName ? t('teamsTab.answersGoTo', { name: ownerName }) : undefined}
         >
           {name}
           {overrideReason && (
-            <span className="ml-1 text-amber-600" title={`Scheduled over a conflict: ${overrideReason}`} aria-label="Scheduled over a conflict">
+            <span className="ml-1 text-amber-600" title={t('teamsTab.overConflictReason', { reason: overrideReason })} aria-label={t('teamsTab.overConflict')}>
               ⚠
             </span>
           )}
@@ -412,17 +419,17 @@ const ScheduledPerson = ({
             type="button"
             onClick={onEditTimes}
             className="block max-w-full truncate text-left text-[11px] text-slate-500 hover:text-brand-600 hover:underline"
-            title="Change which times this request covers"
+            title={t('teamsTab.changeTimes')}
           >
-            {attendanceLabel(assignment)}
+            {attendanceLabel(assignment, t)}
           </button>
         ) : (
-          <span className="block truncate text-[11px] text-slate-500">{attendanceLabel(assignment)}</span>
+          <span className="block truncate text-[11px] text-slate-500">{attendanceLabel(assignment, t)}</span>
         )}
       </span>
       {prepared && (
         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
-          Prepared
+          {t('teamsTab.prepared')}
         </span>
       )}
 
@@ -433,27 +440,27 @@ const ScheduledPerson = ({
             onClick={() => onRespond(assignment.id, 'confirmed')}
             className="rounded bg-emerald-600 px-1.5 py-0.5 text-[11px] font-medium text-white"
           >
-            Accept
+            {t('teamsTab.accept')}
           </button>
           <button
             type="button"
             onClick={() => onRespond(assignment.id, 'declined')}
             className="rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-500 ring-1 ring-slate-300"
           >
-            Decline
+            {t('common:actions.decline')}
           </button>
         </span>
       ) : (
         <span
           className={`size-2 shrink-0 rounded-full ${assignmentDot[assignment.status]}`}
-          title={ASSIGNMENT_STATUS_LABELS[assignment.status]}
+          title={t(`common:assignmentStatus.${assignment.status}`)}
         />
       )}
 
       {canManage && (
         <button
           type="button"
-          aria-label={`Remove ${name}`}
+          aria-label={t('teamsTab.removePerson', { name })}
           onClick={onRemove}
           className="text-slate-300 hover:text-rose-500"
         >
@@ -468,31 +475,30 @@ const ScheduledPerson = ({
  * Lists exactly who a release will reach before it happens. The ids shown
  * are the ids sent, so a refresh in between cannot widen what goes out.
  */
-const ReleaseReview = ({
-  prepared,
-  releasing,
-  onRelease,
-}: {
+interface ReleaseReviewProps {
   prepared: AssignmentDetail[];
   releasing: boolean;
   onRelease: (assignments: AssignmentDetail[]) => void;
-}) => {
+}
+
+const ReleaseReview = ({ prepared, releasing, onRelease }: ReleaseReviewProps) => {
+  const { t } = useTranslation(['staffing', 'common']);
   const [reviewing, setReviewing] = useState<AssignmentDetail[] | null>(null);
 
   if (!reviewing) {
     return (
       <Button variant="secondary" className="mt-2 !py-1 text-xs" onClick={() => setReviewing(prepared)}>
-        Review and release {prepared.length}
+        {t('teamsTab.reviewAndRelease', { count: prepared.length })}
       </Button>
     );
   }
 
   return (
     <div className="mt-2 rounded-lg bg-slate-50 p-2 text-xs">
-      <p className="font-medium text-slate-700">These people will be notified:</p>
+      <p className="font-medium text-slate-700">{t('teamsTab.willBeNotified')}</p>
       <ul className="mt-1 list-disc pl-4 text-slate-600">
         {reviewing.map((assignment) => (
-          <li key={assignment.id}>{assignment.person?.full_name ?? 'Unknown'}</li>
+          <li key={assignment.id}>{assignment.person?.full_name ?? t('common:states.unknown')}</li>
         ))}
       </ul>
       <div className="mt-2 flex gap-2">
@@ -504,10 +510,10 @@ const ReleaseReview = ({
             setReviewing(null);
           }}
         >
-          Release
+          {t('teamsTab.release')}
         </Button>
         <Button variant="ghost" className="!py-1 text-xs" onClick={() => setReviewing(null)}>
-          Cancel
+          {t('common:actions.cancel')}
         </Button>
       </div>
     </div>

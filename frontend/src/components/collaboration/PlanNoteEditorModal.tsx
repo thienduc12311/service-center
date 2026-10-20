@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import {
-  NOTE_AUDIENCE_LABELS,
-  type NoteAudience,
-  type NoteCategoryRow,
-  type PlanNote,
-  type TeamWithPositions,
-} from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
+import type { NoteAudience, NoteCategoryRow, PlanNote, TeamWithPositions } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useInvalidateOrg } from '../../hooks/queries';
 import { Button, ErrorNotice, Modal } from '../ui';
@@ -26,6 +21,7 @@ const AUDIENCES: NoteAudience[] = ['organization', 'scheduled', 'teams', 'leader
 
 /** Create or edit one note. Saving sends the revision it opened; a stale edit is refused. */
 export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, teams, onClose }: PlanNoteEditorModalProps) => {
+  const { t } = useTranslation(['messages', 'common']);
   const invalidate = useInvalidateOrg();
   const [categoryId, setCategoryId] = useState<string | null>(note?.category_id ?? null);
   const [audience, setAudience] = useState<NoteAudience>(note?.audience ?? 'organization');
@@ -62,12 +58,12 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
   };
 
   const toggleTeam = (id: string) =>
-    setTeamIds((current) => (current.includes(id) ? current.filter((t) => t !== id) : [...current, id]));
+    setTeamIds((current) => (current.includes(id) ? current.filter((teamId) => teamId !== id) : [...current, id]));
 
   const invalid = !body.trim() || (audience === 'teams' && teamIds.length === 0);
 
   return (
-    <Modal open title={note ? 'Edit note' : itemId ? 'Add item note' : 'Add plan note'} onClose={onClose}>
+    <Modal open title={note ? t('noteEditor.editTitle') : itemId ? t('noteEditor.addItemTitle') : t('noteEditor.addPlanTitle')} onClose={onClose}>
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -76,9 +72,9 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
         }}
       >
         <label className="block">
-          <span className="label">Category</span>
+          <span className="label">{t('noteEditor.category')}</span>
           <select className="input" value={categoryId ?? ''} onChange={(event) => chooseCategory(event.target.value)}>
-            <option value="">General</option>
+            <option value="">{t('noteEditor.general')}</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>{category.name}</option>
             ))}
@@ -86,21 +82,21 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
         </label>
 
         <fieldset className="text-sm">
-          <legend className="label">Who can read it</legend>
+          <legend className="label">{t('noteEditor.whoCanRead')}</legend>
           <div className="space-y-1">
             {AUDIENCES.map((value) => (
               <label key={value} className="flex items-center gap-2">
                 <input type="radio" name="audience" checked={audience === value} onChange={() => setAudience(value)} />
-                {NOTE_AUDIENCE_LABELS[value]}
+                {t(`noteEditor.audience.${value}`)}
               </label>
             ))}
           </div>
-          <p className="mt-1 text-xs text-slate-500">Plan leaders can always read every note. Only “Everyone” notes appear in older apps.</p>
+          <p className="mt-1 text-xs text-slate-500">{t('noteEditor.audienceHint')}</p>
         </fieldset>
 
         {audience === 'teams' && (
           <fieldset className="text-sm">
-            <legend className="label">Teams</legend>
+            <legend className="label">{t('noteEditor.teams')}</legend>
             <div className="grid max-h-40 grid-cols-2 gap-1 overflow-y-auto">
               {teams.map((team) => (
                 <label key={team.id} className="flex items-center gap-2">
@@ -113,14 +109,14 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
         )}
 
         <label className="block">
-          <span className="label">Note</span>
+          <span className="label">{t('noteEditor.note')}</span>
           <textarea
             className="input"
             rows={6}
             maxLength={8000}
             value={body}
             onChange={(event) => setBody(event.target.value)}
-            placeholder="Cues, logistics or anything this audience should read."
+            placeholder={t('noteEditor.placeholder')}
           />
         </label>
 
@@ -134,16 +130,16 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
                 className="text-rose-600"
                 loading={remove.isPending}
                 onClick={() => {
-                  if (window.confirm('Delete this note?')) remove.mutate();
+                  if (window.confirm(t('noteEditor.deleteConfirm'))) remove.mutate();
                 }}
               >
-                Delete
+                {t('common:actions.delete')}
               </Button>
             )}
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button type="submit" loading={save.isPending} disabled={invalid}>Save note</Button>
+            <Button type="button" variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button>
+            <Button type="submit" loading={save.isPending} disabled={invalid}>{t('noteEditor.save')}</Button>
           </div>
         </div>
       </form>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface ChartPreviewProps {
   /** A complete HTML document, as produced by the shared chart template. */
@@ -22,6 +23,7 @@ const REFRESH_DELAY_MS = 300;
  * and the preview would stop being an honest picture of the PDF.
  */
 export const ChartPreview = ({ html, autoRefresh }: ChartPreviewProps) => {
+  const { t } = useTranslation('songs');
   const [rendered, setRendered] = useState(html);
   const latest = useRef(html);
   latest.current = html;
@@ -42,7 +44,7 @@ export const ChartPreview = ({ html, autoRefresh }: ChartPreviewProps) => {
   // itself, so the frame is just a window onto it at whatever size the pane is.
   return (
     <iframe
-      title="Chord chart preview"
+      title={t('chartEditor.previewTitle')}
       srcDoc={rendered}
       className="block h-full w-full rounded-xl border-0 bg-slate-600"
     />

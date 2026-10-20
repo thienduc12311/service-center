@@ -1,49 +1,53 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  CONVERSATION_REPORT_REASON_LABELS,
-  formatDate,
-  type ConversationMessage,
-  type ConversationReportReason,
-  type ConversationSummary,
-} from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import type { ConversationMessage, ConversationReportReason, ConversationSummary } from '@service-center/shared';
 import { api } from '../lib/api';
 import { keys, useConversation, useConversations, useMentionCandidates, useTeams } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
+import { useFormatters, type Formatters } from '../i18n';
 import { Badge, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
 import { DiscussionComposer } from '../components/collaboration/DiscussionComposer';
 import { DiscussionEntry } from '../components/collaboration/DiscussionEntry';
 
-const REPORT_REASONS = Object.keys(CONVERSATION_REPORT_REASON_LABELS) as ConversationReportReason[];
+const REPORT_REASONS: readonly ConversationReportReason[] = ['spam', 'harassment', 'inappropriate', 'safety', 'other'];
 
-const conversationLabel = (conversation: ConversationSummary): string =>
+const conversationLabel = (conversation: ConversationSummary, t: TFunction<'messages'>, format: Formatters): string =>
   conversation.kind === 'plan' && conversation.service_date
-    ? `${conversation.title} · ${formatDate(conversation.service_date)}`
+    ? t('chatPage.planConversation', { title: conversation.title, date: format.date(conversation.service_date) })
     : conversation.title;
 
-const ReportModal = ({ conversationId, message, onClose }: { conversationId: string; message: ConversationMessage; onClose: () => void }) => {
+interface ReportModalProps {
+  conversationId: string;
+  message: ConversationMessage;
+  onClose: () => void;
+}
+
+const ReportModal = ({ conversationId, message, onClose }: ReportModalProps) => {
+  const { t } = useTranslation(['messages', 'common']);
   const [reason, setReason] = useState<ConversationReportReason>('inappropriate');
   const [details, setDetails] = useState('');
   const report = useMutation({ mutationFn: () => api.reportConversationMessage(conversationId, message.id, { reason, details: details || undefined }) });
   return (
-    <Modal open title="Report message" onClose={onClose}>
+    <Modal open title={t('reportModal.title')} onClose={onClose}>
       {report.isSuccess ? (
         <>
-          <p className="text-sm text-slate-600">Thanks. The conversation’s moderators will review it. Reporting again does not create a second report.</p>
-          <div className="mt-6 flex justify-end"><Button onClick={onClose}>Done</Button></div>
+          <p className="text-sm text-slate-600">{t('reportModal.thanks')}</p>
+          <div className="mt-6 flex justify-end"><Button onClick={onClose}>{t('common:actions.done')}</Button></div>
         </>
       ) : (
         <div className="space-y-3 text-sm">
           <p className="rounded bg-slate-50 px-3 py-2 text-slate-600 dark:bg-slate-900">{message.body}</p>
-          <select className="input" value={reason} onChange={(event) => setReason(event.target.value as ConversationReportReason)} aria-label="Reason">
-            {REPORT_REASONS.map((value) => <option key={value} value={value}>{CONVERSATION_REPORT_REASON_LABELS[value]}</option>)}
+          <select className="input" value={reason} onChange={(event) => setReason(event.target.value as ConversationReportReason)} aria-label={t('reportModal.reason')}>
+            {REPORT_REASONS.map((value) => <option key={value} value={value}>{t(`reportModal.reasons.${value}`)}</option>)}
           </select>
-          <textarea className="input" rows={3} maxLength={1000} placeholder="Anything moderators should know (optional)" value={details} onChange={(event) => setDetails(event.target.value)} />
+          <textarea className="input" rows={3} maxLength={1000} placeholder={t('reportModal.detailsPlaceholder')} value={details} onChange={(event) => setDetails(event.target.value)} />
           <ErrorNotice error={report.error} />
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button loading={report.isPending} onClick={() => report.mutate()}>Report</Button>
+            <Button variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button>
+            <Button loading={report.isPending} onClick={() => report.mutate()}>{t('reportModal.submit')}</Button>
           </div>
         </div>
       )}
@@ -51,7 +55,13 @@ const ReportModal = ({ conversationId, message, onClose }: { conversationId: str
   );
 };
 
-const ConversationThread = ({ conversationId }: { conversationId: string }) => {
+interface ConversationThreadProps {
+  conversationId: string;
+}
+
+const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
+  const { t } = useTranslation(['messages', 'common']);
+  const format = useFormatters();
   const { organizationId } = useAuth();
   const client = useQueryClient();
   const detail = useConversation(conversationId);
@@ -87,8 +97,8 @@ const ConversationThread = ({ conversationId }: { conversationId: string }) => {
   if (detail.error || !detail.data) {
     return (
       <EmptyState
-        title="Conversation not available"
-        description="Conversations are open to the people on that team or plan. If you were removed, you can no longer read it."
+        title={t('conversation.notAvailableTitle')}
+        description={t('conversation.notAvailableDescription')}
       />
     );
   }
@@ -99,31 +109,40 @@ const ConversationThread = ({ conversationId }: { conversationId: string }) => {
   return (
     <div className="flex min-h-0 flex-col">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold">{conversationLabel(conversation)}</h2>
-        <Badge tone="bg-slate-100 text-slate-600 ring-slate-500/20">{conversation.kind === 'team' ? 'Team' : 'Plan'}</Badge>
-        {conversation.plan_id && <Link className="text-xs text-brand-600 hover:underline" to={`/plans/${conversation.plan_id}`}>Open plan</Link>}
+        <h2 className="text-lg font-semibold">{conversationLabel(conversation, t, format)}</h2>
+        <Badge tone="bg-slate-100 text-slate-600 ring-slate-500/20">{t(`conversation.kinds.${conversation.kind}`)}</Badge>
+        {conversation.plan_id && <Link className="text-xs text-brand-600 hover:underline" to={`/plans/${conversation.plan_id}`}>{t('conversation.openPlan')}</Link>}
         <div className="ml-auto flex items-center gap-2">
-          <input className="input !w-44 text-sm" placeholder="Search…" value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search this conversation" />
+          <input className="input !w-44 text-sm" placeholder={t('conversation.searchPlaceholder')} value={search} onChange={(event) => setSearch(event.target.value)} aria-label={t('conversation.searchLabel')} />
           <Button variant="secondary" loading={mute.isPending} onClick={() => mute.mutate(!conversation.muted)}>
-            {conversation.muted ? 'Unmute' : 'Mute'}
+            {conversation.muted ? t('conversation.unmute') : t('conversation.mute')}
           </Button>
         </div>
       </div>
 
       {conversation.can_moderate && reports.length > 0 && (
         <section className="mb-3 rounded-lg bg-amber-50 p-3 text-sm ring-1 ring-amber-600/20">
-          <h3 className="mb-2 font-medium text-amber-900">Reports to review ({reports.length})</h3>
+          <h3 className="mb-2 font-medium text-amber-900">{t('conversation.reportsHeading', { count: reports.length })}</h3>
           <ul className="space-y-2">
             {reports.map((report) => (
               <li key={report.id} className="rounded bg-white p-2 dark:bg-slate-900">
                 <p className="text-xs text-slate-500">
-                  {report.reporter_name ?? 'Someone'} reported {report.message_author_name ?? 'a message'} · {CONVERSATION_REPORT_REASON_LABELS[report.reason]}
+                  {report.message_author_name
+                    ? t('conversation.reportLine', {
+                        reporter: report.reporter_name ?? t('common:fallback.someone'),
+                        author: report.message_author_name,
+                        reason: t(`reportModal.reasons.${report.reason}`),
+                      })
+                    : t('conversation.reportLineNoAuthor', {
+                        reporter: report.reporter_name ?? t('common:fallback.someone'),
+                        reason: t(`reportModal.reasons.${report.reason}`),
+                      })}
                 </p>
-                {report.details && <p className="text-xs text-slate-600">“{report.details}”</p>}
-                <p className="my-1 text-slate-700">{report.message_body || <em className="text-slate-400">Already removed</em>}</p>
+                {report.details && <p className="text-xs text-slate-600">{t('conversation.reportDetails', { details: report.details })}</p>}
+                <p className="my-1 text-slate-700">{report.message_body || <em className="text-slate-400">{t('conversation.alreadyRemoved')}</em>}</p>
                 <div className="flex gap-2">
-                  <Button variant="danger" className="!py-1 text-xs" onClick={() => resolve.mutate({ reportId: report.id, action: 'hide' })}>Hide message</Button>
-                  <Button variant="secondary" className="!py-1 text-xs" onClick={() => resolve.mutate({ reportId: report.id, action: 'dismiss' })}>Dismiss</Button>
+                  <Button variant="danger" className="!py-1 text-xs" onClick={() => resolve.mutate({ reportId: report.id, action: 'hide' })}>{t('conversation.hideMessage')}</Button>
+                  <Button variant="secondary" className="!py-1 text-xs" onClick={() => resolve.mutate({ reportId: report.id, action: 'dismiss' })}>{t('conversation.dismiss')}</Button>
                 </div>
               </li>
             ))}
@@ -133,11 +152,11 @@ const ConversationThread = ({ conversationId }: { conversationId: string }) => {
 
       <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error} />
       {shown.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-400">{search ? 'No messages match.' : 'No messages yet. Say hello to the team.'}</p>
+        <p className="py-8 text-center text-sm text-slate-400">{search ? t('conversation.noMatches') : t('conversation.noMessages')}</p>
       ) : (
         <ul className="mb-3 divide-y divide-slate-100 dark:divide-slate-800">
           {shown.map((message) => {
-            const removed = message.hidden_at ? 'Hidden by a moderator' : message.deleted_at ? 'Message deleted' : null;
+            const removed = message.hidden_at ? t('conversation.hiddenByModerator') : message.deleted_at ? t('conversation.messageDeleted') : null;
             const parent = message.reply_to_id ? byId.get(message.reply_to_id) : null;
             return (
               <DiscussionEntry
@@ -149,32 +168,40 @@ const ConversationThread = ({ conversationId }: { conversationId: string }) => {
                 removedLabel={removed}
                 mentions={message.mentions}
                 showMentionOutcomes={message.is_mine}
-                quote={parent ? `${parent.author_name ?? 'Someone'}: ${parent.body || '(removed)'}` : null}
+                quote={parent
+                  ? parent.body
+                    ? t('conversation.quote', { author: parent.author_name ?? t('common:fallback.someone'), body: parent.body })
+                    : t('conversation.quoteRemoved', { author: parent.author_name ?? t('common:fallback.someone') })
+                  : null}
                 canEdit={message.is_mine}
                 onSaveEdit={async (body) => {
                   await api.editConversationMessage(conversationId, message.id, { body });
                   await refresh();
                 }}
                 actions={[
-                  ...(!removed ? [{ label: 'Reply', onClick: () => setReplyTo(message) }] : []),
-                  ...(!removed && !message.is_mine ? [{ label: 'Report', onClick: () => setReporting(message) }] : []),
+                  ...(!removed ? [{ label: t('conversation.reply'), onClick: () => setReplyTo(message) }] : []),
+                  ...(!removed && !message.is_mine ? [{ label: t('conversation.report'), onClick: () => setReporting(message) }] : []),
                   ...(!removed && (message.is_mine || conversation.can_moderate)
-                    ? [{ label: 'Delete', danger: true, onClick: () => { if (window.confirm('Delete this message?')) remove.mutate(message); } }]
+                    ? [{ label: t('common:actions.delete'), danger: true, onClick: () => { if (window.confirm(t('conversation.deleteConfirm'))) remove.mutate(message); } }]
                     : []),
-                  ...(message.hidden_at && conversation.can_moderate ? [{ label: 'Restore', onClick: () => restore.mutate(message) }] : []),
+                  ...(message.hidden_at && conversation.can_moderate ? [{ label: t('common:actions.restore'), onClick: () => restore.mutate(message) }] : []),
                 ]}
               />
             );
           })}
         </ul>
       )}
-      {messages.next_before && !search && <p className="mb-2 text-xs text-slate-400">Showing the latest {messages.data.length} messages.</p>}
+      {messages.next_before && !search && <p className="mb-2 text-xs text-slate-400">{t('conversation.showingLatest', { count: messages.data.length })}</p>}
 
       <DiscussionComposer
         candidates={candidates.data ?? []}
-        placeholder={`Message ${conversation.title}…`}
-        submitLabel="Send"
-        context={replyTo ? `Replying to ${replyTo.author_name ?? 'someone'}` : null}
+        placeholder={t('conversation.composerPlaceholder', { name: conversation.title })}
+        submitLabel={t('common:actions.send')}
+        context={replyTo
+          ? replyTo.author_name
+            ? t('conversation.replyingTo', { name: replyTo.author_name })
+            : t('conversation.replyingToUnknown')
+          : null}
         onClearContext={() => setReplyTo(null)}
         onSubmit={async ({ id, body, mentionIds }) => {
           await api.postConversationMessage(conversationId, { id, body, reply_to_id: replyTo?.id ?? null, mention_person_ids: mentionIds });
@@ -182,7 +209,7 @@ const ConversationThread = ({ conversationId }: { conversationId: string }) => {
         }}
       />
       <p className="mt-2 text-xs text-slate-400">
-        Only current team or plan members can read this. Muting stops notifications. Direct messages and attachments are not available yet.
+        {t('conversation.privacyNote')}
       </p>
       {reporting && <ReportModal conversationId={conversationId} message={reporting} onClose={() => setReporting(null)} />}
     </div>
@@ -191,6 +218,8 @@ const ConversationThread = ({ conversationId }: { conversationId: string }) => {
 
 /** Team and plan conversations the signed-in person currently belongs to. */
 export const ChatPage = () => {
+  const { t } = useTranslation(['messages', 'common']);
+  const format = useFormatters();
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
   const { user, can, organizationId } = useAuth();
@@ -212,23 +241,23 @@ export const ChatPage = () => {
 
   return (
     <div>
-      <PageHeader title="Chat" subtitle="Team and plan conversations." />
+      <PageHeader title={t('chatPage.title')} subtitle={t('chatPage.subtitle')} />
       <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
         <aside className="space-y-3">
           <select
             className="input text-sm"
             value=""
-            aria-label="Open a team chat"
+            aria-label={t('chatPage.openTeamChat')}
             onChange={(event) => event.target.value && open.mutate(event.target.value)}
           >
-            <option value="">Open a team chat…</option>
+            <option value="">{t('chatPage.openTeamChatOption')}</option>
             {startable.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
           </select>
           <ErrorNotice error={open.error ?? conversations.error} />
           {conversations.isLoading ? (
             <Loading />
           ) : (conversations.data ?? []).length === 0 ? (
-            <p className="text-sm text-slate-400">No conversations yet. Open your team’s chat, or a plan’s chat from the plan page.</p>
+            <p className="text-sm text-slate-400">{t('chatPage.noConversations')}</p>
           ) : (
             <ul className="card divide-y divide-slate-100 dark:divide-slate-800">
               {(conversations.data ?? []).map((conversation) => (
@@ -238,11 +267,11 @@ export const ChatPage = () => {
                     aria-current={conversation.id === conversationId ? 'page' : undefined}
                     className={`flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-900 ${conversation.id === conversationId ? 'bg-brand-50 dark:bg-slate-800' : ''}`}
                   >
-                    <span className="min-w-0 flex-1 truncate">{conversationLabel(conversation)}</span>
-                    {conversation.muted && <span title="Muted" aria-label="Muted">🔕</span>}
-                    {conversation.open_reports > 0 && <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">{conversation.open_reports} report{conversation.open_reports === 1 ? '' : 's'}</Badge>}
+                    <span className="min-w-0 flex-1 truncate">{conversationLabel(conversation, t, format)}</span>
+                    {conversation.muted && <span title={t('chatPage.muted')} aria-label={t('chatPage.muted')}>🔕</span>}
+                    {conversation.open_reports > 0 && <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">{t('chatPage.reports', { count: conversation.open_reports })}</Badge>}
                     {conversation.unread_count > 0 && (
-                      <span className="rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white" aria-label={`${conversation.unread_count} unread`}>
+                      <span className="rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white" aria-label={t('chatPage.unread', { count: conversation.unread_count })}>
                         {conversation.unread_count}
                       </span>
                     )}
@@ -254,7 +283,7 @@ export const ChatPage = () => {
         </aside>
         <section className="card min-w-0 p-4">
           {conversationId ? <ConversationThread key={conversationId} conversationId={conversationId} /> : (
-            <p className="py-16 text-center text-sm text-slate-400">Choose a conversation.</p>
+            <p className="py-16 text-center text-sm text-slate-400">{t('chatPage.choose')}</p>
           )}
         </section>
       </div>

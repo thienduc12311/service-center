@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import type { SongWithArrangements } from '@service-center/shared';
 import { api } from '../../lib/api';
@@ -12,6 +13,7 @@ export interface SongNotesPanelProps {
 
 /** Free notes on the song — how it is introduced, which verses are cut, and so on. */
 export const SongNotesPanel = ({ song, canManage }: SongNotesPanelProps) => {
+  const { t } = useTranslation(['songs', 'common']);
   const invalidate = useInvalidateOrg();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(song.notes ?? '');
@@ -33,10 +35,10 @@ export const SongNotesPanel = ({ song, canManage }: SongNotesPanelProps) => {
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
-        <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">Notes</h2>
+        <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('songInfo.fields.notes')}</h2>
         {canManage && !editing && (
           <Button variant="ghost" className="ml-auto !px-2 !py-1 text-xs" onClick={startEditing}>
-            {song.notes ? 'Edit' : 'Add'}
+            {song.notes ? t('common:actions.edit') : t('common:actions.add')}
           </Button>
         )}
       </div>
@@ -49,7 +51,7 @@ export const SongNotesPanel = ({ song, canManage }: SongNotesPanelProps) => {
               rows={5}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              aria-label="Song notes"
+              aria-label={t('notes.label')}
               autoFocus
             />
 
@@ -57,10 +59,10 @@ export const SongNotesPanel = ({ song, canManage }: SongNotesPanelProps) => {
 
             <div className="flex justify-end gap-2">
               <Button variant="secondary" className="!py-1 text-xs" onClick={() => setEditing(false)}>
-                Cancel
+                {t('common:actions.cancel')}
               </Button>
               <Button className="!py-1 text-xs" loading={save.isPending} onClick={() => save.mutate()}>
-                Save
+                {t('common:actions.save')}
               </Button>
             </div>
           </div>
@@ -69,7 +71,7 @@ export const SongNotesPanel = ({ song, canManage }: SongNotesPanelProps) => {
             {song.notes}
           </p>
         ) : (
-          <p className="text-xs text-slate-400">There are no notes on this song.</p>
+          <p className="text-xs text-slate-400">{t('notes.empty')}</p>
         )}
       </div>
     </section>

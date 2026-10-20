@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
+  generationProblemText,
   ApiError,
+  LocalizedError,
   MAX_GENERATED_PLANS,
   PLAN_TEMPLATE_COMPONENTS,
-  TEMPLATE_COMPONENT_LABELS,
-  formatDateTime,
   type AmbiguousTimeChoice,
   type AttendanceConflict,
   type GenerationDateEdit,
@@ -18,6 +19,7 @@ import {
 import { api } from '../lib/api';
 import { useInvalidateOrg, usePeople, usePlanTemplates } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
+import { useFormatters, useStructuredText } from '../i18n';
 import { Badge, Button, EmptyState, ErrorNotice, PageHeader } from '../components/ui';
 import { ConflictList } from '../components/plan/attendance';
 import { TemplateApplyReview } from '../components/templates/TemplateApplyReview';
@@ -39,6 +41,9 @@ const nextSunday = (): string => {
  * created, and the whole batch is created in one transaction.
  */
 export const GeneratePlansPage = () => {
+  const { t } = useTranslation(['templates', 'common']);
+  const fmt = useFormatters();
+  const structured = useStructuredText();
   const { canAnywhere, can } = useAuth();
   const invalidate = useInvalidateOrg();
   const people = usePeople();
@@ -84,7 +89,7 @@ export const GeneratePlansPage = () => {
   });
   const generate = useMutation({
     mutationFn: () => {
-      if (!preview?.preview_hash) throw new Error('Review the plans first');
+      if (!preview?.preview_hash) throw new LocalizedError({ key: 'templates:errors.reviewPlansFirst' });
       return api.generatePlans({
         ...series(),
         preview_hash: preview.preview_hash,
@@ -113,27 +118,27 @@ export const GeneratePlansPage = () => {
       ? ((generate.error.details as AttendanceConflict[] | undefined) ?? [])
       : [];
   const nameOf = (personId: string): string =>
-    people.data?.find((person) => person.person_id === personId)?.full_name ?? 'Someone';
+    people.data?.find((person) => person.person_id === personId)?.full_name ?? t('common:fallback.someone');
 
   if (!canAnywhere('plans.edit')) {
-    return <EmptyState title="Creating plans is for plan editors" />;
+    return <EmptyState title={t('generate.noAccess')} />;
   }
 
   if (created) {
     return (
       <div>
-        <PageHeader title={created.replayed ? 'Plans already created' : 'Plans created'} subtitle="Draft plans with prepared requests; nobody has been notified." />
+        <PageHeader title={created.replayed ? t('generate.replayedTitle') : t('generate.createdTitle')} subtitle={t('generate.createdSubtitle')} />
         <ul className="space-y-2">
           {created.plans.map((plan) => (
             <li key={plan.id} className="card p-3">
               <Link to={`/plans/${plan.id}`} className="font-medium text-brand-700 hover:underline">{plan.title}</Link>
-              <span className="ml-2 text-sm text-slate-500">{formatDateTime(plan.service_date)}</span>
+              <span className="ml-2 text-sm text-slate-500">{fmt.dateTime(plan.service_date)}</span>
             </li>
           ))}
         </ul>
         <div className="mt-4 flex gap-2">
-          <Button variant="secondary" onClick={() => { setCreated(null); invalidatePreview(); setEdits([]); }}>Create more</Button>
-          <Link to="/plans" className="button inline-flex items-center px-3.5 py-2 text-sm font-medium text-slate-600">Back to plans</Link>
+          <Button variant="secondary" onClick={() => { setCreated(null); invalidatePreview(); setEdits([]); }}>{t('generate.createMore')}</Button>
+          <Link to="/plans" className="button inline-flex items-center px-3.5 py-2 text-sm font-medium text-slate-600">{t('generate.backToPlans')}</Link>
         </div>
       </div>
     );
@@ -142,69 +147,73 @@ export const GeneratePlansPage = () => {
   return (
     <div>
       <PageHeader
-        title="Create plans from a template"
-        subtitle={`Prepare up to ${MAX_GENERATED_PLANS} upcoming services at once. Dates and times follow your organization’s local clock.`}
+        title={t('generate.title')}
+        subtitle={t('generate.subtitle', { max: MAX_GENERATED_PLANS })}
       />
 
       <div className="card space-y-4 p-5">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="label" htmlFor="gen-template">Template</label>
+            <label className="label" htmlFor="gen-template">{t('generate.template')}</label>
             <select id="gen-template" className="input" value={templateId} onChange={(event) => { setTemplateId(event.target.value); invalidatePreview(); }}>
-              <option value="">Choose…</option>
+              <option value="">{t('generate.choose')}</option>
               {(templates.data ?? []).filter((candidate) => candidate.current_revision_id).map((candidate) => (
                 <option key={candidate.id} value={candidate.id}>
-                  {candidate.name} · {candidate.service_type?.name ?? 'No service type'} · rev {candidate.current_revision}
+                  {t('generate.templateOption', {
+                    name: candidate.name,
+                    serviceType: candidate.service_type?.name ?? t('generate.noServiceType'),
+                    revision: candidate.current_revision,
+                  })}
                 </option>
               ))}
             </select>
             {template && template.counts.times === 0 && (
-              <p className="mt-1 text-xs text-amber-700">This template has no times; each plan is dated at local noon.</p>
+              <p className="mt-1 text-xs text-amber-700">{t('generate.noTimesHint')}</p>
             )}
           </div>
           <div>
-            <label className="label" htmlFor="gen-start">First date</label>
+            <label className="label" htmlFor="gen-start">{t('generate.firstDate')}</label>
             <input id="gen-start" type="date" className="input" value={startDate} onChange={(event) => { setStartDate(event.target.value); setEdits([]); invalidatePreview(); }} />
           </div>
           <div>
-            <label className="label" htmlFor="gen-interval">Repeat</label>
+            <label className="label" htmlFor="gen-interval">{t('generate.repeat')}</label>
             <select id="gen-interval" className="input" value={intervalWeeks} onChange={(event) => { setIntervalWeeks(Number(event.target.value)); setEdits([]); invalidatePreview(); }}>
-              <option value={1}>Every week</option>
-              <option value={2}>Every 2 weeks</option>
-              <option value={3}>Every 3 weeks</option>
-              <option value={4}>Every 4 weeks</option>
+              <option value={1}>{t('generate.everyWeek')}</option>
+              <option value={2}>{t('generate.everyNWeeks', { weeks: 2 })}</option>
+              <option value={3}>{t('generate.everyNWeeks', { weeks: 3 })}</option>
+              <option value={4}>{t('generate.everyNWeeks', { weeks: 4 })}</option>
             </select>
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="label" htmlFor="gen-count">How many plans</label>
+              <label className="label" htmlFor="gen-count">{t('generate.howMany')}</label>
               <input id="gen-count" type="number" min={1} max={MAX_GENERATED_PLANS} className="input" value={count} onChange={(event) => { setCount(Math.min(MAX_GENERATED_PLANS, Math.max(1, Number(event.target.value)))); invalidatePreview(); }} />
             </div>
             <div className="flex-1">
-              <label className="label" htmlFor="gen-end">Stop after (optional)</label>
+              <label className="label" htmlFor="gen-end">{t('generate.stopAfter')}</label>
               <input id="gen-end" type="date" className="input" value={endDate} onChange={(event) => { setEndDate(event.target.value); invalidatePreview(); }} />
             </div>
           </div>
         </div>
 
         <div>
-          <span className="label">Holidays and dates to leave out</span>
+          <span className="label">{t('generate.leaveOutHeading')}</span>
           <div className="flex flex-wrap items-center gap-2">
             {excluded.map((date) => (
               <span key={date} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs dark:bg-slate-800">
-                {date}
-                <button type="button" aria-label={`Include ${date} again`} onClick={() => { setExcluded(excluded.filter((d) => d !== date)); invalidatePreview(); }}>×</button>
+                {fmt.calendarDate(date, 'medium')}
+                <button type="button" aria-label={t('generate.includeAgain', { date: fmt.calendarDate(date, 'medium') })} onClick={() => { setExcluded(excluded.filter((d) => d !== date)); invalidatePreview(); }}>×</button>
               </span>
             ))}
-            <input aria-label="Date to leave out" type="date" className="input w-44" value={excludeInput} onChange={(event) => setExcludeInput(event.target.value)} />
+            <input aria-label={t('generate.dateToLeaveOut')} type="date" className="input w-44" value={excludeInput} onChange={(event) => setExcludeInput(event.target.value)} />
             <Button variant="secondary" className="!py-1 text-xs" disabled={!excludeInput || excluded.includes(excludeInput)} onClick={() => { setExcluded([...excluded, excludeInput].sort()); setExcludeInput(''); invalidatePreview(); }}>
-              Leave out
+              {t('generate.leaveOut')}
             </Button>
           </div>
         </div>
 
         <fieldset className="flex flex-wrap gap-4">
-          <legend className="label">Copy into each plan (times are always created)</legend>
+          <legend className="label">{t('generate.copyLegend')}</legend>
           {PLAN_TEMPLATE_COMPONENTS.filter((component) => component !== 'times').map((component) => (
             <label key={component} className="flex items-center gap-2 text-sm">
               <input
@@ -216,47 +225,51 @@ export const GeneratePlansPage = () => {
                   invalidatePreview();
                 }}
               />
-              {TEMPLATE_COMPONENT_LABELS[component]}
+              {t(`components.${component}`)}
             </label>
           ))}
         </fieldset>
 
-        <label className="flex items-center gap-2 text-sm">
-          If a time happens twice when clocks go back, use the
-          <select aria-label="Repeated time choice" className="input w-auto" value={ambiguous} onChange={(event) => { setAmbiguous(event.target.value as AmbiguousTimeChoice); invalidatePreview(); }}>
-            <option value="earlier">first</option>
-            <option value="later">second</option>
+        <label className="flex flex-wrap items-center gap-2 text-sm">
+          {t('generate.ambiguousLabel')}
+          <select aria-label={t('generate.ambiguousAria')} className="input w-auto" value={ambiguous} onChange={(event) => { setAmbiguous(event.target.value as AmbiguousTimeChoice); invalidatePreview(); }}>
+            <option value="earlier">{t('generate.ambiguousEarlier')}</option>
+            <option value="later">{t('generate.ambiguousLater')}</option>
           </select>
-          one.
         </label>
 
         <ErrorNotice error={review.error} />
         <div className="flex justify-end">
-          <Button loading={review.isPending} disabled={!template} onClick={() => review.mutate(series())}>Review plans</Button>
+          <Button loading={review.isPending} disabled={!template} onClick={() => review.mutate(series())}>{t('generate.review')}</Button>
         </div>
       </div>
 
       {preview && (
         <section className="mt-6 space-y-3">
           <h2 className="text-base font-semibold">
-            {preview.plans.length} plan{preview.plans.length === 1 ? '' : 's'} to create
-            <span className="ml-2 text-sm font-normal text-slate-500">times in {preview.timezone}</span>
+            {t('generate.previewHeading', { count: preview.plans.length })}
+            <span className="ml-2 text-sm font-normal text-slate-500">{t('generate.timesIn', { timezone: preview.timezone })}</span>
           </h2>
           {preview.problems.length > 0 && (
             <ul role="alert" className="space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-600/20">
-              {preview.problems.map((problem) => <li key={`${problem.local_date}-${problem.message}`}>{problem.message}</li>)}
-              <li className="font-medium">Skip or move these dates to continue.</li>
+              {preview.problems.map((problem) => <li key={`${problem.local_date}-${problem.message}`}>{generationProblemText(problem, structured)}</li>)}
+              <li className="font-medium">{t('generate.fixProblems')}</li>
             </ul>
           )}
           {preview.excluded.length > 0 && (
             <p className="text-sm text-slate-500">
-              Left out: {preview.excluded.map((date) => `${date.local_date} (${date.reason === 'excluded' ? 'holiday' : 'skipped'})`).join(', ')}
+              {t('generate.leftOut', {
+                dates: fmt.list(preview.excluded.map((date) =>
+                  t(date.reason === 'excluded' ? 'generate.leftOutHoliday' : 'generate.leftOutSkipped', {
+                    date: fmt.calendarDate(date.local_date, 'medium'),
+                  }))),
+              })}
             </p>
           )}
           {preview.problems.filter((problem) => edits.every((edit) => edit.local_date !== problem.local_date)).map((problem) => (
             <div key={`fix-${problem.local_date}`} className="card flex items-center justify-between p-3 text-sm">
-              <span>{problem.local_date}</span>
-              <Button variant="secondary" className="!py-1 text-xs" onClick={() => editDate({ local_date: problem.local_date, skip: true })}>Skip this date</Button>
+              <span>{fmt.calendarDate(problem.local_date, 'medium')}</span>
+              <Button variant="secondary" className="!py-1 text-xs" onClick={() => editDate({ local_date: problem.local_date, skip: true })}>{t('generate.skipThisDate')}</Button>
             </div>
           ))}
           <ul className="space-y-3">
@@ -267,7 +280,7 @@ export const GeneratePlansPage = () => {
                 <li key={plan.local_date} className="card space-y-3 p-4">
                   <div className="flex flex-wrap items-center gap-3">
                     <input
-                      aria-label={`Title for ${plan.local_date}`}
+                      aria-label={t('generate.titleFor', { date: fmt.calendarDate(plan.local_date, 'medium') })}
                       className="input w-64"
                       defaultValue={plan.title}
                       onBlur={(event) => {
@@ -276,7 +289,7 @@ export const GeneratePlansPage = () => {
                       }}
                     />
                     <input
-                      aria-label={`Date for ${plan.local_date}`}
+                      aria-label={t('generate.dateFor', { date: fmt.calendarDate(plan.local_date, 'medium') })}
                       type="date"
                       className="input w-44"
                       defaultValue={plan.local_date}
@@ -285,12 +298,12 @@ export const GeneratePlansPage = () => {
                         if (moveTo && moveTo !== plan.local_date) editDate({ ...edit, local_date: seriesDate, skip: false, move_to: moveTo });
                       }}
                     />
-                    <span className="text-sm text-slate-500">{formatDateTime(plan.service_date)}</span>
+                    <span className="text-sm text-slate-500">{fmt.dateTime(plan.service_date)}</span>
                     {plan.existing_plans.length > 0 && (
-                      <Badge tone={WARN_TONE}>Already has: {plan.existing_plans.map((existing) => existing.title).join(', ')}</Badge>
+                      <Badge tone={WARN_TONE}>{t('generate.alreadyHas', { titles: fmt.list(plan.existing_plans.map((existing) => existing.title)) })}</Badge>
                     )}
                     <Button variant="ghost" className="ml-auto !py-1 text-xs" onClick={() => editDate({ local_date: seriesDate, skip: true })}>
-                      Skip
+                      {t('generate.skip')}
                     </Button>
                   </div>
                   <TemplateApplyReview preview={plan.preview} newPlan />
@@ -304,21 +317,21 @@ export const GeneratePlansPage = () => {
               <ConflictList conflicts={conflicts} nameOf={nameOf} />
               {can('scheduling.override_conflicts', { serviceTypeId: preview.service_type_id }) ? (
                 <input
-                  aria-label="Reason for creating the roster over the conflicts"
+                  aria-label={t('generate.conflictReasonLabel')}
                   className="input"
-                  placeholder="Reason for creating anyway (kept with each request)"
+                  placeholder={t('generate.conflictReasonPlaceholder')}
                   maxLength={500}
                   value={conflictReason}
                   onChange={(event) => setConflictReason(event.target.value)}
                 />
               ) : (
-                <p className="text-xs text-slate-500">Leave out the roster pattern, or ask someone who may schedule over conflicts.</p>
+                <p className="text-xs text-slate-500">{t('generate.noOverride')}</p>
               )}
             </>
           )}
           {conflicts.length === 0 && <ErrorNotice error={generate.error} />}
           {generate.error instanceof ApiError && generate.error.code === 'template_preview_changed' && (
-            <p className="text-sm text-amber-700">The template or plans changed. Review again.</p>
+            <p className="text-sm text-amber-700">{t('generate.previewChanged')}</p>
           )}
           <div className="flex justify-end">
             <Button
@@ -326,7 +339,7 @@ export const GeneratePlansPage = () => {
               disabled={!preview.preview_hash || preview.plans.length === 0 || preview.plans.some((plan) => plan.preview.blocking.length > 0)}
               onClick={() => generate.mutate()}
             >
-              Create {preview.plans.length} draft plan{preview.plans.length === 1 ? '' : 's'}
+              {t('generate.createButton', { count: preview.plans.length })}
             </Button>
           </div>
         </section>

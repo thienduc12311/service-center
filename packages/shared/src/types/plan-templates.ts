@@ -150,9 +150,25 @@ export interface PlanTemplateSaveResult {
   revision: number;
 }
 
+/** Values behind a notice's English `message` (see the notice's `code`). */
+export interface TemplateNoticeParams {
+  count?: number;
+  /** `date_taken`: the new local date and the plan's service type name. */
+  date?: string;
+  service_type?: string;
+  /** `item_discussion_removed`: whose items lose their notes and comments. */
+  scope?: 'moved' | 'destination' | 'current';
+  /** `older_revision`. */
+  revision?: number;
+  latest?: number;
+}
+
 export interface TemplatePreviewNotice {
   code: string;
+  /** English sentence, kept for older clients; translate `code` + `params` instead. */
   message: string;
+  /** Absent on notices produced before structured parameters existed. */
+  params?: TemplateNoticeParams;
 }
 
 export type TemplateItemSkipReason = 'song_missing';
@@ -275,10 +291,29 @@ export interface GenerationExcludedDate {
   reason: 'excluded' | 'skipped';
 }
 
+/** Why a date or time could not be placed, as data rather than a sentence. */
+export type TemplateTimeProblem =
+  /** A template time falls in a spring-forward gap. */
+  | { code: 'time_skipped'; local_time: string; local_date: string; time_zone: string }
+  /** No time on the day, and local noon itself does not exist. */
+  | { code: 'noon_skipped'; local_date: string; time_zone: string }
+  /** Two series dates were moved onto the same day. */
+  | { code: 'date_collision'; series_date: string; other_series_date: string; local_date: string }
+  /** An edit names a date the series does not produce. */
+  | { code: 'edit_not_in_series'; local_date: string }
+  | { code: 'no_dates' }
+  /** Rescheduling: the service time does not exist on the new date. */
+  | { code: 'service_time_skipped'; local_date: string; time_zone: string }
+  /** Rescheduling: another time of the plan does not exist on the new date. */
+  | { code: 'moved_time_skipped'; local_time: string; local_date: string; time_zone: string };
+
 /** A date whose local time cannot be resolved (DST gap or fold). */
 export interface GenerationDateProblem {
   local_date: string;
+  /** English sentence, kept for older clients. */
   message: string;
+  /** Absent on problems produced before structured problems existed. */
+  problem?: TemplateTimeProblem;
 }
 
 export interface PlanGenerationPreview {

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, setStoredOrganizationId } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice } from '../components/ui';
@@ -12,6 +13,7 @@ const slugify = (value: string) =>
     .slice(0, 40);
 
 export const OnboardingPage = () => {
+  const { t } = useTranslation(['auth', 'common']);
   const { refreshUser, signOut } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState('');
@@ -44,14 +46,14 @@ export const OnboardingPage = () => {
     <div className="grid min-h-full place-items-center px-4 py-12">
       <form onSubmit={submit} className="card w-full max-w-md space-y-4 p-6">
         <div>
-          <h1 className="text-xl font-semibold">Create your organization</h1>
+          <h1 className="text-xl font-semibold">{t('onboarding.title')}</h1>
           <p className="mt-1 text-sm text-slate-500">
-            You aren’t part of an organization yet. Create one, or ask an admin to invite you.
+            {t('onboarding.intro')}
           </p>
         </div>
 
         <div>
-          <label className="label" htmlFor="org-name">Organization name</label>
+          <label className="label" htmlFor="org-name">{t('onboarding.name')}</label>
           <input
             id="org-name"
             className="input"
@@ -60,13 +62,13 @@ export const OnboardingPage = () => {
               setName(e.target.value);
               if (!slugEdited) setSlug(slugify(e.target.value));
             }}
-            placeholder="Grace Church"
+            placeholder={t('onboarding.namePlaceholder')}
             required
           />
         </div>
 
         <div>
-          <label className="label" htmlFor="org-slug">URL slug</label>
+          <label className="label" htmlFor="org-slug">{t('onboarding.slug')}</label>
           <input
             id="org-slug"
             className="input"
@@ -83,7 +85,7 @@ export const OnboardingPage = () => {
         <ErrorNotice error={error} />
 
         <Button type="submit" loading={busy} className="w-full">
-          Create organization
+          {t('onboarding.submit')}
         </Button>
 
         <button
@@ -91,7 +93,7 @@ export const OnboardingPage = () => {
           onClick={() => void signOut()}
           className="w-full text-center text-sm text-slate-500 hover:underline"
         >
-          Sign out
+          {t('common:actions.signOut')}
         </button>
       </form>
     </div>

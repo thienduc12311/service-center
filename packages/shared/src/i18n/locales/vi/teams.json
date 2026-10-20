@@ -1,0 +1,166 @@
+{
+  "teamsPage": {
+    "title": "Các ban",
+    "subtitle": "Ai phục vụ ở ban nào, và ở vị trí nào.",
+    "newTeam": "Ban mới",
+    "availability": "Lịch rảnh",
+    "settings": "Cài đặt",
+    "noMembers": "Ban này chưa có ai.",
+    "addPerson": "+ Thêm thành viên",
+    "empty": {
+      "title": "Chưa có ban nào",
+      "description": "Mỗi ban gom các vị trí bạn phân công — Ban nhạc, Ban kỹ thuật, Ban tiếp tân.",
+      "action": "Tạo ban"
+    },
+    "create": {
+      "title": "Ban mới",
+      "positions": "Các vị trí",
+      "positionsPlaceholder": "Hát chính, Guitar mộc, Bass, Trống",
+      "positionsHint": "Phân cách bằng dấu phẩy. Bạn có thể thêm sau.",
+      "submit": "Tạo ban"
+    },
+    "addMember": {
+      "title": "Thêm vào {{team}}",
+      "hint": "Bất kỳ ai trong danh sách thành viên đều có thể tham gia ban, dù có tài khoản hay không. Thành viên đã lưu trữ không hiển thị.",
+      "positionFor": "Vị trí cho {{name}}",
+      "addAs": "Thêm với vị trí…",
+      "noPosition": "Không có vị trí"
+    }
+  },
+  "teamForm": {
+    "name": "Tên",
+    "description": "Mô tả",
+    "descriptionPlaceholder": "Ban này làm gì, và những điều mọi người cần biết trước khi phục vụ.",
+    "colour": "Màu"
+  },
+  "teamEditor": {
+    "title": "Chỉnh sửa {{team}}",
+    "saveDetails": "Lưu thông tin",
+    "roles": "Vị trí",
+    "renameLabel": "Đổi tên {{position}}",
+    "rename": "Đổi tên",
+    "noRoles": "Ban này chưa có vị trí nào.",
+    "newRoleLabel": "Tên vị trí mới",
+    "newRolePlaceholder": "Thêm vị trí — Bass, Âm thanh, Tiếp tân…",
+    "addRole": "Thêm vị trí",
+    "removeConfirm": "Xóa vị trí “{{position}}”? Những người đã được phân công vào vị trí này vẫn giữ phân công nhưng không còn vị trí."
+  },
+  "teamPolicy": {
+    "title": "Cài đặt {{team}}",
+    "leaders": {
+      "title": "Trưởng ban",
+      "description": "Trưởng ban chỉ có thể phân công và quản lý {{team}} — không phải các ban khác, thứ tự chương trình hay thư viện bài hát."
+    },
+    "newRequests": "Yêu cầu mới",
+    "visibility": {
+      "released": "Gửi ngay khi phân công",
+      "prepared": "Chuẩn bị riêng cho đến khi gửi phân công"
+    },
+    "secure": {
+      "label": "Ban cần xác minh",
+      "description": "Thành viên cần có hồ sơ đủ điều kiện còn hiệu lực (ví dụ kiểm tra lý lịch) trước khi được thêm hoặc phân công. Hồ sơ thiếu hoặc hết hạn sẽ bị chặn.",
+      "requiredEligibility": "Điều kiện bắt buộc"
+    },
+    "tagRules": {
+      "label": "Gợi ý thành viên có thẻ",
+      "placeholder": "máy quay, âm thanh",
+      "hint": "Phân cách bằng dấu phẩy. Chỉ thay đổi các gợi ý sau này."
+    },
+    "viewers": {
+      "label": "Các ban được xem danh sách này",
+      "hint": "Chỉ có tác dụng khi danh sách thành viên bị giới hạn theo ban (Cài đặt → Quyền truy cập)."
+    },
+    "reminders": {
+      "title": "Nhắc nhở",
+      "description": "Thay thế cài đặt của loại buổi nhóm và Hội thánh cho các yêu cầu của ban này. Được lưu riêng.",
+      "scope": "ban này"
+    }
+  },
+  "availabilityRequests": {
+    "title": "Lịch rảnh của {{team}}",
+    "ask": "Hỏi lịch rảnh",
+    "from": "Từ",
+    "to": "Đến",
+    "replyBy": "Trả lời trước",
+    "message": "Lời nhắn",
+    "whoGetsIt": "Người nhận",
+    "emailOnly": "chỉ email",
+    "freshness": {
+      "current": "Đã cập nhật",
+      "stale": "Cần xem lại",
+      "unknown": "Chưa từng xem lại"
+    },
+    "unreachable_other": "{{count}} người đã chọn không có email hoặc tài khoản nên sẽ không nhận được thông báo.",
+    "send_other": "Gửi cho {{count}} người",
+    "earlier": "Các yêu cầu trước",
+    "requestSummary": "{{responded}}/{{total}} đã trả lời · gửi {{date}}",
+    "respondedAffirmed": "Xác nhận không thay đổi {{when}}",
+    "respondedUpdated": "Đã cập nhật ngày {{when}}",
+    "noReply": "Chưa trả lời",
+    "noRequests": "Chưa gửi yêu cầu nào cho ban này."
+  },
+  "serviceTypeWizard": {
+    "notAllowed": "Chỉ chủ sở hữu, quản trị viên và người phân công mới có thể thêm loại buổi nhóm.",
+    "fallbackName": "buổi nhóm này",
+    "back": "‹ Quay lại",
+    "nextTimes": "Tiếp: Thêm giờ nhóm",
+    "nextTeams": "Tiếp: Thêm ban",
+    "finish": "Hoàn tất",
+    "timesInvalid": "Mỗi giờ nhóm cần có ngày, và giờ kết thúc phải sau giờ bắt đầu.",
+    "steps": {
+      "name": "Tên",
+      "times": "Giờ nhóm",
+      "teams": "Các ban"
+    }
+  },
+  "nameStep": {
+    "title": "Thêm loại buổi nhóm",
+    "intro": "Loại buổi nhóm là một kiểu buổi nhóm diễn ra tại Hội thánh của bạn. Thường lặp lại hằng tuần và được đặt theo tên chính mà bạn dùng với hội chúng.",
+    "examplesTitle": "Ví dụ",
+    "examplesHint": "Chọn một tên để điền sẵn, sau đó bạn có thể sửa tùy ý.",
+    "examples": {
+      "weekend": "Buổi nhóm cuối tuần",
+      "sunday": "Buổi nhóm Chúa Nhật",
+      "specialEvents": "Sự kiện đặc biệt",
+      "contemporary": "Buổi nhóm đương đại",
+      "traditional": "Buổi nhóm truyền thống",
+      "recovery": "Nhóm phục hồi",
+      "children": "Mục vụ thiếu nhi",
+      "highSchool": "Thanh niên",
+      "middleSchool": "Thiếu niên"
+    },
+    "nameLabel": "Tên loại buổi nhóm của bạn là gì?",
+    "namePlaceholder": "Buổi nhóm chính",
+    "recurrenceLabel": "Chương trình lặp lại",
+    "recurrence": {
+      "weekly": "Hằng tuần",
+      "biweekly": "Hai tuần một lần",
+      "monthly": "Hằng tháng",
+      "occasionally": "Thỉnh thoảng"
+    }
+  },
+  "timesStep": {
+    "title": "Thiết lập giờ nhóm",
+    "intro": "Khi nào mọi người có thể tham dự <0>{{name}}</0>? Thêm (các) giờ nhóm cho ngày đầu tiên bạn muốn lên chương trình bên dưới.",
+    "dateFor": "Ngày của giờ nhóm {{number}}",
+    "from": "từ",
+    "to": "đến",
+    "startFor": "Giờ bắt đầu của giờ nhóm {{number}}",
+    "endFor": "Giờ kết thúc của giờ nhóm {{number}}",
+    "removeFor": "Xóa giờ nhóm {{number}}",
+    "addAnother": "+ Thêm giờ nhóm khác",
+    "footnote": "*Nếu buổi nhóm diễn ra lúc 9 giờ và 11 giờ sáng, hãy thêm cả hai giờ ở đây. Đừng thêm buổi tập hay các giờ khác."
+  },
+  "teamsStep": {
+    "title": "Cuối cùng, thêm các ban bạn phụ trách",
+    "intro": "Có lẽ <0>{{name}}</0> cần một vài ban để diễn ra suôn sẻ. Tạo ban mới bằng cách chọn trong các ban thường gặp dưới đây. Sau này bạn có thể chỉnh sửa, tự tạo ban riêng, hoặc sao chép ban từ một loại buổi nhóm khác.",
+    "categories": {
+      "music": "Âm nhạc",
+      "technical": "Kỹ thuật",
+      "kids": "Thiếu nhi",
+      "hospitality": "Tiếp tân",
+      "other": "Khác"
+    },
+    "joinTeams": "Thêm tôi vào các ban đã chọn."
+  }
+}

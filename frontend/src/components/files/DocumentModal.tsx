@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import { parseFileDocument, type FileDocumentSpan, type FileSummary } from '@service-center/shared';
 import { api } from '../../lib/api';
@@ -61,6 +62,7 @@ export const DocumentView = ({ body }: { body: string }) => (
 );
 
 export const DocumentModal = ({ file, versionId = null, onClose, onSaved }: DocumentModalProps) => {
+  const { t } = useTranslation(['media', 'common']);
   const document = useFileDocument(file.id, versionId);
   const [draft, setDraft] = useState<string | null>(null);
   const [title, setTitle] = useState(file.title);
@@ -82,16 +84,17 @@ export const DocumentModal = ({ file, versionId = null, onClose, onSaved }: Docu
       {document.data && draft === null && (
         <>
           <p className="mb-3 text-xs text-slate-500">
-            Version {document.data.version.version_number}
-            {viewingOld ? ' — the version this plan uses (a newer one exists)' : ''}
+            {viewingOld
+              ? t('document.versionPinned', { number: document.data.version.version_number })
+              : t('document.version', { number: document.data.version.version_number })}
           </p>
           <DocumentView body={document.data.body} />
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={onClose}>
-              Close
+              {t('common:actions.close')}
             </Button>
             {file.can_edit && !viewingOld && (
-              <Button onClick={() => setDraft(document.data.body)}>Edit</Button>
+              <Button onClick={() => setDraft(document.data.body)}>{t('common:actions.edit')}</Button>
             )}
           </div>
         </>
@@ -105,11 +108,11 @@ export const DocumentModal = ({ file, versionId = null, onClose, onSaved }: Docu
           }}
         >
           <label className="block">
-            <span className="label">Title</span>
+            <span className="label">{t('addFile.title')}</span>
             <input className="input" required maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)} />
           </label>
           <textarea className="input min-h-80 font-mono text-sm" maxLength={100_000} value={draft} onChange={(event) => setDraft(event.target.value)} />
-          <p className="text-xs text-slate-500">Saving creates a new version. Plans pinned to an earlier version keep it.</p>
+          <p className="text-xs text-slate-500">{t('document.saveHint')}</p>
           {save.error && (
             <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-rose-600/20">
               {fileErrorMessage(save.error)}
@@ -117,10 +120,10 @@ export const DocumentModal = ({ file, versionId = null, onClose, onSaved }: Docu
           )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setDraft(null)}>
-              Cancel
+              {t('common:actions.cancel')}
             </Button>
             <Button type="submit" loading={save.isPending}>
-              Save new version
+              {t('document.saveNewVersion')}
             </Button>
           </div>
         </form>

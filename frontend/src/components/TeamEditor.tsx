@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { TeamPositionRow, TeamWithPositions } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useInvalidateOrg } from '../hooks/queries';
@@ -27,6 +28,7 @@ interface RenamePositionVariables {
  * clears it from existing assignments, so it asks first.
  */
 export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
+  const { t } = useTranslation(['teams', 'common']);
   const invalidate = useInvalidateOrg();
 
   const [details, setDetails] = useState<TeamDetailsDraft>({
@@ -85,15 +87,15 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
   };
 
   const confirmRemove = (position: TeamPositionRow) => {
-    const message = `Delete the “${position.name}” role? People scheduled in it keep their assignment but lose the role.`;
+    const message = t('teamEditor.removeConfirm', { position: position.name });
     if (window.confirm(message)) removePosition.mutate(position.id);
   };
 
   return (
-    <Modal open title={`Edit ${team.name}`} onClose={onClose}>
+    <Modal open title={t('teamEditor.title', { team: team.name })} onClose={onClose}>
       <form onSubmit={submitDetails} className="space-y-4">
         <div>
-          <label className="label" htmlFor="edit-team-name">Name</label>
+          <label className="label" htmlFor="edit-team-name">{t('teamForm.name')}</label>
           <input
             id="edit-team-name"
             className="input"
@@ -105,7 +107,7 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
         </div>
 
         <div>
-          <label className="label" htmlFor="edit-team-description">Description</label>
+          <label className="label" htmlFor="edit-team-description">{t('teamForm.description')}</label>
           <textarea
             id="edit-team-description"
             className="input"
@@ -113,12 +115,12 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
             maxLength={500}
             value={details.description}
             onChange={(e) => setDetails({ ...details, description: e.target.value })}
-            placeholder="What this team does, and anything people should know before serving."
+            placeholder={t('teamForm.descriptionPlaceholder')}
           />
         </div>
 
         <div>
-          <label className="label" htmlFor="edit-team-color">Colour</label>
+          <label className="label" htmlFor="edit-team-color">{t('teamForm.colour')}</label>
           <input
             id="edit-team-color"
             type="color"
@@ -132,16 +134,16 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Close
+            {t('common:actions.close')}
           </Button>
           <Button type="submit" loading={saveDetails.isPending}>
-            Save details
+            {t('teamEditor.saveDetails')}
           </Button>
         </div>
       </form>
 
       <div className="mt-6 border-t border-slate-100 pt-4">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">Roles</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">{t('teamEditor.roles')}</h3>
 
         <ul className="space-y-1">
           {team.positions.map((position) => (
@@ -150,7 +152,7 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
                 <>
                   <input
                     className="input flex-1"
-                    aria-label={`Rename ${position.name}`}
+                    aria-label={t('teamEditor.renameLabel', { position: position.name })}
                     value={renaming.name}
                     maxLength={80}
                     autoFocus
@@ -164,10 +166,10 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
                       renamePosition.mutate({ positionId: position.id, name: renaming.name.trim() })
                     }
                   >
-                    Save
+                    {t('common:actions.save')}
                   </Button>
                   <Button variant="ghost" className="!px-2 text-sm" onClick={() => setRenaming(null)}>
-                    Cancel
+                    {t('common:actions.cancel')}
                   </Button>
                 </>
               ) : (
@@ -178,35 +180,35 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
                     className="!px-2 text-sm"
                     onClick={() => setRenaming({ positionId: position.id, name: position.name })}
                   >
-                    Rename
+                    {t('teamEditor.rename')}
                   </Button>
                   <Button
                     variant="ghost"
                     className="!px-2 text-sm text-rose-600 hover:bg-rose-50"
                     onClick={() => confirmRemove(position)}
                   >
-                    Delete
+                    {t('common:actions.delete')}
                   </Button>
                 </>
               )}
             </li>
           ))}
           {team.positions.length === 0 && (
-            <li className="px-2 py-1.5 text-sm text-slate-400">No roles on this team yet.</li>
+            <li className="px-2 py-1.5 text-sm text-slate-400">{t('teamEditor.noRoles')}</li>
           )}
         </ul>
 
         <form onSubmit={submitNewPosition} className="mt-3 flex items-center gap-2">
           <input
             className="input flex-1"
-            aria-label="New role name"
-            placeholder="Add a role — Bass, Sound, Greeter…"
+            aria-label={t('teamEditor.newRoleLabel')}
+            placeholder={t('teamEditor.newRolePlaceholder')}
             maxLength={80}
             value={newPosition}
             onChange={(e) => setNewPosition(e.target.value)}
           />
           <Button type="submit" variant="secondary" loading={addPosition.isPending} disabled={!newPosition.trim()}>
-            Add role
+            {t('teamEditor.addRole')}
           </Button>
         </form>
 

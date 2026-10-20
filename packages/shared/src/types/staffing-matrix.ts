@@ -1,5 +1,6 @@
 import type { AssignmentAttendanceMode, AssignmentStatus, AssignmentVisibility, PlanTimeKind } from './database.js';
 import type { AttendanceConflict } from './attendance.js';
+import type { PreferenceWarning } from './availability.js';
 
 export interface StaffingMatrixFilters {
   from: string;
@@ -88,8 +89,17 @@ export interface StaffingMatrixPreviewItem {
   plan_title: string;
   delivery_intent: 'none' | 'assignment_request';
   conflicts: AttendanceConflict[];
+  /** English sentences, kept for older clients. */
   warnings: string[];
+  /** The same warnings as data, in the same order. */
+  warning_details: StaffingMatrixWarning[];
 }
+
+/** A staffing-matrix preview warning a client can word in the viewer's language. */
+export type StaffingMatrixWarning =
+  | { kind: 'preference'; warning: PreferenceWarning }
+  | { kind: 'copy_resets_answers' }
+  | { kind: 'team_unavailable' };
 
 export interface StaffingMatrixPreview {
   operation_id: string;

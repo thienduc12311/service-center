@@ -1,3 +1,4 @@
+import { resolveRecipientLocale, type SupportedLocale } from '@service-center/shared';
 import type {
   DeliveryChannel,
   DeliveryRow,
@@ -74,6 +75,8 @@ export interface DeliveryJob {
   attempts: number;
   maxAttempts: number;
   leaseOwner: string;
+  /** Recipient language captured at enqueue; English for pre-i18n deliveries. */
+  locale: SupportedLocale;
 }
 
 export const mapDeliveryRowToJob = (row: DeliveryRow): DeliveryJob => ({
@@ -86,6 +89,7 @@ export const mapDeliveryRowToJob = (row: DeliveryRow): DeliveryJob => ({
   attempts: row.attempts,
   maxAttempts: row.max_attempts,
   leaseOwner: row.lease_owner ?? '',
+  locale: resolveRecipientLocale(row.locale),
 });
 
 /** The action a delivery belongs to, in domain terms. */

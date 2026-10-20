@@ -124,10 +124,28 @@ export type PreferenceWarningCode =
   | 'availability_stale'
   | 'busy_elsewhere';
 
+/**
+ * The values behind a warning's English `detail`, so clients can word it in
+ * the viewer's language. Which fields are set depends on `code`.
+ */
+export interface PreferenceWarningParams {
+  /** `frequency`: the person's preferred rhythm. */
+  frequency?: SchedulingFrequency;
+  /** `monthly_max`: plans already served this month, and the stated maximum. */
+  served?: number;
+  max?: number;
+  /** `avoided_week`: week of the month (1–5). */
+  week?: number;
+  /** `availability_stale`: last review, as a calendar date in the organization's zone. */
+  reviewed_on?: string;
+}
+
 export interface PreferenceWarning {
   person_id: string;
   code: PreferenceWarningCode;
+  /** English sentence, kept for older clients; translate `code` + `params` instead. */
   detail: string;
+  params: PreferenceWarningParams;
   /** Which preference row produced it; null for all-teams/freshness/external. */
   preference_team_id: string | null;
 }

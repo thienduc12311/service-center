@@ -19,7 +19,12 @@ import {
   escapeHtml,
 } from './chart-html.js';
 import { renderChartContext, resolvePlanItemChartContext } from './chart-context.js';
-import { formatDate, formatDuration } from './dates.js';
+import { formatDuration } from './dates.js';
+import { translatorFor, type FixedTranslator } from '../i18n/engine.js';
+import { formatCalendarDate } from '../i18n/format.js';
+import type { SupportedLocale } from '../i18n/locales.js';
+
+type SongsTranslator = FixedTranslator<'songs'>;
 
 const SONGS_PER_COVER_PAGE = 7;
 
@@ -41,6 +46,8 @@ export interface ServiceSongBookSong {
 }
 
 export interface ServiceSongBookDocument {
+  /** Language of application-owned labels; songs and charts stay as authored. */
+  locale: SupportedLocale;
   title: string;
   dateLabel: string;
   organizationName: string;
@@ -51,19 +58,22 @@ export interface ServiceSongBookDocument {
 export interface ServiceSongBookDocumentInput {
   plan: PlanDetail;
   organizationName: string;
+  /** Defaults to English. */
+  locale?: SupportedLocale;
 }
 
 /** Resolves the scheduled key and selected arrangement for every song item. */
 export const serviceSongBookDocumentFromPlan = ({
   plan,
   organizationName,
-}: ServiceSongBookDocumentInput): ServiceSongBookDocument => ({
+  locale = 'en',
+}: ServiceSongBookDocumentInput): ServiceSongBookDocument => {
+  const t = translatorFor(locale, 'songs');
+  return {
+  locale,
   title: plan.title,
-  dateLabel: formatDate(plan.service_date, {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  }),
+  // A calendar date: formatted without shifting it through the viewer's zone.
+  dateLabel: formatCalendarDate(plan.service_date, locale, 'longDate'),
   organizationName,
   location: plan.location,
   songs: plan.items.flatMap((item): ServiceSongBookSong[] => {
@@ -77,9 +87,11 @@ export const serviceSongBookDocumentFromPlan = ({
     const rendered = ready ? renderChartContext(ready) : null;
     const unavailableMessage =
       context.status === 'unavailable'
-        ? 'The arrangement chosen for this item is no longer available.'
+        ? t('songBook.arrangementUnavailable')
         : rendered?.status === 'unavailable' && rendered.reason === 'key_unknown'
-          ? `This chart's written key is missing or unreadable, so it cannot be shown in ${ready?.displayKey ?? 'the service key'}.`
+          ? ready?.displayKey
+            ? t('songBook.keyUnknown', { key: ready.displayKey })
+            : t('songBook.keyUnknownNoKey')
           : null;
 
     return [
@@ -100,7 +112,8 @@ export const serviceSongBookDocumentFromPlan = ({
       },
     ];
   }),
-});
+  };
+};
 
 const chunks = <T>(values: readonly T[], size: number): T[][] => {
   if (values.length === 0) return [[]];
@@ -111,15 +124,14 @@ const chunks = <T>(values: readonly T[], size: number): T[][] => {
   return result;
 };
 
-const coverMetadata = (song: ServiceSongBookSong): string => {
-  const values: string[] = [];
-  if (song.arrangementName) values.push(song.arrangementName);
-  if (song.bpm !== null) values.push(`${song.bpm}bpm`);
-  return values.join(' at ');
+const coverMetadata = (song: ServiceSongBookSong, t: SongsTranslator): string => {
+  const bpm = song.bpm !== null ? t('songBook.bpm', { bpm: song.bpm }) : null;
+  if (song.arrangementName && bpm) return t('songBook.arrangementAtBpm', { arrangement: song.arrangementName, bpm });
+  return song.arrangementName ?? bpm ?? '';
 };
 
-const renderCoverRow = (song: ServiceSongBookSong): string => {
-  const metadata = coverMetadata(song);
+const renderCoverRow = (song: ServiceSongBookSong, t: SongsTranslator): string => {
+  const metadata = coverMetadata(song, t);
   const sequence = song.sequence.filter(Boolean).join(', ');
   return `<li class="cover-row">
         <span class="cover-duration">${escapeHtml(formatDuration(song.durationSeconds))}</span>
@@ -136,15 +148,16 @@ const renderCoverPage = (
   doc: ServiceSongBookDocument,
   songs: readonly ServiceSongBookSong[],
   pageIndex: number,
+  t: SongsTranslator,
 ): string => {
   const details = [doc.organizationName, doc.location].filter(Boolean).join(' | ');
   const rows = songs.length
-    ? `<ol class="cover-order">${songs.map(renderCoverRow).join('\n')}</ol>`
-    : '<div class="cover-empty">No songs in this service.</div>';
+    ? `<ol class="cover-order">${songs.map((song) => renderCoverRow(song, t)).join('\n')}</ol>`
+    : `<div class="cover-empty">${escapeHtml(t('songBook.noSongs'))}</div>`;
 
   return `<article class="cover-page">
       <header class="cover-header">
-        <h1>${escapeHtml(doc.title)}${pageIndex > 0 ? ' - Song order continued' : ''}</h1>
+        <h1>${escapeHtml(pageIndex > 0 ? t('songBook.continued', { title: doc.title }) : doc.title)}</h1>
         <h2>${escapeHtml(doc.dateLabel)}</h2>
         <p>${escapeHtml(details)}</p>
       </header>
@@ -152,7 +165,7 @@ const renderCoverPage = (
     </article>`;
 };
 
-const renderChartSource = (song: ServiceSongBookSong): string => {
+const renderChartSource = (song: ServiceSongBookSong, locale: SupportedLocale, t: SongsTranslator): string => {
   const chart: ChartDocument = {
     title: song.title,
     key: song.key,
@@ -162,11 +175,12 @@ const renderChartSource = (song: ServiceSongBookSong): string => {
     copyright: song.copyright,
     chordpro: song.chordpro,
     formatting: song.formatting,
+    locale,
   };
   const markup = chartDocumentMarkup(chart);
   const body = song.hasChart
     ? markup.body
-    : `<section class="chart-empty"><p>${escapeHtml(song.unavailableMessage ?? 'No chord chart has been added for this song.')}</p></section>`;
+    : `<section class="chart-empty"><p>${escapeHtml(song.unavailableMessage ?? t('songBook.noChart'))}</p></section>`;
   const font = song.formatting.fontFamily || DEFAULT_CHART_FONT;
   const fontSize = song.formatting.fontSize ?? DEFAULT_CHART_FONT_SIZE;
   const chordColor = song.formatting.chordColor || DEFAULT_CHART_CHORD_COLOR;
@@ -502,17 +516,18 @@ const paginationScript = (): string => `
 
 /** Renders the cover and all charts as one standalone printable document. */
 export const renderServiceSongBookHtml = (doc: ServiceSongBookDocument): string => {
+  const t = translatorFor(doc.locale, 'songs');
   const coverPages = chunks(doc.songs, SONGS_PER_COVER_PAGE)
-    .map((songs, index) => renderCoverPage(doc, songs, index))
+    .map((songs, index) => renderCoverPage(doc, songs, index, t))
     .join('\n');
-  const chartSources = doc.songs.map(renderChartSource).join('\n');
+  const chartSources = doc.songs.map((song) => renderChartSource(song, doc.locale, t)).join('\n');
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${doc.locale}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(doc.title)} - Song Book</title>
+    <title>${escapeHtml(t('songBook.documentTitle', { title: doc.title }))}</title>
     <style>${styles()}</style>
   </head>
   <body>

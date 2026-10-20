@@ -5,6 +5,7 @@ import { classifyResendError } from '../resend-transport.js';
 
 const base = {
   to: 'sam@example.test',
+  locale: 'en' as const,
   personName: 'Sam',
   planTitle: 'Sunday A',
   serviceDate: '2026-11-01',
@@ -44,7 +45,7 @@ describe('scheduleEmail', () => {
 describe('serviceReminderEmail', () => {
   it('has no response link', () => {
     const content = serviceReminderEmail({
-      to: 'm@example.test', personName: 'Morgan', organizationName: 'Riverside', planTitle: 'Sunday A',
+      to: 'm@example.test', locale: 'en', personName: 'Morgan', organizationName: 'Riverside', planTitle: 'Sunday A',
       serviceDate: '2026-11-01', firstTimeAt: '2026-10-31T22:00:00Z', firstTimeLabel: 'Sat, Oct 31, 6:00 PM',
       location: null, assignments: [{ teamName: 'Band', positionName: 'Keys' }], planUrl: 'https://app.test/plans/p',
     });

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   ApiError,
   isFreshnessWarning,
-  PREFERENCE_WARNING_LABELS,
   type AssignmentVisibility,
   type AttendanceConflict,
   type PreferenceWarning,
@@ -12,6 +12,8 @@ import { api } from '../../lib/api';
 import { keys, useDeliveryReadiness, useInvalidateOrg, usePeople, usePlan, useTeams } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Avatar, Button, ErrorNotice, Modal } from '../ui';
+import { useFormatters, useStructuredText } from '../../i18n';
+import { preferenceWarningText } from '@service-center/shared';
 import { AddGuestForm } from './AddGuestForm';
 import { ALL_TIMES, ConflictList, isScopeComplete, TimeScopePicker, type TimeScope } from './attendance';
 
@@ -35,13 +37,16 @@ export const SchedulePeopleModal = ({
   initialTeamId,
   onClose,
 }: SchedulePeopleModalProps) => {
+  const { t } = useTranslation(['staffing', 'common']);
+  const { list: formatList } = useFormatters();
+  const structured = useStructuredText();
   const invalidate = useInvalidateOrg();
   const { can, organizationId } = useAuth();
   const allTeams = useTeams();
   // Only the teams this person may schedule on this plan; the server refuses the rest.
   const teams = {
     ...allTeams,
-    data: allTeams.data?.filter((t) => can('scheduling.manage', { serviceTypeId, teamId: t.id })),
+    data: allTeams.data?.filter((item) => can('scheduling.manage', { serviceTypeId, teamId: item.id })),
   };
   const people = usePeople();
   const plan = usePlan(planId);
@@ -59,7 +64,7 @@ export const SchedulePeopleModal = ({
   const [visibilityChoice, setVisibilityChoice] = useState<AssignmentVisibility | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
 
-  const team = teams.data?.find((t) => t.id === teamId);
+  const team = teams.data?.find((item) => item.id === teamId);
   const realPositionId = positionId && positionId !== NEW_POSITION ? positionId : null;
 
   // F04: actual attendance intervals, checked as the scheduler chooses. The
@@ -179,14 +184,14 @@ export const SchedulePeopleModal = ({
   }, [people.data, team, filter]);
 
   const nameOf = (personId: string): string =>
-    people.data?.find((person) => person.person_id === personId)?.full_name ?? 'Someone';
+    people.data?.find((person) => person.person_id === personId)?.full_name ?? t('common:fallback.someone');
 
   return (
-    <Modal open={open} title="Schedule people" onClose={onClose}>
+    <Modal open={open} title={t('schedulePeople.title')} onClose={onClose}>
       <div className="space-y-4">
         <div>
           <label className="label" htmlFor="schedule-team">
-            Team
+            {t('schedulePeople.team')}
           </label>
           <select
             id="schedule-team"
@@ -198,10 +203,10 @@ export const SchedulePeopleModal = ({
               setCommitConflicts(null);
             }}
           >
-            <option value="">Choose a team</option>
-            {(teams.data ?? []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
+            <option value="">{t('schedulePeople.chooseTeam')}</option>
+            {(teams.data ?? []).map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
               </option>
             ))}
           </select>
@@ -210,7 +215,7 @@ export const SchedulePeopleModal = ({
         {team && (
           <div>
             <label className="label" htmlFor="schedule-position">
-              Position
+              {t('schedulePeople.position')}
             </label>
             <select
               id="schedule-position"
@@ -221,14 +226,14 @@ export const SchedulePeopleModal = ({
               setPositionId(e.target.value);
             }}
             >
-              <option value="">No specific position</option>
+              <option value="">{t('schedulePeople.noSpecificPosition')}</option>
               {team.positions.map((position) => (
                 <option key={position.id} value={position.id}>
                   {position.name}
                 </option>
               ))}
               {planPositions.length > 0 && (
-                <optgroup label="This plan only">
+                <optgroup label={t('schedulePeople.planOnlyGroup')}>
                   {planPositions.map((position) => (
                     <option key={position.id} value={position.id}>
                       {position.name}
@@ -236,15 +241,15 @@ export const SchedulePeopleModal = ({
                   ))}
                 </optgroup>
               )}
-              <option value={NEW_POSITION}>New position for this plan only…</option>
+              <option value={NEW_POSITION}>{t('schedulePeople.newPlanPosition')}</option>
             </select>
             {positionId === NEW_POSITION && (
               <div className="mt-2 space-y-1">
                 <div className="flex gap-2">
                   <input
-                    aria-label="Plan-only position name"
+                    aria-label={t('schedulePeople.planPositionName')}
                     className="input flex-1"
-                    placeholder="e.g. Guest trumpet"
+                    placeholder={t('schedulePeople.planPositionPlaceholder')}
                     maxLength={80}
                     value={newPositionName}
                     onChange={(e) => setNewPositionName(e.target.value)}
@@ -255,11 +260,11 @@ export const SchedulePeopleModal = ({
                     disabled={!newPositionName.trim()}
                     onClick={() => addPlanPosition.mutate()}
                   >
-                    Add
+                    {t('common:actions.add')}
                   </Button>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Belongs to {team.name} on this plan only; the team’s usual positions don’t change.
+                  {t('schedulePeople.planPositionHint', { team: team.name })}
                 </p>
                 {addPlanPosition.error && <ErrorNotice error={addPlanPosition.error} />}
               </div>
@@ -281,10 +286,10 @@ export const SchedulePeopleModal = ({
 
         <div>
           <div className="flex items-center justify-between">
-            <span className="label">People</span>
+            <span className="label">{t('schedulePeople.people')}</span>
             {!addingGuest && (
               <button type="button" className="text-xs font-medium text-brand-600" onClick={() => setAddingGuest(true)}>
-                + Someone new
+                {t('schedulePeople.someoneNew')}
               </button>
             )}
           </div>
@@ -301,9 +306,9 @@ export const SchedulePeopleModal = ({
             </div>
           )}
           <input
-            aria-label="Find a person"
+            aria-label={t('schedulePeople.findPerson')}
             className="input mb-1"
-            placeholder="Find a person"
+            placeholder={t('schedulePeople.findPerson')}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -324,8 +329,8 @@ export const SchedulePeopleModal = ({
                   />
                   <Avatar name={person.full_name ?? person.email} url={person.avatar_url} size="sm" />
                   <span className="flex-1 text-sm">{person.full_name ?? person.email}</span>
-                  {!person.has_login && <span className="text-xs text-slate-500">no login</span>}
-                  {onTeam && <span className="text-xs text-brand-600">on team</span>}
+                  {!person.has_login && <span className="text-xs text-slate-500">{t('schedulePeople.noLogin')}</span>}
+                  {onTeam && <span className="text-xs text-brand-600">{t('schedulePeople.onTeam')}</span>}
                 </label>
               );
             })}
@@ -340,20 +345,21 @@ export const SchedulePeopleModal = ({
             onChange={(e) => setVisibilityChoice(e.target.checked ? 'prepared' : 'released')}
           />
           <span>
-            Prepare privately
+            {t('schedulePeople.preparePrivately')}
             <span className="block text-xs text-slate-500">
-              Only this team’s schedulers see these requests until you release them. Nobody is notified yet.
+              {t('schedulePeople.preparePrivatelyHint')}
             </span>
           </span>
         </label>
 
         {visibility === 'released' && unreachable.length > 0 && (
           <div role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
-            <p className="font-medium">Can’t be notified</p>
+            <p className="font-medium">{t('schedulePeople.unreachableTitle')}</p>
             <p className="mt-1 text-xs">
-              {unreachable.map((entry) => nameOf(entry.person_id)).join(', ')}{' '}
-              {unreachable.length === 1 ? 'has' : 'have'} no email or login. The request is still created — let them
-              know yourself, or add an email on their profile.
+              {t('schedulePeople.unreachableBody', {
+                count: unreachable.length,
+                names: formatList(unreachable.map((entry) => nameOf(entry.person_id))),
+              })}
             </p>
           </div>
         )}
@@ -361,38 +367,43 @@ export const SchedulePeopleModal = ({
         {conflicts.length > 0 && <ConflictList conflicts={conflicts} nameOf={nameOf} />}
         {blocking.length > 0 && (mayOverride ? (
           <input
-            aria-label="Reason for scheduling over the conflicts"
+            aria-label={t('schedulePeople.conflictReasonLabel')}
             className="input"
-            placeholder="Reason for scheduling anyway (required, kept with the request)"
+            placeholder={t('schedulePeople.conflictReasonPlaceholder')}
             maxLength={500}
             value={conflictReason}
             onChange={(e) => setConflictReason(e.target.value)}
           />
         ) : (
           <p className="text-xs text-slate-500">
-            You can’t schedule over a conflict here. Choose other times or people, or ask someone who may
-            schedule over conflicts.
+            {t('schedulePeople.cannotOverride')}
           </p>
         ))}
 
         {warningsByPerson.size > 0 && (
           <div role="status" className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 ring-1 ring-slate-300/60">
-            <p className="font-medium">Preferences and availability</p>
-            <p className="text-xs text-slate-500">Not conflicts — you can still schedule. Blockouts appear separately as conflicts.</p>
+            <p className="font-medium">{t('schedulePeople.preferencesTitle')}</p>
+            <p className="text-xs text-slate-500">{t('schedulePeople.preferencesHint')}</p>
             <ul className="mt-1 space-y-0.5 text-xs">
               {[...warningsByPerson.entries()].map(([personId, list]) => (
                 <li key={personId}>
                   <span className="font-medium">{nameOf(personId)}</span>
                   {' — '}
-                  {list.map((warning) => `${PREFERENCE_WARNING_LABELS[warning.code]}${warning.code === 'busy_elsewhere' ? '' : ` (${warning.detail})`}`).join('; ')}
+                  {list
+                    .map((warning) =>
+                      warning.code === 'busy_elsewhere'
+                        ? t(`preferenceWarning.${warning.code}`)
+                        : t('schedulePeople.warningWithDetail', { label: t(`preferenceWarning.${warning.code}`), detail: preferenceWarningText(warning, structured) }),
+                    )
+                    .join(t('schedulePeople.warningSeparator'))}
                 </li>
               ))}
             </ul>
             {hasPreferenceWarnings && (
               <input
-                aria-label="Reason for scheduling despite preferences"
+                aria-label={t('schedulePeople.preferenceReasonLabel')}
                 className="input mt-2"
-                placeholder="Reason for going ahead (optional, kept with the request)"
+                placeholder={t('schedulePeople.preferenceReasonPlaceholder')}
                 maxLength={500}
                 value={overrideReason}
                 onChange={(e) => setOverrideReason(e.target.value)}
@@ -407,7 +418,7 @@ export const SchedulePeopleModal = ({
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>
-            Cancel
+            {t('common:actions.cancel')}
           </Button>
           <Button
             loading={schedule.isPending}
@@ -421,8 +432,10 @@ export const SchedulePeopleModal = ({
             onClick={() => schedule.mutate()}
           >
             {blocking.length > 0
-              ? 'Schedule anyway'
-              : `${visibility === 'prepared' ? 'Prepare' : 'Schedule'} ${selected.length || ''}`.trim()}
+              ? t('schedulePeople.scheduleAnyway')
+              : selected.length === 0
+                ? t(visibility === 'prepared' ? 'schedulePeople.prepare' : 'schedulePeople.schedule')
+                : t(visibility === 'prepared' ? 'schedulePeople.prepareCount' : 'schedulePeople.scheduleCount', { count: selected.length })}
           </Button>
         </div>
       </div>

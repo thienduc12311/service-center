@@ -1,0 +1,518 @@
+{
+  "library": {
+    "title": "Media",
+    "subtitle": "Reusable videos, cues and graphics you can link to items in a plan's order.",
+    "add": "Add media",
+    "searchPlaceholder": "Search by title",
+    "searchLabel": "Search media",
+    "includeArchived": "Include archived",
+    "emptyTitle": "No media yet",
+    "emptyDescription": "Add a bundle, then attach its files and link it to order items.",
+    "columns": {
+      "title": "Title",
+      "length": "Length",
+      "themes": "Themes",
+      "lastUsed": "Last used"
+    },
+    "never": "Never",
+    "usageCount_one": "{{count}}×",
+    "usageCount_other": "{{count}}×"
+  },
+  "detail": {
+    "notFound": "Media not found.",
+    "allMedia": "All media",
+    "archived": "Archived: hidden from pickers. Plans that already use it keep it.",
+    "archivedSince": "Archived since {{date}}: hidden from pickers. Plans that already use it keep it.",
+    "filesDescription": "Videos, audio, images and documents for this media. Each keeps its versions and audience.",
+    "usedIn": "Used in plans",
+    "notUsed": "Not linked to any plan yet. Link it from an item's “Media” button on the Order tab."
+  },
+  "thumbnail": {
+    "title": "Thumbnail",
+    "alt": "Thumbnail for {{title}}",
+    "none": "No thumbnail.",
+    "selectLabel": "Thumbnail image",
+    "uploadHint": "Upload an image under Files to use it here."
+  },
+  "form": {
+    "title": "Title",
+    "creator": "Creator",
+    "length": "Length (m:ss)",
+    "themes": "Themes (comma separated)",
+    "tags": "Tags (comma separated)",
+    "notes": "Notes",
+    "archiveOn": "Archive automatically on",
+    "archiveOnHint": "From this date it leaves pickers; plans that use it keep it.",
+    "durationInvalid": "Enter the length as minutes:seconds, like 2:30.",
+    "readOnlyLabels": "Themes: {{themes}} · Tags: {{tags}}",
+    "delete": "Delete…",
+    "deleteConfirm": "Delete “{{title}}” and its files? Plans that use it must be unlinked first."
+  },
+  "mediaErrors": {
+    "revisionStale": "Someone else changed this media. It has been reloaded — check it and try again."
+  },
+  "linkMedia": {
+    "title": "Media for “{{title}}”",
+    "linked": "Linked: <0>{{title}}</0>",
+    "linkedArchived": "Linked: <0>{{title}}</0> (archived)",
+    "removeLink": "Remove link",
+    "find": "Find media",
+    "noneFound": "No media found. <0>Open the media library</0> to add some.",
+    "linkedButton": "Linked",
+    "link": "Link",
+    "stale": "Someone else changed this plan. Close this dialog to load the latest order, then try again — nothing was saved."
+  },
+  "filesPanel": {
+    "title": "Files",
+    "loading": "Loading files…",
+    "empty": "No files yet.",
+    "emptyReader": "No files you can open here.",
+    "hideArchived": "Hide archived files",
+    "showArchived_one": "Show {{count}} archived file",
+    "showArchived_other": "Show {{count}} archived files"
+  },
+  "files": {
+    "category": "Category",
+    "categories": {
+      "chart": "Chart",
+      "lyrics": "Lyrics",
+      "audio": "Audio",
+      "video": "Video",
+      "image": "Image",
+      "document": "Document",
+      "other": "Other"
+    },
+    "audiences": {
+      "organization": "Everyone in the church",
+      "scheduled": "People scheduled on this plan",
+      "teams": "Selected teams",
+      "positions": "Selected positions",
+      "leaders": "Leaders only"
+    },
+    "kinds": {
+      "upload": "File",
+      "link": "Link",
+      "document": "Text"
+    },
+    "archived": "Archived",
+    "playOnly": "Play only",
+    "noFinishedUpload": "No finished upload yet",
+    "versionNumber": "v{{number}}",
+    "versionUploading": "Uploading",
+    "versionNotSaved": "Not saved",
+    "menu": {
+      "versions": "Versions",
+      "replace": "Replace with a new version…",
+      "details": "Details and audience…",
+      "delete": "Delete…"
+    },
+    "deleteConfirm": "Delete “{{title}}” and all its versions? This cannot be undone.",
+    "replaceLabel": "Replace {{title}}",
+    "replaceUploading": "Uploading the new version — the current one stays until this finishes.",
+    "replaceSaving": "Saving the new version…",
+    "pendingUpload": "Unfinished upload “{{filename}}” (expires {{time}}) — not shown to anyone yet.",
+    "pendingUploadSoon": "Unfinished upload “{{filename}}” (expires soon) — not shown to anyone yet.",
+    "failedUpload": "Upload “{{filename}}” was not saved: {{reason}}",
+    "checkAgain": "Check again",
+    "discard": "Discard"
+  },
+  "fileErrors": {
+    "revisionStale": "Someone else changed this file. The list has been refreshed — check it and try again.",
+    "streamOnly": "This file can be played here but not downloaded.",
+    "forbidden": "You do not have permission to change this file.",
+    "notFound": "This file is no longer available to you."
+  },
+  "uploadOutcome": {
+    "notUploaded": "The upload has not reached storage yet. Try again.",
+    "expired": "This upload expired before it finished. Upload the file again.",
+    "sizeMismatch": "The stored file is not the size that was announced, so it was discarded. Upload it again.",
+    "typeMismatch": "The stored file is not the type that was announced, so it was discarded. Upload it again.",
+    "superseded": "Someone replaced this file while you were uploading. Your upload was not applied; upload again to replace the newer version.",
+    "abandoned": "This upload was cancelled.",
+    "failed": "The upload could not be completed. Upload the file again.",
+    "notSaved": "The upload was not saved."
+  },
+  "upload": {
+    "unsupportedType": "This file type is not supported.",
+    "empty": "This file is empty.",
+    "tooLarge": "Files are limited to {{size}}.",
+    "interrupted": "{{reason}} Nothing was saved yet — retry to continue the same upload.",
+    "progress": "Uploading {{loaded}} of {{total}} — not saved until it finishes.",
+    "preparing": "Preparing the upload…",
+    "finalizing": "Checking the stored file…",
+    "cancel": "Cancel upload"
+  },
+  "addFile": {
+    "titles": {
+      "upload": "Upload a file",
+      "link": "Add a link",
+      "document": "New text document"
+    },
+    "menu": {
+      "upload": "Upload a file…",
+      "link": "Add a link…",
+      "document": "New text document…"
+    },
+    "file": "File",
+    "fileHint": "PDF, images, audio, video, text and Office documents up to {{size}}.",
+    "title": "Title",
+    "titleOptional": "Title (optional)",
+    "titlePlaceholder": "The file name",
+    "url": "Web address",
+    "urlHint": "Opens the other site directly. Service Center never downloads it, and that site decides who can play or save it.",
+    "text": "Text",
+    "textHint": "Formatting: # Heading, - bullet, 1. numbered, **bold**, *italic*. Anything else is shown as plain text.",
+    "categoryFromType": "From the file type",
+    "categoryChoose": "Choose…"
+  },
+  "audience": {
+    "legend": "Who can open it",
+    "planLeaders": "Leaders of this plan can always open it.",
+    "songLeaders": "Leaders of this song library can always open it.",
+    "scheduledHint": "Only people whose request has been sent count — prepared requests do not.",
+    "loadingTeams": "Loading teams…",
+    "loadingPositions": "Loading positions…"
+  },
+  "document": {
+    "version": "Version {{number}}",
+    "versionPinned": "Version {{number}} — the version this plan uses (a newer one exists)",
+    "saveHint": "Saving creates a new version. Plans pinned to an earlier version keep it.",
+    "saveNewVersion": "Save new version"
+  },
+  "details": {
+    "title": "File details",
+    "rights": "Readers may",
+    "rightsOptions": {
+      "download": "Play, open and download",
+      "stream_only": "Play and open only (no download or offline copy)"
+    },
+    "streamOnlyHint": "Download buttons and offline packs leave this file out. Anything a browser plays can still be recorded, so this is not copy protection.",
+    "narrowingHint": "The new audience applies to every version and to plans that use this file. Links already opened stay valid for a few minutes, and copies people downloaded cannot be recalled."
+  },
+  "versions": {
+    "title": "Versions of {{title}}",
+    "current": "(current)",
+    "usedOn_one": "Used on {{count}} plan.",
+    "usedOn_other": "Used on {{count}} plans.",
+    "usedOnPinned_one": "Used on {{count}} plan, pinned to an earlier version.",
+    "usedOnPinned_other": "Used on {{count}} plans, some pinned to an earlier version."
+  },
+  "planFiles": {
+    "fromSong": "From the song",
+    "fromArrangement": "From the arrangement",
+    "serviceTypeDefault": "Service type default",
+    "linked": "Linked",
+    "pinnedTo": "Pinned to v{{number}}",
+    "newerAvailable": "Newer version available",
+    "useNewest": "Use the newest version here",
+    "followNewest": "Always follow the newest version",
+    "pinCurrent": "Pin the current version",
+    "removeFromPlan": "Remove from this plan",
+    "intro": "Each file shows only to the people its audience allows; people see files here only after their request is sent.",
+    "thisPlan": "This plan",
+    "addDefault": "Add a default file",
+    "noPlanFiles": "No plan files yet.",
+    "items": "Items",
+    "noItems": "This plan has no items.",
+    "noItemFilesTitle": "No item files you can open",
+    "noItemFilesDescription": "Song and item files you are allowed to see appear here.",
+    "noFiles": "No files.",
+    "allDefaultsLinked": "Every default file of this service type is already on the plan.",
+    "defaultPinHint": "The plan keeps the version you add now, even if the default is replaced later."
+  },
+  "rehearsal": {
+    "unavailable": "This recording is no longer available to you. Other items are still playable.",
+    "loadFailed": "The recording could not be loaded. Check your connection and try again.",
+    "unsupported": "This recording could not be played in this browser. Other items are still playable."
+  },
+  "live": {
+    "service": "Service",
+    "status": {
+      "ready": "Ready",
+      "live": "Live",
+      "paused": "Paused",
+      "ended": "Ended",
+      "discarded": "Discarded"
+    },
+    "policies": {
+      "item": "Item length",
+      "planned_end": "Planned item end",
+      "service_end": "Service end"
+    },
+    "actions": {
+      "start": "start",
+      "advance": "next",
+      "pause": "pause",
+      "resume": "resume",
+      "end": "end",
+      "take_control": "take control",
+      "release_control": "release control",
+      "refresh_snapshot": "use the current order",
+      "jump": "jump",
+      "take_over": "take over",
+      "discard": "discard",
+      "set_policy": "change countdown"
+    },
+    "warnings": {
+      "planChanged": "The plan order changed after this run pinned it. The run keeps the order it pinned.",
+      "timeMoved": "This service time was moved after the run was created. Timing still uses the time the run pinned.",
+      "timeRemoved": "This service time was removed from the plan. The run and its history are kept."
+    },
+    "connection": {
+      "offline_one": "Offline — showing what was received {{count}} second ago",
+      "offline_other": "Offline — showing what was received {{count}} seconds ago",
+      "stale_one": "Reconnecting — last updated {{count}} second ago",
+      "stale_other": "Reconnecting — last updated {{count}} seconds ago",
+      "live_one": "Connected · updated {{count}} second ago",
+      "live_other": "Connected · updated {{count}} seconds ago"
+    },
+    "countdown": {
+      "elapsed": "elapsed · no planned length",
+      "over": "over · {{policy}}",
+      "remaining": "remaining · {{policy}}"
+    },
+    "finish": {
+      "planned": "Planned finish {{time}}",
+      "onTime": "Planned finish {{planned}} · projected {{projected}} (on time)",
+      "late": "Planned finish {{planned}} · projected {{projected}} ({{delta}} late)",
+      "early": "Planned finish {{planned}} · projected {{projected}} ({{delta}} early)"
+    },
+    "refusal": {
+      "revisionStale": "The run moved on before your command arrived. Nothing was applied; the screen now shows the latest state.",
+      "controlLost": "You are not controlling this run any more. Nothing was applied.",
+      "notApplied": "{{reason}} Nothing was applied.",
+      "network": "The command could not be sent. It was not applied — check your connection and retry."
+    },
+    "control": {
+      "you_one": "You are controlling this run (lease renews automatically; {{count}} second left).",
+      "you_other": "You are controlling this run (lease renews automatically; {{count}} seconds left).",
+      "held": "{{name}} is controlling this run.",
+      "heldUnknown": "Someone is controlling this run.",
+      "finished": "Nobody controls a finished run.",
+      "nobody": "Nobody is controlling this run."
+    },
+    "confirm": {
+      "endTitle": "End this run?",
+      "takeOverTitle": "Take over control?",
+      "discardTitle": "Discard this run?",
+      "takeOver": "Take over",
+      "discard": "Discard",
+      "endBody": "Ending records the actual finish. Nobody can advance the run afterwards; recorded times can still be corrected.",
+      "takeOverBody": "{{name}} will lose control immediately; their next command is refused. The takeover is recorded.",
+      "takeOverBodyUnknown": "The current controller will lose control immediately; their next command is refused. The takeover is recorded.",
+      "discardBody": "The run and its history are kept but no longer count as this service’s run. You can then start a new run for the same service time.",
+      "reasonOptional": "Reason (optional)",
+      "reasonRequired": "Why? (required)"
+    },
+    "panelLabel": "Live run",
+    "useCurrentOrder": "Use the current order",
+    "discardedReason": "Discarded: {{reason}}",
+    "notStarted": "Not started. First up",
+    "nothingToRun": "Nothing to run",
+    "next": "Next: {{title}}",
+    "nextNothing": "Next: nothing — the controller ends the run",
+    "endedAt": "Ended at {{time}}",
+    "wasDiscarded": "This run was discarded.",
+    "stageDisplay": "Stage display",
+    "takeOverFrom": "Take over from {{name}}",
+    "takeOverFromController": "Take over from the controller",
+    "takeControl": "Take control",
+    "start": "Start",
+    "back": "← Back",
+    "pause": "Pause",
+    "resume": "Resume",
+    "nextButton": "Next →",
+    "endRun": "End run",
+    "countdownLabel": "Countdown",
+    "releaseControl": "Release control",
+    "discardRun": "Discard run…",
+    "sending": "Sending “{{action}}”… not applied until the server confirms.",
+    "offlineCommands": "Commands are disabled while offline; nothing you press is queued.",
+    "retryCommand": "Retry the same command",
+    "orderPinned": "Order (as pinned)",
+    "goToSection": "Go to section",
+    "goHere": "Go here",
+    "stage": {
+      "close": "Close (Esc)",
+      "unavailable": "This run is no longer available.",
+      "startingWith": "Starting with {{title}}",
+      "finished": "Service run finished",
+      "notUpdated_one": "Not updated for {{count}} second",
+      "notUpdated_other": "Not updated for {{count}} seconds"
+    },
+    "history": {
+      "title": "Run history",
+      "loading": "Loading history…",
+      "plannedVsActual": "Planned versus actual",
+      "plannedVsActualCorrected": "Planned versus actual (includes corrected times)",
+      "columns": {
+        "item": "Item",
+        "started": "Started",
+        "planned": "Planned",
+        "actual": "Actual",
+        "difference": "Difference"
+      },
+      "beforeService": "(before service)",
+      "afterService": "(after service)",
+      "notRun": "not run",
+      "serviceItems": "Service items",
+      "elapsed": "{{start}} – {{end}} · {{elapsed}} start to end",
+      "elapsedPaused": "{{start}} – {{end}} · {{elapsed}} start to end, including {{paused}} paused",
+      "transitions": "Transitions",
+      "correctHint": "Correcting a time adds a record (who, why, previous value); the original entry stays.",
+      "someone": "Someone",
+      "actionTo": "{{action}} → {{item}}",
+      "actions": {
+        "create": "Created",
+        "start": "Started",
+        "advance": "Next item",
+        "jump": "Jumped",
+        "pause": "Paused",
+        "resume": "Resumed",
+        "end": "Ended",
+        "take_control": "Took control",
+        "take_over": "Took over",
+        "release_control": "Released control",
+        "set_policy": "Changed countdown",
+        "refresh_snapshot": "Pinned the current order",
+        "discard": "Discarded"
+      },
+      "corrected": "Corrected from {{from}} to {{to}} by {{name}}: “{{reason}}”",
+      "correctTime": "Correct time",
+      "correctTitle": "Correct a recorded time",
+      "saveCorrection": "Save correction",
+      "correctBody": "{{action}} was recorded at {{time}}. The new time must stay between the entries before and after it. Times are in your browser’s timezone ({{timezone}}).",
+      "actualTime": "Actual time"
+    },
+    "page": {
+      "planNotFound": "Plan not found.",
+      "title": "Live — {{title}}",
+      "titleFallback": "Live",
+      "back": "← Back to the plan",
+      "planChat": "Plan chat",
+      "planChatDenied": "Plan chat is open to plan leaders and the people scheduled on this plan.",
+      "serviceTimes": "Service times",
+      "noServiceTimes": "This plan has no service time. Add one on the plan before running Live.",
+      "showing": "Showing · {{status}}",
+      "open": "Open · {{status}}",
+      "createRun": "Create run",
+      "noRun": "No run yet.",
+      "countdownForNew": "Countdown for new runs",
+      "chooseTime": "Choose a service time",
+      "chooseTimeController": "Each service time has its own run. Create one to pin the current order and control it here.",
+      "chooseTimeViewer": "Open a service time’s run to follow it. Only people who can edit this plan control Live.",
+      "unavailableTitle": "This run is not available",
+      "unavailableDescription": "It was removed or you no longer have access to it.",
+      "loadingRun": "Loading the run…",
+      "hideHistory": "Hide history and actual times",
+      "showHistory": "History and actual times",
+      "notThisPlan": "That run is not part of this plan."
+    }
+  },
+  "stage": {
+    "loading": "Loading stage layouts…",
+    "needsAttention": "needs attention",
+    "newLayout": "New layout",
+    "emptyTitle": "No stage layout yet",
+    "emptyEditor": "Start from a template or a blank stage, then place the people scheduled on this plan and their gear.",
+    "emptyReader": "Plan editors can add stage layouts here.",
+    "createTitle": "New stage layout",
+    "defaultName": "Stage",
+    "name": "Name",
+    "startFrom": "Start from",
+    "blankLayout": "A blank layout",
+    "templateOption": "Template: {{name}}",
+    "templateHint": "The template's gear is copied; later template changes do not change this plan.",
+    "background": "Background",
+    "backgrounds": {
+      "blank": "Blank",
+      "stage": "Proscenium stage",
+      "thrust": "Thrust stage",
+      "round": "In the round"
+    },
+    "issues": {
+      "not_scheduled": "No longer scheduled on this plan",
+      "departed": "Left the roster",
+      "renamed": "Name changed since placed",
+      "unplaced": "Scheduled but not placed"
+    },
+    "kinds": {
+      "person": "Person",
+      "gear": "Gear",
+      "label": "Label"
+    },
+    "gear": {
+      "drums": "Drums",
+      "keys": "Keys",
+      "guitarAmp": "Guitar amp",
+      "bassAmp": "Bass amp",
+      "mic": "Mic",
+      "monitor": "Monitor",
+      "podium": "Podium",
+      "screen": "Screen"
+    },
+    "errors": {
+      "revisionStale": "Someone else saved this layout. Your draft is kept — reload to see theirs, or discard yours."
+    },
+    "templateName": "{{name}} template",
+    "templateSaved": "Saved “{{name}}” as a template (gear and labels only).",
+    "maxObjects_one": "A layout holds at most {{count}} object.",
+    "maxObjects_other": "A layout holds at most {{count}} objects.",
+    "allowPopups": "Allow pop-ups for this site to print or save the layout as a PDF.",
+    "printTitle": "{{plan}} — {{layout}}",
+    "printHeading": "{{plan}} · {{layout}}",
+    "layoutLabel": "Stage layout",
+    "layoutName": "Layout name",
+    "matchedAt": "Matched to staffing {{time}}",
+    "notRefreshed": "Not refreshed since created",
+    "addGear": "Add gear",
+    "addGearOption": "Add gear…",
+    "addLabel": "Add label",
+    "refreshFromStaffing": "Refresh from staffing…",
+    "printPdf": "Print / PDF",
+    "saveAsTemplate": "Save as template",
+    "deleteConfirm": "Delete the layout “{{name}}”?",
+    "discardChanges": "Discard changes",
+    "saveLayout": "Save layout",
+    "reloadTheirs": "Reload their version",
+    "compared": "Compared with current staffing",
+    "allStillScheduled": "Everyone placed is still scheduled.",
+    "noAutoMove": "Nobody is moved automatically. Use “Refresh from staffing” to update deliberately.",
+    "unplacedTitle": "Scheduled, not placed",
+    "allPlaced": "Everyone scheduled is on the layout.",
+    "notYetAsked": "not yet asked",
+    "placeLabel": "Place {{name}}",
+    "place": "Place",
+    "refreshedNotice": "Refreshed in your draft. Review the layout, then save it.",
+    "refresh": {
+      "title": "Refresh from current staffing",
+      "intro": "People who are still scheduled keep exactly where they stand; only their names are updated.",
+      "remove_one": "Remove {{count}} person no longer scheduled or no longer on the roster",
+      "remove_other": "Remove {{count}} people no longer scheduled or no longer on the roster",
+      "add_one": "Place {{count}} scheduled person along the front edge",
+      "add_other": "Place {{count}} scheduled people along the front edge",
+      "apply": "Apply to draft"
+    },
+    "inspector": {
+      "selected": {
+        "person": "Selected person",
+        "gear": "Selected gear",
+        "label": "Selected label"
+      },
+      "label": "Label",
+      "width": "Width %",
+      "height": "Height %",
+      "rotation": "Rotation °",
+      "color": "Colour",
+      "nudge": "Nudge (arrow keys move the selected object)",
+      "position": "x {{x}}% · y {{y}}%"
+    },
+    "canvas": {
+      "audience": "AUDIENCE",
+      "audienceAllSides": "AUDIENCE ALL SIDES",
+      "label": "Stage diagram",
+      "object": "{{kind}}: {{label}}",
+      "objectFlagged": "{{kind}}: {{label}} (staffing changed)"
+    }
+  }
+}

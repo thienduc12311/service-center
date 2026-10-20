@@ -25,9 +25,15 @@ export interface ResponseDraft {
 
 export type ResponseFailureKind = 'stale' | 'forbidden' | 'invalid' | 'network';
 
+/** Catalog entries (`scheduling:responses.failure.*`) for failures the app words itself. */
+export type ResponseFailureMessageKey = 'stale' | 'unavailable' | 'network';
+
 export interface ResponseFailure {
   kind: ResponseFailureKind;
+  /** English fallback text, or the server's own sentence when `messageKey` is absent. */
   message: string;
+  /** Set when the app owns the wording; the screen translates it. */
+  messageKey?: ResponseFailureMessageKey;
 }
 
 export type ResponseDrafts = Readonly<Record<string, ResponseDraft>>;
@@ -134,6 +140,7 @@ export const describeResponseFailure = (error: unknown): ResponseFailure => {
       return {
         kind: 'stale',
         message: 'This position changed since you opened it. It has been refreshed — review it and answer again.',
+        messageKey: 'stale',
       };
     }
     if (error.code === 'assignment_response_forbidden' || error.status === 409) {
@@ -143,11 +150,12 @@ export const describeResponseFailure = (error: unknown): ResponseFailure => {
       return { kind: 'invalid', message: error.message };
     }
     if (error.status === 404 || error.status === 403) {
-      return { kind: 'forbidden', message: 'This position is no longer available to you.' };
+      return { kind: 'forbidden', message: 'This position is no longer available to you.', messageKey: 'unavailable' };
     }
   }
   return {
     kind: 'network',
     message: 'Your answer may not have been saved. Check your connection and try again.',
+    messageKey: 'network',
   };
 };

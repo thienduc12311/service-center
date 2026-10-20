@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Icon } from './icons';
 import { PressableScale } from './motion';
@@ -21,15 +22,14 @@ export const NotificationBell = ({ bar = true }: NotificationBellProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
+  const { t } = useTranslation('scheduling');
 
   const label = unread > BADGE_CAP ? `${BADGE_CAP}+` : String(unread);
 
   const bell = (
     <PressableScale
       onPress={() => router.push('/notifications')}
-      accessibilityLabel={
-        unread ? `Notifications, ${unread} unread` : 'Notifications'
-      }
+      accessibilityLabel={t('notifications.bellLabel', { count: unread })}
       style={styles.button}
     >
       <Icon name="bell" size={19} color={theme.color.ink} />

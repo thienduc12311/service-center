@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { ArrangementRow } from '@service-center/shared';
 import type { Theme } from '../lib/theme';
 import { useThemedStyles } from '../lib/useTheme';
@@ -21,14 +22,15 @@ export const ArrangementPicker = ({
   planArrangementId = null,
   onSelect,
 }: ArrangementPickerProps) => {
+  const { t } = useTranslation('songs');
   const styles = useThemedStyles(makeStyles);
 
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel="Arrangement" style={styles.list}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={t('mobileArrangements.label')} style={styles.list}>
       {arrangements.map((arrangement) => {
         const selected = arrangement.id === selectedId;
         const inPlan = arrangement.id === planArrangementId;
-        const detail = [arrangement.song_key, inPlan ? 'In this plan' : arrangement.is_default ? 'Default' : null]
+        const detail = [arrangement.song_key, inPlan ? t('mobileArrangements.inPlan') : arrangement.is_default ? t('arrangement.defaultBadge') : null]
           .filter(Boolean)
           .join(' · ');
         return (

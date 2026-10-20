@@ -10,6 +10,7 @@ import type {
   PlanTemplateContent,
   PlanTemplateCounts,
   PlanTemplateTime,
+  TemplateTimeProblem,
 } from '../types/plan-templates.js';
 import type { AmbiguousTimeChoice, GenerationDateEdit } from '../schemas/plan-templates.js';
 import { addLocalDays, localDateAt, localDaysBetween, possibleInstantsForLocalDateTime } from './timezone.js';
@@ -24,7 +25,7 @@ export interface ResolvedTemplateTime {
 
 export type TemplateTimesResolution =
   | { ok: true; times: ResolvedTemplateTime[]; service_date: string }
-  | { ok: false; message: string };
+  | { ok: false; message: string; problem: TemplateTimeProblem };
 
 const resolveWallClock = (
   localDate: string,
@@ -58,6 +59,7 @@ export const resolveTemplateTimes = (
       return {
         ok: false,
         message: `${time.local_start} on ${date} does not exist in ${timeZone} because the clock moves forward. Move this date or change the template time.`,
+        problem: { code: 'time_skipped', local_time: time.local_start, local_date: date, time_zone: timeZone },
       };
     }
     resolved.push({
@@ -70,7 +72,13 @@ export const resolveTemplateTimes = (
   const serviceDate = anchor
     ? resolved[anchor.index]!.starts_at
     : resolveWallClock(localDate, '12:00', timeZone, ambiguous);
-  if (!serviceDate) return { ok: false, message: `Noon on ${localDate} does not exist in ${timeZone}.` };
+  if (!serviceDate) {
+    return {
+      ok: false,
+      message: `Noon on ${localDate} does not exist in ${timeZone}.`,
+      problem: { code: 'noon_skipped', local_date: localDate, time_zone: timeZone },
+    };
+  }
   return { ok: true, times: resolved, service_date: serviceDate };
 };
 
@@ -140,16 +148,26 @@ export const expandPlanSeries = (input: PlanSeriesExpansionInput): PlanSeriesExp
   for (const date of dates) {
     const other = seen.get(date.local_date);
     if (other) {
-      problems.push({ local_date: date.local_date, message: `${date.series_date} and ${other} would both be on ${date.local_date}.` });
+      problems.push({
+        local_date: date.local_date,
+        message: `${date.series_date} and ${other} would both be on ${date.local_date}.`,
+        problem: { code: 'date_collision', series_date: date.series_date, other_series_date: other, local_date: date.local_date },
+      });
     }
     seen.set(date.local_date, date.series_date);
   }
   for (const editDate of edits.keys()) {
     if (!dates.some((date) => date.series_date === editDate) && !excluded.some((date) => date.local_date === editDate)) {
-      problems.push({ local_date: editDate, message: `${editDate} is not one of the proposed dates.` });
+      problems.push({
+        local_date: editDate,
+        message: `${editDate} is not one of the proposed dates.`,
+        problem: { code: 'edit_not_in_series', local_date: editDate },
+      });
     }
   }
-  if (dates.length === 0) problems.push({ local_date: input.start_date, message: 'The series produces no dates.' });
+  if (dates.length === 0) {
+    problems.push({ local_date: input.start_date, message: 'The series produces no dates.', problem: { code: 'no_dates' } });
+  }
   return { dates, excluded, problems };
 };
 
@@ -200,7 +218,9 @@ export interface ShiftedPlan {
   times: Array<{ id: string; starts_at: string; ends_at: string }>;
 }
 
-export type PlanShiftResolution = { ok: true; plan: ShiftedPlan } | { ok: false; message: string };
+export type PlanShiftResolution =
+  | { ok: true; plan: ShiftedPlan }
+  | { ok: false; message: string; problem: TemplateTimeProblem };
 
 /**
  * Moves a plan to `newLocalDate` by whole civil days: every time keeps its
@@ -218,13 +238,22 @@ export const shiftPlanToDate = (
     resolveWallClock(addLocalDays(localDateAt(instant, timeZone), days), localTimeAt(instant, timeZone), timeZone, ambiguous);
   const serviceDate = move(plan.service_date);
   if (!serviceDate) {
-    return { ok: false, message: `The service time does not exist on ${newLocalDate} in ${timeZone} (clocks move forward).` };
+    return {
+      ok: false,
+      message: `The service time does not exist on ${newLocalDate} in ${timeZone} (clocks move forward).`,
+      problem: { code: 'service_time_skipped', local_date: newLocalDate, time_zone: timeZone },
+    };
   }
   const times: ShiftedPlan['times'] = [];
   for (const time of plan.times) {
     const start = move(time.starts_at);
     if (!start) {
-      return { ok: false, message: `${localTimeAt(time.starts_at, timeZone)} does not exist after moving to ${newLocalDate} in ${timeZone}.` };
+      const localTime = localTimeAt(time.starts_at, timeZone);
+      return {
+        ok: false,
+        message: `${localTime} does not exist after moving to ${newLocalDate} in ${timeZone}.`,
+        problem: { code: 'moved_time_skipped', local_time: localTime, local_date: newLocalDate, time_zone: timeZone },
+      };
     }
     const duration = new Date(time.ends_at).getTime() - new Date(time.starts_at).getTime();
     times.push({ id: time.id, starts_at: start, ends_at: new Date(new Date(start).getTime() + duration).toISOString() });

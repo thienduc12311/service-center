@@ -1,12 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
   ApiError,
-  MESSAGE_AUDIENCE_INCLUDE_LABELS,
-  MESSAGE_AUDIENCE_REASON_LABELS,
   MESSAGE_TEMPLATE_VARIABLES,
-  MESSAGE_VARIABLE_LABELS,
   messageVariableValues,
   renderMessageTemplate,
   unknownMessageVariables,
@@ -18,6 +16,7 @@ import {
 import { api } from '../../lib/api';
 import { useInvalidateOrg, useMessageTemplates } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
+import { useFormatters } from '../../i18n';
 import { Badge, Button, ErrorNotice, Modal } from '../ui';
 
 export interface MessageComposerPlan {
@@ -44,6 +43,8 @@ const PLAN_GROUPS: MessageAudienceInclude[] = ['scheduled_confirmed', 'scheduled
  * idempotency key per composed message, so a retried Send is one message.
  */
 export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerModalProps) => {
+  const { t } = useTranslation(['messages', 'common']);
+  const format = useFormatters();
   const invalidate = useInvalidateOrg();
   const { user, organizationId } = useAuth();
   const templates = useMessageTemplates();
@@ -117,7 +118,7 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
     : null;
 
   const applyTemplate = (id: string) => {
-    const template = templates.data?.templates.find((t) => t.id === id);
+    const template = templates.data?.templates.find((candidate) => candidate.id === id);
     setTemplateId(template?.id ?? null);
     if (template) {
       setSubject(template.subject);
@@ -127,7 +128,7 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
 
   const saveTemplate = useMutation({
     mutationFn: (shared: boolean) => {
-      const name = window.prompt('Template name');
+      const name = window.prompt(t('messageComposer.templateNamePrompt'));
       if (!name) return Promise.resolve(null);
       return api.createMessageTemplate({ name, subject, body, shared });
     },
@@ -139,38 +140,41 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
 
   if (sent) {
     return (
-      <Modal open title="Message sent" onClose={onClose}>
-        <p className="text-sm text-slate-600">
-          {sent.replayed ? 'This message had already been sent; nothing was sent twice. ' : ''}
-          Queued for {sent.message.recipient_count} {sent.message.recipient_count === 1 ? 'person' : 'people'}
-          {sent.message.excluded_count ? `; ${sent.message.excluded_count} not included` : ''}.
-          Delivery outcomes appear as each channel finishes.
-        </p>
+      <Modal open title={t('messageComposer.sentTitle')} onClose={onClose}>
+        <div className="space-y-1 text-sm text-slate-600">
+          {sent.replayed && <p>{t('messageComposer.replayed')}</p>}
+          <p>
+            {sent.message.excluded_count
+              ? t('messageComposer.queuedWithExcluded', { count: sent.message.recipient_count, excluded: sent.message.excluded_count })
+              : t('messageComposer.queued', { count: sent.message.recipient_count })}
+          </p>
+          <p>{t('messageComposer.outcomesNote')}</p>
+        </div>
         <div className="mt-6 flex justify-end gap-2">
           <Link className="button inline-flex items-center px-3.5 py-2 text-sm font-medium ring-1 ring-slate-300" to={`/messages/${sent.message.id}`}>
-            View outcomes
+            {t('messageComposer.viewOutcomes')}
           </Link>
-          <Button onClick={onClose}>Done</Button>
+          <Button onClick={onClose}>{t('common:actions.done')}</Button>
         </div>
       </Modal>
     );
   }
 
   return (
-    <Modal open title={plan ? `Message people on ${plan.title}` : 'Message team members'} onClose={onClose} size="wide">
+    <Modal open title={plan ? t('messageComposer.planTitle', { plan: plan.title }) : t('messageComposer.teamTitle')} onClose={onClose} size="wide">
       <div className="space-y-5 text-sm">
         <fieldset>
-          <legend className="label">Who</legend>
+          <legend className="label">{t('messageComposer.who')}</legend>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             {(plan ? PLAN_GROUPS : (['team_members'] as MessageAudienceInclude[])).map((group) => (
               <label key={group} className="flex items-center gap-2">
                 <input type="checkbox" checked={include.includes(group)} onChange={() => changeAudience(() => setInclude((c) => toggle(c, group)))} />
-                {MESSAGE_AUDIENCE_INCLUDE_LABELS[group]}
+                {t(`audienceInclude.${group}`)}
               </label>
             ))}
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            {plan ? 'Limit to teams (optional; required for team members):' : 'Teams:'}
+            {plan ? t('messageComposer.limitTeamsHint') : t('messageComposer.teamsLabel')}
           </p>
           <div className="mt-1 grid max-h-32 grid-cols-2 gap-1 overflow-y-auto sm:grid-cols-3">
             {teams.map((team) => (
@@ -181,43 +185,44 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
             ))}
           </div>
           <Button className="mt-3" variant="secondary" disabled={audienceInvalid} loading={runPreview.isPending} onClick={() => runPreview.mutate()}>
-            {preview ? 'Refresh recipients' : 'Preview recipients'}
+            {preview ? t('messageComposer.refreshRecipients') : t('messageComposer.previewRecipients')}
           </Button>
           <ErrorNotice error={runPreview.error} />
         </fieldset>
 
         {staleNotice && (
           <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-amber-800">
-            The audience changed since your preview. Nothing was sent — review the updated list, then send again.
+            {t('messageComposer.staleNotice')}
           </p>
         )}
 
         {preview && (
           <section>
             <h3 className="mb-1 font-medium text-slate-700">
-              {reachable.length} will receive it
-              {preview.recipients.length - reachable.length > 0 ? ` · ${preview.recipients.length - reachable.length} not included` : ''}
+              {preview.recipients.length - reachable.length > 0
+                ? t('messageComposer.willReceiveWithExcluded', { count: reachable.length, excluded: preview.recipients.length - reachable.length })
+                : t('messageComposer.willReceive', { count: reachable.length })}
             </h3>
             {preview.recipients.length === 0 ? (
-              <p className="text-slate-500">Nobody matches this selection.</p>
+              <p className="text-slate-500">{t('messageComposer.nobodyMatches')}</p>
             ) : (
               <ul className="max-h-56 divide-y divide-slate-100 overflow-y-auto rounded-lg ring-1 ring-slate-200 dark:divide-slate-800 dark:ring-slate-700">
                 {preview.recipients.map((recipient) => (
                   <li key={recipient.person_id} className="flex flex-wrap items-center gap-2 px-3 py-1.5">
                     <input
                       type="checkbox"
-                      aria-label={`Include ${recipient.first_name}`}
+                      aria-label={t('messageComposer.includeName', { name: recipient.first_name })}
                       disabled={!recipient.reachable}
                       checked={recipient.reachable && !excluded.includes(recipient.person_id)}
                       onChange={() => setExcluded((c) => toggle(c, recipient.person_id))}
                     />
                     <span>{[recipient.first_name, recipient.last_name].filter(Boolean).join(' ')}</span>
                     {recipient.reasons.map((reason) => (
-                      <Badge key={reason} tone="bg-slate-100 text-slate-600 ring-slate-500/20">{MESSAGE_AUDIENCE_REASON_LABELS[reason]}</Badge>
+                      <Badge key={reason} tone="bg-slate-100 text-slate-600 ring-slate-500/20">{t(`audienceReasons.${reason}`)}</Badge>
                     ))}
-                    {!recipient.reachable && <span className="text-xs text-rose-600">No email or sign-in — can’t be reached</span>}
-                    {recipient.reachable && !recipient.has_email && <span className="text-xs text-slate-500">App only (no email)</span>}
-                    {recipient.reachable && !recipient.has_login && <span className="text-xs text-slate-500">Email only</span>}
+                    {!recipient.reachable && <span className="text-xs text-rose-600">{t('messageComposer.unreachable')}</span>}
+                    {recipient.reachable && !recipient.has_email && <span className="text-xs text-slate-500">{t('messageComposer.appOnly')}</span>}
+                    {recipient.reachable && !recipient.has_login && <span className="text-xs text-slate-500">{t('messageComposer.emailOnly')}</span>}
                   </li>
                 ))}
               </ul>
@@ -227,22 +232,24 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
 
         <section className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-medium text-slate-700">Message</h3>
-            <select className="input !w-auto" value={templateId ?? ''} onChange={(event) => applyTemplate(event.target.value)} aria-label="Template">
-              <option value="">No template</option>
-              {(templates.data?.templates ?? []).map((t) => (
-                <option key={t.id} value={t.id}>{t.name}{t.owner_id ? '' : ' (shared)'}</option>
+            <h3 className="font-medium text-slate-700">{t('messageComposer.messageHeading')}</h3>
+            <select className="input !w-auto" value={templateId ?? ''} onChange={(event) => applyTemplate(event.target.value)} aria-label={t('messageComposer.templateLabel')}>
+              <option value="">{t('messageComposer.noTemplate')}</option>
+              {(templates.data?.templates ?? []).map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.owner_id ? template.name : t('messageComposer.sharedTemplate', { name: template.name })}
+                </option>
               ))}
             </select>
           </div>
-          <input className="input" placeholder="Subject" maxLength={200} value={subject} onChange={(event) => setSubject(event.target.value)} />
-          <textarea className="input" rows={6} maxLength={8000} placeholder="Write your message…" value={body} onChange={(event) => setBody(event.target.value)} />
+          <input className="input" placeholder={t('messageComposer.subjectPlaceholder')} maxLength={200} value={subject} onChange={(event) => setSubject(event.target.value)} />
+          <textarea className="input" rows={6} maxLength={8000} placeholder={t('messageComposer.bodyPlaceholder')} value={body} onChange={(event) => setBody(event.target.value)} />
           <div className="flex flex-wrap gap-1">
             {MESSAGE_TEMPLATE_VARIABLES.filter((v) => plan || !v.startsWith('plan_')).map((variable) => (
               <button
                 key={variable}
                 type="button"
-                title={MESSAGE_VARIABLE_LABELS[variable]}
+                title={t(`messageComposer.variables.${variable}`)}
                 className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-600 hover:bg-slate-200"
                 onClick={() => setBody((current) => `${current}{{${variable}}}`)}
               >
@@ -250,22 +257,22 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
               </button>
             ))}
           </div>
-          {unknown.length > 0 && <p role="alert" className="text-xs text-rose-600">Unknown variable: {unknown.join(', ')}</p>}
+          {unknown.length > 0 && <p role="alert" className="text-xs text-rose-600">{t('messageComposer.unknownVariables', { count: unknown.length, names: format.list(unknown) })}</p>}
           {sampleValues && subject && body && (
             <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs dark:bg-slate-900">
-              <p className="mb-1 font-medium text-slate-500">Preview for {sample?.first_name}</p>
+              <p className="mb-1 font-medium text-slate-500">{t('messageComposer.previewFor', { name: sample?.first_name ?? '' })}</p>
               <p className="font-medium">{renderMessageTemplate(subject, sampleValues)}</p>
               <p className="whitespace-pre-wrap">{renderMessageTemplate(body, sampleValues)}</p>
             </div>
           )}
-          <p className="text-xs text-slate-500">Replies go to your email address. They are not shown in the app.</p>
+          <p className="text-xs text-slate-500">{t('messageComposer.repliesNote')}</p>
           <div className="flex gap-2 text-xs">
             <Button variant="ghost" className="!py-1 text-xs" disabled={!subject || !body || unknown.length > 0} loading={saveTemplate.isPending} onClick={() => saveTemplate.mutate(false)}>
-              Save as my template
+              {t('messageComposer.saveMine')}
             </Button>
             {templates.data?.can_manage_shared && (
               <Button variant="ghost" className="!py-1 text-xs" disabled={!subject || !body || unknown.length > 0} onClick={() => saveTemplate.mutate(true)}>
-                Save as shared template
+                {t('messageComposer.saveShared')}
               </Button>
             )}
           </div>
@@ -273,13 +280,13 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
 
         <ErrorNotice error={send.error && !(send.error instanceof ApiError && send.error.code === 'audience_changed') ? send.error : saveTemplate.error} />
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button>
           <Button
             loading={send.isPending}
             disabled={!preview || reachable.length === 0 || !subject.trim() || !body.trim() || unknown.length > 0}
             onClick={() => send.mutate()}
           >
-            Send to {reachable.length} {reachable.length === 1 ? 'person' : 'people'}
+            {t('messageComposer.sendTo', { count: reachable.length })}
           </Button>
         </div>
       </div>

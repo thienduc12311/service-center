@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useServiceTypes } from '../../hooks/queries';
 import { FilesPanel } from '../files/FilesPanel';
 
@@ -8,6 +9,7 @@ import { FilesPanel } from '../files/FilesPanel';
  * default later never changes existing plans.
  */
 export const ServiceTypeFilesSettings = () => {
+  const { t } = useTranslation('settings');
   const serviceTypes = useServiceTypes();
   const [selected, setSelected] = useState<string>('');
   const types = serviceTypes.data ?? [];
@@ -17,13 +19,10 @@ export const ServiceTypeFilesSettings = () => {
   return (
     <div className="space-y-3">
       <section className="card p-5">
-        <h2 className="mb-1 font-semibold">Service type default files</h2>
-        <p className="mb-3 text-sm text-slate-500">
-          New plans of the service type get these files automatically, pinned to the version current at that moment. Changing a
-          default later does not change plans that already exist.
-        </p>
+        <h2 className="mb-1 font-semibold">{t('serviceTypeFiles.title')}</h2>
+        <p className="mb-3 text-sm text-slate-500">{t('serviceTypeFiles.description')}</p>
         <label className="block max-w-sm">
-          <span className="label">Service type</span>
+          <span className="label">{t('access.serviceType')}</span>
           <select className="input" value={serviceTypeId} onChange={(event) => setSelected(event.target.value)}>
             {types.map((type) => (
               <option key={type.id} value={type.id}>
@@ -33,7 +32,8 @@ export const ServiceTypeFilesSettings = () => {
           </select>
         </label>
       </section>
-      {serviceTypeId && <FilesPanel key={serviceTypeId} owner={{ kind: 'service_type', id: serviceTypeId }} title="Default files" />}
+      {serviceTypeId && <FilesPanel key={serviceTypeId} owner={{ kind: 'service_type', id: serviceTypeId }} title={t('serviceTypeFiles.panelTitle')} />}
+
     </div>
   );
 };

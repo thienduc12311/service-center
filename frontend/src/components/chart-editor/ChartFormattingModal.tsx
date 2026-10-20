@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CHART_CHORD_COLORS,
   CHART_FONT_OPTIONS,
@@ -7,6 +8,8 @@ import {
   DEFAULT_CHART_FONT_SIZE,
   type ChartColumns,
   type ChartFormatting,
+  type ChartStyleOption,
+  type TranslationKey,
 } from '@service-center/shared';
 import { Button, Modal } from '../ui';
 
@@ -20,7 +23,25 @@ export interface ChartFormattingModalProps {
 /** The empty option's value. Distinct from '' so a font stack cannot collide. */
 const USE_DEFAULT = '__default__';
 
-const Row = ({ label, children }: { label: string; children: ReactNode }) => (
+/**
+ * Catalog keys for the CHART_CHORD_COLORS names, by stored hex value. Font
+ * labels are typeface names and are shown as written.
+ */
+const CHORD_COLOR_LABEL_KEYS: Readonly<Record<string, TranslationKey<'songs'>>> = {
+  '#000000': 'formatting.colors.black',
+  '#1d4ed8': 'formatting.colors.blue',
+  '#b91c1c': 'formatting.colors.red',
+  '#15803d': 'formatting.colors.green',
+  '#525252': 'formatting.colors.grey',
+};
+
+/** One labelled setting in the dialog. */
+interface RowProps {
+  label: string;
+  children: ReactNode;
+}
+
+const Row = ({ label, children }: RowProps) => (
   <div className="grid grid-cols-[7rem_1fr] items-center gap-3">
     <span className="text-sm text-slate-600 dark:text-slate-300">{label}</span>
     {children}
@@ -40,6 +61,12 @@ export const ChartFormattingModal = ({
   onClose,
   onSave,
 }: ChartFormattingModalProps) => {
+  const { t } = useTranslation(['songs', 'common']);
+  const colorLabel = (color: ChartStyleOption): string => {
+    const key = CHORD_COLOR_LABEL_KEYS[color.value];
+    return key ? t(key) : color.label;
+  };
+  const defaultColor = CHART_CHORD_COLORS.find((color) => color.value === DEFAULT_CHART_CHORD_COLOR);
   const [draft, setDraft] = useState<ChartFormatting>(formatting);
 
   useEffect(() => {
@@ -50,21 +77,21 @@ export const ChartFormattingModal = ({
     setDraft((current) => ({ ...current, [field]: value }));
 
   return (
-    <Modal open={open} title="Formatting" onClose={onClose}>
+    <Modal open={open} title={t('chartEditor.formatting')} onClose={onClose}>
       <div className="space-y-5">
         <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Text</h3>
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('formatting.text')}</h3>
 
-          <Row label="Font">
+          <Row label={t('formatting.font')}>
             <select
               className="input"
-              aria-label="Chart font"
+              aria-label={t('formatting.fontLabel')}
               value={draft.fontFamily ?? USE_DEFAULT}
               onChange={(event) =>
                 update('fontFamily', event.target.value === USE_DEFAULT ? null : event.target.value)
               }
             >
-              <option value={USE_DEFAULT}>Default: {CHART_FONT_OPTIONS[0]?.label}</option>
+              <option value={USE_DEFAULT}>{t('formatting.default', { value: CHART_FONT_OPTIONS[0]?.label ?? '' })}</option>
               {CHART_FONT_OPTIONS.map((font) => (
                 <option key={font.value} value={font.value}>
                   {font.label}
@@ -73,10 +100,10 @@ export const ChartFormattingModal = ({
             </select>
           </Row>
 
-          <Row label="Size">
+          <Row label={t('formatting.size')}>
             <select
               className="input"
-              aria-label="Chart font size"
+              aria-label={t('formatting.sizeLabel')}
               value={draft.fontSize ?? USE_DEFAULT}
               onChange={(event) =>
                 update(
@@ -85,7 +112,7 @@ export const ChartFormattingModal = ({
                 )
               }
             >
-              <option value={USE_DEFAULT}>Default: {DEFAULT_CHART_FONT_SIZE}</option>
+              <option value={USE_DEFAULT}>{t('formatting.default', { value: DEFAULT_CHART_FONT_SIZE })}</option>
               {CHART_FONT_SIZES.map((size) => (
                 <option key={size} value={size}>
                   {size}
@@ -94,23 +121,23 @@ export const ChartFormattingModal = ({
             </select>
           </Row>
 
-          <Row label="Chord Color">
+          <Row label={t('formatting.chordColor')}>
             <select
               className="input"
-              aria-label="Chord colour"
+              aria-label={t('formatting.chordColorLabel')}
               value={draft.chordColor ?? USE_DEFAULT}
               onChange={(event) =>
                 update('chordColor', event.target.value === USE_DEFAULT ? null : event.target.value)
               }
             >
               <option value={USE_DEFAULT}>
-                Default:{' '}
-                {CHART_CHORD_COLORS.find((color) => color.value === DEFAULT_CHART_CHORD_COLOR)
-                  ?.label ?? 'Black'}
+                {t('formatting.default', {
+                  value: defaultColor ? colorLabel(defaultColor) : t('formatting.colors.black'),
+                })}
               </option>
               {CHART_CHORD_COLORS.map((color) => (
                 <option key={color.value} value={color.value}>
-                  {color.label}
+                  {colorLabel(color)}
                 </option>
               ))}
             </select>
@@ -118,12 +145,12 @@ export const ChartFormattingModal = ({
         </section>
 
         <section className="space-y-3 border-t border-slate-200 pt-5 dark:border-slate-700">
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Layout</h3>
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('formatting.layout')}</h3>
 
-          <Row label="Columns">
+          <Row label={t('formatting.columns')}>
             <select
               className="input"
-              aria-label="Chart columns"
+              aria-label={t('formatting.columnsLabel')}
               value={draft.columns}
               onChange={(event) =>
                 update('columns', Number(event.target.value) as ChartColumns)
@@ -134,15 +161,14 @@ export const ChartFormattingModal = ({
             </select>
           </Row>
           <p className="text-xs text-slate-500">
-            Two columns fit a long chart onto one page. Sections are never split across a column
-            or a page break.
+            {t('formatting.columnsHelp')}
           </p>
         </section>
       </div>
 
       <div className="mt-6 flex justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-700">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {t('common:actions.cancel')}
         </Button>
         <Button
           onClick={() => {
@@ -150,7 +176,7 @@ export const ChartFormattingModal = ({
             onClose();
           }}
         >
-          Save This Chart
+          {t('formatting.save')}
         </Button>
       </div>
     </Modal>

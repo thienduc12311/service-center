@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   parseChordPro,
   renderChordProChart,
@@ -28,13 +29,14 @@ export const ChordChart = ({
   targetKey = null,
   notation = 'chords',
 }: ChordChartProps) => {
+  const { t } = useTranslation('songs');
   const song = useMemo(
     () => parseChordPro(renderChordProChart(chordpro, { sourceKey, targetKey, notation }).chordpro),
     [chordpro, sourceKey, targetKey, notation],
   );
 
   if (song.sections.length === 0) {
-    return <p className="text-sm text-slate-400">No chord chart yet.</p>;
+    return <p className="text-sm text-slate-400">{t('chordChart.empty')}</p>;
   }
 
   return (

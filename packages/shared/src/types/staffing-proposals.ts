@@ -185,6 +185,34 @@ export interface ProposalCandidateExplanation {
   metrics: ProposalFairnessMetrics | null;
 }
 
+/** How the fairness ranking separated the chosen person from the runner-up. */
+export type ProposalTieBreak = 'preference_warnings' | 'fewer_plans_served' | 'served_less_recently' | 'seeded_tie_break';
+
+/** One explanation line for a choice, as data (the English `reasons` mirror these). */
+export type ProposalReasonDetail =
+  | { code: 'kept_existing'; state: AssignmentStatus | 'prepared' }
+  | { code: 'locked' }
+  | { code: 'rotation_week'; rotation_name: string; week: number; cycle_weeks: number }
+  | { code: 'rotation_exception'; rotation_name: string; date: string }
+  | { code: 'all_have_preference_warnings' }
+  | { code: 'no_preference_warnings' }
+  | { code: 'served_count'; count: number; lookback_days: number; last_served_on: string | null }
+  | { code: 'chosen_over'; person_id: string; person_name: string; decided_by: ProposalTieBreak };
+
+/** Values behind a vacancy's or warning's English text. */
+export interface ProposalTextParams {
+  person_id?: string;
+  person_name?: string;
+  plan_title?: string;
+  /** Local service date (YYYY-MM-DD). */
+  date?: string;
+  rotation_name?: string;
+  exclusion?: ProposalExclusionCode;
+  preference_codes?: string[];
+  /** `rotation_exception` warnings: whether the rotation is skipped that day. */
+  skipped?: boolean;
+}
+
 export interface ProposalChoice {
   slot_key: string;
   plan_id: string;
@@ -198,7 +226,10 @@ export interface ProposalChoice {
   assignment_status: AssignmentStatus | null;
   assignment_visibility: AssignmentVisibility | null;
   metrics: ProposalFairnessMetrics | null;
+  /** English explanations, kept for stored proposals and older clients. */
   reasons: string[];
+  /** The same explanations as data. Absent on proposals computed before it existed. */
+  reason_details?: ProposalReasonDetail[];
   preference_codes: string[];
   /** Up to 5 next-best eligible people, best first, for adjusting. */
   alternatives: ProposalCandidateExplanation[];
@@ -210,7 +241,9 @@ export interface ProposalVacancy {
   team_id: string;
   position_id: string;
   code: ProposalVacancyCode;
+  /** English sentence, kept for stored proposals and older clients. */
   reason: string;
+  params?: ProposalTextParams;
   /** How many members were excluded, per hard reason. */
   exclusion_counts: Partial<Record<ProposalExclusionCode, number>>;
 }
@@ -220,7 +253,9 @@ export interface ProposalWarning {
   plan_id: string | null;
   position_id: string | null;
   person_id: string | null;
+  /** English sentence, kept for stored proposals and older clients. */
   message: string;
+  params?: ProposalTextParams;
 }
 
 export interface StaffingProposalResult {

@@ -371,6 +371,8 @@ export type PersonRow = {
   /** F02: set while the Person is archived (kept for history, hidden from pickers). */
   archived_at: string | null;
   archived_by: string | null;
+  /** Saved language for this church (canonical code); null = Automatic. */
+  preferred_language: string | null;
 }
 
 export type PersonInvitationRow = {
@@ -726,6 +728,11 @@ export type DeliveryRow = {
   completed_at: string | null;
   last_error_code: string | null;
   manual_retries: number;
+  /**
+   * Recipient language captured when the delivery was queued, so every retry
+   * renders the same text. Null on deliveries queued before i18n (English).
+   */
+  locale: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1346,6 +1353,16 @@ export type Database = {
       person_medical_note: {
         Args: { p_person: string };
         Returns: string | null;
+      };
+      /** i18n: the caller's own saved language in one church (active membership required). */
+      my_language_preference: {
+        Args: { p_organization_id: string };
+        Returns: Array<{ person_linked: boolean; preferred_language: string | null }>;
+      };
+      /** i18n: saves only `preferred_language` on the caller's own Person; person_linked=false changes nothing. */
+      set_my_language_preference: {
+        Args: { p_organization_id: string; p_preferred_language: string | null };
+        Returns: Array<{ person_linked: boolean; preferred_language: string | null }>;
       };
       preview_folder_move: {
         Args: { p_folder: string; p_new_parent: string | null };

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import type { ArrangementRow } from '@service-center/shared';
@@ -24,6 +25,7 @@ import { ALL_ARRANGEMENTS, resolveArrangement, type SongPane } from '../componen
 type SongDialog = 'song-information' | 'arrangement';
 
 export const SongDetailPage = () => {
+  const { t } = useTranslation('songs');
   const { songId } = useParams<{ songId: string }>();
   const { canAnywhere } = useAuth();
   // The song library is organization-wide; leading a team never implies it.
@@ -66,7 +68,7 @@ export const SongDetailPage = () => {
 
   if (song.isLoading) return <Loading />;
   if (song.error) return <ErrorNotice error={song.error} />;
-  if (!song.data) return <EmptyState title="Song not found" />;
+  if (!song.data) return <EmptyState title={t('songDetail.notFound')} />;
 
   const detail = song.data;
   const arrangement = resolveArrangement(detail.arrangements, pane);
@@ -83,24 +85,24 @@ export const SongDetailPage = () => {
       <SongWorkspaceHeader
         song={detail}
         paneLabel={
-          pane.kind === 'all' ? 'All Arrangements' : (arrangement?.name ?? 'All Arrangements')
+          pane.kind === 'all' ? t('songDetail.allArrangements') : (arrangement?.name ?? t('songDetail.allArrangements'))
         }
         canManage={canManage}
         onEditInformation={() => setDialog('song-information')}
         onAddArrangement={() => openArrangementDialog(null)}
         onDelete={() => {
-          if (window.confirm(`Delete “${detail.title}”? This cannot be undone.`)) {
+          if (window.confirm(t('songDetail.deleteSongConfirm', { title: detail.title }))) {
             removeSong.mutate();
           }
         }}
       />
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        {detail.merged_into_song_id && <a className="text-brand-600 underline" href={`/songs/${detail.merged_into_song_id}`}>Merged into another song · open the kept song</a>}
-        {detail.archived_at && <p>Archived song · existing plans and charts remain available.</p>}
-        {canManage && <Button disabled={archive.isPending} onClick={() => archive.mutate()}>{detail.archived_at ? 'Restore song' : 'Archive song'}</Button>}
-        {canManage && pane.kind === 'arrangement' && arrangement && <Button disabled={archiveArrangement.isPending} onClick={() => archiveArrangement.mutate(arrangement)}>{arrangement.archived_at ? 'Restore arrangement' : 'Archive arrangement'}</Button>}
-        {pane.kind === 'arrangement' && arrangement?.archived_at && <p>Archived arrangement · existing plans and charts remain available.</p>}
+        {detail.merged_into_song_id && <a className="text-brand-600 underline" href={`/songs/${detail.merged_into_song_id}`}>{t('songDetail.mergedInto')}</a>}
+        {detail.archived_at && <p>{t('songDetail.archivedSong')}</p>}
+        {canManage && <Button disabled={archive.isPending} onClick={() => archive.mutate()}>{detail.archived_at ? t('songDetail.restoreSong') : t('songDetail.archiveSong')}</Button>}
+        {canManage && pane.kind === 'arrangement' && arrangement && <Button disabled={archiveArrangement.isPending} onClick={() => archiveArrangement.mutate(arrangement)}>{arrangement.archived_at ? t('songDetail.restoreArrangement') : t('songDetail.archiveArrangement')}</Button>}
+        {pane.kind === 'arrangement' && arrangement?.archived_at && <p>{t('songDetail.archivedArrangement')}</p>}
         <ErrorNotice error={archive.error ?? archiveArrangement.error} />
         <ErrorNotice error={removeSong.error ?? removeArrangement.error} />
       </div>
@@ -123,9 +125,7 @@ export const SongDetailPage = () => {
               onEdit={() => openArrangementDialog(arrangement)}
               onDelete={() => {
                 if (
-                  window.confirm(
-                    `Delete the “${arrangement.name}” arrangement? This cannot be undone.`,
-                  )
+                  window.confirm(t('songDetail.deleteArrangementConfirm', { name: arrangement.name }))
                 ) {
                   removeArrangement.mutate(arrangement.id);
                 }
@@ -143,16 +143,16 @@ export const SongDetailPage = () => {
           {pane.kind === 'arrangement' && arrangement && (
             <FilesPanel
               owner={{ kind: 'arrangement', id: arrangement.id }}
-              title={`${arrangement.name} files`}
-              description="Charts and tracks for this arrangement. Plans using it show them under the song."
+              title={t('songDetail.arrangementFiles', { name: arrangement.name })}
+              description={t('songDetail.arrangementFilesDescription')}
             />
           )}
           {pane.kind === 'arrangement' && arrangement && <ArrangementCurationPanel arrangement={arrangement} canManage={canManage && !detail.archived_at && !arrangement.archived_at} onDuplicated={(id) => setPane({ kind: 'arrangement', arrangementId: id })} />}
           {canManage && !detail.archived_at && <SongMergePanel song={detail} />}
           <FilesPanel
             owner={{ kind: 'song', id: detail.id }}
-            title="Song files"
-            description="Shared by every arrangement. Plans using this song show them under the song."
+            title={t('songDetail.songFiles')}
+            description={t('songDetail.songFilesDescription')}
           />
 
           <div className="grid gap-6 lg:grid-cols-3">

@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   COMMON_TEAM_TEMPLATES,
   TEAM_TEMPLATE_CATEGORIES,
-  TEAM_TEMPLATE_CATEGORY_LABELS,
   type TeamTemplate,
 } from '@service-center/shared';
 
@@ -22,6 +22,7 @@ export const TeamsStep = ({
   joinTeams,
   onJoinTeamsChange,
 }: TeamsStepProps) => {
+  const { t } = useTranslation('teams');
   const byCategory = useMemo(() => {
     const groups = new Map<string, TeamTemplate[]>();
     for (const template of COMMON_TEAM_TEMPLATES) {
@@ -39,12 +40,15 @@ export const TeamsStep = ({
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-          Lastly, add teams you lead
+          {t('teamsStep.title')}
         </h1>
         <p className="mt-3 text-slate-600">
-          Chances are, <strong className="font-semibold">{serviceTypeName}</strong> needs some teams
-          to make it happen. Create new teams by choosing any of these common teams. You can edit
-          them, create your own, or copy teams from another Service Type later.
+          <Trans
+            t={t}
+            i18nKey="teamsStep.intro"
+            values={{ name: serviceTypeName }}
+            components={[<strong key="name" className="font-semibold" />]}
+          />
         </p>
       </div>
 
@@ -52,7 +56,7 @@ export const TeamsStep = ({
         {TEAM_TEMPLATE_CATEGORIES.map((category) => (
           <fieldset key={category}>
             <legend className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
-              {TEAM_TEMPLATE_CATEGORY_LABELS[category]}
+              {t(`teamsStep.categories.${category}`)}
             </legend>
             <div className="space-y-2.5">
               {(byCategory.get(category) ?? []).map((template) => (
@@ -78,7 +82,7 @@ export const TeamsStep = ({
           checked={joinTeams}
           onChange={(event) => onJoinTeamsChange(event.target.checked)}
         />
-        Add me to any teams selected.
+        {t('teamsStep.joinTeams')}
       </label>
     </div>
   );

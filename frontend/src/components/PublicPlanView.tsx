@@ -1,22 +1,22 @@
+import { useTranslation } from 'react-i18next';
 import { formatDuration, type PublicPlanProjection } from '@service-center/shared';
+import { useFormatters } from '../i18n';
 
 export interface PublicPlanViewProps {
   projection: PublicPlanProjection;
 }
 
-const formatInZone = (instant: string, timeZone: string): string =>
-  new Intl.DateTimeFormat(undefined, { timeZone, hour: 'numeric', minute: '2-digit', weekday: 'short', month: 'short', day: 'numeric' }).format(
-    new Date(instant),
-  );
-
 /** Renders only what the public projection contains (the editor preview uses the same component). */
-export const PublicPlanView = ({ projection }: PublicPlanViewProps) => (
+export const PublicPlanView = ({ projection }: PublicPlanViewProps) => {
+  const { t } = useTranslation('auth');
+  const fmt = useFormatters();
+  return (
   <article className="space-y-4">
     <header>
       <p className="text-xs uppercase tracking-wide text-slate-500">{projection.organization}</p>
       {projection.title && <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">{projection.title}</h1>}
       <p className="text-sm text-slate-600 dark:text-slate-300">
-        {[projection.service_type, projection.date, projection.location].filter(Boolean).join(' · ')}
+        {[projection.service_type, projection.date ? fmt.calendarDate(projection.date, 'long') : null, projection.location].filter(Boolean).join(' · ')}
       </p>
     </header>
     {projection.times && projection.times.length > 0 && (
@@ -24,7 +24,7 @@ export const PublicPlanView = ({ projection }: PublicPlanViewProps) => (
         {projection.times.map((time) => (
           <li key={time.starts_at}>
             {time.name ? `${time.name}: ` : ''}
-            {formatInZone(time.starts_at, projection.timezone)}
+            {fmt.dateTime(time.starts_at, { timeZone: projection.timezone, dateStyle: 'short' })}
           </li>
         ))}
       </ul>
@@ -39,7 +39,7 @@ export const PublicPlanView = ({ projection }: PublicPlanViewProps) => (
               <span>
                 {item.song?.title ?? item.title}
                 {item.song?.author && <span className="text-slate-500"> — {item.song.author}</span>}
-                {item.song?.key && <span className="ml-2 text-xs text-slate-500">Key {item.song.key}</span>}
+                {item.song?.key && <span className="ml-2 text-xs text-slate-500">{t('publicPlan.songKey', { key: item.song.key })}</span>}
               </span>
               {item.length_seconds !== undefined && <span className="tabular-nums text-slate-500">{formatDuration(item.length_seconds)}</span>}
             </li>
@@ -53,11 +53,12 @@ export const PublicPlanView = ({ projection }: PublicPlanViewProps) => (
             <li key={index}>
               {song.title}
               {song.author && <span className="text-slate-500"> — {song.author}</span>}
-              {song.key && <span className="ml-2 text-xs text-slate-500">Key {song.key}</span>}
+              {song.key && <span className="ml-2 text-xs text-slate-500">{t('publicPlan.songKey', { key: song.key })}</span>}
             </li>
           ))}
         </ol>
       )
     )}
   </article>
-);
+  );
+};

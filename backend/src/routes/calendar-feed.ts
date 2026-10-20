@@ -9,6 +9,7 @@ import type { AssignmentStatus } from '@service-center/shared';
 import { attendanceFor } from '../services/attendance.js';
 import { recipientSequence } from '../model/attendance.model.js';
 import { renderScopedFeed } from '../services/calendar-scoped-feeds.js';
+import { recipientLanguage } from '../lib/i18n.js';
 
 export const calendarFeedRouter: Router = Router();
 calendarFeedRouter.use(rateLimit({ windowMs: 60_000, limit: config.isProduction ? 60 : 10_000, standardHeaders: 'draft-7', legacyHeaders: false }));
@@ -62,7 +63,7 @@ calendarFeedRouter.get('/:token.ics', async (req, res) => {
   const now = new Date();
   const from = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const to = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
-  const person = await unwrap(adminDb.from('people').select('id').eq('organization_id', feedToken.organization_id).eq('profile_id', feedToken.user_id).maybeSingle());
+  const person = await unwrap(adminDb.from('people').select('id, preferred_language').eq('organization_id', feedToken.organization_id).eq('profile_id', feedToken.user_id).maybeSingle());
 
   // F04: only the times this Person's released requests cover (the shared
   // resolver), each with a recipient-specific SEQUENCE; a time they no longer
@@ -105,5 +106,6 @@ calendarFeedRouter.get('/:token.ics', async (req, res) => {
   await unwrap(adminDb.from('calendar_feed_tokens').update({ last_used_at: new Date().toISOString() }).eq('id', feedToken.id));
   res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
   res.setHeader('Cache-Control', 'private, max-age=3600');
-  res.send(renderIcs(events, { calendarName: 'Service Center schedule' }));
+  // The token is authorized above, so the subscriber's own language names the calendar.
+  res.send(renderIcs(events, { calendarName: recipientLanguage(person?.preferred_language).t('calendar.feedName') }));
 });

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ApiError,
   isInlineTrack,
@@ -9,6 +10,12 @@ import {
   type RehearsalTrack,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
+import { useErrorText } from '../../i18n';
+
+/** Why the current track cannot play; turned into text in the displayed language on each render. */
+type RehearsalPlayerFailure =
+  | { kind: 'load'; cause: unknown }
+  | { kind: 'unsupported' };
 
 /** What the player is doing with the current track. */
 export type RehearsalPlayerStatus = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'external' | 'error';
@@ -58,15 +65,6 @@ const REPEAT_ORDER: RehearsalRepeatMode[] = ['off', 'all', 'one'];
 
 const trackKey = (track: RehearsalTrack): string => `${track.material.file_id}:${track.material.version_id ?? ''}`;
 
-const explain = (error: unknown): string => {
-  if (error instanceof ApiError) {
-    if (error.status === 404 || error.status === 403) {
-      return 'This recording is no longer available to you. Other items are still playable.';
-    }
-    return error.message;
-  }
-  return 'The recording could not be loaded. Check your connection and try again.';
-};
 
 /**
  * One player for the whole plan: it owns the single media element, asks the
@@ -77,11 +75,13 @@ export const useRehearsalPlayer = (
   manifest: RehearsalManifest | undefined,
   media: RefObject<HTMLMediaElement | null>,
 ): [RehearsalPlayerState, RehearsalPlayerControls] => {
+  const { t } = useTranslation('media');
+  const errorText = useErrorText();
   const [choices, setChoices] = useState<Record<string, string>>({});
   const tracks = useMemo(() => (manifest ? rehearsalPlaylist(manifest, choices) : []), [manifest, choices]);
   const [index, setIndex] = useState(0);
   const [status, setStatus] = useState<RehearsalPlayerStatus>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<RehearsalPlayerFailure | null>(null);
   const [repeat, setRepeat] = useState<RehearsalRepeatMode>('off');
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -141,7 +141,7 @@ export const useRehearsalPlayer = (
         if (id !== request.current) return;
         setSigned(null);
         setStatus('error');
-        setError(explain(cause));
+        setError({ kind: 'load', cause });
       }
     },
     [],
@@ -264,7 +264,7 @@ export const useRehearsalPlayer = (
           return;
         }
         setStatus('error');
-        setError('This recording could not be played in this browser. Other items are still playable.');
+        setError({ kind: 'unsupported' });
       },
     }),
     [media, move, track, load],
@@ -295,13 +295,23 @@ export const useRehearsalPlayer = (
     handlers,
   };
 
+  const errorMessage = (() => {
+    if (!error) return null;
+    if (error.kind === 'unsupported') return t('rehearsal.unsupported');
+    const cause = error.cause;
+    if (cause instanceof ApiError) {
+      return cause.status === 404 || cause.status === 403 ? t('rehearsal.unavailable') : errorText(cause);
+    }
+    return t('rehearsal.loadFailed');
+  })();
+
   return [
     {
       tracks,
       index,
       track,
       status,
-      error,
+      error: errorMessage,
       repeat,
       position,
       duration,

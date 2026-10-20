@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { keyGridFor, type KeyQuality } from '@service-center/shared';
 
 export interface KeyGridProps {
@@ -47,7 +48,9 @@ export interface KeyQualityTabsProps {
  * offers. Shared by the key field and the chart's key picker so the two can
  * never drift apart.
  */
-export const KeyQualityTabs = ({ value, onChange }: KeyQualityTabsProps) => (
+export const KeyQualityTabs = ({ value, onChange }: KeyQualityTabsProps) => {
+  const { t } = useTranslation('songs');
+  return (
   <div className="flex gap-1 p-2">
     {(['major', 'minor'] as const).map((option) => (
       <button
@@ -61,11 +64,12 @@ export const KeyQualityTabs = ({ value, onChange }: KeyQualityTabsProps) => (
             : 'text-slate-600 ring-1 ring-slate-300 hover:bg-slate-50'
         }`}
       >
-        {option}
+        {t(`keySelect.quality.${option}`)}
       </button>
     ))}
   </div>
-);
+  );
+};
 
 export interface KeySelectProps {
   value: string | null;
@@ -87,12 +91,13 @@ export interface KeySelectProps {
 export const KeySelect = ({
   value,
   onChange,
-  placeholder = 'Select a key',
+  placeholder,
   id,
   disabled = false,
   footer,
   resetLabel,
 }: KeySelectProps) => {
+  const { t } = useTranslation('songs');
   const [open, setOpen] = useState(false);
   const [quality, setQuality] = useState<KeyQuality>(value?.endsWith('m') ? 'minor' : 'major');
   const close = () => setOpen(false);
@@ -109,7 +114,7 @@ export const KeySelect = ({
         className={`input flex items-center justify-between text-left disabled:cursor-not-allowed disabled:opacity-50
           ${open ? 'border-brand-500 ring-2 ring-brand-100' : ''}`}
       >
-        <span className={value ? '' : 'text-slate-400'}>{value ?? placeholder}</span>
+        <span className={value ? '' : 'text-slate-400'}>{value ?? placeholder ?? t('keySelect.placeholder')}</span>
         <span aria-hidden="true" className="text-xs text-slate-400">{open ? '▴' : '▾'}</span>
       </button>
 
@@ -117,7 +122,7 @@ export const KeySelect = ({
         <>
           <button
             type="button"
-            aria-label="Close key picker"
+            aria-label={t('keySelect.close')}
             className="fixed inset-0 z-40 cursor-default"
             onClick={close}
           />

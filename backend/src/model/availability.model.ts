@@ -14,6 +14,8 @@ import {
   type PersonAvailabilityReviewRow,
   type PreferenceWarning,
   type PreferenceWarningCode,
+  type PreferenceWarningParams,
+  type SchedulingFrequency,
   type ScheduleDelegationRow,
 } from '@service-center/shared';
 
@@ -96,11 +98,46 @@ export interface WarningRpcRow {
   code: string;
   detail: string;
   preference_team_id: string | null;
+  /** Absent before the structured-notices migration. */
+  params?: unknown;
 }
+
+const FREQUENCIES: ReadonlySet<SchedulingFrequency> = new Set<SchedulingFrequency>([
+  'every_week', 'every_other_week', 'every_third_week', 'once_a_month',
+]);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const wholeNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : undefined;
+
+/** Keeps only the well-formed values a warning's wording needs. */
+export const toPreferenceWarningParams = (value: unknown): PreferenceWarningParams => {
+  if (!isRecord(value)) return {};
+  const params: PreferenceWarningParams = {};
+  if (typeof value.frequency === 'string' && FREQUENCIES.has(value.frequency as SchedulingFrequency)) {
+    params.frequency = value.frequency as SchedulingFrequency;
+  }
+  const served = wholeNumber(value.served);
+  const max = wholeNumber(value.max);
+  const week = wholeNumber(value.week);
+  if (served !== undefined) params.served = served;
+  if (max !== undefined) params.max = max;
+  if (week !== undefined) params.week = week;
+  if (typeof value.reviewed_on === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.reviewed_on)) params.reviewed_on = value.reviewed_on;
+  return params;
+};
 
 export const toPreferenceWarnings = (rows: readonly WarningRpcRow[]): PreferenceWarning[] =>
   rows.flatMap((row) => WARNING_CODES.has(row.code as PreferenceWarningCode)
-    ? [{ person_id: row.person_id, code: row.code as PreferenceWarningCode, detail: row.detail, preference_team_id: row.preference_team_id }]
+    ? [{
+        person_id: row.person_id,
+        code: row.code as PreferenceWarningCode,
+        detail: row.detail,
+        params: toPreferenceWarningParams(row.params),
+        preference_team_id: row.preference_team_id,
+      }]
     : []);
 
 /** `cross_organization_busy` output: a bare interval, nothing else. */
@@ -126,6 +163,7 @@ export const busyElsewhereWarnings = (
     person_id: personId,
     code: 'busy_elsewhere',
     detail: 'Busy at this time in another organization',
+    params: {},
     preference_team_id: null,
   }));
 };

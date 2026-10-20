@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { AVAILABILITY_FRESHNESS_LABELS, formatCivilDate, formatDateTime } from '@service-center/shared';
+import { useTranslation } from 'react-i18next';
+import { useFormatters } from '../../i18n';
 import { api } from '../../lib/api';
 import { useAvailabilityReview, useInvalidateOrg, useMyAvailabilityRequests } from '../../hooks/queries';
 import { Button, ErrorNotice } from '../ui';
@@ -14,6 +15,8 @@ export interface AvailabilityReviewProps {
  * "up to date" affirmation, and any open requests from leaders.
  */
 export const AvailabilityReview = ({ personId }: AvailabilityReviewProps) => {
+  const { t } = useTranslation(['settings', 'common']);
+  const { calendarDate, dateTime } = useFormatters();
   const invalidate = useInvalidateOrg();
   const review = useAvailabilityReview(personId);
   const requests = useMyAvailabilityRequests();
@@ -28,31 +31,32 @@ export const AvailabilityReview = ({ personId }: AvailabilityReviewProps) => {
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">
-            {review.data ? AVAILABILITY_FRESHNESS_LABELS[review.data.freshness] : 'Availability'}
+            {review.data ? t(`freshness.${review.data.freshness}`) : t('settingsPage.availability.title')}
           </p>
           <p className="text-xs text-slate-500">
             {review.data?.reviewed_at
-              ? `Last reviewed ${formatDateTime(review.data.reviewed_at)}${review.data.kind === 'affirmed' ? ' (confirmed up to date)' : ''}.`
-              : 'Leaders can’t tell yet whether these dates are current.'}
+              ? t(review.data.kind === 'affirmed' ? 'review.lastReviewedAffirmed' : 'review.lastReviewed', { when: dateTime(review.data.reviewed_at) })
+              : t('review.neverReviewed')}
           </p>
         </div>
         <Button variant="secondary" loading={affirm.isPending} onClick={() => affirm.mutate()}>
-          {personId ? 'Their availability is up to date' : 'My availability is up to date'}
+          {personId ? t('review.affirmTheirs') : t('review.affirmMine')}
         </Button>
       </div>
       {open.length > 0 && (
         <div className="mt-3 rounded-md bg-brand-50 p-3 text-sm ring-1 ring-brand-600/20">
-          <p className="font-medium">A leader asked you to review your availability</p>
+          <p className="font-medium">{t('review.requestTitle')}</p>
           <ul className="mt-1 space-y-1 text-xs text-slate-600">
             {open.map((request) => (
               <li key={request.request_id}>
-                {formatCivilDate(request.window_start)} – {formatCivilDate(request.window_end)}
-                {request.respond_by ? ` · by ${formatCivilDate(request.respond_by)}` : ''}
-                {request.message ? ` — “${request.message}”` : ''}
+                {t('common:format.dateRange', { start: calendarDate(request.window_start), end: calendarDate(request.window_end) })}
+                {request.respond_by ? ` · ${t('review.respondBy', { date: calendarDate(request.respond_by) })}` : ''}
+                {request.message ? ` — ${t('review.quotedMessage', { message: request.message })}` : ''}
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-slate-500">Add blockout dates below, or confirm your availability is up to date.</p>
+          <p className="mt-2 text-xs text-slate-500">{t('review.requestHint')}</p>
+
         </div>
       )}
       <ErrorNotice error={review.error ?? affirm.error} />
