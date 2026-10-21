@@ -1,23 +1,20 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   PLAN_STATUS_ACCENTS,
+  computePlanSchedule,
   formatDuration,
+  movedItemIds,
   pickPlanNeighbours,
   planNeighbourQueries,
-  resolvePlanItemChartContext,
+  selectServiceTime,
+  serviceTimesOf,
   type AssignmentReleasePreview,
   type PlanItemDetail,
 } from '@service-center/shared';
-
-/** F11: the same service key the chart, web order and song book show. */
-const planItemKey = (item: PlanItemDetail): string => {
-  const context = resolvePlanItemChartContext(item);
-  return context.status === 'ready' ? (context.displayKey ?? '—') : '—';
-};
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -27,7 +24,6 @@ import {
   Divider,
   ErrorNotice,
   IconButton,
-  KeyCap,
   Label,
   Loading,
   Screen,
@@ -35,7 +31,7 @@ import {
   Tag,
   screenPadding,
 } from '../../src/components/ui';
-import { PressableScale, Reveal } from '../../src/components/motion';
+import { Reveal } from '../../src/components/motion';
 import {
   GroupStatusTag,
   BatchResponseReview,
@@ -49,6 +45,8 @@ import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { useFormatters } from '../../src/i18n';
 import { PlanTeams } from '../../src/components/PlanTeams';
 import { buildPlanTeams } from '../../src/lib/plan-teams';
+import { PlanOrder } from '../../src/components/PlanOrder';
+import { orderWriteOutcome, positionNamesFor } from '../../src/lib/plan-order-edit';
 
 /** MOB-008: the two plan views this screen shows (website tabs `order` and `teams`). */
 type PlanView = 'order' | 'teams';
@@ -67,7 +65,7 @@ interface PlanWorkspaceProps {
 function PlanWorkspace({ id }: PlanWorkspaceProps) {
   const { t } = useTranslation(['plans', 'common']);
   const format = useFormatters();
-  const { can, user, queryScope } = useAuth();
+  const { can, user, organizationId, queryScope, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -158,14 +156,81 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
     },
   });
 
-  // Headers divide the order but aren't items in it, so they take no number.
-  const ordinals = useMemo(() => {
-    const numbers = new Map<string, number>();
-    for (const item of detail?.items ?? []) {
-      if (item.item_type !== 'header') numbers.set(item.id, numbers.size + 1);
-    }
-    return numbers;
-  }, [detail?.items]);
+  // MOB-014 / F11: the order is timed against one service time, on the
+  // organization's clock, exactly as the website's Order tab computes it.
+  const timeZone = user?.memberships.find((item) => item.organization.id === organizationId)?.organization.timezone ?? 'UTC';
+  const [timeId, setTimeId] = useState<string | null>(null);
+  const serviceTimes = useMemo(() => serviceTimesOf(detail?.times ?? []), [detail?.times]);
+  const selectedTime = detail ? (selectServiceTime(detail.times, timeId ?? undefined) ?? selectServiceTime(detail.times)) : null;
+  const schedule = useMemo(
+    () => computePlanSchedule({ items: detail?.items ?? [], time: selectedTime ?? null }),
+    [detail?.items, selectedTime],
+  );
+  const positionNames = useMemo(
+    () => positionNamesFor(orgTeams.data ?? [], detail?.plan_positions ?? []),
+    [orgTeams.data, detail?.plan_positions],
+  );
+
+  // Notes on an item go with it, so removing one says how many (F09 readable notes).
+  const notes = useQuery({
+    queryKey: queryKeys.planNotes(queryScope, id),
+    queryFn: () => api.planNotes(id),
+    enabled: Boolean(queryScope && canEditPlan),
+  });
+
+  const refreshOrder = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.plan(queryScope, id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.rehearsal(queryScope, id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans(queryScope) }),
+    ]);
+
+  // F11: each order change carries the revision it was made against; a
+  // stale one is refused whole and the latest order is shown instead.
+  const reorder = useMutation({
+    mutationFn: ({ itemIds, revision }: { itemIds: string[]; revision: number }) =>
+      api.reorderPlanItems(id, itemIds, revision),
+    onSettled: () => (isCurrentGeneration(generation) ? refreshOrder() : undefined),
+  });
+  const removeItem = useMutation({
+    mutationFn: ({ itemId, revision }: { itemId: string; revision: number }) =>
+      api.deletePlanItem(id, itemId, revision),
+    onSettled: () => (isCurrentGeneration(generation) ? refreshOrder() : undefined),
+  });
+  const orderBusy = reorder.isPending || removeItem.isPending || plan.isFetching;
+  const orderError = reorder.error ?? removeItem.error;
+  const orderOutcome = orderError ? orderWriteOutcome(orderError) : null;
+
+  const moveItem = (index: number, direction: -1 | 1) => {
+    if (!detail || orderBusy) return;
+    const ids = movedItemIds(detail.items.map((item) => item.id), index, direction);
+    if (!ids) return;
+    removeItem.reset();
+    reorder.mutate({ itemIds: ids, revision: detail.content_revision });
+  };
+
+  const confirmRemove = (item: PlanItemDetail) => {
+    if (!detail) return;
+    const revision = detail.content_revision;
+    const notesOnItem = (notes.data?.notes ?? []).filter((note) => note.plan_item_id === item.id).length;
+    Alert.alert(
+      notesOnItem > 0
+        ? t('planDetail.removeItemWithNotesConfirm', { title: item.title, count: notesOnItem })
+        : t('planDetail.removeItemConfirm', { title: item.title }),
+      undefined,
+      [
+        { text: t('common:actions.cancel'), style: 'cancel' },
+        {
+          text: t('common:actions.remove'),
+          style: 'destructive',
+          onPress: () => {
+            reorder.reset();
+            removeItem.mutate({ itemId: item.id, revision });
+          },
+        },
+      ],
+    );
+  };
 
   // Every position this person holds here — not just the first one found.
   const mine = useMemo(
@@ -349,57 +414,44 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
               ) : null}
             </View>
             {canEditPlan ? (
-              <Button
-                title={t('planDetail.applyTemplate')}
-                variant="secondary"
-                onPress={() => router.push({ pathname: '/plan/apply-template/[id]', params: { id: detail.id } })}
-              />
-            ) : null}
-            {detail.items.length ? (
-              <View>
-                {detail.items.map((item, index) =>
-                  item.item_type === 'header' ? (
-                    <Text key={item.id} style={styles.orderHeader}>
-                      {item.title.toUpperCase()}
-                    </Text>
-                  ) : (
-                    <View key={item.id}>
-                      {index > 0 ? <Divider /> : null}
-                      <PressableScale
-                        disabled={!item.song}
-                        onPress={() =>
-                          item.song &&
-                          router.push({
-                            pathname: '/song/[id]',
-                            params: { id: item.song.id, planId: detail.id, itemId: item.id },
-                          })
-                        }
-                        pressedOpacity={0.6}
-                        style={styles.orderItem}
-                      >
-                        <Text style={styles.ordinal}>
-                          {String(ordinals.get(item.id) ?? index + 1).padStart(2, '0')}
-                        </Text>
-                        <View style={styles.flex}>
-                          <Text style={[styles.itemTitle, item.song ? styles.itemLink : null]}>
-                            {item.title}
-                          </Text>
-                          {item.description ? (
-                            <Text style={styles.itemNote}>{item.description}</Text>
-                          ) : null}
-                        </View>
-                        {item.item_type === 'song' ? (
-                          <KeyCap>{planItemKey(item)}</KeyCap>
-                        ) : null}
-                        <Text style={styles.itemLength}>{formatDuration(item.length_seconds)}</Text>
-                      </PressableScale>
-                    </View>
-                  ),
-                )}
+              <View style={styles.orderActions}>
+                <Button
+                  title={t('orderTab.addItem')}
+                  icon="plus"
+                  variant="secondary"
+                  onPress={() => router.push({ pathname: '/plan/add-item/[id]', params: { id: detail.id } })}
+                />
+                <Button
+                  title={t('planDetail.applyTemplate')}
+                  variant="secondary"
+                  onPress={() => router.push({ pathname: '/plan/apply-template/[id]', params: { id: detail.id } })}
+                />
               </View>
+            ) : null}
+            {orderOutcome === 'stale' ? (
+              <Text accessibilityRole="alert" style={styles.warning}>{t('planDetail.orderStale')}</Text>
+            ) : orderOutcome === 'uncertain' ? (
+              <Text accessibilityRole="alert" style={styles.warning}>{t('mobileOrder.uncertain')}</Text>
             ) : (
-              <Text style={styles.muted}>{t('mobilePlan.emptyOrder')}</Text>
+              <ErrorNotice error={orderError} />
             )}
+            <PlanOrder
+              plan={detail}
+              schedule={schedule}
+              timeZone={timeZone}
+              serviceTimes={serviceTimes}
+              selectedTimeId={selectedTime?.id ?? null}
+              onSelectTime={setTimeId}
+              positionNames={positionNames}
+              canEdit={canEditPlan}
+              busy={orderBusy}
+              onEdit={(item) => router.push({ pathname: '/plan/edit-item/[id]', params: { id: detail.id, itemId: item.id } })}
+              onMove={moveItem}
+              onRemove={confirmRemove}
+              onOpenSong={(item) =>
+                item.song &&
+                router.push({ pathname: '/song/[id]', params: { id: item.song.id, planId: detail.id, itemId: item.id } })}
+            />
           </Card>
         </Reveal>
         ) : null}
@@ -461,23 +513,14 @@ const makeStyles = (theme: Theme) =>
       gap: theme.space.md,
     },
 
-    orderHeader: {
-      ...theme.type.label,
-      color: theme.color.inkFaint,
-      marginTop: theme.space.xl,
-      marginBottom: theme.space.sm,
+    orderActions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    warning: {
+      ...theme.type.bodySmall,
+      color: theme.accent.yellow.fg,
+      backgroundColor: theme.accent.yellow.bg,
+      padding: theme.space.sm,
+      borderRadius: theme.radius.sm,
     },
-    orderItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: theme.space.md,
-      paddingVertical: theme.space.md,
-    },
-    ordinal: { ...theme.type.numeric, color: theme.color.inkFaint },
-    itemTitle: { ...theme.type.body, color: theme.color.ink },
-    itemLink: { fontWeight: '600' },
-    itemNote: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: 2 },
-    itemLength: { ...theme.type.numeric, color: theme.color.inkFaint, minWidth: 46, textAlign: 'right' },
 
     personName: { ...theme.type.body, color: theme.color.ink },
     personRole: { ...theme.type.bodySmall, color: theme.color.inkMuted },
