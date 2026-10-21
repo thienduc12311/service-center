@@ -12,7 +12,6 @@ export type IconName =
   | 'calendar'
   | 'clock'
   | 'music'
-  | 'book'
   | 'person'
   | 'chevronRight'
   | 'chevronLeft'
@@ -24,6 +23,7 @@ export type IconName =
   | 'image'
   | 'upload'
   | 'document'
+  | 'plans'
   | 'search'
   | 'alert'
   | 'bell'
@@ -65,13 +65,6 @@ const paths: Record<IconName, (stroke: number) => ReactElement> = {
       <Circle cx={7} cy={17.5} r={3} strokeWidth={w} />
       <Circle cx={17} cy={15.5} r={3} strokeWidth={w} />
       <Path d="M10 17.5V7l10-2v10.5" strokeWidth={w} />
-    </>
-  ),
-  book: (w) => (
-    <>
-      <Path d="M5 4.5A1.5 1.5 0 016.5 3H19v15H6.5A1.5 1.5 0 005 19.5z" strokeWidth={w} />
-      <Path d="M5 19.5A1.5 1.5 0 016.5 21H19" strokeWidth={w} />
-      <Line x1={9} y1={7.5} x2={15} y2={7.5} strokeWidth={w} />
     </>
   ),
   person: (w) => (
@@ -122,6 +115,14 @@ const paths: Record<IconName, (stroke: number) => ReactElement> = {
       <Polyline points="14,3 14,8 19,8" strokeWidth={w} />
       <Line x1={8.5} y1={13} x2={15.5} y2={13} strokeWidth={w} />
       <Line x1={8.5} y1={16.5} x2={13} y2={16.5} strokeWidth={w} />
+    </>
+  ),
+  plans: (w) => (
+    <>
+      <Rect x={4} y={3.5} width={16} height={17} rx={3.5} strokeWidth={w} />
+      <Line x1={8} y1={9} x2={16} y2={9} strokeWidth={w} />
+      <Line x1={8} y1={12.5} x2={16} y2={12.5} strokeWidth={w} />
+      <Line x1={8} y1={16} x2={12.5} y2={16} strokeWidth={w} />
     </>
   ),
   search: (w) => (

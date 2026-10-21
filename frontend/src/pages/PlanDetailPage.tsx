@@ -8,13 +8,14 @@ import {
   computePlanSchedule,
   isAdmin,
   nextOccurrence,
+  pickPlanNeighbours,
+  planNeighbourQueries,
   selectServiceTime,
   serviceTimesOf,
   renderServiceSongBookHtml,
   serviceSongBookDocumentFromPlan,
   type AssignmentDetail,
   type PlanItemDetail,
-  type PlanSummary,
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { printDocument } from '../lib/print-document';
@@ -104,23 +105,16 @@ export const PlanDetailPage = () => {
     return counts;
   }, [notes.data]);
 
-  const serviceTypeId = plan.data?.service_type_id ?? undefined;
-  // Siblings drive the ‹ › arrows: the other plans of the same service type.
-  const siblings = usePlans({
-    ...(serviceTypeId ? { service_type_id: serviceTypeId } : {}),
-    order: 'asc',
-    per_page: 100,
-  });
+  // The ‹ › arrows: the plans either side of this one in its service type
+  // (MOB-012 shared reads, so web and native step to the same plans).
+  const neighbourQueries = plan.data ? planNeighbourQueries(plan.data) : null;
+  const before = usePlans(neighbourQueries?.before ?? {}, Boolean(neighbourQueries));
+  const after = usePlans(neighbourQueries?.after ?? {}, Boolean(neighbourQueries));
 
-  const neighbours = useMemo(() => {
-    const all: PlanSummary[] = siblings.data?.data ?? [];
-    const index = all.findIndex((candidate) => candidate.id === planId);
-    if (index === -1) return { previous: null, next: null };
-    return {
-      previous: all[index - 1]?.id ?? null,
-      next: all[index + 1]?.id ?? null,
-    };
-  }, [siblings.data, planId]);
+  const neighbours = useMemo(
+    () => pickPlanNeighbours(planId ?? '', before.data?.data ?? [], after.data?.data ?? []),
+    [after.data, before.data, planId],
+  );
 
   const publish = useMutation({
     mutationFn: (status: 'draft' | 'published') => api.updatePlan(planId!, { status }),

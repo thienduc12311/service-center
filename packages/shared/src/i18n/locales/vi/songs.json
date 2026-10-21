@@ -500,22 +500,6 @@
     "label": "Bản phối",
     "inPlan": "Trong chương trình này"
   },
-  "mobileSongbooks": {
-    "description": "Các tuyển tập mà ban có thể mang vào buổi tập — một bộ bảng hợp âm hoặc một tài liệu đính kèm.",
-    "new": "Sách bài hát mới",
-    "emptyDescription": "Gom các bài hát thường hát cùng nhau thành một sách, để không ai phải đi tìm bảng hợp âm vào sáng Chúa Nhật.",
-    "attachedDocument": "Tài liệu đính kèm",
-    "collectedCharts": "Bộ bảng hợp âm",
-    "pickSongs": "Chọn bài hát",
-    "attachFile": "Đính kèm tệp",
-    "composeTitle": "Sách bài hát mới",
-    "composeDescription": "Đặt tên, rồi chọn các bảng hợp âm cho sách hoặc đính kèm tài liệu bạn đã có.",
-    "name": "Tên",
-    "namePlaceholder": "Bài hát sáng Chúa Nhật",
-    "songsChosen_other": "Bài hát · đã chọn {{count}}",
-    "documentHint": "PDF, DOCX hoặc văn bản thuần",
-    "openDocument": "Mở tài liệu"
-  },
   "mobileChart": {
     "opening": "Đang mở bảng hợp âm",
     "screenTitle": "Bảng hợp âm",

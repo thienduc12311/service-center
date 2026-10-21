@@ -68,6 +68,20 @@
     "locationPlaceholder": "Hội trường chính",
     "createPlan": "Tạo chương trình"
   },
+  "mobilePlans": {
+    "loading": "Đang tải chương trình",
+    "window": {
+      "upcoming": "Sắp tới",
+      "history": "Đã qua"
+    },
+    "allServiceTypes": "Tất cả loại buổi nhóm",
+    "filterServiceType": "Lọc theo loại buổi nhóm",
+    "emptyUpcomingTitle": "Không có chương trình sắp tới",
+    "emptyHistoryTitle": "Không có chương trình đã qua",
+    "emptyDescription": "Các chương trình bạn được xem sẽ hiện ở đây.",
+    "emptyFilteredDescription": "Không có gì khớp với bộ lọc này. Hãy thử loại buổi nhóm hoặc trạng thái khác.",
+    "loadMoreFailed": "Không thể tải thêm chương trình."
+  },
   "planDetail": {
     "notFound": "Không tìm thấy chương trình",
     "deleteConfirm": "Xóa “{{title}}”? Không thể hoàn tác thao tác này.",

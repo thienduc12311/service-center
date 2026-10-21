@@ -1045,3 +1045,18 @@ Save-review and commit are separate transactions behind one UI save action: savi
 - **Revocation honesty:** data already fetched and webhooks already delivered cannot be recalled. A delivery in flight at revocation can still land once. A lease that lapses mid-send is re-sent with the same event id (at-least-once).
 
 **Exact next pass:** F17 Stage D QA/deployment closure. Configure `INTEGRATION_SECRET_KEY` and the worker in staging, register a real HTTPS receiver built on a Standard Webhooks library, and run the visual/accessibility matrix. Stage B or C starts only after an explicit provider/use-case selection with verified access (see the options above).
+
+## Shared fix from MOB-012 — plan list order and previous/next — 2026-10-20
+
+Recorded once here; the native consumer is in the [mobile ledger](mobile-remaining-progress.md#mob-012-pass-a--2026-10-20). Not an F epic pass: the plan list predates F00–F17 and no F task owns it (F01 owns who may read plans, which is unchanged).
+
+**Gap found.** `GET /api/v1/plans` ordered by `service_date` alone, so plans at the same instant had no defined order (offset pages could repeat or skip one, and the order could differ between reads). The website's ‹ › arrows read the first 100 plans of the service type ascending and searched them, so on a service type with more than 100 plans (every plan of a weekly service after two years) a plan beyond the 100th showed no arrows.
+
+**Fix (compatible; no migration, route or wire-shape change).**
+- `backend/src/routes/plans.ts`: tie-breaker `.order('id', { ascending })` after `service_date`, in the requested direction — `desc` is now exactly `asc` reversed.
+- `packages/shared/src/lib/plan-browser.ts` + `types/plan-browser.ts` (exported): `planBrowserQuery` (upcoming = `from` the opening instant ascending; history = `to` 1 ms before it descending; optional service type/status; 25 per page), `nextPlanPage`, `mergePlanPages` (de-duplicates a plan shifted across offset pages), `planNeighbourQueries` (the plan's service type — every plan when it has none, as before — `to`/`from` its date, 20 each) and `pickPlanNeighbours`. `PLAN_STATUS_ACCENTS` in design tokens.
+- Website: `PlanDetailPage` uses the same two neighbour reads (`usePlans` gained an `enabled` flag), so web and native step to the same plans.
+
+**Checks.** `plan-browser.test.ts` (10, includes parsing every built query through `listPlansQuerySchema`). Live API with three same-instant fixture plans: `desc` = reversed `asc`; ties in id order; 2-per-page pages concatenate to the full order; walking next from the first plan visits all 7 plans of the type in order and previous walks the same sequence back. Fixtures deleted.
+
+**Remaining.** None for this fix. More than 20 plans of one service type at the identical instant leave that side's arrow off (documented in `pickPlanNeighbours`).

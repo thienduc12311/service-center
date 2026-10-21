@@ -245,6 +245,29 @@ export function SegmentedControl<T extends string>({
   );
 }
 
+export interface ChipProps {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}
+
+/** One choice in a row of mutually exclusive filters. */
+export const Chip = ({ label, active, onPress }: ChipProps) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    // PressableScale, not a function-form Pressable style: NativeWind drops that (MOB-001).
+    <PressableScale
+      accessibilityRole="radio"
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      pressedOpacity={0.6}
+      style={[styles.chip, active && styles.chipOn]}
+    >
+      <Text style={[styles.chipLabel, active && styles.chipLabelOn]}>{label}</Text>
+    </PressableScale>
+  );
+};
+
 /* -------------------------------------------------------------------------
  * Data display
  * ---------------------------------------------------------------------- */
@@ -524,6 +547,17 @@ const makeStyles = (theme: Theme) =>
       backgroundColor: theme.color.surface,
     },
 
+    chip: {
+      minHeight: 44,
+      justifyContent: 'center',
+      paddingHorizontal: theme.space.md,
+      borderRadius: theme.radius.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.color.border,
+    },
+    chipOn: { backgroundColor: theme.accent.blue.bg, borderColor: theme.accent.blue.fg },
+    chipLabel: { ...theme.type.bodySmall, color: theme.color.ink },
+    chipLabelOn: { color: theme.accent.blue.fg, fontWeight: '600' },
     segmented: {
       flexDirection: 'row',
       backgroundColor: theme.color.surfaceInset,

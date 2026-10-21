@@ -71,6 +71,8 @@ plansRouter.get('/', validateQuery(listPlansQuerySchema), async (req, res) => {
   const offset = (page - 1) * per_page;
   const { data, error, count } = await query
     .order('service_date', { ascending: order === 'asc' })
+    // Tie-breaker: equal dates keep one order across pages and in both directions.
+    .order('id', { ascending: order === 'asc' })
     .range(offset, offset + per_page - 1);
 
   if (error) throw new HttpError(500, error.message, error.code);

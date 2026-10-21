@@ -90,7 +90,6 @@ const RootNavigator = () => {
       <Stack.Screen name="song/[id]" options={{ title: t('root.screens.song') }} />
       <Stack.Screen name="notifications" options={{ title: t('common:nav.notifications') }} />
       <Stack.Screen name="team-preferences" options={{ title: t('settings:preferences.screenTitle') }} />
-      <Stack.Screen name="songbooks/[id]" options={{ title: t('root.screens.songbook') }} />
     </Stack>
   );
 };
