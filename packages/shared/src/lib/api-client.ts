@@ -198,7 +198,7 @@ import type {
   PreviewBlockoutSeriesInput,
   UpdateBlockoutInput,
 } from '../schemas/blockout.js';
-import type { UpdatePlanItemRequest } from '../schemas/plan.js';
+import type { CreatePlanItemRequest, UpdatePlanItemRequest } from '../schemas/plan.js';
 import type { PlanScheduleResponse } from '../types/plan-order.js';
 import type { LivePlanRuns, LiveRunHistory, LiveRunState } from '../types/live.js';
 import type { CorrectLiveRunTimeInput, CreateLiveRunRequest, LiveRunActionInput } from '../schemas/live.js';
@@ -792,7 +792,8 @@ export class ServiceCenterApi {
   reschedulePlans = (body: RescheduleCommitRequest) =>
     this.request<RescheduleResult>('POST', '/api/v1/plans/reschedule', body);
 
-  addPlanItem = (planId: string, body: Record<string, unknown>) =>
+  /** Appends an item to the order (not revision-checked or keyed: it never overwrites another item). */
+  addPlanItem = (planId: string, body: CreatePlanItemRequest) =>
     this.request<PlanItemRow>('POST', `/api/v1/plans/${planId}/items`, body);
   /**
    * F11: edits an item in place. Pass `expected_revision` (the plan's

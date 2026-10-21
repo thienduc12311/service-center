@@ -647,6 +647,10 @@ Branch `feature/f08-batched-release-paths` (from `c0612b2`).
 **Next pass:** F11 Pass C — fixed-start anchors (contradictory anchors show gap/overlap, never shorten), then simultaneous groups (max member length), each selected explicitly. F12 Pass A can start on the F11 schedule contract; F13 Pass A remains the cross-epic priority.
 
 
+### F11 — MOB-014 shared draft helpers (2026-10-20)
+
+Reached from [MOB-014 Pass A](mobile-remaining-progress.md). No migration/route/RLS change. The website `EditItemModal`'s draft, validation and changed-fields patch, the add-item body and the one-step move moved into `packages/shared/src/lib/plan-item-draft.ts` (16 tests) and are used by both web (`EditItemModal`, `AddItemModal`, `PlanDetailPage`) and native. New `CreatePlanItemRequest`; `addPlanItem` typed with it. Web fix: a new song item starts on the song default or first **active** arrangement (`initialArrangementFor`), never an archived one. Checks: shared/backend/mobile tests, typecheck, build, live API 29/29, browser + simulator read-back (details in the mobile ledger). **Open F11 gaps found:** item create has no idempotency key (lost-response retry can duplicate; clients refetch instead), and append `sort_order` is read-then-insert (concurrent adds can tie).
+
 ## F12 — 2026-10-18
 
 **Pre-existing state.** `main` at `9ce24b9` (F11 merged), clean. New branch `feature/f12-live-runs`. All passes were selected in this invocation. The F11 migration had been applied locally with `psql` and was not recorded; it was marked applied with `supabase migration repair --status applied 20261028000000 --local` (local history only) before `supabase migration up --local` applied F12. No `docs/plans/mobile-remaining-progress.md` exists and MOB-023 did not run, so no mobile ledger entry was made; MOB-023 consumes the contracts below.

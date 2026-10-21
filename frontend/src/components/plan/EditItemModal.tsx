@@ -4,15 +4,20 @@ import { useTranslation } from 'react-i18next';
 import {
   ApiError,
   LocalizedError,
-  formatDuration,
+  PLAN_ITEM_SEGMENTS,
+  appendSequenceStep,
+  editableArrangements,
   parseChordPro,
-  parseDuration,
+  planItemChangesFrom,
+  planItemDraftFrom,
+  validatePlanItemDraft,
+  withInheritSequence,
+  withSong,
   type PlanDetail,
   type PlanItemDetail,
+  type PlanItemDraft,
   type PlanItemSegment,
-  type PlanItemType,
   type TeamWithPositions,
-  type UpdatePlanItemRequest,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { keys, usePeople, useSong, useSongs } from '../../hooks/queries';
@@ -27,88 +32,6 @@ export interface EditItemModalProps {
   onClose: () => void;
 }
 
-type LeaderMode = 'none' | 'person' | 'position';
-
-/** Everything the form edits, compared with the saved item to find changes. */
-interface ItemDraft {
-  itemType: PlanItemType;
-  title: string;
-  length: string;
-  description: string;
-  songId: string | null;
-  arrangementId: string | null;
-  keyOverride: string | null;
-  inheritSequence: boolean;
-  sequence: string;
-  leaderMode: LeaderMode;
-  leaderPersonId: string;
-  leaderPositionId: string;
-  segment: PlanItemSegment;
-}
-
-const SEGMENTS: readonly PlanItemSegment[] = ['pre', 'service', 'post'];
-
-const draftFrom = (item: PlanItemDetail): ItemDraft => ({
-  itemType: item.item_type,
-  title: item.title,
-  length: item.length_seconds ? formatDuration(item.length_seconds) : '',
-  description: item.description ?? '',
-  songId: item.song_id,
-  arrangementId: item.arrangement_id,
-  keyOverride: item.key_override,
-  inheritSequence: item.sequence_override === null || item.sequence_override === undefined,
-  sequence: (item.sequence_override ?? []).join(', '),
-  leaderMode: item.leader_person_id ? 'person' : item.leader_position_id ? 'position' : 'none',
-  leaderPersonId: item.leader_person_id ?? '',
-  leaderPositionId: item.leader_position_id ?? '',
-  segment: item.service_segment ?? 'service',
-});
-
-const parseSequence = (value: string): string[] =>
-  value.split(',').map((step) => step.trim()).filter(Boolean);
-
-/** Errors the form can catch before the server does; null when valid. */
-const validate = (draft: ItemDraft): LocalizedError | null => {
-  if (draft.itemType !== 'song' && !draft.title.trim()) return new LocalizedError({ key: 'plans:editItem.errors.titleRequired' });
-  if (draft.itemType === 'song' && !draft.songId) return new LocalizedError({ key: 'plans:editItem.errors.songRequired' });
-  if (draft.length.trim() && parseDuration(draft.length) === null) return new LocalizedError({ key: 'plans:editItem.errors.lengthFormat' });
-  const length = parseDuration(draft.length) ?? 0;
-  if (length < 0 || length > 36_000) return new LocalizedError({ key: 'plans:editItem.errors.lengthRange' });
-  if (!draft.inheritSequence) {
-    const steps = parseSequence(draft.sequence);
-    if (steps.length > 60) return new LocalizedError({ key: 'plans:editItem.errors.sequenceTooLong' });
-    if (steps.some((step) => step.length > 20)) return new LocalizedError({ key: 'plans:editItem.errors.sequenceStepTooLong' });
-  }
-  if (draft.leaderMode === 'person' && !draft.leaderPersonId) return new LocalizedError({ key: 'plans:editItem.errors.leaderPersonRequired' });
-  if (draft.leaderMode === 'position' && !draft.leaderPositionId) return new LocalizedError({ key: 'plans:editItem.errors.leaderPositionRequired' });
-  return null;
-};
-
-/** Only the fields that changed, so a save never rewrites what it did not touch. */
-const changesFrom = (draft: ItemDraft, item: PlanItemDetail): UpdatePlanItemRequest => {
-  const changes: UpdatePlanItemRequest = {};
-  const isSong = draft.itemType === 'song';
-  if (draft.itemType !== item.item_type) changes.item_type = draft.itemType;
-  if (draft.title.trim() && draft.title.trim() !== item.title) changes.title = draft.title.trim();
-  const length = draft.itemType === 'header' ? 0 : (parseDuration(draft.length) ?? 0);
-  if (length !== item.length_seconds) changes.length_seconds = length;
-  const description = draft.description.trim() || null;
-  if (description !== item.description) changes.description = description;
-  if (isSong) {
-    if (draft.songId !== item.song_id) changes.song_id = draft.songId;
-    if (draft.arrangementId !== item.arrangement_id) changes.arrangement_id = draft.arrangementId;
-    if (draft.keyOverride !== item.key_override) changes.key_override = draft.keyOverride;
-    const sequence = draft.inheritSequence ? null : parseSequence(draft.sequence);
-    if (JSON.stringify(sequence) !== JSON.stringify(item.sequence_override ?? null)) changes.sequence_override = sequence;
-  }
-  const person = draft.leaderMode === 'person' ? draft.leaderPersonId : null;
-  const position = draft.leaderMode === 'position' ? draft.leaderPositionId : null;
-  if (person !== item.leader_person_id) changes.leader_person_id = person;
-  if (position !== item.leader_position_id) changes.leader_position_id = position;
-  if (draft.segment !== (item.service_segment ?? 'service')) changes.service_segment = draft.segment;
-  return changes;
-};
-
 /**
  * F11: edit an existing order item in place — its id and position stay.
  * Keys and sequences set here belong to this plan only; the library
@@ -119,7 +42,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
   const { t } = useTranslation(['plans', 'common']);
   const queryClient = useQueryClient();
   const { organizationId, user } = useAuth();
-  const [draft, setDraft] = useState<ItemDraft>(() => draftFrom(item));
+  const [draft, setDraft] = useState<PlanItemDraft>(() => planItemDraftFrom(item));
   const [baseRevision, setBaseRevision] = useState(plan.content_revision);
   const [songQuery, setSongQuery] = useState('');
   const [changingSong, setChangingSong] = useState(false);
@@ -127,7 +50,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
   const song = useSong(draft.itemType === 'song' ? (draft.songId ?? undefined) : undefined);
   const songs = useSongs({ q: songQuery || undefined, per_page: 10 });
   const people = usePeople();
-  const set = <K extends keyof ItemDraft>(key: K, value: ItemDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
+  const set = <K extends keyof PlanItemDraft>(key: K, value: PlanItemDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
 
   const effectiveArrangementId = draft.arrangementId ?? song.data?.arrangements.find((a) => a.is_default)?.id;
   const labeledKeys = useQuery({
@@ -135,12 +58,11 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
     queryFn: () => api.getArrangementMaterials(effectiveArrangementId!),
     enabled: draft.itemType === 'song' && !!effectiveArrangementId,
   });
-  const changes = useMemo(() => changesFrom(draft, item), [draft, item]);
+  const changes = useMemo(() => planItemChangesFrom(draft, item), [draft, item]);
   const dirty = Object.keys(changes).length > 0;
   const planChanged = plan.content_revision !== baseRevision;
 
-  const arrangements = (song.data?.arrangements ?? []).filter((row) =>
-    !row.archived_at || row.id === item.arrangement_id);
+  const arrangements = editableArrangements(song.data?.arrangements ?? [], item.arrangement_id);
   const chosenArrangement =
     arrangements.find((candidate) => candidate.id === draft.arrangementId) ??
     (draft.arrangementId ? null : (arrangements.find((candidate) => candidate.is_default) ?? arrangements[0] ?? null));
@@ -183,7 +105,8 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const problem = validate(draft);
+    const problemKey = validatePlanItemDraft(draft);
+    const problem = problemKey ? new LocalizedError({ key: `plans:editItem.errors.${problemKey}` }) : null;
     setFormError(problem);
     if (problem || !dirty) return;
     save.mutate();
@@ -245,15 +168,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
                         type="button"
                         className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-50"
                         onClick={() => {
-                          setDraft((current) => ({
-                            ...current,
-                            songId: candidate.id,
-                            title: candidate.title,
-                            arrangementId: null,
-                            keyOverride: null,
-                            inheritSequence: true,
-                            sequence: '',
-                          }));
+                          setDraft((current) => withSong(current, candidate));
                           setChangingSong(false);
                         }}
                       >
@@ -320,11 +235,8 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
             <fieldset>
               <legend className="label">{t('editItem.sequence')}</legend>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={draft.inheritSequence} onChange={(event) => setDraft((current) => ({
-                  ...current,
-                  inheritSequence: event.target.checked,
-                  sequence: current.sequence || (chosenArrangement?.sequence ?? []).join(', '),
-                }))} />
+                <input type="checkbox" checked={draft.inheritSequence} onChange={(event) => setDraft((current) =>
+                  withInheritSequence(current, event.target.checked, chosenArrangement?.sequence ?? []))} />
                 {chosenArrangement?.sequence.length
                   ? t('editItem.useArrangementSequence', { sequence: chosenArrangement.sequence.join(', ') })
                   : t('editItem.useArrangementSequenceNone')}
@@ -337,7 +249,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
                   {sectionLabels.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {sectionLabels.map((label) => (
-                        <button key={label} type="button" className="rounded bg-slate-100 px-2 py-0.5 text-xs hover:bg-slate-200" onClick={() => set('sequence', [...parseSequence(draft.sequence), label].join(', '))}>
+                        <button key={label} type="button" className="rounded bg-slate-100 px-2 py-0.5 text-xs hover:bg-slate-200" onClick={() => set('sequence', appendSequenceStep(draft.sequence, label))}>
                           + {label}
                         </button>
                       ))}
@@ -358,7 +270,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
             <div>
               <label className="label" htmlFor="edit-item-segment">{t('editItem.when')}</label>
               <select id="edit-item-segment" className="input" value={draft.segment} onChange={(event) => set('segment', event.target.value as PlanItemSegment)}>
-                {SEGMENTS.map((segment) => (
+                {PLAN_ITEM_SEGMENTS.map((segment) => (
                   <option key={segment} value={segment}>{t(`segment.${segment}`)}</option>
                 ))}
               </select>

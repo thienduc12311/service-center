@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { parseDuration, type PlanItemType } from '@service-center/shared';
+import { initialArrangementFor, newPlanItemRequest, type PlanItemType } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useSongs, useInvalidateOrg } from '../../hooks/queries';
 import { Button, ErrorNotice, Modal } from '../ui';
@@ -26,24 +26,14 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
 
   const songs = useSongs({ q: songQuery || undefined, per_page: 20 });
   const selectedSong = songs.data?.data.find((song) => song.id === songId);
-  const selectedArrangement =
-    selectedSong?.arrangements.find((arrangement) => arrangement.is_default) ??
-    selectedSong?.arrangements[0];
 
+  // The same body the native app sends (shared `newPlanItemRequest`).
   const create = useMutation({
-    mutationFn: () => {
-      return api.addPlanItem(planId, {
-        item_type: itemType,
-        title: itemType === 'song' ? (selectedSong?.title ?? t('itemKind.song')) : title,
-        song_id: itemType === 'song' ? songId : null,
-        arrangement_id: itemType === 'song' ? (selectedArrangement?.id ?? null) : null,
-        key_override: itemType === 'song' ? mainKey : null,
-        length_seconds:
-          parseDuration(length) ??
-          (itemType === 'song' ? (selectedArrangement?.length_seconds ?? 0) : 0),
-        description: description || null,
-      });
-    },
+    mutationFn: () =>
+      api.addPlanItem(
+        planId,
+        newPlanItemRequest({ itemType, title, song: selectedSong ?? null, keyOverride: mainKey, length, description }, t('itemKind.song')),
+      ),
     onSuccess: async () => {
       await invalidate();
       setTitle('');
@@ -98,9 +88,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
                   key={song.id}
                   type="button"
                   onClick={() => {
-                    const arrangement =
-                      song.arrangements.find((candidate) => candidate.is_default) ??
-                      song.arrangements[0];
+                    const arrangement = initialArrangementFor(song.arrangements);
                     setSongId(song.id);
                     setMainKey(arrangement?.song_key ?? song.default_key ?? null);
                   }}

@@ -211,6 +211,8 @@ export type CreatePlanInput = z.infer<typeof createPlanSchema>;
 export type CreatePlanRequest = z.input<typeof createPlanSchema>;
 export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
 export type CreatePlanItemInput = z.infer<typeof createPlanItemSchema>;
+/** What a client sends to add an item; defaults are applied by the server. */
+export type CreatePlanItemRequest = z.input<typeof createPlanItemSchema>;
 export type UpdatePlanItemInput = z.infer<typeof updatePlanItemSchema>;
 /** What a client sends to edit an item. */
 export type UpdatePlanItemRequest = z.input<typeof updatePlanItemSchema>;

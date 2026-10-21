@@ -39,6 +39,12 @@ export const queryKeys = {
   /** F14: the plan's rehearsal manifest (names versions, never URLs). */
   rehearsal: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'rehearsal', planId ?? null] as const,
+  /** MOB-014: F09 notes the caller may read on a plan (counted before removing an item). */
+  planNotes: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
+    [...privateRoot(scope), 'plan-notes', planId ?? null] as const,
+  /** MOB-014: an arrangement's F15 labeled keys, offered as plan-only service keys. */
+  arrangementMaterials: (scope: ProtectedQueryScope | null, arrangementId: string | null | undefined) =>
+    [...privateRoot(scope), 'arrangement-materials', arrangementId ?? null] as const,
   song: (scope: ProtectedQueryScope | null, songId: string | null | undefined) =>
     [...privateRoot(scope), 'song', songId ?? null] as const,
   songs: (scope: ProtectedQueryScope | null, query: string) =>

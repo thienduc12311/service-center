@@ -6,6 +6,7 @@ import {
   ApiError,
   LocalizedError,
   computePlanSchedule,
+  movedItemIds,
   isAdmin,
   nextOccurrence,
   pickPlanNeighbours,
@@ -283,10 +284,8 @@ export const PlanDetailPage = () => {
 
   const orderBusy = reorder.isPending || removeItem.isPending || plan.isFetching;
   const move = (index: number, direction: -1 | 1) => {
-    const ids = detail.items.map((item) => item.id);
-    const target = index + direction;
-    if (target < 0 || target >= ids.length || orderBusy) return;
-    [ids[index], ids[target]] = [ids[target]!, ids[index]!];
+    const ids = movedItemIds(detail.items.map((item) => item.id), index, direction);
+    if (!ids || orderBusy) return;
     reorder.mutate({ itemIds: ids, revision: detail.content_revision });
   };
 
