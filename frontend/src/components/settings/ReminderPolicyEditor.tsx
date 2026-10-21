@@ -3,11 +3,15 @@ import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
+  REMINDER_CHANNELS,
   isPolicySetAtScope,
+  reminderPolicyDraftFrom,
+  reminderPolicyRequest,
   toWallClockInput,
-  type DeliveryChannel,
+  validateReminderPolicyDraft,
   type EffectiveReminderPolicy,
   type ReminderKind,
+  type ReminderPolicyDraft,
   type ReminderPolicyRow,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
@@ -15,7 +19,6 @@ import { useInvalidateOrg, useReminderPolicies } from '../../hooks/queries';
 import { Button, ErrorNotice, Spinner } from '../ui';
 import { useFormatters } from '../../i18n';
 
-const CHANNELS: readonly DeliveryChannel[] = ['in_app', 'push', 'email'];
 const KINDS: readonly ReminderKind[] = ['pending_response', 'confirmed_service'];
 
 export interface ReminderPolicyEditorProps {
@@ -35,9 +38,6 @@ interface PolicyFormProps {
   scopeLabel: string;
 }
 
-/** Offsets are edited in hours; stored in minutes. */
-const hoursOf = (minutes: number): string => String(Math.round((minutes / 60) * 100) / 100);
-
 /** 1500 → "1 day 1 hour", in the displayed language. */
 const formatOffset = (t: TFunction<'common'>, minutes: number): string => {
   const days = Math.floor(minutes / 1440);
@@ -56,37 +56,16 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
   const { t: tCommon } = useTranslation('common');
   const { list } = useFormatters();
   const invalidate = useInvalidateOrg();
-  const [enabled, setEnabled] = useState(effective.enabled);
-  const [hours, setHours] = useState(hoursOf(effective.offset_minutes));
-  const [channels, setChannels] = useState<DeliveryChannel[]>(effective.channels);
-  const [quiet, setQuiet] = useState(Boolean(effective.quiet_start));
-  const [quietStart, setQuietStart] = useState(toWallClockInput(effective.quiet_start) || '21:00');
-  const [quietEnd, setQuietEnd] = useState(toWallClockInput(effective.quiet_end) || '08:00');
-  const [maxPerDay, setMaxPerDay] = useState(effective.max_per_day);
+  // The same draft and request rules as the app (shared `reminderPolicyDraftFrom`).
+  const [draft, setDraft] = useState<ReminderPolicyDraft>(() => reminderPolicyDraftFrom(effective));
+  const edit = (patch: Partial<ReminderPolicyDraft>) => setDraft((current) => ({ ...current, ...patch }));
 
   useEffect(() => {
-    setEnabled(effective.enabled);
-    setHours(hoursOf(effective.offset_minutes));
-    setChannels(effective.channels);
-    setQuiet(Boolean(effective.quiet_start));
-    setQuietStart(toWallClockInput(effective.quiet_start) || '21:00');
-    setQuietEnd(toWallClockInput(effective.quiet_end) || '08:00');
-    setMaxPerDay(effective.max_per_day);
+    setDraft(reminderPolicyDraftFrom(effective));
   }, [effective]);
 
   const save = useMutation({
-    mutationFn: () => api.saveReminderPolicy({
-      service_type_id: serviceTypeId,
-      team_id: teamId,
-      kind,
-      enabled,
-      offset_minutes: Math.round(Number(hours) * 60),
-      channels,
-      quiet_start: quiet ? quietStart : null,
-      quiet_end: quiet ? quietEnd : null,
-      max_per_day: maxPerDay,
-      ...(explicit ? { expected_revision: explicit.revision } : {}),
-    }),
+    mutationFn: () => api.saveReminderPolicy(reminderPolicyRequest(draft, kind, { serviceTypeId, teamId }, explicit)),
     onSuccess: invalidate,
   });
   const reset = useMutation({
@@ -94,9 +73,9 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
     onSuccess: invalidate,
   });
 
-  const offsetMinutes = Math.round(Number(hours) * 60);
-  const invalidOffset = !Number.isFinite(offsetMinutes) || offsetMinutes < 15 || offsetMinutes > 43200;
-  const invalidQuiet = quiet && quietStart === quietEnd;
+  const problems = validateReminderPolicyDraft(draft);
+  const invalidOffset = problems.includes('offset');
+  const invalidQuiet = problems.includes('quiet');
 
   return (
     <fieldset className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
@@ -127,7 +106,7 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
       {canEdit ? (
         <div className="space-y-3 text-sm">
           <label className="flex items-center gap-2">
-            <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+            <input type="checkbox" checked={draft.enabled} onChange={(e) => edit({ enabled: e.target.checked })} />
             {t('reminders.sendFor', { scope: scopeLabel })}
           </label>
           <div className="flex flex-wrap items-end gap-4">
@@ -139,8 +118,8 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
                 min={0.25}
                 max={720}
                 step={0.25}
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
+                value={draft.hours}
+                onChange={(e) => edit({ hours: e.target.value })}
                 aria-invalid={invalidOffset}
               />
             </label>
@@ -151,19 +130,20 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
                 type="number"
                 min={1}
                 max={10}
-                value={maxPerDay}
-                onChange={(e) => setMaxPerDay(Number(e.target.value))}
+                value={draft.maxPerDay}
+                onChange={(e) => edit({ maxPerDay: Number(e.target.value) })}
               />
             </label>
           </div>
           <div className="flex flex-wrap gap-4" role="group" aria-label={t('reminders.channels')}>
-            {CHANNELS.map((channel) => (
+            {REMINDER_CHANNELS.map((channel) => (
               <label key={channel} className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={channels.includes(channel)}
-                  onChange={(e) => setChannels((current) =>
-                    e.target.checked ? [...current, channel] : current.filter((c) => c !== channel))}
+                  checked={draft.channels.includes(channel)}
+                  onChange={(e) => edit({
+                    channels: e.target.checked ? [...draft.channels, channel] : draft.channels.filter((c) => c !== channel),
+                  })}
                 />
                 {t(`delivery.channel.${channel}`)}
               </label>
@@ -171,13 +151,13 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
           </div>
           <div className="flex flex-wrap items-end gap-4">
             <label className="flex items-center gap-2 pb-2">
-              <input type="checkbox" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} />
+              <input type="checkbox" checked={draft.quiet} onChange={(e) => edit({ quiet: e.target.checked })} />
               {t('reminders.quietHours')}
             </label>
-            {quiet && (
+            {draft.quiet && (
               <>
-                <label className="field">{t('reminders.quietFrom')}<input className="input" type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} /></label>
-                <label className="field">{t('reminders.quietUntil')}<input className="input" type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)} /></label>
+                <label className="field">{t('reminders.quietFrom')}<input className="input" type="time" value={draft.quietStart} onChange={(e) => edit({ quietStart: e.target.value })} /></label>
+                <label className="field">{t('reminders.quietUntil')}<input className="input" type="time" value={draft.quietEnd} onChange={(e) => edit({ quietEnd: e.target.value })} /></label>
               </>
             )}
           </div>
@@ -187,7 +167,7 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, teamId,
           <div className="flex flex-wrap items-center gap-2">
             <Button
               loading={save.isPending}
-              disabled={invalidOffset || invalidQuiet || channels.length === 0}
+              disabled={problems.length > 0}
               onClick={() => save.mutate()}
             >
               {t('reminders.saveFor', { scope: scopeLabel })}

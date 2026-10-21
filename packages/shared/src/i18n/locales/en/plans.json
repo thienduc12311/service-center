@@ -274,7 +274,17 @@
     "to": "to",
     "nextDay": "next day",
     "addTime": "+ Add a time",
-    "invalid": "Every time needs a date, a start and a different end."
+    "invalid": "Every time needs a date, a start and a different end.",
+    "timezoneHint": "Dates and times are in {{timezone}}.",
+    "startSkipped": "The start time does not exist on that date in {{timezone}} because the clock moves forward. Choose another time.",
+    "endSkipped": "The end time does not exist on that date in {{timezone}} because the clock moves forward. Choose another time.",
+    "repeatedFor": "Repeated time choice for time {{number}}",
+    "moveUp": "Move time {{number}} up",
+    "moveDown": "Move time {{number}} down",
+    "tooMany": "A plan can have at most {{max}} times.",
+    "notify": "Send updated requests to the people affected",
+    "notifyOff": "Nobody is sent an updated request. Outstanding request links still stop working.",
+    "remindersRecomputed": "Scheduled reminders are recalculated for the new times."
   },
   "timeImpact": {
     "untimed": "With no times left, requests cover an approximate two-hour window from the service date.",
@@ -520,5 +530,24 @@
     "keepEditing": "Keep editing",
     "discard": "Discard",
     "editScreenTitle": "Edit item"
+  },
+  "mobileTimes": {
+    "editTimes": "Edit times",
+    "screenTitle": "Times",
+    "dateButton": "Date: {{date}}",
+    "startButton": "Start: {{time}}",
+    "endButton": "End: {{time}}",
+    "review": "Review changes",
+    "planChanged": "Someone changed this plan while you were editing. Your edits are kept — review them again against the latest plan.",
+    "uncertain": "The server did not answer, so the times may or may not have been saved. The plan has been refreshed — review again before saving.",
+    "saved": "Times saved.",
+    "noAccess": "You can see this plan's times but not change them.",
+    "reminders": "Reminders for this plan",
+    "remindersScope": "this service type",
+    "remindersOrgScope": "the church",
+    "remindersTeamHint": "A team's own reminder setting, changed on the website, overrides this one.",
+    "remindersHint": "Reminders are scheduled and sent by Service Center's server, not by this phone.",
+    "policyStale": "Someone changed this reminder setting first. The latest setting is shown — make your change again.",
+    "delivery": "Reminders and delivery"
   }
 }

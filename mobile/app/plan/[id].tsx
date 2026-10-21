@@ -46,6 +46,7 @@ import { useFormatters } from '../../src/i18n';
 import { PlanTeams } from '../../src/components/PlanTeams';
 import { buildPlanTeams } from '../../src/lib/plan-teams';
 import { PlanOrder } from '../../src/components/PlanOrder';
+import { PlanDeliveryCard, PlanReminderPolicyCard } from '../../src/components/PlanReminders';
 import { orderWriteOutcome, positionNamesFor } from '../../src/lib/plan-order-edit';
 
 /** MOB-008: the two plan views this screen shows (website tabs `order` and `teams`). */
@@ -118,6 +119,9 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
   const target = { serviceTypeId: detail?.service_type_id };
   const canEditPlan = can('plans.edit', target);
   const canScheduleTeam = (teamId: string): boolean => can('scheduling.manage', { ...target, teamId });
+  // MOB-015: the website shows reminders and delivery to schedulers of the plan,
+  // and reminder policy to people who plan or schedule its service type (`can_edit` decides editing).
+  const canSchedulePlan = can('scheduling.manage', target);
 
   // Website parity: each step saves that one position; positions not sent are kept.
   const setNeed = useMutation({
@@ -325,6 +329,16 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                 ))}
               </View>
             ) : null}
+            {canEditPlan ? (
+              <View style={styles.orderActions}>
+                <Button
+                  title={t('mobileTimes.editTimes')}
+                  icon="clock"
+                  variant="secondary"
+                  onPress={() => router.push({ pathname: '/plan/times/[id]', params: { id: detail.id } })}
+                />
+              </View>
+            ) : null}
           </View>
         </Reveal>
 
@@ -477,6 +491,8 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
               />
             )}
             <ErrorNotice error={setNeed.error} />
+            {canSchedulePlan ? <PlanDeliveryCard planId={detail.id} /> : null}
+            {canEditPlan || canSchedulePlan ? <PlanReminderPolicyCard serviceTypeId={detail.service_type_id} /> : null}
           </Reveal>
         ) : null}
 

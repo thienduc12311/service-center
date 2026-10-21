@@ -198,7 +198,7 @@ import type {
   PreviewBlockoutSeriesInput,
   UpdateBlockoutInput,
 } from '../schemas/blockout.js';
-import type { CreatePlanItemRequest, UpdatePlanItemRequest } from '../schemas/plan.js';
+import type { CreatePlanItemRequest, UpdatePlanItemRequest, UpdatePlanRequest } from '../schemas/plan.js';
 import type { PlanScheduleResponse } from '../types/plan-order.js';
 import type { LivePlanRuns, LiveRunHistory, LiveRunState } from '../types/live.js';
 import type { CorrectLiveRunTimeInput, CreateLiveRunRequest, LiveRunActionInput } from '../schemas/live.js';
@@ -263,7 +263,7 @@ import type {
 } from '../schemas/opportunities.js';
 import type {
   CheckAssignmentConflictsRequest,
-  PreviewPlanTimesInput,
+  PreviewPlanTimesRequest,
   SetAssignmentAttendanceRequest,
 } from '../schemas/attendance.js';
 import type { ServiceTypeSetupPayload } from '../schemas/service-type.js';
@@ -757,7 +757,7 @@ export class ServiceCenterApi {
   getPlan = (id: string) => this.request<PlanDetail>('GET', `/api/v1/plans/${id}`);
   createPlan = (body: Record<string, unknown>) =>
     this.request<PlanDetail>('POST', '/api/v1/plans', body);
-  updatePlan = (id: string, body: Record<string, unknown>) =>
+  updatePlan = (id: string, body: UpdatePlanRequest) =>
     this.request<PlanRow>('PATCH', `/api/v1/plans/${id}`, body);
   deletePlan = (id: string) => this.request<void>('DELETE', `/api/v1/plans/${id}`);
   duplicatePlan = (id: string, body: DuplicatePlanRequest) =>
@@ -1030,7 +1030,7 @@ export class ServiceCenterApi {
   setAssignmentAttendance = (planId: string, body: SetAssignmentAttendanceRequest) =>
     this.request<{ updated: AssignmentRow[] }>('PUT', `/api/v1/plans/${planId}/assignment-times`, body);
   /** F04: what a proposed full time list would do to requests, before saving it. */
-  previewPlanTimes = (planId: string, body: PreviewPlanTimesInput) =>
+  previewPlanTimes = (planId: string, body: PreviewPlanTimesRequest) =>
     this.request<PlanTimeImpact>('POST', `/api/v1/plans/${planId}/times/preview`, body);
   /** F04: requests committed over a conflict on this plan, with reasons. */
   planConflictOverrides = (planId: string) =>

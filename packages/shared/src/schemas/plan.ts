@@ -217,6 +217,10 @@ export type CreatePlanInput = z.infer<typeof createPlanSchema>;
 /** What a client sends to create a plan (defaults still to be applied). */
 export type CreatePlanRequest = z.input<typeof createPlanSchema>;
 export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
+/** What a client sends to change a plan (times go through the F04 preview first). */
+export type UpdatePlanRequest = z.input<typeof updatePlanSchema>;
+/** One time in a full time list a client sends. */
+export type PlanTimeRequest = z.input<typeof planTimeSchema>;
 export type CreatePlanItemInput = z.infer<typeof createPlanItemSchema>;
 /** What a client sends to add an item; defaults are applied by the server. */
 export type CreatePlanItemRequest = z.input<typeof createPlanItemSchema>;

@@ -2,10 +2,12 @@ import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import type {
-  DeliveryStatus,
-  PlanDeliveryHistoryItem,
-  PlanReminderJob,
+import {
+  isReminderReasonCode,
+  planDeliveryByPerson,
+  type DeliveryStatus,
+  type PlanDeliveryHistoryItem,
+  type PlanReminderJob,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useInvalidateOrg, usePlanDeliveries } from '../../hooks/queries';
@@ -20,20 +22,6 @@ const TONE: Partial<Record<DeliveryStatus, string>> = {
   delivered: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
 };
 const NEUTRAL = 'bg-slate-100 text-slate-600 ring-slate-500/20';
-
-/** Reminder skip/cancel reasons the server records (see `lib/reminders.ts`). */
-const REMINDER_REASON_CODES = [
-  'no_longer_applicable',
-  'due_passed',
-  'quiet_hours',
-  'frequency_cap',
-  'occurrence_started',
-  'reminder_obsolete',
-] as const;
-type ReminderReasonCode = (typeof REMINDER_REASON_CODES)[number];
-
-const isReminderReasonCode = (code: string): code is ReminderReasonCode =>
-  (REMINDER_REASON_CODES as readonly string[]).includes(code);
 
 /** Plain-language reason for a reminder status code; an unknown code is shown as-is. */
 const reminderReasonText = (code: string | null, t: TFunction<['staffing', 'common']>): string | null => {
@@ -119,21 +107,7 @@ export const PlanDeliveryPanel = ({ planId }: PlanDeliveryPanelProps) => {
   const [open, setOpen] = useState(false);
   const history = usePlanDeliveries(planId, open);
 
-  const people = useMemo(() => {
-    const byPerson = new Map<string, { name: string; deliveries: PlanDeliveryHistoryItem[]; reminders: PlanReminderJob[] }>();
-    for (const item of history.data?.deliveries ?? []) {
-      const entry = byPerson.get(item.person_id) ?? { name: item.person_name, deliveries: [], reminders: [] };
-      entry.deliveries.push(item);
-      byPerson.set(item.person_id, entry);
-    }
-    for (const job of history.data?.reminders ?? []) {
-      if (job.status === 'cancelled') continue;
-      const entry = byPerson.get(job.person_id) ?? { name: job.person_name, deliveries: [], reminders: [] };
-      entry.reminders.push(job);
-      byPerson.set(job.person_id, entry);
-    }
-    return [...byPerson.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name));
-  }, [history.data]);
+  const people = useMemo(() => planDeliveryByPerson(history.data), [history.data]);
 
   return (
     <section className="card mt-6 p-5">
@@ -156,8 +130,8 @@ export const PlanDeliveryPanel = ({ planId }: PlanDeliveryPanelProps) => {
             </p>
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-              {people.map(([personId, entry]) => (
-                <li key={personId} className="py-3">
+              {people.map((entry) => (
+                <li key={entry.personId} className="py-3">
                   <p className="font-medium">{entry.name}</p>
                   {entry.reminders.length > 0 && (
                     <ul className="ml-3 divide-y divide-slate-50 dark:divide-slate-900">

@@ -47,7 +47,9 @@
     "insufficient_scope": "This credential does not allow that action.",
     "organization_required": "Choose a church first.",
     "template_time_unresolvable": "A template time cannot be placed on that date (for example, because of a daylight-saving change). Review the times and try again.",
-    "reschedule_time_unresolvable": "A service time cannot be moved to that date (for example, because of a daylight-saving change). Choose another date or adjust the times."
+    "reschedule_time_unresolvable": "A service time cannot be moved to that date (for example, because of a daylight-saving change). Choose another date or adjust the times.",
+    "orphan_resolution_required": "Choose what happens to each request whose only times are being removed.",
+    "reminder_policy_stale": "This reminder setting changed. Reload it and try again."
   },
   "validation": {
     "required": "This field is required.",

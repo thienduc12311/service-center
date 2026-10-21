@@ -47,7 +47,9 @@
     "insufficient_scope": "Thông tin xác thực này không cho phép thao tác đó.",
     "organization_required": "Vui lòng chọn hội thánh trước.",
     "template_time_unresolvable": "Không thể đặt một giờ trong mẫu vào ngày đó (ví dụ do thay đổi giờ mùa hè). Hãy xem lại các giờ và thử lại.",
-    "reschedule_time_unresolvable": "Không thể dời một giờ nhóm sang ngày đó (ví dụ do thay đổi giờ mùa hè). Hãy chọn ngày khác hoặc điều chỉnh giờ."
+    "reschedule_time_unresolvable": "Không thể dời một giờ nhóm sang ngày đó (ví dụ do thay đổi giờ mùa hè). Hãy chọn ngày khác hoặc điều chỉnh giờ.",
+    "orphan_resolution_required": "Hãy chọn cách xử lý cho từng yêu cầu mà mọi giờ của nó đang bị gỡ.",
+    "reminder_policy_stale": "Cài đặt lời nhắc này đã thay đổi. Hãy tải lại và thử lại."
   },
   "validation": {
     "required": "Trường này là bắt buộc.",

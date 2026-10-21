@@ -313,10 +313,10 @@ Schedule dialog: Times (All times / Only these times, with untimed notice), live
 ### Remaining gates
 - Replay all migrations from an empty database before a shared environment.
 - Calendar clients: verify CANCELLED + higher SEQUENCE on Apple/Google/Outlook subscriptions and email invites (removal from an emailed invite uses the feed, not METHOD:CANCEL). A deleted time disappears from feeds (no CANCELLED; its state row cascades).
-- Plan time entry on the web still uses the editor's browser timezone (pre-existing); organization-zone entry with explicit fall-back choice belongs with MOB-015/F11.
+- ~~Plan time entry on the web still uses the editor's browser timezone (pre-existing); organization-zone entry with explicit fall-back choice belongs with MOB-015/F11.~~ — **closed** by MOB-015 (see "F04 / F08 shared fixes from MOB-015").
 - Time edits are allowed to create overlaps (a time is a plan fact) — shown in the preview, not blocked or audited; resolving an orphan to all times is rechecked and blocks. Product review of that split and of "same-plan double role = warning".
 - Attendance *commitment* is separate from actual present/absent records; none exist yet (F16).
-- Native: no time selection/editor or conflict override UI (MOB-008/015 consume `PUT /plans/:id/assignment-times`, `/times/preview`, `/scheduling/conflicts/check`); device QA not run.
+- Native: no time selection/editor or conflict override UI (MOB-008/015 consume `PUT /plans/:id/assignment-times`, `/times/preview`, `/scheduling/conflicts/check`); device QA not run. *2026-10-21:* MOB-015 Pass A added the native time editor on `/times/preview` + `PATCH /plans/:id`; per-request time selection stays MOB-008.
 - F05/F06/F07/F10 writers must call the same RPCs (or `private.lock_scheduling_people` + `private.check_pending_conflicts()`); automated proposals must never pass an override reason.
 
 **Next pass:** F08 Pass A — versioned release and reminders (reuse `attendance_calendar_states` sequences and `assignment_attendance_for` for reminder scope). F11 Pass A remains independent.
@@ -479,7 +479,7 @@ Schedule dialog: Times (All times / Only these times, with untimed notice), live
 - **Product review:** proposed defaults (72 h/24 h, 2/day, no quiet hours), "first computed after due → skipped" rule, quiet-hour skip when the window end passes the occurrence, cap semantics per channel.
 - ~~**Not routed through batches yet:** F05 matrix release and the single-plan `/plans/:id/release`~~ — **closed**, see "Gate closed: every release path uses release batches" below.
 - **F07 delivery:** truthful requester/candidate/leader templates for signup/replacement/swap transitions and durable scheduled expiry remain open (F07 still lazily expires on read).
-- **Native consumers** (MOB-005 review, MOB-015 time editor, MOB-020 notification settings) do not yet show release scheduling, reminder settings or delivery history; shared types/client are ready.
+- **Native consumers** (MOB-005 review, MOB-015 time editor, MOB-020 notification settings) do not yet show release scheduling, reminder settings or delivery history; shared types/client are ready. *2026-10-21:* MOB-015 Pass A shows service-type/organization reminder policy (inherit/override) and plan delivery history natively; release scheduling (MOB-005) and personal channel settings (MOB-020) remain.
 - Re-run the migration chain from scratch in a disposable database before applying to a shared environment.
 
 ### Gate closed: every release path uses release batches — 2026-10-18
@@ -493,6 +493,12 @@ Branch `feature/f08-batched-release-paths` (from `c0612b2`).
 
 **Exact next pass:** F08 has no further core pass; close the gates above (first: F07 transition templates on the F08 outbox). Otherwise **F09 Pass A — audience-safe notes and targeted messages**; F11 Pass A remains independent.
 
+
+### F04 / F08 shared fixes from MOB-015 — 2026-10-21
+- **F04 gate closed: organization-clock time entry.** New `lib/plan-time-draft.ts` is the one time-editor model for web and native: drafts on the organization's IANA clock (`localTimeAt`/`localDateAt`), resolved with `possibleInstantsForLocalDateTime` — a spring-forward time is refused, a fall-back time uses an explicit earlier/later choice (a saved "later" instant reopens as later), untouched rows send their stored instants, ids are kept across reorder and new rows carry a client id shared by preview and commit. `updatePlanTimesBody` carries the preview's `content_revision`, `impact_hash`, orphan choices and `notify_time_changes`. The website's `EditTimesModal` used the browser timezone before; it now uses this helper, shows the zone, adds ↑/↓ and exposes the re-send choice.
+- **F08 client helpers.** `reminderPolicyDraftFrom` / `validateReminderPolicyDraft` / `reminderPolicyRequest` (moved out of the web `ReminderPolicyEditor`, channel order canonical), `planDeliveryByPerson` (moved out of `PlanDeliveryPanel`), `REMINDER_REASON_CODES` and `DELIVERY_ERROR_CODES` (moved out of web components).
+- Types `UpdatePlanRequest`, `PlanTimeRequest`, `PreviewPlanTimesRequest`; `updatePlan` / `previewPlanTimes` take them (wire unchanged). Missing error translations `orphan_resolution_required`, `reminder_policy_stale` (en + vi).
+- No migration, route, RLS or backend change. Evidence: shared +20 tests; live API 27/27 and web check — see the mobile ledger, MOB-015 Pass A.
 
 ## F09 — 2026-10-18
 
