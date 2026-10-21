@@ -43,11 +43,13 @@ const PLAN_STATUSES = Object.keys(PLAN_STATUS_LABELS) as PlanStatus[];
 /**
  * MOB-012: every plan the caller may see (RLS decides), by service type and
  * status, upcoming or past, a page at a time. Same list and labels as the
- * website's Plans page; creating plans stays on the web until MOB-013.
+ * website's Plans page. MOB-013: plan editors get New plan and Create from
+ * template; templates, rescheduling and matrix tools stay on the website.
  */
 export default function PlansScreen() {
   const { t } = useTranslation(['plans', 'common']);
-  const { queryScope, generation, isCurrentGeneration } = useAuth();
+  const { queryScope, generation, isCurrentGeneration, canAnywhere } = useAuth();
+  const canCreatePlans = canAnywhere('plans.edit');
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -125,6 +127,16 @@ export default function PlansScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             <ScreenHeader title={t('plansPage.title')} description={t('plansPage.subtitle')} />
+            {canCreatePlans ? (
+              <View style={styles.actions}>
+                <Button title={t('plansPage.newPlan')} icon="plus" onPress={() => router.push('/plan/new')} />
+                <Button
+                  title={t('plansPage.createFromTemplate')}
+                  variant="secondary"
+                  onPress={() => router.push('/plan/generate')}
+                />
+              </View>
+            ) : null}
             <SegmentedControl options={windowOptions} value={planWindow} onChange={setPlanWindow} />
             {serviceTypes.data?.length ? (
               <ScrollView
@@ -253,6 +265,7 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     header: { gap: theme.space.lg, marginBottom: theme.space.lg },
     chips: { flexDirection: 'row', gap: theme.space.sm },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
     retry: { gap: theme.space.md, paddingVertical: theme.space.md },
     topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.space.md },
     date: { ...theme.type.label, color: theme.color.inkMuted, flex: 1 },

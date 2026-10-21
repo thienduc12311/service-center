@@ -488,5 +488,27 @@
       "holders": "{{position}}: {{names}}",
       "notYetAsked": "{{name}} (not yet asked)"
     }
+  },
+  "mobileCreatePlan": {
+    "timezoneHint": "Date and time are in {{timezone}}.",
+    "dateButton": "Date: {{date}}",
+    "timeButton": "Time: {{time}}",
+    "serviceTimeHint": "A {{minutes}}-minute service time is added, as on the website.",
+    "skippedTime": "{{time}} on {{date}} does not exist in {{timezone}} because the clock moves forward. Choose another time.",
+    "invalidTime": "Choose a valid date and time.",
+    "noServiceTypeHint": "Only service types you can plan for are listed.",
+    "createFromTemplateHint": "Prepare several dates from a saved template instead."
+  },
+  "mobileGenerate": {
+    "firstDateButton": "First date: {{date}}",
+    "stopAfterButton": "Stop after: {{date}}",
+    "clearStopAfter": "No end date",
+    "leaveOutButton": "Choose a date to leave out",
+    "rename": "Rename",
+    "moveDate": "Move date",
+    "noTemplates": "No plan templates yet. Save one from a plan on the website."
+  },
+  "mobileApply": {
+    "putItemsHint": "Where the template's items go in this order."
   }
 }

@@ -1,4 +1,4 @@
-import type { PlanBrowserFilters, PlanNeighbourQueries } from '@service-center/shared';
+import type { ListPlanTemplatesRequest, PlanBrowserFilters, PlanNeighbourQueries } from '@service-center/shared';
 import type { ProtectedQueryScope } from './session-lifecycle';
 
 const privateRoot = (scope: ProtectedQueryScope | null) =>
@@ -31,6 +31,9 @@ export const queryKeys = {
     [...privateRoot(scope), 'plans', 'list', filters] as const,
   planNeighbours: (scope: ProtectedQueryScope | null, planId: string, queries: PlanNeighbourQueries | null) =>
     [...privateRoot(scope), 'plans', 'neighbours', planId, queries] as const,
+  /** MOB-013: saved templates and sections (plan editors only). */
+  planTemplates: (scope: ProtectedQueryScope | null, filter: ListPlanTemplatesRequest) =>
+    [...privateRoot(scope), 'plan-templates', filter] as const,
   plan: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'plan', planId ?? null] as const,
   /** F14: the plan's rehearsal manifest (names versions, never URLs). */

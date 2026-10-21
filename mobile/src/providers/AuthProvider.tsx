@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import {
   canAccess,
+  canAccessAnywhere,
   canManage,
   isAdmin,
   type AccessCapability,
@@ -33,6 +34,8 @@ interface AuthContextValue {
   canManage: boolean;
   /** UI hint only; API and RLS remain authoritative. */
   can: (capability: AccessCapability, target?: AccessTarget) => boolean;
+  /** Holds the capability at some scope (e.g. may open plan creation at all). UI hint only. */
+  canAnywhere: (capability: AccessCapability) => boolean;
   /** Owners and admins: membership, org settings and AI chord sheet imports. */
   isAdmin: boolean;
   loading: boolean;
@@ -157,6 +160,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       role,
       canManage: canManage(role),
       can: (capability, target) => canAccess(access, capability, target),
+      canAnywhere: (capability) => canAccessAnywhere(access, capability),
       isAdmin: isAdmin(role),
       loading: phase === 'loading',
       ready: phase === 'ready' || phase === 'signed-out',
