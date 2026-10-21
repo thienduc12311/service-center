@@ -207,12 +207,12 @@ export const useSongSchedule = (
   });
 };
 
-export const usePlans = (query: Record<string, string | number | undefined>) => {
+export const usePlans = (query: Record<string, string | number | undefined>, enabled = true) => {
   const org = useOrg();
   return useQuery({
     queryKey: keys.plans(org, query),
     queryFn: () => api.listPlans(query),
-    enabled: Boolean(org),
+    enabled: Boolean(org) && enabled,
     placeholderData: (previous) => previous,
   });
 };

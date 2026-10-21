@@ -513,23 +513,6 @@
     "label": "Arrangement",
     "inPlan": "In this plan"
   },
-  "mobileSongbooks": {
-    "description": "Collections your team can carry into a rehearsal — either a set of charts or a single attached document.",
-    "new": "New song book",
-    "emptyDescription": "Group the songs you play together into a book, so nobody is hunting for charts on a Sunday morning.",
-    "attachedDocument": "Attached document",
-    "collectedCharts": "Collected charts",
-    "pickSongs": "Pick songs",
-    "attachFile": "Attach a file",
-    "composeTitle": "A new song book",
-    "composeDescription": "Give it a name, then either pick the charts it holds or attach the document you already have.",
-    "name": "Name",
-    "namePlaceholder": "Sunday morning set",
-    "songsChosen_one": "Songs · {{count}} chosen",
-    "songsChosen_other": "Songs · {{count}} chosen",
-    "documentHint": "PDF, DOCX or plain text",
-    "openDocument": "Open document"
-  },
   "mobileChart": {
     "opening": "Opening the chart",
     "screenTitle": "Chart",

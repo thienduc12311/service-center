@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +17,8 @@ import {
 import { api } from '../../../src/lib/api';
 import { queryKeys } from '../../../src/lib/query-keys';
 import { useAuth } from '../../../src/providers/AuthProvider';
-import { Avatar, Button, Card, ErrorNotice, Field, Label, Loading, Screen, Tag, screenPadding } from '../../../src/components/ui';
+import { Avatar, Button, Card, Chip, ErrorNotice, Field, Label, Loading, Screen, Tag, screenPadding } from '../../../src/components/ui';
+import { PressableScale } from '../../../src/components/motion';
 import {
   ALL_TIMES,
   blockingConflicts,
@@ -326,19 +327,20 @@ export default function SchedulePeopleScreen() {
             const name = person.full_name ?? person.email ?? t('common:states.unknown');
             const checked = selected.includes(personId);
             return (
-              <Pressable
+              <PressableScale
                 key={personId}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked }}
                 onPress={() => toggle(personId)}
-                style={({ pressed }) => [styles.personRow, pressed && styles.pressed]}
+                pressedOpacity={0.6}
+                style={styles.personRow}
               >
                 <View style={[styles.box, checked && styles.boxOn]}>{checked ? <Text style={styles.tick}>✓</Text> : null}</View>
                 <Avatar name={name} size={32} />
                 <Text style={[styles.body, styles.flex]} numberOfLines={1}>{name}</Text>
                 {!person.has_login ? <Text style={styles.muted}>{t('schedulePeople.noLogin')}</Text> : null}
                 {onTeam ? <Tag label={t('schedulePeople.onTeam')} accent={theme.accent.blue} /> : null}
-              </Pressable>
+              </PressableScale>
             );
           })}
         </Card>
@@ -451,26 +453,6 @@ export default function SchedulePeopleScreen() {
   );
 }
 
-interface ChipProps {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}
-
-const Chip = ({ label, active, onPress }: ChipProps) => {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={({ pressed }) => [styles.chip, active && styles.chipOn, pressed && styles.pressed]}
-    >
-      <Text style={[styles.chipLabel, active && styles.chipLabelOn]}>{label}</Text>
-    </Pressable>
-  );
-};
-
 interface ChoiceProps {
   label: string;
   hint?: string;
@@ -483,11 +465,12 @@ interface ChoiceProps {
 const Choice = ({ label, hint, checked, box = false, onPress }: ChoiceProps) => {
   const styles = useThemedStyles(makeStyles);
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole={box ? 'checkbox' : 'radio'}
       accessibilityState={{ checked }}
       onPress={onPress}
-      style={({ pressed }) => [styles.choice, pressed && styles.pressed]}
+      pressedOpacity={0.6}
+      style={styles.choice}
     >
       <View style={[box ? styles.box : styles.radio, checked && styles.boxOn]}>
         {checked ? <Text style={styles.tick}>{box ? '✓' : '•'}</Text> : null}
@@ -496,7 +479,7 @@ const Choice = ({ label, hint, checked, box = false, onPress }: ChoiceProps) => 
         <Text style={styles.body}>{label}</Text>
         {hint ? <Text style={styles.muted}>{hint}</Text> : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 };
 
@@ -510,17 +493,6 @@ const makeStyles = (theme: Theme) =>
     warn: { ...theme.type.bodySmall, color: theme.accent.yellow.fg },
     warnTitle: { ...theme.type.body, fontWeight: '600', color: theme.accent.yellow.fg },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm, marginTop: theme.space.sm },
-    chip: {
-      minHeight: 44,
-      justifyContent: 'center',
-      paddingHorizontal: theme.space.md,
-      borderRadius: theme.radius.md,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.color.border,
-    },
-    chipOn: { backgroundColor: theme.accent.blue.bg, borderColor: theme.accent.blue.fg },
-    chipLabel: { ...theme.type.bodySmall, color: theme.color.ink },
-    chipLabelOn: { color: theme.accent.blue.fg, fontWeight: '600' },
     choice: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, minHeight: 44, paddingVertical: theme.space.xs },
     indent: { marginLeft: theme.space.xl },
     personRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, minHeight: 48 },
@@ -544,7 +516,6 @@ const makeStyles = (theme: Theme) =>
     },
     boxOn: { backgroundColor: theme.accent.blue.fg, borderColor: theme.accent.blue.fg },
     tick: { color: theme.color.surface, fontWeight: '700', fontSize: 13 },
-    pressed: { opacity: 0.6 },
     switchRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: theme.space.sm },
   });

@@ -4,7 +4,10 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
+  PLAN_STATUS_ACCENTS,
   formatDuration,
+  pickPlanNeighbours,
+  planNeighbourQueries,
   resolvePlanItemChartContext,
   type AssignmentReleasePreview,
   type PlanItemDetail,
@@ -23,6 +26,7 @@ import {
   Card,
   Divider,
   ErrorNotice,
+  IconButton,
   KeyCap,
   Label,
   Loading,
@@ -51,6 +55,16 @@ type PlanView = 'order' | 'teams';
 
 export default function PlanScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  // MOB-012: previous/next swap the id in place; a fresh workspace per plan
+  // means no view, draft or release preview carries over to another plan.
+  return id ? <PlanWorkspace key={id} id={id} /> : null;
+}
+
+interface PlanWorkspaceProps {
+  id: string;
+}
+
+function PlanWorkspace({ id }: PlanWorkspaceProps) {
   const { t } = useTranslation(['plans', 'common']);
   const format = useFormatters();
   const { can, user, queryScope } = useAuth();
@@ -62,11 +76,27 @@ export default function PlanScreen() {
 
   const plan = useQuery({
     queryKey: queryKeys.plan(queryScope, id),
-    queryFn: () => api.getPlan(id!),
+    queryFn: () => api.getPlan(id),
     enabled: Boolean(id && queryScope),
   });
 
   const detail = plan.data;
+
+  // MOB-012: the same previous/next reads the website's ‹ › arrows use.
+  const neighbourQueries = useMemo(() => (detail ? planNeighbourQueries(detail) : null), [detail]);
+  const neighbours = useQuery({
+    queryKey: queryKeys.planNeighbours(queryScope, id, neighbourQueries),
+    queryFn: async () => {
+      if (!neighbourQueries) return { previous: null, next: null };
+      const [before, after] = await Promise.all([
+        api.listPlans(neighbourQueries.before),
+        api.listPlans(neighbourQueries.after),
+      ]);
+      return pickPlanNeighbours(id, before.data, after.data);
+    },
+    enabled: Boolean(queryScope && neighbourQueries),
+  });
+  const openPlan = (planId: string) => router.replace({ pathname: '/plan/[id]', params: { id: planId } });
 
   const queryClient = useQueryClient();
   const [view, setView] = useState<PlanView>('order');
@@ -94,7 +124,7 @@ export default function PlanScreen() {
   // Website parity: each step saves that one position; positions not sent are kept.
   const setNeed = useMutation({
     mutationFn: ({ positionId, needed }: { positionId: string; needed: number }) =>
-      api.setPlanPositionNeeds(id!, { needs: [{ position_id: positionId, needed }] }),
+      api.setPlanPositionNeeds(id, { needs: [{ position_id: positionId, needed }] }),
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.plan(queryScope, id) }),
   });
 
@@ -107,13 +137,13 @@ export default function PlanScreen() {
   );
 
   const previewRelease = useMutation({
-    mutationFn: () => api.previewAssignmentRelease(id!, {
+    mutationFn: () => api.previewAssignmentRelease(id, {
       assignment_ids: prepared.map((assignment) => assignment.id),
     }),
     onSuccess: setReleasePreview,
   });
   const release = useMutation({
-    mutationFn: (preview: AssignmentReleasePreview) => api.releaseAssignments(id!, {
+    mutationFn: (preview: AssignmentReleasePreview) => api.releaseAssignments(id, {
       assignment_ids: preview.assignments.map((assignment) => assignment.assignment_id),
       expected_revisions: preview.assignments.map((assignment) => ({
         assignment_id: assignment.assignment_id,
@@ -168,6 +198,7 @@ export default function PlanScreen() {
       <Screen>
         <View style={styles.errorWrap}>
           <ErrorNotice error={plan.error} />
+          <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void plan.refetch()} />
         </View>
       </Screen>
     );
@@ -182,9 +213,31 @@ export default function PlanScreen() {
       <ScrollView contentContainerStyle={screenPadding(theme)}>
         <Reveal>
           <View style={styles.hero}>
-            <Text style={styles.heroDate}>
-              {format.dateTime(detail.service_date)}
-            </Text>
+            <View style={styles.heroTop}>
+              <Text style={styles.heroDate}>
+                {format.dateTime(detail.service_date)}
+              </Text>
+              <IconButton
+                name="chevronLeft"
+                accessibilityLabel={t('header.previousPlan')}
+                disabled={!neighbours.data?.previous}
+                onPress={() => neighbours.data?.previous && openPlan(neighbours.data.previous)}
+              />
+              <IconButton
+                name="chevronRight"
+                accessibilityLabel={t('header.nextPlan')}
+                disabled={!neighbours.data?.next}
+                onPress={() => neighbours.data?.next && openPlan(neighbours.data.next)}
+              />
+            </View>
+            <View style={styles.heroTags}>
+              <Tag label={t(`common:planStatus.${detail.status}`)} accent={theme.accent[PLAN_STATUS_ACCENTS[detail.status]]} />
+              {detail.service_type ? (
+                <Text style={styles.heroMeta}>
+                  {t(`plansPage.serviceTypeRecurrence.${detail.service_type.recurrence}`, { name: detail.service_type.name })}
+                </Text>
+              ) : null}
+            </View>
             <Text style={styles.heroTitle}>{detail.title}</Text>
             <Text style={styles.heroMeta}>
               {[
@@ -384,10 +437,12 @@ export default function PlanScreen() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    errorWrap: { padding: theme.space.xl },
+    errorWrap: { padding: theme.space.xl, gap: theme.space.md },
 
     hero: { gap: theme.space.sm },
-    heroDate: { ...theme.type.label, color: theme.color.inkMuted },
+    heroTop: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    heroDate: { ...theme.type.label, color: theme.color.inkMuted, flex: 1 },
+    heroTags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },
     heroTitle: { ...theme.type.display, color: theme.color.ink },
     heroMeta: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     times: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm, marginTop: theme.space.md },

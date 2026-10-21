@@ -1,4 +1,4 @@
-import type { AssignmentStatus } from '../types/database.js';
+import type { AssignmentStatus, PlanStatus } from '../types/database.js';
 
 /** Product colors and component dimensions shared by the website and native app. */
 export interface ServiceCenterPalette {
@@ -91,6 +91,17 @@ export const serviceCenterDesignTokens: ServiceCenterDesignTokens = {
     },
   },
   radius: { small: 4, control: 8, input: 12, card: 16 },
+};
+
+/**
+ * MOB-012: the accent each plan status uses on native, matching the website's
+ * badges (published in the brand colour, draft and archived neutral). Always
+ * render it with the status label.
+ */
+export const PLAN_STATUS_ACCENTS: Record<PlanStatus, ServiceCenterAccentName> = {
+  draft: 'neutral',
+  published: 'blue',
+  archived: 'neutral',
 };
 
 /**

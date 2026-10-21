@@ -30,6 +30,8 @@ export interface PressableScaleProps {
   accessibilityState?: Omit<AccessibilityState, 'disabled'>;
   /** Opacity while held down. */
   pressedOpacity?: number;
+  /** Extra touch area around a small target. */
+  hitSlop?: number;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -48,6 +50,7 @@ export const PressableScale = ({
   accessibilityRole = 'button',
   accessibilityState,
   pressedOpacity = 0.8,
+  hitSlop,
   style,
 }: PressableScaleProps) => {
   const [pressed, setPressed] = useState(false);
@@ -58,6 +61,7 @@ export const PressableScale = ({
       accessibilityState={{ ...accessibilityState, disabled }}
       disabled={disabled}
       onPress={onPress}
+      hitSlop={hitSlop}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       style={[style, pressed && !disabled && { opacity: pressedOpacity }]}

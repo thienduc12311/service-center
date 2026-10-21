@@ -1,3 +1,4 @@
+import type { PlanBrowserFilters, PlanNeighbourQueries } from '@service-center/shared';
 import type { ProtectedQueryScope } from './session-lifecycle';
 
 const privateRoot = (scope: ProtectedQueryScope | null) =>
@@ -20,6 +21,16 @@ export const queryKeys = {
   /** Prefix for every calendar range. */
   calendarAll: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'calendar'] as const,
+  /** MOB-012: active service types, the plans browser's filter. */
+  serviceTypes: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'service-types'] as const,
+  /** MOB-012: prefix for every plans-browser page and neighbour read. */
+  plans: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'plans'] as const,
+  planList: (scope: ProtectedQueryScope | null, filters: PlanBrowserFilters) =>
+    [...privateRoot(scope), 'plans', 'list', filters] as const,
+  planNeighbours: (scope: ProtectedQueryScope | null, planId: string, queries: PlanNeighbourQueries | null) =>
+    [...privateRoot(scope), 'plans', 'neighbours', planId, queries] as const,
   plan: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'plan', planId ?? null] as const,
   /** F14: the plan's rehearsal manifest (names versions, never URLs). */
@@ -53,12 +64,6 @@ export const queryKeys = {
     [...privateRoot(scope), 'people'] as const,
   teams: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'teams'] as const,
-  songbooks: (scope: ProtectedQueryScope | null) =>
-    [...privateRoot(scope), 'songbooks'] as const,
-  songbookSongs: (scope: ProtectedQueryScope | null) =>
-    [...privateRoot(scope), 'songbook-songs'] as const,
-  songbook: (scope: ProtectedQueryScope | null, songbookId: string | null | undefined) =>
-    [...privateRoot(scope), 'songbook', songbookId ?? null] as const,
   /** MOB-009: every signup-opening read; invalidate this after a claim or decision. */
   opportunities: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'opportunities'] as const,

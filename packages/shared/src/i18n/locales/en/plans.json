@@ -68,6 +68,20 @@
     "locationPlaceholder": "Main Auditorium",
     "createPlan": "Create plan"
   },
+  "mobilePlans": {
+    "loading": "Loading plans",
+    "window": {
+      "upcoming": "Upcoming",
+      "history": "History"
+    },
+    "allServiceTypes": "All service types",
+    "filterServiceType": "Filter by service type",
+    "emptyUpcomingTitle": "No upcoming plans",
+    "emptyHistoryTitle": "No past plans",
+    "emptyDescription": "Plans you can see will appear here.",
+    "emptyFilteredDescription": "Nothing matches these filters. Try another service type or status.",
+    "loadMoreFailed": "More plans could not be loaded."
+  },
   "planDetail": {
     "notFound": "Plan not found",
     "deleteConfirm": "Delete “{{title}}”? This cannot be undone.",

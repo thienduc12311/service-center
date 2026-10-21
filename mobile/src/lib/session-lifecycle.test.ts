@@ -241,9 +241,9 @@ describe('NativeSessionLifecycle', () => {
     const b = { generation: 2, userId: 'user-a', organizationId: 'organization-b' };
     const nextAccount = { generation: 3, userId: 'user-b', organizationId: 'organization-b' };
 
-    expect(queryKeys.songbook(a, 'book-1')).not.toEqual(queryKeys.songbook(b, 'book-1'));
-    expect(queryKeys.songbook(b, 'book-1')).not.toEqual(
-      queryKeys.songbook(nextAccount, 'book-1'),
+    expect(queryKeys.plan(a, 'plan-1')).not.toEqual(queryKeys.plan(b, 'plan-1'));
+    expect(queryKeys.plan(b, 'plan-1')).not.toEqual(
+      queryKeys.plan(nextAccount, 'plan-1'),
     );
   });
 
@@ -262,11 +262,11 @@ describe('NativeSessionLifecycle', () => {
       loadCurrentUser: async () => users.shift()!,
     });
     await lifecycle.handleSession(session('user-a'));
-    const oldKey = queryKeys.songbook(lifecycle.queryScope(), 'book-1');
+    const oldKey = queryKeys.plan(lifecycle.queryScope(), 'plan-1');
     const pending = queryClient.fetchQuery({ queryKey: oldKey, queryFn: () => oldResult.promise });
 
     await lifecycle.switchOrganization('organization-b');
-    const newKey = queryKeys.songbook(lifecycle.queryScope(), 'book-1');
+    const newKey = queryKeys.plan(lifecycle.queryScope(), 'plan-1');
     queryClient.setQueryData(newKey, 'organization-b-result');
     oldResult.resolve('organization-a-result');
     await pending.catch(() => undefined);

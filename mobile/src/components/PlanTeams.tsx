@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { PressableScale } from './motion';
 import { useTranslation } from 'react-i18next';
 import type { AssignmentDetail } from '@service-center/shared';
 import { Avatar, Button, Card, EmptyState, ListRow, Tag } from './ui';
@@ -234,17 +235,16 @@ interface StepButtonProps {
 const StepButton = ({ label, accessibilityLabel, disabled, onPress }: StepButtonProps) => {
   const styles = useThemedStyles(makeStyles);
   return (
-    <Pressable
-      accessibilityRole="button"
+    <PressableScale
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
       hitSlop={4}
-      style={({ pressed }) => [styles.stepButton, disabled && styles.stepDisabled, pressed && styles.stepPressed]}
+      pressedOpacity={0.6}
+      style={[styles.stepButton, disabled && styles.stepDisabled]}
     >
       <Text style={styles.stepLabel}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 };
 
@@ -310,7 +310,6 @@ const makeStyles = (theme: Theme) =>
       justifyContent: 'center',
     },
     stepDisabled: { opacity: 0.3 },
-    stepPressed: { opacity: 0.6 },
     stepLabel: { ...theme.type.heading, color: theme.color.ink },
     needed: { ...theme.type.numeric, color: theme.color.ink, minWidth: 24, textAlign: 'center' },
     person: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },

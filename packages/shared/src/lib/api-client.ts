@@ -751,6 +751,7 @@ export class ServiceCenterApi {
     );
 
   // -------------------------------------------------------------- plans --
+  /** Ordered by (service_date, id) in the requested direction; see `planBrowserQuery`. */
   listPlans = (query?: Query) =>
     this.request<Paginated<PlanSummary>>('GET', '/api/v1/plans', undefined, query);
   getPlan = (id: string) => this.request<PlanDetail>('GET', `/api/v1/plans/${id}`);
