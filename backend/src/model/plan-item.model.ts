@@ -1,4 +1,4 @@
-import type { PlanItemRow, PlanItemSegment, PlanItemType, UpdatePlanItemInput } from '@service-center/shared';
+import type { CreatePlanItemInput, PlanItemRow, PlanItemSegment, PlanItemType, UpdatePlanItemInput } from '@service-center/shared';
 
 /** The item columns an edit may write, as sent to `update_plan_item`. */
 export interface PlanItemPatch {
@@ -61,4 +61,13 @@ export const buildPlanItemPatch = (input: UpdatePlanItemInput, current: PlanItem
   if (patch.leader_person_id) patch.leader_position_id = null;
   else if (patch.leader_position_id) patch.leader_person_id = null;
   return patch;
+};
+
+/** The item an add writes, as sent to `add_plan_item` (and compared on a keyed replay). */
+export type PlanItemCreateBody = Omit<CreatePlanItemInput, 'idempotency_key'>;
+
+/** The validated add without its key; the key travels separately. */
+export const buildPlanItemCreateBody = (input: CreatePlanItemInput): PlanItemCreateBody => {
+  const { idempotency_key: _key, ...body } = input;
+  return body;
 };

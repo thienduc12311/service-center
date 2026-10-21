@@ -7,6 +7,7 @@ import {
   editableArrangements,
   initialArrangementFor,
   movedItemIds,
+  keyedPlanItemRequest,
   newPlanItemRequest,
   planItemChangesFrom,
   planItemDraftFrom,
@@ -230,5 +231,25 @@ describe('movedItemIds', () => {
     expect(movedItemIds(['a', 'b'], 0, -1)).toBeNull();
     expect(movedItemIds(['a', 'b'], 1, 1)).toBeNull();
     expect(movedItemIds(['a'], 3, -1)).toBeNull();
+  });
+});
+
+describe('keyedPlanItemRequest', () => {
+  const body = { item_type: 'item' as const, title: 'Welcome', length_seconds: 60, description: null };
+  let n = 0;
+  const makeKey = () => `test-key-${++n}`.padEnd(12, '0');
+
+  it('reuses the key for a retry of the same body and validates as an add', () => {
+    const first = keyedPlanItemRequest(body, null, makeKey);
+    const retry = keyedPlanItemRequest(body, first, makeKey);
+    expect(retry.idempotency_key).toBe(first.idempotency_key);
+    expect(retry).toEqual(first);
+    expect(createPlanItemSchema.safeParse(first).success).toBe(true);
+  });
+
+  it('starts a new key when the draft changed or the last add was answered', () => {
+    const first = keyedPlanItemRequest(body, null, makeKey);
+    expect(keyedPlanItemRequest({ ...body, title: 'Prayer' }, first, makeKey).idempotency_key).not.toBe(first.idempotency_key);
+    expect(keyedPlanItemRequest(body, null, makeKey).idempotency_key).not.toBe(first.idempotency_key);
   });
 });

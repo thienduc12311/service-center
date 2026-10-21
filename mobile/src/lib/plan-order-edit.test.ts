@@ -13,6 +13,7 @@ import {
   leaderPersonChoices,
   leaderPositionChoices,
   orderWriteOutcome,
+  PlanItemAddAttempts,
   positionNamesFor,
   type LeaderWords,
 } from './plan-order-edit';
@@ -123,4 +124,29 @@ describe('leaderLine', () => {
 it('words a labeled key like the website dropdown', () => {
   expect(labeledKeyText({ label: 'Low', song_key: 'Bb', capo: 3, vocal_label: 'Alto' }, (fret) => `capo ${fret}`)).toBe('Low · Bb · capo 3 · Alto');
   expect(labeledKeyText({ label: 'Original', song_key: 'C', capo: null, vocal_label: null }, (fret) => `capo ${fret}`)).toBe('Original · C');
+});
+
+describe('PlanItemAddAttempts', () => {
+  const owner = { userId: 'u1', organizationId: 'o1' };
+  const body = { item_type: 'item' as const, title: 'Welcome', length_seconds: 60, description: null };
+  const keys = () => {
+    let n = 0;
+    return () => `attempt-key-${++n}`;
+  };
+
+  it('retries an unanswered add with the same key, and starts fresh once answered', () => {
+    const attempts = new PlanItemAddAttempts(keys());
+    const first = attempts.next(owner, 'plan', body);
+    expect(attempts.next(owner, 'plan', body).idempotency_key).toBe(first.idempotency_key);
+    attempts.settle(owner, 'plan');
+    expect(attempts.next(owner, 'plan', body).idempotency_key).not.toBe(first.idempotency_key);
+  });
+
+  it('gives a changed draft, another plan or another account its own key', () => {
+    const attempts = new PlanItemAddAttempts(keys());
+    const first = attempts.next(owner, 'plan', body);
+    expect(attempts.next(owner, 'other-plan', body).idempotency_key).not.toBe(first.idempotency_key);
+    expect(attempts.next({ ...owner, userId: 'u2' }, 'plan', body).idempotency_key).not.toBe(first.idempotency_key);
+    expect(attempts.next(owner, 'plan', { ...body, title: 'Prayer' }).idempotency_key).not.toBe(first.idempotency_key);
+  });
 });

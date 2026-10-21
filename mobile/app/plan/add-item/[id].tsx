@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +15,8 @@ import {
 } from '@service-center/shared';
 import { api } from '../../../src/lib/api';
 import { queryKeys } from '../../../src/lib/query-keys';
-import { orderWriteOutcome } from '../../../src/lib/plan-order-edit';
+import { orderWriteOutcome, PlanItemAddAttempts, type PlanItemAddOwner } from '../../../src/lib/plan-order-edit';
+import { newIdempotencyKey } from '../../../src/lib/idempotency';
 import { useDiscardGuard } from '../../../src/lib/useDiscardGuard';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { KeyPicker } from '../../../src/components/KeyPicker';
@@ -34,11 +35,15 @@ import {
 import { type Theme } from '../../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
 
+/** Lives as long as the app process, so leaving and coming back keeps the retry key. */
+const addAttempts = new PlanItemAddAttempts(newIdempotencyKey);
+
 /**
  * MOB-014: the website's "Add to the order" on the same `addPlanItem` call
  * and the same body (shared `newPlanItemRequest`): a song with its main key,
  * a free-form item or a header, appended at the end. Arrangement, sequence,
  * timing segment and leader are then set in the item editor, as on the web.
+ * F11: each add is keyed, so Retry after no answer never adds it twice.
  */
 export default function AddPlanItemScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -68,6 +73,11 @@ export default function AddPlanItemScreen() {
     enabled: Boolean(queryScope && itemType === 'song'),
   });
 
+  const owner = useMemo<PlanItemAddOwner | null>(
+    () => (queryScope ? { userId: queryScope.userId, organizationId: queryScope.organizationId } : null),
+    [queryScope],
+  );
+
   const draft: NewPlanItemDraft = { itemType, title, song, keyOverride: mainKey, length, description };
   const dirty = Boolean(song || title.trim() || length.trim() || description.trim());
   const guard = useDiscardGuard({
@@ -78,8 +88,11 @@ export default function AddPlanItemScreen() {
   });
 
   const add = useMutation({
-    mutationFn: () => api.addPlanItem(id!, newPlanItemRequest(draft, t('itemKind.song'))),
-    onSuccess: async () => {
+    // Same draft, same key: a retry returns the item the first attempt made.
+    mutationFn: (attemptOwner: PlanItemAddOwner) =>
+      api.addPlanItem(id!, addAttempts.next(attemptOwner, id!, newPlanItemRequest(draft, t('itemKind.song')))),
+    onSuccess: async (_item, attemptOwner) => {
+      addAttempts.settle(attemptOwner, id!);
       if (!isCurrentGeneration(generation)) return;
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.plan(queryScope, id) }),
@@ -88,12 +101,9 @@ export default function AddPlanItemScreen() {
       ]);
       guard.leave();
     },
-    // An add is not keyed: after no answer, show the order as it is now
-    // rather than offering a blind retry that could add it twice.
-    onError: (error) => {
-      if (isCurrentGeneration(generation) && orderWriteOutcome(error) === 'uncertain') {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.plan(queryScope, id) });
-      }
+    // After no answer the key is kept for Retry; any answer settles it.
+    onError: (error, attemptOwner) => {
+      if (orderWriteOutcome(error) !== 'uncertain') addAttempts.settle(attemptOwner, id!);
     },
   });
   const uncertain = add.error ? orderWriteOutcome(add.error) === 'uncertain' : false;
@@ -101,8 +111,8 @@ export default function AddPlanItemScreen() {
   const submit = () => {
     const found = validateNewPlanItemDraft(draft);
     setProblem(found ? new LocalizedError({ key: `plans:editItem.errors.${found}` }) : null);
-    if (found) return;
-    add.mutate();
+    if (found || !owner) return;
+    add.mutate(owner);
   };
 
   const chooseSong = (candidate: SongListItem) => {
@@ -215,7 +225,10 @@ export default function AddPlanItemScreen() {
 
         <ErrorNotice error={problem} />
         {uncertain ? (
-          <Text accessibilityRole="alert" style={styles.warning}>{t('mobileOrder.addUncertain')}</Text>
+          <View accessibilityRole="alert" style={styles.warning}>
+            <Text style={styles.warningText}>{t('mobileOrder.addUncertain')}</Text>
+            <Button variant="secondary" title={t('common:actions.retry')} onPress={submit} loading={add.isPending} />
+          </View>
         ) : (
           <ErrorNotice error={add.error} />
         )}
@@ -252,10 +265,10 @@ const makeStyles = (theme: Theme) =>
     songTitle: { ...theme.type.body, color: theme.color.ink },
     songTitleOn: { fontWeight: '600', color: theme.accent.blue.fg },
     warning: {
-      ...theme.type.bodySmall,
-      color: theme.accent.yellow.fg,
+      gap: theme.space.sm,
       backgroundColor: theme.accent.yellow.bg,
       padding: theme.space.sm,
       borderRadius: theme.radius.sm,
     },
+    warningText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg },
   });

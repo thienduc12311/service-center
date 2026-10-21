@@ -514,7 +514,7 @@
   "mobileOrder": {
     "itemGone": "This item is no longer in the plan. Someone may have removed it.",
     "uncertain": "The server did not answer, so this change may or may not have been saved. The order has been refreshed — check it before trying again.",
-    "addUncertain": "The server did not answer, so we can't tell whether the item was added. The order has been refreshed — check it before adding again.",
+    "addUncertain": "The server did not answer, so we can't tell whether the item was added. Try again — if it was already added, it won't be added twice.",
     "webOnlyHint": "Item notes, discussion and linked media are changed on the website.",
     "searchPeople": "Search people",
     "keepEditing": "Keep editing",

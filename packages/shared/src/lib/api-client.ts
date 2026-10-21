@@ -792,9 +792,13 @@ export class ServiceCenterApi {
   reschedulePlans = (body: RescheduleCommitRequest) =>
     this.request<RescheduleResult>('POST', '/api/v1/plans/reschedule', body);
 
-  /** Appends an item to the order (not revision-checked or keyed: it never overwrites another item). */
+  /**
+   * Appends an item to the order (not revision-checked: it never overwrites
+   * another item). With `idempotency_key`, a retry returns the item the first
+   * attempt made. The response adds the plan's new revision.
+   */
   addPlanItem = (planId: string, body: CreatePlanItemRequest) =>
-    this.request<PlanItemRow>('POST', `/api/v1/plans/${planId}/items`, body);
+    this.request<PlanItemRow & { content_revision: number }>('POST', `/api/v1/plans/${planId}/items`, body);
   /**
    * F11: edits an item in place. Pass `expected_revision` (the plan's
    * `content_revision`) so a competing edit is a 409 rather than overwritten.
