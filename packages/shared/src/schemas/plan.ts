@@ -121,6 +121,13 @@ export const createPlanItemSchema = z
     title: nonEmpty.max(200).optional(),
     length_seconds: z.number().int().min(0).max(36_000).default(0),
     sort_order: z.number().int().min(0).optional(),
+    /**
+     * F11: one key per add the editor reviewed, reused on every retry. The
+     * same key returns the item the first attempt made (200, not a second
+     * item); the same key with a different body is a 409
+     * `idempotency_key_reused`. Optional so unkeyed clients keep working.
+     */
+    idempotency_key: idempotencyKey.optional(),
   })
   .refine((v) => v.item_type !== 'song' || Boolean(v.song_id), {
     message: 'A song item needs a song_id',

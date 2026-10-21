@@ -567,6 +567,11 @@ export interface PlanItemSaveResult {
   content_revision: number;
 }
 
+/** F11: an added item; `replayed` when an earlier attempt with the same key made it. */
+export interface PlanItemCreateResult extends PlanItemSaveResult {
+  replayed: boolean;
+}
+
 /** F11: the plan's content revision after a reorder or removal. */
 export interface PlanOrderSaveResult {
   content_revision: number;
@@ -1679,6 +1684,10 @@ export type Database = {
           p_insert_at?: number | null;
         };
         Returns: TemplateApplyPreviewResult;
+      };
+      add_plan_item: {
+        Args: { p_plan_id: string; p_item: unknown; p_idempotency_key?: string | null };
+        Returns: PlanItemCreateResult;
       };
       update_plan_item: {
         Args: { p_plan_id: string; p_item_id: string; p_patch: unknown; p_expected_revision?: number | null };

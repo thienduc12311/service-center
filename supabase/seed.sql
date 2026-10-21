@@ -177,9 +177,14 @@ begin
 end $$;
 
 -- ----------------------------------------------------------- blockouts -----
-insert into blockouts (organization_id, user_id, starts_at, ends_at, reason) values
-  ('aaaaaaaa-0000-4000-8000-000000000001', '44444444-4444-4444-8444-444444444444',
-   (current_date + 14)::timestamptz, (current_date + 21)::timestamptz, 'Vacation'),
-  ('aaaaaaaa-0000-4000-8000-000000000001', '55555555-5555-4555-8555-555555555555',
-   (current_date + 6)::timestamptz, (current_date + 8)::timestamptz, 'Out of town')
+-- MOB-006: a blockout belongs to a Person; the trigger fills user_id from it.
+insert into blockouts (organization_id, person_id, starts_at, ends_at, reason)
+select v.org, p.id, v.starts_at, v.ends_at, v.reason
+  from (values
+    ('aaaaaaaa-0000-4000-8000-000000000001'::uuid, '44444444-4444-4444-8444-444444444444'::uuid,
+     (current_date + 14)::timestamptz, (current_date + 21)::timestamptz, 'Vacation'),
+    ('aaaaaaaa-0000-4000-8000-000000000001'::uuid, '55555555-5555-4555-8555-555555555555'::uuid,
+     (current_date + 6)::timestamptz, (current_date + 8)::timestamptz, 'Out of town')
+  ) v(org, profile, starts_at, ends_at, reason)
+  join people p on p.organization_id = v.org and p.profile_id = v.profile
 on conflict do nothing;

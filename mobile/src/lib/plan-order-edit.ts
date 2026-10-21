@@ -1,5 +1,7 @@
 import {
   ApiError,
+  keyedPlanItemRequest,
+  type CreatePlanItemRequest,
   type ItemLeader,
   type LabeledKey,
   type TeamPositionRow,
@@ -140,3 +142,36 @@ export const leaderLine = (leader: ItemLeader, words: LeaderWords): LeaderLine |
 /** A labeled library key as the website's dropdown words it: "Low · Bb · capo 3 · Alto". */
 export const labeledKeyText = (key: Pick<LabeledKey, 'label' | 'song_key' | 'capo' | 'vocal_label'>, capo: (fret: number) => string): string =>
   [key.label, key.song_key, ...(key.capo ? [capo(key.capo)] : []), ...(key.vocal_label ? [key.vocal_label] : [])].join(' · ');
+
+/** Whose add an attempt belongs to; keys are never shared across accounts or organizations. */
+export interface PlanItemAddOwner {
+  userId: string;
+  organizationId: string;
+}
+
+/**
+ * F11: the last unanswered add per (account, organization, plan). Sending
+ * the same draft again reuses its key, so Retry after no answer returns the
+ * item the first attempt made; a changed draft gets a new key.
+ */
+export class PlanItemAddAttempts {
+  private readonly attempts = new Map<string, CreatePlanItemRequest>();
+
+  constructor(private readonly makeKey: () => string) {}
+
+  private id(owner: PlanItemAddOwner, planId: string): string {
+    return `${owner.userId}:${owner.organizationId}:${planId}`;
+  }
+
+  /** The body to send now, keyed; remembered until the server answers. */
+  next(owner: PlanItemAddOwner, planId: string, body: CreatePlanItemRequest): CreatePlanItemRequest {
+    const keyed = keyedPlanItemRequest(body, this.attempts.get(this.id(owner, planId)) ?? null, this.makeKey);
+    this.attempts.set(this.id(owner, planId), keyed);
+    return keyed;
+  }
+
+  /** The server answered (added, or refused): the next add is a new one. */
+  settle(owner: PlanItemAddOwner, planId: string): void {
+    this.attempts.delete(this.id(owner, planId));
+  }
+}

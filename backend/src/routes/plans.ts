@@ -13,6 +13,7 @@ import {
   updatePlanItemSchema,
   updatePlanSchema,
   type CreatePlanInput,
+  type CreatePlanItemInput,
   type DuplicatePlanInput,
   type ImportPlanContentsInput,
   type ImportPlanContentsResult,
@@ -47,7 +48,7 @@ import {
   setPlanPositionNeeds,
   shapePlanSummary,
 } from '../services/plans.js';
-import { deletePlanItem, planScheduleFor, reorderPlanItems, updatePlanItem } from '../services/plan-items.js';
+import { addPlanItem, deletePlanItem, planScheduleFor, reorderPlanItems, updatePlanItem } from '../services/plan-items.js';
 import { notifyConfirmedAssignmentsForPlan } from './assignments.js';
 import { applyPlanTimes, identifyPlanTimes, previewPlanTimes } from '../services/attendance.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
@@ -224,37 +225,19 @@ plansRouter.post('/:id/import', requireCapability('plans.edit'), validateBody(im
 });
 
 // --------------------------------------------------------------- items ----
+/**
+ * F11: adds an item at the end of the order (or at `sort_order`). With
+ * `idempotency_key`, a retry returns the item already made with 200 instead
+ * of adding it twice. The response adds the plan's new revision.
+ */
 plansRouter.post('/:id/items', requireCapability('plans.edit'), validateBody(createPlanItemSchema), async (req, res) => {
-  const body = req.body as Record<string, unknown> & { song_id?: string | null; title?: string };
-
-  const plan = await unwrap(
-    req.db.from('plans').select('id').eq('id', param(req, 'id')).eq('organization_id', req.orgId).maybeSingle(),
-  );
-  if (!plan) throw HttpError.notFound('Plan not found');
-
-  // A song item may omit the title; fall back to the song's own.
-  if (body.item_type === 'song' && !body.title && body.song_id) {
-    const song = await unwrap(req.db.from('songs').select('title').eq('id', body.song_id).maybeSingle());
-    body.title = song?.title ?? 'Untitled song';
-  }
-
-  if (body.sort_order === undefined) {
-    const last = await unwrap(
-      req.db
-        .from('plan_items')
-        .select('sort_order')
-        .eq('plan_id', plan.id)
-        .order('sort_order', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    );
-    body.sort_order = (last?.sort_order ?? -1) + 1;
-  }
-
-  const created = await unwrapOne(
-    req.db.from('plan_items').insert({ ...body, plan_id: plan.id }).select('*').single(),
-  );
-  res.status(201).json(created);
+  const result = await addPlanItem({
+    db: req.db,
+    orgId: req.orgId,
+    planId: param(req, 'id'),
+    input: req.body as CreatePlanItemInput,
+  });
+  res.status(result.replayed ? 200 : 201).json({ ...result.item, content_revision: result.content_revision });
 });
 
 /**

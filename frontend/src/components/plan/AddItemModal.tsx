@@ -1,7 +1,13 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { initialArrangementFor, newPlanItemRequest, type PlanItemType } from '@service-center/shared';
+import {
+  initialArrangementFor,
+  keyedPlanItemRequest,
+  newPlanItemRequest,
+  type CreatePlanItemRequest,
+  type PlanItemType,
+} from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useSongs, useInvalidateOrg } from '../../hooks/queries';
 import { Button, ErrorNotice, Modal } from '../ui';
@@ -27,14 +33,23 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
   const songs = useSongs({ q: songQuery || undefined, per_page: 20 });
   const selectedSong = songs.data?.data.find((song) => song.id === songId);
 
+  // The last unanswered add: sending the same draft again reuses its key, so
+  // a retry after a lost response returns that item instead of a second one.
+  const pending = useRef<CreatePlanItemRequest | null>(null);
+
   // The same body the native app sends (shared `newPlanItemRequest`).
   const create = useMutation({
-    mutationFn: () =>
-      api.addPlanItem(
-        planId,
+    mutationFn: () => {
+      const body = keyedPlanItemRequest(
         newPlanItemRequest({ itemType, title, song: selectedSong ?? null, keyOverride: mainKey, length, description }, t('itemKind.song')),
-      ),
+        pending.current,
+        () => crypto.randomUUID(),
+      );
+      pending.current = body;
+      return api.addPlanItem(planId, body);
+    },
     onSuccess: async () => {
+      pending.current = null;
       await invalidate();
       setTitle('');
       setLength('');

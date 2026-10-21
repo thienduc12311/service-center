@@ -5,6 +5,12 @@ const id = '00000000-0000-4000-8000-000000000001';
 const other = '00000000-0000-4000-8000-000000000002';
 
 describe('F11 plan item schemas', () => {
+  it('takes an optional idempotency key on add', () => {
+    expect(createPlanItemSchema.safeParse({ item_type: 'item', title: 'x' }).success).toBe(true);
+    expect(createPlanItemSchema.parse({ item_type: 'item', title: 'x', idempotency_key: id }).idempotency_key).toBe(id);
+    expect(createPlanItemSchema.safeParse({ item_type: 'item', title: 'x', idempotency_key: 'short' }).success).toBe(false);
+  });
+
   it('accepts a full edit and keeps absent fields absent', () => {
     const parsed = updatePlanItemSchema.parse({ key_override: 'D', sequence_override: ['V1', 'C'], expected_revision: 4 });
     expect(parsed).toEqual({ key_override: 'D', sequence_override: ['V1', 'C'], expected_revision: 4 });

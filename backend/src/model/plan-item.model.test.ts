@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPlanItemPatch, type PlanItemPatchBase } from './plan-item.model.js';
+import { buildPlanItemCreateBody, buildPlanItemPatch, type PlanItemPatchBase } from './plan-item.model.js';
 
 const song: PlanItemPatchBase = { item_type: 'song', song_id: 's1', leader_person_id: null, leader_position_id: 'pos' };
 
@@ -23,5 +23,13 @@ describe('buildPlanItemPatch', () => {
   it('keeps one kind of leader', () => {
     expect(buildPlanItemPatch({ leader_person_id: 'p1' }, song)).toEqual({ leader_person_id: 'p1', leader_position_id: null });
     expect(buildPlanItemPatch({ leader_position_id: 'pos2' }, { ...song, leader_person_id: 'p1' })).toEqual({ leader_position_id: 'pos2', leader_person_id: null });
+  });
+});
+
+describe('buildPlanItemCreateBody', () => {
+  it('sends the item without its key, so a replay compares the item alone', () => {
+    expect(
+      buildPlanItemCreateBody({ item_type: 'item', title: 'Welcome', length_seconds: 60, idempotency_key: 'retry-key-0001' }),
+    ).toEqual({ item_type: 'item', title: 'Welcome', length_seconds: 60 });
   });
 });

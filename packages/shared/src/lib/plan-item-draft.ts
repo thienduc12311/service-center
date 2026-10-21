@@ -201,6 +201,23 @@ export const newPlanItemRequest = (draft: NewPlanItemDraft, songFallbackTitle: s
   };
 };
 
+/**
+ * F11: the add body with its idempotency key. The previous attempt's key is
+ * kept while the body is unchanged, so a retry after no answer returns the
+ * item the first attempt made; a changed draft is a new add with a new key.
+ * Pass `previous` null once an add has been answered.
+ */
+export const keyedPlanItemRequest = (
+  body: CreatePlanItemRequest,
+  previous: CreatePlanItemRequest | null,
+  makeKey: () => string,
+): CreatePlanItemRequest => {
+  const { idempotency_key: previousKey, ...previousBody } = previous ?? {};
+  const { idempotency_key: _ignored, ...nextBody } = body;
+  const same = previous !== null && previousKey !== undefined && JSON.stringify(previousBody) === JSON.stringify(nextBody);
+  return { ...nextBody, idempotency_key: same ? previousKey : makeKey() };
+};
+
 /** The first problem the add form can catch; null when it can be sent. */
 export const validateNewPlanItemDraft = (draft: NewPlanItemDraft): PlanItemDraftProblem | null => {
   if (draft.itemType === 'song' && !draft.song) return 'songRequired';

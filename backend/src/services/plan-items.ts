@@ -2,8 +2,10 @@ import {
   computePlanSchedule,
   selectServiceTime,
   serviceTimesOf,
+  type CreatePlanItemInput,
   type PlanDetail,
   type PlanItemArrangement,
+  type PlanItemCreateResult,
   type PlanItemRow,
   type PlanItemSaveResult,
   type PlanOrderSaveResult,
@@ -12,11 +14,36 @@ import {
 } from '@service-center/shared';
 import { unwrap, type Db } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
-import { buildPlanItemPatch } from '../model/plan-item.model.js';
+import { buildPlanItemCreateBody, buildPlanItemPatch } from '../model/plan-item.model.js';
 
 /** Same columns as the plan detail's item arrangement join. */
 export const PLAN_ITEM_ARRANGEMENT_COLUMNS =
   'id, song_id, name, song_key, bpm, sequence, chord_chart, chart_columns, chart_font, chart_font_size, chart_chord_color, is_default, length_seconds';
+
+export interface AddPlanItemServiceInput {
+  db: Db;
+  orgId: string;
+  planId: string;
+  input: CreatePlanItemInput;
+}
+
+/**
+ * F11: appends (or places) one item under the plan lock, so concurrent adds
+ * get distinct positions. With a key, a retry returns the first item.
+ */
+export const addPlanItem = async ({ db, orgId, planId, input }: AddPlanItemServiceInput): Promise<PlanItemCreateResult> => {
+  const plan = await unwrap(db.from('plans').select('id').eq('id', planId).eq('organization_id', orgId).maybeSingle());
+  if (!plan) throw HttpError.notFound('Plan not found');
+
+  const { data, error } = await db.rpc('add_plan_item', {
+    p_plan_id: plan.id,
+    p_item: buildPlanItemCreateBody(input),
+    p_idempotency_key: input.idempotency_key ?? null,
+  });
+  if (error) throw fromPostgrestError(error);
+  if (!data) throw HttpError.notFound('Plan not found');
+  return data;
+};
 
 export interface UpdatePlanItemServiceInput {
   db: Db;
