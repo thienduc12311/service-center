@@ -1,39 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import type {
-  AssignmentNotificationSendResult,
-  DeliveryChannel,
-  DeliveryStatus,
-  DeliveryStatusCounts,
+import {
+  isDeliveryErrorCode,
+  type AssignmentNotificationSendResult,
+  type DeliveryChannel,
+  type DeliveryStatus,
+  type DeliveryStatusCounts,
 } from '@service-center/shared';
-
-/** Machine error codes the server records on a delivery (see `lib/delivery.ts`). */
-const DELIVERY_ERROR_CODES = [
-  'no_email_address',
-  'no_active_device',
-  'recipient_not_eligible',
-  'scheduler_not_active',
-  'plan_missing',
-  'request_missing',
-  'already_reviewed',
-  'provider_rate_limited',
-  'provider_unavailable',
-  'provider_rejected',
-  'provider_misconfigured',
-  'provider_timeout',
-  'outcome_unknown',
-  'worker_lease_expired',
-  'internal_error',
-  'reminder_obsolete',
-  'provider_duplicate_key',
-  'content_removed',
-  'conversation_muted',
-  'channel_not_used',
-] as const;
-type DeliveryErrorCode = (typeof DELIVERY_ERROR_CODES)[number];
-
-const isDeliveryErrorCode = (code: string): code is DeliveryErrorCode =>
-  (DELIVERY_ERROR_CODES as readonly string[]).includes(code);
 
 /** Plain-language reason for a delivery error code; an unknown code is shown as-is. */
 export const deliveryErrorText = (code: string | null, t: TFunction<['staffing', 'common']>): string | null => {

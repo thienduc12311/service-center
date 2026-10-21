@@ -74,3 +74,5 @@ export type CheckAssignmentConflictsRequest = z.input<typeof checkAssignmentConf
 export type SetAssignmentAttendanceInput = z.infer<typeof setAssignmentAttendanceSchema>;
 export type SetAssignmentAttendanceRequest = z.input<typeof setAssignmentAttendanceSchema>;
 export type PreviewPlanTimesInput = z.infer<typeof previewPlanTimesSchema>;
+/** What a client sends to preview a full time list. */
+export type PreviewPlanTimesRequest = z.input<typeof previewPlanTimesSchema>;

@@ -71,3 +71,31 @@ export const summarizeDeliveryOutcomes = (
   }
   return summary;
 };
+
+/** Machine error codes the server records on a delivery; each has a translation in `staffing:deliveryError`. */
+export const DELIVERY_ERROR_CODES = [
+  'no_email_address',
+  'no_active_device',
+  'recipient_not_eligible',
+  'scheduler_not_active',
+  'plan_missing',
+  'request_missing',
+  'already_reviewed',
+  'provider_rate_limited',
+  'provider_unavailable',
+  'provider_rejected',
+  'provider_misconfigured',
+  'provider_timeout',
+  'outcome_unknown',
+  'worker_lease_expired',
+  'internal_error',
+  'reminder_obsolete',
+  'provider_duplicate_key',
+  'content_removed',
+  'conversation_muted',
+  'channel_not_used',
+] as const;
+export type DeliveryErrorCode = (typeof DELIVERY_ERROR_CODES)[number];
+
+export const isDeliveryErrorCode = (code: string): code is DeliveryErrorCode =>
+  (DELIVERY_ERROR_CODES as readonly string[]).includes(code);

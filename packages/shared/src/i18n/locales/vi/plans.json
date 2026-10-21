@@ -272,7 +272,17 @@
     "to": "đến",
     "nextDay": "ngày hôm sau",
     "addTime": "+ Thêm giờ",
-    "invalid": "Mỗi giờ cần có ngày, giờ bắt đầu và giờ kết thúc khác nhau."
+    "invalid": "Mỗi giờ cần có ngày, giờ bắt đầu và giờ kết thúc khác nhau.",
+    "timezoneHint": "Ngày và giờ theo múi giờ {{timezone}}.",
+    "startSkipped": "Giờ bắt đầu không tồn tại vào ngày đó ở {{timezone}} vì đồng hồ được chỉnh sớm lên. Hãy chọn giờ khác.",
+    "endSkipped": "Giờ kết thúc không tồn tại vào ngày đó ở {{timezone}} vì đồng hồ được chỉnh sớm lên. Hãy chọn giờ khác.",
+    "repeatedFor": "Lựa chọn giờ lặp lại cho giờ {{number}}",
+    "moveUp": "Chuyển giờ {{number}} lên",
+    "moveDown": "Chuyển giờ {{number}} xuống",
+    "tooMany": "Một chương trình có tối đa {{max}} giờ.",
+    "notify": "Gửi yêu cầu cập nhật cho những người bị ảnh hưởng",
+    "notifyOff": "Không ai được gửi yêu cầu cập nhật. Các liên kết yêu cầu chưa trả lời vẫn sẽ hết hiệu lực.",
+    "remindersRecomputed": "Các lời nhắc đã lên lịch sẽ được tính lại theo giờ mới."
   },
   "timeImpact": {
     "untimed": "Khi không còn giờ nào, các yêu cầu sẽ bao gồm khoảng hai tiếng tính từ ngày buổi nhóm.",
@@ -512,5 +522,24 @@
     "keepEditing": "Tiếp tục chỉnh sửa",
     "discard": "Bỏ",
     "editScreenTitle": "Sửa mục"
+  },
+  "mobileTimes": {
+    "editTimes": "Sửa giờ",
+    "screenTitle": "Giờ",
+    "dateButton": "Ngày: {{date}}",
+    "startButton": "Bắt đầu: {{time}}",
+    "endButton": "Kết thúc: {{time}}",
+    "review": "Xem lại thay đổi",
+    "planChanged": "Có người đã thay đổi chương trình này khi bạn đang sửa. Các chỉnh sửa của bạn vẫn được giữ — hãy xem lại theo chương trình mới nhất.",
+    "uncertain": "Máy chủ không phản hồi, nên giờ có thể đã được lưu hoặc chưa. Chương trình đã được tải lại — hãy xem lại trước khi lưu.",
+    "saved": "Đã lưu giờ.",
+    "noAccess": "Bạn có thể xem giờ của chương trình này nhưng không thể thay đổi.",
+    "reminders": "Lời nhắc cho chương trình này",
+    "remindersScope": "loại buổi lễ này",
+    "remindersOrgScope": "hội thánh",
+    "remindersTeamHint": "Cài đặt lời nhắc riêng của một ban (thay đổi trên trang web) sẽ được ưu tiên hơn cài đặt này.",
+    "remindersHint": "Lời nhắc được máy chủ Service Center lên lịch và gửi, không phải điện thoại này.",
+    "policyStale": "Có người đã thay đổi cài đặt lời nhắc này trước. Cài đặt mới nhất đang được hiển thị — hãy thực hiện lại thay đổi của bạn.",
+    "delivery": "Lời nhắc và gửi thông báo"
   }
 }

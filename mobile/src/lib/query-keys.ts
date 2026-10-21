@@ -45,6 +45,12 @@ export const queryKeys = {
   /** MOB-014: an arrangement's F15 labeled keys, offered as plan-only service keys. */
   arrangementMaterials: (scope: ProtectedQueryScope | null, arrangementId: string | null | undefined) =>
     [...privateRoot(scope), 'arrangement-materials', arrangementId ?? null] as const,
+  /** MOB-015: F08 scheduled reminders and per-Person/channel delivery history for one plan. */
+  planDeliveries: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
+    [...privateRoot(scope), 'plan-deliveries', planId ?? null] as const,
+  /** MOB-015: F08 effective/explicit reminder policies at one scope (organization when both are null). */
+  reminderPolicies: (scope: ProtectedQueryScope | null, serviceTypeId: string | null, teamId: string | null) =>
+    [...privateRoot(scope), 'reminder-policies', serviceTypeId, teamId] as const,
   song: (scope: ProtectedQueryScope | null, songId: string | null | undefined) =>
     [...privateRoot(scope), 'song', songId ?? null] as const,
   songs: (scope: ProtectedQueryScope | null, query: string) =>
