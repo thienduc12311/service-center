@@ -2,4 +2,5 @@ export { LanguageProvider, useLanguage, useRecipientLanguage, type LanguageConte
 export { LanguageSelector, type LanguageSelectorProps } from './LanguageSelector';
 export { useFormatters, type Formatters } from './useFormatters';
 export { useErrorText } from './useErrorText';
+export { useStructuredText } from './useStructuredText';
 export { i18n, languageController } from './instance';

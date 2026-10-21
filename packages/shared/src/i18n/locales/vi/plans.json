@@ -480,5 +480,27 @@
       "holders": "{{position}}: {{names}}",
       "notYetAsked": "{{name}} (chưa được hỏi)"
     }
+  },
+  "mobileCreatePlan": {
+    "timezoneHint": "Ngày và giờ theo múi giờ {{timezone}}.",
+    "dateButton": "Ngày: {{date}}",
+    "timeButton": "Giờ: {{time}}",
+    "serviceTimeHint": "Một giờ lễ dài {{minutes}} phút được thêm vào, giống như trên trang web.",
+    "skippedTime": "{{time}} ngày {{date}} không tồn tại ở {{timezone}} vì đồng hồ được chỉnh sớm lên. Hãy chọn giờ khác.",
+    "invalidTime": "Hãy chọn ngày và giờ hợp lệ.",
+    "noServiceTypeHint": "Chỉ hiển thị các loại buổi lễ bạn được phép lập chương trình.",
+    "createFromTemplateHint": "Hoặc chuẩn bị nhiều ngày từ một mẫu đã lưu."
+  },
+  "mobileGenerate": {
+    "firstDateButton": "Ngày đầu tiên: {{date}}",
+    "stopAfterButton": "Dừng sau: {{date}}",
+    "clearStopAfter": "Không có ngày kết thúc",
+    "leaveOutButton": "Chọn ngày để bỏ qua",
+    "rename": "Đổi tên",
+    "moveDate": "Đổi ngày",
+    "noTemplates": "Chưa có mẫu chương trình. Hãy lưu một mẫu từ một chương trình trên trang web."
+  },
+  "mobileApply": {
+    "putItemsHint": "Vị trí các mục của mẫu trong thứ tự này."
   }
 }

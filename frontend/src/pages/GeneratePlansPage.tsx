@@ -78,6 +78,8 @@ export const GeneratePlansPage = () => {
   const invalidatePreview = () => {
     setPreview(null);
     setAttemptKey(crypto.randomUUID());
+    // A new choice replaces any earlier stale or conflict outcome.
+    generate.reset();
   };
 
   const review = useMutation({
@@ -85,6 +87,7 @@ export const GeneratePlansPage = () => {
     onSuccess: (result) => {
       setPreview(result);
       setAttemptKey(crypto.randomUUID());
+      generate.reset();
     },
   });
   const generate = useMutation({

@@ -207,6 +207,8 @@ export const calendarQuerySchema = z.object({
 });
 
 export type CreatePlanInput = z.infer<typeof createPlanSchema>;
+/** What a client sends to create a plan (defaults still to be applied). */
+export type CreatePlanRequest = z.input<typeof createPlanSchema>;
 export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
 export type CreatePlanItemInput = z.infer<typeof createPlanItemSchema>;
 export type UpdatePlanItemInput = z.infer<typeof updatePlanItemSchema>;

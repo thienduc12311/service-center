@@ -61,6 +61,8 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
   const resetReview = () => {
     setPreview(null);
     setAttemptKey(crypto.randomUUID());
+    // A new choice replaces any earlier stale or conflict outcome.
+    apply.reset();
   };
 
   const request = () => ({
@@ -75,6 +77,7 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
     onSuccess: (result) => {
       setPreview(result);
       setAttemptKey(crypto.randomUUID());
+      apply.reset();
     },
   });
 

@@ -348,6 +348,13 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                 />
               ) : null}
             </View>
+            {canEditPlan ? (
+              <Button
+                title={t('planDetail.applyTemplate')}
+                variant="secondary"
+                onPress={() => router.push({ pathname: '/plan/apply-template/[id]', params: { id: detail.id } })}
+              />
+            ) : null}
             {detail.items.length ? (
               <View>
                 {detail.items.map((item, index) =>

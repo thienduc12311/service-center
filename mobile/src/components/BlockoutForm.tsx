@@ -14,6 +14,7 @@ import { useThemedStyles } from '../lib/useTheme';
 import { Button, ErrorNotice, Field, SegmentedControl, type SegmentOption } from './ui';
 import { useFormatters } from '../i18n';
 import { newIdempotencyKey } from '../lib/idempotency';
+import { civilDate, civilTime, dateForPicker } from '../lib/civil-date';
 
 interface BlockoutFormProps {
   editing?: BlockoutRow | null;
@@ -32,14 +33,6 @@ type AmbiguousPolicy = 'earlier' | 'later';
 const REPEATS: readonly Repeat[] = ['none', 'weekly', 'monthly'];
 const END_KINDS: readonly EndKind[] = ['count', 'until'];
 const AMBIGUOUS_POLICIES: readonly AmbiguousPolicy[] = ['earlier', 'later'];
-const pad = (value: number): string => String(value).padStart(2, '0');
-const civilDate = (value: Date): string => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
-const civilTime = (value: Date): string => `${pad(value.getHours())}:${pad(value.getMinutes())}`;
-const dateForPicker = (date: string, time = '12:00'): Date => {
-  const [year, month, day] = date.split('-').map(Number);
-  const [hour, minute] = time.split(':').map(Number);
-  return new Date(year!, month! - 1, day!, hour!, minute!);
-};
 const initialDate = (): string => civilDate(new Date());
 
 export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit, personId }: BlockoutFormProps) => {
