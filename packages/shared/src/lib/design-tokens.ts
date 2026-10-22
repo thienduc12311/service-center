@@ -1,6 +1,7 @@
 import type { AssignmentStatus, PlanStatus } from '../types/database.js';
 import type { NoteAudience } from '../types/collaboration.js';
 import type { AttendanceStatus, ReportExportStatus } from '../types/reports.js';
+import type { LiveRunStatus } from '../types/live.js';
 
 /** Product colors and component dimensions shared by the website and native app. */
 export interface ServiceCenterPalette {
@@ -126,6 +127,18 @@ export const REPORT_EXPORT_STATUS_ACCENTS: Record<ReportExportStatus, ServiceCen
   ready: 'green',
   failed: 'red',
   expired: 'neutral',
+};
+
+/**
+ * MOB-023: the accent each F12 run status uses on native, matching the
+ * website's Live status badge. Always render it with the status label.
+ */
+export const LIVE_STATUS_ACCENTS: Record<LiveRunStatus, ServiceCenterAccentName> = {
+  ready: 'neutral',
+  live: 'green',
+  paused: 'yellow',
+  ended: 'neutral',
+  discarded: 'red',
 };
 
 /**

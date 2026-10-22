@@ -398,6 +398,19 @@
       "hideHistory": "Ẩn lịch sử và thời lượng thực tế",
       "showHistory": "Lịch sử và thời lượng thực tế",
       "notThisPlan": "Lượt chạy đó không thuộc chương trình này."
+    },
+    "mobile": {
+      "screenTitle": "Trực tiếp",
+      "offlineNoState": "Không kết nối được máy chủ. Trực tiếp chỉ hiển thị lượt chạy từ máy chủ; không hiển thị bản cũ.",
+      "leaseForeground": "Quyền điều khiển được gia hạn khi ứng dụng này đang mở. Nếu ứng dụng ở chế độ nền khoảng 90 giây, người khác có thể nhận quyền điều khiển.",
+      "historyReadOnly": "Việc chỉnh sửa thời gian đã ghi được thực hiện trong mục Trực tiếp trên trang web.",
+      "stageOnWebsite": "Màn hình sân khấu toàn màn hình có trên trang web.",
+      "transitionAt": "{{action}} · {{time}} · {{name}}",
+      "takeOverHint": "Việc nhận quyền được ghi lại cùng tên và lý do của bạn.",
+      "discardHint": "Lượt chạy và lịch sử của nó vẫn được giữ. Cần nêu lý do.",
+      "runFor": "{{name}} · {{date}}",
+      "earlierRun": "{{name}} · {{status}}",
+      "earlierRunStarted": "{{name}} · {{status}} · {{time}}"
     }
   },
   "stage": {

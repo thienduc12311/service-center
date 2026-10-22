@@ -407,6 +407,19 @@
       "hideHistory": "Hide history and actual times",
       "showHistory": "History and actual times",
       "notThisPlan": "That run is not part of this plan."
+    },
+    "mobile": {
+      "screenTitle": "Live",
+      "offlineNoState": "Can't reach the server. Live shows a run only from the server; nothing is shown from an older copy.",
+      "leaseForeground": "Your lease renews while this app is open in the foreground. If the app is in the background for about 90 seconds, someone else can take control.",
+      "historyReadOnly": "Corrections to recorded times are made in Live on the website.",
+      "stageOnWebsite": "The full-screen stage display is on the website.",
+      "transitionAt": "{{action}} · {{time}} · {{name}}",
+      "takeOverHint": "Taking over is recorded with your name and reason.",
+      "discardHint": "The run and its history are kept. A reason is required.",
+      "runFor": "{{name}} · {{date}}",
+      "earlierRun": "{{name}} · {{status}}",
+      "earlierRunStarted": "{{name}} · {{status}} · {{time}}"
     }
   },
   "stage": {
