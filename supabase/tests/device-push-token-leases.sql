@@ -66,4 +66,35 @@ begin
   end if;
 end $$;
 
+-- MOB-020: the badge choice defaults to on (older builds send nothing) and
+-- another account can neither read nor change it.
+insert into public.device_push_tokens (user_id, token, platform)
+values ('33333333-3333-4333-8333-333333333333', 'ExponentPushToken[badge-default-test]', 'ios');
+
+do $$
+begin
+  if not (select show_badge from public.device_push_tokens where token = 'ExponentPushToken[badge-default-test]') then
+    raise exception 'a registration without a badge choice did not default to showing the badge';
+  end if;
+end $$;
+
+set local role authenticated;
+set local request.jwt.claim.sub = '44444444-4444-4444-8444-444444444444';
+
+do $$
+declare
+  v_changed int;
+begin
+  if exists (select 1 from public.device_push_tokens where token = 'ExponentPushToken[badge-default-test]') then
+    raise exception 'another account could read a device badge choice';
+  end if;
+  update public.device_push_tokens set show_badge = false where token = 'ExponentPushToken[badge-default-test]';
+  get diagnostics v_changed = row_count;
+  if v_changed <> 0 then
+    raise exception 'another account changed a device badge choice';
+  end if;
+end $$;
+
+reset role;
+
 rollback;

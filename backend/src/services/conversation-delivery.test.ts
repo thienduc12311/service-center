@@ -8,7 +8,8 @@ const fixture = vi.hoisted(() => {
   process.env.SUPABASE_URL = 'http://localhost:54321';
   process.env.SUPABASE_ANON_KEY = 'test-anon-key-that-is-long-enough';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key-that-is-long-enough';
-  return { rows: {} as Record<string, unknown>, access: true, feed: vi.fn(), send: vi.fn<(messages: PushMessage[]) => Promise<PushTicketResult[]>>() };
+  return { rows: {} as Record<string, unknown>, access: true, feed: vi.fn(), unread: vi.fn(async () => 0),
+    devices: [{ token: 'ExponentPushToken[test]', show_badge: true }], send: vi.fn<(messages: PushMessage[]) => Promise<PushTicketResult[]>>() };
 });
 
 vi.mock('../lib/supabase.js', () => ({
@@ -27,9 +28,9 @@ vi.mock('../lib/supabase.js', () => ({
   raw: (value: unknown) => value,
   unwrap: async (response: Promise<{ data: unknown }>) => (await response).data,
 }));
-vi.mock('./notification-center.js', () => ({ ensureFeedRows: fixture.feed, unreadCount: vi.fn() }));
+vi.mock('./notification-center.js', () => ({ ensureFeedRows: fixture.feed, unreadCount: fixture.unread }));
 
-vi.mock('./device-registrations.js', () => ({ activeDeviceTokens: async () => [{ token: 'ExponentPushToken[test]' }] }));
+vi.mock('./device-registrations.js', () => ({ activeDeviceTokens: async () => fixture.devices }));
 vi.mock('./expo-push.js', () => ({ pushTransport: () => ({ mode: 'expo', send: fixture.send }) }));
 
 import { parsePushNavigationIntent } from '@service-center/shared';
@@ -45,6 +46,8 @@ beforeEach(() => {
   fixture.feed.mockReset();
   fixture.send.mockReset();
   fixture.access = true;
+  fixture.unread.mockResolvedValue(0);
+  fixture.devices = [{ token: 'ExponentPushToken[test]', show_badge: true }];
   fixture.rows = {
     delivery_effects: { id: 'effect', template: 'conversation_message', conversation_message_id: 'message' },
     'conversation_messages:message': {
@@ -94,6 +97,26 @@ describe('conversation delivery revalidation', () => {
     expect(messages[0].body).toBe('Open the app to view a new chat message.');
     expect(parsePushNavigationIntent(messages[0].data)).toMatchObject({ status: 'accepted' });
     expect(JSON.stringify(messages)).not.toContain('Private');
+  });
+
+  it('puts the account-wide unread count on badge-on devices and 0 on badge-off devices (MOB-020)', async () => {
+    fixture.feed.mockResolvedValue([{
+      id: '11111111-1111-4111-8111-111111111111',
+      organization_id: '22222222-2222-4222-8222-222222222222',
+      plan_id: null, type: 'conversation_message', title: 'Private name', body: 'Private content',
+    }]);
+    fixture.unread.mockResolvedValue(4);
+    fixture.devices = [
+      { token: 'ExponentPushToken[badge-on]', show_badge: true },
+      { token: 'ExponentPushToken[badge-off]', show_badge: false },
+    ];
+    fixture.send.mockResolvedValue(fixture.devices.map((device) => ({ token: device.token, accepted: true, ticketId: 't', error: null })));
+    await dispatchDelivery({ ...job, channel: 'push' }, vi.fn(async () => true));
+    expect(fixture.unread).toHaveBeenCalledWith('recipient');
+    expect(fixture.send.mock.calls[0]?.[0].map((message) => [message.to, message.badge])).toEqual([
+      ['ExponentPushToken[badge-on]', 4],
+      ['ExponentPushToken[badge-off]', 0],
+    ]);
   });
 
   it.each(['in_app', 'push'] as const)('cancels queued %s when muted after enqueue', async (channel) => {

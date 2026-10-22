@@ -25,6 +25,7 @@ const registration: DeviceRegistration = {
   device_name: 'Test phone',
   lease_expires_at: '2026-11-15T12:00:00.000Z',
   revocation_secret: 'test-revocation-secret-that-is-long-enough',
+  show_badge: true,
 };
 
 const lifecycle = (
@@ -132,5 +133,14 @@ describe('settleWithin', () => {
   it('bounds a promise that never settles', async () => {
     const result = await settleWithin(new Promise<void>(() => undefined), 2);
     expect(result.status).toBe('timed_out');
+  });
+
+  it('reports the badge choice the server confirmed, and none once unregistered (MOB-020)', async () => {
+    const harness = lifecycle({ register: vi.fn(async () => ({ ...registration, show_badge: false })) });
+    expect(harness.value.getState().showBadge).toBeNull();
+    await harness.value.activate('user-1');
+    expect(harness.value.getState()).toMatchObject({ pushEnabled: true, showBadge: false });
+    await harness.value.prepareForSignOut();
+    expect(harness.value.getState()).toMatchObject({ pushEnabled: false, showBadge: null });
   });
 });

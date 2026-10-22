@@ -792,6 +792,8 @@ export type DevicePushTokenRow = {
   lease_expires_at: string;
   /** SHA-256 only; the raw revocation secret is never persisted server-side. */
   revocation_secret_hash: string;
+  /** MOB-020: pushes set the app-icon badge to the unread count (false sends 0). */
+  show_badge: boolean;
 }
 
 export type CalendarFeedTokenRow = {

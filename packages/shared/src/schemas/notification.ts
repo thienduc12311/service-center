@@ -37,6 +37,8 @@ export const registerDeviceSchema = z.object({
   token: z.string().trim().min(10).max(255),
   platform: devicePlatformSchema,
   device_name: z.string().trim().max(120).nullish(),
+  /** MOB-020: whether pushes may set the app-icon badge. Omitted (older builds) = true. */
+  show_badge: z.boolean().optional(),
 });
 
 export const revokeDeviceRegistrationSchema = z.object({

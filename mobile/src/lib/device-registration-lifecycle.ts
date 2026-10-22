@@ -9,6 +9,8 @@ export interface DeviceRegistrationState {
   pushEnabled: boolean;
   registering: boolean;
   error: unknown;
+  /** MOB-020: the badge choice the server applies to this device's pushes; null when not registered. */
+  showBadge: boolean | null;
 }
 
 export interface DeviceSignOutReport {
@@ -61,6 +63,7 @@ export class DeviceRegistrationLifecycle {
     pushEnabled: false,
     registering: false,
     error: null,
+    showBadge: null,
   };
 
   private listeners = new Set<DeviceRegistrationListener>();
@@ -81,9 +84,11 @@ export class DeviceRegistrationLifecycle {
     return () => this.listeners.delete(listener);
   };
 
-  private publish(next: DeviceRegistrationState): void {
-    this.state = next;
-    for (const listener of this.listeners) listener(next);
+  /** The badge choice always mirrors the registration the server last confirmed. */
+  private publish(next: Omit<DeviceRegistrationState, 'showBadge'>): void {
+    const state: DeviceRegistrationState = { ...next, showBadge: this.current?.show_badge ?? null };
+    this.state = state;
+    for (const listener of this.listeners) listener(state);
   }
 
   activate = async (userId: string, renew = false): Promise<void> => {

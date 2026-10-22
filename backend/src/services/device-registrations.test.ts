@@ -26,7 +26,7 @@ describe('device registration leases', () => {
 
   it('adds a server-side lease cutoff to the delivery lookup', async () => {
     const response = Promise.resolve({
-      data: [{ user_id: 'user-1', token: 'ExponentPushToken[active]' }],
+      data: [{ user_id: 'user-1', token: 'ExponentPushToken[active]', show_badge: false }],
       error: null,
     });
     const gt = vi.fn(() => response);
@@ -37,8 +37,9 @@ describe('device registration leases', () => {
     const now = new Date('2026-10-16T12:00:00.000Z');
 
     await expect(activeDeviceTokens(db, ['user-1'], now)).resolves.toEqual([
-      { user_id: 'user-1', token: 'ExponentPushToken[active]' },
+      { user_id: 'user-1', token: 'ExponentPushToken[active]', show_badge: false },
     ]);
+    expect(select).toHaveBeenCalledWith('user_id, token, show_badge');
     expect(from).toHaveBeenCalledWith('device_push_tokens');
     expect(inUserIds).toHaveBeenCalledWith('user_id', ['user-1']);
     expect(gt).toHaveBeenCalledWith('lease_expires_at', now.toISOString());

@@ -308,7 +308,9 @@ const sendPush = async (
   const { t } = recipientLanguage(job.locale);
   const text = { title: t('push.title'), body: t(newest.type.startsWith('conversation_') ? 'push.chatBody' : 'push.body') };
   // One push per recipient per action, however many positions it covers.
-  const messages: PushMessage[] = devices.map((device) => toPushMessage(newest, device.token, badge, text));
+  // MOB-020: a device that turned the badge off gets 0, never a count it chose not to show.
+  const messages: PushMessage[] = devices.map((device) =>
+    toPushMessage(newest, device.token, device.show_badge ? badge : 0, text));
   const transport = pushTransport();
   if (!(await begin())) return null;
   const tickets = await transport.send(messages);

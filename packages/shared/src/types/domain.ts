@@ -154,6 +154,8 @@ export interface DeviceRegistration {
   device_name: string | null;
   lease_expires_at: string;
   revocation_secret: string;
+  /** MOB-020: the badge choice the server now applies to pushes to this device. */
+  show_badge: boolean;
 }
 
 export interface PersonSummary {
@@ -630,5 +632,11 @@ export interface NotificationFeed {
 
 /** `GET /api/v1/notifications/unread-count` — cheap enough to poll for the badge. */
 export interface UnreadNotificationCount {
+  /** Unread in the active organization — the in-app bell. */
   unread: number;
+  /**
+   * MOB-020: unread across every organization the caller is an active member
+   * of — the same number pushes put on the app-icon badge.
+   */
+  account_unread: number;
 }

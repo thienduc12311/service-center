@@ -479,7 +479,7 @@ Schedule dialog: Times (All times / Only these times, with untimed notice), live
 - **Product review:** proposed defaults (72 h/24 h, 2/day, no quiet hours), "first computed after due → skipped" rule, quiet-hour skip when the window end passes the occurrence, cap semantics per channel.
 - ~~**Not routed through batches yet:** F05 matrix release and the single-plan `/plans/:id/release`~~ — **closed**, see "Gate closed: every release path uses release batches" below.
 - **F07 delivery:** truthful requester/candidate/leader templates for signup/replacement/swap transitions and durable scheduled expiry remain open (F07 still lazily expires on read).
-- **Native consumers** (MOB-005 review, MOB-015 time editor, MOB-020 notification settings) do not yet show release scheduling, reminder settings or delivery history; shared types/client are ready. *2026-10-21:* MOB-015 Pass A shows service-type/organization reminder policy (inherit/override) and plan delivery history natively; release scheduling (MOB-005) and personal channel settings (MOB-020) remain.
+- **Native consumers** (MOB-005 review, MOB-015 time editor, MOB-020 notification settings) do not yet show release scheduling, reminder settings or delivery history; shared types/client are ready. *2026-10-21:* MOB-015 Pass A shows service-type/organization reminder policy (inherit/override) and plan delivery history natively; release scheduling (MOB-005) and personal channel settings (MOB-020) remain. *2026-10-21:* MOB-020 Pass A shows personal reminder channels natively (same `myReminderPreferences`/`updateMyReminderPreferences`); release scheduling (MOB-005) remains.
 - Re-run the migration chain from scratch in a disposable database before applying to a shared environment.
 
 ### Gate closed: every release path uses release batches — 2026-10-18
@@ -1115,3 +1115,17 @@ Recorded once here; the native consumer is in the [mobile ledger](mobile-remaini
 **Checks.** `plan-browser.test.ts` (10, includes parsing every built query through `listPlansQuerySchema`). Live API with three same-instant fixture plans: `desc` = reversed `asc`; ties in id order; 2-per-page pages concatenate to the full order; walking next from the first plan visits all 7 plans of the type in order and previous walks the same sequence back. Fixtures deleted.
 
 **Remaining.** None for this fix. More than 20 plans of one service type at the identical instant leave that side's arrow off (documented in `pickPlanNeighbours`).
+
+## F00 shared fix from MOB-020 — truthful app-icon badge — 2026-10-21
+
+**Gap.** Pushes set the iOS badge to the recipient's unread count across *every* organization row (`notification-center.ts` `unreadCount`, including organizations they had left), while the native app reset it to the *active organization's* count (`GET /notifications/unread-count`). The badge changed meaning between a background push and opening the app, counted notifications the app can no longer open, and a device-only "badge off" choice would have been overridden by the next push.
+
+**Fix (additive, both clients unchanged in behaviour unless they opt in).**
+- Migration `20261108000000_device_push_badge_preference.sql`: `device_push_tokens.show_badge boolean not null default true` (constant default, metadata-only; existing rows and older builds keep the badge). RLS unchanged (own rows; writes through the service role in `POST /me/devices`).
+- Shared: `registerDeviceSchema.show_badge` optional (omitted = true); `DeviceRegistration.show_badge`; `DevicePushTokenRow.show_badge`; `UnreadNotificationCount.account_unread` (unread across organizations the caller is still an active member of; `unread` keeps meaning the active organization).
+- Backend: `GET /notifications/unread-count` and `POST /notifications/read` return both counts (`account_unread` counted through RLS, which hides left organizations); `unreadCount` (dispatcher) counts only active-membership organizations, so it equals `account_unread`; `activeDeviceTokens` returns `show_badge`; `sendPush` sends `badge: 0` to badge-off devices.
+- No website change (the website has no badge); native consumer is MOB-020.
+
+**Checks.** `conversation-delivery.test.ts` (+1: badge-on device gets the count, badge-off gets 0, count asked for the recipient), `device-registrations.test.ts` (select includes `show_badge`). `supabase/tests/device-push-token-leases.sql` (+ default true, another account can neither read nor update the choice) — pass with `delivery-outbox`, `f08-release-reminders`, `f09-notes-messages-chat`, `assignment-notifications-rls`. Live API (local Supabase, own backend :4119, push off): see the [MOB-020 entry](mobile-remaining-progress.md#mob-020-pass-a--2026-10-21).
+
+**Remaining.** Apply the migration before deploying the API (the API selects `show_badge`). Badge rendering on a physical device with a signed build is the MOB-020 device gate.
