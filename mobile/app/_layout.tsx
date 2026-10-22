@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -12,7 +12,10 @@ import { NotificationsProvider } from '../src/providers/NotificationsProvider';
 import { LanguageProvider } from '../src/i18n';
 import { NavigationIntentProvider } from '../src/providers/NavigationIntentProvider';
 import { AppearanceProvider, useAppearance } from '../src/providers/AppearanceProvider';
-import { Button, ErrorNotice, Loading } from '../src/components/ui';
+import { Button, ErrorNotice, Loading, Screen } from '../src/components/ui';
+import { OfflineLibrary } from '../src/components/rehearsal/OfflineLibrary';
+import { loadStoredOrganizationId } from '../src/lib/organization-storage';
+import { useOfflinePackCleanup } from '../src/lib/useOfflinePack';
 import { fonts } from '../src/lib/theme';
 import { useTheme } from '../src/lib/useTheme';
 import '../global.css';
@@ -43,9 +46,44 @@ const AppStatusBar = () => {
   return <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />;
 };
 
+/**
+ * MOB-025: the account could not be confirmed (usually no connection at
+ * start). Offline packs this person downloaded for their last organization
+ * still play from the device; nothing is fetched or written here.
+ */
+interface OfflineFallbackProps {
+  userId: string;
+  onBack: () => void;
+}
+
+const OfflineFallback = ({ userId, onBack }: OfflineFallbackProps) => {
+  const { t } = useTranslation(['settings', 'common']);
+  const [organizationId, setOrganizationId] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    void loadStoredOrganizationId(userId).then(
+      (stored) => active && setOrganizationId(stored),
+      () => active && setOrganizationId(null),
+    );
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+  return (
+    <Screen safeTop>
+      <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
+        <Button variant="secondary" title={t('common:actions.back')} onPress={onBack} />
+      </View>
+      {organizationId === undefined ? <Loading /> : <OfflineLibrary userId={userId} organizationId={organizationId} mode="offline" />}
+    </Screen>
+  );
+};
+
 /** Keeps the navigator and the session in sync in both directions. */
 const RootNavigator = () => {
   const { session, loading, ready, error, retry, generation } = useAuth();
+  const [offlineOpen, setOfflineOpen] = useState(false);
+  useOfflinePackCleanup();
   const segments = useSegments();
   const router = useRouter();
   const theme = useTheme();
@@ -73,10 +111,12 @@ const RootNavigator = () => {
   }
 
   if (session && !ready) {
+    if (offlineOpen) return <OfflineFallback userId={session.user.id} onBack={() => setOfflineOpen(false)} />;
     return (
       <View style={{ flex: 1, backgroundColor: theme.color.canvas, justifyContent: 'center', padding: 24, gap: 16 }}>
         <ErrorNotice error={error ?? new LocalizedError({ key: 'auth:root.accountLoadFailed' })} />
         <Button title={t('common:actions.retry')} onPress={() => void retry()} />
+        <Button variant="secondary" title={t('settings:offlineDownloads.offlineEntry')} onPress={() => setOfflineOpen(true)} />
       </View>
     );
   }
@@ -105,6 +145,7 @@ const RootNavigator = () => {
       <Stack.Screen name="team-preferences" options={{ title: t('settings:preferences.screenTitle') }} />
       <Stack.Screen name="notification-settings" options={{ title: t('settings:mobileNotifications.screenTitle') }} />
       <Stack.Screen name="about" options={{ title: t('settings:about.screenTitle') }} />
+      <Stack.Screen name="offline-downloads" options={{ title: t('settings:offlineDownloads.screenTitle') }} />
       <Stack.Screen name="calendar-subscription" options={{ title: t('scheduling:mobileSubscription.screenTitle') }} />
       <Stack.Screen name="schedule-report" options={{ title: t('reports:mobileReport.screenTitle') }} />
     </Stack>

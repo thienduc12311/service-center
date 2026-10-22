@@ -478,6 +478,58 @@
       "backgroundNote": "Keeps playing when the phone locks or you switch apps. The lock screen and headphones can play, pause and skip {{seconds}} seconds; choose another song here. Leaving this screen stops playback.",
       "endOfList": "End of the list.",
       "nowPlaying": "Now playing"
+    },
+    "offline": {
+      "title": "Offline",
+      "readyTag": "Ready offline",
+      "intro": "Keep this plan's recordings and files on this phone to rehearse without a connection. Nothing is downloaded until you choose to.",
+      "download_one": "Download {{count}} file for offline ({{size}})",
+      "download_other": "Download {{count}} files for offline ({{size}})",
+      "nothingToDownload": "Nothing in this plan can be kept offline.",
+      "noSpace": "Not enough free space on this phone for an offline copy.",
+      "downloading_one": "Downloading — {{done}} of {{count}} file, {{downloaded}} of {{total}}",
+      "downloading_other": "Downloading — {{done}} of {{count}} files, {{downloaded}} of {{total}}",
+      "pause": "Pause download",
+      "incomplete_one": "Download incomplete — {{done}} of {{count}} file. Not available offline until every file is downloaded.",
+      "incomplete_other": "Download incomplete — {{done}} of {{count}} files. Not available offline until every file is downloaded.",
+      "resume": "Resume download",
+      "stopped": {
+        "paused": "Paused.",
+        "connection": "The connection was lost.",
+        "storage_full": "This phone is running out of free space.",
+        "server": "A file didn't download correctly and will start again.",
+        "device": "A file couldn't be saved on this phone."
+      },
+      "ready_one": "{{count}} file ({{size}}) saved on this phone.",
+      "ready_other": "{{count}} files ({{size}}) saved on this phone.",
+      "updateAvailable": "The plan now has files your offline copy doesn't have.",
+      "update": "Update offline copy",
+      "expired": "This offline copy wasn't checked again by {{recheckBy}}, so it no longer plays. Open the plan with a connection to check it.",
+      "checked": "Your access and the file versions were checked {{checked}}. Open this plan with a connection before {{recheckBy}} or the offline copy stops playing.",
+      "excludedTitle": "Not kept offline",
+      "excludedRow": "{{title}} — {{reason}}",
+      "excluded": {
+        "stream_only": "play only, streams with a connection",
+        "external_link": "a link to another site",
+        "document": "a document, open it on the web",
+        "size_unknown": "its size is unknown",
+        "pack_limit": "over the storage limit for this download",
+        "unavailable": "no longer available to you"
+      },
+      "removedRevoked_one": "{{count}} file was removed from the offline copy because you can no longer use it.",
+      "removedRevoked_other": "{{count}} files were removed from the offline copy because you can no longer use them.",
+      "removedStale_one": "{{count}} file was removed because the plan now uses a newer version.",
+      "removedStale_other": "{{count}} files were removed because the plan now uses newer versions.",
+      "notice": {
+        "access_lost": "This plan is no longer available to you, so its offline copy was removed.",
+        "no_space": "Not enough free space on this phone for an offline copy.",
+        "request_failed": "The download couldn't start. Check your connection and try again."
+      },
+      "remove": "Remove from this phone",
+      "storage": "Offline downloads on this phone: {{used}} of {{limit}}. Free space: {{free}}.",
+      "limits": "Copies already on this phone can't be recalled remotely: they're checked the next time you're online, and anything you may no longer use is removed then. Signing out removes them all. The phone may clear them when it runs low on space.",
+      "savedTag": "saved offline",
+      "offlineBanner": "Can't reach the server — playing the copy saved on this phone (checked {{checked}}). Nothing here is sent or saved while offline."
     }
   },
   "runSheet": {

@@ -266,6 +266,10 @@ export default function ProfileScreen() {
               <Label>{t('preferences.entry')}</Label>
               <Text style={styles.body}>{t('preferences.entryDescription')}</Text>
             </ListRow>
+            <ListRow divided onPress={() => router.push('/offline-downloads')} showChevron>
+              <Label>{t('offlineDownloads.entry')}</Label>
+              <Text style={styles.body}>{t('offlineDownloads.entryDescription')}</Text>
+            </ListRow>
             <ListRow divided onPress={() => router.push('/help')} showChevron>
               <Label>{t('help.title')}</Label>
               <Text style={styles.body}>{t('help.entryDescription')}</Text>

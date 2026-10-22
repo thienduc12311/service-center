@@ -654,8 +654,34 @@
     "openWebsite": "Mở trang web",
     "websiteMissing": "Bản dựng này không có địa chỉ trang web.",
     "storageTitle": "Lưu trên thiết bị này",
-    "storageBody": "Ứng dụng chưa lưu bản ngoại tuyến của chương trình, bài hát hay tệp. Những gì bạn đã mở chỉ nằm trong bộ nhớ và bị xoá khi bạn đăng xuất hoặc đổi tổ chức. Phiên đăng nhập, tổ chức đã chọn, ngôn ngữ, lựa chọn huy hiệu và giao diện được ghi nhớ.",
+    "storageBody": "Chỉ những chương trình bạn chủ động tải từ màn hình Tập dượt mới được lưu ngoại tuyến (tệp và thứ tự), cho tài khoản và hội thánh hiện tại; chúng bị xoá khi bạn đăng xuất. Những gì khác bạn đã mở chỉ nằm trong bộ nhớ và bị xoá khi bạn đăng xuất hoặc đổi hội thánh. Phiên đăng nhập, hội thánh đã chọn, ngôn ngữ, lựa chọn huy hiệu và giao diện được ghi nhớ.",
     "signOutTitle": "Đăng xuất?",
     "signOutMessage": "Đăng xuất {{email}} khỏi thiết bị này. Thông báo đẩy dừng tại đây và dữ liệu của tài khoản này bị xoá khỏi ứng dụng. Lựa chọn giao diện vẫn được giữ trên thiết bị."
+  },
+  "offlineDownloads": {
+    "entry": "Bản tải ngoại tuyến",
+    "entryDescription": "Bản ghi âm tập dượt đã lưu trên điện thoại",
+    "screenTitle": "Bản tải ngoại tuyến",
+    "intro": "Các chương trình bạn đã tải từ màn hình Tập dượt cho hội thánh này. Chỉ bản đầy đủ và được kiểm tra gần đây mới phát được khi ngoại tuyến.",
+    "empty": "Chưa lưu gì để dùng ngoại tuyến. Hãy tải một chương trình từ màn hình Tập dượt của nó.",
+    "packRow_other": "{{count}} tệp · {{size}}",
+    "status": {
+      "ready": "Sẵn sàng ngoại tuyến",
+      "update_available": "Sẵn sàng ngoại tuyến · có bản cập nhật",
+      "downloading": "Đang tải",
+      "incomplete": "Chưa đầy đủ — chưa dùng được ngoại tuyến",
+      "expired": "Hết hạn — mở khi có kết nối để kiểm tra",
+      "none": "Chưa tải"
+    },
+    "open": "Mở",
+    "remove": "Xóa",
+    "removeAll": "Xóa tất cả bản tải ngoại tuyến",
+    "removeAllTitle": "Xóa tất cả bản tải ngoại tuyến?",
+    "removeAllBody": "Mọi tệp tập dượt đã lưu trên điện thoại cho tài khoản của bạn sẽ bị xóa. Bạn có thể tải lại sau.",
+    "otherOrganizations_other": "Còn {{count}} bản tải thuộc các hội thánh khác của bạn.",
+    "offlineEntry": "Dùng bản tải ngoại tuyến",
+    "offlineIntro": "Không kết nối được máy chủ. Các chương trình bạn đã tải cho hội thánh gần nhất vẫn phát được từ điện thoại này.",
+    "back": "Quay lại bản tải ngoại tuyến",
+    "loadFailed": "Không đọc được bản tải ngoại tuyến trên điện thoại này."
   }
 }

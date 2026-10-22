@@ -470,6 +470,52 @@
       "backgroundNote": "Vẫn phát khi khóa màn hình hoặc chuyển ứng dụng. Màn hình khóa và tai nghe có thể phát, tạm dừng và tua {{seconds}} giây; chọn bài khác tại đây. Rời màn hình này sẽ dừng phát.",
       "endOfList": "Đã hết danh sách.",
       "nowPlaying": "Đang phát"
+    },
+    "offline": {
+      "title": "Ngoại tuyến",
+      "readyTag": "Sẵn sàng ngoại tuyến",
+      "intro": "Lưu bản ghi âm và tệp của chương trình này trên điện thoại để tập dượt khi không có kết nối. Không tải gì cho đến khi bạn chọn.",
+      "download_other": "Tải {{count}} tệp để dùng ngoại tuyến ({{size}})",
+      "nothingToDownload": "Không có gì trong chương trình này có thể lưu ngoại tuyến.",
+      "noSpace": "Điện thoại không đủ dung lượng trống cho bản ngoại tuyến.",
+      "downloading_other": "Đang tải — {{done}}/{{count}} tệp, {{downloaded}}/{{total}}",
+      "pause": "Tạm dừng tải",
+      "incomplete_other": "Tải chưa xong — {{done}}/{{count}} tệp. Chỉ dùng được ngoại tuyến khi mọi tệp đã tải xong.",
+      "resume": "Tiếp tục tải",
+      "stopped": {
+        "paused": "Đã tạm dừng.",
+        "connection": "Mất kết nối.",
+        "storage_full": "Điện thoại sắp hết dung lượng trống.",
+        "server": "Một tệp tải về không đúng và sẽ được tải lại.",
+        "device": "Không lưu được một tệp trên điện thoại này."
+      },
+      "ready_other": "Đã lưu {{count}} tệp ({{size}}) trên điện thoại này.",
+      "updateAvailable": "Chương trình giờ có tệp mà bản ngoại tuyến chưa có.",
+      "update": "Cập nhật bản ngoại tuyến",
+      "expired": "Bản ngoại tuyến này chưa được kiểm tra lại trước {{recheckBy}} nên không phát được nữa. Hãy mở chương trình khi có kết nối để kiểm tra.",
+      "checked": "Quyền truy cập và phiên bản tệp đã được kiểm tra lúc {{checked}}. Hãy mở chương trình khi có kết nối trước {{recheckBy}}, nếu không bản ngoại tuyến sẽ ngừng phát.",
+      "excludedTitle": "Không lưu ngoại tuyến",
+      "excludedRow": "{{title}} — {{reason}}",
+      "excluded": {
+        "stream_only": "chỉ phát, cần kết nối",
+        "external_link": "liên kết đến trang khác",
+        "document": "tài liệu, hãy mở trên web",
+        "size_unknown": "không rõ kích thước",
+        "pack_limit": "vượt giới hạn dung lượng của lần tải này",
+        "unavailable": "bạn không còn quyền dùng"
+      },
+      "removedRevoked_other": "Đã xóa {{count}} tệp khỏi bản ngoại tuyến vì bạn không còn quyền dùng.",
+      "removedStale_other": "Đã xóa {{count}} tệp vì chương trình giờ dùng phiên bản mới hơn.",
+      "notice": {
+        "access_lost": "Bạn không còn truy cập chương trình này nên bản ngoại tuyến đã bị xóa.",
+        "no_space": "Điện thoại không đủ dung lượng trống cho bản ngoại tuyến.",
+        "request_failed": "Không bắt đầu tải được. Hãy kiểm tra kết nối và thử lại."
+      },
+      "remove": "Xóa khỏi điện thoại này",
+      "storage": "Bản tải ngoại tuyến trên điện thoại: {{used}} / {{limit}}. Dung lượng trống: {{free}}.",
+      "limits": "Bản đã có trên điện thoại không thể thu hồi từ xa: chúng được kiểm tra lần tới khi bạn trực tuyến và những gì bạn không còn quyền dùng sẽ bị xóa khi đó. Đăng xuất sẽ xóa tất cả. Điện thoại có thể tự xóa khi sắp hết dung lượng.",
+      "savedTag": "đã lưu ngoại tuyến",
+      "offlineBanner": "Không kết nối được máy chủ — đang phát bản đã lưu trên điện thoại (kiểm tra lúc {{checked}}). Khi ngoại tuyến, không có gì được gửi hay lưu lên máy chủ."
     }
   },
   "runSheet": {

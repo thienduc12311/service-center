@@ -68,11 +68,17 @@ export interface NativeRehearsalPlayerControls {
   retry: () => void;
 }
 
-/** A link the API issued for one version (never stored beyond this screen). */
+/**
+ * A link the API issued for one version (never stored beyond this screen),
+ * or a verified offline file (MOB-025), which needs no link and never expires.
+ */
 interface SignedSource {
   key: string;
   expiresAt: number;
 }
+
+/** MOB-025: the verified local file of a track, or null to stream through a link. */
+export type RehearsalLocalSource = (track: RehearsalTrack) => string | null;
 
 const platform: NativeAudioPlatform = Platform.OS === 'android' ? 'android' : 'ios';
 
@@ -94,9 +100,12 @@ let soundingPlayer: AudioPlayer | null = null;
  * stops with "Try again" — never a silent skip. Video and external links stop
  * the queue and say where they play. Leaving the screen, signing out or
  * switching organization stops playback and clears the lock screen.
+ * MOB-025: a stop held in a complete, rechecked offline pack plays from its
+ * local file with no request; everything else streams as before.
  */
 export const useRehearsalPlayer = (
   manifest: RehearsalManifest | undefined,
+  localSource?: RehearsalLocalSource,
 ): [NativeRehearsalPlayerState, NativeRehearsalPlayerControls] => {
   const { generation, isCurrentGeneration } = useAuth();
   const [player] = useState<AudioPlayer>(() => createAudioPlayer(null, { updateInterval: 500, keepAudioSessionActive: true }));
@@ -170,15 +179,25 @@ export const useRehearsalPlayer = (
           await setAudioModeAsync(PLAYBACK_MODE);
           audioModeSet.current = true;
         }
-        const link = await api.fileDownload(target.material.file_id, {
-          version_id: target.material.version_id ?? undefined,
-          disposition: 'inline',
-        });
-        // A newer request, another track, or another account/organization: drop this answer.
-        if (id !== request.current || !isCurrentGeneration(loadGeneration)) return;
-        source.current = { key: rehearsalTrackKey(target), expiresAt: signedUrlExpiry(link.expires_at) };
+        const local = localSource?.(target) ?? null;
+        let uri: string;
+        if (local) {
+          // The exact version, already on the device: no request, nothing to renew.
+          if (id !== request.current) return;
+          uri = local;
+          source.current = { key: rehearsalTrackKey(target), expiresAt: Number.POSITIVE_INFINITY };
+        } else {
+          const link = await api.fileDownload(target.material.file_id, {
+            version_id: target.material.version_id ?? undefined,
+            disposition: 'inline',
+          });
+          // A newer request, another track, or another account/organization: drop this answer.
+          if (id !== request.current || !isCurrentGeneration(loadGeneration)) return;
+          uri = link.url;
+          source.current = { key: rehearsalTrackKey(target), expiresAt: signedUrlExpiry(link.expires_at) };
+        }
         pendingSeek.current = at && at > 0 ? at : null;
-        player.replace({ uri: link.url });
+        player.replace({ uri });
         const metadata = metadataFor(target);
         if (lockScreenActive.current) {
           player.updateLockScreenMetadata(metadata);
@@ -200,7 +219,7 @@ export const useRehearsalPlayer = (
         setFailure(linkFailureKey(cause));
       }
     },
-    [generation, isCurrentGeneration, metadataFor, player, silence],
+    [generation, isCurrentGeneration, localSource, metadataFor, player, silence],
   );
 
   const move = useCallback(

@@ -209,13 +209,16 @@ describe('MOB-024 signed links, errors and stale state', () => {
 describe('MOB-024 source contract', () => {
   const read = (...parts: string[]) => readFileSync(join(__dirname, '..', '..', ...parts), 'utf8');
   const hook = read('src', 'lib', 'useRehearsalPlayer.ts');
-  const screen = read('app', 'plan', 'rehearse', '[id].tsx');
+  // MOB-025 moved the player UI into a view shared with the offline library.
+  const screen = read('app', 'plan', 'rehearse', '[id].tsx') + read('src', 'components', 'rehearsal', 'RehearsalView.tsx');
   const config = read('app.config.js');
   const both = hook + screen;
 
   it('uses only the implemented F14/F13 methods and the shared playlist rules', () => {
     const methods = [...both.matchAll(/api\.(\w+)\(/g)].map((match) => match[1]);
     expect(new Set(methods)).toEqual(new Set(['rehearsalManifest', 'fileDownload']));
+    // Offline packs (MOB-025) live in their own hook; the player never asks for one.
+    expect(both).not.toContain('rehearsalOfflinePack');
     expect(hook).toContain('rehearsalPlaylist(manifest, choices)');
     expect(hook).toContain('nextRehearsalIndex(');
     // The manifest's chart is already in the service key; nothing re-transposes it.
@@ -230,8 +233,10 @@ describe('MOB-024 source contract', () => {
     expect(hook).not.toMatch(/player\.replace\(null\)/);
   });
 
-  it('stores no links or audio on the device (offline packs are MOB-025)', () => {
+  it('stores no links or audio on the device itself (offline packs are MOB-025, in their own store)', () => {
     expect(both).not.toMatch(/AsyncStorage|SecureStore|setItem|expo-file-system|downloadFirst: true/);
+    // A local file is used only when the offline pack hands one over; otherwise a link is requested.
+    expect(hook).toMatch(/const local = localSource\?\.\(target\) \?\? null;/);
   });
 
   it('plays in the background with lock-screen controls and releases everything on leave', () => {

@@ -664,8 +664,36 @@
     "openWebsite": "Open the website",
     "websiteMissing": "This build doesn't include the website address.",
     "storageTitle": "Stored on this device",
-    "storageBody": "No offline copies of plans, songs or files are kept yet. What you've opened stays in memory and is cleared when you sign out or switch organization. Your sign-in, chosen organization, language, badge choice and appearance are remembered.",
+    "storageBody": "Only plans you choose to download from Rehearse are kept offline (their files and order), for your account and organization; they're removed when you sign out. Everything else you've opened stays in memory and is cleared when you sign out or switch organization. Your sign-in, chosen organization, language, badge choice and appearance are remembered.",
     "signOutTitle": "Sign out?",
     "signOutMessage": "Signs {{email}} out of this device. Pushes stop here and this account's data is cleared from the app. Your appearance choice stays on the device."
+  },
+  "offlineDownloads": {
+    "entry": "Offline downloads",
+    "entryDescription": "Rehearsal recordings saved on this phone",
+    "screenTitle": "Offline downloads",
+    "intro": "Plans you downloaded from Rehearse for this organization. Only a complete copy that was checked recently plays offline.",
+    "empty": "Nothing is saved for offline use. Download a plan from its Rehearse screen.",
+    "packRow_one": "{{count}} file · {{size}}",
+    "packRow_other": "{{count}} files · {{size}}",
+    "status": {
+      "ready": "Ready offline",
+      "update_available": "Ready offline · update available",
+      "downloading": "Downloading",
+      "incomplete": "Incomplete — not available offline",
+      "expired": "Expired — open with a connection to check",
+      "none": "Not downloaded"
+    },
+    "open": "Open",
+    "remove": "Remove",
+    "removeAll": "Remove all offline downloads",
+    "removeAllTitle": "Remove all offline downloads?",
+    "removeAllBody": "Every rehearsal file saved on this phone for your account is deleted. You can download plans again later.",
+    "otherOrganizations_one": "{{count}} more download belongs to your other organization.",
+    "otherOrganizations_other": "{{count}} more downloads belong to your other organizations.",
+    "offlineEntry": "Use offline downloads",
+    "offlineIntro": "Can't reach the server. Plans you downloaded for your last organization still play from this phone.",
+    "back": "Back to offline downloads",
+    "loadFailed": "Offline downloads couldn't be read on this phone."
   }
 }
