@@ -237,6 +237,26 @@
     "historyTitle": "Lịch sử điểm danh — {{name}}",
     "transition": "{{from}} → {{to}}",
     "by": "bởi {{name}} · {{time}}",
-    "byWithTeam": "bởi {{name}} ({{team}}) · {{time}}"
+    "byWithTeam": "bởi {{name}} ({{team}}) · {{time}}",
+    "staleKept": "Người khác đã thay đổi điểm danh cho giờ này. Chưa có gì được lưu. Điểm danh mới nhất đang hiển thị và các lựa chọn khác của bạn vẫn được giữ — hãy xem lại và lưu lần nữa.",
+    "superseded": "{{name}}: bạn chọn {{mine}}; hiện là {{saved}} (bởi {{by}})",
+    "supersededNew": "{{name}}: bạn chọn {{mine}}; hiện chưa đánh dấu",
+    "supersededRemoved": "{{name}}: bạn chọn {{mine}}; không còn là người bạn có thể đánh dấu vào giờ này",
+    "uncertain": "Không nhận được phản hồi từ Service Center — các thay đổi này có thể đã hoặc chưa được lưu. Hãy thử lại: cùng một lượt sẽ không bao giờ được lưu hai lần.",
+    "tryAgain": "Thử lại",
+    "saved_other": "Đã lưu {{count}} thay đổi.",
+    "savedReplayed": "Các thay đổi này đã được lưu trước đó — không có gì được ghi hai lần.",
+    "historyEmpty": "Chưa có lịch sử."
+  },
+  "mobileAttendance": {
+    "open": "Điểm danh",
+    "noAccess": "Chỉ người phân công các ban của chương trình này mới có thể điểm danh.",
+    "discardConfirm": "Bỏ điểm danh chưa lưu?",
+    "switchTimeConfirm": "Đổi giờ và bỏ điểm danh chưa lưu?",
+    "switchTime": "Đổi giờ",
+    "markLabel": "Đánh dấu {{name}} {{status}}",
+    "hideHistory": "Ẩn lịch sử",
+    "role": "{{team}} · {{position}}",
+    "orphanedTitle": "Giữ lại từ trước (không còn được phân công vào giờ này)"
   }
 }

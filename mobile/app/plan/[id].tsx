@@ -67,7 +67,7 @@ interface PlanWorkspaceProps {
 }
 
 function PlanWorkspace({ id }: PlanWorkspaceProps) {
-  const { t } = useTranslation(['plans', 'common']);
+  const { t } = useTranslation(['plans', 'reports', 'common']);
   const format = useFormatters();
   const { can, user, organizationId, queryScope, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
@@ -125,6 +125,8 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
   // MOB-015: the website shows reminders and delivery to schedulers of the plan,
   // and reminder policy to people who plan or schedule its service type (`can_edit` decides editing).
   const canSchedulePlan = can('scheduling.manage', target);
+  // MOB-017: the website shows Attendance to schedulers of the service type or of any team.
+  const canTakeAttendance = canSchedulePlan || (orgTeams.data ?? []).some((team) => canScheduleTeam(team.id));
 
   // Website parity: each step saves that one position; positions not sent are kept.
   const setNeed = useMutation({
@@ -337,14 +339,24 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                 ))}
               </View>
             ) : null}
-            {canEditPlan ? (
+            {canEditPlan || canTakeAttendance ? (
               <View style={styles.orderActions}>
-                <Button
-                  title={t('mobileTimes.editTimes')}
-                  icon="clock"
-                  variant="secondary"
-                  onPress={() => router.push({ pathname: '/plan/times/[id]', params: { id: detail.id } })}
-                />
+                {canEditPlan ? (
+                  <Button
+                    title={t('mobileTimes.editTimes')}
+                    icon="clock"
+                    variant="secondary"
+                    onPress={() => router.push({ pathname: '/plan/times/[id]', params: { id: detail.id } })}
+                  />
+                ) : null}
+                {canTakeAttendance && detail.times.length ? (
+                  <Button
+                    title={t('reports:mobileAttendance.open')}
+                    icon="check"
+                    variant="secondary"
+                    onPress={() => router.push({ pathname: '/plan/attendance/[id]', params: { id: detail.id } })}
+                  />
+                ) : null}
               </View>
             ) : null}
           </View>

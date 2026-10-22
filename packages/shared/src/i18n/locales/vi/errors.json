@@ -50,7 +50,8 @@
     "reschedule_time_unresolvable": "Không thể dời một giờ nhóm sang ngày đó (ví dụ do thay đổi giờ mùa hè). Hãy chọn ngày khác hoặc điều chỉnh giờ.",
     "orphan_resolution_required": "Hãy chọn cách xử lý cho từng yêu cầu mà mọi giờ của nó đang bị gỡ.",
     "reminder_policy_stale": "Cài đặt lời nhắc này đã thay đổi. Hãy tải lại và thử lại.",
-    "note_stale": "Ghi chú này đã thay đổi kể từ khi bạn mở. Hãy tải phiên bản mới nhất và thử lại."
+    "note_stale": "Ghi chú này đã thay đổi kể từ khi bạn mở. Hãy tải phiên bản mới nhất và thử lại.",
+    "attendance_revision_stale": "Người khác đã thay đổi điểm danh cho giờ này. Hãy tải lại để xem điểm danh mới nhất."
   },
   "validation": {
     "required": "Trường này là bắt buộc.",
