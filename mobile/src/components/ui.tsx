@@ -430,7 +430,7 @@ export const Field = forwardRef<TextInput, FieldProps>(
       <TextInput
         ref={ref}
         placeholderTextColor={theme.color.inkFaint}
-        style={[styles.input, style]}
+        style={[styles.input, !props.multiline && styles.singleLine, style]}
         {...props}
       />
     </View>
@@ -626,6 +626,9 @@ const makeStyles = (theme: Theme) =>
       paddingHorizontal: theme.space.md,
       paddingVertical: theme.space.md,
     },
+    // iOS draws a single-line input's text and placeholder off-centre when a
+    // lineHeight is set, so let the font's own metrics size the line instead.
+    singleLine: { lineHeight: undefined, textAlignVertical: 'center' },
 
     centered: {
       alignItems: 'center',
