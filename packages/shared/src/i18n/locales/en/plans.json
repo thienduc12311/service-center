@@ -462,7 +462,23 @@
     "externalNote": "Opens in another app or site; Service Center does not host or license it.",
     "recordedKeyNote": "Plays as recorded — its key is not changed to {{key}}.",
     "fileUnavailable": "This file is no longer available to you.",
-    "fileOpenFailed": "The file could not be opened. Try again."
+    "fileOpenFailed": "The file could not be opened. Try again.",
+    "player": {
+      "playbackFailed": "The recording stopped and could not be resumed. Try again — other items are still playable.",
+      "videoTrack": "This track is a video. The in-app player plays audio only, so it opens in your device's own player.",
+      "openVideo": "Open video",
+      "unsupported": "This recording's format ({{type}}) can't play in the app on this device. Other items are still playable.",
+      "unknownType": "unknown type",
+      "openInDevice": "Open on this device",
+      "externalTrack": "This track is a link to {{host}}. It plays in that site's own player — Service Center does not import, host or license it.",
+      "back": "−{{seconds}} s",
+      "forward": "+{{seconds}} s",
+      "backLabel": "Back {{seconds}} seconds",
+      "forwardLabel": "Forward {{seconds}} seconds",
+      "backgroundNote": "Keeps playing when the phone locks or you switch apps. The lock screen and headphones can play, pause and skip {{seconds}} seconds; choose another song here. Leaving this screen stops playback.",
+      "endOfList": "End of the list.",
+      "nowPlaying": "Now playing"
+    }
   },
   "runSheet": {
     "segment": {
