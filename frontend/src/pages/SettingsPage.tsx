@@ -19,6 +19,7 @@ import { ScheduleHelp } from '../components/settings/ScheduleHelp';
 import { AcrossOrganizations } from '../components/settings/AcrossOrganizations';
 import { ServiceTypeFilesSettings } from '../components/settings/ServiceTypeFilesSettings';
 import { LanguageSelect } from '../i18n';
+import { AppearanceSettings } from '../components/settings/AppearanceSettings';
 
 export const SettingsPage = () => {
   const { t } = useTranslation(['settings', 'common']);
@@ -80,6 +81,8 @@ export const SettingsPage = () => {
         </h2>
         <LanguageSelect organizationName={organization?.name} />
       </section>
+
+      <AppearanceSettings />
 
       <OrganizationSettings
         organization={organization}

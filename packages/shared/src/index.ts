@@ -49,6 +49,7 @@ export * from './lib/stage-layouts.js';
 export * from './lib/reports.js';
 export * from './lib/api-client.js';
 export * from './lib/design-tokens.js';
+export * from './lib/appearance.js';
 
 export * from './types/song-curation.js';
 export * from './schemas/imports.js';

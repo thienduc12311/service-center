@@ -1,24 +1,28 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  APPEARANCE_STORAGE_KEY,
+  parseAppearanceMode,
+  resolveAppearance,
+  type AppearanceMode,
+  type ResolvedAppearance,
+} from '@service-center/shared';
 
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = AppearanceMode;
 
-const ThemeContext = createContext<{
+interface ThemeContextValue {
   mode: ThemeMode;
-  resolved: 'light' | 'dark';
+  resolved: ResolvedAppearance;
   setMode: (mode: ThemeMode) => void;
-} | null>(null);
+}
 
-const resolveTheme = (mode: ThemeMode): 'light' | 'dark' =>
-  mode === 'system'
-    ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    : mode;
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+const resolveTheme = (mode: ThemeMode): ResolvedAppearance =>
+  resolveAppearance(mode, window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [mode, setModeState] = useState<ThemeMode>(() => {
-    const stored = localStorage.getItem('service-center-theme');
-    return stored === 'light' || stored === 'dark' ? stored : 'system';
-  });
-  const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolveTheme(mode));
+  const [mode, setModeState] = useState<ThemeMode>(() => parseAppearanceMode(localStorage.getItem(APPEARANCE_STORAGE_KEY)));
+  const [resolved, setResolved] = useState<ResolvedAppearance>(() => resolveTheme(mode));
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -38,15 +42,15 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     resolved,
     setMode: (next: ThemeMode) => {
       setModeState(next);
-      if (next === 'system') localStorage.removeItem('service-center-theme');
-      else localStorage.setItem('service-center-theme', next);
+      if (next === 'system') localStorage.removeItem(APPEARANCE_STORAGE_KEY);
+      else localStorage.setItem(APPEARANCE_STORAGE_KEY, next);
     },
   }), [mode, resolved]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };
 
-export const useTheme = () => {
+export const useTheme = (): ThemeContextValue => {
   const value = useContext(ThemeContext);
   if (!value) throw new Error('useTheme must be used inside ThemeProvider');
   return value;

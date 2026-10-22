@@ -359,5 +359,8 @@
     "refreshFailed": "Could not refresh. Showing what was loaded earlier; pull down to try again.",
     "notAvailableAction": "Back to chats",
     "unreadMarker": "New messages"
+  },
+  "mobileInbox": {
+    "description": "Team and plan chat, and messages from your leaders."
   }
 }

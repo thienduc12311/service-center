@@ -22,28 +22,20 @@ import {
   ListRow,
   Loading,
   Screen,
-  SegmentedControl,
   screenPadding,
   ErrorNotice,
-  type SegmentOption,
 } from '../../src/components/ui';
 import { NotificationBell } from '../../src/components/NotificationBell';
 import { BlockoutForm } from '../../src/components/BlockoutForm';
 import { Reveal } from '../../src/components/motion';
-import type { ColorSchemeName, Theme } from '../../src/lib/theme';
-import { useColorSchemeControl, useTheme, useThemedStyles } from '../../src/lib/useTheme';
+import { AppearanceSelector } from '../../src/components/AppearanceSelector';
+import type { Theme } from '../../src/lib/theme';
+import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { env } from '../../src/lib/env';
 
 export default function ProfileScreen() {
-  const { t } = useTranslation(['settings', 'common', 'messages']);
+  const { t } = useTranslation(['settings', 'common']);
   const { calendarDate, date } = useFormatters();
-  const schemes = useMemo<readonly SegmentOption<ColorSchemeName>[]>(
-    () => [
-      { value: 'light', label: t('profile.appearance.light') },
-      { value: 'dark', label: t('profile.appearance.dark') },
-    ],
-    [t],
-  );
   const {
     user,
     role,
@@ -59,7 +51,6 @@ export default function ProfileScreen() {
   const router = useRouter();
   const styles = useThemedStyles(makeStyles);
   const queryClient = useQueryClient();
-  const { scheme, setScheme } = useColorSchemeControl();
 
   const [fullName, setFullName] = useState(user?.profile.full_name ?? '');
   const [phone, setPhone] = useState(user?.profile.phone ?? '');
@@ -191,6 +182,17 @@ export default function ProfileScreen() {
     }
   };
 
+  const confirmSignOut = (): void => {
+    Alert.alert(
+      t('about.signOutTitle'),
+      t('about.signOutMessage', { email: user?.profile.email ?? '' }),
+      [
+        { text: t('common:actions.cancel'), style: 'cancel' },
+        { text: t('common:actions.signOut'), style: 'destructive', onPress: () => void submitSignOut() },
+      ],
+    );
+  };
+
   return (
     <Screen safeTop>
       <NotificationBell />
@@ -220,7 +222,7 @@ export default function ProfileScreen() {
 
         <Reveal index={1}>
           <Card>
-            <Label>{t('profile.yourDetails')}</Label>
+            <Label>{t('settingsPage.profile.title')}</Label>
             <Field label={t('settingsPage.profile.fullName')} value={fullName} onChangeText={setFullName} placeholder={t('settingsPage.profile.fullName')} />
             <Field
               label={t('settingsPage.profile.phone')}
@@ -229,8 +231,9 @@ export default function ProfileScreen() {
               placeholder={t('common:states.optional')}
               keyboardType="phone-pad"
             />
+            <Text style={styles.body}>{t('settingsPage.profile.signedInAs', { email: user?.profile.email ?? '' })}</Text>
             <ErrorNotice error={save.error} />
-            <Button title={t('common:actions.saveChanges')} onPress={() => save.mutate()} loading={save.isPending} />
+            <Button title={t('settingsPage.profile.save')} onPress={() => save.mutate()} loading={save.isPending} />
           </Card>
         </Reveal>
 
@@ -245,7 +248,7 @@ export default function ProfileScreen() {
           <Card>
             <Label>{t('profile.appearance.title')}</Label>
             <Text style={styles.body}>{t('profile.appearance.description')}</Text>
-            <SegmentedControl options={schemes} value={scheme} onChange={setScheme} />
+            <AppearanceSelector />
           </Card>
         </Reveal>
 
@@ -255,14 +258,6 @@ export default function ProfileScreen() {
               <Label>{t('mobileNotifications.entry')}</Label>
               <Text style={styles.body}>{t('mobileNotifications.entryDescription')}</Text>
             </ListRow>
-            <ListRow divided onPress={() => router.push('/chat')} showChevron>
-              <Label>{t('messages:mobileChat.entry')}</Label>
-              <Text style={styles.body}>{t('messages:mobileChat.entryDescription')}</Text>
-            </ListRow>
-            <ListRow divided onPress={() => router.push('/messages')} showChevron>
-              <Label>{t('messages:mobileMessages.entry')}</Label>
-              <Text style={styles.body}>{t('messages:mobileMessages.entryDescription')}</Text>
-            </ListRow>
             <ListRow divided onPress={() => router.push('/team-preferences')} showChevron>
               <Label>{t('preferences.entry')}</Label>
               <Text style={styles.body}>{t('preferences.entryDescription')}</Text>
@@ -270,6 +265,10 @@ export default function ProfileScreen() {
             <ListRow divided onPress={() => router.push('/help')} showChevron>
               <Label>{t('help.title')}</Label>
               <Text style={styles.body}>{t('help.entryDescription')}</Text>
+            </ListRow>
+            <ListRow divided onPress={() => router.push('/about')} showChevron>
+              <Label>{t('about.entry')}</Label>
+              <Text style={styles.body}>{t('about.entryDescription')}</Text>
             </ListRow>
           </Card>
         </Reveal>
@@ -395,7 +394,7 @@ export default function ProfileScreen() {
               icon="signOut"
               variant="danger"
               loading={signingOut}
-              onPress={() => void submitSignOut()}
+              onPress={confirmSignOut}
             />
           </View>
         </Reveal>

@@ -343,5 +343,8 @@
     "refreshFailed": "Không làm mới được. Đang hiển thị nội dung đã tải trước đó; kéo xuống để thử lại.",
     "notAvailableAction": "Quay lại danh sách trò chuyện",
     "unreadMarker": "Tin nhắn mới"
+  },
+  "mobileInbox": {
+    "description": "Trò chuyện theo đội và chương trình, cùng tin nhắn từ người phụ trách."
   }
 }

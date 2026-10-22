@@ -566,7 +566,11 @@
       "title": "Giao diện",
       "description": "Nền sáng để soạn chương trình ở bàn làm việc, nền tối cho sân khấu thiếu sáng.",
       "light": "Sáng",
-      "dark": "Tối"
+      "dark": "Tối",
+      "system": "Theo hệ thống",
+      "systemHint": "Theo chế độ sáng hoặc tối của thiết bị này.",
+      "deviceOnly": "Chỉ lưu trên thiết bị này, cho mọi người đăng nhập tại đây.",
+      "saveFailed": "Không lưu được lựa chọn trên thiết bị. Lựa chọn này chỉ áp dụng đến khi đóng ứng dụng."
     },
     "manageOnWebsite": "Quản lý trên trang web",
     "removeBlockout": "Xóa ngày bận từ {{date}}",
@@ -628,5 +632,29 @@
     },
     "feedHint": "Thông báo đẩy đang tắt trên thiết bị này. Thông báo vẫn được lưu tại đây.",
     "feedHintAction": "Cài đặt thông báo"
+  },
+  "about": {
+    "entry": "Giới thiệu và trợ giúp",
+    "entryDescription": "Phiên bản, cách nhận trợ giúp và các mục chỉ có trên trang web",
+    "screenTitle": "Giới thiệu và trợ giúp",
+    "appTitle": "Ứng dụng này",
+    "version": "Phiên bản",
+    "build": "Bản dựng",
+    "buildExpoGo": "Phát triển (Expo Go)",
+    "buildInstalled": "Ứng dụng đã cài",
+    "unknown": "Không có",
+    "server": "Máy chủ",
+    "account": "Đăng nhập với",
+    "organization": "Tổ chức",
+    "helpTitle": "Nhận trợ giúp",
+    "helpBody": "Nếu có thắc mắc về quyền truy cập, đội ngũ hoặc lịch, hãy hỏi quản trị viên tổ chức hoặc trưởng nhóm. Họ có thể xem và thay đổi quyền của bạn.",
+    "websiteTitle": "Trên trang web",
+    "websiteBody": "Bảng phân công, báo cáo, tích hợp và quản trị tổ chức có trên trang web. Đăng nhập ở đó bằng cùng tài khoản.",
+    "openWebsite": "Mở trang web",
+    "websiteMissing": "Bản dựng này không có địa chỉ trang web.",
+    "storageTitle": "Lưu trên thiết bị này",
+    "storageBody": "Ứng dụng chưa lưu bản ngoại tuyến của chương trình, bài hát hay tệp. Những gì bạn đã mở chỉ nằm trong bộ nhớ và bị xoá khi bạn đăng xuất hoặc đổi tổ chức. Phiên đăng nhập, tổ chức đã chọn, ngôn ngữ, lựa chọn huy hiệu và giao diện được ghi nhớ.",
+    "signOutTitle": "Đăng xuất?",
+    "signOutMessage": "Đăng xuất {{email}} khỏi thiết bị này. Thông báo đẩy dừng tại đây và dữ liệu của tài khoản này bị xoá khỏi ứng dụng. Lựa chọn giao diện vẫn được giữ trên thiết bị."
   }
 }
