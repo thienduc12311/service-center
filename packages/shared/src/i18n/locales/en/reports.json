@@ -240,6 +240,27 @@
     "historyTitle": "Attendance history — {{name}}",
     "transition": "{{from}} → {{to}}",
     "by": "by {{name}} · {{time}}",
-    "byWithTeam": "by {{name}} ({{team}}) · {{time}}"
+    "byWithTeam": "by {{name}} ({{team}}) · {{time}}",
+    "staleKept": "Someone else changed attendance for this time. Nothing was saved. The latest marks are shown and your other choices are kept — review and save again.",
+    "superseded": "{{name}}: you chose {{mine}}; now {{saved}} (by {{by}})",
+    "supersededNew": "{{name}}: you chose {{mine}}; now not marked",
+    "supersededRemoved": "{{name}}: you chose {{mine}}; no longer someone you can mark at this time",
+    "uncertain": "No answer from Service Center — these changes may or may not have saved. Try again: the same batch is never saved twice.",
+    "tryAgain": "Try again",
+    "saved_one": "Saved {{count}} change.",
+    "saved_other": "Saved {{count}} changes.",
+    "savedReplayed": "These changes were already saved — nothing was recorded twice.",
+    "historyEmpty": "No history yet."
+  },
+  "mobileAttendance": {
+    "open": "Take attendance",
+    "noAccess": "Only the schedulers of this plan's teams can take attendance.",
+    "discardConfirm": "Discard your unsaved attendance?",
+    "switchTimeConfirm": "Switch time and discard your unsaved attendance?",
+    "switchTime": "Switch time",
+    "markLabel": "Mark {{name}} {{status}}",
+    "hideHistory": "Hide history",
+    "role": "{{team}} · {{position}}",
+    "orphanedTitle": "Kept from earlier (no longer scheduled at this time)"
   }
 }

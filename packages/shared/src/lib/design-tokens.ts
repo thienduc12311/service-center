@@ -1,5 +1,6 @@
 import type { AssignmentStatus, PlanStatus } from '../types/database.js';
 import type { NoteAudience } from '../types/collaboration.js';
+import type { AttendanceStatus } from '../types/reports.js';
 
 /** Product colors and component dimensions shared by the website and native app. */
 export interface ServiceCenterPalette {
@@ -113,6 +114,16 @@ export const ASSIGNMENT_STATUS_ACCENTS: Record<AssignmentStatus, ServiceCenterAc
   confirmed: 'green',
   declined: 'red',
   unconfirmed: 'yellow',
+};
+
+/**
+ * MOB-017: the accent each F16 attendance status uses on native, matching the
+ * website's attendance badges. Always render it with the status label.
+ */
+export const ATTENDANCE_STATUS_ACCENTS: Record<AttendanceStatus, ServiceCenterAccentName> = {
+  present: 'green',
+  absent: 'red',
+  unknown: 'neutral',
 };
 
 /**

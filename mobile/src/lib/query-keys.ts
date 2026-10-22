@@ -57,6 +57,15 @@ export const queryKeys = {
   /** MOB-015: F08 effective/explicit reminder policies at one scope (organization when both are null). */
   reminderPolicies: (scope: ProtectedQueryScope | null, serviceTypeId: string | null, teamId: string | null) =>
     [...privateRoot(scope), 'reminder-policies', serviceTypeId, teamId] as const,
+  /** MOB-017: prefix for a plan's F16 attendance sheets and histories; invalidate this after a batch. */
+  attendanceAll: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
+    [...privateRoot(scope), 'attendance', planId ?? null] as const,
+  /** MOB-017: the sheet for one plan time (null = the server's default time). */
+  attendance: (scope: ProtectedQueryScope | null, planId: string | null | undefined, timeId: string | null) =>
+    [...privateRoot(scope), 'attendance', planId ?? null, 'sheet', timeId] as const,
+  /** MOB-017: every mark and correction of one Person at one plan time. */
+  attendanceHistory: (scope: ProtectedQueryScope | null, planId: string, timeId: string, personId: string) =>
+    [...privateRoot(scope), 'attendance', planId, 'history', timeId, personId] as const,
   song: (scope: ProtectedQueryScope | null, songId: string | null | undefined) =>
     [...privateRoot(scope), 'song', songId ?? null] as const,
   songs: (scope: ProtectedQueryScope | null, query: string) =>

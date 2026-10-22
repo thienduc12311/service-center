@@ -1,12 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
+  ATTENDANCE_STATUSES,
+  attendanceBatchFingerprint,
+  attendanceChanges,
+  markEveryoneAttendance,
+  rebaseAttendanceDraft,
+  recordAttendanceBody,
+  setAttendanceMark,
+  type AttendanceBatchResult,
+  type AttendanceDraft,
   type AttendanceSheet,
   type AttendanceSheetRow,
   type AttendanceStatus,
   type PlanDetail,
+  type SupersededAttendanceMark,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { keys } from '../../hooks/queries';
@@ -31,10 +42,11 @@ const RESPONSE_KEYS = {
   declined: 'responses.declined',
 } as const;
 
-/** Unsaved choices, by Person. */
-type Draft = Record<string, AttendanceStatus>;
-
-const newKey = (): string => crypto.randomUUID();
+/** The idempotency key of the batch being saved, and the content it was minted for. */
+interface BatchKey {
+  fingerprint: string;
+  key: string;
+}
 
 /**
  * F16: actual attendance at one plan time. One row per Person (several
@@ -47,12 +59,16 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
   const { organizationId } = useAuth();
   const queryClient = useQueryClient();
   const [timeId, setTimeId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Draft>({});
+  const [draft, setDraft] = useState<AttendanceDraft>({});
   const [reason, setReason] = useState('');
   const [reviewing, setReviewing] = useState(false);
   const [historyFor, setHistoryFor] = useState<AttendanceSheetRow | null>(null);
-  // One key per reviewed batch, so a retried save is answered with the first result.
-  const [batchKey, setBatchKey] = useState(newKey);
+  // One key per batch content, so a retried save is answered with the first result
+  // and a different batch never reuses a key (shared `attendanceBatchFingerprint`).
+  const batchKey = useRef<BatchKey | null>(null);
+  // Choices dropped after a stale refusal because someone else changed those records.
+  const [superseded, setSuperseded] = useState<SupersededAttendanceMark[] | null>(null);
+  const [saved, setSaved] = useState<AttendanceBatchResult | null>(null);
 
   const sheet = useQuery({
     queryKey: keys.attendance(organizationId, plan.id, timeId),
@@ -61,41 +77,41 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
   const data = sheet.data;
   useEffect(() => {
     setDraft({});
-    setBatchKey(newKey());
+    setSuperseded(null);
+    setSaved(null);
   }, [data?.time.id]);
 
-  const changes = useMemo(
-    () =>
-      (data?.rows ?? []).flatMap((row) => {
-        const next = draft[row.person_id];
-        if (!next || !row.mark_team_id || row.record?.status === next) return [];
-        return [{ row, status: next }];
-      }),
-    [data, draft],
-  );
+  const changes = useMemo(() => (data ? attendanceChanges(data, draft) : []), [data, draft]);
 
   const save = useMutation({
-    mutationFn: () =>
-      api.recordAttendance(plan.id, {
-        plan_time_id: data!.time.id,
-        marks: changes.map(({ row, status }) => ({
-          person_id: row.person_id,
-          team_id: row.mark_team_id!,
-          status,
-          expected_revision: row.record?.revision ?? 0,
-        })),
-        reason: reason.trim() || null,
-        idempotency_key: batchKey,
-      }),
-    onSuccess: async () => {
+    mutationFn: () => {
+      const fingerprint = attendanceBatchFingerprint(data!.time.id, changes, reason);
+      if (batchKey.current?.fingerprint !== fingerprint) batchKey.current = { fingerprint, key: crypto.randomUUID() };
+      return api.recordAttendance(plan.id, recordAttendanceBody(data!.time.id, changes, reason, batchKey.current.key));
+    },
+    onSuccess: async (result) => {
       setReviewing(false);
       setDraft({});
       setReason('');
-      setBatchKey(newKey());
+      setSuperseded(null);
+      setSaved(result);
+      batchKey.current = null;
       await queryClient.invalidateQueries({ queryKey: keys.attendance(organizationId, plan.id, timeId) });
     },
   });
   const stale = save.error instanceof ApiError && save.error.code === 'attendance_revision_stale';
+  // No answer: the batch may have landed. Saving again replays the same key.
+  const uncertain = save.isError && !(save.error instanceof ApiError && save.error.status < 500);
+
+  const reloadAfterStale = async () => {
+    save.reset();
+    setReviewing(false);
+    const latest = await sheet.refetch();
+    if (!latest.data) return;
+    const rebased = rebaseAttendanceDraft(latest.data, draft);
+    setDraft(rebased.draft);
+    setSuperseded(rebased.superseded);
+  };
 
   if (sheet.isLoading) return <Loading label={t('attendance.loading')} />;
   if (sheet.error) {
@@ -108,8 +124,7 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
   }
   if (!data) return null;
 
-  const setAll = (status: AttendanceStatus) =>
-    setDraft(Object.fromEntries(data.rows.filter((row) => row.mark_team_id).map((row) => [row.person_id, status])));
+  const setAll = (status: AttendanceStatus) => setDraft((current) => markEveryoneAttendance(data, current, status));
 
   return (
     <section aria-labelledby="attendance-heading" className="space-y-4">
@@ -146,7 +161,7 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
           {data.can_mark_any && (
             <div className="flex flex-wrap gap-2 text-sm">
               <span className="self-center text-slate-500">{t('attendance.markEveryone')}</span>
-              {(['present', 'absent', 'unknown'] as const).map((status) => (
+              {ATTENDANCE_STATUSES.map((status) => (
                 <Button key={status} variant="secondary" onClick={() => setAll(status)}>
                   {t(`attendance.status.${status}`)}
                 </Button>
@@ -161,8 +176,11 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
               <AttendanceRowView
                 key={row.person_id}
                 row={row}
-                draft={draft[row.person_id]}
-                onChange={(status) => setDraft((current) => ({ ...current, [row.person_id]: status }))}
+                draft={draft[row.person_id]?.status}
+                onChange={(status) => {
+                  setSaved(null);
+                  setDraft((current) => setAttendanceMark(current, row, status));
+                }}
                 onHistory={() => setHistoryFor(row)}
               />
             ))}
@@ -185,6 +203,24 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
         </div>
       )}
 
+      {superseded && (
+        <div role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p>{t('attendance.staleKept')}</p>
+          {superseded.length > 0 && (
+            <ul className="mt-1 list-disc pl-5">
+              {superseded.map((mark) => (
+                <li key={mark.personId}>{supersededText(t, mark)}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {saved && (
+        <p role="status" className="text-sm text-emerald-700">
+          {saved.replayed ? t('attendance.savedReplayed') : t('attendance.saved', { count: saved.applied })}
+        </p>
+      )}
+
       {changes.length > 0 && (
         <div className="sticky bottom-4 flex items-center justify-between gap-3 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-lg">
           <span>{t('attendance.unsavedChanges', { count: changes.length })}</span>
@@ -200,19 +236,10 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
           <>
             <Button variant="secondary" onClick={() => setReviewing(false)}>{t('common:actions.back')}</Button>
             {stale ? (
-              <Button
-                onClick={async () => {
-                  save.reset();
-                  setReviewing(false);
-                  setDraft({});
-                  await sheet.refetch();
-                }}
-              >
-                {t('attendance.reload')}
-              </Button>
+              <Button onClick={() => void reloadAfterStale()}>{t('attendance.reload')}</Button>
             ) : (
               <Button loading={save.isPending} onClick={() => save.mutate()}>
-                {t('attendance.saveChanges', { count: changes.length })}
+                {uncertain ? t('attendance.tryAgain') : t('attendance.saveChanges', { count: changes.length })}
               </Button>
             )}
           </>
@@ -237,6 +264,10 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
           <p role="alert" className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
             {t('attendance.stale')}
           </p>
+        ) : uncertain ? (
+          <p role="alert" className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            {t('attendance.uncertain')}
+          </p>
         ) : (
           <div className="mt-3"><ErrorNotice error={save.error} /></div>
         )}
@@ -245,6 +276,19 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
       {historyFor && <AttendanceHistoryModal planId={plan.id} timeId={data.time.id} row={historyFor} onClose={() => setHistoryFor(null)} />}
     </section>
   );
+};
+
+/** "Sam: you chose Present; now Absent (by Jordan)" — one choice dropped after a stale refusal. */
+const supersededText = (t: TFunction<['reports', 'common']>, mark: SupersededAttendanceMark): string => {
+  const mine = t(`attendance.status.${mark.mine}`);
+  if (mark.removed) return t('attendance.supersededRemoved', { name: mark.personName, mine });
+  if (!mark.saved) return t('attendance.supersededNew', { name: mark.personName, mine });
+  return t('attendance.superseded', {
+    name: mark.personName,
+    mine,
+    saved: t(`attendance.status.${mark.saved}`),
+    by: mark.savedBy ?? t('attendance.someone'),
+  });
 };
 
 interface AttendanceCountsBarProps {
@@ -315,7 +359,7 @@ const AttendanceRowView = ({ row, draft, onChange, onHistory }: AttendanceRowVie
       </div>
       {row.mark_team_id ? (
         <div role="radiogroup" aria-label={t('attendance.rowLabel', { name: row.person_name })} className="flex gap-1">
-          {(['present', 'absent', 'unknown'] as const).map((status) => (
+          {ATTENDANCE_STATUSES.map((status) => (
             <button
               key={status}
               type="button"
