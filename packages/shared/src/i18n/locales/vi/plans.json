@@ -454,7 +454,23 @@
     "externalNote": "Mở trong ứng dụng hoặc trang khác; Service Center không lưu trữ hay cấp phép cho nội dung này.",
     "recordedKeyNote": "Phát đúng như khi thu — không đổi sang tông {{key}}.",
     "fileUnavailable": "Bạn không còn truy cập được tệp này.",
-    "fileOpenFailed": "Không thể mở tệp. Hãy thử lại."
+    "fileOpenFailed": "Không thể mở tệp. Hãy thử lại.",
+    "player": {
+      "playbackFailed": "Bản thu đã dừng và không thể tiếp tục. Hãy thử lại — các mục khác vẫn phát được.",
+      "videoTrack": "Bản này là video. Trình phát trong ứng dụng chỉ phát âm thanh, nên video sẽ mở bằng trình phát của thiết bị.",
+      "openVideo": "Mở video",
+      "unsupported": "Định dạng của bản thu này ({{type}}) không phát được trong ứng dụng trên thiết bị này. Các mục khác vẫn phát được.",
+      "unknownType": "không rõ định dạng",
+      "openInDevice": "Mở trên thiết bị này",
+      "externalTrack": "Bản này là liên kết tới {{host}}. Bản nhạc phát trong trình phát của trang đó — Service Center không nhập, lưu trữ hay cấp phép nội dung này.",
+      "back": "−{{seconds}} giây",
+      "forward": "+{{seconds}} giây",
+      "backLabel": "Lùi {{seconds}} giây",
+      "forwardLabel": "Tới {{seconds}} giây",
+      "backgroundNote": "Vẫn phát khi khóa màn hình hoặc chuyển ứng dụng. Màn hình khóa và tai nghe có thể phát, tạm dừng và tua {{seconds}} giây; chọn bài khác tại đây. Rời màn hình này sẽ dừng phát.",
+      "endOfList": "Đã hết danh sách.",
+      "nowPlaying": "Đang phát"
+    }
   },
   "runSheet": {
     "segment": {

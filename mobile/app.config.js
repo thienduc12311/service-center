@@ -53,6 +53,11 @@ const config = {
     // The notification icon/colour only apply to a native build; in Expo Go
     // the default OS presentation is used.
     ['expo-notifications', { color: '#4f46e5' }],
+    // MOB-024 rehearsal player: background playback (iOS `audio` background
+    // mode, Android media-playback foreground service). Playback only — the
+    // app never records, so no microphone permission is requested.
+    // Applies to a native build; Expo Go ships its own configuration.
+    ['expo-audio', { microphonePermission: false, recordAudioAndroid: false, enableBackgroundPlayback: true }],
     'expo-status-bar',
     ['expo-splash-screen', { backgroundColor: '#f8fafc', dark: { backgroundColor: '#020617' } }],
   ],

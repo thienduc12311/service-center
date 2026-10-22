@@ -839,6 +839,9 @@ Reached from [MOB-014 Pass A](mobile-remaining-progress.md). No migration/route/
 
 **Exact next pass:** MOB-024 Pass A — native in-app rehearsal player on `rehearsalManifest` + `rehearsalPlaylist`/`nextRehearsalIndex` (verify `expo-audio` and background-audio configuration against current Expo docs first; no new API). Then MOB-025 on `rehearsalOfflinePack`/`offlinePackStatus`. Cross-epic, F15 Passes A/B were subsequently implemented below; the next F15 pass is C (arrangement duplication/labeled keys); no further F14 core pass remains — only the gates and unselected optional tools above.
 
+### F14 shared additions from MOB-024 — 2026-10-22
+
+Strings only: `plans:mobileRehearse.player.*` (en/vi) for the native player's external/video/unsupported/failure states, skip labels and background note. No API, schema, RLS or behaviour change; the manifest, `fileDownload` and the shared playlist helpers were consumed unchanged. Native detail, device gates and the `expo-audio` platform gaps (no lock-screen next/previous, no Android pause on headphone unplug) are in the [MOB-024 entry](mobile-remaining-progress.md#mob-024-pass-a--2026-10-22). The F14 native gate "in-app audio needs `expo-audio`" is closed by that pass on the iOS Simulator; device checks remain.
 
 ## F15 Pass A — 2026-10-19
 
