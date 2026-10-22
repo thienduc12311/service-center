@@ -119,6 +119,15 @@ export const queryKeys = {
   /** MOB-022: my F16 report exports (all kinds), polled while one is being built. */
   reportExports: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'reports', 'exports'] as const,
+  /** MOB-023: a plan's F12 service times, their runs and whether I may control Live. */
+  liveRuns: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
+    [...privateRoot(scope), 'live', 'plan', planId ?? null] as const,
+  /** MOB-023: one run's authoritative state with the clock offset measured on that read. */
+  liveRun: (scope: ProtectedQueryScope | null, runId: string | null | undefined) =>
+    [...privateRoot(scope), 'live', 'run', runId ?? null] as const,
+  /** MOB-023: one run's transitions, corrections and planned-versus-actual. */
+  liveRunHistory: (scope: ProtectedQueryScope | null, runId: string | null | undefined) =>
+    [...privateRoot(scope), 'live', 'history', runId ?? null] as const,
   blockouts: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'blockouts'] as const,
   /** MOB-011: a delegate's view of another Person's blockouts sits under the same prefix. */

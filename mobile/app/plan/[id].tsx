@@ -394,6 +394,13 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                       })}
                   />
                 ) : null}
+                {/* MOB-023: the website's "Live" — every member follows; plan editors control. */}
+                <Button
+                  title={t('planDetail.live')}
+                  icon="clock"
+                  variant="secondary"
+                  onPress={() => router.push({ pathname: '/plan/live/[id]', params: { id: detail.id } })}
+                />
                 {/* MOB-019: the website's "Plan chat"; the server decides who takes part. */}
                 <Button
                   title={t('messages:mobileChat.planChat')}

@@ -60,7 +60,7 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F11 Pass C — anchors, simultaneous groups, collapsible sections, per-time applicability, F14 media links | not started | — | **Next F11 pass: Pass C fixed-start anchors** (select explicitly; one mode per pass) |
 | F11 epic | in progress | — | Core A/B and one Pass C mode implemented; remaining modes, native editing and QA gates explicit |
 | F12 Pass A — run model and serialized actions | implemented; QA pending | `feature/f12-live-runs` (uncommitted, from `9ce24b9`) | Product review of the Live rules (below) |
-| F12 Pass B — transport and web viewer/controller | implemented; QA pending | same | Two-device check on the deployed (Vercel) API; keyboard/screen-reader pass; native MOB-023 |
+| F12 Pass B — transport and web viewer/controller | implemented; QA pending | same | Two-device check on the deployed (Vercel) API; keyboard/screen-reader pass; native MOB-023 Pass A implemented ([shared additions](#f12-shared-additions-from-mob-023--2026-10-22)), device QA pending |
 | F12 Pass C slices — audited corrections, per-run planned-versus-actual, stage display | implemented; QA pending | same | Projector/stage hardware check of the stage display |
 | F12 Pass C — dedicated run chat, public limited display, F16 cross-plan actual-time reports, controlled rebase | not started | — | Public display waits on F16 publication; run chat currently links the F09 plan chat |
 | F12 epic | in progress | — | Core A/B and three Pass C slices implemented; deployment/device/product gates explicit |
@@ -739,6 +739,11 @@ Reached from [MOB-014 Pass A](mobile-remaining-progress.md). No migration/route/
 - **Empty-database replay** (`supabase db reset`) not run; rollback replay passed.
 
 **Exact next pass:** MOB-023 Pass A — native run-state adapter on these shared contracts (poll `liveRunState`, `estimateClockOffset`, `deriveLiveView`; no new API). Within F12, the next optional slice is the dedicated run chat (select explicitly); F13 Pass A remains the cross-epic priority.
+
+### F12 shared additions from MOB-023 — 2026-10-22
+- `LIVE_STATUS_ACCENTS` (`lib/design-tokens.ts`): the accent per run status matching the website's Live badge (ready/ended neutral, live green, paused yellow, discarded red), for native.
+- Translations `media:live.mobile.*` (en + vi): native screen title, offline-without-state, foreground lease note, read-only history and stage-display notes, transition/run labels.
+- No API, schema, RLS, permission or behaviour change; the native client consumes `liveRuns`, `createLiveRun`, `liveRunState`, `liveRunAction`, `liveRunHistory` unchanged. Evidence: live API 23/23, mobile +21 tests, simulator — see the mobile ledger, MOB-023.
 
 ## F13 — 2026-10-18
 
