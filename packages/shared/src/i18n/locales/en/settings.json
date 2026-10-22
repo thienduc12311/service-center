@@ -576,7 +576,11 @@
       "title": "Appearance",
       "description": "A light page for planning at a desk, a dark one for a dim stage.",
       "light": "Light",
-      "dark": "Dark"
+      "dark": "Dark",
+      "system": "System",
+      "systemHint": "Follows this device's light or dark setting.",
+      "deviceOnly": "Saved on this device only, for everyone who signs in here.",
+      "saveFailed": "Couldn't save this choice on the device. It applies until the app closes."
     },
     "manageOnWebsite": "Manage on website",
     "removeBlockout": "Remove blockout from {{date}}",
@@ -638,5 +642,29 @@
     },
     "feedHint": "Push is off on this device. Notifications still collect here.",
     "feedHintAction": "Notification settings"
+  },
+  "about": {
+    "entry": "About and help",
+    "entryDescription": "Version, getting help and what stays on the website",
+    "screenTitle": "About and help",
+    "appTitle": "This app",
+    "version": "Version",
+    "build": "Build",
+    "buildExpoGo": "Development (Expo Go)",
+    "buildInstalled": "Installed app",
+    "unknown": "Not available",
+    "server": "Server",
+    "account": "Signed in as",
+    "organization": "Organization",
+    "helpTitle": "Getting help",
+    "helpBody": "For access, team or schedule questions, ask an organization admin or your team leader. They can see and change what you can.",
+    "websiteTitle": "On the website",
+    "websiteBody": "The staffing matrix, reports, integrations and organization administration are on the website. Sign in there with the same account.",
+    "openWebsite": "Open the website",
+    "websiteMissing": "This build doesn't include the website address.",
+    "storageTitle": "Stored on this device",
+    "storageBody": "No offline copies of plans, songs or files are kept yet. What you've opened stays in memory and is cleared when you sign out or switch organization. Your sign-in, chosen organization, language, badge choice and appearance are remembered.",
+    "signOutTitle": "Sign out?",
+    "signOutMessage": "Signs {{email}} out of this device. Pushes stop here and this account's data is cleared from the app. Your appearance choice stays on the device."
   }
 }

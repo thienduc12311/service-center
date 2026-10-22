@@ -50,7 +50,7 @@ describe('ConversationDraftStore', () => {
 describe('MOB-019 conversation screens (source contract)', () => {
   const read = (...parts: string[]) => readFileSync(join(__dirname, '..', '..', 'app', ...parts), 'utf8');
   const thread = read('chat', '[id].tsx');
-  const list = read('chat', 'index.tsx');
+  const list = readFileSync(join(__dirname, '..', 'components', 'ChatList.tsx'), 'utf8');
 
   it('posts once per draft id, replacing it only after confirmation or an id conflict', () => {
     expect(thread.match(/api\.postConversationMessage\(/g)).toHaveLength(1);

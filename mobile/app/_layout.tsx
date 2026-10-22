@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '../src/providers/AuthProvider';
 import { NotificationsProvider } from '../src/providers/NotificationsProvider';
 import { LanguageProvider } from '../src/i18n';
 import { NavigationIntentProvider } from '../src/providers/NavigationIntentProvider';
+import { AppearanceProvider, useAppearance } from '../src/providers/AppearanceProvider';
 import { Button, ErrorNotice, Loading } from '../src/components/ui';
 import { fonts } from '../src/lib/theme';
 import { useTheme } from '../src/lib/useTheme';
@@ -29,6 +30,18 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+/**
+ * Status bar text contrasts with the app's scheme, not the OS's. Mounted only
+ * once the saved appearance is restored, so the splash hides on the right scheme.
+ */
+const AppStatusBar = () => {
+  const { resolved } = useAppearance();
+  useEffect(() => {
+    void SplashScreen.hideAsync();
+  }, []);
+  return <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />;
+};
 
 /** Keeps the navigator and the session in sync in both directions. */
 const RootNavigator = () => {
@@ -91,29 +104,28 @@ const RootNavigator = () => {
       <Stack.Screen name="notifications" options={{ title: t('common:nav.notifications') }} />
       <Stack.Screen name="team-preferences" options={{ title: t('settings:preferences.screenTitle') }} />
       <Stack.Screen name="notification-settings" options={{ title: t('settings:mobileNotifications.screenTitle') }} />
+      <Stack.Screen name="about" options={{ title: t('settings:about.screenTitle') }} />
     </Stack>
   );
 };
 
 export default function RootLayout() {
-  useEffect(() => {
-    void SplashScreen.hideAsync();
-  }, []);
-
   return (
     <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <LanguageProvider>
-            <NotificationsProvider>
-              <NavigationIntentProvider>
-                <StatusBar style="auto" />
-                <RootNavigator />
-              </NavigationIntentProvider>
-            </NotificationsProvider>
-          </LanguageProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+      <AppearanceProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <LanguageProvider>
+              <NotificationsProvider>
+                <NavigationIntentProvider>
+                  <AppStatusBar />
+                  <RootNavigator />
+                </NavigationIntentProvider>
+              </NotificationsProvider>
+            </LanguageProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </AppearanceProvider>
     </SafeAreaProvider>
   );
 }

@@ -1,6 +1,7 @@
 /**
- * NativeWind supplies appearance state. Product components use the shared
- * tokens through src/lib/theme.ts, avoiding a second independent palette.
+ * Appearance state comes from AppearanceProvider (MOB-021). Product
+ * components use the shared tokens through src/lib/theme.ts, avoiding a
+ * second independent palette.
  * @type {import('tailwindcss').Config}
  */
 module.exports = {
