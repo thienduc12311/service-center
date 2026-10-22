@@ -70,7 +70,7 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F13 epic | in progress | — | Core A/B/C and F15 key materials implemented; native MOB-026 and deployment gates remain |
 | F14 Pass A — authorized manifest and basic player | implemented; QA pending | `feature/f14-rehearsal-media` (from `e439642`) | Real-device browser audio check (Safari/iOS autoplay, background tab); keyboard/screen-reader pass |
 | F14 Pass B — media bundles and stage layouts | implemented; QA pending | same | Printed PDF inspection of a stage layout; product review of layout visibility (editors/leaders only) |
-| F14 Pass C — offline manifest/cache policy (shared + API) | implemented; QA pending | same | MOB-025 consumes it on device (native file storage not installed); advanced stage tools not selected |
+| F14 Pass C — offline manifest/cache policy (shared + API) | implemented; QA pending | same | Consumed on device by MOB-025 Pass A (iOS Simulator; [shared additions](#f14-shared-additions-from-mob-025--2026-10-22)); physical-device storage-pressure/background gates in the mobile ledger; advanced stage tools not selected |
 | F14 epic | in progress | — | Gates below; native in-app playback (MOB-024), offline storage (MOB-025) and advanced tools stay explicit |
 | F15 Pass A — filters, reversible archive and reviewed atomic metadata | implemented; QA pending | `t3/f15-selected-pass` | Keyboard/screen-reader, dark/large-text and installed native compatibility QA below |
 | F15 Pass B — structured people/song imports | implemented; QA pending | `t3/f15-selected-pass`, preserving Pass A | Keyboard/screen-reader, interrupted-network and organization-switch browser matrix; source retention review |
@@ -842,6 +842,10 @@ Reached from [MOB-014 Pass A](mobile-remaining-progress.md). No migration/route/
 ### F14 shared additions from MOB-024 — 2026-10-22
 
 Strings only: `plans:mobileRehearse.player.*` (en/vi) for the native player's external/video/unsupported/failure states, skip labels and background note. No API, schema, RLS or behaviour change; the manifest, `fileDownload` and the shared playlist helpers were consumed unchanged. Native detail, device gates and the `expo-audio` platform gaps (no lock-screen next/previous, no Android pause on headphone unplug) are in the [MOB-024 entry](mobile-remaining-progress.md#mob-024-pass-a--2026-10-22). The F14 native gate "in-app audio needs `expo-audio`" is closed by that pass on the iOS Simulator; device checks remain.
+
+### F14 shared additions from MOB-025 — 2026-10-22
+
+Strings only: `plans:mobileRehearse.offline.*` and `settings:offlineDownloads.*` (en/vi), and `settings:about.storageBody` rewritten now that offline copies exist. No API, schema, RLS or behaviour change: `rehearsalOfflinePack`, `fileDownload` (`disposition: 'attachment'`), `rehearsalManifest`, `offlinePackKey`, `offlinePackKeysToRemove`, `offlinePackStatus`, `selectOfflinePack` and `offlinePackRequestSchema` were consumed unchanged and found sufficient — the device-side record is the shared `OfflinePackRecord` plus the manifest. Verified against the live API in this pass: Storage signed attachment URLs answer byte ranges with `206` + `Content-Range` (resumable downloads need nothing new), a stream-only file's attachment link is `403 file_stream_only` for members, a replaced unpinned version's link is `404`, and an archived file leaves the manifest. The website has no offline pack UI (browsers keep no pack; F14 defined offline as device-only), so cross-client agreement is on the manifest/rights/versions, not a stored pack. Native detail and gates: [MOB-025 entry](mobile-remaining-progress.md#mob-025-pass-a--2026-10-22). The F14 native gate "offline packs need `expo-file-system` storage, the pack record and cleanup on sign-out/organization switch" is closed on the iOS Simulator; device checks remain.
 
 ## F15 Pass A — 2026-10-19
 
