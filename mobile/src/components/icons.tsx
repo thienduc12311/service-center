@@ -33,7 +33,8 @@ export type IconName =
   | 'trash'
   | 'signOut'
   | 'sun'
-  | 'moon';
+  | 'moon'
+  | 'chat';
 
 export interface IconProps {
   name: IconName;
@@ -183,6 +184,7 @@ const paths: Record<IconName, (stroke: number) => ReactElement> = {
     </>
   ),
   moon: (w) => <Path d="M20 14.2A8.6 8.6 0 019.8 4 8.6 8.6 0 1020 14.2z" strokeWidth={w} />,
+  chat: (w) => <Path d="M4.5 5.5h15a1.5 1.5 0 011.5 1.5v9a1.5 1.5 0 01-1.5 1.5H11l-4.5 3.5V17.5h-2A1.5 1.5 0 013 16V7a1.5 1.5 0 011.5-1.5z" strokeWidth={w} />,
 };
 
 export const Icon = ({ name, size = 20, color, strokeWidth = 1.75 }: IconProps) => (

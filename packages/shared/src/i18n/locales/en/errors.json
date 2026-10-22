@@ -49,7 +49,8 @@
     "template_time_unresolvable": "A template time cannot be placed on that date (for example, because of a daylight-saving change). Review the times and try again.",
     "reschedule_time_unresolvable": "A service time cannot be moved to that date (for example, because of a daylight-saving change). Choose another date or adjust the times.",
     "orphan_resolution_required": "Choose what happens to each request whose only times are being removed.",
-    "reminder_policy_stale": "This reminder setting changed. Reload it and try again."
+    "reminder_policy_stale": "This reminder setting changed. Reload it and try again.",
+    "note_stale": "This note changed since you opened it. Load the latest version and try again."
   },
   "validation": {
     "required": "This field is required.",

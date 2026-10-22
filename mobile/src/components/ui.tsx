@@ -134,6 +134,8 @@ export interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** When the visible title alone is ambiguous (e.g. a count); defaults to the title. */
+  accessibilityLabel?: string;
 }
 
 export const Button = ({
@@ -144,6 +146,7 @@ export const Button = ({
   loading = false,
   disabled = false,
   style,
+  accessibilityLabel,
 }: ButtonProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -166,7 +169,7 @@ export const Button = ({
     <PressableScale
       onPress={onPress}
       disabled={isDisabled}
-      accessibilityLabel={title}
+      accessibilityLabel={accessibilityLabel ?? title}
       style={[styles.button, surface[variant], isDisabled && styles.buttonDisabled, style]}
     >
       {loading ? (

@@ -6,6 +6,7 @@ import {
   ApiError,
   LocalizedError,
   computePlanSchedule,
+  itemNoteCounts as countItemNotes,
   movedItemIds,
   isAdmin,
   nextOccurrence,
@@ -98,13 +99,7 @@ export const PlanDetailPage = () => {
     },
   });
   const notes = usePlanNotes(planId ?? '');
-  const itemNoteCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const note of notes.data?.notes ?? []) {
-      if (note.plan_item_id) counts.set(note.plan_item_id, (counts.get(note.plan_item_id) ?? 0) + 1);
-    }
-    return counts;
-  }, [notes.data]);
+  const itemNoteCounts = useMemo(() => countItemNotes(notes.data?.notes ?? []), [notes.data]);
 
   // The ‹ › arrows: the plans either side of this one in its service type
   // (MOB-012 shared reads, so web and native step to the same plans).

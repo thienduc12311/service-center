@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,7 +15,7 @@ import type { Theme } from '../lib/theme';
 import { useTheme, useThemedStyles } from '../lib/useTheme';
 import { useFormatters } from '../i18n';
 import { PressableScale } from './motion';
-import { Chip, Divider, IconButton, KeyCap, Label, Tag } from './ui';
+import { Button, Chip, Divider, IconButton, KeyCap, Label, Tag } from './ui';
 
 /** A service time the order can be timed against. */
 export interface OrderServiceTime {
@@ -42,6 +43,10 @@ export interface PlanOrderProps {
   onMove: (index: number, direction: -1 | 1) => void;
   onRemove: (item: PlanItemDetail) => void;
   onOpenSong: (item: PlanItemDetail) => void;
+  /** MOB-016: how many notes on each item this person can read (F09, server-filtered). */
+  noteCounts: ReadonlyMap<string, number>;
+  /** MOB-016: open an item's notes and discussion (every reader, as on the website). */
+  onDiscuss: (item: PlanItemDetail) => void;
 }
 
 /**
@@ -64,6 +69,8 @@ export const PlanOrder = ({
   onMove,
   onRemove,
   onOpenSong,
+  noteCounts,
+  onDiscuss,
 }: PlanOrderProps) => {
   const { t } = useTranslation(['plans', 'common']);
   const format = useFormatters();
@@ -156,6 +163,8 @@ export const PlanOrder = ({
                 onMoveDown={() => onMove(index, 1)}
                 onRemove={() => onRemove(item)}
                 onOpenSong={() => onOpenSong(item)}
+                noteCount={noteCounts.get(item.id) ?? 0}
+                onDiscuss={() => onDiscuss(item)}
                 theme={theme}
               />
             </View>
@@ -182,6 +191,8 @@ interface OrderRowProps {
   onMoveDown: () => void;
   onRemove: () => void;
   onOpenSong: () => void;
+  noteCount: number;
+  onDiscuss: () => void;
   theme: Theme;
 }
 
@@ -201,19 +212,76 @@ const OrderRow = ({
   onMoveDown,
   onRemove,
   onOpenSong,
+  noteCount,
+  onDiscuss,
   theme,
 }: OrderRowProps) => {
-  const { t } = useTranslation(['plans', 'common']);
+  const { t } = useTranslation(['plans', 'messages', 'common']);
   const styles = useThemedStyles(makeStyles);
 
-  const controls = canEdit ? (
+  const discuss = item.item_type !== 'header' ? (
+    <Button
+      title={noteCount > 0 ? t('orderTab.noteCount', { count: noteCount }) : t('messages:itemDiscussion.discussion')}
+      accessibilityLabel={t('orderTab.notesFor', { title: item.title })}
+      icon="chat"
+      variant="quiet"
+      onPress={onDiscuss}
+    />
+  ) : null;
+  // The editing buttons stay together: on a narrow row they move below the
+  // discussion button as a group instead of splitting.
+  const controls = canEdit || discuss ? (
     <View style={styles.controls}>
+      {discuss}
+      {canEdit ? (
+        <View style={styles.editControls}>
+          <EditControls item={item} busy={busy} isFirst={isFirst} isLast={isLast} onEdit={onEdit} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onRemove={onRemove} />
+        </View>
+      ) : null}
+    </View>
+  ) : null;
+  return <OrderRowBody item={item} ordinal={ordinal} slot={slot} clock={clock} leader={leader} misplaced={misplaced} controls={controls} onOpenSong={onOpenSong} theme={theme} />;
+};
+
+interface EditControlsProps {
+  item: PlanItemDetail;
+  busy: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  onEdit: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onRemove: () => void;
+}
+
+/** Edit / Move up / Move down / Remove, for plan editors. */
+const EditControls = ({ item, busy, isFirst, isLast, onEdit, onMoveUp, onMoveDown, onRemove }: EditControlsProps) => {
+  const { t } = useTranslation(['plans', 'common']);
+  return (
+    <>
       <IconButton name="pencil" accessibilityLabel={t('orderTab.editItem', { title: item.title })} onPress={onEdit} />
       <IconButton name="chevronUp" accessibilityLabel={t('orderTab.moveUp', { title: item.title })} disabled={isFirst || busy} onPress={onMoveUp} />
       <IconButton name="chevronDown" accessibilityLabel={t('orderTab.moveDown', { title: item.title })} disabled={isLast || busy} onPress={onMoveDown} />
       <IconButton name="trash" accessibilityLabel={t('orderTab.removeItem', { title: item.title })} disabled={busy} onPress={onRemove} />
-    </View>
-  ) : null;
+    </>
+  );
+};
+
+interface OrderRowBodyProps {
+  item: PlanItemDetail;
+  ordinal: number | null;
+  slot: PlannedItemTime | null;
+  clock: (instant: string) => string;
+  leader: LeaderLine | null;
+  misplaced: boolean;
+  controls: ReactNode;
+  onOpenSong: () => void;
+  theme: Theme;
+}
+
+const OrderRowBody = ({ item, ordinal, slot, clock, leader, misplaced, controls, onOpenSong, theme }: OrderRowBodyProps) => {
+  const { t } = useTranslation(['plans', 'common']);
+  const styles = useThemedStyles(makeStyles);
 
   if (item.item_type === 'header') {
     return (
@@ -311,5 +379,6 @@ const makeStyles = (theme: Theme) =>
     unfilled: { color: theme.accent.yellow.fg },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.xs, marginTop: theme.space.xs },
     length: { ...theme.type.numeric, color: theme.color.inkFaint, minWidth: 46, textAlign: 'right' },
-    controls: { flexDirection: 'row', justifyContent: 'flex-end', gap: theme.space.sm },
+    controls: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: theme.space.sm },
+    editControls: { flexDirection: 'row', gap: theme.space.sm, marginLeft: 'auto' },
   });

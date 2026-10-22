@@ -247,12 +247,32 @@
       "teams": "Selected teams",
       "leaders": "Plan leaders only"
     },
-    "audienceHint": "Plan leaders can always read every note. Only “Everyone” notes appear in older apps.",
+    "audienceHint": "Plan leaders can always read every note. Older apps show only the plan’s simple note.",
     "teams": "Teams",
     "note": "Note",
     "placeholder": "Cues, logistics or anything this audience should read.",
     "deleteConfirm": "Delete this note?",
-    "save": "Save note"
+    "save": "Save note",
+    "categoryUnavailable": "Archived category",
+    "simpleNoteHint": "This is the plan’s simple note, which older apps also show. Saving it with a category or another audience makes it an ordinary note and removes it from older apps.",
+    "audienceDetail": {
+      "organization": "Every active member of the organization can read it.",
+      "scheduled": "People with a request on this plan they haven’t declined can read it, as can plan leaders. Prepared, unreleased requests don’t count.",
+      "teams": "Members of {{teams}}, people scheduled on those teams here, their schedulers and plan leaders can read it.",
+      "teamsNone": "Choose the teams that can read it.",
+      "leaders": "Only plan leaders — people who edit this plan or schedule its service type — can read it."
+    },
+    "onPlan": "On the plan “{{plan}}”",
+    "onItem": "On “{{item}}” in “{{plan}}”",
+    "stale": "Someone changed this note since you opened it, so nothing was saved. The latest version is below. Your text is still here.",
+    "latestVersion": "Latest version",
+    "keepMine": "Save my text over the latest",
+    "gone": "This note was deleted, or you can no longer read it. Your text is still here.",
+    "saveAsNew": "Save as a new note",
+    "errors": {
+      "body_required": "Write the note.",
+      "teams_required": "Choose at least one team."
+    }
   },
   "notesPanel": {
     "title": "Notes",
@@ -263,5 +283,15 @@
       "teams": "Teams",
       "leaders": "Leaders"
     }
+  },
+  "mobileNotes": {
+    "screenTitle": "Note",
+    "discussionTitle": "Notes and discussion",
+    "uncertain": "The server did not answer, so this note may or may not have been saved. The notes have been refreshed — check them before saving again.",
+    "categoryGone": "That category is no longer offered on this plan, so the note was not saved. It is now filed under General — check it and save again.",
+    "discardConfirm": "Discard this note?",
+    "by": "by {{name}}",
+    "mentionTitle": "Mention someone",
+    "refreshFailed": "Could not refresh the notes. Showing the plan’s simple note only."
   }
 }

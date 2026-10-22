@@ -7,9 +7,11 @@ import {
   PLAN_STATUS_ACCENTS,
   computePlanSchedule,
   formatDuration,
+  itemNoteCounts,
   movedItemIds,
   pickPlanNeighbours,
   planNeighbourQueries,
+  planNotesFor,
   selectServiceTime,
   serviceTimesOf,
   type AssignmentReleasePreview,
@@ -48,6 +50,7 @@ import { buildPlanTeams } from '../../src/lib/plan-teams';
 import { PlanOrder } from '../../src/components/PlanOrder';
 import { PlanDeliveryCard, PlanReminderPolicyCard } from '../../src/components/PlanReminders';
 import { orderWriteOutcome, positionNamesFor } from '../../src/lib/plan-order-edit';
+import { PlanNotesSection } from '../../src/components/PlanNotes';
 
 /** MOB-008: the two plan views this screen shows (website tabs `order` and `teams`). */
 type PlanView = 'order' | 'teams';
@@ -175,12 +178,17 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
     [orgTeams.data, detail?.plan_positions],
   );
 
-  // Notes on an item go with it, so removing one says how many (F09 readable notes).
+  // MOB-016: F09 notes this person may read — the server leaves out every
+  // other note, so the phone never holds one it may not show. Item counts
+  // label the order, and removing an item says how many go with it.
   const notes = useQuery({
     queryKey: queryKeys.planNotes(queryScope, id),
     queryFn: () => api.planNotes(id),
-    enabled: Boolean(queryScope && canEditPlan),
+    enabled: Boolean(queryScope),
   });
+  const noteCounts = useMemo(() => itemNoteCounts(notes.data?.notes ?? []), [notes.data?.notes]);
+  const planLevelNotes = useMemo(() => planNotesFor(notes.data?.notes ?? [], null), [notes.data?.notes]);
+  const noteTeams = useMemo(() => (orgTeams.data ?? []).map((team) => ({ id: team.id, name: team.name })), [orgTeams.data]);
 
   const refreshOrder = () =>
     Promise.all([
@@ -216,7 +224,7 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
   const confirmRemove = (item: PlanItemDetail) => {
     if (!detail) return;
     const revision = detail.content_revision;
-    const notesOnItem = (notes.data?.notes ?? []).filter((note) => note.plan_item_id === item.id).length;
+    const notesOnItem = noteCounts.get(item.id) ?? 0;
     Alert.alert(
       notesOnItem > 0
         ? t('planDetail.removeItemWithNotesConfirm', { title: item.title, count: notesOnItem })
@@ -465,6 +473,8 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
               onOpenSong={(item) =>
                 item.song &&
                 router.push({ pathname: '/song/[id]', params: { id: item.song.id, planId: detail.id, itemId: item.id } })}
+              noteCounts={noteCounts}
+              onDiscuss={(item) => router.push({ pathname: '/plan/item-notes/[id]', params: { id: detail.id, itemId: item.id } })}
             />
           </Card>
         </Reveal>
@@ -496,14 +506,22 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
           </Reveal>
         ) : null}
 
-        {detail.notes ? (
-          <Reveal index={4}>
-            <Card>
-              <Label>{t('mobilePlan.notes')}</Label>
-              <Text style={styles.notes}>{detail.notes}</Text>
-            </Card>
-          </Reveal>
-        ) : null}
+        <Reveal index={4}>
+          <Card>
+            <PlanNotesSection
+              notes={planLevelNotes}
+              categories={notes.data?.categories ?? []}
+              teams={noteTeams}
+              canEdit={canEditPlan && (notes.data?.can_edit ?? false)}
+              loading={notes.isLoading}
+              error={notes.data ? null : notes.error}
+              simpleNote={detail.notes}
+              onRetry={() => void notes.refetch()}
+              onAdd={() => router.push({ pathname: '/plan/note/[id]', params: { id: detail.id } })}
+              onEdit={(note) => router.push({ pathname: '/plan/note/[id]', params: { id: detail.id, noteId: note.id } })}
+            />
+          </Card>
+        </Reveal>
       </ScrollView>
     </Screen>
   );
@@ -542,7 +560,6 @@ const makeStyles = (theme: Theme) =>
     personRole: { ...theme.type.bodySmall, color: theme.color.inkMuted },
 
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-    notes: { ...theme.type.body, color: theme.color.inkMuted },
     releaseReview: { gap: theme.space.md },
     releaseItem: { gap: theme.space.xs },
     releaseActions: { flexDirection: 'row', gap: theme.space.sm },
