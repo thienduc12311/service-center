@@ -3,13 +3,21 @@ import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
-  ApiError,
-  MESSAGE_TEMPLATE_VARIABLES,
+  PLAN_MESSAGE_GROUPS,
+  defaultMessageInclude,
+  keptExclusions,
+  messageAudience,
+  messageAudienceProblem,
+  messageRecipientsToSend,
+  messageSendBody,
+  messageSendOutcome,
   messageVariableValues,
+  messageVariablesFor,
   renderMessageTemplate,
   unknownMessageVariables,
   type MessageAudienceInclude,
   type MessageAudiencePreview,
+  type MessageSendOutcome,
   type SendOperationalMessageResult,
   type TeamWithPositions,
 } from '@service-center/shared';
@@ -34,13 +42,13 @@ export interface MessageComposerModalProps {
   onClose: () => void;
 }
 
-const PLAN_GROUPS: MessageAudienceInclude[] = ['scheduled_confirmed', 'scheduled_pending', 'signups', 'team_members'];
-
 /**
  * Choose → preview → write → explicit Send. Preview sends nothing. The send
  * carries the previewed audience version; if the audience changed in the
  * meantime the server refuses and the preview is refreshed for review. One
- * idempotency key per composed message, so a retried Send is one message.
+ * idempotency key per composed message (kept across edits), so a retried
+ * Send is one message, and a changed resend after an unanswered one is
+ * refused rather than sent twice. Rules shared with native (MOB-018).
  */
 export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerModalProps) => {
   const { t } = useTranslation(['messages', 'common']);
@@ -50,7 +58,7 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
   const templates = useMessageTemplates();
   const sendKey = useRef<string>(`message-${crypto.randomUUID()}`);
 
-  const [include, setInclude] = useState<MessageAudienceInclude[]>(plan ? ['scheduled_confirmed', 'scheduled_pending'] : ['team_members']);
+  const [include, setInclude] = useState<MessageAudienceInclude[]>(defaultMessageInclude(Boolean(plan)));
   const [teamIds, setTeamIds] = useState<string[]>([]);
   const [preview, setPreview] = useState<MessageAudiencePreview | null>(null);
   const [staleNotice, setStaleNotice] = useState(false);
@@ -59,37 +67,42 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [sent, setSent] = useState<SendOperationalMessageResult | null>(null);
+  const [outcome, setOutcome] = useState<MessageSendOutcome | null>(null);
+  // The content of a send that got no answer: editing it afterwards is warned about.
+  const [uncertainContent, setUncertainContent] = useState<string | null>(null);
 
-  const audience = useMemo(
-    () => ({ plan_id: plan?.id ?? null, team_ids: teamIds, include }),
-    [plan, teamIds, include],
-  );
-  const audienceInvalid = include.length === 0 || (include.includes('team_members') && teamIds.length === 0);
+  const audience = useMemo(() => messageAudience(plan?.id ?? null, include, teamIds), [plan, teamIds, include]);
+  const audienceInvalid = messageAudienceProblem(audience) !== null;
+  const content = JSON.stringify([subject, body, templateId, [...excluded].sort()]);
 
   const runPreview = useMutation({
     mutationFn: () => api.previewMessage({ audience }),
     onSuccess: (result) => {
       setPreview(result);
-      setExcluded((current) => current.filter((id) => result.recipients.some((r) => r.person_id === id)));
+      setExcluded((current) => keptExclusions(result, current));
     },
   });
 
   const send = useMutation({
-    mutationFn: () => api.sendMessage({
+    mutationFn: () => api.sendMessage(messageSendBody({
       audience,
       subject,
       body,
-      template_id: templateId,
-      excluded_person_ids: excluded,
-      audience_hash: preview!.audience_hash,
-      idempotency_key: sendKey.current,
-    }),
+      templateId,
+      excluded,
+      preview: preview!,
+      idempotencyKey: sendKey.current,
+    })),
     onSuccess: async (result) => {
       setSent(result);
+      setOutcome(null);
       await invalidate();
     },
     onError: (error) => {
-      if (error instanceof ApiError && error.code === 'audience_changed') {
+      const next = messageSendOutcome(error);
+      setOutcome(next);
+      if (next === 'uncertain') setUncertainContent(content);
+      if (next === 'audienceChanged') {
         setStaleNotice(true);
         setPreview(null);
         runPreview.mutate();
@@ -104,7 +117,7 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
   };
   const toggle = <T,>(list: T[], value: T): T[] => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
-  const reachable = (preview?.recipients ?? []).filter((r) => r.reachable && !excluded.includes(r.person_id));
+  const reachable = messageRecipientsToSend(preview, excluded);
   const unknown = unknownMessageVariables(`${subject} ${body}`);
   const sample = reachable[0];
   const sampleValues = sample
@@ -166,7 +179,7 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
         <fieldset>
           <legend className="label">{t('messageComposer.who')}</legend>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {(plan ? PLAN_GROUPS : (['team_members'] as MessageAudienceInclude[])).map((group) => (
+            {(plan ? PLAN_MESSAGE_GROUPS : (['team_members'] as const)).map((group) => (
               <label key={group} className="flex items-center gap-2">
                 <input type="checkbox" checked={include.includes(group)} onChange={() => changeAudience(() => setInclude((c) => toggle(c, group)))} />
                 {t(`audienceInclude.${group}`)}
@@ -245,7 +258,7 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
           <input className="input" placeholder={t('messageComposer.subjectPlaceholder')} maxLength={200} value={subject} onChange={(event) => setSubject(event.target.value)} />
           <textarea className="input" rows={6} maxLength={8000} placeholder={t('messageComposer.bodyPlaceholder')} value={body} onChange={(event) => setBody(event.target.value)} />
           <div className="flex flex-wrap gap-1">
-            {MESSAGE_TEMPLATE_VARIABLES.filter((v) => plan || !v.startsWith('plan_')).map((variable) => (
+            {messageVariablesFor(Boolean(plan)).map((variable) => (
               <button
                 key={variable}
                 type="button"
@@ -278,15 +291,27 @@ export const MessageComposerModal = ({ plan, teams, onClose }: MessageComposerMo
           </div>
         </section>
 
-        <ErrorNotice error={send.error && !(send.error instanceof ApiError && send.error.code === 'audience_changed') ? send.error : saveTemplate.error} />
+        {outcome === 'uncertain' && (
+          <div role="alert" className="space-y-1 rounded-lg bg-amber-50 px-3 py-2 text-amber-800">
+            <p>{t('messageComposer.uncertain')}</p>
+            {uncertainContent !== null && uncertainContent !== content && <p>{t('messageComposer.editedAfterUncertain')}</p>}
+          </div>
+        )}
+        {outcome === 'keyReused' && (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-800">
+            <p>{t('messageComposer.keyReused')}</p>
+            <Link className="underline" to="/messages">{t('messageComposer.viewSent')}</Link>
+          </div>
+        )}
+        <ErrorNotice error={outcome === 'refused' ? send.error : saveTemplate.error} />
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button>
           <Button
             loading={send.isPending}
-            disabled={!preview || reachable.length === 0 || !subject.trim() || !body.trim() || unknown.length > 0}
+            disabled={!preview || reachable.length === 0 || !subject.trim() || !body.trim() || unknown.length > 0 || outcome === 'keyReused'}
             onClick={() => send.mutate()}
           >
-            {t('messageComposer.sendTo', { count: reachable.length })}
+            {outcome === 'uncertain' ? t('messageComposer.tryAgain') : t('messageComposer.sendTo', { count: reachable.length })}
           </Button>
         </div>
       </div>

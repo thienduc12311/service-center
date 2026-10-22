@@ -357,6 +357,15 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                     onPress={() => router.push({ pathname: '/plan/attendance/[id]', params: { id: detail.id } })}
                   />
                 ) : null}
+                {/* MOB-018: the website's "Message people" — the same schedulers. */}
+                {canTakeAttendance ? (
+                  <Button
+                    title={t('planDetail.messagePeople')}
+                    icon="chat"
+                    variant="secondary"
+                    onPress={() => router.push({ pathname: '/messages/compose', params: { planId: detail.id } })}
+                  />
+                ) : null}
               </View>
             ) : null}
           </View>

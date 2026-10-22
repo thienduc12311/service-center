@@ -35,7 +35,7 @@ import { useColorSchemeControl, useTheme, useThemedStyles } from '../../src/lib/
 import { env } from '../../src/lib/env';
 
 export default function ProfileScreen() {
-  const { t } = useTranslation(['settings', 'common']);
+  const { t } = useTranslation(['settings', 'common', 'messages']);
   const { calendarDate, date } = useFormatters();
   const schemes = useMemo<readonly SegmentOption<ColorSchemeName>[]>(
     () => [
@@ -251,7 +251,11 @@ export default function ProfileScreen() {
 
         <Reveal index={3}>
           <Card>
-            <ListRow onPress={() => router.push('/team-preferences')} showChevron>
+            <ListRow onPress={() => router.push('/messages')} showChevron>
+              <Label>{t('messages:mobileMessages.entry')}</Label>
+              <Text style={styles.body}>{t('messages:mobileMessages.entryDescription')}</Text>
+            </ListRow>
+            <ListRow divided onPress={() => router.push('/team-preferences')} showChevron>
               <Label>{t('preferences.entry')}</Label>
               <Text style={styles.body}>{t('preferences.entryDescription')}</Text>
             </ListRow>

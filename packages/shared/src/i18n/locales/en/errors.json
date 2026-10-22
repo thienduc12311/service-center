@@ -51,7 +51,9 @@
     "orphan_resolution_required": "Choose what happens to each request whose only times are being removed.",
     "reminder_policy_stale": "This reminder setting changed. Reload it and try again.",
     "note_stale": "This note changed since you opened it. Load the latest version and try again.",
-    "attendance_revision_stale": "Someone else changed attendance for this time. Reload to see the latest marks."
+    "attendance_revision_stale": "Someone else changed attendance for this time. Reload to see the latest marks.",
+    "audience_changed": "The recipients changed since your preview. Nothing was sent — review them again.",
+    "template_stale": "This template changed since you opened it. Reload it and try again."
   },
   "validation": {
     "required": "This field is required.",
