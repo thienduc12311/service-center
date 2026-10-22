@@ -15,7 +15,8 @@
       "description": "Đăng ký lịch phục vụ của bạn trong Google, Apple hoặc Outlook Calendar. Khi đổi liên kết, liên kết cũ sẽ bị thu hồi.",
       "openInApp": "Mở trong ứng dụng lịch",
       "rotate": "Đổi liên kết",
-      "create": "Tạo liên kết lịch"
+      "create": "Tạo liên kết lịch",
+      "activeHidden": "Liên kết lịch của bạn đang hoạt động. Để bảo vệ quyền riêng tư, liên kết chỉ hiện khi được tạo. Hãy đổi liên kết để nhận liên kết mới có thể sao chép — liên kết cũ sẽ ngừng hoạt động, nên các lịch đã đăng ký bằng liên kết cũ sẽ không còn cập nhật."
     },
     "availability": {
       "title": "Lịch rảnh",

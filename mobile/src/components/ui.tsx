@@ -252,16 +252,18 @@ export interface ChipProps {
   label: string;
   active: boolean;
   onPress: () => void;
+  /** An independent on/off choice (a checkbox) rather than one of a mutually exclusive row. */
+  toggle?: boolean;
 }
 
-/** One choice in a row of mutually exclusive filters. */
-export const Chip = ({ label, active, onPress }: ChipProps) => {
+/** One choice in a row of mutually exclusive filters, or an on/off toggle. */
+export const Chip = ({ label, active, onPress, toggle = false }: ChipProps) => {
   const styles = useThemedStyles(makeStyles);
   return (
     // PressableScale, not a function-form Pressable style: NativeWind drops that (MOB-001).
     <PressableScale
-      accessibilityRole="radio"
-      accessibilityState={{ selected: active }}
+      accessibilityRole={toggle ? 'checkbox' : 'radio'}
+      accessibilityState={toggle ? { checked: active } : { selected: active }}
       onPress={onPress}
       pressedOpacity={0.6}
       style={[styles.chip, active && styles.chipOn]}

@@ -235,5 +235,24 @@
     "unreadItem": "Chưa đọc: {{title}}",
     "bellLabel_zero": "Thông báo",
     "bellLabel_other": "Thông báo, {{count}} chưa đọc"
+  },
+  "mobileCalendar": {
+    "layersNote": "Các lớp chỉ hiện những gì bạn được phép xem cho ban này, và được kiểm tra lại mỗi lần tải."
+  },
+  "mobileSubscription": {
+    "screenTitle": "Đồng bộ lịch",
+    "open": "Đăng ký trong ứng dụng lịch",
+    "entryDescription": "Đăng ký lịch phục vụ của bạn trong Google, Apple hoặc Outlook Calendar.",
+    "personalTitle": "Lịch của tôi",
+    "none": "Bạn chưa có liên kết lịch. Hãy tạo liên kết, rồi mở trong ứng dụng lịch trên thiết bị này hoặc chia sẻ sang thiết bị khác của bạn.",
+    "revealed": "Hãy mở hoặc chia sẻ ngay — liên kết chỉ hiện một lần. Bất kỳ ai có liên kết này đều xem được lịch của bạn, vì vậy hãy giữ kín.",
+    "share": "Chia sẻ liên kết",
+    "rotateTitle": "Đổi liên kết lịch?",
+    "rotateBody": "Liên kết cũ ngừng hoạt động ngay. Các lịch đã đăng ký bằng liên kết cũ sẽ không cập nhật cho đến khi bạn đăng ký lại bằng liên kết mới.",
+    "openFailed": "Không có ứng dụng lịch nào trên thiết bị này mở được liên kết. Hãy chia sẻ liên kết và thêm vào ứng dụng lịch dưới dạng lịch đăng ký.",
+    "shareCancelled": "Chưa chia sẻ.",
+    "hiddenOnLeave": "Liên kết này sẽ ẩn khi bạn rời màn hình. Hãy đổi liên kết lần nữa nếu sau này cần.",
+    "refreshTitle": "Khi nào thay đổi hiện ra",
+    "sharedFeedsOnWeb": "Lịch đăng ký theo ban và loại buổi nhóm được tạo, gia hạn và xóa trên trang web."
   }
 }

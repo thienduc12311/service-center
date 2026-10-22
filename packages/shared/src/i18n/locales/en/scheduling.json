@@ -243,5 +243,24 @@
     "bellLabel_zero": "Notifications",
     "bellLabel_one": "Notifications, {{count}} unread",
     "bellLabel_other": "Notifications, {{count}} unread"
+  },
+  "mobileCalendar": {
+    "layersNote": "Layers show only what you are allowed to see for this team, read again each time."
+  },
+  "mobileSubscription": {
+    "screenTitle": "Calendar sync",
+    "open": "Subscribe in a calendar app",
+    "entryDescription": "Subscribe to your schedule in Google, Apple or Outlook Calendar.",
+    "personalTitle": "My schedule",
+    "none": "You don't have a calendar link yet. Create one, then open it in your calendar app on this device or share it to another of your devices.",
+    "revealed": "Open or share it now — it is shown only once. Anyone with this link sees your schedule, so keep it private.",
+    "share": "Share link",
+    "rotateTitle": "Rotate your calendar link?",
+    "rotateBody": "The old link stops working at once. Calendars already subscribed with it stop updating until you subscribe again with the new link.",
+    "openFailed": "No calendar app on this device opened the link. Share it instead and add it as a subscription in your calendar app.",
+    "shareCancelled": "Not shared.",
+    "hiddenOnLeave": "This link is hidden when you leave this screen. Rotate it again if you need it later.",
+    "refreshTitle": "When changes appear",
+    "sharedFeedsOnWeb": "Team and service-type feeds are created, renewed and removed on the website."
   }
 }

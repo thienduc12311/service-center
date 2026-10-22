@@ -1,25 +1,34 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import {
+  CALENDAR_LAYERS,
+  DEFAULT_CALENDAR_FILTERS,
   addMonths,
+  calendarLayersRequestFor,
+  calendarQueryFor,
   endOfMonth,
   startOfMonth,
-  toISODate,
-  type CalendarEvent,
+  toggleCalendarLayer,
+  withCalendarTeam,
+  type CalendarFilters,
+  type CalendarLayerEvent,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
+import { agendaDays, type AgendaDay } from '../../src/lib/calendar-sharing';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Card,
+  Chip,
   Divider,
   EmptyState,
   ErrorNotice,
   IconButton,
   Loading,
+  Meta,
   Screen,
   SegmentedControl,
   Tag,
@@ -36,24 +45,20 @@ type CalendarScope = 'all' | 'mine';
 
 const SCOPES: readonly CalendarScope[] = ['all', 'mine'];
 
-/** One day, and everything happening on it. */
-interface AgendaDay {
-  isoDate: string;
-  events: CalendarEvent[];
-}
-
 /**
  * An agenda grouped by day reads far better on a phone than a month grid, so
  * mobile shows the same data as a run of dated cards.
  */
 export default function CalendarScreen() {
-  const { queryScope } = useAuth();
+  const { queryScope, canAnywhere } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
-  const [scope, setScope] = useState<CalendarScope>('all');
-  const { t } = useTranslation('scheduling');
+  // MOB-022: the website's filters and requests (shared helpers), so both
+  // clients ask the server the same question and read back the same answer.
+  const [filters, setFilters] = useState<CalendarFilters>(DEFAULT_CALENDAR_FILTERS);
+  const { t } = useTranslation(['scheduling', 'reports']);
   const f = useFormatters();
   const scopeOptions = useMemo<readonly SegmentOption<CalendarScope>[]>(
     () => SCOPES.map((value) => ({ value, label: t(`calendar.scope.${value}`) })),
@@ -64,25 +69,31 @@ export default function CalendarScreen() {
     () => ({ from: startOfMonth(cursor).toISOString(), to: endOfMonth(cursor).toISOString() }),
     [cursor],
   );
+  const calendarQuery = calendarQueryFor(filters, range);
+  const layersQuery = calendarLayersRequestFor(filters, range);
 
   const calendar = useQuery({
-    queryKey: queryKeys.calendar(queryScope, range, scope),
-    queryFn: () => api.calendar({ ...range, ...(scope === 'mine' ? { mine: true } : {}) }),
+    queryKey: queryKeys.calendar(queryScope, calendarQuery),
+    queryFn: () => api.calendar(calendarQuery),
     enabled: Boolean(queryScope),
   });
+  const teams = useQuery({
+    queryKey: queryKeys.teams(queryScope),
+    queryFn: () => api.listTeams(),
+    enabled: Boolean(queryScope),
+  });
+  // F16 layers: only for a chosen team; the server decides which the viewer may see.
+  const layers = useQuery({
+    queryKey: queryKeys.calendarLayers(queryScope, layersQuery),
+    queryFn: () => api.calendarLayers(layersQuery!),
+    enabled: Boolean(queryScope && layersQuery),
+  });
 
-  const days = useMemo<AgendaDay[]>(() => {
-    const groups = new Map<string, CalendarEvent[]>();
-    for (const event of calendar.data ?? []) {
-      const key = toISODate(event.starts_at);
-      const list = groups.get(key);
-      if (list) list.push(event);
-      else groups.set(key, [event]);
-    }
-    return [...groups.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([isoDate, events]) => ({ isoDate, events }));
-  }, [calendar.data]);
+  const days = useMemo<AgendaDay[]>(
+    () => agendaDays(calendar.data ?? [], layersQuery ? layers.data ?? [] : [], range),
+    [calendar.data, layers.data, layersQuery, range],
+  );
+  const canRunReports = canAnywhere('scheduling.manage');
 
   return (
     <Screen safeTop>
@@ -103,15 +114,71 @@ export default function CalendarScreen() {
             accessibilityLabel={t('calendar.nextMonth')}
             onPress={() => setCursor(startOfMonth(addMonths(cursor, 1)))}
           />
+          <IconButton
+            name="calendar"
+            accessibilityLabel={t('mobileSubscription.open')}
+            onPress={() => router.push('/calendar-subscription')}
+          />
+          {canRunReports ? (
+            <IconButton
+              name="document"
+              accessibilityLabel={t('reports:mobileReport.open')}
+              onPress={() => router.push('/schedule-report')}
+            />
+          ) : null}
         </View>
-        <SegmentedControl options={scopeOptions} value={scope} onChange={setScope} />
+        <SegmentedControl
+          options={scopeOptions}
+          value={filters.mine ? 'mine' : 'all'}
+          onChange={(value) => setFilters({ ...filters, mine: value === 'mine' })}
+        />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          accessibilityLabel={t('calendar.filterByTeam')}
+          contentContainerStyle={styles.chips}
+        >
+          <Chip
+            label={t('calendar.allTeams')}
+            active={!filters.teamId}
+            onPress={() => setFilters(withCalendarTeam(filters, null))}
+          />
+          {(teams.data ?? []).map((team) => (
+            <Chip
+              key={team.id}
+              label={team.name}
+              active={filters.teamId === team.id}
+              onPress={() => setFilters(withCalendarTeam(filters, team.id))}
+            />
+          ))}
+        </ScrollView>
+        {filters.teamId ? (
+          <View style={styles.chips} accessibilityLabel={t('layers.legend')}>
+            {CALENDAR_LAYERS.map((layer) => (
+              <Chip
+                key={layer}
+                toggle
+                label={t(`layers.label.${layer}`)}
+                active={filters.layers.includes(layer)}
+                onPress={() => setFilters(toggleCalendarLayer(filters, layer))}
+              />
+            ))}
+          </View>
+        ) : (
+          <Meta>{t('layers.chooseTeam')}</Meta>
+        )}
       </View>
 
       <FlatList
         data={days}
         keyExtractor={(day) => day.isoDate}
         contentContainerStyle={screenPadding(theme)}
-        ListHeaderComponent={<ErrorNotice error={calendar.error} />}
+        ListHeaderComponent={
+          <>
+            <ErrorNotice error={calendar.error ?? teams.error ?? layers.error} />
+            {filters.layers.length && filters.teamId ? <Meta>{t('mobileCalendar.layersNote')}</Meta> : null}
+          </>
+        }
         ListEmptyComponent={
           calendar.isLoading ? (
             <Loading />
@@ -157,6 +224,14 @@ const AgendaDayCard = ({ day, onOpen }: AgendaDayCardProps) => {
         </View>
       </View>
 
+      {day.layers.length ? (
+        <View style={styles.layerList}>
+          {day.layers.map((layer) => (
+            <LayerRow key={`${layer.id}:${day.isoDate}`} event={layer} />
+          ))}
+        </View>
+      ) : null}
+
       <View>
         {day.events.map((event, index) => (
           <View key={event.id}>
@@ -196,6 +271,27 @@ const AgendaDayCard = ({ day, onOpen }: AgendaDayCardProps) => {
   );
 };
 
+interface LayerRowProps {
+  event: CalendarLayerEvent;
+}
+
+/** An opt-in layer entry: dashed and not tappable, like the website's grid (never a blockout reason). */
+const LayerRow = ({ event }: LayerRowProps) => {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation(['scheduling', 'common']);
+  const f = useFormatters();
+  const label = t(`layers.event.${event.layer}`, { name: event.person_name });
+  const when = !event.all_day && event.starts_at && event.ends_at
+    ? t('common:format.dateRange', { start: f.dateTime(event.starts_at), end: f.dateTime(event.ends_at) })
+    : null;
+  return (
+    <View style={styles.layerRow} accessible accessibilityLabel={when ? `${label}, ${when}` : label}>
+      <Text style={styles.layerLabel}>{label}</Text>
+      {when ? <Text style={styles.layerTime}>{when}</Text> : null}
+    </View>
+  );
+};
+
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
@@ -212,6 +308,19 @@ const makeStyles = (theme: Theme) =>
     monthLabel: { flex: 1 },
     monthName: { ...theme.type.display, fontSize: 30, lineHeight: 34, color: theme.color.ink },
     monthYear: { ...theme.type.label, color: theme.color.inkFaint },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+
+    layerList: { gap: theme.space.xs },
+    layerRow: {
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: theme.color.borderStrong,
+      borderRadius: theme.radius.sm,
+      paddingHorizontal: theme.space.sm,
+      paddingVertical: theme.space.xs,
+    },
+    layerLabel: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    layerTime: { ...theme.type.numeric, color: theme.color.inkFaint },
 
     dayHeader: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     dayNumber: { ...theme.type.display, fontSize: 40, lineHeight: 42, color: theme.color.ink },

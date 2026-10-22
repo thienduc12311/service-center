@@ -378,6 +378,22 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                     onPress={() => router.push({ pathname: '/messages/compose', params: { planId: detail.id } })}
                   />
                 ) : null}
+                {/* MOB-022: this plan's day in the schedule report, shared on purpose (schedulers only). */}
+                {canSchedulePlan ? (
+                  <Button
+                    title={t('reports:mobileReport.planButton')}
+                    icon="document"
+                    variant="secondary"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/schedule-report',
+                        params: {
+                          date: detail.service_date,
+                          ...(detail.service_type_id ? { serviceTypeId: detail.service_type_id } : {}),
+                        },
+                      })}
+                  />
+                ) : null}
                 {/* MOB-019: the website's "Plan chat"; the server decides who takes part. */}
                 <Button
                   title={t('messages:mobileChat.planChat')}

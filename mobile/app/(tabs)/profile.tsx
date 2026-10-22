@@ -34,7 +34,7 @@ import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { env } from '../../src/lib/env';
 
 export default function ProfileScreen() {
-  const { t } = useTranslation(['settings', 'common']);
+  const { t } = useTranslation(['settings', 'scheduling', 'common']);
   const { calendarDate, date } = useFormatters();
   const {
     user,
@@ -257,6 +257,10 @@ export default function ProfileScreen() {
             <ListRow onPress={() => router.push('/notification-settings')} showChevron>
               <Label>{t('mobileNotifications.entry')}</Label>
               <Text style={styles.body}>{t('mobileNotifications.entryDescription')}</Text>
+            </ListRow>
+            <ListRow divided onPress={() => router.push('/calendar-subscription')} showChevron>
+              <Label>{t('settingsPage.calendar.title')}</Label>
+              <Text style={styles.body}>{t('scheduling:mobileSubscription.entryDescription')}</Text>
             </ListRow>
             <ListRow divided onPress={() => router.push('/team-preferences')} showChevron>
               <Label>{t('preferences.entry')}</Label>

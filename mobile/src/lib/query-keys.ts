@@ -1,4 +1,11 @@
-import type { ListPlanTemplatesRequest, PlanBrowserFilters, PlanNeighbourQueries } from '@service-center/shared';
+import type {
+  CalendarLayersRequest,
+  CalendarQueryRequest,
+  ListPlanTemplatesRequest,
+  PlanBrowserFilters,
+  PlanNeighbourQueries,
+  ReportFiltersRequest,
+} from '@service-center/shared';
 import type { ProtectedQueryScope } from './session-lifecycle';
 
 const privateRoot = (scope: ProtectedQueryScope | null) =>
@@ -97,11 +104,21 @@ export const queryKeys = {
     [...privateRoot(scope), 'song', songId ?? null] as const,
   songs: (scope: ProtectedQueryScope | null, query: string) =>
     [...privateRoot(scope), 'songs', query] as const,
-  calendar: (
-    scope: ProtectedQueryScope | null,
-    range: Readonly<{ from: string; to: string }>,
-    calendarScope: 'all' | 'mine',
-  ) => [...privateRoot(scope), 'calendar', range, calendarScope] as const,
+  /** MOB-022: one calendar request (range, Only me, team) exactly as sent. */
+  calendar: (scope: ProtectedQueryScope | null, query: CalendarQueryRequest) =>
+    [...privateRoot(scope), 'calendar', query] as const,
+  /** MOB-022: F16 opt-in layers for one team and range; the server re-checks access on every read. */
+  calendarLayers: (scope: ProtectedQueryScope | null, query: CalendarLayersRequest | null) =>
+    [...privateRoot(scope), 'calendar', 'layers', query] as const,
+  /** MOB-022: whether my personal calendar link is active. Never the URL: that stays in screen memory. */
+  personalCalendarFeed: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'calendar-feed', 'me'] as const,
+  /** MOB-022: an F16 schedule report for the filters that were run. */
+  scheduleReport: (scope: ProtectedQueryScope | null, filters: ReportFiltersRequest | null) =>
+    [...privateRoot(scope), 'reports', 'schedule', filters] as const,
+  /** MOB-022: my F16 report exports (all kinds), polled while one is being built. */
+  reportExports: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'reports', 'exports'] as const,
   blockouts: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'blockouts'] as const,
   /** MOB-011: a delegate's view of another Person's blockouts sits under the same prefix. */
