@@ -232,7 +232,12 @@
     "saveMine": "Save as my template",
     "saveShared": "Save as shared template",
     "sendTo_one": "Send to {{count}} person",
-    "sendTo_other": "Send to {{count}} people"
+    "sendTo_other": "Send to {{count}} people",
+    "uncertain": "The server did not answer, so this message may or may not have been sent. Try again sends it at most once.",
+    "editedAfterUncertain": "You changed the message after an unanswered send. If the first attempt went through, sending now is refused instead of sending twice.",
+    "keyReused": "An earlier attempt of this message was already sent with different text, so nothing new was sent. Check Sent before writing a new message.",
+    "tryAgain": "Try again",
+    "viewSent": "View sent messages"
   },
   "noteEditor": {
     "editTitle": "Edit note",
@@ -293,5 +298,41 @@
     "by": "by {{name}}",
     "mentionTitle": "Mention someone",
     "refreshFailed": "Could not refresh the notes. Showing the plan’s simple note only."
+  },
+  "mobileMessages": {
+    "entry": "Messages",
+    "entryDescription": "Messages from leaders, and the outcomes of messages you sent.",
+    "composeTitle": "New message",
+    "noAccess": "Only schedulers and team leaders can send messages.",
+    "noTeams": "You don’t schedule or lead any teams in this organization.",
+    "problems": {
+      "groups_required": "Choose who should receive it.",
+      "teams_required": "Choose at least one team.",
+      "plan_required": "Choose a plan for scheduled or signed-up people."
+    },
+    "selectionChanged": "You changed who should receive it. Preview the recipients again before sending.",
+    "previewFirst": "Preview the recipients before sending.",
+    "insertVariable": "Insert {{variable}}",
+    "discardConfirm": "Discard this message?",
+    "templateName": "Template name",
+    "templateSaved": "Template saved.",
+    "textHeading": "Text from your phone",
+    "textIntro": "Opens your phone’s messaging app with the people you choose. The text goes from your own number and is not recorded here; closing the composer does not mean it was sent.",
+    "textNoPhones": "None of these people have a phone number you can see.",
+    "textHidden_one": "{{count}} person has no phone number you can see.",
+    "textHidden_other": "{{count}} people have no phone number you can see.",
+    "textSelect": "Text {{name}}",
+    "textSelectNone": "Choose who to text.",
+    "textEmpty": "Write the message first.",
+    "textPersonalVariables_one": "A group text can’t fill in {{names}}. Remove it, or choose one person.",
+    "textPersonalVariables_other": "A group text can’t fill in {{names}}. Remove them, or choose one person.",
+    "textOpen_one": "Open messaging app for {{count}} person",
+    "textOpen_other": "Open messaging app for {{count}} people",
+    "textOpened": "Your messaging app has the text. Service Center can’t tell whether you sent it.",
+    "textOpenFailed": "Could not open a messaging app on this device.",
+    "textPreview": "Text to hand off",
+    "detailTitle": "Message",
+    "retryUncertain": "The server did not answer the retry. Pull down to refresh the outcomes before retrying again.",
+    "received": "Received"
   }
 }

@@ -67,7 +67,9 @@ export default function NotificationsScreen() {
 
   const open = (item: NotificationFeedItem): void => {
     if (!item.read_at) markRead.mutate([item.id]);
-    if (item.plan_id) router.push(`/plan/${item.plan_id}`);
+    // MOB-018: a targeted message opens its own copy; the server rechecks access.
+    if (item.operational_message_id) router.push({ pathname: '/messages/[id]', params: { id: item.operational_message_id } });
+    else if (item.plan_id) router.push(`/plan/${item.plan_id}`);
   };
 
   return (

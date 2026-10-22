@@ -66,6 +66,17 @@ export const queryKeys = {
   /** MOB-017: every mark and correction of one Person at one plan time. */
   attendanceHistory: (scope: ProtectedQueryScope | null, planId: string, timeId: string, personId: string) =>
     [...privateRoot(scope), 'attendance', planId, 'history', timeId, personId] as const,
+  /** MOB-018: prefix for every F09 targeted-message list and detail; invalidate this after a send or retry. */
+  messagesAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'messages'] as const,
+  messageList: (scope: ProtectedQueryScope | null, box: 'sent' | 'received') =>
+    [...privateRoot(scope), 'messages', 'list', box] as const,
+  /** MOB-018: one message — the sender's per-channel outcomes, or a recipient's own copy. */
+  message: (scope: ProtectedQueryScope | null, messageId: string | null | undefined) =>
+    [...privateRoot(scope), 'messages', 'detail', messageId ?? null] as const,
+  /** MOB-018: personal and shared message templates (senders only). */
+  messageTemplates: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'message-templates'] as const,
   song: (scope: ProtectedQueryScope | null, songId: string | null | undefined) =>
     [...privateRoot(scope), 'song', songId ?? null] as const,
   songs: (scope: ProtectedQueryScope | null, query: string) =>

@@ -220,7 +220,12 @@
     "repliesNote": "Thư trả lời sẽ gửi đến địa chỉ email của bạn. Chúng không hiển thị trong ứng dụng.",
     "saveMine": "Lưu thành mẫu của tôi",
     "saveShared": "Lưu thành mẫu dùng chung",
-    "sendTo_other": "Gửi cho {{count}} người"
+    "sendTo_other": "Gửi cho {{count}} người",
+    "uncertain": "Máy chủ không phản hồi, nên tin nhắn có thể đã được gửi hoặc chưa. Thử lại sẽ chỉ gửi tối đa một lần.",
+    "editedAfterUncertain": "Bạn đã sửa tin nhắn sau một lần gửi không có phản hồi. Nếu lần gửi trước đã thành công, lần gửi này sẽ bị từ chối thay vì gửi hai lần.",
+    "keyReused": "Một lần gửi trước của tin nhắn này đã được gửi với nội dung khác, nên không có gì mới được gửi. Hãy kiểm tra mục Đã gửi trước khi viết tin nhắn mới.",
+    "tryAgain": "Thử lại",
+    "viewSent": "Xem tin nhắn đã gửi"
   },
   "noteEditor": {
     "editTitle": "Chỉnh sửa ghi chú",
@@ -281,5 +286,38 @@
     "by": "bởi {{name}}",
     "mentionTitle": "Nhắc tên ai đó",
     "refreshFailed": "Không tải được ghi chú. Chỉ hiển thị ghi chú đơn giản của chương trình."
+  },
+  "mobileMessages": {
+    "entry": "Tin nhắn",
+    "entryDescription": "Tin nhắn từ người phụ trách, và kết quả của những tin nhắn bạn đã gửi.",
+    "composeTitle": "Tin nhắn mới",
+    "noAccess": "Chỉ người xếp lịch và trưởng ban mới có thể gửi tin nhắn.",
+    "noTeams": "Bạn không xếp lịch hay phụ trách ban nào trong Hội thánh này.",
+    "problems": {
+      "groups_required": "Hãy chọn người sẽ nhận.",
+      "teams_required": "Hãy chọn ít nhất một ban.",
+      "plan_required": "Hãy chọn một chương trình cho người đã được xếp lịch hoặc đã đăng ký."
+    },
+    "selectionChanged": "Bạn đã thay đổi người nhận. Hãy xem trước người nhận lại trước khi gửi.",
+    "previewFirst": "Hãy xem trước người nhận trước khi gửi.",
+    "insertVariable": "Chèn {{variable}}",
+    "discardConfirm": "Bỏ tin nhắn này?",
+    "templateName": "Tên mẫu",
+    "templateSaved": "Đã lưu mẫu.",
+    "textHeading": "Nhắn SMS từ điện thoại của bạn",
+    "textIntro": "Mở ứng dụng nhắn tin trên điện thoại với những người bạn chọn. Tin nhắn được gửi từ số của bạn và không được ghi lại ở đây; đóng khung soạn tin không có nghĩa là tin đã được gửi.",
+    "textNoPhones": "Không ai trong số này có số điện thoại mà bạn được xem.",
+    "textHidden_other": "{{count}} người không có số điện thoại mà bạn được xem.",
+    "textSelect": "Nhắn cho {{name}}",
+    "textSelectNone": "Hãy chọn người để nhắn.",
+    "textEmpty": "Hãy viết tin nhắn trước.",
+    "textPersonalVariables_other": "Tin nhắn nhóm không thể điền {{names}}. Hãy bỏ chúng đi, hoặc chọn một người.",
+    "textOpen_other": "Mở ứng dụng nhắn tin cho {{count}} người",
+    "textOpened": "Ứng dụng nhắn tin đã có nội dung. Service Center không biết bạn đã gửi hay chưa.",
+    "textOpenFailed": "Không mở được ứng dụng nhắn tin trên thiết bị này.",
+    "textPreview": "Nội dung sẽ chuyển sang",
+    "detailTitle": "Tin nhắn",
+    "retryUncertain": "Máy chủ không phản hồi lần thử lại. Hãy kéo xuống để làm mới kết quả trước khi thử lại lần nữa.",
+    "received": "Đã nhận"
   }
 }
