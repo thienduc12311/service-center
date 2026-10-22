@@ -1,7 +1,21 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { NoteAudience, NoteCategoryRow, PlanNote, TeamWithPositions } from '@service-center/shared';
+import {
+  NOTE_AUDIENCES,
+  noteCategoryLabel,
+  noteTeamNames,
+  planNoteDraftFrom,
+  planNoteLeavesSimple,
+  planNoteRequest,
+  toggleNoteTeam,
+  validatePlanNoteDraft,
+  withNoteCategory,
+  type NoteCategoryRow,
+  type PlanNote,
+  type PlanNoteDraft,
+  type TeamWithPositions,
+} from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useInvalidateOrg } from '../../hooks/queries';
 import { Button, ErrorNotice, Modal } from '../ui';
@@ -17,25 +31,20 @@ export interface PlanNoteEditorModalProps {
   onClose: () => void;
 }
 
-const AUDIENCES: NoteAudience[] = ['organization', 'scheduled', 'teams', 'leaders'];
-
 /** Create or edit one note. Saving sends the revision it opened; a stale edit is refused. */
 export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, teams, onClose }: PlanNoteEditorModalProps) => {
   const { t } = useTranslation(['messages', 'common']);
   const invalidate = useInvalidateOrg();
-  const [categoryId, setCategoryId] = useState<string | null>(note?.category_id ?? null);
-  const [audience, setAudience] = useState<NoteAudience>(note?.audience ?? 'organization');
-  const [teamIds, setTeamIds] = useState<string[]>(note?.team_ids ?? []);
-  const [body, setBody] = useState(note?.body ?? '');
-  const itemId = note ? note.plan_item_id : planItemId;
+  // Shared with the native editor (`plan-notes`), so both save the same note.
+  const [draft, setDraft] = useState<PlanNoteDraft>(() => planNoteDraftFrom(note, planItemId));
+  const { categoryId, audience, teamIds, body } = draft;
+  const itemId = draft.planItemId;
 
   const save = useMutation({
-    mutationFn: () => {
-      const input = { plan_item_id: itemId, category_id: categoryId, audience, team_ids: teamIds, body };
-      return note
-        ? api.updatePlanNote(planId, note.id, { ...input, expected_revision: note.revision })
-        : api.createPlanNote(planId, input);
-    },
+    mutationFn: () =>
+      note
+        ? api.updatePlanNote(planId, note.id, planNoteRequest(draft, note))
+        : api.createPlanNote(planId, planNoteRequest(draft, null)),
     onSuccess: async () => {
       await invalidate();
       onClose();
@@ -49,18 +58,16 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
     },
   });
 
-  const chooseCategory = (id: string) => {
-    const next = id || null;
-    setCategoryId(next);
-    const category = categories.find((c) => c.id === next);
-    // A category suggests an audience for a new note; it never changes an existing one.
-    if (!note && category) setAudience(category.default_audience);
-  };
+  // A category suggests an audience for a new note; it never changes an existing one.
+  const chooseCategory = (id: string) => setDraft((current) => withNoteCategory(current, id || null, categories, !note));
+  const toggleTeam = (id: string) => setDraft((current) => toggleNoteTeam(current, id));
 
-  const toggleTeam = (id: string) =>
-    setTeamIds((current) => (current.includes(id) ? current.filter((teamId) => teamId !== id) : [...current, id]));
-
-  const invalid = !body.trim() || (audience === 'teams' && teamIds.length === 0);
+  const invalid = validatePlanNoteDraft(draft) !== null;
+  const archivedCategory = noteCategoryLabel(categoryId, categories).kind === 'unavailable';
+  const chosenTeams = noteTeamNames(teamIds, teams);
+  const audienceDetail = audience === 'teams'
+    ? chosenTeams.length ? t('noteEditor.audienceDetail.teams', { teams: chosenTeams.join(', ') }) : t('noteEditor.audienceDetail.teamsNone')
+    : t(`noteEditor.audienceDetail.${audience}`);
 
   return (
     <Modal open title={note ? t('noteEditor.editTitle') : itemId ? t('noteEditor.addItemTitle') : t('noteEditor.addPlanTitle')} onClose={onClose}>
@@ -75,6 +82,7 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
           <span className="label">{t('noteEditor.category')}</span>
           <select className="input" value={categoryId ?? ''} onChange={(event) => chooseCategory(event.target.value)}>
             <option value="">{t('noteEditor.general')}</option>
+            {archivedCategory && categoryId && <option value={categoryId}>{t('noteEditor.categoryUnavailable')}</option>}
             {categories.map((category) => (
               <option key={category.id} value={category.id}>{category.name}</option>
             ))}
@@ -84,13 +92,14 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
         <fieldset className="text-sm">
           <legend className="label">{t('noteEditor.whoCanRead')}</legend>
           <div className="space-y-1">
-            {AUDIENCES.map((value) => (
+            {NOTE_AUDIENCES.map((value) => (
               <label key={value} className="flex items-center gap-2">
-                <input type="radio" name="audience" checked={audience === value} onChange={() => setAudience(value)} />
+                <input type="radio" name="audience" checked={audience === value} onChange={() => setDraft((current) => ({ ...current, audience: value }))} />
                 {t(`noteEditor.audience.${value}`)}
               </label>
             ))}
           </div>
+          <p className="mt-2 text-xs text-slate-700 dark:text-slate-200" aria-live="polite">{audienceDetail}</p>
           <p className="mt-1 text-xs text-slate-500">{t('noteEditor.audienceHint')}</p>
         </fieldset>
 
@@ -115,11 +124,16 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
             rows={6}
             maxLength={8000}
             value={body}
-            onChange={(event) => setBody(event.target.value)}
+            onChange={(event) => setDraft((current) => ({ ...current, body: event.target.value }))}
             placeholder={t('noteEditor.placeholder')}
           />
         </label>
 
+        {note?.is_legacy && (
+          <p className={`rounded-lg px-3 py-2 text-xs ${planNoteLeavesSimple(note, draft) ? 'bg-amber-50 text-amber-800' : 'bg-slate-50 text-slate-500'}`}>
+            {t('noteEditor.simpleNoteHint')}
+          </p>
+        )}
         <ErrorNotice error={save.error ?? remove.error} />
         <div className="flex items-center justify-between gap-2">
           <div>

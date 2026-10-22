@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { PlanItemComment, PlanItemDetail, PlanNote } from '@service-center/shared';
+import { planNotesFor, type PlanItemComment, type PlanItemDetail, type PlanNote } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { keys, useItemComments, useMentionCandidates, usePlanNotes, useTeams } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
@@ -35,7 +35,7 @@ export const ItemDiscussionModal = ({ planId, item, onClose }: ItemDiscussionMod
   const [editingNote, setEditingNote] = useState<PlanNote | 'new' | null>(null);
 
   const refresh = () => client.invalidateQueries({ queryKey: keys.itemComments(organizationId, item.id) });
-  const itemNotes = (notes.data?.notes ?? []).filter((note) => note.plan_item_id === item.id);
+  const itemNotes = planNotesFor(notes.data?.notes ?? [], item.id);
   const cursor = olderCursor === undefined ? thread.data?.next_before ?? null : olderCursor;
 
   const loadOlder = useMutation({

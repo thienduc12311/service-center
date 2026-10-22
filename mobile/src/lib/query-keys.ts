@@ -39,9 +39,15 @@ export const queryKeys = {
   /** F14: the plan's rehearsal manifest (names versions, never URLs). */
   rehearsal: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'rehearsal', planId ?? null] as const,
-  /** MOB-014: F09 notes the caller may read on a plan (counted before removing an item). */
+  /** MOB-014/016: F09 notes the caller may read on a plan (the server filters by audience). */
   planNotes: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'plan-notes', planId ?? null] as const,
+  /** MOB-016: one item's F09 discussion (newest page; older pages are read on demand). */
+  itemComments: (scope: ProtectedQueryScope | null, itemId: string | null | undefined) =>
+    [...privateRoot(scope), 'item-comments', itemId ?? null] as const,
+  /** MOB-016: current participants of a plan's item threads, the only people worth mentioning. */
+  mentionCandidates: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
+    [...privateRoot(scope), 'mention-candidates', planId ?? null] as const,
   /** MOB-014: an arrangement's F15 labeled keys, offered as plan-only service keys. */
   arrangementMaterials: (scope: ProtectedQueryScope | null, arrangementId: string | null | undefined) =>
     [...privateRoot(scope), 'arrangement-materials', arrangementId ?? null] as const,

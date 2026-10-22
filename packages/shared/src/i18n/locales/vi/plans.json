@@ -517,7 +517,7 @@
     "itemGone": "Mục này không còn trong kế hoạch. Có thể ai đó đã xóa nó.",
     "uncertain": "Máy chủ không phản hồi, nên thay đổi này có thể đã được lưu hoặc chưa. Thứ tự đã được tải lại — hãy kiểm tra trước khi thử lại.",
     "addUncertain": "Máy chủ không phản hồi, nên chưa rõ mục đã được thêm hay chưa. Hãy thử lại — nếu mục đã được thêm, nó sẽ không bị thêm hai lần.",
-    "webOnlyHint": "Ghi chú, thảo luận và phương tiện liên kết của mục được thay đổi trên trang web.",
+    "webOnlyHint": "Phương tiện liên kết được thay đổi trên trang web. Ghi chú và thảo luận của mục mở từ danh sách thứ tự.",
     "searchPeople": "Tìm người",
     "keepEditing": "Tiếp tục chỉnh sửa",
     "discard": "Bỏ",

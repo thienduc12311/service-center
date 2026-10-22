@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import type { NoteAudience, NoteCategoryRow, PlanNote, TeamWithPositions } from '@service-center/shared';
+import { noteCategoryLabel, noteTeamNames, planNotesFor, type NoteAudience, type NoteCategoryRow, type PlanNote, type TeamWithPositions } from '@service-center/shared';
 import { usePlanNotes, useTeams } from '../../hooks/queries';
 import { Badge, Button, ErrorNotice, Spinner } from '../ui';
 import { PlanNoteEditorModal } from './PlanNoteEditorModal';
@@ -15,7 +15,7 @@ const AUDIENCE_TONE: Record<NoteAudience, string> = {
 
 export const audienceText = (note: PlanNote, teams: readonly TeamWithPositions[], t: TFunction<'messages'>): string => {
   if (note.audience !== 'teams') return t(`notesPanel.audienceShort.${note.audience}`);
-  const names = note.team_ids.map((id) => teams.find((team) => team.id === id)?.name).filter(Boolean);
+  const names = noteTeamNames(note.team_ids, teams);
   return names.length ? names.join(', ') : t('notesPanel.audienceShort.teams');
 };
 
@@ -30,7 +30,11 @@ export interface NoteListProps {
 /** Notes grouped by category, each with who can read it. */
 export const NoteList = ({ notes, categories, teams, canEdit, onEdit }: NoteListProps) => {
   const { t } = useTranslation(['messages', 'common']);
-  const name = (id: string | null) => categories.find((category) => category.id === id)?.name ?? t('noteEditor.general');
+  // An archived category is no longer offered; say so rather than calling it General.
+  const name = (id: string | null) => {
+    const label = noteCategoryLabel(id, categories);
+    return label.kind === 'category' ? label.category.name : label.kind === 'general' ? t('noteEditor.general') : t('noteEditor.categoryUnavailable');
+  };
   return (
     <ul className="space-y-2">
       {notes.map((note) => (
@@ -64,7 +68,7 @@ export const PlanNotesPanel = ({ planId }: PlanNotesPanelProps) => {
   const notes = usePlanNotes(planId);
   const teams = useTeams();
   const [editing, setEditing] = useState<PlanNote | 'new' | null>(null);
-  const planNotes = (notes.data?.notes ?? []).filter((note) => !note.plan_item_id);
+  const planNotes = planNotesFor(notes.data?.notes ?? [], null);
 
   return (
     <section>

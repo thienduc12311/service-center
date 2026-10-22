@@ -235,12 +235,32 @@
       "teams": "Các ban được chọn",
       "leaders": "Chỉ người phụ trách chương trình"
     },
-    "audienceHint": "Người phụ trách chương trình luôn đọc được mọi ghi chú. Chỉ ghi chú “Mọi người” hiển thị trên các phiên bản ứng dụng cũ.",
+    "audienceHint": "Người phụ trách chương trình luôn đọc được mọi ghi chú. Các phiên bản ứng dụng cũ chỉ hiển thị ghi chú đơn giản của chương trình.",
     "teams": "Các ban",
     "note": "Ghi chú",
     "placeholder": "Lưu ý, hậu cần hoặc bất cứ điều gì nhóm người đọc này cần biết.",
     "deleteConfirm": "Xóa ghi chú này?",
-    "save": "Lưu ghi chú"
+    "save": "Lưu ghi chú",
+    "categoryUnavailable": "Danh mục đã lưu trữ",
+    "simpleNoteHint": "Đây là ghi chú đơn giản của chương trình, các ứng dụng cũ cũng hiển thị ghi chú này. Lưu với một danh mục hoặc nhóm người đọc khác sẽ biến nó thành ghi chú thường và gỡ khỏi các ứng dụng cũ.",
+    "audienceDetail": {
+      "organization": "Mọi thành viên đang hoạt động của Hội thánh đều đọc được.",
+      "scheduled": "Những người có yêu cầu phân công trong chương trình này mà chưa từ chối, cùng người phụ trách chương trình, đọc được. Yêu cầu đang chuẩn bị, chưa gửi đi không được tính.",
+      "teams": "Thành viên của {{teams}}, những người được phân công vào các ban đó ở đây, người lên lịch cho các ban đó và người phụ trách chương trình đọc được.",
+      "teamsNone": "Hãy chọn các ban được đọc.",
+      "leaders": "Chỉ người phụ trách chương trình — người chỉnh sửa chương trình này hoặc lên lịch cho loại buổi nhóm của nó — đọc được."
+    },
+    "onPlan": "Trong chương trình “{{plan}}”",
+    "onItem": "Cho mục “{{item}}” trong “{{plan}}”",
+    "stale": "Có người đã thay đổi ghi chú này kể từ khi bạn mở, nên chưa có gì được lưu. Phiên bản mới nhất ở bên dưới. Nội dung bạn viết vẫn còn.",
+    "latestVersion": "Phiên bản mới nhất",
+    "keepMine": "Lưu nội dung của tôi đè lên bản mới nhất",
+    "gone": "Ghi chú này đã bị xóa, hoặc bạn không còn quyền đọc. Nội dung bạn viết vẫn còn.",
+    "saveAsNew": "Lưu thành ghi chú mới",
+    "errors": {
+      "body_required": "Hãy viết ghi chú.",
+      "teams_required": "Hãy chọn ít nhất một ban."
+    }
   },
   "notesPanel": {
     "title": "Ghi chú",
@@ -251,5 +271,15 @@
       "teams": "Các ban",
       "leaders": "Người phụ trách"
     }
+  },
+  "mobileNotes": {
+    "screenTitle": "Ghi chú",
+    "discussionTitle": "Ghi chú và thảo luận",
+    "uncertain": "Máy chủ không phản hồi, nên ghi chú có thể đã được lưu hoặc chưa. Danh sách ghi chú đã được tải lại — hãy kiểm tra trước khi lưu lại.",
+    "categoryGone": "Danh mục đó không còn được dùng cho chương trình này, nên ghi chú chưa được lưu. Ghi chú hiện được xếp vào mục Chung — hãy kiểm tra và lưu lại.",
+    "discardConfirm": "Bỏ ghi chú này?",
+    "by": "bởi {{name}}",
+    "mentionTitle": "Nhắc tên ai đó",
+    "refreshFailed": "Không tải được ghi chú. Chỉ hiển thị ghi chú đơn giản của chương trình."
   }
 }
