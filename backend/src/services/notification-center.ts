@@ -35,12 +35,24 @@ export const ensureFeedRows = async (
   );
 };
 
-/** Unread count for one recipient across their organizations, used for the iOS badge. */
+/**
+ * Unread count for one recipient across the organizations they are still an
+ * active member of — the number pushes put on the app-icon badge. Matches
+ * `account_unread` from `GET /notifications/unread-count`, whose RLS hides
+ * rows from organizations the person has left, so the badge never counts
+ * notifications the app can no longer open.
+ */
 export const unreadCount = async (userId: string): Promise<number> => {
+  const memberships = await unwrap(
+    adminDb.from('organization_members').select('organization_id').eq('user_id', userId).eq('status', 'active'),
+  );
+  const organizationIds = (memberships ?? []).map((row) => row.organization_id);
+  if (organizationIds.length === 0) return 0;
   const { count, error } = await adminDb
     .from('notifications')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
+    .in('organization_id', organizationIds)
     .is('read_at', null);
   if (error) throw new Error(`Could not count unread notifications: ${error.message}`);
   return count ?? 0;

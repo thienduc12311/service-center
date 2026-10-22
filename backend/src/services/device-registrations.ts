@@ -11,7 +11,7 @@ export interface GeneratedDeviceRegistration {
   leaseExpiresAt: string;
 }
 
-export type ActiveDeviceToken = Pick<DevicePushTokenRow, 'user_id' | 'token'>;
+export type ActiveDeviceToken = Pick<DevicePushTokenRow, 'user_id' | 'token' | 'show_badge'>;
 
 export const hashDeviceRevocationSecret = (secret: string): string =>
   createHash('sha256').update(secret).digest('hex');
@@ -39,7 +39,7 @@ export const activeDeviceTokens = async (
     (await unwrap(
       db
         .from('device_push_tokens')
-        .select('user_id, token')
+        .select('user_id, token, show_badge')
         .in('user_id', userIds)
         .gt('lease_expires_at', now.toISOString()),
     )) ?? []

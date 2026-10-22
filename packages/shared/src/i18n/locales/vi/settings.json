@@ -577,5 +577,56 @@
       "changeLogo": "Đổi logo",
       "namePlaceholder": "Hội thánh Ân Điển"
     }
+  },
+  "mobileNotifications": {
+    "entry": "Thông báo",
+    "entryDescription": "Thông báo đẩy trên thiết bị này, huy hiệu ứng dụng, lời nhắc và trò chuyện",
+    "screenTitle": "Thông báo",
+    "description": "Các lựa chọn này độc lập với nhau: quyền của thiết bị, huy hiệu ứng dụng, cách bạn nhận lời nhắc và những cuộc trò chuyện sẽ thông báo cho bạn.",
+    "device": {
+      "title": "Thông báo đẩy trên thiết bị này",
+      "on": "Thông báo đẩy đang bật cho thiết bị này.",
+      "registering": "Đang bật thông báo đẩy cho thiết bị này…",
+      "notRegistered": "Đã cho phép thông báo đẩy, nhưng thiết bị này chưa được đăng ký.",
+      "undetermined": "Thông báo đẩy chưa được bật cho thiết bị này.",
+      "denied": "Thông báo đẩy của ứng dụng đang tắt trong cài đặt thiết bị. Ứng dụng không thể hỏi lại — hãy bật trong Cài đặt.",
+      "unavailable": "Thiết bị hoặc bản dựng này không hỗ trợ thông báo đẩy. Thông báo vẫn hiển thị trong ứng dụng.",
+      "turnOn": "Bật thông báo đẩy",
+      "openSettings": "Mở cài đặt thiết bị",
+      "retry": "Thử lại",
+      "feedStillWorks": "Mọi thông báo vẫn hiển thị trong mục Thông báo của ứng dụng.",
+      "lockScreen": "Thông báo đẩy chỉ cho biết có thay đổi; chi tiết nằm trong ứng dụng sau khi bạn đăng nhập.",
+      "signOut": "Đăng xuất sẽ ngừng gửi thông báo đẩy cho tài khoản của bạn trên thiết bị này."
+    },
+    "badge": {
+      "title": "Huy hiệu biểu tượng ứng dụng",
+      "description": "Hiển thị số thông báo bạn chưa đọc, trên tất cả các tổ chức của bạn.",
+      "unread": "Số chưa đọc",
+      "off": "Tắt",
+      "saved": "Thông báo đẩy đến thiết bị này tuân theo lựa chọn này.",
+      "pending": "Chưa lưu cho thông báo đẩy — một thông báo đẩy vẫn có thể thay đổi huy hiệu.",
+      "deviceOnly": "Áp dụng trên thiết bị này. Không có thông báo đẩy gửi đến đây, nên không gì khác thay đổi huy hiệu.",
+      "needsPermission": "Trên iPhone, huy hiệu cũng cần quyền thông báo.",
+      "currentCount": "Chưa đọc hiện tại: {{count}}"
+    },
+    "reminders": {
+      "organization": "Cho {{organization}}. Mỗi tổ chức giữ lựa chọn riêng.",
+      "pushMissesDevice": "Lời nhắc đẩy không thể đến thiết bị này cho đến khi bật thông báo đẩy tại đây. Các thiết bị đã đăng nhập khác vẫn nhận được.",
+      "saving": "Đang lưu…",
+      "toggle": "Lời nhắc qua {{channel}}"
+    },
+    "chat": {
+      "title": "Trò chuyện",
+      "description": "Mỗi tin nhắn mới đều thông báo cho bạn, trừ khi bạn tắt tiếng cuộc trò chuyện đó. Tắt tiếng vẫn giữ lịch sử và số chưa đọc.",
+      "empty": "Bạn chưa tham gia cuộc trò chuyện nào trong tổ chức này.",
+      "toggle": "Tắt tiếng {{name}}",
+      "open": "Mở trò chuyện"
+    },
+    "other": {
+      "title": "Thông báo khác",
+      "description": "Yêu cầu, thay đổi lịch và tin nhắn từ người phụ trách luôn hiển thị trong ứng dụng và được đẩy khi bật thông báo đẩy. Hiện chưa thể tắt riêng từng loại, và chưa có thông báo cho buổi Live."
+    },
+    "feedHint": "Thông báo đẩy đang tắt trên thiết bị này. Thông báo vẫn được lưu tại đây.",
+    "feedHintAction": "Cài đặt thông báo"
   }
 }

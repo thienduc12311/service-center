@@ -28,12 +28,13 @@ const PAGE_SIZE = 30;
 /** Everything the bell has collected, newest first. */
 export default function NotificationsScreen() {
   const { queryScope, generation, isCurrentGeneration } = useAuth();
-  const { unread, refresh } = useNotifications();
+  const { unread, refresh, push } = useNotifications();
   const router = useRouter();
   const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
-  const { t } = useTranslation(['scheduling', 'common']);
+  const { t } = useTranslation(['scheduling', 'settings', 'common']);
 
   const feed = useInfiniteQuery({
     queryKey: notificationKeys.feed(queryScope),
@@ -109,6 +110,17 @@ export default function NotificationsScreen() {
                 ) : undefined
               }
             />
+            {/* MOB-020: the feed is the fallback when push is off; say so and offer the way back. */}
+            {push.recovery !== 'none' ? (
+              <View style={styles.pushHint}>
+                <Text style={styles.pushHintText}>{t('settings:mobileNotifications.feedHint')}</Text>
+                <Button
+                  title={t('settings:mobileNotifications.feedHintAction')}
+                  variant="quiet"
+                  onPress={() => router.push('/notification-settings')}
+                />
+              </View>
+            ) : null}
             <ErrorNotice error={feed.error ?? markRead.error} />
           </View>
         }
@@ -165,6 +177,8 @@ const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
+    pushHint: { gap: theme.space.xs, marginTop: theme.space.md },
+    pushHintText: { color: theme.color.inkMuted, fontSize: 13, lineHeight: 18 },
     row: {
       flexDirection: 'row',
       gap: theme.space.md,

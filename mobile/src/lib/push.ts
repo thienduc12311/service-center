@@ -1,9 +1,10 @@
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import type { DevicePlatform, DeviceRegistration } from '@service-center/shared';
 import { api } from './api';
+import type { PushPermissionSnapshot } from './notification-settings';
 
 /**
  * Push registration. Kept out of the React tree so the provider stays a thin
@@ -35,12 +36,29 @@ const devicePlatform = (): DevicePlatform => {
 const projectId = (): string | undefined =>
   Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
 
+/** MOB-020: the OS permission as it is now, without prompting. */
+export const readPushPermission = async (): Promise<PushPermissionSnapshot> => {
+  const permission = await Notifications.getPermissionsAsync();
+  return {
+    isDevice: Device.isDevice,
+    pushConfigured: Boolean(projectId()),
+    status: permission.granted ? 'granted' : permission.status === 'undetermined' ? 'undetermined' : 'denied',
+    canAskAgain: permission.canAskAgain,
+  };
+};
+
+/** After a refusal the OS never prompts again; only its settings screen can turn push back on. */
+export const openDeviceNotificationSettings = async (): Promise<void> => {
+  await Linking.openSettings();
+};
+
 /**
  * Asks for permission (once — the OS remembers the answer) and registers this
  * device with the API. Returns null when push isn't available: a simulator, a
- * denied prompt, or a project with no EAS id.
+ * denied prompt, or a project with no EAS id. `showBadge` (MOB-020) tells the
+ * server whether pushes may set the app-icon badge on this device.
  */
-export const registerForPushNotifications = async (): Promise<DeviceRegistration | null> => {
+export const registerForPushNotifications = async (showBadge: boolean): Promise<DeviceRegistration | null> => {
   if (!Device.isDevice) return null;
 
   if (Platform.OS === 'android') {
@@ -60,7 +78,7 @@ export const registerForPushNotifications = async (): Promise<DeviceRegistration
 
   const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId: id });
   const platform = devicePlatform();
-  return api.registerDevice({ token, platform, device_name: Device.deviceName });
+  return api.registerDevice({ token, platform, device_name: Device.deviceName, show_badge: showBadge });
 };
 
 /** Called on sign-out so a shared phone stops receiving the old user's pushes. */

@@ -57,6 +57,9 @@ export const queryKeys = {
   /** MOB-015: F08 effective/explicit reminder policies at one scope (organization when both are null). */
   reminderPolicies: (scope: ProtectedQueryScope | null, serviceTypeId: string | null, teamId: string | null) =>
     [...privateRoot(scope), 'reminder-policies', serviceTypeId, teamId] as const,
+  /** MOB-020: the signed-in Person's own F08 reminder channels in this organization. */
+  myReminderPreferences: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'reminder-preferences', 'me'] as const,
   /** MOB-017: prefix for a plan's F16 attendance sheets and histories; invalidate this after a batch. */
   attendanceAll: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'attendance', planId ?? null] as const,

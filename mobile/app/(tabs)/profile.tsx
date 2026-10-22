@@ -251,7 +251,11 @@ export default function ProfileScreen() {
 
         <Reveal index={3}>
           <Card>
-            <ListRow onPress={() => router.push('/chat')} showChevron>
+            <ListRow onPress={() => router.push('/notification-settings')} showChevron>
+              <Label>{t('mobileNotifications.entry')}</Label>
+              <Text style={styles.body}>{t('mobileNotifications.entryDescription')}</Text>
+            </ListRow>
+            <ListRow divided onPress={() => router.push('/chat')} showChevron>
               <Label>{t('messages:mobileChat.entry')}</Label>
               <Text style={styles.body}>{t('messages:mobileChat.entryDescription')}</Text>
             </ListRow>

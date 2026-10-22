@@ -587,5 +587,56 @@
       "changeLogo": "Change the logo",
       "namePlaceholder": "Grace Community Church"
     }
+  },
+  "mobileNotifications": {
+    "entry": "Notifications",
+    "entryDescription": "Push on this device, the app badge, reminders and chat",
+    "screenTitle": "Notifications",
+    "description": "These choices are separate: device permission, the app badge, how reminders reach you and which chats notify you.",
+    "device": {
+      "title": "Push on this device",
+      "on": "Push notifications are on for this device.",
+      "registering": "Turning on push for this device…",
+      "notRegistered": "Push is allowed, but this device isn’t registered yet.",
+      "undetermined": "Push notifications aren’t turned on for this device yet.",
+      "denied": "Push notifications are turned off for this app in your device settings. The app can’t ask again — turn them on in Settings.",
+      "unavailable": "Push isn’t available on this device or build. Your notifications still appear in the app.",
+      "turnOn": "Turn on push notifications",
+      "openSettings": "Open device settings",
+      "retry": "Try again",
+      "feedStillWorks": "Everything still appears under Notifications in the app.",
+      "lockScreen": "Pushes say only that something changed; details stay in the app after you sign in.",
+      "signOut": "Signing out stops pushes for your account on this device."
+    },
+    "badge": {
+      "title": "App icon badge",
+      "description": "Shows how many notifications you haven’t read, across all your organizations.",
+      "unread": "Unread count",
+      "off": "Off",
+      "saved": "Pushes to this device follow this choice.",
+      "pending": "Not saved for pushes yet — a push may still change the badge.",
+      "deviceOnly": "Applies on this device. Pushes aren’t sent here, so nothing else changes the badge.",
+      "needsPermission": "On iPhone the badge also needs notification permission.",
+      "currentCount": "Unread now: {{count}}"
+    },
+    "reminders": {
+      "organization": "For {{organization}}. Each organization keeps its own choice.",
+      "pushMissesDevice": "Push reminders can’t reach this device until push is on here. Other signed-in devices still receive them.",
+      "saving": "Saving…",
+      "toggle": "{{channel}} reminders"
+    },
+    "chat": {
+      "title": "Chat",
+      "description": "Every new message notifies you unless you mute that chat. Muting keeps the history and unread count.",
+      "empty": "You aren’t in any chats in this organization.",
+      "toggle": "Mute {{name}}",
+      "open": "Open chats"
+    },
+    "other": {
+      "title": "Other notifications",
+      "description": "Requests, schedule changes and messages from leaders always appear in the app, and are pushed when push is on. They can’t be turned off one type at a time yet, and there are no Live service notifications."
+    },
+    "feedHint": "Push is off on this device. Notifications still collect here.",
+    "feedHintAction": "Notification settings"
   }
 }

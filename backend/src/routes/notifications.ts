@@ -25,16 +25,29 @@ export const notificationsRouter: Router = Router();
 export const devicesRouter: Router = Router();
 export const deviceRevocationsRouter: Router = Router();
 
-/** Unread across the whole organization — what the bell's badge shows. */
-const unreadCountFor = async (db: Db, orgId: string, userId: string): Promise<number> => {
-  const { count, error } = await db
+/**
+ * Unread for the caller — in one organization (what the bell shows), or with
+ * `orgId` null across every organization RLS still lets them read (what the
+ * app-icon badge shows; the push dispatcher counts the same set).
+ */
+const unreadCountFor = async (db: Db, orgId: string | null, userId: string): Promise<number> => {
+  let query = db
     .from('notifications')
     .select('id', { count: 'exact', head: true })
-    .eq('organization_id', orgId)
     .eq('user_id', userId)
     .is('read_at', null);
+  if (orgId) query = query.eq('organization_id', orgId);
+  const { count, error } = await query;
   if (error) throw error;
   return count ?? 0;
+};
+
+const unreadCounts = async (db: Db, orgId: string, userId: string): Promise<UnreadNotificationCount> => {
+  const [unread, accountUnread] = await Promise.all([
+    unreadCountFor(db, orgId, userId),
+    unreadCountFor(db, null, userId),
+  ]);
+  return { unread, account_unread: accountUnread };
 };
 
 // ------------------------------------------------------------- the feed ----
@@ -63,10 +76,7 @@ notificationsRouter.get('/', validateQuery(listNotificationsQuerySchema), async 
 });
 
 notificationsRouter.get('/unread-count', async (req, res) => {
-  const body: UnreadNotificationCount = {
-    unread: await unreadCountFor(req.db, req.orgId, req.auth.userId),
-  };
-  res.json(body);
+  res.json(await unreadCounts(req.db, req.orgId, req.auth.userId));
 });
 
 notificationsRouter.get('/:id', async (req, res) => {
@@ -98,10 +108,7 @@ notificationsRouter.post('/read', validateBody(markNotificationsReadSchema), asy
   if (ids?.length) update = update.in('id', ids);
 
   await unwrap(update);
-  const body: UnreadNotificationCount = {
-    unread: await unreadCountFor(req.db, req.orgId, req.auth.userId),
-  };
-  res.json(body);
+  res.json(await unreadCounts(req.db, req.orgId, req.auth.userId));
 });
 
 notificationsRouter.delete('/:id', async (req, res) => {
@@ -125,7 +132,7 @@ notificationsRouter.delete('/:id', async (req, res) => {
  * new owner, which RLS (rightly) would not allow the new owner to do.
  */
 devicesRouter.post('/', validateBody(registerDeviceSchema), async (req, res) => {
-  const { token, platform, device_name } = req.body as RegisterDeviceInput;
+  const { token, platform, device_name, show_badge } = req.body as RegisterDeviceInput;
   const registration = generateDeviceRegistration();
   const device = await unwrapOne(
     adminDb
@@ -136,13 +143,14 @@ devicesRouter.post('/', validateBody(registerDeviceSchema), async (req, res) => 
           token,
           platform,
           device_name: device_name ?? null,
+          show_badge: show_badge ?? true,
           last_seen_at: registration.lastSeenAt,
           lease_expires_at: registration.leaseExpiresAt,
           revocation_secret_hash: registration.revocationSecretHash,
         },
         { onConflict: 'token' },
       )
-      .select('token, platform, device_name, lease_expires_at')
+      .select('token, platform, device_name, lease_expires_at, show_badge')
       .single(),
   );
   res.status(201).json({
