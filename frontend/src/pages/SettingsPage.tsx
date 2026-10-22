@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { isAdmin, isLeader, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
+import { isAdmin, isLeader, personalFeedState, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useCalendarFeed } from '../hooks/queries';
@@ -26,7 +26,9 @@ export const SettingsPage = () => {
   const { user, organizationId, role, access, canAnywhere, refreshUser, switchOrganization } = useAuth();
   const calendarFeed = useCalendarFeed();
   const rotateFeed = useMutation({ mutationFn: () => api.rotateCalendarFeed(), onSuccess: () => calendarFeed.refetch() });
-  const feed = rotateFeed.data ?? calendarFeed.data;
+  // The status read never carries the URL; only the link created just now does (MOB-022 shares this rule).
+  const feedState = personalFeedState(calendarFeed.data, rotateFeed.data ?? null);
+  const feed = feedState === 'revealed' ? rotateFeed.data : undefined;
   const organization = user?.memberships.find((membership) => membership.organization.id === organizationId)?.organization;
 
   const [fullName, setFullName] = useState('');
@@ -117,9 +119,14 @@ export const SettingsPage = () => {
             <a className="text-sm text-brand-700 underline" href={feed.webcal_url ?? undefined}>{t('settingsPage.calendar.openInApp')}</a>
             <div><Button variant="ghost" loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.rotate')}</Button></div>
           </div>
-        ) : (
+        ) : feedState === 'active' ? (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">{t('settingsPage.calendar.activeHidden')}</p>
+            <Button variant="secondary" loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.rotate')}</Button>
+          </div>
+        ) : feedState === 'none' ? (
           <Button loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.create')}</Button>
-        )}
+        ) : null}
         <ErrorNotice error={calendarFeed.error ?? rotateFeed.error} />
       </section>
 

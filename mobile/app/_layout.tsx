@@ -49,7 +49,7 @@ const RootNavigator = () => {
   const segments = useSegments();
   const router = useRouter();
   const theme = useTheme();
-  const { t } = useTranslation(['auth', 'common', 'settings']);
+  const { t } = useTranslation(['auth', 'common', 'settings', 'scheduling', 'reports']);
 
   useEffect(() => {
     if (loading) return;
@@ -105,6 +105,8 @@ const RootNavigator = () => {
       <Stack.Screen name="team-preferences" options={{ title: t('settings:preferences.screenTitle') }} />
       <Stack.Screen name="notification-settings" options={{ title: t('settings:mobileNotifications.screenTitle') }} />
       <Stack.Screen name="about" options={{ title: t('settings:about.screenTitle') }} />
+      <Stack.Screen name="calendar-subscription" options={{ title: t('scheduling:mobileSubscription.screenTitle') }} />
+      <Stack.Screen name="schedule-report" options={{ title: t('reports:mobileReport.screenTitle') }} />
     </Stack>
   );
 };

@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  toISODate,
+  CALENDAR_LAYERS,
   type CalendarLayer,
   type CalendarLayerEvent,
+  type CalendarLayersRequest,
   type CalendarScopedFeedCreated,
   type CreateScopedFeedRequest,
 } from '@service-center/shared';
@@ -14,35 +15,14 @@ import { keys, useServiceTypes, useTeams } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Modal } from '../ui';
 
-/** Every opt-in layer, in display order. */
-export const CALENDAR_LAYERS: readonly CalendarLayer[] = ['blockouts', 'birthdays', 'anniversaries'];
-
-export interface CalendarLayerQueryInput {
-  teamId: string;
-  from: string;
-  to: string;
-  layers: CalendarLayer[];
-}
-
-/** Opt-in layers for one team; the server decides which the viewer may see. */
-export const useCalendarLayers = ({ teamId, from, to, layers }: CalendarLayerQueryInput) => {
+/** Opt-in layers for one team (null = none chosen); the server decides which the viewer may see. */
+export const useCalendarLayers = (query: CalendarLayersRequest | null) => {
   const { organizationId } = useAuth();
-  const query = { team_id: teamId, from, to, layers };
   return useQuery({
     queryKey: keys.calendarLayers(organizationId, query),
-    queryFn: () => api.calendarLayers(query),
-    enabled: Boolean(organizationId && teamId && layers.length),
+    queryFn: () => api.calendarLayers(query!),
+    enabled: Boolean(organizationId && query),
   });
-};
-
-/** Civil days a layer event covers, for placing it on the month grid. */
-export const layerEventDays = (event: CalendarLayerEvent): string[] => {
-  if (event.date) return [event.date];
-  if (!event.starts_at || !event.ends_at) return [];
-  const days: string[] = [];
-  const end = new Date(event.ends_at).getTime();
-  for (let at = new Date(event.starts_at).getTime(); at < end && days.length < 62; at += 86_400_000) days.push(toISODate(at));
-  return days;
 };
 
 export const layerLabel = (event: CalendarLayerEvent, t: TFunction<'scheduling'>): string =>
@@ -50,7 +30,7 @@ export const layerLabel = (event: CalendarLayerEvent, t: TFunction<'scheduling'>
 
 export interface LayerTogglesProps {
   teamId: string;
-  layers: CalendarLayer[];
+  layers: readonly CalendarLayer[];
   onChange: (layers: CalendarLayer[]) => void;
 }
 

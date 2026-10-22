@@ -9,6 +9,7 @@ import {
   CONVERSATION_THREAD_POLL_MS,
   LIVE_IDLE_POLL_MS,
   REHEARSAL_MANIFEST_TTL_SECONDS,
+  type CalendarQueryRequest,
   type FileOwnerKind,
   type ListDeliveriesRequest,
   type ListMediaRequest,
@@ -257,7 +258,7 @@ export const useStaffingMatrixViews = () => {
   return useQuery({ queryKey: keys.staffingMatrixViews(org), queryFn: () => api.staffingMatrixViews(), enabled: Boolean(org) });
 };
 
-export const useCalendar = (query: { from: string; to: string; mine?: boolean; team_id?: string }) => {
+export const useCalendar = (query: CalendarQueryRequest) => {
   const org = useOrg();
   return useQuery({
     queryKey: keys.calendar(org, query),

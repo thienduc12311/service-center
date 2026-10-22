@@ -77,7 +77,9 @@ const activeOrganizationForMe = async (req: Request): Promise<string> => {
   return organizationId;
 };
 
+// The rotate response carries a bearer URL; neither response may be cached on the way.
 meRouter.get('/calendar-feed', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const organizationId = await activeOrganizationForMe(req);
   const token = await unwrap(req.db.from('calendar_feed_tokens').select('id').eq('organization_id', organizationId).eq('user_id', req.auth.userId).is('revoked_at', null).maybeSingle());
   const response: CalendarFeedTokenResponse = { url: null, webcal_url: null, active: Boolean(token) };
@@ -85,6 +87,7 @@ meRouter.get('/calendar-feed', async (req, res) => {
 });
 
 meRouter.post('/calendar-feed', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const organizationId = await activeOrganizationForMe(req);
   await unwrap(req.db.from('calendar_feed_tokens').update({ revoked_at: new Date().toISOString() }).eq('organization_id', organizationId).eq('user_id', req.auth.userId).is('revoked_at', null));
   const generated = generateCalendarFeedToken();

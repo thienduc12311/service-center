@@ -141,11 +141,14 @@ calendarRouter.get('/feeds', async (req, res) => {
   res.json(await listScopedFeeds(feedCaller(req)));
 });
 
+// Created and rotated feeds return their bearer URL once: never cache it.
 calendarRouter.post('/feeds', validateBody(createScopedFeedSchema), async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.status(201).json(await createScopedFeed(feedCaller(req), req.body as CreateScopedFeedInput));
 });
 
 calendarRouter.post('/feeds/:id/rotate', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.status(201).json(await rotateScopedFeed(feedCaller(req), param(req, 'id')));
 });
 

@@ -262,5 +262,18 @@
     "hideHistory": "Hide history",
     "role": "{{team}} · {{position}}",
     "orphanedTitle": "Kept from earlier (no longer scheduled at this time)"
+  },
+  "mobileReport": {
+    "screenTitle": "Schedule report",
+    "open": "Schedule report",
+    "planButton": "Schedule report",
+    "rangeOrder": "Choose a To date on or after the From date.",
+    "otherFilters": "Published plans, every response and archived people are included, as on the website. Other filters and report kinds are on the website.",
+    "shareCsv": "Share CSV",
+    "shareHandedOff": "Handed to the share sheet. Only the people you chose receive it, and a shared copy cannot be recalled.",
+    "shareCancelled": "Not shared.",
+    "exportQueued": "Export queued. It appears in My exports below when it is ready.",
+    "exportsOpen": "Open hands a short-lived link to your browser, which downloads the file.",
+    "printOnWeb": "To print, open Reports on the website."
   }
 }

@@ -2,14 +2,19 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
+  DEFAULT_CALENDAR_FILTERS,
   addMonths,
+  calendarLayerEventDays,
+  calendarLayersRequestFor,
+  calendarQueryFor,
   endOfMonth,
   isSameDay,
   monthGrid,
   startOfMonth,
   toISODate,
+  withCalendarTeam,
   type CalendarEvent,
-  type CalendarLayer,
+  type CalendarFilters,
   type CalendarLayerEvent,
 } from '@service-center/shared';
 import { useCalendar, useTeams } from '../hooks/queries';
@@ -19,7 +24,6 @@ import { useFormatters } from '../i18n';
 import {
   LayerToggles,
   ScopedFeedsPanel,
-  layerEventDays,
   layerLabel,
   useCalendarLayers,
 } from '../components/calendar/CalendarExtensions';
@@ -35,10 +39,10 @@ const kindStyles: Record<CalendarEvent['kind'], string> = {
 export const CalendarPage = () => {
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [view, setView] = useState<View>('month');
-  const [mine, setMine] = useState(false);
-  const [teamId, setTeamId] = useState('');
-  // F16: opt-in layers for the chosen team (the server applies current access).
-  const [layers, setLayers] = useState<CalendarLayer[]>([]);
+  // Same filters and requests as the native calendar (MOB-022). F16 layers
+  // apply to the chosen team; the server applies current access.
+  const [filters, setFilters] = useState<CalendarFilters>(DEFAULT_CALENDAR_FILTERS);
+  const teamId = filters.teamId ?? '';
 
   const teams = useTeams();
   const { t } = useTranslation(['scheduling', 'common']);
@@ -57,25 +61,17 @@ export const CalendarPage = () => {
     };
   }, [cursor]);
 
-  const calendar = useCalendar({
-    ...range,
-    ...(mine ? { mine: true } : {}),
-    ...(teamId ? { team_id: teamId } : {}),
-  });
+  const calendar = useCalendar(calendarQueryFor(filters, range));
 
-  const layerEvents = useCalendarLayers({
-    teamId,
-    from: toISODate(range.from),
-    to: toISODate(range.to),
-    layers,
-  });
+  const layersRequest = calendarLayersRequestFor(filters, range);
+  const layerEvents = useCalendarLayers(layersRequest);
   const layersByDay = useMemo(() => {
     const map = new Map<string, CalendarLayerEvent[]>();
-    for (const event of teamId ? layerEvents.data ?? [] : []) {
-      for (const day of layerEventDays(event)) map.set(day, [...(map.get(day) ?? []), event]);
+    for (const event of layersRequest ? layerEvents.data ?? [] : []) {
+      for (const day of calendarLayerEventDays(event)) map.set(day, [...(map.get(day) ?? []), event]);
     }
     return map;
-  }, [layerEvents.data, teamId]);
+  }, [layerEvents.data, layersRequest]);
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
@@ -114,8 +110,8 @@ export const CalendarPage = () => {
             <label className="flex items-center gap-2 text-sm text-slate-600">
               <input
                 type="checkbox"
-                checked={mine}
-                onChange={(e) => setMine(e.target.checked)}
+                checked={filters.mine}
+                onChange={(e) => setFilters({ ...filters, mine: e.target.checked })}
                 className="size-4 rounded border-slate-300"
               />
               {t('calendar.onlyMine')}
@@ -124,7 +120,7 @@ export const CalendarPage = () => {
               aria-label={t('calendar.filterByTeam')}
               className="input w-40"
               value={teamId}
-              onChange={(e) => setTeamId(e.target.value)}
+              onChange={(e) => setFilters(withCalendarTeam(filters, e.target.value || null))}
             >
               <option value="">{t('calendar.allTeams')}</option>
               {(teams.data ?? []).map((team) => (
@@ -160,7 +156,7 @@ export const CalendarPage = () => {
         </h2>
         {calendar.isFetching && <span className="text-xs text-slate-400">{t('calendar.updating')}</span>}
         <div className="ml-auto">
-          <LayerToggles teamId={teamId} layers={layers} onChange={setLayers} />
+          <LayerToggles teamId={teamId} layers={filters.layers} onChange={(layers) => setFilters({ ...filters, layers })} />
         </div>
       </div>
 

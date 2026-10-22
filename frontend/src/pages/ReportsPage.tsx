@@ -2,8 +2,11 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  addLocalDays,
-  localDateAt,
+  canRebuildReportExport,
+  defaultReportFilters,
+  reportExportErrorKey,
+  reportExportStatusAt,
+  reportExportsInProgress,
   type AnyReport,
   type ReportExportSummary,
   type ReportFiltersRequest,
@@ -32,11 +35,6 @@ const RESPONSES = [
   ['unconfirmed', 'responses.pending'],
   ['declined', 'responses.declined'],
 ] as const;
-
-/** Failure codes a queued export can record (`report_exports.error_code`). */
-type ExportErrorCode = 'access_revoked' | 'invalid_filters' | 'storage_failed' | 'generation_failed';
-const EXPORT_ERROR_CODES: readonly ExportErrorCode[] = ['access_revoked', 'invalid_filters', 'storage_failed', 'generation_failed'];
-const isExportErrorCode = (code: string): code is ExportErrorCode => (EXPORT_ERROR_CODES as readonly string[]).includes(code);
 
 /** Translator, formatters and language for one render of the page. */
 const useReportLocalization = (): ReportLocalization => {
@@ -88,7 +86,6 @@ export const ReportsPage = () => {
   const localization = useReportLocalization();
   const { t, formatters } = localization;
   const timezone = user?.memberships.find((m) => m.organization.id === organizationId)?.organization.timezone ?? 'UTC';
-  const today = localDateAt(Date.now(), timezone);
   const available = KINDS.filter((kind) =>
     kind === 'song_usage'
       ? canAnywhere('plans.edit') || canAnywhere('songs.manage')
@@ -97,14 +94,8 @@ export const ReportsPage = () => {
         : canAnywhere('scheduling.manage'),
   );
   const [kind, setKind] = useState<ReportKind>(available[0] ?? 'staffing');
-  const [draft, setDraft] = useState<ReportFiltersRequest>({
-    from: addLocalDays(today, -28),
-    to: addLocalDays(today, 28),
-    plan_statuses: ['published'],
-    assignment_statuses: ['confirmed', 'unconfirmed', 'declined'],
-    include_archived_people: true,
-    include_rehearsals: false,
-  });
+  // The same starting filters as the native report screen (MOB-022).
+  const [draft, setDraft] = useState<ReportFiltersRequest>(() => defaultReportFilters(Date.now(), timezone));
   const [filters, setFilters] = useState<ReportFiltersRequest | null>(null);
   const serviceTypes = useServiceTypes();
   const teams = useTeams();
@@ -123,7 +114,7 @@ export const ReportsPage = () => {
   const exports = useQuery({
     queryKey: keys.reportExports(organizationId),
     queryFn: () => api.reportExports(),
-    refetchInterval: (query) => (query.state.data?.some((row) => row.status === 'queued' || row.status === 'running') ? 5000 : false),
+    refetchInterval: (query) => (reportExportsInProgress(query.state.data) ? 5000 : false),
   });
   const queueExport = useMutation({
     mutationFn: () => api.requestReportExport({ kind, filters: filters!, idempotency_key: crypto.randomUUID() }),
@@ -414,6 +405,8 @@ const ExportRow = ({ row }: ExportRowProps) => {
     mutationFn: () => api.retryReportExport(row.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.reportExports(organizationId) }),
   });
+  const status = reportExportStatusAt(row, Date.now());
+  const errorKey = reportExportErrorKey(row.error_code);
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
       <span>
@@ -422,23 +415,19 @@ const ExportRow = ({ row }: ExportRowProps) => {
           from: formatters.calendarDate(String(row.filters.from), 'medium'),
           to: formatters.calendarDate(String(row.filters.to), 'medium'),
         })}{' '}
-        <Badge tone={EXPORT_TONES[row.status]}>{t(`exports.status.${row.status}`)}</Badge>
-        {row.error_code && (
-          <span className="ml-2 text-xs text-rose-600">
-            {isExportErrorCode(row.error_code) ? t(`exports.errors.${row.error_code}`) : t('exports.errors.other')}
-          </span>
-        )}
-        {row.expires_at && row.status === 'ready' && (
+        <Badge tone={EXPORT_TONES[status]}>{t(`exports.status.${status}`)}</Badge>
+        {errorKey && <span className="ml-2 text-xs text-rose-600">{t(`exports.errors.${errorKey}`)}</span>}
+        {row.expires_at && status === 'ready' && (
           <span className="ml-2 text-xs text-slate-500">{t('exports.until', { time: formatters.dateTime(row.expires_at) })}</span>
         )}
       </span>
       <span className="flex gap-2">
-        {row.status === 'ready' && (
+        {status === 'ready' && (
           <Button variant="secondary" loading={download.isPending} onClick={() => download.mutate()}>
             {t('common:actions.download')}
           </Button>
         )}
-        {(row.status === 'failed' || row.status === 'expired') && (
+        {canRebuildReportExport(status) && (
           <Button variant="ghost" loading={retry.isPending} onClick={() => retry.mutate()}>{t('exports.buildAgain')}</Button>
         )}
       </span>

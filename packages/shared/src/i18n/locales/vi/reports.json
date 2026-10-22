@@ -258,5 +258,18 @@
     "hideHistory": "Ẩn lịch sử",
     "role": "{{team}} · {{position}}",
     "orphanedTitle": "Giữ lại từ trước (không còn được phân công vào giờ này)"
+  },
+  "mobileReport": {
+    "screenTitle": "Báo cáo lịch phục vụ",
+    "open": "Báo cáo lịch phục vụ",
+    "planButton": "Báo cáo lịch phục vụ",
+    "rangeOrder": "Hãy chọn ngày kết thúc bằng hoặc sau ngày bắt đầu.",
+    "otherFilters": "Bao gồm các chương trình đã công bố, mọi câu trả lời và thành viên đã lưu trữ, giống trang web. Các bộ lọc và loại báo cáo khác có trên trang web.",
+    "shareCsv": "Chia sẻ CSV",
+    "shareHandedOff": "Đã chuyển sang bảng chia sẻ. Chỉ những người bạn chọn nhận được, và bản đã chia sẻ không thể thu hồi.",
+    "shareCancelled": "Chưa chia sẻ.",
+    "exportQueued": "Đã xếp hàng bản xuất. Bản xuất sẽ hiện trong Bản xuất của tôi bên dưới khi sẵn sàng.",
+    "exportsOpen": "Mở sẽ chuyển một liên kết ngắn hạn sang trình duyệt để tải tệp.",
+    "printOnWeb": "Để in, hãy mở Báo cáo trên trang web."
   }
 }

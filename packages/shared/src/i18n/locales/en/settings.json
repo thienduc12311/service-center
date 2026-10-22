@@ -15,7 +15,8 @@
       "description": "Subscribe to your schedule in Google, Apple, or Outlook Calendar. Rotating the link revokes the previous one.",
       "openInApp": "Open in calendar app",
       "rotate": "Rotate link",
-      "create": "Create calendar link"
+      "create": "Create calendar link",
+      "activeHidden": "Your calendar link is active. For your privacy it is shown only when it is created. Rotate it to get a link you can copy — the old link stops working, so calendars already subscribed with it stop updating."
     },
     "availability": {
       "title": "Availability",
