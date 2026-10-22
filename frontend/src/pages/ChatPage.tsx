@@ -3,7 +3,16 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import type { ConversationMessage, ConversationReportReason, ConversationSummary } from '@service-center/shared';
+import {
+  chatStartableTeams,
+  conversationMessageActions,
+  conversationMessageState,
+  conversationReadMark,
+  CONVERSATION_SEARCH_MIN,
+  type ConversationMessage,
+  type ConversationReportReason,
+  type ConversationSummary,
+} from '@service-center/shared';
 import { api } from '../lib/api';
 import { keys, useConversation, useConversations, useMentionCandidates, useTeams } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
@@ -72,16 +81,15 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   const results = useQuery({
     queryKey: [...keys.conversation(organizationId, conversationId), 'search', search],
     queryFn: () => api.conversationMessages(conversationId, { q: search, limit: 30 }),
-    enabled: search.trim().length >= 2,
+    enabled: search.trim().length >= CONVERSATION_SEARCH_MIN,
   });
   const refresh = () => client.invalidateQueries({ queryKey: keys.conversations(organizationId) });
 
   const newest = detail.data?.messages.data.at(-1)?.created_at;
   useEffect(() => {
-    // Reading the thread moves the read position forward (never back).
-    if (newest && (detail.data?.conversation.unread_count ?? 0) > 0) {
-      void api.markConversationRead(conversationId, newest).then(refresh);
-    }
+    // Reading the thread moves the read position forward (never back), up to the newest message shown.
+    const mark = conversationReadMark(detail.data?.messages.data ?? [], detail.data?.conversation.unread_count ?? 0, null);
+    if (mark) void api.markConversationRead(conversationId, mark).then(refresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, newest]);
 
@@ -104,7 +112,7 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   }
   const { conversation, messages, reports } = detail.data;
   const byId = new Map(messages.data.map((message) => [message.id, message]));
-  const shown = search.trim().length >= 2 ? results.data?.data ?? [] : messages.data;
+  const shown = search.trim().length >= CONVERSATION_SEARCH_MIN ? results.data?.data ?? [] : messages.data;
 
   return (
     <div className="flex min-h-0 flex-col">
@@ -156,7 +164,9 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
       ) : (
         <ul className="mb-3 divide-y divide-slate-100 dark:divide-slate-800">
           {shown.map((message) => {
-            const removed = message.hidden_at ? t('conversation.hiddenByModerator') : message.deleted_at ? t('conversation.messageDeleted') : null;
+            const state = conversationMessageState(message);
+            const removed = state === 'hidden' ? t('conversation.hiddenByModerator') : state === 'deleted' ? t('conversation.messageDeleted') : null;
+            const allowed = conversationMessageActions(message, conversation);
             const parent = message.reply_to_id ? byId.get(message.reply_to_id) : null;
             return (
               <DiscussionEntry
@@ -173,18 +183,18 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
                     ? t('conversation.quote', { author: parent.author_name ?? t('common:fallback.someone'), body: parent.body })
                     : t('conversation.quoteRemoved', { author: parent.author_name ?? t('common:fallback.someone') })
                   : null}
-                canEdit={message.is_mine}
+                canEdit={allowed.edit}
                 onSaveEdit={async (body) => {
                   await api.editConversationMessage(conversationId, message.id, { body });
                   await refresh();
                 }}
                 actions={[
-                  ...(!removed ? [{ label: t('conversation.reply'), onClick: () => setReplyTo(message) }] : []),
-                  ...(!removed && !message.is_mine ? [{ label: t('conversation.report'), onClick: () => setReporting(message) }] : []),
-                  ...(!removed && (message.is_mine || conversation.can_moderate)
+                  ...(allowed.reply ? [{ label: t('conversation.reply'), onClick: () => setReplyTo(message) }] : []),
+                  ...(allowed.report ? [{ label: t('conversation.report'), onClick: () => setReporting(message) }] : []),
+                  ...(allowed.delete
                     ? [{ label: t('common:actions.delete'), danger: true, onClick: () => { if (window.confirm(t('conversation.deleteConfirm'))) remove.mutate(message); } }]
                     : []),
-                  ...(message.hidden_at && conversation.can_moderate ? [{ label: t('common:actions.restore'), onClick: () => restore.mutate(message) }] : []),
+                  ...(allowed.restore ? [{ label: t('common:actions.restore'), onClick: () => restore.mutate(message) }] : []),
                 ]}
               />
             );
@@ -227,9 +237,8 @@ export const ChatPage = () => {
   const conversations = useConversations();
   const teams = useTeams();
   const myId = user?.profile.id;
-  const startable = (teams.data ?? []).filter((team) =>
-    team.members.some((member) => member.user_id === myId)
-    || can('scheduling.manage', { teamId: team.id, serviceTypeId: team.service_type_id })
+  const startable = chatStartableTeams(teams.data ?? [], myId, (team) =>
+    can('scheduling.manage', { teamId: team.id, serviceTypeId: team.service_type_id })
     || can('teams.manage', { teamId: team.id, serviceTypeId: team.service_type_id }));
   const open = useMutation({
     mutationFn: (teamId: string) => api.openConversation({ kind: 'team', target_id: teamId }),

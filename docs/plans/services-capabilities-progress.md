@@ -45,7 +45,7 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F08 epic | in progress | — | Gates below; epic is not complete |
 | F09 Pass A — categorized audience notes and item discussion | implemented; QA pending | `feature/f09-notes-messages-chat` (uncommitted, from `6fa9f65`) | Replay migrations from an empty DB; signed-in multi-role browser QA |
 | F09 Pass B — targeted operational messages | implemented; QA pending | same | Real-provider email check (shared F00 gate); product review of audience groups. Native MOB-018 Pass A implemented (`feature/mob-018-targeted-messages`); shared composer/handoff fix [below](#f09-shared-fixes-from-mob-018--2026-10-21) |
-| F09 Pass C — team/plan conversations | implemented; QA pending | same | Organization youth/guardian policy before any DM or youth participation; native MOB-019 |
+| F09 Pass C — team/plan conversations | implemented; QA pending | same | Organization youth/guardian policy before any DM or youth participation; native MOB-019 implemented 2026-10-21 (device/push QA pending) |
 | F09 epic | in progress | — | Gates below; rich/DM/attachments (F13) stay unselected; epic is not complete |
 | F10 Pass A — saved templates, revisions and safe apply | implemented; QA pending | `feature/f10-templates-bulk-plans` (uncommitted, from `20a4802`) | Signed-in QA with a service-type-scoped plan editor; product review of apply rules (below) |
 | F10 Pass B — bounded DST-safe date generation | implemented; QA pending | same | Product review of the 12-plan atomic cap (no resumable job) |
@@ -534,7 +534,7 @@ Branch `feature/f08-batched-release-paths` (from `c0612b2`).
 - **Product/policy review:** proposed audience groups and channel defaults (email + feed + push), message variable allowlist, 20/min chat rate limit, retention bounds, report reasons, who moderates (team managers / plan editors / admins), mentions notifying only participants, item threads open to scheduled people and leaders (not every member). **Youth/guardian policy** is required before children participate in conversations or any DM is enabled; none is inferred.
 - **Not implemented (explicitly):** attachments in comments/messages/chat (F13), direct/group messages, reactions, read receipts, rich formatting beyond plain text, inbound email replies, SMS, Supabase Realtime transport (polling is used), push notification for every chat message (only mentions/replies notify), per-category default teams, F11 note columns/print with selected audiences, F12 run chat.
 - **Signed-in browser QA** as member, scheduled volunteer, scoped team leader and removed member (keyboard/screen reader, long names, empty/error states); this pass checked the scheduler path plus API-level role checks.
-- **Native:** MOB-016 (categorized notes — implemented 2026-10-21, see below), MOB-018 (message composer/history, OS text handoff — implemented 2026-10-21, see below), MOB-019 (conversations) consume these contracts; device QA pending.
+- **Native:** MOB-016 (categorized notes — implemented 2026-10-21, see below), MOB-018 (message composer/history, OS text handoff — implemented 2026-10-21, see below), MOB-019 (conversations — implemented 2026-10-21, see below) consume these contracts; device QA pending.
 
 **Exact next pass:** F13 Pass A — file upload/finalize/version lifecycle with matching Storage access (unblocks F09 attachments and F14). F09 remains **in progress**, not complete, until the gates above are closed; F11 Pass A remains independent.
 
@@ -549,6 +549,12 @@ Branch `feature/f08-batched-release-paths` (from `c0612b2`).
 - **Web behaviour fixes.** `MessageComposerModal` used to show only the generic error after an unanswered send and after a reused key; it now says the message may or may not have been sent (*Try again* replays the same key), warns when the text was edited after that, and on `idempotency_key_reused` says an earlier attempt was already sent (links to Messages) and disables Send. The key stays one per composed message, as before.
 - Missing error translations `audience_changed`, `template_stale` (en + vi); new `messageComposer.*` and `mobileMessages.*` keys (en + vi).
 - No migration, route, RLS or backend change; no SMS provider. Evidence: shared +8 tests; live API 30/30; web check — see the mobile ledger, MOB-018.
+
+### F09 shared fixes from MOB-019 — 2026-10-21
+- **One conversation model for web and native.** New `lib/conversations.ts`: `CONVERSATION_THREAD_POLL_MS`/`CONVERSATION_LIST_POLL_MS`/`CONVERSATION_PAGE_SIZE`/`CONVERSATION_SEARCH_MIN`, `CONVERSATION_NOTIFICATION_TYPES`, `mergeConversationPages`, `conversationReadMark`, `conversationMessageState`, `conversationMessageActions`, `conversationPostOutcome`, `conversationAccess`, `draftAlreadyPosted`, `conversationNotificationTarget`, `chatStartableTeams`. The website `ChatPage` and its queries use them; no web behaviour change.
+- Missing error translations `message_id_conflict`, `message_removed`, `message_unrecoverable` (en + vi); new `mobileChat.*` keys (en + vi).
+- SQL suite `f09-notes-messages-chat.sql` extended: mention + reply to the same person (one job per channel, replay adds no effect), child participant and sender not notified, no-login and prepared-only People get no plan chat delivery, plan leader notified.
+- No migration, route, RLS, backend or push payload change. Evidence: shared +18 tests; live API 43/43; SQL suite; web check — see the mobile ledger, MOB-019.
 
 ## F10 — 2026-10-18
 

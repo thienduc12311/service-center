@@ -399,11 +399,55 @@ update public.people set person_type = 'adult' where id = pg_temp.fx('morgan');
 set local role authenticated;
 select pg_temp.check((select count(*) from public.conversations where id = pg_temp.fx('band_chat')) = 1, 'adult Band member reads the chat');
 
+-- MOB-019 notification matrix: mention + reply to the same person is still one
+-- job per channel; a child participant and a no-login Person receive nothing.
+set local request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222';
+insert into f09_fx values ('jordan_msg', gen_random_uuid());
+select public.post_conversation_message(pg_temp.fx('jordan_msg'), pg_temp.fx('band_chat'), 'Who has the set list?', null, null);
+reset role;
+update public.people set person_type = 'child' where id = pg_temp.fx('morgan');
+set local role authenticated;
+set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
+insert into f09_fx values ('mention_reply', gen_random_uuid());
+select public.post_conversation_message(pg_temp.fx('mention_reply'), pg_temp.fx('band_chat'), '@Jordan I do', pg_temp.fx('jordan_msg'),
+  array[(select id from public.people where profile_id = '22222222-2222-4222-8222-222222222222')]);
+select pg_temp.check((select replayed from public.post_conversation_message(pg_temp.fx('mention_reply'), pg_temp.fx('band_chat'), '@Jordan I do', pg_temp.fx('jordan_msg'), null)),
+  'mention + reply resend replays');
+reset role;
+select pg_temp.check((select count(*) from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('mention_reply') and d.recipient_id = pg_temp.fx('jordan')) = 2
+  and (select count(distinct d.channel) from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('mention_reply') and d.recipient_id = pg_temp.fx('jordan')) = 2,
+  'mention + reply to the same person: one feed and one push job');
+select pg_temp.check((select count(*) from public.delivery_effects where conversation_message_id = pg_temp.fx('mention_reply')) = 1,
+  'mention + reply resend adds no second effect');
+select pg_temp.check(not exists (select 1 from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('mention_reply') and d.recipient_person_id = pg_temp.fx('morgan')),
+  'a child participant is not notified');
+select pg_temp.check(not exists (select 1 from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('mention_reply') and d.recipient_id = '33333333-3333-4333-8333-333333333333'::uuid),
+  'the sender is never notified');
+update public.people set person_type = 'adult' where id = pg_temp.fx('morgan');
+set local role authenticated;
+
 -- Plan conversation: scheduled people and leaders; not prepared-only.
 set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
 insert into f09_fx select 'plan_chat', (public.open_conversation('plan', pg_temp.fx('plan'))).id;
 set local request.jwt.claim.sub = '55555555-5555-4555-8555-555555555555';
 select pg_temp.check((select count(*) from public.conversations where id = pg_temp.fx('plan_chat')) = 0, 'prepared-only person cannot read the plan chat');
+set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
+insert into f09_fx values ('plan_msg', gen_random_uuid());
+select public.post_conversation_message(pg_temp.fx('plan_msg'), pg_temp.fx('plan_chat'), 'Plan chat hello', null, array[pg_temp.fx('guest')]);
+reset role;
+select pg_temp.check((select resolution from public.conversation_message_mentions where message_id = pg_temp.fx('plan_msg') and person_id = pg_temp.fx('guest')) = 'no_login',
+  'mentioning a no-login scheduled Person records no_login');
+select pg_temp.check(not exists (select 1 from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('plan_msg') and d.recipient_person_id in (pg_temp.fx('guest'), pg_temp.fx('morgan'))),
+  'no-login and prepared-only People receive no plan chat delivery');
+select pg_temp.check(exists (select 1 from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.conversation_message_id = pg_temp.fx('plan_msg') and d.recipient_id = pg_temp.fx('jordan')),
+  'the plan leader is notified of a plan chat message');
+set local role authenticated;
 
 -- Rate limit.
 set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';

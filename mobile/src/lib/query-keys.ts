@@ -77,6 +77,19 @@ export const queryKeys = {
   /** MOB-018: personal and shared message templates (senders only). */
   messageTemplates: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'message-templates'] as const,
+  /** MOB-019: prefix for every F09 team/plan conversation read; invalidate this after a post, read, mute or moderation. */
+  conversationsAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'conversations'] as const,
+  conversationList: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'conversations', 'list'] as const,
+  /** MOB-019: one conversation's summary, newest page and open reports (moderators). */
+  conversation: (scope: ProtectedQueryScope | null, conversationId: string | null | undefined) =>
+    [...privateRoot(scope), 'conversations', 'detail', conversationId ?? null] as const,
+  conversationSearch: (scope: ProtectedQueryScope | null, conversationId: string, query: string) =>
+    [...privateRoot(scope), 'conversations', 'search', conversationId, query] as const,
+  /** MOB-019: current participants of one conversation, the only people worth mentioning. */
+  conversationMentionCandidates: (scope: ProtectedQueryScope | null, conversationId: string | null | undefined) =>
+    [...privateRoot(scope), 'conversations', 'mention-candidates', conversationId ?? null] as const,
   song: (scope: ProtectedQueryScope | null, songId: string | null | undefined) =>
     [...privateRoot(scope), 'song', songId ?? null] as const,
   songs: (scope: ProtectedQueryScope | null, query: string) =>

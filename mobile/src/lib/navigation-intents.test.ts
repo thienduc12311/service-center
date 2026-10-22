@@ -82,6 +82,7 @@ describe('resolvePrivateNavigationIntent', () => {
         currentScope: () => scope,
         loadNotification,
         loadPlan,
+        loadConversation: vi.fn(),
       }),
     ).resolves.toEqual({ status: 'ready', destination: { kind: 'plan', planId } });
     expect(switchOrganization).toHaveBeenCalledWith(organizationB);
@@ -100,6 +101,7 @@ describe('resolvePrivateNavigationIntent', () => {
         currentScope: () => null,
         loadNotification,
         loadPlan,
+        loadConversation: vi.fn(),
       }),
     ).resolves.toEqual({ status: 'failed', reason: 'no-access' });
     expect(switchOrganization).not.toHaveBeenCalled();
@@ -116,6 +118,7 @@ describe('resolvePrivateNavigationIntent', () => {
         loadPlan: async () => {
           throw new ApiError(404, 'missing');
         },
+        loadConversation: vi.fn(),
       }),
     ).resolves.toEqual({ status: 'failed', reason: 'unavailable' });
   });
@@ -127,7 +130,120 @@ describe('resolvePrivateNavigationIntent', () => {
         currentScope: () => ({ generation: 2, userId, organizationId: organizationB }),
         loadNotification: async () => ({ ...notification, plan_id: null }),
         loadPlan: vi.fn(),
+        loadConversation: vi.fn(),
       }),
     ).resolves.toEqual({ status: 'failed', reason: 'unavailable' });
+  });
+
+  describe('MOB-019 conversation notifications', () => {
+    const conversationId = '77777777-7777-4777-8777-777777777777';
+    const teamChatIntent: PrivateNavigationIntent = {
+      kind: 'notifications',
+      intentId: 'push:chat',
+      organizationId: organizationB,
+      notificationId: '88888888-8888-4888-8888-888888888888',
+      notificationType: 'conversation_message',
+    };
+    const teamChatRow = {
+      id: teamChatIntent.notificationId,
+      organization_id: organizationB,
+      type: 'conversation_message',
+      plan_id: null,
+      conversation_id: conversationId,
+    } as NotificationFeedItem;
+
+    it('opens the exact conversation from the authorized feed row after switching organization', async () => {
+      let scope: ProtectedQueryScope | null = { generation: 1, userId, organizationId: organizationA };
+      const switchOrganization = vi.fn(async () => {
+        scope = { generation: 2, userId, organizationId: organizationB };
+      });
+      const loadConversation = vi.fn(async () => ({}));
+      const loadPlan = vi.fn();
+      await expect(
+        resolvePrivateNavigationIntent(teamChatIntent, user, organizationA, {
+          switchOrganization,
+          currentScope: () => scope,
+          loadNotification: async () => teamChatRow,
+          loadPlan,
+          loadConversation,
+        }),
+      ).resolves.toEqual({ status: 'ready', destination: { kind: 'conversation', conversationId } });
+      expect(switchOrganization).toHaveBeenCalledWith(organizationB);
+      expect(loadConversation).toHaveBeenCalledWith(conversationId);
+      expect(loadPlan).not.toHaveBeenCalled();
+    });
+
+    it('opens a plan chat mention in its conversation, not the plan', async () => {
+      const planChatIntent: PrivateNavigationIntent = { ...intent, notificationType: 'conversation_mention' };
+      const loadPlan = vi.fn();
+      await expect(
+        resolvePrivateNavigationIntent(planChatIntent, user, organizationB, {
+          switchOrganization: vi.fn(),
+          currentScope: () => ({ generation: 2, userId, organizationId: organizationB }),
+          loadNotification: async () => ({ ...notification, type: 'conversation_mention', conversation_id: conversationId }),
+          loadPlan,
+          loadConversation: vi.fn(async () => ({})),
+        }),
+      ).resolves.toEqual({ status: 'ready', destination: { kind: 'conversation', conversationId } });
+      expect(loadPlan).not.toHaveBeenCalled();
+    });
+
+    it('fails safely when the person is no longer a participant', async () => {
+      await expect(
+        resolvePrivateNavigationIntent(teamChatIntent, user, organizationB, {
+          switchOrganization: vi.fn(),
+          currentScope: () => ({ generation: 2, userId, organizationId: organizationB }),
+          loadNotification: async () => teamChatRow,
+          loadPlan: vi.fn(),
+          loadConversation: async () => {
+            throw new ApiError(404, 'Conversation not found');
+          },
+        }),
+      ).resolves.toEqual({ status: 'failed', reason: 'unavailable' });
+    });
+
+    it('does not navigate when the session changed while the conversation loaded', async () => {
+      let scope: ProtectedQueryScope | null = { generation: 2, userId, organizationId: organizationB };
+      await expect(
+        resolvePrivateNavigationIntent(teamChatIntent, user, organizationB, {
+          switchOrganization: vi.fn(),
+          currentScope: () => scope,
+          loadNotification: async () => teamChatRow,
+          loadPlan: vi.fn(),
+          loadConversation: async () => {
+            scope = { generation: 3, userId, organizationId: organizationB };
+            return {};
+          },
+        }),
+      ).resolves.toEqual({ status: 'failed', reason: 'no-access' });
+    });
+
+    it('keeps a transient failure retryable', async () => {
+      await expect(
+        resolvePrivateNavigationIntent(teamChatIntent, user, organizationB, {
+          switchOrganization: vi.fn(),
+          currentScope: () => ({ generation: 2, userId, organizationId: organizationB }),
+          loadNotification: async () => teamChatRow,
+          loadPlan: vi.fn(),
+          loadConversation: async () => {
+            throw new TypeError('Network request failed');
+          },
+        }),
+      ).resolves.toEqual({ status: 'failed', reason: 'network' });
+    });
+
+    it('ignores a conversation id on a notification that is not a chat notification', async () => {
+      const loadConversation = vi.fn();
+      await expect(
+        resolvePrivateNavigationIntent(intent, user, organizationB, {
+          switchOrganization: vi.fn(),
+          currentScope: () => ({ generation: 2, userId, organizationId: organizationB }),
+          loadNotification: async () => ({ ...notification, conversation_id: conversationId }),
+          loadPlan: vi.fn(async () => ({ id: planId })),
+          loadConversation,
+        }),
+      ).resolves.toEqual({ status: 'ready', destination: { kind: 'plan', planId } });
+      expect(loadConversation).not.toHaveBeenCalled();
+    });
   });
 });

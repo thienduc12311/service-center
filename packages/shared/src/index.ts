@@ -39,6 +39,7 @@ export * from './lib/plan-time-draft.js';
 export * from './lib/plan-notes.js';
 export * from './lib/attendance-marking.js';
 export * from './lib/message-compose.js';
+export * from './lib/conversations.js';
 export * from './lib/plan-browser.js';
 export * from './lib/run-sheet.js';
 export * from './lib/live-run.js';

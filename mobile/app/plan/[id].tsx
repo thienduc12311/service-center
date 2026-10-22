@@ -4,6 +4,8 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
+  ApiError,
+  LocalizedError,
   PLAN_STATUS_ACCENTS,
   computePlanSchedule,
   formatDuration,
@@ -55,6 +57,9 @@ import { PlanNotesSection } from '../../src/components/PlanNotes';
 /** MOB-008: the two plan views this screen shows (website tabs `order` and `teams`). */
 type PlanView = 'order' | 'teams';
 
+/** Same wording as the website when the server refuses a plan chat (404). */
+const PLAN_CHAT_RESTRICTED = new LocalizedError({ key: 'plans:planDetail.errors.planChatRestricted' });
+
 export default function PlanScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   // MOB-012: previous/next swap the id in place; a fresh workspace per plan
@@ -67,7 +72,7 @@ interface PlanWorkspaceProps {
 }
 
 function PlanWorkspace({ id }: PlanWorkspaceProps) {
-  const { t } = useTranslation(['plans', 'reports', 'common']);
+  const { t } = useTranslation(['plans', 'reports', 'messages', 'common']);
   const format = useFormatters();
   const { can, user, organizationId, queryScope, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
@@ -129,6 +134,14 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
   const canTakeAttendance = canSchedulePlan || (orgTeams.data ?? []).some((team) => canScheduleTeam(team.id));
 
   // Website parity: each step saves that one position; positions not sent are kept.
+  const openChat = useMutation({
+    mutationFn: () => api.openConversation({ kind: 'plan', target_id: id! }),
+    onSuccess: async (conversation) => {
+      if (!isCurrentGeneration(generation)) return;
+      await queryClient.invalidateQueries({ queryKey: queryKeys.conversationsAll(queryScope) });
+      router.push({ pathname: '/chat/[id]', params: { id: conversation.id } });
+    },
+  });
   const setNeed = useMutation({
     mutationFn: ({ positionId, needed }: { positionId: string; needed: number }) =>
       api.setPlanPositionNeeds(id, { needs: [{ position_id: positionId, needed }] }),
@@ -339,8 +352,7 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                 ))}
               </View>
             ) : null}
-            {canEditPlan || canTakeAttendance ? (
-              <View style={styles.orderActions}>
+            <View style={styles.orderActions}>
                 {canEditPlan ? (
                   <Button
                     title={t('mobileTimes.editTimes')}
@@ -366,8 +378,18 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                     onPress={() => router.push({ pathname: '/messages/compose', params: { planId: detail.id } })}
                   />
                 ) : null}
+                {/* MOB-019: the website's "Plan chat"; the server decides who takes part. */}
+                <Button
+                  title={t('messages:mobileChat.planChat')}
+                  icon="chat"
+                  variant="secondary"
+                  loading={openChat.isPending}
+                  onPress={() => openChat.mutate()}
+                />
               </View>
-            ) : null}
+              {openChat.error ? (
+                <ErrorNotice error={openChat.error instanceof ApiError && openChat.error.status === 404 ? PLAN_CHAT_RESTRICTED : openChat.error} />
+              ) : null}
           </View>
         </Reveal>
 

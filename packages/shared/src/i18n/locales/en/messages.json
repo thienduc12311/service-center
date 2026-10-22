@@ -334,5 +334,30 @@
     "detailTitle": "Message",
     "retryUncertain": "The server did not answer the retry. Pull down to refresh the outcomes before retrying again.",
     "received": "Received"
+  },
+  "mobileChat": {
+    "entry": "Chat",
+    "entryDescription": "Team and plan conversations you belong to.",
+    "openTeamChat": "Open a team chat",
+    "noTeams": "You aren’t on a team you can chat with yet.",
+    "planChat": "Plan chat",
+    "showOlder": "Show earlier messages",
+    "allLoaded": "This is the beginning of the conversation.",
+    "searchResults_one": "{{count}} message matches.",
+    "searchResults_other": "{{count}} messages match.",
+    "clearSearch": "Clear search",
+    "mutedNote": "Muted: you won’t be notified of new messages here. Your history stays, and unread messages still show.",
+    "everyoneNotified": "Everyone here except you is notified of each new message, unless they muted this chat.",
+    "uncertain": "The server did not answer, so this message may or may not have been sent. Your text is kept; sending again will not post it twice.",
+    "rateLimited": "You’re sending messages too quickly. Wait a moment, then send again — it will not post twice.",
+    "gone": "You can no longer post here. You may have been removed from this team or plan.",
+    "replyGone": "The message you replied to is no longer available. Your text is kept — send it without the reply.",
+    "alreadySent": "Your earlier message did arrive, so it was not sent again.",
+    "reportTitle": "Report message",
+    "reportDone": "Reported",
+    "moderation": "Moderation",
+    "refreshFailed": "Could not refresh. Showing what was loaded earlier; pull down to try again.",
+    "notAvailableAction": "Back to chats",
+    "unreadMarker": "New messages"
   }
 }
