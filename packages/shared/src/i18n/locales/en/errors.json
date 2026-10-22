@@ -53,7 +53,10 @@
     "note_stale": "This note changed since you opened it. Load the latest version and try again.",
     "attendance_revision_stale": "Someone else changed attendance for this time. Reload to see the latest marks.",
     "audience_changed": "The recipients changed since your preview. Nothing was sent — review them again.",
-    "template_stale": "This template changed since you opened it. Reload it and try again."
+    "template_stale": "This template changed since you opened it. Reload it and try again.",
+    "message_id_conflict": "That message id is already used. Send again to post it as a new message.",
+    "message_removed": "This message was removed, so it can’t be changed.",
+    "message_unrecoverable": "This message can no longer be restored."
   },
   "validation": {
     "required": "This field is required.",

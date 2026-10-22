@@ -1,5 +1,6 @@
 import {
   ApiError,
+  conversationNotificationTarget,
   type CurrentUser,
   type NotificationFeedItem,
   type PrivateNavigationIntent,
@@ -8,6 +9,8 @@ import type { ProtectedQueryScope } from './session-lifecycle';
 
 export type PrivateIntentDestination =
   | { kind: 'plan'; planId: string }
+  /** MOB-019: a chat notification opens its team/plan conversation. */
+  | { kind: 'conversation'; conversationId: string }
   | { kind: 'notifications' };
 
 export type PrivateIntentFailure = 'no-access' | 'unavailable' | 'network';
@@ -21,6 +24,8 @@ export interface PrivateIntentDependencies {
   currentScope: () => ProtectedQueryScope | null;
   loadNotification: (notificationId: string) => Promise<NotificationFeedItem>;
   loadPlan: (planId: string) => Promise<unknown>;
+  /** MOB-019: reads the conversation under the switched organization (404 when no longer a participant). */
+  loadConversation: (conversationId: string) => Promise<unknown>;
 }
 
 /**
@@ -93,6 +98,26 @@ export const resolvePrivateNavigationIntent = async (
     return { status: 'failed', reason: 'no-access' };
   }
 
+  const failure = (error: unknown): PrivateIntentResolution => {
+    if (error instanceof ApiError && [401, 403].includes(error.status)) {
+      return { status: 'failed', reason: 'no-access' };
+    }
+    if (error instanceof ApiError && error.status === 404) {
+      return { status: 'failed', reason: 'unavailable' };
+    }
+    return { status: 'failed', reason: 'network' };
+  };
+  const stillSameIdentity = (): boolean => {
+    const verifiedScope = dependencies.currentScope();
+    return Boolean(
+      verifiedScope &&
+        verifiedScope.userId === user.profile.id &&
+        verifiedScope.organizationId === intent.organizationId &&
+        verifiedScope.generation === scope.generation,
+    );
+  };
+
+  let conversationId: string | null = null;
   if (intent.notificationId) {
     try {
       const notification = await dependencies.loadNotification(intent.notificationId);
@@ -103,15 +128,21 @@ export const resolvePrivateNavigationIntent = async (
       ) {
         return { status: 'failed', reason: 'unavailable' };
       }
+      // The target comes from the authorized feed row, never from push data.
+      conversationId = conversationNotificationTarget(notification);
     } catch (error) {
-      if (error instanceof ApiError && [401, 403].includes(error.status)) {
-        return { status: 'failed', reason: 'no-access' };
-      }
-      if (error instanceof ApiError && error.status === 404) {
-        return { status: 'failed', reason: 'unavailable' };
-      }
-      return { status: 'failed', reason: 'network' };
+      return failure(error);
     }
+  }
+
+  if (conversationId) {
+    try {
+      await dependencies.loadConversation(conversationId);
+    } catch (error) {
+      return failure(error);
+    }
+    if (!stillSameIdentity()) return { status: 'failed', reason: 'no-access' };
+    return { status: 'ready', destination: { kind: 'conversation', conversationId } };
   }
 
   if (intent.kind === 'notifications') {

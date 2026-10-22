@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { NotificationFeedItem } from '@service-center/shared';
+import { conversationNotificationTarget, type NotificationFeedItem } from '@service-center/shared';
 import { api } from '../src/lib/api';
 import { notificationKeys } from '../src/lib/notification-keys';
 import { useAuth } from '../src/providers/AuthProvider';
@@ -68,7 +68,10 @@ export default function NotificationsScreen() {
   const open = (item: NotificationFeedItem): void => {
     if (!item.read_at) markRead.mutate([item.id]);
     // MOB-018: a targeted message opens its own copy; the server rechecks access.
+    const conversationId = conversationNotificationTarget(item);
     if (item.operational_message_id) router.push({ pathname: '/messages/[id]', params: { id: item.operational_message_id } });
+    // MOB-019: a chat notification opens its conversation; the server rechecks participation.
+    else if (conversationId) router.push({ pathname: '/chat/[id]', params: { id: conversationId } });
     else if (item.plan_id) router.push(`/plan/${item.plan_id}`);
   };
 

@@ -319,5 +319,29 @@
     "detailTitle": "Tin nhắn",
     "retryUncertain": "Máy chủ không phản hồi lần thử lại. Hãy kéo xuống để làm mới kết quả trước khi thử lại lần nữa.",
     "received": "Đã nhận"
+  },
+  "mobileChat": {
+    "entry": "Trò chuyện",
+    "entryDescription": "Trò chuyện của ban và chương trình mà bạn tham gia.",
+    "openTeamChat": "Mở trò chuyện của ban",
+    "noTeams": "Bạn chưa thuộc ban nào có thể trò chuyện.",
+    "planChat": "Trò chuyện chương trình",
+    "showOlder": "Xem tin nhắn cũ hơn",
+    "allLoaded": "Đây là đầu cuộc trò chuyện.",
+    "searchResults_other": "{{count}} tin nhắn phù hợp.",
+    "clearSearch": "Xóa tìm kiếm",
+    "mutedNote": "Đã tắt thông báo: bạn sẽ không được báo khi có tin nhắn mới ở đây. Lịch sử vẫn còn và tin chưa đọc vẫn hiển thị.",
+    "everyoneNotified": "Mọi người ở đây trừ bạn đều được báo khi có tin nhắn mới, trừ khi họ đã tắt thông báo cuộc trò chuyện này.",
+    "uncertain": "Máy chủ không phản hồi nên tin nhắn này có thể đã được gửi hoặc chưa. Nội dung vẫn được giữ; gửi lại sẽ không đăng hai lần.",
+    "rateLimited": "Bạn đang gửi tin nhắn quá nhanh. Hãy đợi một chút rồi gửi lại — tin nhắn sẽ không bị đăng hai lần.",
+    "gone": "Bạn không thể đăng ở đây nữa. Có thể bạn đã bị gỡ khỏi ban hoặc chương trình này.",
+    "replyGone": "Tin nhắn bạn trả lời không còn nữa. Nội dung vẫn được giữ — hãy gửi mà không kèm trả lời.",
+    "alreadySent": "Tin nhắn trước của bạn đã đến nơi nên không gửi lại.",
+    "reportTitle": "Báo cáo tin nhắn",
+    "reportDone": "Đã báo cáo",
+    "moderation": "Điều hành",
+    "refreshFailed": "Không làm mới được. Đang hiển thị nội dung đã tải trước đó; kéo xuống để thử lại.",
+    "notAvailableAction": "Quay lại danh sách trò chuyện",
+    "unreadMarker": "Tin nhắn mới"
   }
 }

@@ -5,6 +5,8 @@ import {
   type UseQueryOptions,
 } from '@tanstack/react-query';
 import {
+  CONVERSATION_LIST_POLL_MS,
+  CONVERSATION_THREAD_POLL_MS,
   LIVE_IDLE_POLL_MS,
   REHEARSAL_MANIFEST_TTL_SECONDS,
   type FileOwnerKind,
@@ -626,7 +628,7 @@ export const useConversations = () => {
     queryKey: keys.conversations(org),
     queryFn: () => api.conversations(),
     enabled: Boolean(org),
-    refetchInterval: 30_000,
+    refetchInterval: CONVERSATION_LIST_POLL_MS,
   });
 };
 
@@ -636,7 +638,7 @@ export const useConversation = (id: string | undefined) => {
     queryKey: keys.conversation(org, id ?? ''),
     queryFn: () => api.getConversation(id!),
     enabled: Boolean(org && id),
-    refetchInterval: 10_000,
+    refetchInterval: CONVERSATION_THREAD_POLL_MS,
     retry: false,
   });
 };

@@ -121,6 +121,7 @@ export const NavigationIntentProvider = ({ children }: { children: ReactNode }) 
       currentScope: auth.currentQueryScope,
       loadNotification: (notificationId) => api.getNotification(notificationId),
       loadPlan: (planId) => api.getPlan(planId),
+      loadConversation: (conversationId) => api.getConversation(conversationId),
     })
       .then((resolution) => {
         if (resolution.status === 'failed') {
@@ -130,6 +131,8 @@ export const NavigationIntentProvider = ({ children }: { children: ReactNode }) 
         }
         if (resolution.destination.kind === 'plan') {
           router.replace(`/plan/${resolution.destination.planId}`);
+        } else if (resolution.destination.kind === 'conversation') {
+          router.replace({ pathname: '/chat/[id]', params: { id: resolution.destination.conversationId } });
         } else {
           router.replace('/notifications');
         }
