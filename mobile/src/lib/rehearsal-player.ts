@@ -1,3 +1,4 @@
+import type { PitchCorrectionQuality } from 'expo-audio';
 import {
   ApiError,
   isInlineTrack,
@@ -153,6 +154,14 @@ export const lockScreenMetadata = (
   ...(item?.song?.author ? { artist: item.song.author } : {}),
   albumTitle: planTitle,
 });
+
+/**
+ * MOB-027 practice speed keeps the recording's pitch (and so its key). On iOS
+ * `low` is varispeed — the pitch would move with the tempo — while `high` is
+ * AVFoundation's spectral algorithm, the one meant for music. Android keeps
+ * the pitch whenever `shouldCorrectPitch` is on and ignores the quality.
+ */
+export const PRACTICE_PITCH_CORRECTION: Exclude<PitchCorrectionQuality, 'low'> = 'high';
 
 /** Seconds the skip buttons (and the lock screen's seek buttons) move. */
 export const REHEARSAL_SKIP_SECONDS = 10;

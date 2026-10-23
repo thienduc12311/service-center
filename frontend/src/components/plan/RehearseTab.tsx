@@ -5,6 +5,9 @@ import {
   formatDuration,
   formatFileSize,
   isPlayable,
+  isRehearsalPlaybackRate,
+  rehearsalTempoAtRate,
+  REHEARSAL_PLAYBACK_RATES,
   type PlanDetail,
   type RehearsalManifestItem,
   type RehearsalMaterial,
@@ -114,11 +117,13 @@ interface PlayerBarProps {
 
 const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
   const { t } = useTranslation(['plans', 'common']);
+  const format = useFormatters();
   const { track, status } = state;
   const item = track ? items.find((candidate) => candidate.item_id === track.item_id) : null;
   const isVideo = track?.material.playback === 'video';
   const external = track?.material.playback === 'external' ? track.material : null;
   const chartKey = item?.chart?.key;
+  const tempoAtRate = state.rate === 1 ? null : rehearsalTempoAtRate(item?.tempo_bpm ?? null, state.rate);
 
   return (
     <section className="card sticky top-2 z-10 space-y-3 p-4" aria-label={t('rehearse.player')}>
@@ -181,6 +186,26 @@ const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
               {t(`rehearse.repeat.${state.repeat}`)}
             </Button>
             {!external && (
+              <label className="flex items-center gap-1 text-xs text-slate-500">
+                <span>{t('rehearse.speed')}</span>
+                <select
+                  className="rounded border border-slate-300 bg-white px-1 py-1 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  value={state.rate}
+                  aria-label={t('rehearse.speedLabel')}
+                  onChange={(event) => {
+                    const rate = Number(event.target.value);
+                    if (isRehearsalPlaybackRate(rate)) controls.setRate(rate);
+                  }}
+                >
+                  {REHEARSAL_PLAYBACK_RATES.map((rate) => (
+                    <option key={rate} value={rate}>
+                      {t('rehearse.speedOption', { rate: format.number(rate) })}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {!external && (
               <label className="flex min-w-[12rem] flex-1 items-center gap-2 text-xs tabular-nums text-slate-500">
                 <span>{time(state.position)}</span>
                 <input
@@ -200,6 +225,12 @@ const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
             )}
           </div>
 
+          {!external && state.rate !== 1 && (
+            <p className="text-xs text-slate-500">
+              {tempoAtRate ? `${t('rehearse.speedTempo', { bpm: tempoAtRate })} · ` : ''}
+              {t('rehearse.speedNote')}
+            </p>
+          )}
           {external?.external_url && (
             <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
               {t('rehearse.externalTrack', { host: hostname(external.external_url) ?? t('rehearse.anotherSite') })}{' '}

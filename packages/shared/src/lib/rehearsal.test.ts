@@ -3,13 +3,17 @@ import type { PlanDetail, PlanItemDetail } from '../types/domain.js';
 import type { FileSummary, FileVersionSummary, PlanFileEntry } from '../types/files.js';
 import type { OfflinePackRecord, RehearsalManifest } from '../types/rehearsal.js';
 import {
+  DEFAULT_REHEARSAL_PLAYBACK_RATE,
+  REHEARSAL_PLAYBACK_RATES,
   buildRehearsalManifest,
   isRehearsalManifestExpired,
+  isRehearsalPlaybackRate,
   nextRehearsalIndex,
   offlinePackKey,
   offlinePackKeysToRemove,
   offlinePackStatus,
   rehearsalPlaylist,
+  rehearsalTempoAtRate,
   selectOfflinePack,
 } from './rehearsal.js';
 import { offlinePackRequestSchema, setPlanItemMediaSchema } from '../schemas/media.js';
@@ -180,6 +184,31 @@ describe('player navigation', () => {
     expect(nextRehearsalIndex(3, 1, 1, 'one', 'ended')).toBe(1);
     expect(nextRehearsalIndex(3, 1, 1, 'one', 'user')).toBe(2);
     expect(nextRehearsalIndex(0, 0, 1, 'all', 'ended')).toBeNull();
+  });
+});
+
+describe('practice speed (MOB-027)', () => {
+  it('offers ascending speeds every engine accepts, normal speed included', () => {
+    expect(REHEARSAL_PLAYBACK_RATES).toContain(DEFAULT_REHEARSAL_PLAYBACK_RATE);
+    expect([...REHEARSAL_PLAYBACK_RATES].sort((a, b) => a - b)).toEqual(REHEARSAL_PLAYBACK_RATES);
+    for (const rate of REHEARSAL_PLAYBACK_RATES) {
+      expect(rate).toBeGreaterThanOrEqual(0.1);
+      expect(rate).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('accepts only the offered speeds', () => {
+    expect(isRehearsalPlaybackRate(0.75)).toBe(true);
+    expect(isRehearsalPlaybackRate(2)).toBe(false);
+    expect(isRehearsalPlaybackRate('1')).toBe(false);
+    expect(isRehearsalPlaybackRate(Number.NaN)).toBe(false);
+  });
+
+  it('gives the heard tempo, or null without one', () => {
+    expect(rehearsalTempoAtRate(72, 0.75)).toBe(54);
+    expect(rehearsalTempoAtRate(80, 1.1)).toBe(88);
+    expect(rehearsalTempoAtRate(null, 0.5)).toBeNull();
+    expect(rehearsalTempoAtRate(0, 0.5)).toBeNull();
   });
 });
 

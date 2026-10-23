@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } fro
 import { useTranslation } from 'react-i18next';
 import {
   ApiError,
+  DEFAULT_REHEARSAL_PLAYBACK_RATE,
   isInlineTrack,
   nextRehearsalIndex,
   rehearsalPlaylist,
   type RehearsalManifest,
+  type RehearsalPlaybackRate,
   type RehearsalRepeatMode,
   type RehearsalTrack,
 } from '@service-center/shared';
@@ -34,6 +36,8 @@ export interface RehearsalPlayerState {
   status: RehearsalPlayerStatus;
   error: string | null;
   repeat: RehearsalRepeatMode;
+  /** MOB-027 practice speed; pitch is kept, so the recording's key does not change. */
+  rate: RehearsalPlaybackRate;
   position: number;
   duration: number;
   /** The `src` for the one media element (null for external tracks). */
@@ -47,6 +51,7 @@ export interface RehearsalPlayerControls {
   togglePlay: () => void;
   seek: (seconds: number) => void;
   cycleRepeat: () => void;
+  setRate: (rate: RehearsalPlaybackRate) => void;
   choose: (itemId: string, fileId: string) => void;
   retry: () => void;
   /** Wire these to the media element. */
@@ -83,6 +88,7 @@ export const useRehearsalPlayer = (
   const [status, setStatus] = useState<RehearsalPlayerStatus>('idle');
   const [error, setError] = useState<RehearsalPlayerFailure | null>(null);
   const [repeat, setRepeat] = useState<RehearsalRepeatMode>('off');
+  const [rate, setRate] = useState<RehearsalPlaybackRate>(DEFAULT_REHEARSAL_PLAYBACK_RATE);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
   const [signed, setSigned] = useState<SignedSource | null>(null);
@@ -170,6 +176,16 @@ export const useRehearsalPlayer = (
       element.load();
     }
   }, [signed, media]);
+
+  // Practice speed: `defaultPlaybackRate` survives `load()` for the next track;
+  // `preservesPitch` (the browser default) keeps the recording's key.
+  useEffect(() => {
+    const element = media.current;
+    if (!element) return;
+    element.preservesPitch = true;
+    element.defaultPlaybackRate = rate;
+    element.playbackRate = rate;
+  }, [rate, signed, media]);
 
   // Stop and release the element when the player goes away (navigation, sign-out, org switch).
   useEffect(() => {
@@ -288,6 +304,7 @@ export const useRehearsalPlayer = (
       if (element && Number.isFinite(seconds)) element.currentTime = Math.max(0, Math.min(seconds, duration || seconds));
     },
     cycleRepeat: () => setRepeat((current) => REPEAT_ORDER[(REPEAT_ORDER.indexOf(current) + 1) % REPEAT_ORDER.length]!),
+    setRate,
     choose: (itemId, fileId) => setChoices((current) => ({ ...current, [itemId]: fileId })),
     retry: () => {
       if (track) void load(track, true, position || null);
@@ -313,6 +330,7 @@ export const useRehearsalPlayer = (
       status,
       error: errorMessage,
       repeat,
+      rate,
       position,
       duration,
       source: signed?.key === key ? signed.url : null,

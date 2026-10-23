@@ -19,6 +19,7 @@ import type {
   RehearsalMaterialSource,
   RehearsalMediaRef,
   RehearsalPlayback,
+  RehearsalPlaybackRate,
   RehearsalRepeatMode,
   RehearsalTrack,
 } from '../types/rehearsal.js';
@@ -290,6 +291,25 @@ export const nextRehearsalIndex = (
   if (repeat === 'all') return (next + count) % count;
   return null;
 };
+
+// -------------------------------------------------------- practice speed --
+
+/**
+ * The speeds every client offers, slowest first. All fit the narrowest
+ * engine (Android Media3 0.1–2, AVPlayer 0–2, browsers 0.0625–16).
+ */
+export const REHEARSAL_PLAYBACK_RATES: readonly RehearsalPlaybackRate[] = [0.5, 0.75, 0.9, 1, 1.1, 1.25];
+export const DEFAULT_REHEARSAL_PLAYBACK_RATE: RehearsalPlaybackRate = 1;
+
+export const isRehearsalPlaybackRate = (value: unknown): value is RehearsalPlaybackRate =>
+  typeof value === 'number' && (REHEARSAL_PLAYBACK_RATES as readonly number[]).includes(value);
+
+/**
+ * The tempo a musician hears at a practice speed, rounded to whole beats, or
+ * null when the item has no tempo. The chart key is unchanged at any speed.
+ */
+export const rehearsalTempoAtRate = (bpm: number | null, rate: RehearsalPlaybackRate): number | null =>
+  bpm && bpm > 0 ? Math.round(bpm * rate) : null;
 
 /** A track's playable stream: inline audio/video, never an external link. */
 export const isInlineTrack = (track: RehearsalTrack): boolean =>

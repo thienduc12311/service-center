@@ -7,6 +7,8 @@ import {
   formatFileSize,
   isPlayable,
   parseChordPro,
+  rehearsalTempoAtRate,
+  REHEARSAL_PLAYBACK_RATES,
   type RehearsalManifest,
   type RehearsalManifestItem,
   type RehearsalMaterial,
@@ -22,6 +24,7 @@ import {
 } from '../../lib/useRehearsalPlayer';
 import { Button, Card, Chip, Divider, KeyCap, Label, Tag, screenPadding } from '../ui';
 import { ChordChart } from '../ChordChart';
+import { useFormatters } from '../../i18n';
 import type { Theme } from '../../lib/theme';
 import { useTheme, useThemedStyles } from '../../lib/useTheme';
 
@@ -132,6 +135,7 @@ interface PlayerCardProps {
 /** The one player for the plan: transport, position, and what the current stop can do here. */
 const PlayerCard = ({ state, controls, items }: PlayerCardProps) => {
   const { t } = useTranslation(['plans', 'common', 'media']);
+  const format = useFormatters();
   const styles = useThemedStyles(makeStyles);
   const { track, status, mode } = state;
   const [openError, setOpenError] = useState<MaterialOpenError | null>(null);
@@ -147,6 +151,7 @@ const PlayerCard = ({ state, controls, items }: PlayerCardProps) => {
   const item = track ? items.find((candidate) => candidate.item_id === track.item_id) : null;
   const chartKey = item?.chart?.key;
   const audio = mode === 'audio';
+  const tempoAtRate = state.rate === 1 ? null : rehearsalTempoAtRate(item?.tempo_bpm ?? null, state.rate);
   const playing = status === 'playing';
   const openHere = async (material: RehearsalMaterial) => {
     setOpenError(null);
@@ -218,6 +223,26 @@ const PlayerCard = ({ state, controls, items }: PlayerCardProps) => {
       <View style={styles.chips}>
         <Chip label={t(`rehearse.repeat.${state.repeat}`)} active={state.repeat !== 'off'} toggle onPress={controls.cycleRepeat} />
       </View>
+      {audio ? (
+        <View style={styles.speed}>
+          <Text style={styles.muted}>{t('rehearse.speed')}</Text>
+          <View style={styles.chips} accessibilityRole="radiogroup" accessibilityLabel={t('rehearse.speedLabel')}>
+            {REHEARSAL_PLAYBACK_RATES.map((rate) => (
+              <Chip
+                key={rate}
+                label={t('rehearse.speedOption', { rate: format.number(rate) })}
+                active={state.rate === rate}
+                onPress={() => controls.setRate(rate)}
+              />
+            ))}
+          </View>
+          {state.rate !== 1 ? (
+            <Text style={styles.muted}>
+              {[...(tempoAtRate ? [t('rehearse.speedTempo', { bpm: tempoAtRate })] : []), t('rehearse.speedNote')].join(' · ')}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
 
       {track && mode === 'external' && track.material.external_url ? (
         <View style={styles.notice}>
@@ -457,6 +482,7 @@ const makeStyles = (theme: Theme) =>
     end: { marginLeft: 'auto' },
     row: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    speed: { gap: theme.space.xs },
     transport: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },
     notice: { gap: theme.space.sm, padding: theme.space.md, borderRadius: theme.radius.md, backgroundColor: theme.color.surfaceInset },
     current: { borderColor: theme.color.brand, borderWidth: 2 },
