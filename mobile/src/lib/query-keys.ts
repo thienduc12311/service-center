@@ -1,6 +1,7 @@
 import type {
   CalendarLayersRequest,
   CalendarQueryRequest,
+  FileOwnerKind,
   ListPlanTemplatesRequest,
   PlanBrowserFilters,
   PlanNeighbourQueries,
@@ -46,6 +47,24 @@ export const queryKeys = {
   /** F14: the plan's rehearsal manifest (names versions, never URLs). */
   rehearsal: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'rehearsal', planId ?? null] as const,
+  /** MOB-026: prefix for every manifest; any file change can alter what a plan rehearses. */
+  rehearsalAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'rehearsal'] as const,
+  /** MOB-026: prefix for every F13 file read; invalidate this after any file write. */
+  filesAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'files'] as const,
+  /** MOB-026: every file a plan uses (its own, its items', song/arrangement and linked defaults). */
+  planFiles: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
+    [...privateRoot(scope), 'files', 'plan', planId ?? null] as const,
+  /** MOB-026: the files one parent owns (song, arrangement, service type). */
+  parentFiles: (scope: ProtectedQueryScope | null, ownerKind: FileOwnerKind, ownerId: string | null | undefined) =>
+    [...privateRoot(scope), 'files', 'parent', ownerKind, ownerId ?? null] as const,
+  /** MOB-026: one file with every version and plan link the caller may see. */
+  file: (scope: ProtectedQueryScope | null, fileId: string | null | undefined) =>
+    [...privateRoot(scope), 'files', 'detail', fileId ?? null] as const,
+  /** MOB-026: one text document version (null = current). */
+  fileDocument: (scope: ProtectedQueryScope | null, fileId: string | null | undefined, versionId: string | null) =>
+    [...privateRoot(scope), 'files', 'document', fileId ?? null, versionId] as const,
   /** MOB-014/016: F09 notes the caller may read on a plan (the server filters by audience). */
   planNotes: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'plan-notes', planId ?? null] as const,

@@ -34,6 +34,8 @@ import {
 import { downloadOfflinePack, type OfflineDownloadDependencies, type OfflinePackFiles } from './offline-pack-download';
 
 const MB = 1024 * 1024;
+/** The fixtures' own clock (inside the pack's 24 h window), so results never depend on today's date. */
+const PACK_CLOCK = new Date('2026-10-22T10:01:00.000Z');
 const SCOPE = { userId: 'user-1', organizationId: 'org-1' };
 const KEY = packKeyFor(SCOPE, 'plan');
 
@@ -271,7 +273,7 @@ describe('MOB-025 explicit download', () => {
         },
         fetchRange: server.fetchRange,
         chunkBytes: 4,
-        onChange: (stored) => states.push(summarizeOfflinePack(stored, { newFileIds: [] }).phase),
+        onChange: (stored) => states.push(summarizeOfflinePack(stored, { newFileIds: [], now: PACK_CLOCK }).phase),
       }),
     );
     expect(outcome.result).toBe('complete');
@@ -302,7 +304,7 @@ describe('MOB-025 explicit download', () => {
     expect(first).toMatchObject({ result: 'stopped', reason: 'paused' });
     const partial = (await device.files.read(KEY))!;
     expect(partial.state).toBe('incomplete');
-    expect(summarizeOfflinePack(partial, { newFileIds: [] }).phase).toBe('incomplete');
+    expect(summarizeOfflinePack(partial, { newFileIds: [], now: PACK_CLOCK }).phase).toBe('incomplete');
     expect(offlineEntryForTrack(partial, { material: A })).toBeNull();
     expect(device.parts.get(`${KEY}/a-v1`)).toHaveLength(8);
 
@@ -410,7 +412,7 @@ describe('MOB-025 explicit download', () => {
     expect(outcome).toMatchObject({ result: 'stopped', reason: 'server' });
     const stored = (await device.files.read(KEY))!;
     expect(stored.record.entries[0]!.downloaded_bytes).toBe(0);
-    expect(summarizeOfflinePack(stored, { newFileIds: [] }).phase).toBe('incomplete');
+    expect(summarizeOfflinePack(stored, { newFileIds: [], now: PACK_CLOCK }).phase).toBe('incomplete');
   });
 
   it('a plan no longer readable deletes the whole pack; another account or organization writes nothing', async () => {

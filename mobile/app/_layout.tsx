@@ -87,7 +87,7 @@ const RootNavigator = () => {
   const segments = useSegments();
   const router = useRouter();
   const theme = useTheme();
-  const { t } = useTranslation(['auth', 'common', 'settings', 'scheduling', 'reports']);
+  const { t } = useTranslation(['auth', 'common', 'settings', 'scheduling', 'reports', 'media']);
 
   useEffect(() => {
     if (loading) return;
@@ -148,6 +148,8 @@ const RootNavigator = () => {
       <Stack.Screen name="offline-downloads" options={{ title: t('settings:offlineDownloads.screenTitle') }} />
       <Stack.Screen name="calendar-subscription" options={{ title: t('scheduling:mobileSubscription.screenTitle') }} />
       <Stack.Screen name="schedule-report" options={{ title: t('reports:mobileReport.screenTitle') }} />
+      <Stack.Screen name="files/[id]" options={{ title: t('media:filesPanel.title') }} />
+      <Stack.Screen name="files/add" options={{ title: t('media:addFile.titles.upload') }} />
     </Stack>
   );
 };
