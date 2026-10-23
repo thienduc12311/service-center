@@ -53,9 +53,10 @@ import { PlanOrder } from '../../src/components/PlanOrder';
 import { PlanDeliveryCard, PlanReminderPolicyCard } from '../../src/components/PlanReminders';
 import { orderWriteOutcome, positionNamesFor } from '../../src/lib/plan-order-edit';
 import { PlanNotesSection } from '../../src/components/PlanNotes';
+import { PlanFiles } from '../../src/components/files/PlanFiles';
 
-/** MOB-008: the two plan views this screen shows (website tabs `order` and `teams`). */
-type PlanView = 'order' | 'teams';
+/** MOB-008: the plan views this screen shows (website tabs `order`, `teams` and, MOB-026, `files`). */
+type PlanView = 'order' | 'teams' | 'files';
 
 /** Same wording as the website when the server refuses a plan chat (404). */
 const PLAN_CHAT_RESTRICTED = new LocalizedError({ key: 'plans:planDetail.errors.planChatRestricted' });
@@ -482,6 +483,7 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
           options={[
             { value: 'order', label: t('tabs.order') },
             { value: 'teams', label: t('tabs.teams') },
+            { value: 'files', label: t('tabs.files') },
           ]}
           value={view}
           onChange={setView}
@@ -569,6 +571,12 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
             <ErrorNotice error={setNeed.error} />
             {canSchedulePlan ? <PlanDeliveryCard planId={detail.id} /> : null}
             {canEditPlan || canSchedulePlan ? <PlanReminderPolicyCard serviceTypeId={detail.service_type_id} /> : null}
+          </Reveal>
+        ) : null}
+
+        {view === 'files' ? (
+          <Reveal index={3}>
+            <PlanFiles plan={detail} />
           </Reveal>
         ) : null}
 

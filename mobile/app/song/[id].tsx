@@ -36,6 +36,7 @@ import {
 } from '../../src/components/ui';
 import { ArrangementPicker } from '../../src/components/ArrangementPicker';
 import { ChordChart } from '../../src/components/ChordChart';
+import { SongFiles } from '../../src/components/files/SongFiles';
 import { Reveal } from '../../src/components/motion';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
@@ -385,6 +386,16 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
               <EmptyState title={t(emptyCopy.title)} description={t(emptyCopy.description)} />
             </Card>
           )}
+        </Reveal>
+
+        {/* MOB-026: the song's and this arrangement's files (F13), key-scoped ones labeled (F15). */}
+        <Reveal index={4}>
+          <SongFiles
+            songId={song.id}
+            songTitle={song.title}
+            arrangementId={arrangement?.id ?? null}
+            arrangementName={arrangement?.name ?? null}
+          />
         </Reveal>
       </ScrollView>
     </Screen>
