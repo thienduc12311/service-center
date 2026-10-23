@@ -11,6 +11,7 @@ import {
   type RehearsalMaterial,
 } from '@service-center/shared';
 import {
+  PRACTICE_PITCH_CORRECTION,
   SIGNED_URL_RENEW_MARGIN_MS,
   clampSeek,
   followItemIndex,
@@ -250,5 +251,33 @@ describe('MOB-024 source contract', () => {
   it('stops on a second failure with Try again instead of moving on', () => {
     expect(hook).toMatch(/playerErrorAction\(renewed\.current\?\.key === current\) === 'renew'/);
     expect(screen).toContain("t('common:actions.retry')");
+  });
+});
+
+describe('MOB-027 practice speed source contract', () => {
+  const read = (...parts: string[]) => readFileSync(join(__dirname, '..', '..', ...parts), 'utf8');
+  const hook = read('src', 'lib', 'useRehearsalPlayer.ts');
+  const view = read('src', 'components', 'rehearsal', 'RehearsalView.tsx');
+  const web = read('..', 'frontend', 'src', 'components', 'rehearsal', 'useRehearsalPlayer.ts');
+
+  it('keeps the pitch: never the iOS varispeed quality', () => {
+    expect(PRACTICE_PITCH_CORRECTION).not.toBe('low');
+    expect(hook).toContain('player.shouldCorrectPitch = true;');
+    expect(hook).toContain('player.setPlaybackRate(rateRef.current, PRACTICE_PITCH_CORRECTION)');
+    // The website's element keeps pitch too, and the speed survives a track change.
+    expect(web).toContain('element.preservesPitch = true;');
+    expect(web).toContain('element.defaultPlaybackRate = rate;');
+  });
+
+  it('applies the speed to every newly loaded stop of the one player, with no new request or storage', () => {
+    expect(hook).toMatch(/player\.replace\(\{ uri \}\);\n\s+applyRate\(\);/);
+    expect(hook.match(/createAudioPlayer\(/g)).toHaveLength(1);
+    expect(hook).not.toMatch(/AsyncStorage|SecureStore|setItem/);
+  });
+
+  it('offers exactly the shared speeds, only for in-app audio, with the tempo-only note', () => {
+    expect(view).toContain('REHEARSAL_PLAYBACK_RATES.map(');
+    expect(view).toMatch(/\{audio \? \(\n\s+<View style=\{styles\.speed\}>/);
+    expect(view).toContain("t('rehearse.speedNote')");
   });
 });

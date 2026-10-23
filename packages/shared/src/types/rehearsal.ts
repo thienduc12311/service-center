@@ -142,6 +142,12 @@ export interface RehearsalTrack {
 
 export type RehearsalRepeatMode = 'off' | 'all' | 'one';
 
+/**
+ * MOB-027: practice speed of the one player. Tempo only — every client keeps
+ * the recording's pitch (and so its key), and no altered copy is made.
+ */
+export type RehearsalPlaybackRate = 0.5 | 0.75 | 0.9 | 1 | 1.1 | 1.25;
+
 // -------------------------------------------------------------- offline --
 
 /** Why a material is not in an offline pack. */

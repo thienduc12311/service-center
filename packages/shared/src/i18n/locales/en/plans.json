@@ -424,7 +424,12 @@
     "openOn": "Open on {{host}} ↗",
     "openOnWeb": "Open on the web ↗",
     "openFromFiles": "Open from the Files tab",
-    "playOnly": "Play only"
+    "playOnly": "Play only",
+    "speed": "Speed",
+    "speedLabel": "Practice speed",
+    "speedOption": "{{rate}}×",
+    "speedTempo": "≈ {{bpm}} bpm at this speed",
+    "speedNote": "Practice speed changes the tempo only: the pitch and key stay as recorded. It applies to every track until you leave the rehearsal."
   },
   "mobilePlan": {
     "opening": "Opening the plan",

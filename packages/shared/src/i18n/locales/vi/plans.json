@@ -418,7 +418,12 @@
     "openOn": "Mở trên {{host}} ↗",
     "openOnWeb": "Mở trên web ↗",
     "openFromFiles": "Mở từ thẻ Tệp",
-    "playOnly": "Chỉ phát"
+    "playOnly": "Chỉ phát",
+    "speed": "Tốc độ",
+    "speedLabel": "Tốc độ luyện tập",
+    "speedOption": "{{rate}}×",
+    "speedTempo": "≈ {{bpm}} bpm ở tốc độ này",
+    "speedNote": "Tốc độ luyện tập chỉ thay đổi nhịp độ: cao độ và tông giữ nguyên như bản thu. Tốc độ áp dụng cho mọi bài cho đến khi bạn rời phần luyện tập."
   },
   "mobilePlan": {
     "opening": "Đang mở chương trình",

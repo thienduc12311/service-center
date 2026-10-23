@@ -2,14 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer, type AudioStatus } from 'expo-audio';
 import {
+  DEFAULT_REHEARSAL_PLAYBACK_RATE,
   nextRehearsalIndex,
   rehearsalPlaylist,
   type RehearsalManifest,
+  type RehearsalPlaybackRate,
   type RehearsalRepeatMode,
   type RehearsalTrack,
 } from '@service-center/shared';
 import { api } from './api';
 import {
+  PRACTICE_PITCH_CORRECTION,
   REHEARSAL_SKIP_SECONDS,
   clampSeek,
   followItemIndex,
@@ -50,6 +53,8 @@ export interface NativeRehearsalPlayerState {
   status: NativeRehearsalStatus;
   failure: RehearsalPlayerFailureKey | null;
   repeat: RehearsalRepeatMode;
+  /** MOB-027 practice speed; pitch is kept, so the recording's key does not change. */
+  rate: RehearsalPlaybackRate;
   /** Seconds, from the player's status updates. */
   position: number;
   duration: number;
@@ -64,6 +69,7 @@ export interface NativeRehearsalPlayerControls {
   skip: (direction: 1 | -1) => void;
   seek: (seconds: number) => void;
   cycleRepeat: () => void;
+  setRate: (rate: RehearsalPlaybackRate) => void;
   choose: (itemId: string, fileId: string) => void;
   retry: () => void;
 }
@@ -115,6 +121,9 @@ export const useRehearsalPlayer = (
   const [status, setStatus] = useState<NativeRehearsalStatus>('idle');
   const [failure, setFailure] = useState<RehearsalPlayerFailureKey | null>(null);
   const [repeat, setRepeat] = useState<RehearsalRepeatMode>('off');
+  const [rate, setRate] = useState<RehearsalPlaybackRate>(DEFAULT_REHEARSAL_PLAYBACK_RATE);
+  const rateRef = useRef(rate);
+  rateRef.current = rate;
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
 
@@ -143,6 +152,16 @@ export const useRehearsalPlayer = (
       ),
     [manifest],
   );
+
+  /**
+   * MOB-027: the practice speed, with pitch correction, on the loaded item.
+   * Applied after every `replace` (iOS sets the pitch algorithm per item) and
+   * whenever the speed changes; the same speed plays every stop.
+   */
+  const applyRate = useCallback(() => {
+    player.shouldCorrectPitch = true;
+    player.setPlaybackRate(rateRef.current, PRACTICE_PITCH_CORRECTION);
+  }, [player]);
 
   /**
    * Silence the player and forget its link, so the next play asks the API
@@ -198,6 +217,7 @@ export const useRehearsalPlayer = (
         }
         pendingSeek.current = at && at > 0 ? at : null;
         player.replace({ uri });
+        applyRate();
         const metadata = metadataFor(target);
         if (lockScreenActive.current) {
           player.updateLockScreenMetadata(metadata);
@@ -219,7 +239,7 @@ export const useRehearsalPlayer = (
         setFailure(linkFailureKey(cause));
       }
     },
-    [generation, isCurrentGeneration, localSource, metadataFor, player, silence],
+    [applyRate, generation, isCurrentGeneration, localSource, metadataFor, player, silence],
   );
 
   const move = useCallback(
@@ -322,6 +342,11 @@ export const useRehearsalPlayer = (
     // `track` is read only for this key; the key is the dependency.
   }, [key, load, silence]);
 
+  // A new practice speed takes effect at once on the loaded stop.
+  useEffect(() => {
+    if (source.current) applyRate();
+  }, [rate, applyRate]);
+
   // Another account or organization: stop at once (the screen is replaced too).
   const startedGeneration = useRef(generation);
   useEffect(() => {
@@ -399,6 +424,7 @@ export const useRehearsalPlayer = (
     skip: (direction) => seek(player.currentTime + direction * REHEARSAL_SKIP_SECONDS),
     seek,
     cycleRepeat: () => setRepeat(nextRepeatMode),
+    setRate,
     choose: (itemId, fileId) => setChoices((current) => ({ ...current, [itemId]: fileId })),
     retry: () => {
       if (!track) return;
@@ -407,5 +433,5 @@ export const useRehearsalPlayer = (
     },
   };
 
-  return [{ tracks, index, track, mode, status, failure, repeat, position, duration }, controls];
+  return [{ tracks, index, track, mode, status, failure, repeat, rate, position, duration }, controls];
 };
