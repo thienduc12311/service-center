@@ -16,6 +16,7 @@ if (webAppDomain && !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/i.test(webAppDomain)) {
 const config = {
   name: 'Service Center',
   slug: 'service-center',
+  owner: 'thienduc12311',
   version: '0.1.0',
   orientation: 'portrait',
   scheme: 'servicecenter',
@@ -24,6 +25,9 @@ const config = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.servicecenter.app',
+    // HTTPS only — exempt from export-compliance documentation, so TestFlight
+    // doesn't ask on every build.
+    config: { usesNonExemptEncryption: false },
     infoPlist: {
       NSCameraUsageDescription: 'Take a photo of a chord sheet to import it.',
       NSPhotoLibraryUsageDescription: 'Choose a photo of a chord sheet to import it.',
@@ -94,6 +98,7 @@ const config = {
     supabaseAnonKey: '',
     apiUrl: 'http://localhost:4000',
     webAppDomain,
+    eas: { projectId: '31103a65-05de-4a27-bc00-3cb9a1c830a0' },
   },
 };
 
