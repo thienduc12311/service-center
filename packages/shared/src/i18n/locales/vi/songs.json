@@ -637,5 +637,27 @@
     "noArrangementFiles": "Bản phối này chưa có tệp. Hãy thêm từ trang bài hát.",
     "duplicateInclude": "Bao gồm",
     "duplicateStale": "Bản phối đã thay đổi kể từ lần xem trước nên chưa tạo gì. Hãy đổi lựa chọn để xem trước lại."
+  },
+  "mobileChartEditor": {
+    "editChart": "Sửa lời và hợp âm",
+    "edit": "Sửa",
+    "preview": "Xem trước",
+    "keyNote": "Giọng mà bản hợp âm này được viết. Mỗi chương trình giữ giọng và trình tự riêng trên các mục của nó.",
+    "layoutNote": "Số cột, phông chữ và màu hợp âm là cách bản hợp âm được in: chúng hiện trong PDF, không hiện trong bản xem trước trên điện thoại.",
+    "previewKey": "Xem trước ở giọng",
+    "previewIn": "Đang hiện ở giọng {{key}}. PDF dùng cùng giọng này.",
+    "previewNote": "Đây là bản hợp âm dùng để tạo PDF. Khi lưu, bản hợp âm được lưu đúng như đã viết, ở giọng gốc của nó.",
+    "emptyChart": "Nhập lời và hợp âm ở thẻ Sửa.",
+    "savedNote": "Đã lưu vào thư viện bài hát. Các chương trình dùng bản phối này giờ đọc bản hợp âm này."
+  },
+  "mobileChartPdf": {
+    "title": "PDF",
+    "share": "Chia sẻ PDF",
+    "print": "In hoặc xem trước",
+    "shareTitle": "Chia sẻ bản hợp âm",
+    "preparing": "Đang tạo PDF…",
+    "failed": "Không tạo được PDF. Chưa có gì được chia sẻ. Hãy thử lại.",
+    "done_other": "Đã tạo PDF ({{count}} trang) và xoá khỏi điện thoại khi bảng chia sẻ đóng. Không có gì được tải lên.",
+    "unsavedNote": "PDF hiển thị bản nháp chưa lưu này."
   }
 }

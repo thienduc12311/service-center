@@ -33,6 +33,8 @@ export const useInvalidateFiles = (): (() => Promise<void>) => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.filesAll(queryScope) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.rehearsalAll(queryScope) }),
+      // MOB-030: a media bundle's detail lists its files.
+      queryClient.invalidateQueries({ queryKey: queryKeys.mediaAll(queryScope) }),
     ]);
   }, [queryClient, queryScope]);
 };

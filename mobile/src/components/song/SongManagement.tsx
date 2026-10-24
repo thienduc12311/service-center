@@ -167,6 +167,12 @@ export const SongManage = ({ song, arrangement }: SongManageProps) => {
             <Text style={styles.muted}>{arrangement.name}</Text>
             <View style={styles.actions}>
               <Button
+                title={arrangement.chord_chart ? t('mobileChartEditor.editChart') : t('arrangementPanel.addChart')}
+                variant="secondary"
+                icon="music"
+                onPress={() => router.push({ pathname: '/song/chart', params: { songId: song.id, arrangementId: arrangement.id } })}
+              />
+              <Button
                 title={t('mobileAuthoring.editArrangement')}
                 variant="secondary"
                 onPress={() => router.push({ pathname: '/song/arrangement', params: { songId: song.id, arrangementId: arrangement.id } })}

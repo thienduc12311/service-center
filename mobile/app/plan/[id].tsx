@@ -538,6 +538,8 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
               onEdit={(item) => router.push({ pathname: '/plan/edit-item/[id]', params: { id: detail.id, itemId: item.id } })}
               onMove={moveItem}
               onRemove={confirmRemove}
+              onMedia={(item) => router.push({ pathname: '/plan/media/[id]', params: { id: detail.id, itemId: item.id } })}
+              onOpenMedia={(mediaId) => router.push({ pathname: '/media/[id]', params: { id: mediaId } })}
               onOpenSong={(item) =>
                 item.song &&
                 router.push({ pathname: '/song/[id]', params: { id: item.song.id, planId: detail.id, itemId: item.id } })}

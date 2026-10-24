@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   canTransposeChartContext,
+  chartDocumentFromContext,
   parseChordPro,
   renderChartContext,
   resolveChartContext,
@@ -37,6 +38,8 @@ import {
 } from '../../src/components/ui';
 import { ArrangementPicker } from '../../src/components/ArrangementPicker';
 import { ChordChart } from '../../src/components/ChordChart';
+import { ChartPdfActions } from '../../src/components/ChartPdfActions';
+import { useLanguage } from '../../src/i18n';
 import { SongFiles } from '../../src/components/files/SongFiles';
 import { SongDetails, SongManage, SongStatusNotices } from '../../src/components/song/SongManagement';
 import { Reveal } from '../../src/components/motion';
@@ -252,6 +255,13 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
     () => (rendered?.status === 'ready' ? parseChordPro(rendered.chordpro) : null),
     [rendered],
   );
+  // MOB-029: the PDF is the chart on screen — this arrangement, the plan's key
+  // and sequence when opened from a plan, plus the reader's shift and notation.
+  const { locale } = useLanguage();
+  const pdfDocument = useMemo(
+    () => (context.status === 'ready' && rendered ? chartDocumentFromContext({ song, context, rendered, locale }) : null),
+    [context, rendered, song, locale],
+  );
 
   if (context.status === 'unavailable') {
     return <Unavailable reason={context.reason} title={song.title} />;
@@ -405,7 +415,10 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
 
         <Reveal index={3}>
           {chart ? (
-            <ChordChart chart={chart} />
+            <View style={styles.chartBlock}>
+              <ChordChart chart={chart} />
+              <ChartPdfActions doc={pdfDocument} />
+            </View>
           ) : (
             <Card>
               <EmptyState title={t(emptyCopy.title)} description={t(emptyCopy.description)} />
@@ -451,4 +464,5 @@ const makeStyles = (theme: Theme) =>
     keyShift: { ...theme.type.bodySmall, color: theme.color.inkMuted },
 
     sequence: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    chartBlock: { gap: theme.space.md },
   });

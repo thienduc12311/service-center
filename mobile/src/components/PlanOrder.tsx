@@ -43,6 +43,10 @@ export interface PlanOrderProps {
   onMove: (index: number, direction: -1 | 1) => void;
   onRemove: (item: PlanItemDetail) => void;
   onOpenSong: (item: PlanItemDetail) => void;
+  /** MOB-030: link or clear an F14 media bundle on a regular item (editors). */
+  onMedia: (item: PlanItemDetail) => void;
+  /** MOB-030: open the media bundle an item links to. */
+  onOpenMedia: (mediaId: string) => void;
   /** MOB-016: how many notes on each item this person can read (F09, server-filtered). */
   noteCounts: ReadonlyMap<string, number>;
   /** MOB-016: open an item's notes and discussion (every reader, as on the website). */
@@ -69,6 +73,8 @@ export const PlanOrder = ({
   onMove,
   onRemove,
   onOpenSong,
+  onMedia,
+  onOpenMedia,
   noteCounts,
   onDiscuss,
 }: PlanOrderProps) => {
@@ -163,6 +169,8 @@ export const PlanOrder = ({
                 onMoveDown={() => onMove(index, 1)}
                 onRemove={() => onRemove(item)}
                 onOpenSong={() => onOpenSong(item)}
+                onMedia={() => onMedia(item)}
+                onOpenMedia={onOpenMedia}
                 noteCount={noteCounts.get(item.id) ?? 0}
                 onDiscuss={() => onDiscuss(item)}
                 theme={theme}
@@ -191,6 +199,8 @@ interface OrderRowProps {
   onMoveDown: () => void;
   onRemove: () => void;
   onOpenSong: () => void;
+  onMedia: () => void;
+  onOpenMedia: (mediaId: string) => void;
   noteCount: number;
   onDiscuss: () => void;
   theme: Theme;
@@ -212,6 +222,8 @@ const OrderRow = ({
   onMoveDown,
   onRemove,
   onOpenSong,
+  onMedia,
+  onOpenMedia,
   noteCount,
   onDiscuss,
   theme,
@@ -235,12 +247,12 @@ const OrderRow = ({
       {discuss}
       {canEdit ? (
         <View style={styles.editControls}>
-          <EditControls item={item} busy={busy} isFirst={isFirst} isLast={isLast} onEdit={onEdit} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onRemove={onRemove} />
+          <EditControls item={item} busy={busy} isFirst={isFirst} isLast={isLast} onEdit={onEdit} onMedia={onMedia} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onRemove={onRemove} />
         </View>
       ) : null}
     </View>
   ) : null;
-  return <OrderRowBody item={item} ordinal={ordinal} slot={slot} clock={clock} leader={leader} misplaced={misplaced} controls={controls} onOpenSong={onOpenSong} theme={theme} />;
+  return <OrderRowBody item={item} ordinal={ordinal} slot={slot} clock={clock} leader={leader} misplaced={misplaced} controls={controls} onOpenSong={onOpenSong} onOpenMedia={onOpenMedia} theme={theme} />;
 };
 
 interface EditControlsProps {
@@ -249,17 +261,22 @@ interface EditControlsProps {
   isFirst: boolean;
   isLast: boolean;
   onEdit: () => void;
+  /** Regular items only: the website's per-item *Media* action. */
+  onMedia: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
 }
 
-/** Edit / Move up / Move down / Remove, for plan editors. */
-const EditControls = ({ item, busy, isFirst, isLast, onEdit, onMoveUp, onMoveDown, onRemove }: EditControlsProps) => {
+/** Edit / Media / Move up / Move down / Remove, for plan editors. */
+const EditControls = ({ item, busy, isFirst, isLast, onEdit, onMedia, onMoveUp, onMoveDown, onRemove }: EditControlsProps) => {
   const { t } = useTranslation(['plans', 'common']);
   return (
     <>
       <IconButton name="pencil" accessibilityLabel={t('orderTab.editItem', { title: item.title })} onPress={onEdit} />
+      {item.item_type === 'item' ? (
+        <IconButton name="image" accessibilityLabel={t('orderTab.mediaFor', { title: item.title })} disabled={busy} onPress={onMedia} />
+      ) : null}
       <IconButton name="chevronUp" accessibilityLabel={t('orderTab.moveUp', { title: item.title })} disabled={isFirst || busy} onPress={onMoveUp} />
       <IconButton name="chevronDown" accessibilityLabel={t('orderTab.moveDown', { title: item.title })} disabled={isLast || busy} onPress={onMoveDown} />
       <IconButton name="trash" accessibilityLabel={t('orderTab.removeItem', { title: item.title })} disabled={busy} onPress={onRemove} />
@@ -276,10 +293,11 @@ interface OrderRowBodyProps {
   misplaced: boolean;
   controls: ReactNode;
   onOpenSong: () => void;
+  onOpenMedia: (mediaId: string) => void;
   theme: Theme;
 }
 
-const OrderRowBody = ({ item, ordinal, slot, clock, leader, misplaced, controls, onOpenSong, theme }: OrderRowBodyProps) => {
+const OrderRowBody = ({ item, ordinal, slot, clock, leader, misplaced, controls, onOpenSong, onOpenMedia, theme }: OrderRowBodyProps) => {
   const { t } = useTranslation(['plans', 'common']);
   const styles = useThemedStyles(makeStyles);
 
@@ -319,7 +337,11 @@ const OrderRowBody = ({ item, ordinal, slot, clock, leader, misplaced, controls,
             <Text style={[styles.meta, leader.unfilled && styles.unfilled]}>{t('orderTab.ledBy', { leader: leader.text })}</Text>
           ) : null}
           {item.media ? (
-            <Text style={styles.meta}>
+            <Text
+              accessibilityRole="link"
+              onPress={() => item.media && onOpenMedia(item.media.id)}
+              style={[styles.meta, styles.mediaLink]}
+            >
               {t(item.media.archived ? 'orderTab.mediaLinkArchived' : 'orderTab.mediaLink', { title: item.media.title }).replace(/<\/?\d>/g, '')}
             </Text>
           ) : null}
@@ -375,6 +397,7 @@ const makeStyles = (theme: Theme) =>
     start: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     title: { ...theme.type.body, color: theme.color.ink },
     titleLink: { fontWeight: '600' },
+    mediaLink: { color: theme.color.brandText },
     meta: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: 2 },
     unfilled: { color: theme.accent.yellow.fg },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.xs, marginTop: theme.space.xs },

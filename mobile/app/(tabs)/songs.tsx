@@ -87,7 +87,7 @@ const useSettledText = (value: string): string => {
  * F15 metadata filters, 50 rows a page). Library managers can add a song.
  */
 export default function SongsScreen() {
-  const { t } = useTranslation(['songs', 'common']);
+  const { t } = useTranslation(['songs', 'common', 'media']);
   const { queryScope, generation, isCurrentGeneration, canAnywhere } = useAuth();
   // The song library is organization-wide; leading a team never implies it.
   const canManage = canAnywhere('songs.manage');
@@ -201,11 +201,11 @@ export default function SongsScreen() {
               title={t('common:nav.songs')}
               description={t('mobileLibrary.description')}
             />
-            {canManage ? (
-              <View style={styles.actions}>
-                <Button title={t('songsPage.addSong')} icon="plus" onPress={() => router.push('/song/new')} />
-              </View>
-            ) : null}
+            <View style={styles.actions}>
+              {canManage ? <Button title={t('songsPage.addSong')} icon="plus" onPress={() => router.push('/song/new')} /> : null}
+              {/* MOB-030: the F14 media library sits beside the song library, as on the website. */}
+              <Button title={t('media:library.title')} icon="image" variant="secondary" onPress={() => router.push('/media')} />
+            </View>
 
             <View style={styles.search}>
               <Icon name="search" size={18} color={theme.color.inkFaint} />

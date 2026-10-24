@@ -576,5 +576,38 @@
     "songFiles": "Song files",
     "arrangementFiles": "{{name}} files",
     "replaceHint": "Upload a new version. The current one stays until it finishes; plans pinned to an earlier version keep it."
+  },
+  "mobileMedia": {
+    "authoringOnWeb": "Media is added, edited and archived on the website. Here you can open it, add files to it and link it to plan items.",
+    "noMatch": "No media matches that search.",
+    "emptyDescription": "Media bundles are added on the website, then their files can be opened and added here.",
+    "goneDescription": "It may have been deleted, or you can no longer open it.",
+    "notUsed": "Not linked to any plan yet. Link it from an item's Media button in a plan's order.",
+    "editOnWeb": "Title, details, thumbnail and archiving are changed on the website.",
+    "itemGone": "This item is no longer in the plan.",
+    "noAccess": "You can't change this plan's order.",
+    "regularItemsOnly": "Only a regular item (not a song or header) can link media.",
+    "stale": "Someone else changed this plan, so nothing was saved. The latest order is loaded — choose again.",
+    "uncertain": "No answer from the server: the link may or may not have been saved. Check the plan before trying again.",
+    "linkGone": "This item or media is no longer available, so nothing was saved.",
+    "noneFound": "No media found. Media is added on the website."
+  },
+  "mobileScan": {
+    "scanPages": "Scan pages",
+    "intro": "Take a photo of each page, check them, then make one PDF to upload. Pages are kept as photographed (no cropping or text recognition).",
+    "takePhoto": "Take a photo",
+    "addPage": "Add a page",
+    "fromPhotos": "From Photos",
+    "full": "A scan holds up to {{count}} pages.",
+    "noCamera": "This device has no camera. Add pages from Photos instead.",
+    "cameraDenied": "Service Center can't use the camera. Allow it in Settings, or add pages from Photos instead.",
+    "pageLabel": "Page {{number}}",
+    "moveUp": "Move page {{number}} up",
+    "moveDown": "Move page {{number}} down",
+    "remove": "Remove page {{number}}",
+    "pdfFailed": "The PDF could not be made. Your pages are still here — try again.",
+    "makePdf_one": "Make PDF ({{count}} page)",
+    "makePdf_other": "Make PDF ({{count}} pages)",
+    "cancel": "Cancel scan"
   }
 }

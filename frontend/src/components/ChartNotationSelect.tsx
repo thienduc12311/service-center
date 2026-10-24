@@ -1,22 +1,18 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import type { ChartNotation, KeyQuality, TranslationKey } from '@service-center/shared';
+import { ORIGINAL_CHART_VIEW, type ChartNotation, type ChartViewSelection, type KeyQuality, type TranslationKey } from '@service-center/shared';
 import { KeyGrid, KeyQualityTabs } from './KeySelect';
 
 /** How the chart is currently being shown: a key, or a key-independent system. */
-export interface ChartView {
-  /** Null means the arrangement's own key. */
-  targetKey: string | null;
-  notation: ChartNotation;
-}
+export type ChartView = ChartViewSelection;
 
 export interface ChartNotationSelectProps {
   value: ChartView;
   onChange: (view: ChartView) => void;
 }
 
-export const ORIGINAL_KEY_VIEW: ChartView = { targetKey: null, notation: 'chords' };
+export const ORIGINAL_KEY_VIEW: ChartView = ORIGINAL_CHART_VIEW;
 
 /**
  * Catalog keys for the notation names, by value. Replaces the English
