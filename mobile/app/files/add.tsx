@@ -24,14 +24,22 @@ import { useAuth } from '../../src/providers/AuthProvider';
 import { Button, Card, Chip, EmptyState, ErrorNotice, Field, Label, Screen, SegmentedControl, screenPadding } from '../../src/components/ui';
 import { AudiencePicker } from '../../src/components/files/AudiencePicker';
 import { PickFileButtons, UploadStatus } from '../../src/components/files/UploadParts';
+import { ScanPages } from '../../src/components/files/ScanPages';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
 /** Upload a file from the device, add a web link or write a text document (website `AddFileModal`). */
 type AddFileMode = 'upload' | 'link' | 'document';
 
-/** Parents a phone may add files to; service-type defaults and media bundles stay on the website. */
-const NATIVE_OWNER_KINDS: readonly FileOwnerKind[] = ['plan', 'plan_item', 'song', 'arrangement'];
+/**
+ * Parents a phone may add files to; service-type defaults stay on the
+ * website. MOB-030 adds existing media bundles (files only — the bundle itself
+ * is created and edited on the website).
+ */
+const NATIVE_OWNER_KINDS: readonly FileOwnerKind[] = ['plan', 'plan_item', 'song', 'arrangement', 'media'];
+
+/** MOB-030's optional scan stage is selected for iOS only (camera + OS print to PDF). */
+const SCAN_SUPPORTED = Platform.OS === 'ios';
 
 const FILE_CATEGORIES: readonly FileCategory[] = ['chart', 'lyrics', 'audio', 'video', 'image', 'document', 'other'];
 
@@ -88,6 +96,7 @@ function AddFileForm({ owner, planId, context }: AddFileFormProps) {
   const [url, setUrl] = useState('');
   const [body, setBody] = useState('');
   const [picked, setPicked] = useState<PickedDeviceFile | null>(null);
+  const [scanning, setScanning] = useState(false);
   // One key per form: a double tap or a retry of Save is one link/document.
   const keyRef = useRef(newIdempotencyKey());
   const [saved, setSaved] = useState(false);
@@ -98,7 +107,7 @@ function AddFileForm({ owner, planId, context }: AddFileFormProps) {
   const pickedRefusal = pickedCheck && !pickedCheck.ok ? fileUploadFailureMessage(pickedCheck.failure) : null;
 
   const dirty =
-    !saved && (busy || Boolean(picked) || title.trim() !== '' || url.trim() !== '' || body.trim() !== '');
+    !saved && (busy || scanning || Boolean(picked) || title.trim() !== '' || url.trim() !== '' || body.trim() !== '');
   const guard = useDiscardGuard({
     dirty,
     message: busy ? t('mobileFiles.leaveUploading') : t('mobileFiles.discardDraft'),
@@ -185,13 +194,30 @@ function AddFileForm({ owner, planId, context }: AddFileFormProps) {
           {mode === 'upload' ? (
             <View style={styles.section}>
               <Label>{t('addFile.file')}</Label>
-              <PickFileButtons
-                disabled={busy}
-                onPicked={(file) => {
-                  upload.reset();
-                  setPicked(file);
-                }}
-              />
+              {scanning ? (
+                <ScanPages
+                  onDone={(file) => {
+                    upload.reset();
+                    setPicked(file);
+                    setCategory((current) => current ?? 'document');
+                    setScanning(false);
+                  }}
+                  onCancel={() => setScanning(false)}
+                />
+              ) : (
+                <>
+                  <PickFileButtons
+                    disabled={busy}
+                    onPicked={(file) => {
+                      upload.reset();
+                      setPicked(file);
+                    }}
+                  />
+                  {SCAN_SUPPORTED ? (
+                    <Button title={t('mobileScan.scanPages')} icon="camera" variant="secondary" disabled={busy} onPress={() => setScanning(true)} />
+                  ) : null}
+                </>
+              )}
               {picked ? (
                 <Text style={styles.picked}>
                   {picked.size !== null ? `${picked.name} · ${formatFileSize(picked.size)}` : picked.name}
@@ -268,7 +294,7 @@ function AddFileForm({ owner, planId, context }: AddFileFormProps) {
           title={mode === 'upload' ? t('common:actions.upload') : t('common:actions.save')}
           icon={mode === 'upload' ? 'upload' : 'check'}
           loading={busy || save.isPending}
-          disabled={!canSubmit}
+          disabled={!canSubmit || scanning}
           onPress={() => void submit()}
         />
       </ScrollView>

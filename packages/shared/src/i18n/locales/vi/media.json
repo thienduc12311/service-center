@@ -563,5 +563,37 @@
     "songFiles": "Tệp của bài hát",
     "arrangementFiles": "Tệp của {{name}}",
     "replaceHint": "Tải lên phiên bản mới. Phiên bản hiện tại vẫn giữ cho đến khi hoàn tất; chương trình đã ghim phiên bản cũ vẫn giữ phiên bản đó."
+  },
+  "mobileMedia": {
+    "authoringOnWeb": "Nội dung đa phương tiện được thêm, sửa và lưu trữ trên trang web. Tại đây bạn có thể mở, thêm tệp và liên kết nó với các mục của chương trình.",
+    "noMatch": "Không có nội dung nào khớp với tìm kiếm.",
+    "emptyDescription": "Bộ nội dung được thêm trên trang web, sau đó có thể mở và thêm tệp tại đây.",
+    "goneDescription": "Có thể nó đã bị xoá, hoặc bạn không còn quyền mở nó.",
+    "notUsed": "Chưa được liên kết với chương trình nào. Hãy liên kết từ nút Nội dung của một mục trong thứ tự chương trình.",
+    "editOnWeb": "Tiêu đề, thông tin, ảnh đại diện và lưu trữ được thay đổi trên trang web.",
+    "itemGone": "Mục này không còn trong chương trình.",
+    "noAccess": "Bạn không thể thay đổi thứ tự của chương trình này.",
+    "regularItemsOnly": "Chỉ mục thường (không phải bài hát hay tiêu đề) mới liên kết được nội dung.",
+    "stale": "Người khác đã thay đổi chương trình này nên chưa có gì được lưu. Thứ tự mới nhất đã được tải — hãy chọn lại.",
+    "uncertain": "Máy chủ không phản hồi: liên kết có thể đã hoặc chưa được lưu. Hãy kiểm tra chương trình trước khi thử lại.",
+    "linkGone": "Mục hoặc nội dung này không còn khả dụng nên chưa có gì được lưu.",
+    "noneFound": "Không tìm thấy nội dung. Nội dung được thêm trên trang web."
+  },
+  "mobileScan": {
+    "scanPages": "Quét trang",
+    "intro": "Chụp ảnh từng trang, kiểm tra lại, rồi tạo một tệp PDF để tải lên. Các trang được giữ nguyên như ảnh chụp (không cắt hay nhận dạng chữ).",
+    "takePhoto": "Chụp ảnh",
+    "addPage": "Thêm trang",
+    "fromPhotos": "Từ Ảnh",
+    "full": "Một lần quét chứa tối đa {{count}} trang.",
+    "noCamera": "Thiết bị này không có máy ảnh. Hãy thêm trang từ Ảnh.",
+    "cameraDenied": "Service Center không thể dùng máy ảnh. Hãy cho phép trong Cài đặt, hoặc thêm trang từ Ảnh.",
+    "pageLabel": "Trang {{number}}",
+    "moveUp": "Chuyển trang {{number}} lên",
+    "moveDown": "Chuyển trang {{number}} xuống",
+    "remove": "Xoá trang {{number}}",
+    "pdfFailed": "Không tạo được PDF. Các trang vẫn còn đây — hãy thử lại.",
+    "makePdf_other": "Tạo PDF ({{count}} trang)",
+    "cancel": "Huỷ quét"
   }
 }
