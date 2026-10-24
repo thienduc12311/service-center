@@ -105,6 +105,8 @@ export const draftTargets = {
   newArrangement: (songId: string) => `song:${songId}:arrangement:new`,
   arrangement: (arrangementId: string) => `arrangement:${arrangementId}`,
   labeledKey: (arrangementId: string, keyId: string) => `arrangement:${arrangementId}:key:${keyId}`,
+  /** MOB-029: the Lyrics & Chords editor's draft of one arrangement's chart. */
+  chart: (arrangementId: string) => `arrangement:${arrangementId}:chart`,
 };
 
 /**

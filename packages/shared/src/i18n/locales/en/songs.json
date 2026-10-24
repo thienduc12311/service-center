@@ -653,5 +653,28 @@
     "noArrangementFiles": "This arrangement has no files yet. Add them from the song page.",
     "duplicateInclude": "Include",
     "duplicateStale": "The arrangement changed since this review, so nothing was created. Change the selection to review it again."
+  },
+  "mobileChartEditor": {
+    "editChart": "Edit lyrics & chords",
+    "edit": "Edit",
+    "preview": "Preview",
+    "keyNote": "The key this chart is written in. A plan keeps its own service key and sequence on its items.",
+    "layoutNote": "Columns, font and chord colour are how the chart prints: they show in the PDF, not in the phone preview.",
+    "previewKey": "Preview in key",
+    "previewIn": "Shown in {{key}}. The PDF uses the same key.",
+    "previewNote": "This is the chart the PDF is made from. Saving stores the chart as written, in its own key.",
+    "emptyChart": "Type the lyrics and chords on the Edit tab.",
+    "savedNote": "Saved to the song library. Plans using this arrangement now read this chart."
+  },
+  "mobileChartPdf": {
+    "title": "PDF",
+    "share": "Share PDF",
+    "print": "Print or preview",
+    "shareTitle": "Share the chart",
+    "preparing": "Making the PDF…",
+    "failed": "The PDF could not be made. Nothing was shared. Try again.",
+    "done_one": "PDF made ({{count}} page) and deleted from this phone once the sheet closed. Nothing was uploaded.",
+    "done_other": "PDF made ({{count}} pages) and deleted from this phone once the sheet closed. Nothing was uploaded.",
+    "unsavedNote": "The PDF shows this unsaved draft."
   }
 }

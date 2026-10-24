@@ -19,6 +19,7 @@ import {
   chartDocumentFrom,
   chartEditorFormFrom,
   chartEditorIsDirty,
+  chartEditorTitleChanged,
   toChartArrangementInput,
   toChartSongInput,
   type ChartEditorFormValues,
@@ -77,11 +78,16 @@ export const ChartEditorPage = () => {
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!form || !song.data || !arrangement) return;
-      if (form.title.trim() && form.title.trim() !== song.data.title) {
-        await api.updateSong(song.data.id, toChartSongInput(form));
+      if (!form || !saved || !song.data || !arrangement) return;
+      // Each half is checked against the revision this page is showing, so a
+      // save over someone else's newer edit is refused, not silently undone.
+      if (chartEditorTitleChanged(form, saved)) {
+        await api.updateSong(song.data.id, toChartSongInput(form, song.data.revision));
       }
-      await api.updateArrangement(arrangement.id, toChartArrangementInput(form, t('arrangement.defaultName')));
+      await api.updateArrangement(
+        arrangement.id,
+        toChartArrangementInput(form, t('arrangement.defaultName'), arrangement.revision),
+      );
     },
     onSuccess: async () => {
       setSaved(form);

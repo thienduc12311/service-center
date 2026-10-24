@@ -108,20 +108,5 @@ export const writeChartPdf = (
   return doc;
 };
 
-/** Characters no filesystem wants in a name, control characters included. */
-const UNSAFE_FILENAME_CHARS = /[\\/:*?"<>|]|[\p{Cc}]/gu;
-const MAX_FILENAME_LENGTH = 120;
-
-/** Turns a chart's heading into something every filesystem will accept. */
-export const chartPdfFilename = (title: string): string => {
-  const safe = title
-    .replace(UNSAFE_FILENAME_CHARS, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, MAX_FILENAME_LENGTH)
-    // A leading dot hides the file; a trailing one confuses Windows.
-    .replace(/^\.+|\.+$/g, '')
-    .trim();
-
-  return `${safe || 'chord-chart'}.pdf`;
-};
+/** Shared with the app, so a chart is named the same wherever it is exported. */
+export { chartPdfFilename } from '@service-center/shared';
