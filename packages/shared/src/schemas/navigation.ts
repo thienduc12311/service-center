@@ -31,6 +31,8 @@ export type PrivateNavigationIntent =
       planId: string;
       notificationId: string | null;
       notificationType: PushNavigationPayload['type'] | null;
+      /** MOB-033: open the plan's rehearsal screen instead of the plan (omitted = the plan). */
+      view?: 'rehearse';
     }
   | {
       kind: 'notifications';
@@ -111,20 +113,23 @@ export const parseExternalNavigationUrl = (
 
   // Private URLs land on an inert ingress route first; only the validated
   // intent handler may translate them to the real authenticated screen.
-  const planMatch = path.match(/^\/open\/plan\/([^/]+)$/);
+  // `/open/plan/<id>/rehearse` (MOB-033 widgets) is the same plan check, landing on rehearsal.
+  const planMatch = path.match(/^\/open\/plan\/([^/]+)(\/rehearse)?$/);
   if (planMatch) {
     const planId = uuid.safeParse(planMatch[1]);
     const organizationId = uuid.safeParse(url.searchParams.get('organization_id'));
     if (!planId.success || !organizationId.success) return { status: 'rejected' };
+    const rehearse = Boolean(planMatch[2]);
     return {
       status: 'accepted',
       intent: {
         kind: 'plan',
-        intentId: `link:plan:${organizationId.data}:${planId.data}`,
+        intentId: `link:${rehearse ? 'rehearse' : 'plan'}:${organizationId.data}:${planId.data}`,
         organizationId: organizationId.data,
         planId: planId.data,
         notificationId: null,
         notificationType: null,
+        ...(rehearse ? { view: 'rehearse' as const } : {}),
       },
     };
   }

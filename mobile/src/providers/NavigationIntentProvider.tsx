@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
@@ -19,6 +19,23 @@ import { useAuth } from './AuthProvider';
 const navigationPolicy = {
   schemes: ['servicecenter'],
   hosts: env.webAppDomain ? [env.webAppDomain] : [],
+};
+
+export interface NavigationIntentContextValue {
+  /**
+   * MOB-032: open a plan in one of my organizations through the same checks as
+   * a link — membership, organization switch, then the plan re-read under that
+   * organization. A refusal lands on the link-result screen.
+   */
+  openPlanInOrganization: (organizationId: string, planId: string) => void;
+}
+
+const NavigationIntentContext = createContext<NavigationIntentContextValue | null>(null);
+
+export const useNavigationIntents = (): NavigationIntentContextValue => {
+  const context = useContext(NavigationIntentContext);
+  if (!context) throw new Error('useNavigationIntents must be used inside <NavigationIntentProvider>');
+  return context;
 };
 
 /** Owns the one allowlisted entry point for external URLs and push taps. */
@@ -129,7 +146,9 @@ export const NavigationIntentProvider = ({ children }: { children: ReactNode }) 
           showFailure(resolution.reason);
           return;
         }
-        if (resolution.destination.kind === 'plan') {
+        if (resolution.destination.kind === 'plan' && resolution.destination.view === 'rehearse') {
+          router.replace({ pathname: '/plan/rehearse/[id]', params: { id: resolution.destination.planId } });
+        } else if (resolution.destination.kind === 'plan') {
           router.replace(`/plan/${resolution.destination.planId}`);
         } else if (resolution.destination.kind === 'conversation') {
           router.replace({ pathname: '/chat/[id]', params: { id: resolution.destination.conversationId } });
@@ -148,5 +167,21 @@ export const NavigationIntentProvider = ({ children }: { children: ReactNode }) 
       });
   }, [auth, coordinator, revision, router, showFailure]);
 
-  return children;
+  const value = useMemo<NavigationIntentContextValue>(
+    () => ({
+      openPlanInOrganization: (organizationId, planId) =>
+        routeIntent({
+          kind: 'plan',
+          // Every in-app tap is new; only link and push sources are deduplicated.
+          intentId: `app:plan:${organizationId}:${planId}:${Date.now()}`,
+          organizationId,
+          planId,
+          notificationId: null,
+          notificationType: null,
+        }),
+    }),
+    [routeIntent],
+  );
+
+  return <NavigationIntentContext.Provider value={value}>{children}</NavigationIntentContext.Provider>;
 };

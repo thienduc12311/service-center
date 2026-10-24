@@ -1,7 +1,6 @@
 import type { Request } from 'express';
 import { Router } from 'express';
 import {
-  canAccessAnywhere,
   createPersonSchema,
   eligibilityRecordSchema,
   invitePersonSchema,
@@ -44,9 +43,9 @@ import { NO_CONTACT, contactsFor } from '../services/contacts.js';
 
 export const peopleRouter: Router = Router();
 
-/** Full private records: people.view_private or people.manage (RLS enforces it too). */
+/** Only the owner may see other people’s private records. */
 const canReadPrivate = (req: Request): boolean =>
-  canAccessAnywhere(req.access, 'people.view_private') || canAccessAnywhere(req.access, 'people.manage');
+  req.orgRole === 'owner';
 
 /** A profile with whatever contact details the caller may see. */
 const profileWithContact = async (req: Request, profileId: string): Promise<ProfileRow | null> => {
@@ -115,7 +114,12 @@ peopleRouter.get('/', validateQuery(listPeopleQuerySchema), async (req, res) => 
     .filter((member) => member.profile)
     .map((member) => ({
       ...member,
-      profile: { ...member.profile, ...(contacts.get(member.profile.id) ?? NO_CONTACT) },
+      profile: {
+        ...member.profile,
+        ...(canReadPrivate(req) || member.profile.id === req.auth.userId
+          ? contacts.get(member.profile.id) ?? NO_CONTACT
+          : NO_CONTACT),
+      },
     }));
 
   const people: RosterPersonRecord[] = canReadPrivate(req)
@@ -137,6 +141,16 @@ peopleRouter.get('/', validateQuery(listPeopleQuerySchema), async (req, res) => 
   );
 
   res.json(mergeRoster(members, people ?? [], pendingInvitations ?? [], include_archived));
+});
+
+// The public directory above is available to members; every personal-detail
+// endpoint and People mutation below belongs exclusively to the owner.
+peopleRouter.use((req, _res, next) => {
+  if (req.orgRole !== 'owner') {
+    next(HttpError.forbidden('Only the organization owner can access personal details or manage people'));
+    return;
+  }
+  next();
 });
 
 /** Adds a full roster entry that doesn't require a login yet. */
@@ -197,7 +211,7 @@ peopleRouter.post('/from-member/:userId', requireCapability('people.manage'), as
   res.status(201).json(await loadPersonDetail(req, created));
 });
 
-/** A private record: people.view_private / people.manage, or the person themself (RLS). */
+/** Owner-only personal detail (self-service lives under /me). */
 peopleRouter.get('/:personId', async (req, res) => {
   const person = (await unwrap(
     raw(req.db)

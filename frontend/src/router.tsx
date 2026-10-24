@@ -54,6 +54,11 @@ const RequireAuth = () => {
   return <Outlet />;
 };
 
+const RequirePeopleOwner = () => {
+  const { role } = useAuth();
+  return role === 'owner' ? <PersonPage /> : <Navigate to="/people" replace />;
+};
+
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/accept-invite', element: <AcceptInvitePage /> },
@@ -96,8 +101,8 @@ export const router = createBrowserRouter([
           { path: '/media/:mediaId', element: <MediaDetailPage /> },
           { path: '/teams', element: <TeamsPage /> },
           { path: '/people', element: <PeoplePage /> },
-          { path: '/people/new', element: <PersonPage /> },
-          { path: '/people/:personId', element: <PersonPage /> },
+          { path: '/people/new', element: <RequirePeopleOwner /> },
+          { path: '/people/:personId', element: <RequirePeopleOwner /> },
           { path: '/my-schedule', element: <MySchedulePage /> },
           { path: '/messages', element: <MessagesPage /> },
           { path: '/messages/:messageId', element: <MessageDetailPage /> },

@@ -162,5 +162,20 @@
       "other": "Khác"
     },
     "joinTeams": "Thêm tôi vào các ban đã chọn."
+  },
+  "mobileTeams": {
+    "entry": "Các ban",
+    "entryDescription": "Ai phục vụ ở đâu, và ở vị trí nào.",
+    "youManage": "Bạn có thể thay đổi danh sách này",
+    "setupOnWebsite": "Việc tạo ban, vị trí và cài đặt ban vẫn thực hiện trên trang web.",
+    "notFound": "Không tìm thấy ban",
+    "goneDescription": "Có thể ban đã bị xóa, hoặc bạn không còn được xem.",
+    "addPerson": "Thêm người",
+    "addLabel": "Thêm {{name}} vào {{team}}",
+    "remove": "Gỡ",
+    "removeLabel": "Gỡ {{name}} khỏi {{team}}",
+    "removeTitle": "Gỡ {{name}} khỏi {{team}}?",
+    "removeMessage": "Các chương trình cũ vẫn giữ lịch sử. Có thể thêm lại họ sau.",
+    "refineSearch": "Đang hiện 50 người đầu tiên. Hãy tìm để thu hẹp danh sách."
   }
 }

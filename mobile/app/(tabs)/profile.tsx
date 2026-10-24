@@ -32,9 +32,10 @@ import { AppearanceSelector } from '../../src/components/AppearanceSelector';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { env } from '../../src/lib/env';
+import { widgetsSupported } from '../../src/lib/widget-bridge';
 
 export default function ProfileScreen() {
-  const { t } = useTranslation(['settings', 'scheduling', 'common']);
+  const { t } = useTranslation(['settings', 'scheduling', 'people', 'teams', 'common']);
   const { calendarDate, date } = useFormatters();
   const {
     user,
@@ -232,6 +233,7 @@ export default function ProfileScreen() {
               keyboardType="phone-pad"
             />
             <Text style={styles.body}>{t('settingsPage.profile.signedInAs', { email: user?.profile.email ?? '' })}</Text>
+            <Text style={styles.body}>{t('people:mobileDirectory.avatarOnWebsite')}</Text>
             <ErrorNotice error={save.error} />
             <Button title={t('settingsPage.profile.save')} onPress={() => save.mutate()} loading={save.isPending} />
           </Card>
@@ -254,7 +256,21 @@ export default function ProfileScreen() {
 
         <Reveal index={3}>
           <Card>
-            <ListRow onPress={() => router.push('/notification-settings')} showChevron>
+            <ListRow onPress={() => router.push('/people')} showChevron>
+              <Label>{t('people:mobileDirectory.entry')}</Label>
+              <Text style={styles.body}>{t('people:mobileDirectory.entryDescription')}</Text>
+            </ListRow>
+            <ListRow divided onPress={() => router.push('/teams')} showChevron>
+              <Label>{t('teams:mobileTeams.entry')}</Label>
+              <Text style={styles.body}>{t('teams:mobileTeams.entryDescription')}</Text>
+            </ListRow>
+            {memberships.length > 1 ? (
+              <ListRow divided onPress={() => router.push('/across-organizations')} showChevron>
+                <Label>{t('across.title')}</Label>
+                <Text style={styles.body}>{t('mobileAcross.entryDescription')}</Text>
+              </ListRow>
+            ) : null}
+            <ListRow divided onPress={() => router.push('/notification-settings')} showChevron>
               <Label>{t('mobileNotifications.entry')}</Label>
               <Text style={styles.body}>{t('mobileNotifications.entryDescription')}</Text>
             </ListRow>
@@ -280,6 +296,15 @@ export default function ProfileScreen() {
             </ListRow>
           </Card>
         </Reveal>
+
+        {widgetsSupported() ? (
+          <Reveal index={3}>
+            <Card>
+              <Label>{t('mobileWidget.settingsTitle')}</Label>
+              <Text style={styles.body}>{t('mobileWidget.settingsDescription')}</Text>
+            </Card>
+          </Reveal>
+        ) : null}
 
         <Reveal index={3}>
           <Card>

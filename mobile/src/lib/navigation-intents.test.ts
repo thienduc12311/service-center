@@ -6,6 +6,7 @@ import {
   type PrivateNavigationIntent,
 } from '@service-center/shared';
 import {
+  LINK_REPEAT_AFTER_MS,
   PrivateIntentCoordinator,
   resolvePrivateNavigationIntent,
 } from './navigation-intents';
@@ -63,7 +64,53 @@ describe('PrivateIntentCoordinator', () => {
   });
 });
 
+describe('repeated link taps (MOB-033 widgets)', () => {
+  const link: PrivateNavigationIntent = { ...intent, intentId: `link:plan:${organizationB}:${planId}`, notificationId: null, notificationType: null };
+
+  it('drops the duplicate delivery of one link but accepts the same link tapped again later', () => {
+    let now = 1_000;
+    const coordinator = new PrivateIntentCoordinator(() => now);
+    expect(coordinator.offer(link)).toBe(true);
+    coordinator.complete(coordinator.takeIfReady(true) ?? link);
+    now += 100;
+    expect(coordinator.offer(link)).toBe(false);
+    now += LINK_REPEAT_AFTER_MS;
+    expect(coordinator.offer(link)).toBe(true);
+  });
+
+  it('keeps a push response consumed for good', () => {
+    let now = 1_000;
+    const coordinator = new PrivateIntentCoordinator(() => now);
+    coordinator.offer(intent);
+    coordinator.complete(coordinator.takeIfReady(true) ?? intent);
+    now += LINK_REPEAT_AFTER_MS * 10;
+    expect(coordinator.offer(intent)).toBe(false);
+  });
+});
+
 describe('resolvePrivateNavigationIntent', () => {
+  it('lands a rehearse link on rehearsal only after the same plan checks', async () => {
+    let scope: ProtectedQueryScope | null = { generation: 1, userId, organizationId: organizationA };
+    const loadPlan = vi.fn(async () => ({ id: planId }));
+    await expect(
+      resolvePrivateNavigationIntent(
+        { ...intent, intentId: 'link:rehearse', notificationId: null, notificationType: null, view: 'rehearse' },
+        user,
+        organizationA,
+        {
+          switchOrganization: vi.fn(async () => {
+            scope = { generation: 2, userId, organizationId: organizationB };
+          }),
+          currentScope: () => scope,
+          loadNotification: vi.fn(),
+          loadPlan,
+          loadConversation: vi.fn(),
+        },
+      ),
+    ).resolves.toEqual({ status: 'ready', destination: { kind: 'plan', planId, view: 'rehearse' } });
+    expect(loadPlan).toHaveBeenCalledWith(planId);
+  });
+
   it('switches to an authorized organization before verifying the plan', async () => {
     let scope: ProtectedQueryScope | null = {
       generation: 1,
