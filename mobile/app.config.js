@@ -25,6 +25,9 @@ const config = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.servicecenter.app',
+    // HTTPS only — exempt from export-compliance documentation, so TestFlight
+    // doesn't ask on every build.
+    config: { usesNonExemptEncryption: false },
     infoPlist: {
       NSCameraUsageDescription: 'Take a photo of a chord sheet to import it.',
       NSPhotoLibraryUsageDescription: 'Choose a photo of a chord sheet to import it.',
