@@ -18,6 +18,8 @@ import {
   type ChartQuery,
   type ListSongsQuery,
   type SongScheduleQuery,
+  type UpdateArrangementInput,
+  type UpdateSongInput,
 } from '@service-center/shared';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
@@ -143,17 +145,25 @@ songsRouter.post('/', requireCapability('songs.manage'), validateBody(createSong
   res.status(201).json(song);
 });
 
+/**
+ * With `expected_revision` the update only matches the revision the editor
+ * opened (the trigger then advances it), so a competing save is refused as
+ * stale instead of silently overwriting the newer edit. Without it, the
+ * legacy last-write-wins contract stands.
+ */
 songsRouter.patch('/:id', requireCapability('songs.manage'), validateBody(updateSongSchema), async (req, res) => {
-  const updated = await unwrap(
-    req.db
-      .from('songs')
-      .update(req.body)
-      .eq('id', param(req, 'id'))
-      .eq('organization_id', req.orgId)
-      .select('*')
-      .maybeSingle(),
-  );
-  if (!updated) throw HttpError.notFound('Song not found');
+  const { expected_revision: expectedRevision, ...changes } = req.body as UpdateSongInput;
+  const id = param(req, 'id');
+  let update = req.db.from('songs').update(changes).eq('id', id).eq('organization_id', req.orgId);
+  if (expectedRevision !== undefined) update = update.eq('revision', expectedRevision);
+  const updated = await unwrap(update.select('*').maybeSingle());
+  if (!updated) {
+    if (expectedRevision !== undefined) {
+      const current = await unwrap(req.db.from('songs').select('id').eq('id', id).eq('organization_id', req.orgId).maybeSingle());
+      if (current) throw new HttpError(409, 'This song changed since it was opened', 'song_revision_stale');
+    }
+    throw HttpError.notFound('Song not found');
+  }
   res.json(updated);
 });
 
@@ -185,11 +195,20 @@ songsRouter.post(
   },
 );
 
+/** Same revision contract as the song update above. */
 arrangementsRouter.patch('/:id', requireCapability('songs.manage'), validateBody(updateArrangementSchema), async (req, res) => {
-  const updated = await unwrap(
-    req.db.from('arrangements').update(req.body).eq('id', param(req, 'id')).select('*').maybeSingle(),
-  );
-  if (!updated) throw HttpError.notFound('Arrangement not found');
+  const { expected_revision: expectedRevision, ...changes } = req.body as UpdateArrangementInput;
+  const id = param(req, 'id');
+  let update = req.db.from('arrangements').update(changes).eq('id', id);
+  if (expectedRevision !== undefined) update = update.eq('revision', expectedRevision);
+  const updated = await unwrap(update.select('*').maybeSingle());
+  if (!updated) {
+    if (expectedRevision !== undefined) {
+      const current = await unwrap(req.db.from('arrangements').select('id').eq('id', id).maybeSingle());
+      if (current) throw new HttpError(409, 'This arrangement changed since it was opened', 'arrangement_revision_stale');
+    }
+    throw HttpError.notFound('Arrangement not found');
+  }
   res.json(updated);
 });
 

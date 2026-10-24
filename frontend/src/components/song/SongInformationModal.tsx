@@ -41,7 +41,9 @@ export const SongInformationModal = ({ open, song, onClose }: SongInformationMod
   ) => setForm((current) => ({ ...current, [field]: value }));
 
   const save = useMutation({
-    mutationFn: () => api.updateSong(song.id, toUpdateSongInput(form)),
+    // The revision the form was seeded from: a newer edit by someone else is
+    // refused (409) instead of being overwritten.
+    mutationFn: () => api.updateSong(song.id, { ...toUpdateSongInput(form), expected_revision: song.revision }),
     onSuccess: async () => {
       await invalidate();
       onClose();

@@ -36,7 +36,17 @@ export const createArrangementSchema = z.object({
   is_default: z.boolean().default(false),
 });
 
-export const updateArrangementSchema = createArrangementSchema.partial();
+/**
+ * The revision the editor opened with. Optional so older callers keep their
+ * contract; when sent, a save over a newer revision is refused (409
+ * `song_revision_stale` / `arrangement_revision_stale`) instead of silently
+ * overwriting someone else's edit.
+ */
+export const expectedLibraryRevision = z.number().int().positive().optional();
+
+export const updateArrangementSchema = createArrangementSchema.partial().extend({
+  expected_revision: expectedLibraryRevision,
+});
 
 /** The fields that live on the song itself, shared by create and update. */
 export const songFieldsSchema = z.object({
@@ -63,7 +73,9 @@ export const createSongSchema = songFieldsSchema.extend({
   arrangement: createArrangementSchema.partial().optional(),
 });
 
-export const updateSongSchema = songFieldsSchema.partial();
+export const updateSongSchema = songFieldsSchema.partial().extend({
+  expected_revision: expectedLibraryRevision,
+});
 
 export const listSongsQuerySchema = paginationSchema.extend({
   q: z.string().trim().max(100).optional(),

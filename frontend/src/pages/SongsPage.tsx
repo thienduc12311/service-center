@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { listSongsQuerySchema, type ListSongsQuery, type SongListItem } from '@service-center/shared';
+import {
+  SONG_LIBRARY_PAGE_SIZE,
+  parseSongLibraryFilters,
+  songLibraryBpm,
+  songLibraryFilterCount,
+  songLibraryKeys,
+  type ListSongsQuery,
+  type SongLibraryFilterValues,
+} from '@service-center/shared';
 import { useSongs } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
@@ -11,7 +19,7 @@ import { useFormatters } from '../i18n';
 
 /** A free-text song filter: the query parameter it sets and its caption. */
 interface TextFilter {
-  name: keyof ListSongsQuery;
+  name: keyof SongLibraryFilterValues;
   label: TextFilterLabelKey;
 }
 
@@ -24,8 +32,6 @@ type TextFilterLabelKey =
   | 'songsPage.filters.speed'
   | 'songsPage.filters.author';
 
-const NOT_FILTERS = new Set(['archive', 'sort', 'page', 'per_page', 'q']);
-
 const TEXT_FILTERS: TextFilter[] = [
   { name: 'key', label: 'songsPage.filters.key' },
   { name: 'theme', label: 'songsPage.filters.theme' },
@@ -34,16 +40,6 @@ const TEXT_FILTERS: TextFilter[] = [
   { name: 'speed', label: 'songsPage.filters.speed' },
   { name: 'author', label: 'songsPage.filters.author' },
 ];
-
-/** The keys a song is actually played in — its arrangements, not just the default. */
-const songKeys = (song: SongListItem): string => {
-  const keys = song.arrangements.map((arrangement) => arrangement.song_key).filter(Boolean);
-  const unique = [...new Set(keys.length ? keys : [song.default_key])].filter(Boolean);
-  return unique.join(', ');
-};
-
-const songBpm = (song: SongListItem): number | null =>
-  song.default_bpm ?? song.arrangements.find((arrangement) => arrangement.bpm)?.bpm ?? null;
 
 export const SongsPage = () => {
   const { t } = useTranslation(['songs', 'common']);
@@ -62,9 +58,8 @@ export const SongsPage = () => {
   const [filterError, setFilterError] = useState<Error | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   // Parsing fills in the library scope, sort and paging, so those never count as a filter.
-  const activeFilterCount = Object.entries(filters)
-    .filter(([name, value]) => !NOT_FILTERS.has(name) && value !== undefined).length;
-  const songs = useSongs({ ...filters, q: query || undefined, sort, page, per_page: 50 });
+  const activeFilterCount = songLibraryFilterCount(filters);
+  const songs = useSongs({ ...filters, q: query || undefined, sort, page, per_page: SONG_LIBRARY_PAGE_SIZE });
   const resetPage = () => { setPage(1); setSelected([]); setEditing(false); };
 
   const rows = songs.data?.data ?? [];
@@ -114,14 +109,13 @@ export const SongsPage = () => {
       <form hidden={!showFilters} className="card mb-4 p-4" onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
-        const input = Object.fromEntries([...form.entries()].filter(([, value]) => value !== ''));
-        for (const key of ['scheduled_from', 'scheduled_to']) {
-          const value = input[key];
-          if (typeof value === 'string' && value) input[key] = `${value}T00:00:00Z`;
-        }
-        const parsed = listSongsQuerySchema.safeParse(input);
-        if (!parsed.success) { setFilterError(parsed.error); return; }
-        setFilterError(null); setFilters(parsed.data); resetPage();
+        const input: SongLibraryFilterValues = Object.fromEntries(
+          [...form.entries()].flatMap(([name, value]) => (typeof value === 'string' ? [[name, value]] : [])),
+        );
+        // The same rules as the app: blanks dropped, dates as UTC day starts.
+        const parsed = parseSongLibraryFilters(input);
+        if (!parsed.ok) { setFilterError(parsed.error); return; }
+        setFilterError(null); setFilters(parsed.query); resetPage();
       }} onReset={() => { setFilterError(null); setFilters({}); resetPage(); }}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="field">{t('songsPage.filters.library')}<select name="archive" className="input"><option value="active">{t('songsPage.filters.activeSongs')}</option><option value="archived">{t('songsPage.filters.archivedSongs')}</option><option value="all">{t('songsPage.filters.allSongs')}</option></select></label>
@@ -167,8 +161,8 @@ export const SongsPage = () => {
                     </Link>
                     {song.author && <p className="text-xs text-slate-500">{song.author}</p>}
                   </td>
-                  <td className="px-4 py-3 tabular-nums text-slate-600">{songBpm(song) ?? ''}</td>
-                  <td className="px-4 py-3 font-medium text-slate-700">{songKeys(song)}</td>
+                  <td className="px-4 py-3 tabular-nums text-slate-600">{songLibraryBpm(song) ?? ''}</td>
+                  <td className="px-4 py-3 font-medium text-slate-700">{songLibraryKeys(song)}</td>
                   <td className="px-4 py-3 text-slate-600">
                     {song.last_scheduled_at ? formatters.date(song.last_scheduled_at, 'medium') : ''}
                   </td>
@@ -189,7 +183,7 @@ export const SongsPage = () => {
       <div className="my-4 flex items-center justify-end gap-3">
         <Button variant="secondary" disabled={page <= 1 || songs.isFetching || editing} onClick={() => { setPage(page - 1); setSelected([]); }}>{t('songsPage.previousPage')}</Button>
         <span className="text-sm text-slate-500">{t('songsPage.page', { page })}</span>
-        <Button variant="secondary" disabled={!songs.data || page * 50 >= songs.data.total || songs.isFetching || editing} onClick={() => { setPage(page + 1); setSelected([]); }}>{t('common:actions.next')}</Button>
+        <Button variant="secondary" disabled={!songs.data || page * SONG_LIBRARY_PAGE_SIZE >= songs.data.total || songs.isFetching || editing} onClick={() => { setPage(page + 1); setSelected([]); }}>{t('common:actions.next')}</Button>
       </div>
       <AddSongModal
         open={adding}

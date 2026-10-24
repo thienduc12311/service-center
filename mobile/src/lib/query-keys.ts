@@ -3,6 +3,7 @@ import type {
   CalendarQueryRequest,
   FileOwnerKind,
   ListPlanTemplatesRequest,
+  ListSongsQuery,
   PlanBrowserFilters,
   PlanNeighbourQueries,
   ReportFiltersRequest,
@@ -42,6 +43,9 @@ export const queryKeys = {
   /** MOB-013: saved templates and sections (plan editors only). */
   planTemplates: (scope: ProtectedQueryScope | null, filter: ListPlanTemplatesRequest) =>
     [...privateRoot(scope), 'plan-templates', filter] as const,
+  /** MOB-028: prefix for every plan read; a library write can change a plan's inherited arrangement or key. */
+  planAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'plan'] as const,
   plan: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'plan', planId ?? null] as const,
   /** F14: the plan's rehearsal manifest (names versions, never URLs). */
@@ -75,6 +79,9 @@ export const queryKeys = {
   mentionCandidates: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'mention-candidates', planId ?? null] as const,
   /** MOB-014: an arrangement's F15 labeled keys, offered as plan-only service keys. */
+  /** MOB-028: prefix for every arrangement's labeled keys and file scopes. */
+  arrangementMaterialsAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'arrangement-materials'] as const,
   arrangementMaterials: (scope: ProtectedQueryScope | null, arrangementId: string | null | undefined) =>
     [...privateRoot(scope), 'arrangement-materials', arrangementId ?? null] as const,
   /** MOB-015: F08 scheduled reminders and per-Person/channel delivery history for one plan. */
@@ -119,10 +126,19 @@ export const queryKeys = {
   /** MOB-019: current participants of one conversation, the only people worth mentioning. */
   conversationMentionCandidates: (scope: ProtectedQueryScope | null, conversationId: string | null | undefined) =>
     [...privateRoot(scope), 'conversations', 'mention-candidates', conversationId ?? null] as const,
+  /** MOB-028: prefix for every song detail. */
+  songAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'song'] as const,
   song: (scope: ProtectedQueryScope | null, songId: string | null | undefined) =>
     [...privateRoot(scope), 'song', songId ?? null] as const,
+  /** MOB-028: prefix for every library page and picker search; invalidate this after any library write. */
+  songsAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'songs'] as const,
   songs: (scope: ProtectedQueryScope | null, query: string) =>
     [...privateRoot(scope), 'songs', query] as const,
+  /** MOB-028: the paged library for one search, sort, scope and filter set (pages are read on demand). */
+  songLibrary: (scope: ProtectedQueryScope | null, query: Partial<ListSongsQuery>) =>
+    [...privateRoot(scope), 'songs', 'library', query] as const,
   /** MOB-022: one calendar request (range, Only me, team) exactly as sent. */
   calendar: (scope: ProtectedQueryScope | null, query: CalendarQueryRequest) =>
     [...privateRoot(scope), 'calendar', query] as const,
