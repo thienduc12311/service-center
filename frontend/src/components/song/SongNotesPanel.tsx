@@ -17,9 +17,11 @@ export const SongNotesPanel = ({ song, canManage }: SongNotesPanelProps) => {
   const invalidate = useInvalidateOrg();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(song.notes ?? '');
+  // The revision editing started from, so a newer edit is refused, not overwritten.
+  const [baseRevision, setBaseRevision] = useState(song.revision);
 
   const save = useMutation({
-    mutationFn: () => api.updateSong(song.id, { notes: draft.trim() || null }),
+    mutationFn: () => api.updateSong(song.id, { notes: draft.trim() || null, expected_revision: baseRevision }),
     onSuccess: async () => {
       await invalidate();
       setEditing(false);
@@ -28,6 +30,7 @@ export const SongNotesPanel = ({ song, canManage }: SongNotesPanelProps) => {
 
   const startEditing = () => {
     setDraft(song.notes ?? '');
+    setBaseRevision(song.revision);
     save.reset();
     setEditing(true);
   };

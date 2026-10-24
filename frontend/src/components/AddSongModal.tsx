@@ -6,9 +6,9 @@ import {
   SONG_SPEEDS,
   SONG_STYLES,
   SONG_TYPES,
-  detectKey,
-  toChordPro,
-  type CreateSongInput,
+  EMPTY_ADD_SONG_FORM,
+  toCreateSongInput,
+  type AddSongFormValues,
   type SongWithArrangements,
 } from '@service-center/shared';
 import { api } from '../lib/api';
@@ -25,58 +25,6 @@ export interface AddSongModalProps {
   onCreated?: (song: SongWithArrangements) => void;
 }
 
-/** Everything the form holds before it is turned into a request body. */
-interface AddSongForm {
-  title: string;
-  arrangementName: string;
-  key: string | null;
-  capo: number | null;
-  types: string[];
-  style: string;
-  speed: string;
-  themes: string[];
-  chordChart: string;
-}
-
-const EMPTY: AddSongForm = {
-  title: '',
-  arrangementName: '',
-  key: null,
-  capo: null,
-  types: [],
-  style: '',
-  speed: '',
-  themes: [],
-  chordChart: '',
-};
-
-/**
- * Trims the form into the API's shape, dropping everything left blank.
- * `defaultArrangementName` is the localized name a blank arrangement gets.
- */
-const toCreateInput = (form: AddSongForm, defaultArrangementName: string): CreateSongInput => {
-  // A chart pasted as chords-above-lyrics is folded into inline ChordPro, so
-  // either shape can be dropped into the box.
-  const chart = toChordPro(form.chordChart);
-  // A pasted chart usually opens on the tonic, so it can fill a blank key in.
-  const key = form.key ?? (chart ? detectKey(chart) : null);
-
-  return {
-    title: form.title.trim(),
-    default_key: key,
-    themes: form.themes,
-    song_types: form.types,
-    style: form.style || null,
-    speed: form.speed || null,
-    arrangement: {
-      name: form.arrangementName.trim() || defaultArrangementName,
-      song_key: key,
-      capo: form.capo,
-      chord_chart: chart || null,
-    },
-  };
-};
-
 /**
  * The Add Song flow: the song, its first arrangement and an optional pasted
  * chart in one dialog, so a new song is usable the moment it is saved.
@@ -90,16 +38,16 @@ export const AddSongModal = ({ open, onClose, onCreated }: AddSongModalProps) =>
     return key ? t(key) : value;
   };
   const invalidate = useInvalidateOrg();
-  const [form, setForm] = useState<AddSongForm>(EMPTY);
+  const [form, setForm] = useState<AddSongFormValues>(EMPTY_ADD_SONG_FORM);
 
-  const update = <K extends keyof AddSongForm>(field: K, value: AddSongForm[K]) =>
+  const update = <K extends keyof AddSongFormValues>(field: K, value: AddSongFormValues[K]) =>
     setForm((current) => ({ ...current, [field]: value }));
 
   const create = useMutation({
-    mutationFn: () => api.createSong(toCreateInput(form, defaultArrangementName)),
+    mutationFn: () => api.createSong(toCreateSongInput(form, defaultArrangementName)),
     onSuccess: async (song) => {
       await invalidate();
-      setForm(EMPTY);
+      setForm(EMPTY_ADD_SONG_FORM);
       onClose();
       onCreated?.(song);
     },
@@ -107,7 +55,7 @@ export const AddSongModal = ({ open, onClose, onCreated }: AddSongModalProps) =>
 
   const close = () => {
     if (create.isPending) return;
-    setForm(EMPTY);
+    setForm(EMPTY_ADD_SONG_FORM);
     create.reset();
     onClose();
   };

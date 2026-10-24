@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import {
   CAPO_POSITIONS,
+  toArrangementEdit,
   type ArrangementRow,
   type SongWithArrangements,
 } from '@service-center/shared';
@@ -15,7 +16,6 @@ import {
   arrangementFormFrom,
   newArrangementForm,
   toCreateArrangementInput,
-  toUpdateArrangementInput,
   type ArrangementFormValues,
 } from './types';
 
@@ -61,12 +61,8 @@ export const ArrangementModal = ({
     mutationFn: (): Promise<ArrangementRow> => {
       if (!arrangement) return api.createArrangement(song.id, toCreateArrangementInput(form, defaultName));
 
-      return api.updateArrangement(arrangement.id, {
-        ...toUpdateArrangementInput(form, defaultName),
-        // Only ever promote: sending `false` for the current default would
-        // leave the song with none.
-        ...(form.isDefault && !arrangement.is_default ? { is_default: true } : {}),
-      });
+      // Only ever promotes the default, and carries the revision it was opened at.
+      return api.updateArrangement(arrangement.id, toArrangementEdit(form, arrangement, defaultName));
     },
     onSuccess: async (saved) => {
       await invalidate();

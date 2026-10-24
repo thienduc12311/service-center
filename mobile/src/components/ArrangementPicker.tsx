@@ -30,7 +30,11 @@ export const ArrangementPicker = ({
       {arrangements.map((arrangement) => {
         const selected = arrangement.id === selectedId;
         const inPlan = arrangement.id === planArrangementId;
-        const detail = [arrangement.song_key, inPlan ? t('mobileArrangements.inPlan') : arrangement.is_default ? t('arrangement.defaultBadge') : null]
+        const detail = [
+          arrangement.song_key,
+          inPlan ? t('mobileArrangements.inPlan') : arrangement.is_default ? t('arrangement.defaultBadge') : null,
+          arrangement.archived_at ? t('songsPage.archivedBadge') : null,
+        ]
           .filter(Boolean)
           .join(' · ');
         return (

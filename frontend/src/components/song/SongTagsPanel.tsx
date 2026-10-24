@@ -28,9 +28,11 @@ export const SongTagsPanel = ({ song, canManage }: SongTagsPanelProps) => {
   const [editing, setEditing] = useState(false);
   const [themes, setThemes] = useState<string[]>(song.themes);
   const [types, setTypes] = useState<string[]>(song.song_types);
+  // The revision editing started from, so a newer edit is refused, not overwritten.
+  const [baseRevision, setBaseRevision] = useState(song.revision);
 
   const save = useMutation({
-    mutationFn: () => api.updateSong(song.id, { themes, song_types: types }),
+    mutationFn: () => api.updateSong(song.id, { themes, song_types: types, expected_revision: baseRevision }),
     onSuccess: async () => {
       await invalidate();
       setEditing(false);
@@ -40,6 +42,7 @@ export const SongTagsPanel = ({ song, canManage }: SongTagsPanelProps) => {
   const startEditing = () => {
     setThemes(song.themes);
     setTypes(song.song_types);
+    setBaseRevision(song.revision);
     save.reset();
     setEditing(true);
   };

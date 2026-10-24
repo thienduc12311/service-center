@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -19,6 +19,7 @@ import {
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
+import { arrangementSelections, canAuthorSong, draftTargets } from '../../src/lib/song-library';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Button,
@@ -37,6 +38,7 @@ import {
 import { ArrangementPicker } from '../../src/components/ArrangementPicker';
 import { ChordChart } from '../../src/components/ChordChart';
 import { SongFiles } from '../../src/components/files/SongFiles';
+import { SongDetails, SongManage, SongStatusNotices } from '../../src/components/song/SongManagement';
 import { Reveal } from '../../src/components/motion';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
@@ -218,6 +220,22 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
   const [shift, setShift] = useState(0);
   const [notation, setNotation] = useState<ChartNotation>('chords');
   const [viewArrangementId, setViewArrangementId] = useState<string | null>(null);
+  const { queryScope, canAnywhere } = useAuth();
+  // MOB-028: library managers author the song from its library page (not from a plan's chart).
+  const canAuthor = !planItem && canAuthorSong(canAnywhere('songs.manage'), song);
+
+  // An editor that just saved or duplicated an arrangement asks to open on it.
+  useFocusEffect(
+    useCallback(() => {
+      if (planItem) return;
+      const target = draftTargets.song(song.id);
+      const selected = arrangementSelections.get<string>(queryScope, target);
+      if (!selected) return;
+      arrangementSelections.clear(queryScope, target);
+      setShift(0);
+      setViewArrangementId(selected.draft);
+    }, [planItem, queryScope, song.id]),
+  );
 
   const context = useMemo(
     () => resolveChartContext({ song, planItem, viewArrangementId }),
@@ -297,6 +315,13 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
             {meta ? <Text style={styles.meta}>{meta}</Text> : null}
           </View>
         </Reveal>
+
+        <SongStatusNotices song={song} arrangement={arrangement} />
+        {canAuthor ? (
+          <Reveal index={1}>
+            <SongManage song={song} arrangement={arrangement} />
+          </Reveal>
+        ) : null}
 
         {song.arrangements.length > 1 ? (
           <Reveal index={1}>
@@ -387,6 +412,12 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
             </Card>
           )}
         </Reveal>
+
+        {!planItem ? (
+          <Reveal index={4}>
+            <SongDetails song={song} />
+          </Reveal>
+        ) : null}
 
         {/* MOB-026: the song's and this arrangement's files (F13), key-scoped ones labeled (F15). */}
         <Reveal index={4}>
