@@ -695,5 +695,39 @@
     "offlineIntro": "Can't reach the server. Plans you downloaded for your last organization still play from this phone.",
     "back": "Back to offline downloads",
     "loadFailed": "Offline downloads couldn't be read on this phone."
+  },
+  "mobileAcross": {
+    "entryDescription": "See your own schedules from every church together, and copy blockout dates.",
+    "singleOrganization": "You belong to one church, so there is nothing to combine yet.",
+    "selfOnly": "Only your own assignments and blockouts are combined — never a family member's or anyone else's.",
+    "offTitle": "Combined schedule is off",
+    "offDescription": "Turn it on above to see the next 30 days from each of your churches.",
+    "turnedOff": "The combined schedule was turned off, perhaps on another device. Refresh to see your current choice.",
+    "current": "Current church",
+    "zoneNote": "Times in this church's time zone ({{zone}}).",
+    "whenInZone": "{{when}} ({{zone}}) · {{local}} your time",
+    "revoked": "You're no longer an active member here, so nothing is shown.",
+    "stale": "This church changed since you signed in. Pull to refresh before opening anything here.",
+    "awaiting": "Awaiting your answer",
+    "openSwitches": "Opening something from another church switches the app to that church first.",
+    "copyEmpty": "Add a one-off blockout in Settings first.",
+    "copyTo": "Copy to",
+    "reviewCopy": "Review copy",
+    "reviewTitle": "Copy blockout dates?",
+    "reviewMessage_one": "Copy {{count}} blockout to {{targets}}. {{reasons}} Each church's own rules apply; dates already copied are skipped.",
+    "reviewMessage_other": "Copy {{count}} blockouts to {{targets}}. {{reasons}} Each church's own rules apply; dates already copied are skipped.",
+    "reasonsIncluded": "Your reasons will be visible to their schedulers.",
+    "reasonsPrivate": "Your reasons stay private."
+  },
+  "mobileWidget": {
+    "heading": "Next serving",
+    "empty": "Nothing scheduled. Open Service Center to check.",
+    "signedOut": "Open Service Center to see your schedule.",
+    "expired": "Open Service Center to refresh your schedule.",
+    "awaiting": "Awaiting your answer",
+    "rehearse": "Rehearse",
+    "updated": "Updated from the app",
+    "settingsTitle": "Home Screen widget",
+    "settingsDescription": "Add the Service Center widget from your Home Screen or Lock Screen to see your next services in this church. It updates when you open the app; after 12 hours without a refresh it asks you to open the app. Titles are hidden on a locked phone, and signing out clears it."
   }
 }

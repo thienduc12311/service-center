@@ -15,11 +15,11 @@ Tracks [the F00–F17 prompt pack](../prompts/services-capabilities/README.md). 
 | F02 Pass A — identity continuity (on MOB-005's Person columns) | implemented; QA pending | `feature/f02-person-first-staffing` (worktree `.claude/worktrees/f02`, rebased on MOB-005 `23ecfdf`) | Admin review of `person_identity_reconciliations` after deploy; from-scratch migration replay |
 | F02 Pass B — guest staffing and account continuity | implemented; QA pending | same | Real-provider email check for a no-login guest (F00 gate) |
 | F02 Pass C — roster extensions (archive/audit, tag groups, bulk, search) | implemented; QA pending | same | Product review of search scope and archive semantics |
-| F02 epic | in progress | — | Gates below; epic is not complete |
+| F02 epic | in progress | — | Gates below; epic is not complete. MOB-031: shared `TeamWithPositions.members[].membership_id` typed (already sent); **owner-only People rule** (`20261109000000_owner_people_permissions`, API owner gate) included from the working tree — product sign-off pending ([MOB-031](mobile-remaining-progress.md#mob-031-mob-032-mob-033-pass-a--2026-102324)); avatar Storage boundary absent |
 | F03 Pass A — one-off and recurring availability | implemented; QA pending | delivered by MOB-006 (`20261019000100`) + F03 explicit-decline UI on `feature/f03-availability-preferences` | Signed-in DST/series QA matrix (MOB-006 ledger) |
 | F03 Pass B — preferences, warnings, freshness, availability requests | implemented; QA pending | `feature/f03-availability-preferences` (worktree `.claude/worktrees/f03`) | Real-provider email check for availability requests (F00 gate); MOB-007 native preferences |
 | F03 Pass C — explicit delegation | implemented; QA pending | same | Guardian/minor policy decision before any no-login delegation; MOB-011 native |
-| F03 Pass D — opted-in own-organizations aggregation (optional) | implemented; QA pending | same | Product review of busy-sharing wording; MOB-032 native |
+| F03 Pass D — opted-in own-organizations aggregation (optional) | implemented; QA pending | same | Product review of busy-sharing wording; MOB-032 native implemented (no shared change) |
 | F03 epic | in progress | — | Gates below; epic is not complete |
 | F04 Pass A — stable time identity, applicability, time-edit impact | implemented; QA pending | `feature/f04-assigned-times` (from `a2b6be0`) | Signed-in calendar-client check of CANCELLED/SEQUENCE updates (Apple/Google/Outlook) |
 | F04 Pass B — shared resolver, typed redacted conflicts, commit-time safety, audited override | implemented; QA pending | same | Product review: same-plan double role = warning; copy over a conflict needs a reason |

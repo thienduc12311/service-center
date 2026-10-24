@@ -1,6 +1,7 @@
 import type {
   CalendarLayersRequest,
   CalendarQueryRequest,
+  CombinedScheduleQuery,
   FileOwnerKind,
   ListPlanTemplatesRequest,
   ListSongsQuery,
@@ -170,6 +171,17 @@ export const queryKeys = {
   /** MOB-023: one run's transitions, corrections and planned-versus-actual. */
   liveRunHistory: (scope: ProtectedQueryScope | null, runId: string | null | undefined) =>
     [...privateRoot(scope), 'live', 'history', runId ?? null] as const,
+  /**
+   * MOB-032: my own cross-organization choices and combined schedule. Not about
+   * the active organization, but still kept under the account/generation root,
+   * so a sign-out, account change or switch never shows an earlier answer.
+   */
+  scheduleSettings: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'across', 'settings'] as const,
+  combinedScheduleAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'across', 'combined'] as const,
+  combinedSchedule: (scope: ProtectedQueryScope | null, window: CombinedScheduleQuery) =>
+    [...privateRoot(scope), 'across', 'combined', window] as const,
   blockouts: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'blockouts'] as const,
   /** MOB-011: a delegate's view of another Person's blockouts sits under the same prefix. */
@@ -187,6 +199,14 @@ export const queryKeys = {
     [...privateRoot(scope), 'delegations', 'schedule', delegationId ?? null] as const,
   people: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'people'] as const,
+  /** MOB-031: the directory with or without archived people; invalidate `people` after any roster write. */
+  directory: (scope: ProtectedQueryScope | null, includeArchived: boolean) =>
+    [...privateRoot(scope), 'people', 'directory', includeArchived] as const,
+  /** MOB-031: one Person's record as the server returns it to this caller (404 when private). */
+  person: (scope: ProtectedQueryScope | null, personId: string | null | undefined) =>
+    [...privateRoot(scope), 'people', 'person', personId ?? null] as const,
+  personTags: (scope: ProtectedQueryScope | null, personId: string | null | undefined) =>
+    [...privateRoot(scope), 'people', 'tags', personId ?? null] as const,
   teams: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'teams'] as const,
   /** MOB-009: every signup-opening read; invalidate this after a claim or decision. */

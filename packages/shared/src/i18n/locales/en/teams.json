@@ -164,5 +164,20 @@
       "other": "Other"
     },
     "joinTeams": "Add me to any teams selected."
+  },
+  "mobileTeams": {
+    "entry": "Teams",
+    "entryDescription": "Who serves where, and in which position.",
+    "youManage": "You can change this roster",
+    "setupOnWebsite": "Creating teams, positions and team settings stays on the website.",
+    "notFound": "Team not found",
+    "goneDescription": "It may have been deleted, or you can no longer see it.",
+    "addPerson": "Add person",
+    "addLabel": "Add {{name}} to {{team}}",
+    "remove": "Remove",
+    "removeLabel": "Remove {{name}} from {{team}}",
+    "removeTitle": "Remove {{name}} from {{team}}?",
+    "removeMessage": "Past plans keep their history. They can be added again later.",
+    "refineSearch": "Showing the first 50. Search to narrow the list."
   }
 }

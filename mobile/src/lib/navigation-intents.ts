@@ -8,7 +8,7 @@ import {
 import type { ProtectedQueryScope } from './session-lifecycle';
 
 export type PrivateIntentDestination =
-  | { kind: 'plan'; planId: string }
+  | { kind: 'plan'; planId: string; view?: 'rehearse' }
   /** MOB-019: a chat notification opens its team/plan conversation. */
   | { kind: 'conversation'; conversationId: string }
   | { kind: 'notifications' };
@@ -29,17 +29,37 @@ export interface PrivateIntentDependencies {
 }
 
 /**
+ * A link (`link:` intent: a URL, a widget tap) can arrive twice for one tap —
+ * the launch URL and the URL event. After this long the same link is a new tap
+ * (a widget tapped again later); a push response stays consumed for good.
+ */
+export const LINK_REPEAT_AFTER_MS = 5_000;
+
+/**
  * Keeps at most one private intent pending through authentication and consumes
  * each source once. A second, distinct tap replaces an older pending tap.
  */
 export class PrivateIntentCoordinator {
   private pending: PrivateNavigationIntent | null = null;
   private active: PrivateNavigationIntent | null = null;
-  private consumed = new Set<string>();
+  /** intentId → when it was consumed. */
+  private consumed = new Map<string, number>();
+
+  constructor(private readonly now: () => number = Date.now) {}
+
+  private isConsumed(intentId: string): boolean {
+    const consumedAt = this.consumed.get(intentId);
+    if (consumedAt === undefined) return false;
+    if (intentId.startsWith('link:') && this.now() - consumedAt >= LINK_REPEAT_AFTER_MS) {
+      this.consumed.delete(intentId);
+      return false;
+    }
+    return true;
+  }
 
   offer(intent: PrivateNavigationIntent): boolean {
     if (
-      this.consumed.has(intent.intentId) ||
+      this.isConsumed(intent.intentId) ||
       this.active?.intentId === intent.intentId ||
       this.pending?.intentId === intent.intentId
     ) {
@@ -60,10 +80,10 @@ export class PrivateIntentCoordinator {
 
   complete(intent: PrivateNavigationIntent, consume = true): void {
     if (this.active?.intentId !== intent.intentId) return;
-    if (consume) this.consumed.add(intent.intentId);
+    if (consume) this.consumed.set(intent.intentId, this.now());
     this.active = null;
     if (this.consumed.size > 100) {
-      const oldest = this.consumed.values().next().value as string | undefined;
+      const oldest = this.consumed.keys().next().value as string | undefined;
       if (oldest) this.consumed.delete(oldest);
     }
   }
@@ -159,7 +179,10 @@ export const resolvePrivateNavigationIntent = async (
     ) {
       return { status: 'failed', reason: 'no-access' };
     }
-    return { status: 'ready', destination: { kind: 'plan', planId: intent.planId } };
+    return {
+      status: 'ready',
+      destination: { kind: 'plan', planId: intent.planId, ...(intent.view ? { view: intent.view } : {}) },
+    };
   } catch (error) {
     if (error instanceof ApiError && [401, 403].includes(error.status)) {
       return { status: 'failed', reason: 'no-access' };

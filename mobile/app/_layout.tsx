@@ -16,6 +16,7 @@ import { Button, ErrorNotice, Loading, Screen } from '../src/components/ui';
 import { OfflineLibrary } from '../src/components/rehearsal/OfflineLibrary';
 import { loadStoredOrganizationId } from '../src/lib/organization-storage';
 import { useOfflinePackCleanup } from '../src/lib/useOfflinePack';
+import { useScheduleWidgetSync } from '../src/lib/useScheduleWidgetSync';
 import { fonts } from '../src/lib/theme';
 import { useTheme } from '../src/lib/useTheme';
 import '../global.css';
@@ -84,6 +85,7 @@ const RootNavigator = () => {
   const { session, loading, ready, error, retry, generation } = useAuth();
   const [offlineOpen, setOfflineOpen] = useState(false);
   useOfflinePackCleanup();
+  useScheduleWidgetSync();
   const segments = useSegments();
   const router = useRouter();
   const theme = useTheme();

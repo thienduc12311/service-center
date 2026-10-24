@@ -38,6 +38,25 @@ describe('parseExternalNavigationUrl', () => {
     ).toEqual({ status: 'rejected' });
   });
 
+  it('accepts the rehearsal view of the same plan link (MOB-033) and nothing else under it', () => {
+    const result = parseExternalNavigationUrl(
+      `servicecenter://open/plan/${planId}/rehearse?organization_id=${organizationId}`,
+      policy,
+    );
+    expect(result).toMatchObject({
+      status: 'accepted',
+      intent: { kind: 'plan', organizationId, planId, view: 'rehearse', intentId: `link:rehearse:${organizationId}:${planId}` },
+    });
+    const plain = parseExternalNavigationUrl(`servicecenter://open/plan/${planId}?organization_id=${organizationId}`, policy);
+    expect(plain.status === 'accepted' && 'view' in plain.intent).toBe(false);
+    expect(
+      parseExternalNavigationUrl(`servicecenter://open/plan/${planId}/rehearse`, policy),
+    ).toEqual({ status: 'rejected' });
+    expect(
+      parseExternalNavigationUrl(`servicecenter://open/plan/${planId}/edit?organization_id=${organizationId}`, policy),
+    ).toEqual({ status: 'rejected' });
+  });
+
   it('rejects unknown HTTPS hosts and routes, and ignores unrelated schemes', () => {
     expect(
       parseExternalNavigationUrl(`https://attacker.example/respond?token=${token}`, policy),

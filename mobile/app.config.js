@@ -60,6 +60,24 @@ const config = {
     ['expo-audio', { microphonePermission: false, recordAudioAndroid: false, enableBackgroundPlayback: true }],
     'expo-status-bar',
     ['expo-splash-screen', { backgroundColor: '#f8fafc', dark: { backgroundColor: '#020617' } }],
+    // MOB-033: one iOS WidgetKit extension fed by snapshots the app writes into
+    // the shared app group (no network or sign-in inside the extension). Needs a
+    // development/release build; Expo Go has no widget extension. Android
+    // widgets are a separate, unselected stage.
+    [
+      'expo-widgets',
+      {
+        groupIdentifier: 'group.com.servicecenter.app',
+        widgets: [
+          {
+            name: 'ServiceCenterSchedule',
+            displayName: 'Next serving',
+            description: 'Your next services and a rehearsal shortcut.',
+            ios: { supportedFamilies: ['systemSmall', 'systemMedium', 'accessoryRectangular'] },
+          },
+        ],
+      },
+    ],
   ],
   experiments: { typedRoutes: false },
   extra: {

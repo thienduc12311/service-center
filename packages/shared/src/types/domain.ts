@@ -371,6 +371,8 @@ export interface TeamWithPositions extends TeamRow {
     person_id: string;
     user_id: string | null;
     position_id: string | null;
+    /** The `team_memberships` row id: what `removeTeamMember` takes (MOB-031; always sent by the API). */
+    membership_id: string;
     profile: PersonSummary | null;
   }>;
 }

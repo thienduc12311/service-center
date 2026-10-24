@@ -683,5 +683,38 @@
     "offlineIntro": "Không kết nối được máy chủ. Các chương trình bạn đã tải cho hội thánh gần nhất vẫn phát được từ điện thoại này.",
     "back": "Quay lại bản tải ngoại tuyến",
     "loadFailed": "Không đọc được bản tải ngoại tuyến trên điện thoại này."
+  },
+  "mobileAcross": {
+    "entryDescription": "Xem lịch của chính bạn từ mọi hội thánh cùng lúc, và sao chép ngày bận.",
+    "singleOrganization": "Bạn chỉ thuộc một hội thánh, nên chưa có gì để gộp.",
+    "selfOnly": "Chỉ gộp phân công và ngày bận của chính bạn — không bao giờ của người nhà hay người khác.",
+    "offTitle": "Lịch gộp đang tắt",
+    "offDescription": "Bật ở trên để xem 30 ngày tới từ từng hội thánh của bạn.",
+    "turnedOff": "Lịch gộp đã bị tắt, có thể từ một thiết bị khác. Hãy làm mới để thấy lựa chọn hiện tại.",
+    "current": "Hội thánh hiện tại",
+    "zoneNote": "Giờ theo múi giờ của hội thánh này ({{zone}}).",
+    "whenInZone": "{{when}} ({{zone}}) · {{local}} giờ của bạn",
+    "revoked": "Bạn không còn là thành viên hoạt động ở đây, nên không có gì được hiển thị.",
+    "stale": "Hội thánh này đã thay đổi kể từ khi bạn đăng nhập. Hãy kéo để làm mới trước khi mở mục nào ở đây.",
+    "awaiting": "Đang chờ bạn trả lời",
+    "openSwitches": "Mở một mục của hội thánh khác sẽ chuyển ứng dụng sang hội thánh đó trước.",
+    "copyEmpty": "Hãy thêm một ngày bận đơn lẻ trong Cài đặt trước.",
+    "copyTo": "Sao chép sang",
+    "reviewCopy": "Xem lại trước khi sao chép",
+    "reviewTitle": "Sao chép ngày bận?",
+    "reviewMessage_other": "Sao chép {{count}} ngày bận sang {{targets}}. {{reasons}} Quy định của từng hội thánh được áp dụng; ngày đã sao chép sẽ được bỏ qua.",
+    "reasonsIncluded": "Lý do của bạn sẽ hiển thị cho người xếp lịch ở đó.",
+    "reasonsPrivate": "Lý do của bạn được giữ riêng tư."
+  },
+  "mobileWidget": {
+    "heading": "Lần phục vụ tới",
+    "empty": "Chưa có lịch. Mở Service Center để kiểm tra.",
+    "signedOut": "Mở Service Center để xem lịch của bạn.",
+    "expired": "Mở Service Center để làm mới lịch của bạn.",
+    "awaiting": "Đang chờ bạn trả lời",
+    "rehearse": "Tập luyện",
+    "updated": "Cập nhật từ ứng dụng",
+    "settingsTitle": "Tiện ích màn hình chính",
+    "settingsDescription": "Thêm tiện ích Service Center từ Màn hình chính hoặc Màn hình khóa để xem các lần phục vụ sắp tới ở hội thánh này. Tiện ích cập nhật khi bạn mở ứng dụng; sau 12 giờ không làm mới, nó sẽ nhắc bạn mở ứng dụng. Tiêu đề được ẩn khi điện thoại khóa, và đăng xuất sẽ xóa tiện ích."
   }
 }

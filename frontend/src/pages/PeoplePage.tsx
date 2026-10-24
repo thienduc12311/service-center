@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
-import { ORG_ROLES, isAdmin } from '@service-center/shared';
+import { ORG_ROLES } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePeople, usePeopleWithArchived, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
@@ -10,7 +10,7 @@ import { Avatar, Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader } f
 import { BulkRosterPanel } from '../components/people/BulkRosterPanel';
 import { TagGroupsModal } from '../components/people/TagGroupsModal';
 
-/** Result of the most recently sent invitation — surfaced so an admin can share it manually. */
+/** Result of the most recently sent invitation — surfaced so an owner can share it manually. */
 interface SentInvite {
   personName: string;
   url: string;
@@ -18,9 +18,9 @@ interface SentInvite {
 
 export const PeoplePage = () => {
   const { t } = useTranslation(['people', 'common']);
-  const { role, user, canAnywhere } = useAuth();
+  const { role, user } = useAuth();
   const navigate = useNavigate();
-  const admin = isAdmin(role);
+  const owner = role === 'owner';
   const invalidate = useInvalidateOrg();
   const [showArchived, setShowArchived] = useState(false);
   const active = usePeople();
@@ -29,9 +29,9 @@ export const PeoplePage = () => {
   const [sentInvite, setSentInvite] = useState<SentInvite | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [tagsOpen, setTagsOpen] = useState(false);
-  const canManagePeople = canAnywhere('people.manage');
-  // Bulk changes: tags need people.manage, team rosters need teams.manage.
-  const canBulk = canManagePeople || canAnywhere('teams.manage');
+  const canManagePeople = owner;
+  // People bulk actions are reserved to the owner.
+  const canBulk = owner;
   const toggleSelected = (personId: string) =>
     setSelected((current) => (current.includes(personId) ? current.filter((id) => id !== personId) : [...current, personId]));
 
@@ -77,7 +77,7 @@ export const PeoplePage = () => {
                 {t('list.tags')}
               </Button>
             )}
-            {admin && <Button onClick={() => navigate('/people/new')}>{t('list.addPerson')}</Button>}
+            {owner && <Button onClick={() => navigate('/people/new')}>{t('list.addPerson')}</Button>}
           </div>
         }
       />
@@ -124,7 +124,7 @@ export const PeoplePage = () => {
               <button
                 type="button"
                 className="flex min-w-0 flex-1 items-center gap-4 text-left disabled:cursor-default"
-                disabled={!person.person_id}
+                disabled={!owner || !person.person_id}
                 onClick={() => person.person_id && navigate(`/people/${person.person_id}`)}
               >
                 <Avatar name={person.full_name ?? person.email} url={person.avatar_url} />
@@ -145,7 +145,7 @@ export const PeoplePage = () => {
               )}
 
               {person.has_login &&
-                (admin && person.id !== user?.profile.id ? (
+                (owner && person.id !== user?.profile.id ? (
                   <select
                     aria-label={t('list.roleFor', { name: person.full_name ?? person.email ?? t('list.personFallback') })}
                     className="input w-36"
@@ -162,7 +162,7 @@ export const PeoplePage = () => {
                   <span className="w-36 text-sm text-slate-500">{person.role ? t(`common:roles.${person.role}`) : null}</span>
                 ))}
 
-              {admin && !person.has_login && person.person_id && (
+              {owner && !person.has_login && person.person_id && (
                 <Button
                   variant="secondary"
                   loading={invite.isPending && invite.variables?.personId === person.person_id}
@@ -176,7 +176,7 @@ export const PeoplePage = () => {
                 </Button>
               )}
 
-              {admin && person.has_login && !person.person_id && (
+              {owner && person.has_login && !person.person_id && (
                 <Button
                   variant="secondary"
                   loading={convert.isPending && convert.variables === person.profile_id}
