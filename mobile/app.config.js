@@ -20,6 +20,7 @@ const config = {
   orientation: 'portrait',
   scheme: 'servicecenter',
   userInterfaceStyle: 'automatic',
+  icon: './assets/images/icon.png',
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.servicecenter.app',
@@ -31,7 +32,7 @@ const config = {
   },
   android: {
     package: 'com.servicecenter.app',
-    adaptiveIcon: { backgroundColor: '#f8fafc' },
+    adaptiveIcon: { foregroundImage: './assets/images/adaptive-icon.png', backgroundColor: '#5b5bd6' },
     ...(webAppDomain
       ? {
           intentFilters: [
@@ -52,14 +53,22 @@ const config = {
     'expo-router',
     // The notification icon/colour only apply to a native build; in Expo Go
     // the default OS presentation is used.
-    ['expo-notifications', { color: '#4f46e5' }],
+    ['expo-notifications', { icon: './assets/images/notification-icon.png', color: '#4f46e5' }],
     // MOB-024 rehearsal player: background playback (iOS `audio` background
     // mode, Android media-playback foreground service). Playback only — the
     // app never records, so no microphone permission is requested.
     // Applies to a native build; Expo Go ships its own configuration.
     ['expo-audio', { microphonePermission: false, recordAudioAndroid: false, enableBackgroundPlayback: true }],
     'expo-status-bar',
-    ['expo-splash-screen', { backgroundColor: '#f8fafc', dark: { backgroundColor: '#020617' } }],
+    [
+      'expo-splash-screen',
+      {
+        image: './assets/images/splash-icon.png',
+        imageWidth: 160,
+        backgroundColor: '#f8fafc',
+        dark: { image: './assets/images/splash-icon.png', backgroundColor: '#020617' },
+      },
+    ],
     // MOB-033: one iOS WidgetKit extension fed by snapshots the app writes into
     // the shared app group (no network or sign-in inside the extension). Needs a
     // development/release build; Expo Go has no widget extension. Android
