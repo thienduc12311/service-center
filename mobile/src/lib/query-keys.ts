@@ -54,6 +54,13 @@ export const queryKeys = {
   /** MOB-026: prefix for every manifest; any file change can alter what a plan rehearses. */
   rehearsalAll: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'rehearsal'] as const,
+  /** MOB-030: prefix for every F14 media bundle read (list and detail). */
+  mediaAll: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'media'] as const,
+  mediaList: (scope: ProtectedQueryScope | null, query: string, includeArchived: boolean) =>
+    [...privateRoot(scope), 'media', 'list', query, includeArchived] as const,
+  media: (scope: ProtectedQueryScope | null, mediaId: string | null | undefined) =>
+    [...privateRoot(scope), 'media', 'detail', mediaId ?? null] as const,
   /** MOB-026: prefix for every F13 file read; invalidate this after any file write. */
   filesAll: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'files'] as const,
