@@ -174,7 +174,9 @@ describe('source contract', () => {
     expect(personScreen.match(/enabled: Boolean\(queryScope && id && owner\)/g)).toHaveLength(2);
     expect(source('app/people/index.tsx')).toContain('owner && canOpenPerson(item)');
     expect(source('app/teams/[id].tsx')).toContain('onPress={owner ?');
-    expect(personScreen).toContain("can('teams.manage'");
+    // Roster changes are owners', admins' and team leaders' (not a scheduler's role alone).
+    expect(personScreen).toContain('canEditRoster(teamManageTarget(team))');
+    expect(source('app/teams/[id].tsx')).toContain('canEditRoster(teamManageTarget(team))');
     for (const method of ['getPerson', 'updatePerson', 'personTags', 'replacePersonTags', 'archivePerson', 'restorePerson', 'removeTeamMember']) {
       expect(personScreen).toContain(`api.${method}(`);
     }

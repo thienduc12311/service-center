@@ -161,5 +161,16 @@
     "untitled": "Không có tiêu đề",
     "team": "Ban",
     "yourChurch": "Hội thánh của bạn"
+  },
+  "avatar": {
+    "upload": "Tải ảnh lên",
+    "change": "Đổi ảnh",
+    "remove": "Xóa ảnh",
+    "uploading": "Đang tải lên…",
+    "hint": "PNG, JPEG hoặc WebP, tối đa 5 MB.",
+    "problem": {
+      "unsupported_type": "Hãy chọn ảnh PNG, JPEG hoặc WebP.",
+      "too_large": "Ảnh này lớn hơn 5 MB."
+    }
   }
 }

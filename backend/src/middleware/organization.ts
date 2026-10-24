@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 import {
   ACCESS_CAPABILITY_LABELS,
   canAccessAnywhere,
+  canEditTeamRosterAnywhere,
   isAdmin,
   isLeader,
   type AccessCapability,
@@ -96,6 +97,18 @@ export const requireManager = (req: Request, _res: Response, next: NextFunction)
 export const requireAdmin = (req: Request, _res: Response, next: NextFunction): void => {
   if (!isAdmin(req.orgRole)) {
     next(HttpError.forbidden('Only organization admins can do that'));
+    return;
+  }
+  next();
+};
+
+/**
+ * Owners, admins and team leaders: who is on a team. A legacy scheduler's
+ * role alone does not qualify; RLS (`can_edit_team_roster`) decides the team.
+ */
+export const requireRosterEditor = (req: Request, _res: Response, next: NextFunction): void => {
+  if (!canEditTeamRosterAnywhere(req.access)) {
+    next(HttpError.forbidden('Only organization admins and team leaders can change who is on a team'));
     return;
   }
   next();

@@ -128,3 +128,19 @@ export const scopedIds = (
         .map((entry) => entry.scope_id as string),
     ),
   ];
+
+/**
+ * Who may add people to or remove them from a team: owners, admins and team
+ * leaders (an explicit `teams.manage` grant covering the team). A legacy
+ * scheduler's implicit organization-wide access does not count. Mirrors
+ * `private.can_edit_team_roster`; UI hints only.
+ */
+export const canEditTeamRoster = (access: EffectiveAccess | null | undefined, target: AccessTarget): boolean =>
+  canAccess(rosterEntries(access), 'teams.manage', target);
+
+/** Edits some team's roster (the API's coarse gate; RLS decides which team). */
+export const canEditTeamRosterAnywhere = (access: EffectiveAccess | null | undefined): boolean =>
+  canAccessAnywhere(rosterEntries(access), 'teams.manage');
+
+const rosterEntries = (access: EffectiveAccess | null | undefined): EffectiveAccess | null =>
+  access ? { ...access, entries: access.entries.filter((entry) => entry.source !== 'role:scheduler_legacy') } : null;

@@ -136,7 +136,7 @@ interface DetailLine {
 
 const PersonView = ({ personId, person, row, refreshing, onRefresh }: PersonViewProps) => {
   const { t } = useTranslation(['people', 'teams', 'common']);
-  const { queryScope, user, can, role: callerRole, generation, isCurrentGeneration } = useAuth();
+  const { queryScope, user, canEditRoster, role: callerRole, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const theme = useTheme();
@@ -288,7 +288,7 @@ const PersonView = ({ personId, person, row, refreshing, onRefresh }: PersonView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.hero}>
-          <Avatar name={name} size={56} />
+          <Avatar name={name} url={person?.avatar_url ?? row?.avatar_url} size={56} />
           <Text style={styles.title}>{name}</Text>
           <View style={styles.tags}>
             {role ? <Tag label={t(`common:roles.${role}`)} accent={theme.accent.blue} /> : null}
@@ -384,7 +384,7 @@ const PersonView = ({ personId, person, row, refreshing, onRefresh }: PersonView
           {memberships.length ? (
             memberships.map((membership, index) => {
               const team = teams.data?.find((entry) => entry.id === membership.teamId);
-              const manageable = team ? can('teams.manage', teamManageTarget(team)) : false;
+              const manageable = team ? canEditRoster(teamManageTarget(team)) : false;
               return (
                 <View key={membership.membershipId} style={styles.memberRow}>
                   <View style={styles.flex}>

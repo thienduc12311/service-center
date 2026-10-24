@@ -10,6 +10,7 @@ import {
   serviceTypeSchema,
   serviceTypeSetupSchema,
   serviceTypeTeamsSchema,
+  canEditTeamRoster,
   type ArchiveServiceTypeInput,
   type CopyServiceTypeInput,
   type MoveServiceTypeInput,
@@ -67,6 +68,8 @@ serviceTypesRouter.post(
       db: req.db,
       orgId: req.orgId,
       userId: req.auth.userId,
+      // Organization-wide only: the new teams aren't in any narrower grant yet.
+      canJoinTeams: canEditTeamRoster(req.access, {}),
       input: req.body as ServiceTypeSetupInput,
     });
     res.status(201).json(result);

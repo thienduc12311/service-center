@@ -42,7 +42,7 @@ export default function DirectoryScreen() {
     const name = directoryName(item) ?? t('common:fallback.unnamed');
     const body = (
       <View style={styles.row}>
-        <Avatar name={name} />
+        <Avatar name={name} url={item.avatar_url} />
         <View style={styles.flex}>
           <Text style={styles.title}>
             {name}

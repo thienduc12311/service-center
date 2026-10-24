@@ -2,6 +2,7 @@ import { useErrorText } from '../i18n/useErrorText';
 import { forwardRef, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -319,11 +320,22 @@ export const IconWell = ({ name, accent, size = 40 }: IconWellProps) => {
 
 export interface AvatarProps {
   name: string | null | undefined;
+  /** The uploaded picture; initials are shown without one. */
+  url?: string | null;
   size?: number;
 }
 
-export const Avatar = ({ name, size = 36 }: AvatarProps) => {
+export const Avatar = ({ name, url, size = 36 }: AvatarProps) => {
   const theme = useTheme();
+  if (url) {
+    return (
+      <Image
+        source={{ uri: url }}
+        accessibilityLabel={name ?? undefined}
+        style={{ width: size, height: size, borderRadius: theme.radius.pill, backgroundColor: theme.color.surfaceInset }}
+      />
+    );
+  }
   const letters = (name ?? '')
     .trim()
     .split(/\s+/)

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { EffectiveAccess, EffectiveAccessEntry } from '../types/domain.js';
-import { CAPABILITY_SCOPES, canAccess, canAccessAnywhere, capabilitiesForScope, isLeader, scopedIds } from './access.js';
+import {
+  CAPABILITY_SCOPES,
+  canAccess,
+  canAccessAnywhere,
+  canEditTeamRoster,
+  canEditTeamRosterAnywhere,
+  capabilitiesForScope,
+  isLeader,
+  scopedIds,
+} from './access.js';
 
 const BAND = 'team-band';
 const HOSTS = 'team-hosts';
@@ -66,5 +75,33 @@ describe('capability scopes', () => {
     ]);
     expect(CAPABILITY_SCOPES['songs.manage']).toEqual(['organization']);
     expect(capabilitiesForScope('organization')).toHaveLength(8);
+  });
+});
+
+describe('canEditTeamRoster', () => {
+  const band = { serviceTypeId: SUNDAY, teamId: BAND };
+
+  it('lets owners, admins and team leaders change who is on the team', () => {
+    expect(canEditTeamRoster(access([grant('teams.manage', 'organization', null, 'role:owner')]), band)).toBe(true);
+    expect(canEditTeamRoster(access([grant('teams.manage', 'organization', null, 'role:admin')]), band)).toBe(true);
+    const bandLeader = access([grant('teams.manage', 'team', BAND)]);
+    expect(canEditTeamRoster(bandLeader, band)).toBe(true);
+    expect(canEditTeamRoster(bandLeader, { serviceTypeId: SUNDAY, teamId: HOSTS })).toBe(false);
+  });
+
+  it('does not count a legacy scheduler role as leading a team', () => {
+    const scheduler = access([
+      grant('teams.manage', 'organization', null, 'role:scheduler_legacy'),
+      grant('scheduling.manage', 'organization', null, 'role:scheduler_legacy'),
+    ]);
+    expect(canEditTeamRoster(scheduler, band)).toBe(false);
+    expect(canEditTeamRosterAnywhere(scheduler)).toBe(false);
+    // …but an explicit leader grant on top of it does.
+    expect(canEditTeamRoster(access([...scheduler.entries, grant('teams.manage', 'team', BAND)]), band)).toBe(true);
+  });
+
+  it('does not treat scheduling a team as leading it', () => {
+    expect(canEditTeamRoster(access([grant('scheduling.manage', 'team', BAND)]), band)).toBe(false);
+    expect(canEditTeamRosterAnywhere(null)).toBe(false);
   });
 });

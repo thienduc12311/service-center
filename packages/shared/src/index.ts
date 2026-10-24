@@ -31,6 +31,7 @@ export * from './lib/reminders.js';
 export * from './lib/replacements.js';
 export * from './lib/message-templates.js';
 export * from './lib/access.js';
+export * from './lib/avatars.js';
 export * from './lib/staffing-proposals.js';
 export * from './lib/plan-templates.js';
 export * from './lib/plan-order.js';

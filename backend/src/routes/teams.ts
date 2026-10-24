@@ -16,7 +16,7 @@ import {
   type TeamWithPositions,
 } from '@service-center/shared';
 import { validateBody } from '../lib/validate.js';
-import { requireAdmin, requireCapability, requireManager } from '../middleware/organization.js';
+import { requireAdmin, requireCapability, requireManager, requireRosterEditor } from '../middleware/organization.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { loadScopeAccess, replaceScopeAccess } from '../services/access.js';
@@ -203,7 +203,7 @@ teamsRouter.delete('/:id/positions/:positionId', requireCapability('teams.manage
 });
 
 // ------------------------------------------------------------- members ----
-teamsRouter.post('/:id/members', requireCapability('teams.manage'), validateBody(teamMembershipSchema), async (req, res) => {
+teamsRouter.post('/:id/members', requireRosterEditor, validateBody(teamMembershipSchema), async (req, res) => {
   const { person_id, user_id, position_id } = req.body as {
     person_id?: string;
     user_id?: string;
@@ -239,14 +239,17 @@ teamsRouter.post('/:id/members', requireCapability('teams.manage'), validateBody
   res.status(201).json(created);
 });
 
-teamsRouter.delete('/:id/members/:membershipId', requireCapability('teams.manage'), async (req, res) => {
-  await unwrap(
+// Owners, admins and that team's leaders; anyone else's delete matches no row.
+teamsRouter.delete('/:id/members/:membershipId', requireRosterEditor, async (req, res) => {
+  const removed = await unwrap(
     req.db
       .from('team_memberships')
       .delete()
       .eq('id', param(req, 'membershipId'))
-      .eq('team_id', param(req, 'id')),
+      .eq('team_id', param(req, 'id'))
+      .select('id'),
   );
+  if (!removed?.length) throw HttpError.notFound('Team member not found');
   res.status(204).end();
 });
 
