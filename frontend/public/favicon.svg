@@ -4,22 +4,25 @@
       <stop offset="0" stop-color="#6366f1"/>
       <stop offset="1" stop-color="#5b21b6"/>
     </linearGradient>
-    <linearGradient id="flame" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#f97316"/>
+    <linearGradient id="gold" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#f59e0b"/>
       <stop offset="1" stop-color="#fbbf24"/>
     </linearGradient>
-    <linearGradient id="flameInner" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#fbbf24"/>
-      <stop offset="1" stop-color="#fde68a"/>
-    </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#1e1b4b" flood-opacity="0.35"/>
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#1e1b4b" flood-opacity="0.35"/>
     </filter>
   </defs><rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
-  <g transform="translate(512 512) scale(1) translate(-512 -512)">
-    <path d="M512 132 C548 236 690 300 702 486 C712 640 624 760 512 760 C400 760 312 640 322 486 C328 396 370 334 418 292 C410 372 432 420 474 436 C452 334 470 230 512 132 Z" fill="url(#flame)"/>
-    <path d="M512 330 C536 410 626 452 630 560 C634 660 580 716 512 716 C444 716 390 660 394 560 C398 488 440 444 476 418 C474 470 490 500 520 508 C506 440 498 390 512 330 Z" fill="url(#flameInner)" opacity="0.9"/>
-    <g fill="#ffffff" filter="url(#shadow)">
-  <rect x="460" y="246" width="104" height="560" rx="18"/>
-  <rect x="318" y="398" width="388" height="100" rx="18"/></g>
+  <g transform="translate(512 512) scale(1) translate(-512 -490)">
+    <g fill="#ffffff" filter="url(#shadow)"><rect x="272" y="196" width="480" height="636" rx="64"/></g>
+    <g fill="#c7d2fe"><rect x="404" y="148" width="216" height="104" rx="36"/></g>
+    
+      <circle cx="380" cy="372" r="46" fill="url(#gold)" stroke="none" stroke-width="14"/>
+      <path d="M356 372 l18 18 l32 -36" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="456" y="352" width="232" height="40" rx="20" fill="#c7d2fe"/>
+      <circle cx="380" cy="512" r="46" fill="url(#gold)" stroke="none" stroke-width="14"/>
+      <path d="M356 512 l18 18 l32 -36" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="456" y="492" width="180" height="40" rx="20" fill="#c7d2fe"/>
+      <circle cx="380" cy="652" r="46" fill="none" stroke="#c7d2fe" stroke-width="14"/>
+      
+      <rect x="456" y="632" width="232" height="40" rx="20" fill="#e0e7ff"/>
   </g></svg>
