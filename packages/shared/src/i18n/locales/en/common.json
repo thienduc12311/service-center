@@ -173,5 +173,16 @@
     "untitled": "Untitled",
     "team": "Team",
     "yourChurch": "Your church"
+  },
+  "avatar": {
+    "upload": "Upload photo",
+    "change": "Change photo",
+    "remove": "Remove photo",
+    "uploading": "Uploading…",
+    "hint": "PNG, JPEG or WebP, up to 5 MB.",
+    "problem": {
+      "unsupported_type": "Choose a PNG, JPEG or WebP image.",
+      "too_large": "That image is larger than 5 MB."
+    }
   }
 }

@@ -43,7 +43,7 @@ const NO_POSITION = 'none';
 export default function TeamScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const { t } = useTranslation(['teams', 'people', 'common']);
-  const { queryScope, can, role, generation, isCurrentGeneration } = useAuth();
+  const { queryScope, canEditRoster, role, generation, isCurrentGeneration } = useAuth();
   const owner = canOpenPeopleDetails(role);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -60,7 +60,7 @@ export default function TeamScreen() {
     enabled: Boolean(queryScope && teamId.success),
   });
   const team = teams.data?.find((entry) => teamId.success && entry.id === teamId.data) ?? null;
-  const manageable = team ? can('teams.manage', teamManageTarget(team)) : false;
+  const manageable = team ? canEditRoster(teamManageTarget(team)) : false;
 
   const people = useQuery({
     queryKey: queryKeys.directory(queryScope, false),
@@ -162,7 +162,7 @@ export default function TeamScreen() {
                       onPress={owner ? () => router.push({ pathname: '/people/[id]', params: { id: member.person_id } }) : undefined}
                     >
                       <View style={styles.personLine}>
-                        <Avatar name={name} size={28} />
+                        <Avatar name={name} url={member.profile?.avatar_url} size={28} />
                         <View style={styles.flex}>
                           <Text style={styles.body}>{name}</Text>
                           {position ? <Text style={styles.muted}>{position}</Text> : null}

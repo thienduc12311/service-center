@@ -182,8 +182,11 @@ begin
   perform pg_temp.expect_hint(format('select public.commit_staffing_proposal(%L, 0, %L)', v_id, 'stale-revision'), 'proposal_stale');
 
   -- Membership removed after capture (does not bump any plan revision).
+  -- Schedulers no longer edit rosters, so an owner-level session removes it.
   v_id := pg_temp.draft(array[pg_temp.fx('plan_c')], jsonb_build_array(pg_temp.choice(pg_temp.fx('plan_c'), pg_temp.fx('guest2'))));
+  reset role;
   delete from public.team_memberships where person_id = pg_temp.fx('guest2');
+  set local role authenticated;
   perform pg_temp.expect_hint(format('select public.commit_staffing_proposal(%L, 0, %L)', v_id, 'stale-membership'), 'proposal_stale');
 
   -- Blockout added after capture: deferred F04 check refuses and nothing partial remains.

@@ -141,6 +141,7 @@ export const CHART_NOTATION_LABELS: Record<ChartNotation, string> = {
 
 export const STORAGE_BUCKETS = {
   attachments: 'attachments',
+  avatars: 'avatars',
   organizationLogos: 'organization-logos',
   songbooks: 'songbooks',
 } as const;

@@ -16,6 +16,8 @@ export interface ServiceTypeSetupContext {
   orgId: string;
   /** The signed-in manager: authors the plan and joins the teams they picked. */
   userId: string;
+  /** Owners, admins and organization-wide team leaders may put themselves on the new teams. */
+  canJoinTeams: boolean;
   input: ServiceTypeSetupInput;
 }
 
@@ -67,7 +69,7 @@ export const planTeamSetup = (
 export const setUpServiceType = async (
   context: ServiceTypeSetupContext,
 ): Promise<ServiceTypeSetupResult> => {
-  const { db, orgId, userId, input } = context;
+  const { db, orgId, userId, canJoinTeams, input } = context;
 
   // `service_types` is unique on (organization_id, name) but case-sensitively,
   // so compare the handful of names an organization has rather than relying on
@@ -124,7 +126,7 @@ export const setUpServiceType = async (
     ),
   );
 
-  const teams = await createSetupTeams({ db, orgId, userId, input, serviceTypeId: serviceType.id });
+  const teams = await createSetupTeams({ db, orgId, userId, canJoinTeams, input, serviceTypeId: serviceType.id });
 
   return {
     service_type: serviceType,
@@ -178,7 +180,9 @@ const createSetupTeams = async (input: CreateSetupTeamsInput): Promise<TeamRow[]
   // "You will be added as a team leader to any teams selected." Membership is
   // the strongest claim the schema models, and it is what puts the team in the
   // planner's "My Teams" list.
-  if (input.input.join_teams && teams.length) {
+  // Rosters are owners', admins' and team leaders' to change, so a scheduler
+  // running the wizard is not added.
+  if (input.input.join_teams && input.canJoinTeams && teams.length) {
     // team_memberships is guarded by *partial* unique indexes, which PostgREST
     // can't name in an `on conflict` clause, so skip the duplicates by hand.
     const already =

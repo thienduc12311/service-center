@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { canEditTeamRoster } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePeople, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
@@ -10,6 +11,11 @@ import { TeamEditor } from '../components/TeamEditor';
 import { TeamPolicyModal } from '../components/TeamPolicyModal';
 import { AvailabilityRequestsModal } from '../components/team/AvailabilityRequestsModal';
 
+interface RemoveMemberVariables {
+  teamId: string;
+  membershipId: string;
+}
+
 export const TeamsPage = () => {
   const { t } = useTranslation(['teams', 'common']);
   const { access, can } = useAuth();
@@ -17,6 +23,9 @@ export const TeamsPage = () => {
   const canManageTeam = (team: { id: string; service_type_id: string | null }) =>
     can('teams.manage', { serviceTypeId: team.service_type_id, teamId: team.id });
   const canCreateTeams = can('teams.manage');
+  /** Owners, admins and the team's leaders; a scheduler's role alone does not count. */
+  const canEditRoster = (team: { id: string; service_type_id: string | null }) =>
+    canEditTeamRoster(access, { serviceTypeId: team.service_type_id, teamId: team.id });
   const invalidate = useInvalidateOrg();
   const teams = useTeams();
   const people = usePeople();
@@ -62,6 +71,16 @@ export const TeamsPage = () => {
     },
   });
 
+  const removeMember = useMutation({
+    mutationFn: ({ teamId, membershipId }: RemoveMemberVariables) => api.removeTeamMember(teamId, membershipId),
+    onSuccess: () => invalidate(),
+  });
+
+  const confirmRemove = (team: { id: string; name: string }, membershipId: string, name: string) => {
+    if (!window.confirm(`${t('mobileTeams.removeTitle', { name, team: team.name })}\n\n${t('mobileTeams.removeMessage')}`)) return;
+    removeMember.mutate({ teamId: team.id, membershipId });
+  };
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     createTeam.mutate();
@@ -89,7 +108,7 @@ export const TeamsPage = () => {
         actions={canCreateTeams && <Button onClick={() => setCreating(true)}>{t('teamsPage.newTeam')}</Button>}
       />
 
-      <ErrorNotice error={teams.error ?? addMember.error} />
+      <ErrorNotice error={teams.error ?? addMember.error ?? removeMember.error} />
 
       {teams.isLoading ? (
         <Loading />
@@ -150,10 +169,11 @@ export const TeamsPage = () => {
               )}
 
               <ul className="divide-y divide-slate-50">
-                {team.members.map((member, index) => {
+                {team.members.map((member) => {
                   const position = team.positions.find((p) => p.id === member.position_id);
+                  const memberName = member.profile?.full_name || member.profile?.email || t('common:states.unknown');
                   return (
-                    <li key={`${member.user_id}-${member.position_id ?? index}`} className="flex items-center gap-3 px-4 py-2.5">
+                    <li key={member.membership_id} className="flex items-center gap-3 px-4 py-2.5">
                       <Avatar
                         name={member.profile?.full_name ?? member.profile?.email}
                         url={member.profile?.avatar_url}
@@ -163,6 +183,17 @@ export const TeamsPage = () => {
                         {member.profile?.full_name ?? member.profile?.email ?? t('common:states.unknown')}
                       </span>
                       {position && <span className="text-xs text-slate-500">{position.name}</span>}
+                      {canEditRoster(team) && (
+                        <Button
+                          variant="ghost"
+                          className="!px-2 text-xs text-rose-600"
+                          aria-label={t('mobileTeams.removeLabel', { name: memberName, team: team.name })}
+                          disabled={removeMember.isPending}
+                          onClick={() => confirmRemove(team, member.membership_id, memberName)}
+                        >
+                          {t('mobileTeams.remove')}
+                        </Button>
+                      )}
                     </li>
                   );
                 })}
@@ -171,7 +202,7 @@ export const TeamsPage = () => {
                 )}
               </ul>
 
-              {canManageTeam(team) && (
+              {canEditRoster(team) && (
                 <div className="border-t border-slate-100 px-4 py-2">
                   <Button variant="ghost" className="!px-2 text-sm" onClick={() => setAddingTo(team.id)}>
                     {t('teamsPage.addPerson')}

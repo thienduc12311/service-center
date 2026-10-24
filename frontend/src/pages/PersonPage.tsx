@@ -10,6 +10,7 @@ import { PersonPolicyPanel } from '../components/PersonPolicyPanel';
 import { Badge, Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
 import { RosterHistoryPanel } from '../components/people/RosterHistoryPanel';
 import { useAuth } from '../providers/AuthProvider';
+import { AvatarUpload } from '../components/AvatarUpload';
 import { PersonLanguageField, personLanguageInput, useFormatters } from '../i18n';
 
 /** Editable state for the add/edit person form — a superset of `CreatePersonInput` with '' standing in for unset. */
@@ -155,8 +156,12 @@ export const PersonPage = () => {
     if (person.data) setInviteEmail(person.data.email ?? '');
   }, [person.data]);
 
-  const { canAnywhere } = useAuth();
+  const { canAnywhere, organizationId } = useAuth();
   const canManage = canAnywhere('people.manage');
+  const saveAvatar = async (avatarUrl: string | null) => {
+    await api.updatePerson(personId!, { avatar_url: avatarUrl });
+    await Promise.all([invalidate(), person.refetch()]);
+  };
   const canSeeHistory = canManage || canAnywhere('people.view_private');
   // Reversible: history stays, pickers and new requests leave them out.
   const archive = useMutation({
@@ -220,6 +225,14 @@ export const PersonPage = () => {
       >
         <section className="card space-y-4 p-5">
           <h2 className="font-semibold">{t('person.sections.basic')}</h2>
+          {!isNew && personId && organizationId && canManage && (
+            <AvatarUpload
+              name={[form.first_name, form.last_name].filter(Boolean).join(' ')}
+              url={person.data?.avatar_url}
+              target={{ kind: 'person', organizationId, personId }}
+              onChange={saveAvatar}
+            />
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field id="first-name" label={t('person.fields.firstName')}>
               <input

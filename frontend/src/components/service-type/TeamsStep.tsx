@@ -13,6 +13,8 @@ export interface TeamsStepProps {
   onChange: (selected: string[]) => void;
   joinTeams: boolean;
   onJoinTeamsChange: (joinTeams: boolean) => void;
+  /** Only owners, admins and organization-wide team leaders may put themselves on teams. */
+  canJoinTeams: boolean;
 }
 
 export const TeamsStep = ({
@@ -21,6 +23,7 @@ export const TeamsStep = ({
   onChange,
   joinTeams,
   onJoinTeamsChange,
+  canJoinTeams,
 }: TeamsStepProps) => {
   const { t } = useTranslation('teams');
   const byCategory = useMemo(() => {
@@ -75,15 +78,17 @@ export const TeamsStep = ({
         ))}
       </div>
 
-      <label className="flex items-center justify-center gap-2 text-sm text-slate-500">
-        <input
-          type="checkbox"
-          className="size-4 rounded border-slate-300"
-          checked={joinTeams}
-          onChange={(event) => onJoinTeamsChange(event.target.checked)}
-        />
-        {t('teamsStep.joinTeams')}
-      </label>
+      {canJoinTeams && (
+        <label className="flex items-center justify-center gap-2 text-sm text-slate-500">
+          <input
+            type="checkbox"
+            className="size-4 rounded border-slate-300"
+            checked={joinTeams}
+            onChange={(event) => onJoinTeamsChange(event.target.checked)}
+          />
+          {t('teamsStep.joinTeams')}
+        </label>
+      )}
     </div>
   );
 };

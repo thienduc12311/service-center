@@ -19,7 +19,7 @@ import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
  */
 export default function TeamsScreen() {
   const { t } = useTranslation(['teams', 'common']);
-  const { queryScope, can } = useAuth();
+  const { queryScope, can, canEditRoster } = useAuth();
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -38,7 +38,7 @@ export default function TeamsScreen() {
           <Text style={styles.title}>{item.name}</Text>
           {item.description ? <Text style={styles.muted}>{item.description}</Text> : null}
           <Text style={styles.muted}>{t('common:count.people', { count: item.members.length })}</Text>
-          {can('teams.manage', teamManageTarget(item)) ? (
+          {canEditRoster(teamManageTarget(item)) ? (
             <View style={styles.tags}>
               <Tag label={t('mobileTeams.youManage')} accent={theme.accent.blue} />
             </View>

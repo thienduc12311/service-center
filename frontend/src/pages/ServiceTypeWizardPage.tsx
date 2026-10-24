@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   COMMON_TEAM_TEMPLATES,
+  canEditTeamRoster,
   toISODate,
   type ServiceTypeSetupPayload,
 } from '@service-center/shared';
@@ -31,8 +32,10 @@ export const ServiceTypeWizardPage = () => {
   const { t } = useTranslation(['teams', 'common']);
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
-  const { canAnywhere } = useAuth();
+  const { access, canAnywhere } = useAuth();
   const canManage = canAnywhere('plans.edit');
+  // The new teams aren't in any narrower grant yet, so organization-wide only.
+  const canJoinTeams = canEditTeamRoster(access, {});
 
   const [step, setStep] = useState<WizardStep>('name');
   const [name, setName] = useState<NameStepValue>({ name: '', recurrence: 'weekly' });
@@ -56,7 +59,7 @@ export const ServiceTypeWizardPage = () => {
       const payload: ServiceTypeSetupPayload = {
         name: trimmedName,
         recurrence: name.recurrence,
-        join_teams: joinTeams,
+        join_teams: canJoinTeams && joinTeams,
         times: times.map((time) => ({
           kind: 'service',
           name: null,
@@ -104,6 +107,7 @@ export const ServiceTypeWizardPage = () => {
               onChange={setTeamNames}
               joinTeams={joinTeams}
               onJoinTeamsChange={setJoinTeams}
+              canJoinTeams={canJoinTeams}
             />
           )}
 

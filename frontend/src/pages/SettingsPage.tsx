@@ -4,9 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { isAdmin, isLeader, personalFeedState, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { useCalendarFeed } from '../hooks/queries';
+import { useCalendarFeed, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, PageHeader } from '../components/ui';
+import { AvatarUpload } from '../components/AvatarUpload';
 import { DeliverySettings } from '../components/settings/DeliverySettings';
 import { IntegrationSettings } from '../components/settings/IntegrationSettings';
 import { MyReminderSettings, ReminderPolicySettings } from '../components/settings/ReminderSettings';
@@ -44,12 +45,29 @@ export const SettingsPage = () => {
     onSuccess: () => refreshUser(),
   });
 
+  const invalidate = useInvalidateOrg();
+  // The picture follows onto your Person, so rosters and plans re-read too.
+  const saveAvatar = async (avatarUrl: string | null) => {
+    await api.updateMe({ avatar_url: avatarUrl });
+    await Promise.all([refreshUser(), invalidate()]);
+  };
+
   return (
     <div className="max-w-3xl space-y-8">
       <PageHeader title={t('settingsPage.title')} subtitle={t('settingsPage.subtitle')} />
 
       <section className="card p-5">
         <h2 className="mb-4 font-semibold">{t('settingsPage.profile.title')}</h2>
+        {user && (
+          <div className="mb-4">
+            <AvatarUpload
+              name={user.profile.full_name ?? user.profile.email}
+              url={user.profile.avatar_url}
+              target={{ kind: 'self', userId: user.profile.id }}
+              onChange={saveAvatar}
+            />
+          </div>
+        )}
         <form
           className="space-y-4"
           onSubmit={(event: FormEvent) => {

@@ -5,7 +5,7 @@ import { Alert, Image, Linking, ScrollView, StyleSheet, Text, View } from 'react
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { isAdmin, STORAGE_BUCKETS, type BlockoutRow } from '@service-center/shared';
+import { avatarObjectPath, isAdmin, STORAGE_BUCKETS, type BlockoutRow } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { supabase } from '../../src/lib/supabase';
@@ -59,6 +59,8 @@ export default function ProfileScreen() {
   const [organizationError, setOrganizationError] = useState<unknown>(null);
   const [creatingOrganization, setCreatingOrganization] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState<unknown>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<unknown>(null);
   const [editingBlockout, setEditingBlockout] = useState<BlockoutRow | null>(null);
@@ -160,6 +162,63 @@ export default function ProfileScreen() {
     }
   };
 
+  /** Your own picture; it follows onto your Person, so rosters re-read too. */
+  const saveAvatar = async (avatarUrl: string | null): Promise<void> => {
+    await api.updateMe({ avatar_url: avatarUrl });
+    if (!isCurrentGeneration(generation)) return;
+    await Promise.all([
+      refreshUser(),
+      queryClient.invalidateQueries({ queryKey: queryKeys.teams(queryScope) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.people(queryScope) }),
+    ]);
+  };
+
+  const runAvatar = async (work: () => Promise<void>): Promise<void> => {
+    setAvatarBusy(true);
+    setAvatarError(null);
+    try {
+      await work();
+    } catch (error) {
+      if (isCurrentGeneration(generation)) setAvatarError(error);
+    } finally {
+      if (isCurrentGeneration(generation)) setAvatarBusy(false);
+    }
+  };
+
+  const updateAvatar = async (): Promise<void> => {
+    const userId = user?.profile.id;
+    if (!userId) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!isCurrentGeneration(generation)) return;
+    if (!permission.granted) {
+      Alert.alert(t('profile.photoPermissionTitle'), t('profile.photoPermissionMessage'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      base64: true,
+      quality: 0.85,
+    });
+    if (!isCurrentGeneration(generation)) return;
+    const asset = result.canceled ? null : result.assets[0];
+    if (!asset?.base64) return;
+    const base64 = asset.base64;
+
+    await runAvatar(async () => {
+      // The picker re-encodes an edited, compressed pick as JPEG.
+      const path = avatarObjectPath({ kind: 'self', userId }, `${Date.now()}`, 'image/jpeg');
+      const { error } = await supabase.storage
+        .from(STORAGE_BUCKETS.avatars)
+        .upload(path, base64ToBytes(base64), { contentType: 'image/jpeg' });
+      if (error) throw error;
+      if (!isCurrentGeneration(generation)) return;
+      const { data } = supabase.storage.from(STORAGE_BUCKETS.avatars).getPublicUrl(path);
+      await saveAvatar(data.publicUrl);
+    });
+  };
+
   const memberships = user?.memberships ?? [];
   const visibleBlockouts = useMemo(() => {
     const seenSeries = new Set<string>();
@@ -207,7 +266,7 @@ export default function ProfileScreen() {
             {organization?.logo_url ? (
               <Image source={{ uri: organization.logo_url }} style={styles.logo} />
             ) : (
-              <Avatar name={user?.profile.full_name ?? user?.profile.email} size={64} />
+              <Avatar name={user?.profile.full_name ?? user?.profile.email} url={user?.profile.avatar_url} size={64} />
             )}
             <Text style={styles.name}>{user?.profile.full_name ?? t('profile.yourProfile')}</Text>
             <Text style={styles.email}>{user?.profile.email}</Text>
@@ -224,6 +283,27 @@ export default function ProfileScreen() {
         <Reveal index={1}>
           <Card>
             <Label>{t('settingsPage.profile.title')}</Label>
+            <View style={styles.avatarRow}>
+              <Avatar name={user?.profile.full_name ?? user?.profile.email} url={user?.profile.avatar_url} size={56} />
+              <View style={styles.avatarActions}>
+                <Button
+                  title={user?.profile.avatar_url ? t('common:avatar.change') : t('common:avatar.upload')}
+                  variant="secondary"
+                  loading={avatarBusy}
+                  disabled={avatarBusy}
+                  onPress={() => void updateAvatar()}
+                />
+                {user?.profile.avatar_url ? (
+                  <Button
+                    title={t('common:avatar.remove')}
+                    variant="quiet"
+                    disabled={avatarBusy}
+                    onPress={() => void runAvatar(() => saveAvatar(null))}
+                  />
+                ) : null}
+              </View>
+            </View>
+            <ErrorNotice error={avatarError} />
             <Field label={t('settingsPage.profile.fullName')} value={fullName} onChangeText={setFullName} placeholder={t('settingsPage.profile.fullName')} />
             <Field
               label={t('settingsPage.profile.phone')}
@@ -233,7 +313,6 @@ export default function ProfileScreen() {
               keyboardType="phone-pad"
             />
             <Text style={styles.body}>{t('settingsPage.profile.signedInAs', { email: user?.profile.email ?? '' })}</Text>
-            <Text style={styles.body}>{t('people:mobileDirectory.avatarOnWebsite')}</Text>
             <ErrorNotice error={save.error} />
             <Button title={t('settingsPage.profile.save')} onPress={() => save.mutate()} loading={save.isPending} />
           </Card>
@@ -441,6 +520,8 @@ const makeStyles = (theme: Theme) =>
     flex: { flex: 1 },
     identity: { alignItems: 'center', gap: theme.space.xs, paddingVertical: theme.space.xl },
     logo: { width: 64, height: 64, borderRadius: theme.radius.lg },
+    avatarRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    avatarActions: { flex: 1, gap: theme.space.xs },
     name: { ...theme.type.display, fontSize: 30, lineHeight: 34, color: theme.color.ink, marginTop: theme.space.md },
     email: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     membership: { ...theme.type.label, color: theme.color.inkFaint, marginTop: theme.space.sm },

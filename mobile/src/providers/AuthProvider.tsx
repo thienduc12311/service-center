@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import {
   canAccess,
+  canEditTeamRoster,
   canAccessAnywhere,
   canManage,
   isAdmin,
@@ -36,6 +37,8 @@ interface AuthContextValue {
   can: (capability: AccessCapability, target?: AccessTarget) => boolean;
   /** Holds the capability at some scope (e.g. may open plan creation at all). UI hint only. */
   canAnywhere: (capability: AccessCapability) => boolean;
+  /** Owners, admins and the team's leaders: who is on the team (not a scheduler's role alone). */
+  canEditRoster: (target: AccessTarget) => boolean;
   /** Owners and admins: membership, org settings and AI chord sheet imports. */
   isAdmin: boolean;
   loading: boolean;
@@ -161,6 +164,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       canManage: canManage(role),
       can: (capability, target) => canAccess(access, capability, target),
       canAnywhere: (capability) => canAccessAnywhere(access, capability),
+      canEditRoster: (target) => canEditTeamRoster(access, target),
       isAdmin: isAdmin(role),
       loading: phase === 'loading',
       ready: phase === 'ready' || phase === 'signed-out',
