@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appID": "REPLACE_WITH_APPLE_TEAM_ID.com.servicecenter.app",
+        "appID": "KG2HLZR98V.com.servicecenter.app",
         "paths": ["/accept-invite", "/respond"]
       }
     ]

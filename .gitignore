@@ -11,6 +11,7 @@ frontend/vite.config.js
 .env
 .env.local
 .env.*.local
+.env.prod
 !.env.example
 
 supabase/.branches/
