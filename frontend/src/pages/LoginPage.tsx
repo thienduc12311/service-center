@@ -166,10 +166,6 @@ export const LoginPage = () => {
             </button>
           </p>
         </form>
-
-        <p className="mt-6 text-center text-xs text-slate-400">
-          {t('login.demoLogin', { email: 'avery@example.com', password: 'password123' })}
-        </p>
       </div>
     </div>
   );

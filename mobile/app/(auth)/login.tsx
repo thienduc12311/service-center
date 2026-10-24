@@ -176,10 +176,6 @@ export default function LoginScreen() {
               </Text>
             </Pressable>
           </Reveal>
-
-          <Text style={styles.seedHint}>
-            {t('login.demoLogin', { email: 'avery@example.com', password: 'password123' })}
-          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
@@ -211,10 +207,4 @@ const makeStyles = (theme: Theme) =>
     notice: { ...theme.type.bodySmall, color: theme.accent.green.fg },
     switchTarget: { minHeight: 44, justifyContent: 'center' },
     switch: { ...theme.type.bodySmall, color: theme.color.inkMuted, textAlign: 'center' },
-    seedHint: {
-      ...theme.type.numeric,
-      fontSize: 11,
-      color: theme.color.inkFaint,
-      textAlign: 'center',
-    },
   });
