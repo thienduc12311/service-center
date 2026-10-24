@@ -16,6 +16,7 @@ if (webAppDomain && !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/i.test(webAppDomain)) {
 const config = {
   name: 'Service Center',
   slug: 'service-center',
+  owner: 'thienduc12311',
   version: '0.1.0',
   orientation: 'portrait',
   scheme: 'servicecenter',
@@ -94,6 +95,7 @@ const config = {
     supabaseAnonKey: '',
     apiUrl: 'http://localhost:4000',
     webAppDomain,
+    eas: { projectId: '31103a65-05de-4a27-bc00-3cb9a1c830a0' },
   },
 };
 
