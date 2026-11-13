@@ -91,6 +91,9 @@ const config = {
         ],
       },
     ],
+    // iOS 27 refuses to launch apps without the UIScene life cycle; opt in to
+    // Expo's scene delegate.
+    './plugins/withSceneLifecycle',
   ],
   experiments: { typedRoutes: false },
   extra: {

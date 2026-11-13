@@ -25,6 +25,8 @@ export type IconName =
   | 'camera'
   | 'image'
   | 'upload'
+  | 'download'
+  | 'repeat'
   | 'document'
   | 'plans'
   | 'search'
@@ -125,6 +127,21 @@ const paths: Record<IconName, (stroke: number) => ReactElement> = {
       <Path d="M12 15.5V3.5" strokeWidth={w} />
       <Polyline points="7,8.5 12,3.5 17,8.5" strokeWidth={w} />
       <Path d="M4 15v3.5A2.5 2.5 0 006.5 21h11a2.5 2.5 0 002.5-2.5V15" strokeWidth={w} />
+    </>
+  ),
+  download: (w) => (
+    <>
+      <Path d="M12 3.5v12" strokeWidth={w} />
+      <Polyline points="7,10.5 12,15.5 17,10.5" strokeWidth={w} />
+      <Path d="M4 15v3.5A2.5 2.5 0 006.5 21h11a2.5 2.5 0 002.5-2.5V15" strokeWidth={w} />
+    </>
+  ),
+  repeat: (w) => (
+    <>
+      <Path d="M4.5 11V9.5A3.5 3.5 0 018 6h11" strokeWidth={w} />
+      <Polyline points="16,3 19,6 16,9" strokeWidth={w} />
+      <Path d="M19.5 13v1.5A3.5 3.5 0 0116 18H5" strokeWidth={w} />
+      <Polyline points="8,15 5,18 8,21" strokeWidth={w} />
     </>
   ),
   document: (w) => (
