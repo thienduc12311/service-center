@@ -14,6 +14,7 @@ import { api } from '../../lib/api';
 import { keys } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Badge, Button, ErrorNotice, Loading } from '../ui';
+import { Icon } from '../icons';
 import { PublicPlanView } from '../PublicPlanView';
 import { useFormatters } from '../../i18n';
 
@@ -74,22 +75,24 @@ export const ShareTab = ({ plan }: ShareTabProps) => {
     <section aria-labelledby="share-heading" className="space-y-5">
       <div>
         <h2 id="share-heading" className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
-          {t('share.heading')} <Badge tone="bg-slate-100 text-slate-700 ring-slate-500/20">{t(`share.state.${data.state}`)}</Badge>
+          {t('share.heading')} <Badge tone="bg-slate-100 text-slate-700 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-200">{t(`share.state.${data.state}`)}</Badge>
         </h2>
-        <p className="text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           {t('share.intro')}
         </p>
       </div>
 
-      {data.ineligible_reason && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{data.ineligible_reason}</p>}
+      {data.ineligible_reason && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">{data.ineligible_reason}</p>}
 
-      <fieldset className="card space-y-2 p-4">
-        <legend className="px-1 text-sm font-medium">{t('share.fields')}</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <fieldset className="card space-y-3 p-4">
+        <legend className="section-label float-left mb-1 w-full">{t('share.fields')}</legend>
+        <div className="clear-both grid gap-2 sm:grid-cols-2">
           {FIELDS.map((field) => (
-            <label key={field} className="flex items-center gap-2 text-sm">
+            <label key={field} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
               <input
                 type="checkbox"
+                className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
                 checked={fields.includes(field)}
                 onChange={(event) =>
                   setFields((current) => (event.target.checked ? [...current, field] : current.filter((f) => f !== field)))
@@ -101,29 +104,30 @@ export const ShareTab = ({ plan }: ShareTabProps) => {
         </div>
       </fieldset>
 
-      <fieldset className="card space-y-2 p-4">
-        <legend className="px-1 text-sm font-medium">{t('share.when')}</legend>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="radio" name="publish-mode" checked={mode === 'now'} onChange={() => setMode('now')} /> {t('share.modeNow')}
+      <fieldset className="card space-y-3 p-4">
+        <legend className="section-label float-left mb-1 w-full">{t('share.when')}</legend>
+        <label className="clear-both flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+          <input type="radio" className="accent-brand-600" name="publish-mode" checked={mode === 'now'} onChange={() => setMode('now')} /> {t('share.modeNow')}
         </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="radio" name="publish-mode" checked={mode === 'service_day'} onChange={() => setMode('service_day')} /> {t('share.modeServiceDay')}
+        <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+          <input type="radio" className="accent-brand-600" name="publish-mode" checked={mode === 'service_day'} onChange={() => setMode('service_day')} /> {t('share.modeServiceDay')}
         </label>
       </fieldset>
+      </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button loading={publish.isPending} disabled={fields.length === 0} onClick={() => publish.mutate(false)}>
+        <Button icon={live ? 'check' : 'upload'} loading={publish.isPending} disabled={fields.length === 0} onClick={() => publish.mutate(false)}>
           {live ? t('common:actions.saveChanges') : t('share.publish')}
         </Button>
         {live && (
           <>
-            <Button variant="secondary" onClick={() => publish.mutate(true)}>{t('share.newLinkReplacing')}</Button>
+            <Button variant="secondary" icon="sparkle" onClick={() => publish.mutate(true)}>{t('share.newLinkReplacing')}</Button>
             <Button variant="danger" loading={revoke.isPending} onClick={() => revoke.mutate()}>{t('share.stopSharing')}</Button>
           </>
         )}
       </div>
       {stale ? (
-        <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
           {t('share.stale')} <button type="button" className="underline" onClick={() => { publish.reset(); revoke.reset(); void view.refetch(); }}>{t('share.reload')}</button>
         </p>
       ) : (
@@ -131,20 +135,20 @@ export const ShareTab = ({ plan }: ShareTabProps) => {
       )}
 
       {data.public_path && (
-        <div className="card space-y-1 p-4 text-sm">
-          <p className="font-medium">{t('share.link')}</p>
-          <a className="break-all text-brand-700 underline" href={data.public_path} target="_blank" rel="noreferrer">
+        <div className="card space-y-1.5 border-brand-200 p-4 text-sm dark:border-brand-500/30">
+          <p className="section-label">{t('share.link')}</p>
+          <a className="break-all font-medium text-brand-700 underline dark:text-brand-200" href={data.public_path} target="_blank" rel="noreferrer">
             {absoluteUrl(data.public_path)}
           </a>
           {data.state === 'scheduled' && data.visible_from && (
-            <p className="text-slate-500">{t('share.visibleFrom', { date: format.dateTime(data.visible_from) })}</p>
+            <p className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400"><Icon name="clock" className="size-3.5" />{t('share.visibleFrom', { date: format.dateTime(data.visible_from) })}</p>
           )}
         </div>
       )}
 
       {data.preview && (
         <div>
-          <p className="mb-2 text-sm font-medium">{t('share.preview')}</p>
+          <p className="section-label mb-3">{t('share.preview')}</p>
           <div className="card p-4"><PublicPlanView projection={data.preview} /></div>
         </div>
       )}
@@ -172,24 +176,26 @@ const StableLinks = ({ serviceTypeId }: StableLinksProps) => {
   if (links.isLoading) return null;
   return (
     <div className="card space-y-3 p-4 text-sm">
-      <p className="font-medium">{t('share.stableHeading')}</p>
-      <p className="text-slate-500">{t('share.stableHint')}</p>
+      <div>
+        <p className="font-semibold text-slate-900 dark:text-white">{t('share.stableHeading')}</p>
+        <p className="text-slate-500 dark:text-slate-400">{t('share.stableHint')}</p>
+      </div>
       {(['upcoming', 'recent'] as const).map((kind) => {
         const link = links.data?.links.find((candidate) => candidate.kind === kind);
         return (
-          <div key={kind} className="flex flex-wrap items-center justify-between gap-2">
+          <div key={kind} className="flex flex-wrap items-center justify-between gap-2 border-t border-app-border pt-3">
             <div className="min-w-0">
-              <p>{t(`share.linkKind.${kind}`)}</p>
-              {link && <p className="break-all text-xs text-slate-500">{absoluteUrl(`/s/${link.slug}`)}</p>}
+              <p className="font-medium text-slate-800 dark:text-slate-100">{t(`share.linkKind.${kind}`)}</p>
+              {link && <p className="break-all text-xs text-slate-500 dark:text-slate-400">{absoluteUrl(`/s/${link.slug}`)}</p>}
             </div>
             <div className="flex gap-2">
               {link ? (
                 <>
-                  <Button variant="secondary" onClick={() => change.mutate({ kind, action: 'rotate' })}>{t('share.newLink')}</Button>
-                  <Button variant="ghost" onClick={() => change.mutate({ kind, action: 'revoke' })}>{t('share.turnOff')}</Button>
+                  <Button variant="secondary" size="sm" onClick={() => change.mutate({ kind, action: 'rotate' })}>{t('share.newLink')}</Button>
+                  <Button variant="ghost" size="sm" onClick={() => change.mutate({ kind, action: 'revoke' })}>{t('share.turnOff')}</Button>
                 </>
               ) : (
-                <Button variant="secondary" onClick={() => change.mutate({ kind, action: 'create' })}>{t('share.createLink')}</Button>
+                <Button variant="secondary" size="sm" icon="plus" onClick={() => change.mutate({ kind, action: 'create' })}>{t('share.createLink')}</Button>
               )}
             </div>
           </div>

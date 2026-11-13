@@ -89,7 +89,7 @@ export const ScheduleTimes = ({ times, responsibilities }: ScheduleTimesProps) =
         return (
           <View key={time.id} style={styles.timeRow}>
             <Icon
-              name="calendar"
+              name="clock"
               size={14}
               color={time.kind === 'rehearsal' ? theme.accent.yellow.fg : theme.color.inkMuted}
             />

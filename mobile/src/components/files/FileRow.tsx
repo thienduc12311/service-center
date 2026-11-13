@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { FileSummary, FileVersionSummary } from '@service-center/shared';
-import { ListRow, Tag } from '../ui';
+import { IconWell, ListRow, Tag } from '../ui';
 import { fileMetaParts, type PlanFileBadge } from '../../lib/file-view';
 import type { Theme } from '../../lib/theme';
 import { useTheme, useThemedStyles } from '../../lib/useTheme';
@@ -36,7 +36,12 @@ export const FileRow = ({ file, version, badges = [], keyLabels = [], divided = 
     .join(' · ');
 
   return (
-    <ListRow divided={divided} onPress={onPress} showChevron>
+    <ListRow
+      divided={divided}
+      onPress={onPress}
+      showChevron
+      leading={<IconWell name="document" accent={file.kind === 'link' ? theme.accent.blue : theme.accent.neutral} size={36} />}
+    >
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={2}>{file.title}</Text>
         <View style={styles.tags}>

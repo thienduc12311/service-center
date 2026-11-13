@@ -100,7 +100,7 @@ export const DeliverySettings = () => {
 
   return (
     <section className="card p-5">
-      <h2 className="mb-1 font-semibold">{t('delivery.title')}</h2>
+      <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('delivery.title')}</h2>
       <p className="mb-4 text-sm text-slate-500">{t('delivery.description')}</p>
 
       {status.data && (
@@ -128,7 +128,7 @@ export const DeliverySettings = () => {
       )}
 
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-medium">{showAll ? t('delivery.recent') : t('delivery.problems')}</h3>
+        <h3 className="text-sm font-medium text-slate-800 dark:text-slate-100">{showAll ? t('delivery.recent') : t('delivery.problems')}</h3>
         <Button variant="ghost" onClick={() => setShowAll((value) => !value)}>
           {showAll ? t('delivery.showProblems') : t('delivery.showAll')}
         </Button>

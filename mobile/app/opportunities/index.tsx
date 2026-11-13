@@ -7,7 +7,10 @@ import { type SignupOpportunity } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { Card, EmptyState, ErrorNotice, ListRow, Loading, Screen, ScreenHeader, Tag, screenPadding } from '../../src/components/ui';
+import { Card, DateBadge, EmptyState, ErrorNotice, Loading, Screen, ScreenHeader, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
+import { PressableScale } from '../../src/components/motion';
+import { MetaLine } from '../../src/components/StaffingParts';
+import { Icon } from '../../src/components/icons';
 import { openingAccent, openingStatus, openingStatusKey } from '../../src/lib/signup-claims';
 import { type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
@@ -40,30 +43,36 @@ export default function OpenPositionsScreen() {
     if (isCurrentGeneration(generation)) setRefreshing(false);
   }, [generation, isCurrentGeneration, openings]);
 
-  const renderOpening = (item: SignupOpportunity, index: number) => {
+  const renderOpening = (item: SignupOpportunity) => {
     const status = openingStatus(item);
+    const title = t('common:format.teamPosition', { team: item.team_name, position: item.position_name });
     return (
-      <ListRow
-        divided={index > 0}
-        showChevron
+      <PressableScale
+        key={item.id}
+        accessibilityLabel={title}
+        pressedOpacity={0.65}
         onPress={() => router.push({ pathname: '/opportunities/[id]', params: { id: item.id } })}
       >
-        <View style={styles.rowTop}>
-          <Text style={styles.title} numberOfLines={2}>
-            {t('common:format.teamPosition', { team: item.team_name, position: item.position_name })}
-          </Text>
-          <Tag label={t(openingStatusKey(status))} accent={theme.accent[openingAccent(status)]} />
-        </View>
-        <Text style={styles.muted} numberOfLines={1}>
-          {`${item.plan_title} · ${format.calendarDate(item.service_date, 'medium')}`}
-        </Text>
-        <Text style={styles.muted}>
-          {`${t('opportunities.remaining', { count: item.remaining_capacity })} · ${t(
-            item.approval_policy === 'direct' ? 'opportunities.policySummary.direct' : 'opportunities.policySummary.leader_approval',
-            { time: format.dateTime(item.closes_at) },
-          )}`}
-        </Text>
-      </ListRow>
+        <Card style={styles.card}>
+          {/* Local noon of the civil service date, so the badge never shifts a day. */}
+          <DateBadge date={`${item.service_date.slice(0, 10)}T12:00:00`} />
+          <View style={styles.cardBody}>
+            <View style={styles.rowTop}>
+              <Text style={styles.title} numberOfLines={2}>{title}</Text>
+              <Tag label={t(openingStatusKey(status))} accent={theme.accent[openingAccent(status)]} />
+            </View>
+            <MetaLine icon="plans">{`${item.plan_title} · ${format.calendarDate(item.service_date, 'medium')}`}</MetaLine>
+            <MetaLine icon="people">{t('opportunities.remaining', { count: item.remaining_capacity })}</MetaLine>
+            <MetaLine icon="clock">
+              {t(
+                item.approval_policy === 'direct' ? 'opportunities.policySummary.direct' : 'opportunities.policySummary.leader_approval',
+                { time: format.dateTime(item.closes_at) },
+              )}
+            </MetaLine>
+          </View>
+          <Icon name="chevronRight" size={16} color={theme.color.inkFaint} />
+        </Card>
+      </PressableScale>
     );
   };
 
@@ -81,9 +90,12 @@ export default function OpenPositionsScreen() {
         {openings.isLoading ? (
           <Loading label={t('opportunities.loading')} />
         ) : openings.error ? null : data.length === 0 ? (
-          <EmptyState title={t('opportunities.empty')} />
+          <EmptyState icon="search" title={t('opportunities.empty')} />
         ) : (
-          <Card>{data.map((opening, index) => <View key={opening.id}>{renderOpening(opening, index)}</View>)}</Card>
+          <>
+            <SectionHeader title={t('openPositions.title')} count={data.length} />
+            {data.map(renderOpening)}
+          </>
         )}
       </ScrollView>
     </Screen>
@@ -93,7 +105,8 @@ export default function OpenPositionsScreen() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     gap: { gap: theme.space.md },
-    rowTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: theme.space.sm },
-    title: { ...theme.type.body, fontWeight: '600', color: theme.color.ink, flex: 1 },
-    muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    card: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    cardBody: { flex: 1, gap: theme.space.xs },
+    rowTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: theme.space.sm, marginBottom: 2 },
+    title: { ...theme.type.heading, color: theme.color.ink, flex: 1 },
   });

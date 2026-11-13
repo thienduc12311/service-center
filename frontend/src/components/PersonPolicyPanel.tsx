@@ -78,7 +78,7 @@ export const PersonPolicyPanel = ({ personId, profileId }: PersonPolicyPanelProp
   return (
     <section className="card space-y-5 p-5">
       <div>
-        <h2 className="mb-1 font-semibold">{t('policy.tags')}</h2>
+        <h2 className="mb-2 font-semibold text-slate-900 dark:text-white">{t('policy.tags')}</h2>
         <div className="flex gap-2">
           <input
             aria-label={t('policy.tags')}
@@ -98,15 +98,15 @@ export const PersonPolicyPanel = ({ personId, profileId }: PersonPolicyPanelProp
       </div>
 
       {profileId && (
-        <div>
-          <h2 className="mb-1 font-semibold">{t('policy.eligibility')}</h2>
+        <div className="border-t border-app-border pt-5">
+          <h2 className="mb-2 font-semibold text-slate-900 dark:text-white">{t('policy.eligibility')}</h2>
           {(records.data ?? []).length === 0 ? (
-            <p className="text-sm text-slate-500">{t('policy.noRecords')}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('policy.noRecords')}</p>
           ) : (
-            <ul className="divide-y divide-slate-100 text-sm">
+            <ul className="surface-inset row-list text-sm">
               {(records.data ?? []).map((row) => (
-                <li key={row.id} className="py-1.5">
-                  <span className="font-medium">{row.kind}</span> ·{' '}
+                <li key={row.id} className="px-3 py-2 text-slate-700 dark:text-slate-200">
+                  <span className="font-medium text-slate-900 dark:text-white">{row.kind}</span> ·{' '}
                   {t('policy.recordSummary', {
                     status: t(`policy.status.${row.status}`),
                     verified: f.date(row.verified_at),

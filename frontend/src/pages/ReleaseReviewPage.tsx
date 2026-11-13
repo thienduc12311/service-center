@@ -11,7 +11,7 @@ import type {
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 import { useInvalidateOrg, usePreparedRequests, useReleaseBatches } from '../hooks/queries';
-import { Badge, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, Modal, PageHeader, SectionHeader, SkeletonList } from '../components/ui';
 import { useFormatters } from '../i18n';
 
 const CHANNELS: readonly DeliveryChannel[] = ['email', 'in_app', 'push'];
@@ -76,10 +76,10 @@ const ReleaseReviewModal = ({ review, onClose, onDone }: ReleaseReviewModalProps
           people: t('common:count.people', { count: review.preview.recipients.length }),
         })}
       </p>
-      <ul className="max-h-80 space-y-3 overflow-y-auto pr-1">
+      <ul className="scrollbar-thin max-h-80 space-y-2 overflow-y-auto pr-1">
         {review.preview.recipients.map((recipient) => (
-          <li key={recipient.person_id} className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
-            <p className="font-medium">{recipient.person_name}</p>
+          <li key={recipient.person_id} className="rounded-xl border border-app-border p-3 text-sm">
+            <p className="font-medium text-slate-900 dark:text-white">{recipient.person_name}</p>
             <p className="text-slate-500">
               {t('releaseReview.channels', {
                 list: CHANNELS.filter((c) => recipient.channels[c]).map((c) => t(`deliveryChannel.${c}`)).join(t('common:format.listSeparator'))
@@ -110,7 +110,7 @@ const ReleaseReviewModal = ({ review, onClose, onDone }: ReleaseReviewModalProps
         ))}
       </ul>
 
-      <div className="mt-4 space-y-3 text-sm">
+      <div className="surface-inset mt-4 space-y-3 p-3 text-sm">
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
           {t('releaseReview.notify')}
@@ -131,7 +131,7 @@ const ReleaseReviewModal = ({ review, onClose, onDone }: ReleaseReviewModalProps
             {t('releaseReview.scheduledHint')}
           </p>
         )}
-        {invalidWhen && <p className="text-red-600">{t('releaseReview.futureTime')}</p>}
+        {invalidWhen && <p className="text-rose-600 dark:text-rose-400">{t('releaseReview.futureTime')}</p>}
         <ErrorNotice error={commit.error} />
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
@@ -156,7 +156,7 @@ const BatchRow = ({ batch }: BatchRowProps) => {
   return (
     <li className="flex flex-wrap items-start justify-between gap-2 py-3 text-sm">
       <div className="min-w-0">
-        <p className="font-medium">{batch.plan_titles.join(t('common:format.listSeparator')) || t('common:count.plans', { count: batch.plan_count })}</p>
+        <p className="font-medium text-slate-900 dark:text-white">{batch.plan_titles.join(t('common:format.listSeparator')) || t('common:count.plans', { count: batch.plan_count })}</p>
         <p className="text-slate-500">
           {t('releaseReview.requestCount', { count: batch.item_count })}
           {' · '}
@@ -164,7 +164,7 @@ const BatchRow = ({ batch }: BatchRowProps) => {
             : batch.released_at ? t('releaseReview.releasedAt', { time: dateTime(batch.released_at) }) : dateTime(batch.created_at)}
           {!batch.notify && ` · ${t('releaseReview.withoutNotifications')}`}
         </p>
-        {batch.failure_code && <p className="text-red-600">{failureText(batch.failure_code, t)}</p>}
+        {batch.failure_code && <p className="text-rose-600 dark:text-rose-400">{failureText(batch.failure_code, t)}</p>}
         <ErrorNotice error={cancel.error} />
       </div>
       <div className="flex items-center gap-2">
@@ -218,44 +218,46 @@ export const ReleaseReviewPage = () => {
     });
 
   if (!allowed) {
-    return <EmptyState title={t('releaseReview.title')} description={t('releaseReview.noPermission')} />;
+    return <EmptyState icon="bell" title={t('releaseReview.title')} description={t('releaseReview.noPermission')} />;
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         title={t('releaseReview.title')}
         subtitle={t('releaseReview.subtitle')}
+        back={{ to: '/plans', label: t('common:nav.plans') }}
         actions={
-          <Button disabled={selected.size === 0} loading={preview.isPending} onClick={() => preview.mutate()}>
+          <Button icon="bell" disabled={selected.size === 0} loading={preview.isPending} onClick={() => preview.mutate()}>
             {selected.size === 0 ? t('releaseReview.reviewNone') : t('releaseReview.reviewCount', { count: selected.size })}
           </Button>
         }
       />
       <ErrorNotice error={preview.error} />
 
-      <section className="card mt-4 p-5">
-        <h2 className="mb-3 font-semibold">{t('releaseReview.preparedTitle')}</h2>
+      <section>
+        <SectionHeader title={t('releaseReview.preparedTitle')} meta={selected.size > 0 ? selected.size : undefined} />
         {prepared.isLoading ? (
-          <Loading />
+          <SkeletonList rows={3} />
         ) : byPlan.length === 0 ? (
-          <p className="text-sm text-slate-500">{t('releaseReview.preparedEmpty', { count: 90 })}</p>
+          <div className="card"><EmptyState compact icon="check" title={t('releaseReview.preparedEmpty', { count: 90 })} /></div>
         ) : (
-          <ul className="space-y-4">
+          <ul className="space-y-3">
             {byPlan.map(([planId, plan]) => {
               const ids = plan.items.map((item) => item.assignment_id);
               const all = ids.every((id) => selected.has(id));
               return (
-                <li key={planId}>
-                  <label className="flex items-center gap-2 font-medium">
-                    <input type="checkbox" checked={all} onChange={(e) => toggle(ids, e.target.checked)} />
+                <li key={planId} className="card overflow-hidden">
+                  <label className="flex cursor-pointer items-center gap-3 border-b border-app-border bg-slate-50/70 px-4 py-3 font-semibold text-slate-900 dark:bg-slate-900/40 dark:text-white">
+                    <input type="checkbox" className="size-4 rounded border-slate-300 accent-brand-600" checked={all} onChange={(e) => toggle(ids, e.target.checked)} />
                     {t('releaseReview.planWithDate', { plan: plan.title, date: date(plan.date) })}
                   </label>
-                  <ul className="ml-6 mt-1 space-y-1 text-sm">
+                  <ul className="row-list text-sm">
                     {plan.items.map((item) => (
                       <li key={item.assignment_id}>
-                        <label className="flex items-center gap-2">
+                        <label className="flex cursor-pointer items-center gap-3 px-4 py-2.5 pl-11 text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/40">
                           <input
+                            className="size-4 rounded border-slate-300 accent-brand-600"
                             type="checkbox"
                             checked={selected.has(item.assignment_id)}
                             onChange={(e) => toggle([item.assignment_id], e.target.checked)}
@@ -275,15 +277,15 @@ export const ReleaseReviewPage = () => {
         <ErrorNotice error={prepared.error} />
       </section>
 
-      <section className="card mt-4 p-5">
-        <h2 className="mb-1 font-semibold">{t('releaseReview.releasesTitle')}</h2>
-        <p className="mb-2 text-sm text-slate-500">{t('releaseReview.releasesHint')}</p>
+      <section>
+        <SectionHeader title={t('releaseReview.releasesTitle')} />
+        <p className="-mt-1 mb-3 text-sm text-slate-500 dark:text-slate-400">{t('releaseReview.releasesHint')}</p>
         {batches.data?.length ? (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="card row-list px-4">
             {batches.data.map((batch) => <BatchRow key={batch.id} batch={batch} />)}
           </ul>
         ) : (
-          <p className="text-sm text-slate-500">{t('releaseReview.releasesEmpty')}</p>
+          <div className="card"><EmptyState compact icon="bell" title={t('releaseReview.releasesEmpty')} /></div>
         )}
         <ErrorNotice error={batches.error} />
       </section>

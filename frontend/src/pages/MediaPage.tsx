@@ -12,7 +12,8 @@ import {
 } from '@service-center/shared';
 import { useInvalidateMedia, useMediaDetail, useMediaList } from '../hooks/queries';
 import { api } from '../lib/api';
-import { Badge, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, Modal, PageHeader, SkeletonList } from '../components/ui';
+import { Icon } from '../components/icons';
 import { FilesPanel } from '../components/files/FilesPanel';
 import { useErrorText, useFormatters } from '../i18n';
 
@@ -53,39 +54,30 @@ export const MediaLibraryPage = () => {
       <PageHeader
         title={t('library.title')}
         subtitle={t('library.subtitle')}
-        actions={list.data?.can_create && <Button onClick={() => setAdding(true)}>{t('library.add')}</Button>}
+        actions={list.data?.can_create && <Button icon="plus" onClick={() => setAdding(true)}>{t('library.add')}</Button>}
       />
-      <div className="card mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
-        <input className="input max-w-sm" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('library.searchPlaceholder')} aria-label={t('library.searchLabel')} />
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1 sm:max-w-md">
+          <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+          <input type="search" className="input pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('library.searchPlaceholder')} aria-label={t('library.searchLabel')} />
+        </div>
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+          <input type="checkbox" className="size-4 rounded border-slate-300 accent-brand-600" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
           {t('library.includeArchived')}
         </label>
       </div>
       {list.isLoading ? (
-        <Loading />
+        <SkeletonList rows={4} />
       ) : list.error ? (
         <ErrorNotice error={list.error} />
       ) : rows.length === 0 ? (
-        <EmptyState title={t('library.emptyTitle')} description={t('library.emptyDescription')} />
+        <EmptyState icon="media" title={t('library.emptyTitle')} description={t('library.emptyDescription')} />
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-400">
-              <tr>
-                <th className="px-4 py-2">{t('library.columns.title')}</th>
-                <th className="px-4 py-2">{t('library.columns.length')}</th>
-                <th className="px-4 py-2">{t('library.columns.themes')}</th>
-                <th className="px-4 py-2">{t('library.columns.lastUsed')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {rows.map((media) => (
-                <MediaRowView key={media.id} media={media} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {rows.map((media) => (
+            <MediaRowView key={media.id} media={media} />
+          ))}
+        </ul>
       )}
       {adding && <CreateMediaModal onClose={() => setAdding(false)} onCreated={(id) => navigate(`/media/${id}`)} />}
     </div>
@@ -96,29 +88,47 @@ interface MediaRowViewProps {
   media: MediaSummary;
 }
 
+/** One media bundle in the library grid. */
 const MediaRowView = ({ media }: MediaRowViewProps) => {
   const { t } = useTranslation('media');
   const formatters = useFormatters();
+  const chips = [...media.themes, ...media.tags];
   return (
-  <tr>
-    <td className="px-4 py-2">
-      <Link to={`/media/${media.id}`} className="font-medium hover:underline">
-        {media.title}
+    <li>
+      <Link to={`/media/${media.id}`} className={`card card-interactive group flex h-full flex-col gap-3 p-4 ${media.is_archived ? 'opacity-75' : ''}`}>
+        <div className="flex items-start gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-violet-50 to-brand-50 text-brand-600 ring-1 ring-inset ring-brand-100 dark:from-violet-500/10 dark:to-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20">
+            <Icon name="media" className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium text-slate-900 group-hover:text-brand-700 dark:text-white dark:group-hover:text-brand-200">{media.title}</p>
+            {media.creator && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{media.creator}</p>}
+          </div>
+          {media.is_archived && <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25">{t('files.archived')}</Badge>}
+        </div>
+        {chips.length > 0 && (
+          <div className="flex flex-wrap gap-1" aria-label={t('library.columns.themes')}>
+            {chips.slice(0, 5).map((chip, index) => (
+              <span key={`${index}-${chip}`} className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{chip}</span>
+            ))}
+            {chips.length > 5 && <span className="px-1 text-[11px] text-slate-400">+{chips.length - 5}</span>}
+          </div>
+        )}
+        <dl className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-app-border pt-3 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-1.5">
+            <dt><Icon name="clock" className="size-3.5" /><span className="sr-only">{t('library.columns.length')}</span></dt>
+            <dd className="tabular-nums">{media.duration_seconds !== null ? formatDuration(media.duration_seconds) : '—'}</dd>
+          </div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <dt><Icon name="calendar" className="size-3.5" /><span className="sr-only">{t('library.columns.lastUsed')}</span></dt>
+            <dd className="truncate">
+              {media.last_used_on ? formatters.calendarDate(media.last_used_on, 'medium') : t('library.never')}
+              {media.usage_count > 0 && <> · {t('library.usageCount', { count: media.usage_count })}</>}
+            </dd>
+          </div>
+        </dl>
       </Link>
-      {media.is_archived && (
-        <span className="ml-2">
-          <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">{t('files.archived')}</Badge>
-        </span>
-      )}
-      {media.creator && <span className="block text-xs text-slate-500">{media.creator}</span>}
-    </td>
-    <td className="px-4 py-2 tabular-nums text-slate-500">{media.duration_seconds !== null ? formatDuration(media.duration_seconds) : '—'}</td>
-    <td className="px-4 py-2 text-slate-500">{[...media.themes, ...media.tags].join(', ') || '—'}</td>
-    <td className="px-4 py-2 text-slate-500">
-      {media.last_used_on ? formatters.calendarDate(media.last_used_on, 'medium') : t('library.never')}
-      {media.usage_count > 0 && <span className="text-xs"> · {t('library.usageCount', { count: media.usage_count })}</span>}
-    </td>
-  </tr>
+    </li>
   );
 };
 
@@ -169,26 +179,27 @@ export const MediaDetailPage = () => {
   const detail = useMediaDetail(mediaId);
   const invalidate = useInvalidateMedia();
 
-  if (detail.isLoading) return <Loading />;
+  if (detail.isLoading) return <SkeletonList rows={3} />;
   if (detail.error || !detail.data) return <ErrorNotice error={detail.error ?? new LocalizedError({ key: 'media:detail.notFound' })} />;
   const media = detail.data;
 
   return (
     <div className="space-y-4">
       <PageHeader
+        back={{ to: '/media', label: t('detail.allMedia') }}
         title={media.title}
         subtitle={[media.creator, media.duration_seconds !== null ? formatDuration(media.duration_seconds) : null].filter(Boolean).join(' · ') || t('library.title')}
-        actions={<Link to="/media" className="text-sm text-slate-500 hover:underline">{t('detail.allMedia')}</Link>}
       />
       {media.is_archived && (
-        <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-600/20">
+        <p role="status" className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
+          <Icon name="alert" className="mt-px size-4 shrink-0" />
           {media.archive_on && !media.archived_at
             ? t('detail.archivedSince', { date: formatters.calendarDate(media.archive_on, 'medium') })
             : t('detail.archived')}
         </p>
       )}
-      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <div className="min-w-0 space-y-6">
           <MediaForm key={media.revision} media={media} onSaved={() => void invalidate()} onDeleted={() => navigate('/media')} />
           <FilesPanel
             owner={{ kind: 'media', id: media.id }}
@@ -197,20 +208,23 @@ export const MediaDetailPage = () => {
             emptyText={t('filesPanel.empty')}
           />
         </div>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <Thumbnail media={media} />
           <section className="card p-5">
-            <h2 className="mb-2 font-semibold text-slate-900 dark:text-white">{t('detail.usedIn')}</h2>
+            <h2 className="mb-3 flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
+              <Icon name="plans" className="size-4 text-slate-400" />
+              {t('detail.usedIn')}
+            </h2>
             {media.usage.length === 0 ? (
-              <p className="text-sm text-slate-500">{t('detail.notUsed')}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t('detail.notUsed')}</p>
             ) : (
-              <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
+              <ul className="row-list -mx-5 text-sm">
                 {media.usage.map((use) => (
-                  <li key={use.item_id} className="py-2">
-                    <Link className="font-medium hover:underline" to={`/plans/${use.plan_id}`}>
+                  <li key={use.item_id} className="px-5 py-2.5">
+                    <Link className="font-medium text-slate-900 hover:text-brand-700 dark:text-white dark:hover:text-brand-200" to={`/plans/${use.plan_id}`}>
                       {use.plan_title}
                     </Link>
-                    <span className="block text-xs text-slate-500">
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">
                       {formatters.calendarDate(use.service_date, 'medium')} · {use.item_title}
                     </span>
                   </li>
@@ -253,11 +267,14 @@ const Thumbnail = ({ media }: ThumbnailProps) => {
   });
   return (
     <section className="card p-5">
-      <h2 className="mb-2 font-semibold text-slate-900 dark:text-white">{t('thumbnail.title')}</h2>
+      <h2 className="mb-3 font-semibold text-slate-900 dark:text-white">{t('thumbnail.title')}</h2>
       {url ? (
-        <img src={url} alt={t('thumbnail.alt', { title: media.title })} className="mb-3 max-h-40 rounded" />
+        <img src={url} alt={t('thumbnail.alt', { title: media.title })} className="mb-3 aspect-video w-full rounded-xl object-cover ring-1 ring-app-border" />
       ) : (
-        <p className="mb-3 text-sm text-slate-500">{t('thumbnail.none')}</p>
+        <div className="surface-inset mb-3 flex aspect-video flex-col items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <Icon name="media" className="size-6 text-slate-400" />
+          {t('thumbnail.none')}
+        </div>
       )}
       {media.can_edit && (
         <select
@@ -342,7 +359,7 @@ const MediaForm = ({ media, onSaved, onDeleted }: MediaFormProps) => {
   }
 
   return (
-    <form className="card grid gap-4 p-5 sm:grid-cols-2" onSubmit={submit}>
+    <form className="card grid overflow-hidden gap-4 p-5 sm:grid-cols-2 sm:p-6" onSubmit={submit}>
       <label className="block sm:col-span-2">
         <span className="label">{t('form.title')}</span>
         <input className="input" required maxLength={200} value={title} onChange={(event) => setTitle(event.target.value)} />
@@ -379,10 +396,12 @@ const MediaForm = ({ media, onSaved, onDeleted }: MediaFormProps) => {
             <p key={index} role="alert" className="mb-2 text-sm text-rose-700">{mediaError(error)}</p>
           ) : null,
         )}
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="-mx-5 -mb-5 flex flex-wrap items-center gap-2 border-t border-app-border bg-slate-50/70 px-5 py-3 sm:-mx-6 sm:-mb-6 sm:px-6 dark:bg-slate-950/30">
           <Button
             type="button"
-            variant="danger"
+            variant="ghost"
+            icon="trash"
+            className="text-rose-600 hover:!bg-rose-50 hover:!text-rose-700 dark:text-rose-400 dark:hover:!bg-rose-500/10"
             loading={remove.isPending}
             onClick={() => {
               if (window.confirm(t('form.deleteConfirm', { title: media.title }))) remove.mutate();
@@ -390,6 +409,7 @@ const MediaForm = ({ media, onSaved, onDeleted }: MediaFormProps) => {
           >
             {t('form.delete')}
           </Button>
+          <span className="flex-1" />
           <Button type="button" variant="secondary" loading={archive.isPending} onClick={() => archive.mutate()}>
             {media.is_archived ? t('common:actions.restore') : t('common:actions.archive')}
           </Button>

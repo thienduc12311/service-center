@@ -35,6 +35,8 @@ export interface SpaceScale {
 
 export interface TypeScale {
   display: TextStyle;
+  /** Small uppercase context line above a title or a group of rows. */
+  eyebrow: TextStyle;
   title: TextStyle;
   heading: TextStyle;
   body: TextStyle;
@@ -71,9 +73,10 @@ const space: SpaceScale = {
 };
 
 const type: TypeScale = {
-  display: { fontFamily: sans, fontWeight: '600', fontSize: 26, lineHeight: 32, letterSpacing: -0.5 },
-  title: { fontFamily: sans, fontWeight: '600', fontSize: 20, lineHeight: 28, letterSpacing: -0.3 },
-  heading: { fontFamily: sans, fontWeight: '600', fontSize: 16, lineHeight: 22 },
+  display: { fontFamily: sans, fontWeight: '700', fontSize: 30, lineHeight: 36, letterSpacing: -0.7 },
+  eyebrow: { fontFamily: sans, fontWeight: '600', fontSize: 12, lineHeight: 16, letterSpacing: 0.8, textTransform: 'uppercase' },
+  title: { fontFamily: sans, fontWeight: '600', fontSize: 20, lineHeight: 26, letterSpacing: -0.4 },
+  heading: { fontFamily: sans, fontWeight: '600', fontSize: 16, lineHeight: 22, letterSpacing: -0.15 },
   body: { fontFamily: sans, fontSize: 15, lineHeight: 22 },
   bodySmall: { fontFamily: sans, fontSize: 14, lineHeight: 20 },
   label: { fontFamily: sans, fontWeight: '500', fontSize: 13, lineHeight: 18 },

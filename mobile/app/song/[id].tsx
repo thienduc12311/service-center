@@ -25,17 +25,21 @@ import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Button,
   Card,
+  Divider,
   EmptyState,
   ErrorNotice,
   IconButton,
+  IconWell,
   KeyCap,
   Label,
   Loading,
   Screen,
+  SectionHeader,
   SegmentedControl,
   screenPadding,
   type SegmentOption,
 } from '../../src/components/ui';
+import { Icon } from '../../src/components/icons';
 import { ArrangementPicker } from '../../src/components/ArrangementPicker';
 import { ChordChart } from '../../src/components/ChordChart';
 import { ChartPdfActions } from '../../src/components/ChartPdfActions';
@@ -198,7 +202,7 @@ const Unavailable = ({ reason, title }: UnavailableProps) => {
       <Stack.Screen options={{ title: title ?? t('mobileChart.screenTitle') }} />
       <ScrollView contentContainerStyle={screenPadding(theme)}>
         <Card>
-          <EmptyState title={t(copy.title)} description={t(copy.description)} />
+          <EmptyState icon="music" title={t(copy.title)} description={t(copy.description)} />
         </Card>
       </ScrollView>
     </Screen>
@@ -294,14 +298,6 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
             : t('mobileChart.serviceKeyWrittenIn', { key: context.sourceKey ?? '' })
           : t('mobileChart.originalKey');
 
-  const meta = [
-    arrangement?.name,
-    arrangement?.bpm ? t('arrangement.bpmValue', { bpm: arrangement.bpm }) : null,
-    arrangement?.meter ?? song.meter,
-  ]
-    .filter(Boolean)
-    .join('  ·  ');
-
   const emptyCopy = arrangement
     ? RENDER_COPY[rendered?.status === 'unavailable' ? rendered.reason : 'no_chart']
     : NO_ARRANGEMENTS_COPY;
@@ -313,16 +309,39 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
     setViewArrangementId(fromPlan && id === planArrangement?.id ? null : id);
   };
 
+  const specs = [
+    keyed && rendered?.status === 'ready' && rendered.key ? rendered.key : null,
+    arrangement?.bpm ? t('arrangement.bpmValue', { bpm: arrangement.bpm }) : null,
+    arrangement?.meter ?? song.meter,
+  ].filter((value): value is string => Boolean(value));
+
   return (
     <Screen>
       <Stack.Screen options={{ title: song.title }} />
-      <ScrollView contentContainerStyle={screenPadding(theme)}>
+      <ScrollView contentContainerStyle={[screenPadding(theme), styles.content]}>
         <Reveal>
           <View style={styles.hero}>
-            {plan ? <Text style={styles.eyebrow}>{plan.title}</Text> : null}
-            {song.author ? <Text style={styles.author}>{song.author}</Text> : null}
-            <Text style={styles.title}>{song.title}</Text>
-            {meta ? <Text style={styles.meta}>{meta}</Text> : null}
+            <View style={styles.heroTop}>
+              <IconWell name="music" accent={theme.accent.blue} size={56} />
+              <View style={styles.heroText}>
+                {plan ? <Text style={styles.eyebrow} numberOfLines={1}>{plan.title}</Text> : null}
+                <Text accessibilityRole="header" style={styles.title}>{song.title}</Text>
+                {song.author ? <Text style={styles.author}>{song.author}</Text> : null}
+              </View>
+            </View>
+            {arrangement?.name || specs.length ? (
+              <View style={styles.specs}>
+                {arrangement?.name ? (
+                  <View style={styles.arrangementBadge}>
+                    <Icon name="music" size={13} color={theme.color.brandText} />
+                    <Text style={styles.arrangementBadgeLabel} numberOfLines={1}>{arrangement.name}</Text>
+                  </View>
+                ) : null}
+                {specs.map((value) => (
+                  <KeyCap key={value}>{value}</KeyCap>
+                ))}
+              </View>
+            ) : null}
           </View>
         </Reveal>
 
@@ -334,54 +353,67 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
         ) : null}
 
         {song.arrangements.length > 1 ? (
-          <Reveal index={1}>
-            <Card>
-              <Label>{fromPlan ? t('mobileChart.viewAnother') : t('mobileArrangements.label')}</Label>
-              <ArrangementPicker
-                arrangements={song.arrangements}
-                selectedId={arrangement?.id ?? null}
-                planArrangementId={planArrangement?.id ?? null}
-                onSelect={selectArrangement}
-              />
-              {context.isTemporaryView ? (
-                <View style={styles.notice}>
+          <Reveal index={1} style={styles.section}>
+            <SectionHeader
+              title={fromPlan ? t('mobileChart.viewAnother') : t('mobileArrangements.label')}
+              count={song.arrangements.length}
+            />
+            <ArrangementPicker
+              arrangements={song.arrangements}
+              selectedId={arrangement?.id ?? null}
+              planArrangementId={planArrangement?.id ?? null}
+              onSelect={selectArrangement}
+            />
+            {context.isTemporaryView ? (
+              <View style={styles.notice}>
+                <View style={styles.noticeRow}>
+                  <Icon name="info" size={16} color={theme.accent.blue.fg} />
                   <Text style={styles.noticeText}>
                     {t('mobileChart.temporaryView', { viewing: arrangement?.name ?? '', planArrangement: planArrangement?.name ?? '' })}
                   </Text>
-                  <Button
-                    title={planArrangement?.name ? t('mobileChart.backTo', { name: planArrangement.name }) : t('mobileChart.backToPlanArrangement')}
-                    variant="secondary"
-                    onPress={() => {
-                      setShift(0);
-                      setViewArrangementId(null);
-                    }}
-                  />
                 </View>
-              ) : null}
-            </Card>
+                <Button
+                  title={planArrangement?.name ? t('mobileChart.backTo', { name: planArrangement.name }) : t('mobileChart.backToPlanArrangement')}
+                  variant="secondary"
+                  icon="chevronLeft"
+                  onPress={() => {
+                    setShift(0);
+                    setViewArrangementId(null);
+                  }}
+                />
+              </View>
+            ) : null}
           </Reveal>
         ) : null}
 
         <Reveal index={1}>
           <Card>
-            <Label>{fromPlan ? t('mobileChart.serviceKey') : t('arrangement.fields.key')}</Label>
             <View style={styles.transposeRow}>
+              <View style={[styles.keyTile, !keyed && styles.keyTileWide]}>
+                <Text maxFontSizeMultiplier={1.3} style={[styles.keyValue, !keyed && styles.keyValueWord]} numberOfLines={1}>
+                  {keyValue}
+                </Text>
+              </View>
               <View style={styles.keyReadout}>
-                <Text style={styles.keyValue}>{keyValue}</Text>
+                <Label>{fromPlan ? t('mobileChart.serviceKey') : t('arrangement.fields.key')}</Label>
                 <Text style={styles.keyShift}>{keyNote}</Text>
               </View>
+            </View>
+            <View style={styles.stepperRow}>
               <IconButton
                 name="minus"
                 accessibilityLabel={t('mobileChart.transposeDown')}
                 disabled={!canShift}
                 onPress={() => setShift((current) => current - 1)}
               />
+              <Text maxFontSizeMultiplier={1.3} style={styles.shiftValue}>{signedShift}</Text>
               <IconButton
                 name="plus"
                 accessibilityLabel={t('mobileChart.transposeUp')}
                 disabled={!canShift}
                 onPress={() => setShift((current) => current + 1)}
               />
+              <View style={styles.flex} />
               {keyed && shift !== 0 ? (
                 <IconButton
                   name="close"
@@ -390,30 +422,30 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
                 />
               ) : null}
             </View>
-          </Card>
-        </Reveal>
-
-        <Reveal index={2}>
-          <Card>
-            <Label>{t('mobileChart.notation')}</Label>
-            <SegmentedControl options={notations} value={notation} onChange={setNotation} />
+            <Divider />
+            <View style={styles.group}>
+              <Label>{t('mobileChart.notation')}</Label>
+              <SegmentedControl options={notations} value={notation} onChange={setNotation} />
+            </View>
           </Card>
         </Reveal>
 
         {context.sequence.length ? (
-          <Reveal index={2}>
-            <Card>
-              <Label>{t('arrangement.fields.sequence')}</Label>
-              <View style={styles.sequence}>
-                {context.sequence.map((part, index) => (
-                  <KeyCap key={`${part}-${index}`}>{part}</KeyCap>
-                ))}
-              </View>
-            </Card>
+          <Reveal index={2} style={styles.section}>
+            <SectionHeader title={t('arrangement.fields.sequence')} count={context.sequence.length} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sequence}>
+              {context.sequence.map((part, index) => (
+                <View key={`${part}-${index}`} style={styles.sequenceStep}>
+                  {index > 0 ? <Icon name="chevronRight" size={12} color={theme.color.inkFaint} /> : null}
+                  <KeyCap>{part}</KeyCap>
+                </View>
+              ))}
+            </ScrollView>
           </Reveal>
         ) : null}
 
-        <Reveal index={3}>
+        <Reveal index={3} style={styles.section}>
+          <SectionHeader title={t('mobileChart.screenTitle')} />
           {chart ? (
             <View style={styles.chartBlock}>
               <ChordChart chart={chart} />
@@ -421,7 +453,7 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
             </View>
           ) : (
             <Card>
-              <EmptyState title={t(emptyCopy.title)} description={t(emptyCopy.description)} />
+              <EmptyState icon="document" title={t(emptyCopy.title)} description={t(emptyCopy.description)} />
             </Card>
           )}
         </Reveal>
@@ -448,21 +480,61 @@ const ChartView = ({ song, plan, planItem }: ChartViewProps) => {
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
+    flex: { flex: 1 },
+    content: { gap: theme.space.xl },
     errorWrap: { padding: theme.space.xl },
-    hero: { gap: theme.space.sm },
-    eyebrow: { ...theme.type.label, color: theme.color.brandText },
-    author: { ...theme.type.label, color: theme.color.inkMuted },
-    title: { ...theme.type.display, color: theme.color.ink },
-    meta: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    section: { gap: theme.space.md },
+    group: { gap: theme.space.sm },
 
-    notice: { gap: theme.space.sm, marginTop: theme.space.md },
-    noticeText: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    hero: { gap: theme.space.md, paddingTop: theme.space.xs },
+    heroTop: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    heroText: { flex: 1, gap: 2 },
+    eyebrow: { ...theme.type.eyebrow, color: theme.color.brandText },
+    title: { ...theme.type.display, fontSize: 26, lineHeight: 32, color: theme.color.ink },
+    author: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    specs: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },
+    arrangementBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      maxWidth: '100%',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.accent.blue.bg,
+    },
+    arrangementBadgeLabel: { ...theme.type.label, fontSize: 12.5, color: theme.color.brandText, flexShrink: 1 },
 
-    transposeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    keyReadout: { flex: 1 },
-    keyValue: { ...theme.type.display, fontSize: 32, lineHeight: 36, color: theme.color.ink },
+    notice: {
+      gap: theme.space.md,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.accent.blue.bg,
+    },
+    noticeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.sm },
+    noticeText: { ...theme.type.bodySmall, color: theme.accent.blue.fg, flex: 1 },
+
+    transposeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    keyTile: {
+      minWidth: 72,
+      height: 72,
+      paddingHorizontal: theme.space.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      backgroundColor: theme.color.surfaceInset,
+    },
+    keyTileWide: { minWidth: 96 },
+    keyReadout: { flex: 1, gap: 2 },
+    keyValue: { ...theme.type.display, fontSize: 32, lineHeight: 38, color: theme.color.ink },
+    keyValueWord: { ...theme.type.heading, color: theme.color.ink },
     keyShift: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    stepperRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    shiftValue: { ...theme.type.numeric, fontSize: 16, lineHeight: 22, fontWeight: '600', color: theme.color.ink, minWidth: 28, textAlign: 'center' },
 
-    sequence: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    sequence: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    sequenceStep: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     chartBlock: { gap: theme.space.md },
   });

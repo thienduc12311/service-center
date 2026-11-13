@@ -147,10 +147,10 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
         </div>
 
         {draft.itemType === 'song' && (
-          <div className="space-y-3 rounded-lg border border-slate-200 p-3">
+          <div className="space-y-3 rounded-xl border border-app-border p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm">
-                <span className="text-slate-500">{t('editItem.songLabel')} </span>
+                <span className="text-slate-500 dark:text-slate-400">{t('editItem.songLabel')} </span>
                 <span className="font-medium">{song.data?.title ?? item.song?.title ?? t('editItem.noneChosen')}</span>
               </p>
               <Button type="button" variant="secondary" onClick={() => setChangingSong((open) => !open)} aria-expanded={changingSong}>
@@ -166,7 +166,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
                     <li key={candidate.id}>
                       <button
                         type="button"
-                        className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-50"
+                        className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                         onClick={() => {
                           setDraft((current) => withSong(current, candidate));
                           setChangingSong(false);
@@ -229,7 +229,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
                 </select>
               </div>}
               <ErrorNotice error={labeledKeys.error} />
-              <p className="mt-1 text-xs text-slate-500">{chosenArrangement?.song_key ? t('editItem.planOnlyKeyHint', { key: chosenArrangement.song_key }) : t('editItem.planOnlyKeyHintOwnKey')}</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{chosenArrangement?.song_key ? t('editItem.planOnlyKeyHint', { key: chosenArrangement.song_key }) : t('editItem.planOnlyKeyHintOwnKey')}</p>
             </div>
 
             <fieldset>
@@ -245,7 +245,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
                 <div className="mt-2">
                   <label className="sr-only" htmlFor="edit-item-sequence">{t('editItem.sequenceLabel')}</label>
                   <input id="edit-item-sequence" className="input" value={draft.sequence} onChange={(event) => set('sequence', event.target.value)} placeholder="Intro, V1, C, V2, C" aria-describedby="edit-item-sequence-help" />
-                  <p id="edit-item-sequence-help" className="mt-1 text-xs text-slate-500">{t('editItem.sequenceHelp')}</p>
+                  <p id="edit-item-sequence-help" className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('editItem.sequenceHelp')}</p>
                   {sectionLabels.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {sectionLabels.map((label) => (
@@ -315,7 +315,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
                     <option key={position.id} value={position.id}>{position.label}</option>
                   ))}
                 </select>
-                <p className="mt-1 text-xs text-slate-500">{t('editItem.positionFollowsHint')}</p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('editItem.positionFollowsHint')}</p>
               </>
             )}
           </fieldset>
@@ -334,7 +334,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
         )}
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          {!dirty && <span className="mr-auto text-xs text-slate-500">{t('editItem.noChanges')}</span>}
+          {!dirty && <span className="mr-auto text-xs text-slate-500 dark:text-slate-400">{t('editItem.noChanges')}</span>}
           <Button type="button" variant="secondary" onClick={close}>{t('common:actions.cancel')}</Button>
           <Button type="submit" loading={save.isPending} disabled={!dirty || stale}>{t('common:actions.saveChanges')}</Button>
         </div>

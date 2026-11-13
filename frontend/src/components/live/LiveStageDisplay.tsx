@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Icon } from '../icons';
 import { Countdown, useTimeOfDay } from './LiveRunPanel';
 import type { LiveRunHandle } from './useLiveRun';
 
@@ -48,11 +49,16 @@ export const LiveStageDisplay = ({ live, onClose }: LiveStageDisplayProps) => {
       role="dialog"
       aria-modal="true"
       aria-label={t('live.stageDisplay')}
-      className="fixed inset-0 z-50 flex flex-col bg-slate-950 p-10 text-white"
+      className="fixed inset-0 z-50 flex flex-col bg-slate-950 p-6 text-white sm:p-10"
     >
-      <div className="flex items-center justify-between text-lg text-slate-400">
+      <div className="flex items-center justify-between gap-4 text-base text-slate-400 sm:text-lg">
         <span>{state ? t(`live.status.${state.run.status}`) : ''}{view?.section ? ` · ${view.section}` : ''}</span>
-        <button type="button" className="rounded px-3 py-1 text-sm ring-1 ring-slate-600 hover:bg-slate-800" onClick={onClose}>
+        <button
+          type="button"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-medium text-slate-300 ring-1 ring-inset ring-slate-700 transition hover:bg-slate-800 hover:text-white focus-visible:outline-2 focus-visible:outline-brand-400"
+          onClick={onClose}
+        >
+          <Icon name="close" className="size-4" />
           {t('live.stage.close')}
         </button>
       </div>
@@ -61,7 +67,7 @@ export const LiveStageDisplay = ({ live, onClose }: LiveStageDisplayProps) => {
           <p className="text-4xl text-slate-400">{live.connection === 'revoked' ? t('live.stage.unavailable') : t('common:states.loading')}</p>
         ) : view.current ? (
           <>
-            <p className="text-6xl font-semibold leading-tight">{view.current.title}</p>
+            <p className="text-4xl font-semibold leading-tight tracking-tight text-balance sm:text-6xl">{view.current.title}</p>
             <Countdown view={view} large />
             {state.run.status === 'paused' && <p className="text-3xl text-amber-400">{t('live.status.paused')}</p>}
           </>

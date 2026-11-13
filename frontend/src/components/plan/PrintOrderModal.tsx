@@ -75,7 +75,7 @@ export const PrintOrderModal = ({ plan, organizationName, timeZone, serviceTimes
             </select>
           </div>
         ) : (
-          <p className="text-sm text-slate-500">{t('printOrder.noServiceTime')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('printOrder.noServiceTime')}</p>
         )}
 
         <label className="flex items-center gap-2 text-sm">
@@ -90,7 +90,7 @@ export const PrintOrderModal = ({ plan, organizationName, timeZone, serviceTimes
           ) : notes.error ? (
             <ErrorNotice error={notes.error} />
           ) : categories.length === 0 && !hasUncategorized ? (
-            <p className="text-sm text-slate-500">{t('printOrder.noNotes')}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('printOrder.noNotes')}</p>
           ) : (
             <div className="space-y-1">
               {categories.map((category) => (
@@ -105,7 +105,7 @@ export const PrintOrderModal = ({ plan, organizationName, timeZone, serviceTimes
                   {t('printOrder.generalNotes')}
                 </label>
               )}
-              <p className="pt-1 text-xs text-slate-500">{t('printOrder.notesHint')}</p>
+              <p className="pt-1 text-xs text-slate-500 dark:text-slate-400">{t('printOrder.notesHint')}</p>
             </div>
           )}
         </fieldset>

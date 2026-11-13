@@ -41,12 +41,14 @@ import {
   EmptyState,
   ErrorNotice,
   Field,
+  IconWell,
   Label,
   Loading,
   Screen,
   SegmentedControl,
   screenPadding,
 } from '../../../src/components/ui';
+import { Icon } from '../../../src/components/icons';
 import { type Theme } from '../../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
 
@@ -88,7 +90,7 @@ export default function EditPlanItemScreen() {
   if (!can('plans.edit', { serviceTypeId: plan.data.service_type_id })) {
     return (
       <Screen>
-        <EmptyState title={t('templates:generate.noAccess')} />
+        <EmptyState icon="alert" title={t('templates:generate.noAccess')} />
       </Screen>
     );
   }
@@ -96,7 +98,7 @@ export default function EditPlanItemScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('mobileOrder.editScreenTitle') }} />
-        <EmptyState title={t('mobileOrder.itemGone')} />
+        <EmptyState icon="alert" title={t('mobileOrder.itemGone')} />
       </Screen>
     );
   }
@@ -234,24 +236,30 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
       <Stack.Screen options={{ title: t('mobileOrder.editScreenTitle') }} />
       <ScrollView contentContainerStyle={[screenPadding(theme), styles.form]} keyboardShouldPersistTaps="handled">
         {planChanged && !stale ? (
-          <Text accessibilityRole="alert" style={styles.warning}>{t('editItem.planChanged')}</Text>
+          <View accessibilityRole="alert" style={styles.warning}>
+            <Icon name="alert" size={16} color={theme.accent.yellow.fg} />
+            <Text style={styles.warningText}>{t('editItem.planChanged')}</Text>
+          </View>
         ) : null}
 
-        <View style={styles.group}>
-          <Label>{t('editItem.type')}</Label>
-          <SegmentedControl<PlanItemType>
-            options={PLAN_ITEM_TYPES.map((value) => ({ value, label: t(`itemKind.${value}`) }))}
-            value={draft.itemType}
-            onChange={(value) => set('itemType', value)}
-          />
-          {item.item_type === 'song' && !isSong ? <Text style={styles.caution}>{t('editItem.songWillBeRemoved')}</Text> : null}
-        </View>
+        <Card>
+          <View style={styles.group}>
+            <Label>{t('editItem.type')}</Label>
+            <SegmentedControl<PlanItemType>
+              options={PLAN_ITEM_TYPES.map((value) => ({ value, label: t(`itemKind.${value}`) }))}
+              value={draft.itemType}
+              onChange={(value) => set('itemType', value)}
+            />
+            {item.item_type === 'song' && !isSong ? <Text style={styles.caution}>{t('editItem.songWillBeRemoved')}</Text> : null}
+          </View>
 
-        <Field label={t('editItem.fieldTitle')} value={draft.title} onChangeText={(value) => set('title', value)} maxLength={200} />
+          <Field label={t('editItem.fieldTitle')} value={draft.title} onChangeText={(value) => set('title', value)} maxLength={200} />
+        </Card>
 
         {isSong ? (
           <Card>
             <View style={styles.songLine}>
+              <IconWell name="music" accent={theme.accent.blue} size={36} />
               <Text style={styles.flex}>
                 <Text style={styles.muted}>{t('editItem.songLabel')} </Text>
                 <Text style={styles.strong}>{song.data?.title ?? item.song?.title ?? t('editItem.noneChosen')}</Text>
@@ -384,7 +392,7 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
         ) : null}
 
         {draft.itemType !== 'header' ? (
-          <>
+          <Card>
             <Field
               label={t('editItem.length')}
               value={draft.length}
@@ -449,7 +457,7 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
                 </View>
               ) : null}
             </View>
-          </>
+          </Card>
         ) : null}
 
         <Text style={styles.hint}>{t('mobileOrder.webOnlyHint')}</Text>
@@ -461,13 +469,16 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
             <Button title={t('editItem.loadLatest')} variant="secondary" onPress={() => void loadLatest()} />
           </View>
         ) : outcome === 'uncertain' ? (
-          <Text accessibilityRole="alert" style={styles.warning}>{t('mobileOrder.uncertain')}</Text>
+          <View accessibilityRole="alert" style={styles.warning}>
+            <Icon name="alert" size={16} color={theme.accent.yellow.fg} />
+            <Text style={styles.warningText}>{t('mobileOrder.uncertain')}</Text>
+          </View>
         ) : (
           <ErrorNotice error={save.error} />
         )}
 
         {!dirty ? <Text style={styles.hint}>{t('editItem.noChanges')}</Text> : null}
-        <Button title={t('common:actions.saveChanges')} onPress={submit} loading={save.isPending} disabled={!dirty || stale} />
+        <Button title={t('common:actions.saveChanges')} icon="check" onPress={submit} loading={save.isPending} disabled={!dirty || stale} />
         <Button title={t('common:actions.cancel')} variant="quiet" onPress={() => router.back()} />
       </ScrollView>
     </Screen>
@@ -487,16 +498,24 @@ const makeStyles = (theme: Theme) =>
     caution: { ...theme.type.bodySmall, color: theme.accent.yellow.fg },
     danger: { ...theme.type.bodySmall, color: theme.accent.red.fg },
     multiline: { minHeight: 88, paddingTop: theme.space.sm, textAlignVertical: 'top' },
-    songLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm, marginBottom: theme.space.md },
-    pickRow: { minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.space.sm },
+    songLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.md },
+    pickRow: {
+      minHeight: 44,
+      justifyContent: 'center',
+      paddingHorizontal: theme.space.sm,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.color.border,
+    },
     switchRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     warning: {
-      ...theme.type.bodySmall,
-      color: theme.accent.yellow.fg,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: theme.space.sm,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
+    warningText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg, flex: 1 },
     staleBox: {
       gap: theme.space.sm,
       padding: theme.space.md,

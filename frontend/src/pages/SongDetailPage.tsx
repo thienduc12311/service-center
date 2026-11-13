@@ -6,7 +6,7 @@ import type { ArrangementRow } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useSong, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Button, EmptyState, ErrorNotice, Loading } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, Notice, SkeletonList } from '../components/ui';
 import { SongWorkspaceHeader } from '../components/song/SongWorkspaceHeader';
 import { SongArrangementSidebar } from '../components/song/SongArrangementSidebar';
 import { ArrangementCurationPanel } from '../components/song/ArrangementCurationPanel';
@@ -66,9 +66,9 @@ export const SongDetailPage = () => {
     onError: () => { void invalidate(); },
   });
 
-  if (song.isLoading) return <Loading />;
+  if (song.isLoading) return <SkeletonList rows={4} />;
   if (song.error) return <ErrorNotice error={song.error} />;
-  if (!song.data) return <EmptyState title={t('songDetail.notFound')} />;
+  if (!song.data) return <EmptyState icon="music" title={t('songDetail.notFound')} />;
 
   const detail = song.data;
   const arrangement = resolveArrangement(detail.arrangements, pane);
@@ -97,17 +97,25 @@ export const SongDetailPage = () => {
         }}
       />
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        {detail.merged_into_song_id && <a className="text-brand-600 underline" href={`/songs/${detail.merged_into_song_id}`}>{t('songDetail.mergedInto')}</a>}
-        {detail.archived_at && <p>{t('songDetail.archivedSong')}</p>}
-        {canManage && <Button disabled={archive.isPending} onClick={() => archive.mutate()}>{detail.archived_at ? t('songDetail.restoreSong') : t('songDetail.archiveSong')}</Button>}
-        {canManage && pane.kind === 'arrangement' && arrangement && <Button disabled={archiveArrangement.isPending} onClick={() => archiveArrangement.mutate(arrangement)}>{arrangement.archived_at ? t('songDetail.restoreArrangement') : t('songDetail.archiveArrangement')}</Button>}
-        {pane.kind === 'arrangement' && arrangement?.archived_at && <p>{t('songDetail.archivedArrangement')}</p>}
-        <ErrorNotice error={archive.error ?? archiveArrangement.error} />
-        <ErrorNotice error={removeSong.error ?? removeArrangement.error} />
+      <div className="mt-5 space-y-3 empty:hidden">
+          {detail.merged_into_song_id && (
+            <Notice tone="info">
+              <a className="font-medium underline underline-offset-2" href={`/songs/${detail.merged_into_song_id}`}>{t('songDetail.mergedInto')}</a>
+            </Notice>
+          )}
+          {detail.archived_at && <Notice tone="warning">{t('songDetail.archivedSong')}</Notice>}
+          {pane.kind === 'arrangement' && arrangement?.archived_at && <Notice tone="warning">{t('songDetail.archivedArrangement')}</Notice>}
+          {canManage && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="secondary" disabled={archive.isPending} onClick={() => archive.mutate()}>{detail.archived_at ? t('songDetail.restoreSong') : t('songDetail.archiveSong')}</Button>
+              {pane.kind === 'arrangement' && arrangement && <Button size="sm" variant="secondary" disabled={archiveArrangement.isPending} onClick={() => archiveArrangement.mutate(arrangement)}>{arrangement.archived_at ? t('songDetail.restoreArrangement') : t('songDetail.archiveArrangement')}</Button>}
+            </div>
+          )}
+          <ErrorNotice error={archive.error ?? archiveArrangement.error} />
+          <ErrorNotice error={removeSong.error ?? removeArrangement.error} />
       </div>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[14rem_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
         <SongArrangementSidebar
           arrangements={detail.arrangements}
           pane={pane}
@@ -155,7 +163,7 @@ export const SongDetailPage = () => {
             description={t('songDetail.songFilesDescription')}
           />
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             <SongSchedulePanel songId={detail.id} arrangementId={scheduleArrangementId} />
             <SongTagsPanel song={detail} canManage={canManage} />
             <SongNotesPanel song={detail} canManage={canManage} />

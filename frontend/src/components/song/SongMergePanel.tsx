@@ -7,6 +7,7 @@ import { api } from '../../lib/api';
 import { useAuth } from '../../providers/AuthProvider';
 import { useInvalidateOrg } from '../../hooks/queries';
 import { Button, ErrorNotice } from '../ui';
+import { Icon } from '../icons';
 
 /** Props of the duplicate-finding and merge panel. */
 export interface SongMergePanelProps {
@@ -33,10 +34,10 @@ const MergeWorkspace = ({ song }: SongMergePanelProps) => {
   const merge = useMutation({ mutationFn: () => api.mergeSongs({ winner_id: preview!.winner_id, loser_id: preview!.loser_id, fingerprint: preview!.fingerprint, idempotency_key: requestKey }),
     onSuccess: async (r) => { if (!active.current) return; await invalidate(); if (active.current) navigate(`/songs/${r.winner_id}`); } });
   const busy = review.isPending || merge.isPending;
-  return <details className="card p-5" onToggle={(e) => setExpanded(e.currentTarget.open)}>
-    <summary className="cursor-pointer font-semibold">{t('merge.summary')}</summary>
+  return <details className="card group p-5" onToggle={(e) => setExpanded(e.currentTarget.open)}>
+    <summary className="flex cursor-pointer list-none items-center gap-2 font-semibold text-slate-900 dark:text-white [&::-webkit-details-marker]:hidden"><Icon name="chevronRight" className="size-4 text-slate-400 transition group-open:rotate-90" />{t('merge.summary')}</summary>
     <div className="mt-4 space-y-3">
-      <p className="text-sm">{t('merge.intro')}</p>
+      <p className="text-sm text-slate-600 dark:text-slate-300">{t('merge.intro')}</p>
       <ErrorNotice error={candidates.error ?? review.error ?? merge.error} />
       {candidates.isLoading && <p>{t('merge.finding')}</p>}
       {candidates.data?.length === 0 && <p>{t('merge.noSuggestions')}</p>}

@@ -13,7 +13,8 @@ import {
   type StaffingProposal,
   type StaffingProposalEdits,
 } from '@service-center/shared';
-import { Badge, Button } from '../ui';
+import { Badge, Button, DateTile } from '../ui';
+import { Icon } from '../icons';
 import { useFormatters, useStructuredText } from '../../i18n';
 
 export interface ProposalReviewProps {
@@ -33,10 +34,10 @@ interface PositionGroup {
 }
 
 const SOURCE_TONE: Record<ProposalChoice['source'], string> = {
-  existing: 'bg-slate-100 text-slate-700 ring-slate-500/20',
-  locked: 'bg-brand-50 text-brand-700 ring-brand-600/20',
-  rotation: 'bg-sky-50 text-sky-700 ring-sky-600/20',
-  fairness: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  existing: 'bg-slate-100 text-slate-700 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300',
+  locked: 'bg-brand-50 text-brand-700 ring-brand-600/20 dark:bg-brand-500/15 dark:text-brand-200',
+  rotation: 'bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-500/15 dark:text-sky-300',
+  fairness: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300',
 };
 
 const sameSlot = (a: { plan_id: string; position_id: string; person_id: string }, b: typeof a): boolean =>
@@ -113,26 +114,32 @@ export const ProposalReview = ({ proposal, busy, onEdit }: ProposalReviewProps) 
         const planGroups = groups.filter((group) => group.planId === plan.id);
         const excluded = proposal.edits.exclusions.filter((item) => item.plan_id === plan.id);
         return (
-          <section key={plan.id} className="card p-4" aria-labelledby={`proposal-plan-${plan.id}`}>
-            <h3 id={`proposal-plan-${plan.id}`} className="font-semibold">{plan.title}</h3>
-            <p className="mb-3 text-xs text-slate-500">{t('proposalReview.planWhen', { time: dateTime(plan.service_date), date: calendarDate(plan.local_date, 'medium') })}</p>
-            {!planGroups.length && <p className="text-sm text-slate-500">{t('proposalReview.noNeeds')}</p>}
+          <section key={plan.id} className="card p-4 sm:p-5" aria-labelledby={`proposal-plan-${plan.id}`}>
+            <div className="mb-4 flex items-center gap-3">
+              <DateTile value={plan.service_date} />
+              <div className="min-w-0">
+                <h3 id={`proposal-plan-${plan.id}`} className="font-semibold text-slate-900 dark:text-white">{plan.title}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('proposalReview.planWhen', { time: dateTime(plan.service_date), date: calendarDate(plan.local_date, 'medium') })}</p>
+              </div>
+            </div>
+            {!planGroups.length && <p className="surface-inset px-3 py-3 text-sm text-slate-500 dark:text-slate-400">{t('proposalReview.noNeeds')}</p>}
             <ul className="space-y-3">
               {planGroups.map((group) => (
-                <li key={group.key} className="rounded-lg border border-slate-200 p-3">
-                  <p className="mb-2 text-sm font-medium">{t('common:format.teamPosition', { team: teamName(group.teamId), position: positionName(group.positionId) })}</p>
-                  <ul className="space-y-2">
+                <li key={group.key} className="overflow-hidden rounded-xl border border-app-border">
+                  <p className="border-b border-app-border bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 dark:bg-slate-900/50 dark:text-slate-300">{t('common:format.teamPosition', { team: teamName(group.teamId), position: positionName(group.positionId) })}</p>
+                  <ul className="row-list">
                     {group.choices.map((choice) => {
                       const locked = choice.source === 'locked';
                       return (
-                        <li key={choice.slot_key} className="flex flex-wrap items-start gap-2 text-sm">
-                          <div className="min-w-56 flex-1">
-                            <span className="font-medium">{choice.person_name}</span>{' '}
+                        <li key={choice.slot_key} className="flex flex-wrap items-start gap-3 px-3 py-3 text-sm">
+                          <div className="min-w-0 flex-1 basis-56">
+                            <span className="font-medium text-slate-900 dark:text-white">{choice.person_name}</span>{' '}
                             <Badge tone={SOURCE_TONE[choice.source]}>{t(`proposalReview.source.${choice.source}`)}</Badge>{' '}
                             {choice.assignment_visibility === 'prepared' && <Badge tone="bg-slate-100 text-slate-600 ring-slate-500/20">{t('proposalReview.prepared')}</Badge>}
-                            <ul className="mt-1 text-xs text-slate-600">{proposalChoiceReasons(choice, structured).map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                            <ul className="mt-1 text-xs text-slate-600 dark:text-slate-400">{proposalChoiceReasons(choice, structured).map((reason) => <li key={reason}>{reason}</li>)}</ul>
                             {choice.preference_codes.some((code) => !PROPOSAL_FRESHNESS_CODES.has(code)) && (
-                              <p className="mt-1 text-xs text-amber-700">
+                              <p className="mt-1 flex items-start gap-1 text-xs text-amber-700 dark:text-amber-300">
+                                <Icon name="alert" className="mt-px size-3.5 shrink-0" />
                                 {t('proposalReview.preferenceWarnings', {
                                   list: choice.preference_codes
                                     .filter((code) => !PROPOSAL_FRESHNESS_CODES.has(code))
@@ -142,7 +149,7 @@ export const ProposalReview = ({ proposal, busy, onEdit }: ProposalReviewProps) 
                               </p>
                             )}
                             {choice.preference_codes.some((code) => PROPOSAL_FRESHNESS_CODES.has(code)) && (
-                              <p className="mt-1 text-xs text-slate-500">
+                              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                                 {choice.preference_codes.includes('availability_unknown')
                                   ? t('proposalReview.availabilityNeverReviewed')
                                   : t('proposalReview.availabilityNotRecent')}
@@ -152,13 +159,13 @@ export const ProposalReview = ({ proposal, busy, onEdit }: ProposalReviewProps) 
                           {editable && choice.source !== 'existing' && (
                             <div className="flex flex-wrap items-center gap-2">
                               {locked
-                                ? <Button variant="secondary" disabled={busy} onClick={() => unlock(choice)}>{t('proposalReview.unlock')}</Button>
-                                : <Button variant="secondary" disabled={busy} onClick={() => lock(choice)}>{t('proposalReview.lock')}</Button>}
-                              <Button variant="secondary" disabled={busy} onClick={() => exclude(choice)}>{t('proposalReview.exclude')}</Button>
+                                ? <Button variant="secondary" size="sm" disabled={busy} onClick={() => unlock(choice)}>{t('proposalReview.unlock')}</Button>
+                                : <Button variant="secondary" size="sm" icon="check" disabled={busy} onClick={() => lock(choice)}>{t('proposalReview.lock')}</Button>}
+                              <Button variant="secondary" size="sm" icon="close" disabled={busy} onClick={() => exclude(choice)}>{t('proposalReview.exclude')}</Button>
                               {choice.alternatives.length > 0 && (
                                 <label className="text-xs">
                                   <span className="sr-only">{t('proposalReview.useSomeoneElse', { position: positionName(choice.position_id) })}</span>
-                                  <select className="input" value="" disabled={busy}
+                                  <select className="input h-8 py-1 text-[13px]" value="" disabled={busy}
                                     onChange={(event) => { if (event.target.value) useInstead(choice, event.target.value); }}>
                                     <option value="">{t('proposalReview.useInstead')}</option>
                                     {choice.alternatives.map((item) => (
@@ -178,13 +185,13 @@ export const ProposalReview = ({ proposal, busy, onEdit }: ProposalReviewProps) 
                       );
                     })}
                     {group.vacancies.map((vacancy) => (
-                      <li key={vacancy.slot_key} className="rounded-md bg-amber-50 p-2 text-sm text-amber-900" role="status">
-                        <span className="font-medium">{t('proposalReview.openPosition')}</span> {proposalVacancyText(vacancy, structured)}
+                      <li key={vacancy.slot_key} className="bg-amber-50 px-3 py-2.5 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200" role="status">
+                        <span className="font-semibold">{t('proposalReview.openPosition')}</span> {proposalVacancyText(vacancy, structured)}
                         {Object.keys(vacancy.exclusion_counts).length > 0 && (
                           <span className="block text-xs">{exclusionSummary(vacancy.exclusion_counts, t)}</span>
                         )}
                         {editable && vacancy.code === 'locked_choice_invalid' && (
-                          <Button variant="secondary" className="mt-2" disabled={busy} onClick={() => unlockStale(vacancy)}>{t('proposalReview.unlock')}</Button>
+                          <Button variant="secondary" size="sm" className="mt-2" disabled={busy} onClick={() => unlockStale(vacancy)}>{t('proposalReview.unlock')}</Button>
                         )}
                       </li>
                     ))}
@@ -193,11 +200,11 @@ export const ProposalReview = ({ proposal, busy, onEdit }: ProposalReviewProps) 
               ))}
             </ul>
             {excluded.length > 0 && (
-              <p className="mt-3 text-xs text-slate-600">
+              <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
                 {t('proposalReview.excludedByYou')}{' '}
                 {excluded.map((item) => (
                   <button key={`${item.position_id}:${item.person_id}`} type="button" disabled={!editable || busy}
-                    className="mr-2 underline disabled:no-underline" onClick={() => restore(item.plan_id, item.position_id, item.person_id)}>
+                    className="mr-2 font-medium text-brand-700 underline disabled:text-slate-500 disabled:no-underline dark:text-brand-200" onClick={() => restore(item.plan_id, item.position_id, item.person_id)}>
                     {t('proposalReview.restoreExcluded', { name: personName(item.person_id), position: positionName(item.position_id) })}
                   </button>
                 ))}

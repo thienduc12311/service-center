@@ -24,7 +24,8 @@ import { printDocument } from '../lib/print-document';
 import { keys, usePlan, usePlanNotes, usePlans, useTeams, useTemplateApplications, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useLanguage } from '../i18n';
-import { Button, EmptyState, ErrorNotice, Loading } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, Loading, Menu, MenuItem, Notice, Tabs } from '../components/ui';
+import { Icon } from '../components/icons';
 import { MessageComposerModal } from '../components/collaboration/MessageComposerModal';
 import { PlanWorkspaceHeader } from '../components/plan/PlanWorkspaceHeader';
 import { PlanSidebar } from '../components/plan/PlanSidebar';
@@ -255,7 +256,7 @@ export const PlanDetailPage = () => {
 
   if (plan.isLoading) return <Loading />;
   if (plan.error) return <ErrorNotice error={plan.error} />;
-  if (!plan.data || !planId) return <EmptyState title={t('planDetail.notFound')} />;
+  if (!plan.data || !planId) return <EmptyState icon="plans" title={t('planDetail.notFound')} />;
 
   const detail = plan.data;
   const discussing = detail.items.find((item) => item.id === discussingId) ?? null;
@@ -334,7 +335,7 @@ export const PlanDetailPage = () => {
         }}
       />
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-5 space-y-3">
         <ErrorNotice
           error={
             publish.error ??
@@ -348,31 +349,54 @@ export const PlanDetailPage = () => {
           }
         />
         {notify.isSuccess && <DeliveryOutcomeNotice result={notify.data} canRetry={isAdmin(role)} />}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => navigate(`/plans/${planId}/live`)}>{t('planDetail.live')}</Button>
-          <Button variant="secondary" loading={openChat.isPending} onClick={() => openChat.mutate()}>{t('planDetail.planChat')}</Button>
-          {canSchedule && <Button variant="secondary" onClick={() => setComposing(true)}>{t('planDetail.messagePeople')}</Button>}
-          {canEditPlan && <Button variant="secondary" onClick={() => setDialog('apply-template')}>{t('planDetail.applyTemplate')}</Button>}
-          {canEditPlan && <Button variant="secondary" onClick={() => setDialog('save-template')}>{t('planDetail.saveAsTemplate')}</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button icon="play" onClick={() => navigate(`/plans/${planId}/live`)}>
+            {t('planDetail.live')}
+          </Button>
+          <Button variant="secondary" icon="chat" loading={openChat.isPending} onClick={() => openChat.mutate()}>
+            {t('planDetail.planChat')}
+          </Button>
+          {canSchedule && (
+            <Button variant="secondary" icon="mail" onClick={() => setComposing(true)}>
+              {t('planDetail.messagePeople')}
+            </Button>
+          )}
+          {canEditPlan && (
+            <Menu label={t('plansPage.templates')} icon="document" align="left">
+              {(close) => (
+                <>
+                  <MenuItem icon="sparkle" onClick={() => { close(); setDialog('apply-template'); }}>
+                    {t('planDetail.applyTemplate')}
+                  </MenuItem>
+                  <MenuItem icon="upload" onClick={() => { close(); setDialog('save-template'); }}>
+                    {t('planDetail.saveAsTemplate')}
+                  </MenuItem>
+                </>
+              )}
+            </Menu>
+          )}
         </div>
         {(templateApplications.data?.length ?? 0) > 0 && (
-          <p className="text-xs text-slate-500">
-            {t('planDetail.fromTemplates', {
-              templates: format.list(
-                templateApplications.data!.map((applied) =>
-                  t(applied.template_kind === 'section' ? 'planDetail.templateEntrySection' : 'planDetail.templateEntry', {
-                    name: applied.template_name,
-                    revision: applied.template_revision,
-                  }),
+          <p className="inline-flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <Icon name="document" className="mt-px size-3.5 shrink-0" />
+            <span>
+              {t('planDetail.fromTemplates', {
+                templates: format.list(
+                  templateApplications.data!.map((applied) =>
+                    t(applied.template_kind === 'section' ? 'planDetail.templateEntrySection' : 'planDetail.templateEntry', {
+                      name: applied.template_name,
+                      revision: applied.template_revision,
+                    }),
+                  ),
                 ),
-              ),
-            })}
+              })}
+            </span>
           </p>
         )}
         <ErrorNotice error={openChat.error ? PLAN_CHAT_RESTRICTED : null} />
       </div>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[16rem_1fr]">
+      <div className="mt-8 grid gap-8 border-t border-app-border pt-6 lg:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]">
         <PlanSidebar
           plan={detail}
           canEditPlan={canEditPlan}
@@ -387,38 +411,28 @@ export const PlanDetailPage = () => {
           onEditNeededPositions={openNeededPositions}
         />
 
-        <div className="min-w-0">
-          <div className="mb-4 flex gap-6 border-b border-slate-200 dark:border-slate-800">
-            {/* F14: stage layouts are for the plan's editors and leaders (RLS decides). */}
-            {/* F16: attendance for team schedulers; public sharing for the plan's editors. */}
-            {PLAN_TABS.filter(
+        <div className="order-first min-w-0 lg:order-last">
+          {/* F14: stage layouts are for the plan's editors and leaders (RLS decides). */}
+          {/* F16: attendance for team schedulers; public sharing for the plan's editors. */}
+          <Tabs
+            className="mb-5"
+            label={detail.title}
+            value={tab}
+            onChange={setTab}
+            items={PLAN_TABS.filter(
               (value) =>
                 (value !== 'stage' || canEditPlan || can('scheduling.manage', target)) &&
                 (value !== 'attendance' || canSchedule) &&
                 (value !== 'share' || canEditPlan),
-            ).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setTab(value)}
-                aria-current={tab === value ? 'page' : undefined}
-                className={`-mb-px border-b-2 px-1 pb-2 text-sm font-medium transition ${
-                  tab === value
-                    ? 'border-brand-600 text-brand-700'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                {t(`tabs.${value}`)}
-              </button>
-            ))}
-          </div>
+            ).map((value) => ({ value, label: t(`tabs.${value}`) }))}
+          />
 
           {tab === 'order' && (
             <>
               {orderStale && (
-                <p role="alert" className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-600/20">
+                <Notice tone="warning" className="mb-4">
                   {t('planDetail.orderStale')}
-                </p>
+                </Notice>
               )}
               <OrderTab
                 plan={detail}
@@ -442,7 +456,7 @@ export const PlanDetailPage = () => {
           )}
 
           {tab === 'teams' && (
-            <>
+            <div className="space-y-6">
             <OpportunityPanel planId={planId} options={signupOptions} assignments={allAssignments} times={plan.data?.times ?? []} currentPersonId={currentPersonId} />
             <TeamsTab
               teams={showAllTeams ? everyTeam : serviceTeams}
@@ -463,7 +477,7 @@ export const PlanDetailPage = () => {
               onToggleAllTeams={() => setShowAllTeams((current) => !current)}
             />
             {canSchedule && <PlanDeliveryPanel planId={planId} />}
-            </>
+            </div>
           )}
 
           {tab === 'rehearse' && <RehearseTab plan={detail} />}

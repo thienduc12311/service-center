@@ -1,14 +1,24 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { PLAN_STATUS_LABELS, type PlanStatus } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePlans, useServiceTypes, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Badge, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
-import { assignmentTone, planTone } from '../lib/format';
-import { useFormatters } from '../i18n';
+import {
+  Button,
+  EmptyState,
+  ErrorNotice,
+  Menu,
+  MenuItem,
+  MenuSection,
+  Modal,
+  PageHeader,
+  Segmented,
+  SkeletonList,
+} from '../components/ui';
+import { PlanListCard } from '../components/plan/PlanListCard';
 
 const PLAN_STATUSES = Object.keys(PLAN_STATUS_LABELS) as PlanStatus[];
 
@@ -25,7 +35,6 @@ const defaultServiceDate = () => {
 
 export const PlansPage = () => {
   const { t } = useTranslation(['plans', 'common']);
-  const format = useFormatters();
   const { canAnywhere } = useAuth();
   const canManage = canAnywhere('plans.edit');
   const canSchedule = canAnywhere('scheduling.manage');
@@ -75,100 +84,116 @@ export const PlansPage = () => {
     createPlan.mutate();
   };
 
+  const planningTools = canManage || canSchedule;
+
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title={t('plansPage.title')}
         subtitle={t('plansPage.subtitle')}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              aria-label={t('plansPage.filterStatus')}
-              className="input w-36"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="">{t('plansPage.allStatuses')}</option>
-              {PLAN_STATUSES.map((value) => (
-                <option key={value} value={value}>
-                  {t(`common:planStatus.${value}`)}
-                </option>
-              ))}
-            </select>
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                checked={showPast}
-                onChange={(e) => setShowPast(e.target.checked)}
-                className="size-4 rounded border-slate-300"
-              />
-              {t('plansPage.past')}
-            </label>
-            {canManage && (
-              <>
-                <Button variant="secondary" onClick={() => navigate('/service-types/new')}>
-                  {t('plansPage.newServiceType')}
-                </Button>
-                <Button onClick={() => setCreating(true)}>{t('plansPage.newPlan')}</Button>
-                <Button variant="secondary" onClick={() => navigate('/plans/templates')}>{t('plansPage.templates')}</Button>
-                <Button variant="secondary" onClick={() => navigate('/plans/generate')}>{t('plansPage.createFromTemplate')}</Button>
-                <Button variant="secondary" onClick={() => navigate('/plans/reschedule')}>{t('plansPage.reschedule')}</Button>
-              </>
+          <>
+            {planningTools && (
+              <Menu label={t('common:actions.more')} icon="grid">
+                {(close) => (
+                  <>
+                    {canManage && (
+                      <>
+                        <MenuSection label={t('common:nav.groups.planning')} />
+                        <MenuItem icon="plus" onClick={() => { close(); navigate('/service-types/new'); }}>
+                          {t('plansPage.newServiceType')}
+                        </MenuItem>
+                        <MenuItem icon="document" onClick={() => { close(); navigate('/plans/templates'); }}>
+                          {t('plansPage.templates')}
+                        </MenuItem>
+                        <MenuItem icon="sparkle" onClick={() => { close(); navigate('/plans/generate'); }}>
+                          {t('plansPage.createFromTemplate')}
+                        </MenuItem>
+                        <MenuItem icon="calendar" onClick={() => { close(); navigate('/plans/reschedule'); }}>
+                          {t('plansPage.reschedule')}
+                        </MenuItem>
+                      </>
+                    )}
+                    {canSchedule && (
+                      <>
+                        <MenuSection label={t('common:nav.groups.people')} />
+                        <MenuItem icon="grid" onClick={() => { close(); navigate('/plans/matrix'); }}>
+                          {t('plansPage.staffingMatrix')}
+                        </MenuItem>
+                        <MenuItem icon="people" onClick={() => { close(); navigate('/plans/proposals'); }}>
+                          {t('plansPage.proposeStaffing')}
+                        </MenuItem>
+                        <MenuItem icon="check" onClick={() => { close(); navigate('/plans/releases'); }}>
+                          {t('plansPage.releaseReview')}
+                        </MenuItem>
+                      </>
+                    )}
+                  </>
+                )}
+              </Menu>
             )}
-            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/matrix')}>{t('plansPage.staffingMatrix')}</Button>}
-            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/proposals')}>{t('plansPage.proposeStaffing')}</Button>}
-            {canSchedule && <Button variant="secondary" onClick={() => navigate('/plans/releases')}>{t('plansPage.releaseReview')}</Button>}
-          </div>
+            {canManage && (
+              <Button icon="plus" onClick={() => setCreating(true)}>
+                {t('plansPage.newPlan')}
+              </Button>
+            )}
+          </>
         }
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Segmented
+          label={t('plansPage.past')}
+          value={showPast ? 'past' : 'upcoming'}
+          onChange={(value) => setShowPast(value === 'past')}
+          items={[
+            { value: 'upcoming', label: t('mobilePlans.window.upcoming') },
+            { value: 'past', label: t('plansPage.past') },
+          ]}
+        />
+        <div className="flex items-center gap-3">
+          {plans.data && (
+            <span className="text-sm text-slate-500 tabular-nums dark:text-slate-400">
+              {t('common:count.plans', { count: plans.data.total })}
+            </span>
+          )}
+          <select
+            aria-label={t('plansPage.filterStatus')}
+            className="input w-40"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="">{t('plansPage.allStatuses')}</option>
+            {PLAN_STATUSES.map((value) => (
+              <option key={value} value={value}>
+                {t(`common:planStatus.${value}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       <ErrorNotice error={plans.error} />
 
       {plans.isLoading ? (
-        <Loading />
+        <SkeletonList rows={4} />
       ) : plans.data?.data.length ? (
         <ul className="space-y-3">
           {plans.data.data.map((plan) => (
-            <li key={plan.id} className="card transition hover:border-brand-200">
-              <Link to={`/plans/${plan.id}`} className="flex flex-wrap items-center gap-4 p-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{plan.title}</span>
-                    <Badge tone={planTone[plan.status]}>{t(`common:planStatus.${plan.status}`)}</Badge>
-                    {plan.service_type && (
-                      <span className="text-xs text-slate-400">
-                        {t(`plansPage.serviceTypeRecurrence.${plan.service_type.recurrence}`, { name: plan.service_type.name })}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-sm text-slate-500">
-                    {plan.location
-                      ? t('plansPage.dateLocation', { date: format.dateTime(plan.service_date), location: plan.location })
-                      : format.dateTime(plan.service_date)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-slate-500">
-                  <span>{t('common:count.songs', { count: plan.counts.songs })}</span>
-                  <span>{t('plansPage.confirmedCount', { number: plan.counts.confirmed })}</span>
-                  {plan.counts.unconfirmed > 0 && (
-                    <Badge tone={assignmentTone.unconfirmed}>{t('plansPage.pendingCount', { number: plan.counts.unconfirmed })}</Badge>
-                  )}
-                  {plan.counts.declined > 0 && (
-                    <Badge tone={assignmentTone.declined}>{t('plansPage.declinedCount', { number: plan.counts.declined })}</Badge>
-                  )}
-                </div>
-              </Link>
+            <li key={plan.id}>
+              <PlanListCard plan={plan} showServiceType showDeclined />
             </li>
           ))}
         </ul>
       ) : (
         <EmptyState
+          icon="plans"
           title={t('plansPage.emptyTitle')}
           description={t('plansPage.emptyDescription')}
           action={
             canManage ? (
               <div className="flex flex-wrap justify-center gap-2">
-                <Button onClick={() => navigate('/service-types/new')}>{t('plansPage.addServiceType')}</Button>
+                <Button icon="plus" onClick={() => navigate('/service-types/new')}>{t('plansPage.addServiceType')}</Button>
                 <Button variant="secondary" onClick={() => setCreating(true)}>
                   {t('plansPage.createSinglePlan')}
                 </Button>
@@ -191,32 +216,34 @@ export const PlansPage = () => {
               required
             />
           </div>
-          <div>
-            <label className="label" htmlFor="plan-date">{t('plansPage.fieldServiceDate')}</label>
-            <input
-              id="plan-date"
-              type="datetime-local"
-              className="input"
-              value={serviceDate}
-              onChange={(e) => setServiceDate(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="plan-type">{t('plansPage.fieldServiceType')}</label>
-            <select
-              id="plan-type"
-              className="input"
-              value={serviceTypeId}
-              onChange={(e) => setServiceTypeId(e.target.value)}
-            >
-              <option value="">{t('common:states.none')}</option>
-              {(serviceTypes.data ?? []).map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="plan-date">{t('plansPage.fieldServiceDate')}</label>
+              <input
+                id="plan-date"
+                type="datetime-local"
+                className="input"
+                value={serviceDate}
+                onChange={(e) => setServiceDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="plan-type">{t('plansPage.fieldServiceType')}</label>
+              <select
+                id="plan-type"
+                className="input"
+                value={serviceTypeId}
+                onChange={(e) => setServiceTypeId(e.target.value)}
+              >
+                <option value="">{t('common:states.none')}</option>
+                {(serviceTypes.data ?? []).map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div>
             <label className="label" htmlFor="plan-location">{t('plansPage.fieldLocation')}</label>

@@ -120,7 +120,7 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
         {templates.isLoading ? (
           <div className="flex justify-center py-6 text-slate-400"><Spinner /></div>
         ) : usable.length === 0 ? (
-          <p className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-500 dark:bg-slate-900">
+          <p className="surface-inset px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
             {t('apply.empty')}
           </p>
         ) : (
@@ -152,13 +152,13 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
         )}
 
         {template && !isSection && (
-          <fieldset className="space-y-2">
+          <fieldset className="surface-inset space-y-2 p-3">
             <legend className="label">{t('apply.copy')}</legend>
             {PLAN_TEMPLATE_COMPONENTS.map((component) => (
-              <label key={component} className={`flex items-center gap-2 text-sm ${available.includes(component) ? '' : 'opacity-50'}`}>
+              <label key={component} className={`flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 ${available.includes(component) ? '' : 'opacity-50'}`}>
                 <input
                   type="checkbox"
-                  className="size-4 rounded border-slate-300"
+                  className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
                   disabled={!available.includes(component)}
                   checked={available.includes(component) && chosen.includes(component)}
                   onChange={(event) => {
@@ -167,21 +167,21 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
                   }}
                 />
                 {t(`components.${component}`)}
-                {!available.includes(component) && <span className="text-xs text-slate-400">{t('apply.notInTemplate')}</span>}
+                {!available.includes(component) && <span className="text-xs text-slate-400 dark:text-slate-500">{t('apply.notInTemplate')}</span>}
               </label>
             ))}
           </fieldset>
         )}
 
         {template && !isSection && (
-          <fieldset className="flex flex-wrap gap-4 text-sm">
+          <fieldset className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-700 dark:text-slate-200">
             <legend className="label">{t('apply.existingLegend')}</legend>
             <label className="flex items-center gap-2">
-              <input type="radio" name="apply-mode" checked={mode === 'append'} onChange={() => { setMode('append'); resetReview(); }} />
+              <input type="radio" className="accent-brand-600" name="apply-mode" checked={mode === 'append'} onChange={() => { setMode('append'); resetReview(); }} />
               {t('apply.keepAndAdd')}
             </label>
             <label className="flex items-center gap-2">
-              <input type="radio" name="apply-mode" checked={mode === 'replace'} onChange={() => { setMode('replace'); setInsertAt(null); resetReview(); }} />
+              <input type="radio" className="accent-brand-600" name="apply-mode" checked={mode === 'replace'} onChange={() => { setMode('replace'); setInsertAt(null); resetReview(); }} />
               {t('apply.replaceParts')}
             </label>
           </fieldset>
@@ -211,7 +211,7 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
         {preview && <TemplateApplyReview preview={preview} />}
 
         {stale && (
-          <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          <p role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
             {t('apply.stale')}
           </p>
         )}
@@ -228,7 +228,7 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
                 onChange={(event) => setConflictReason(event.target.value)}
               />
             ) : (
-              <p className="text-xs text-slate-500">{t('apply.noOverride')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('apply.noOverride')}</p>
             )}
           </>
         ) : (

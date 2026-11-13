@@ -17,12 +17,13 @@ import {
   ErrorNotice,
   Field,
   IconButton,
-  Label,
+  SectionHeader,
   ListRow,
   Loading,
   Screen,
   screenPadding,
 } from '../../src/components/ui';
+import { Icon } from '../../src/components/icons';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
@@ -96,7 +97,7 @@ export default function TeamScreen() {
   if (!teamId.success) {
     return (
       <Screen>
-        <EmptyState title={t('mobileTeams.notFound')} />
+        <EmptyState icon="people" title={t('mobileTeams.notFound')} />
       </Screen>
     );
   }
@@ -111,8 +112,8 @@ export default function TeamScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('teamsPage.title') }} />
-        <View style={{ padding: 24, gap: 16 }}>
-          {teams.error ? <ErrorNotice error={teams.error} /> : <EmptyState title={t('mobileTeams.notFound')} description={t('mobileTeams.goneDescription')} />}
+        <View style={screenPadding(theme)}>
+          {teams.error ? <ErrorNotice error={teams.error} /> : <EmptyState icon="people" title={t('mobileTeams.notFound')} description={t('mobileTeams.goneDescription')} />}
         </View>
       </Screen>
     );
@@ -140,110 +141,114 @@ export default function TeamScreen() {
         automaticallyAdjustKeyboardInsets
         refreshControl={<RefreshControl refreshing={teams.isRefetching} onRefresh={() => void teams.refetch()} />}
       >
-        <View style={styles.hero}>
-          <View style={[styles.swatch, { backgroundColor: team.color }]} />
-          <Text style={styles.title}>{team.name}</Text>
-        </View>
-        {team.description ? <Text style={styles.muted}>{team.description}</Text> : null}
-
-        <Card>
-          <Label>{t('common:count.people', { count: team.members.length })}</Label>
-          <ErrorNotice error={remove.error} />
-          {team.members.length ? (
-            team.members.map((member, index) => {
-              const name = memberName(member);
-              const position = positionName(member.position_id);
-              return (
-                <View key={member.membership_id} style={styles.memberRow}>
-                  <View style={styles.flex}>
-                    <ListRow
-                      divided={index > 0}
-                      showChevron={owner}
-                      onPress={owner ? () => router.push({ pathname: '/people/[id]', params: { id: member.person_id } }) : undefined}
-                    >
-                      <View style={styles.personLine}>
-                        <Avatar name={name} url={member.profile?.avatar_url} size={28} />
-                        <View style={styles.flex}>
-                          <Text style={styles.body}>{name}</Text>
-                          {position ? <Text style={styles.muted}>{position}</Text> : null}
-                        </View>
-                      </View>
-                    </ListRow>
-                  </View>
-                  {manageable ? (
-                    <IconButton
-                      name="trash"
-                      accessibilityLabel={t('mobileTeams.removeLabel', { name, team: team.name })}
-                      disabled={remove.isPending}
-                      onPress={() => confirmRemove(member)}
-                    />
-                  ) : null}
-                </View>
-              );
-            })
-          ) : (
-            <Text style={styles.muted}>{t('teamsPage.noMembers')}</Text>
-          )}
+        <Card style={styles.hero}>
+          <View style={styles.heroTile}>
+            <Icon name="people" size={26} color={team.color} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.title}>{team.name}</Text>
+            {team.description ? <Text style={styles.muted}>{team.description}</Text> : null}
+          </View>
         </Card>
 
-        {manageable ? (
-          <Card>
-            <Label>{t('teamsPage.addMember.title', { team: team.name })}</Label>
-            {adding ? (
-              <>
-                <Text style={styles.muted}>{t('teamsPage.addMember.hint')}</Text>
-                {team.positions.length ? (
-                  <View style={styles.chips}>
-                    <Chip
-                      label={t('teamsPage.addMember.noPosition')}
-                      active={positionChoice === NO_POSITION}
-                      onPress={() => setPositionChoice(NO_POSITION)}
-                    />
-                    {team.positions.map((position) => (
-                      <Chip
-                        key={position.id}
-                        label={position.name}
-                        active={positionChoice === position.id}
-                        onPress={() => setPositionChoice(position.id)}
-                      />
-                    ))}
-                  </View>
-                ) : null}
-                <Field
-                  accessibilityLabel={t('people:mobileDirectory.searchLabel')}
-                  value={query}
-                  onChangeText={setQuery}
-                  placeholder={t('people:mobileDirectory.searchPlaceholder')}
-                  autoCorrect={false}
-                  autoCapitalize="none"
-                />
-                <ErrorNotice error={people.error ?? add.error} />
-                {people.isLoading ? <Loading /> : null}
-                {candidates.slice(0, 50).map((person, index) => {
-                  const name = directoryName(person) ?? t('common:fallback.unnamed');
-                  return (
-                    <View key={person.id} style={[styles.memberRow, index > 0 && styles.divided]}>
-                      <Avatar name={name} size={28} />
-                      <Text style={[styles.body, styles.flex]}>{name}</Text>
-                      <Button
-                        title={t('common:actions.add')}
-                        variant="secondary"
-                        accessibilityLabel={t('mobileTeams.addLabel', { name, team: team.name })}
-                        loading={add.isPending && add.variables?.person_id === person.person_id}
-                        disabled={add.isPending}
-                        onPress={() => add.mutate(person)}
-                      />
+        <View style={styles.section}>
+          <SectionHeader title={t('common:count.people', { count: team.members.length })} />
+          <Card compact={team.members.length > 0}>
+            <ErrorNotice error={remove.error} />
+            {team.members.length ? (
+              team.members.map((member, index) => {
+                const name = memberName(member);
+                const position = positionName(member.position_id);
+                return (
+                  <View key={member.membership_id} style={styles.memberRow}>
+                    <View style={styles.flex}>
+                      <ListRow
+                        divided={index > 0}
+                        showChevron={owner}
+                        onPress={owner ? () => router.push({ pathname: '/people/[id]', params: { id: member.person_id } }) : undefined}
+                        leading={<Avatar name={name} url={member.profile?.avatar_url} size={36} />}
+                      >
+                        <Text style={styles.name}>{name}</Text>
+                        {position ? <Text style={styles.muted}>{position}</Text> : null}
+                      </ListRow>
                     </View>
-                  );
-                })}
-                {!people.isLoading && !candidates.length ? <Text style={styles.muted}>{t('people:mobileDirectory.noMatch')}</Text> : null}
-                {candidates.length > 50 ? <Text style={styles.muted}>{t('mobileTeams.refineSearch')}</Text> : null}
-                <Button title={t('common:actions.done')} variant="secondary" onPress={() => { add.reset(); setAdding(false); }} />
-              </>
+                    {manageable ? (
+                      <IconButton
+                        name="trash"
+                        accessibilityLabel={t('mobileTeams.removeLabel', { name, team: team.name })}
+                        disabled={remove.isPending}
+                        onPress={() => confirmRemove(member)}
+                      />
+                    ) : null}
+                  </View>
+                );
+              })
             ) : (
-              <Button title={t('mobileTeams.addPerson')} icon="plus" variant="secondary" onPress={() => setAdding(true)} />
+              <Text style={styles.muted}>{t('teamsPage.noMembers')}</Text>
             )}
           </Card>
+        </View>
+
+        {manageable ? (
+          <View style={styles.section}>
+            <SectionHeader title={t('teamsPage.addMember.title', { team: team.name })} />
+            <Card>
+              {adding ? (
+                <>
+                  <Text style={styles.muted}>{t('teamsPage.addMember.hint')}</Text>
+                  {team.positions.length ? (
+                    <View style={styles.chips}>
+                      <Chip
+                        label={t('teamsPage.addMember.noPosition')}
+                        active={positionChoice === NO_POSITION}
+                        onPress={() => setPositionChoice(NO_POSITION)}
+                      />
+                      {team.positions.map((position) => (
+                        <Chip
+                          key={position.id}
+                          label={position.name}
+                          active={positionChoice === position.id}
+                          onPress={() => setPositionChoice(position.id)}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
+                  <Field
+                    accessibilityLabel={t('people:mobileDirectory.searchLabel')}
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder={t('people:mobileDirectory.searchPlaceholder')}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                  />
+                  <ErrorNotice error={people.error ?? add.error} />
+                  {people.isLoading ? <Loading /> : null}
+                  {candidates.slice(0, 50).map((person, index) => {
+                    const name = directoryName(person) ?? t('common:fallback.unnamed');
+                    return (
+                      <View key={person.id} style={[styles.memberRow, index > 0 && styles.divided]}>
+                        <Avatar name={name} size={36} />
+                        <Text style={[styles.body, styles.flex]}>{name}</Text>
+                        <Button
+                          title={t('common:actions.add')}
+                          variant="secondary"
+                          accessibilityLabel={t('mobileTeams.addLabel', { name, team: team.name })}
+                          loading={add.isPending && add.variables?.person_id === person.person_id}
+                          disabled={add.isPending}
+                          onPress={() => add.mutate(person)}
+                        />
+                      </View>
+                    );
+                  })}
+                  {!people.isLoading && !candidates.length ? <Text style={styles.muted}>{t('people:mobileDirectory.noMatch')}</Text> : null}
+                  {candidates.length > 50 ? <Text style={styles.muted}>{t('mobileTeams.refineSearch')}</Text> : null}
+                  <Button title={t('common:actions.done')} variant="secondary" onPress={() => { add.reset(); setAdding(false); }} />
+                </>
+              ) : (
+                <Button title={t('mobileTeams.addPerson')} icon="plus" variant="secondary" onPress={() => setAdding(true)} />
+              )}
+            </Card>
+          </View>
         ) : null}
       </ScrollView>
     </Screen>
@@ -253,14 +258,24 @@ export default function TeamScreen() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    stack: { gap: theme.space.lg },
-    hero: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    swatch: { width: 14, height: 14, borderRadius: 7 },
+    stack: { gap: theme.space.xl },
+    section: { gap: theme.space.sm },
+    hero: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    heroTile: {
+      width: 52,
+      height: 52,
+      borderRadius: theme.radius.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.color.surfaceInset,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+    },
     title: { ...theme.type.title, color: theme.color.ink, flexShrink: 1 },
+    name: { ...theme.type.heading, color: theme.color.ink },
     body: { ...theme.type.body, color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     memberRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    personLine: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.xs },
     divided: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.border, paddingTop: theme.space.sm },
   });

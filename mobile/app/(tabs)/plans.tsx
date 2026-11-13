@@ -21,17 +21,20 @@ import {
   Button,
   Card,
   Chip,
+  DateBadge,
   EmptyState,
   ErrorNotice,
   Loading,
   Screen,
   ScreenHeader,
+  SectionHeader,
   SegmentedControl,
   Tag,
   screenPadding,
   type SegmentOption,
 } from '../../src/components/ui';
 import { NotificationBell } from '../../src/components/NotificationBell';
+import { Icon, type IconName } from '../../src/components/icons';
 import { PressableScale, Reveal } from '../../src/components/motion';
 import { statusAccent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
@@ -110,11 +113,10 @@ export default function PlansScreen() {
 
   return (
     <Screen safeTop>
-      <NotificationBell />
       <FlatList
         data={items}
         keyExtractor={(plan) => plan.id}
-        contentContainerStyle={screenPadding(theme)}
+        contentContainerStyle={[screenPadding(theme), styles.list]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.color.inkFaint} />
         }
@@ -126,52 +128,67 @@ export default function PlansScreen() {
         }}
         ListHeaderComponent={
           <View style={styles.header}>
-            <ScreenHeader title={t('plansPage.title')} description={t('plansPage.subtitle')} />
+            <ScreenHeader
+              title={t('plansPage.title')}
+              description={t('plansPage.subtitle')}
+              trailing={<NotificationBell bar={false} />}
+            />
             {canCreatePlans ? (
               <View style={styles.actions}>
-                <Button title={t('plansPage.newPlan')} icon="plus" onPress={() => router.push('/plan/new')} />
+                <Button
+                  title={t('plansPage.newPlan')}
+                  icon="plus"
+                  style={styles.action}
+                  onPress={() => router.push('/plan/new')}
+                />
                 <Button
                   title={t('plansPage.createFromTemplate')}
+                  icon="document"
                   variant="secondary"
+                  style={styles.action}
                   onPress={() => router.push('/plan/generate')}
                 />
               </View>
             ) : null}
-            <SegmentedControl options={windowOptions} value={planWindow} onChange={setPlanWindow} />
-            {serviceTypes.data?.length ? (
+            <View style={styles.filters}>
+              <SegmentedControl options={windowOptions} value={planWindow} onChange={setPlanWindow} />
+              {serviceTypes.data?.length ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  accessibilityLabel={t('mobilePlans.filterServiceType')}
+                  style={styles.chipScroller}
+                  contentContainerStyle={styles.chips}
+                >
+                  <Chip label={t('mobilePlans.allServiceTypes')} active={!serviceTypeId} onPress={() => setServiceTypeId(null)} />
+                  {serviceTypes.data.map((type) => (
+                    <Chip
+                      key={type.id}
+                      label={type.name}
+                      active={serviceTypeId === type.id}
+                      onPress={() => setServiceTypeId(type.id)}
+                    />
+                  ))}
+                </ScrollView>
+              ) : null}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                accessibilityLabel={t('mobilePlans.filterServiceType')}
+                accessibilityLabel={t('plansPage.filterStatus')}
+                style={styles.chipScroller}
                 contentContainerStyle={styles.chips}
               >
-                <Chip label={t('mobilePlans.allServiceTypes')} active={!serviceTypeId} onPress={() => setServiceTypeId(null)} />
-                {serviceTypes.data.map((type) => (
+                <Chip label={t('plansPage.allStatuses')} active={!status} onPress={() => setStatus(null)} />
+                {PLAN_STATUSES.map((value) => (
                   <Chip
-                    key={type.id}
-                    label={type.name}
-                    active={serviceTypeId === type.id}
-                    onPress={() => setServiceTypeId(type.id)}
+                    key={value}
+                    label={t(`common:planStatus.${value}`)}
+                    active={status === value}
+                    onPress={() => setStatus(value)}
                   />
                 ))}
               </ScrollView>
-            ) : null}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              accessibilityLabel={t('plansPage.filterStatus')}
-              contentContainerStyle={styles.chips}
-            >
-              <Chip label={t('plansPage.allStatuses')} active={!status} onPress={() => setStatus(null)} />
-              {PLAN_STATUSES.map((value) => (
-                <Chip
-                  key={value}
-                  label={t(`common:planStatus.${value}`)}
-                  active={status === value}
-                  onPress={() => setStatus(value)}
-                />
-              ))}
-            </ScrollView>
+            </View>
             <ErrorNotice error={serviceTypes.error} />
             {firstPageFailed ? (
               <View style={styles.retry}>
@@ -179,6 +196,7 @@ export default function PlansScreen() {
                 <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void plans.refetch()} />
               </View>
             ) : null}
+            {items.length ? <SectionHeader title={t(`mobilePlans.window.${planWindow}`)} /> : null}
           </View>
         }
         ListEmptyComponent={
@@ -186,6 +204,7 @@ export default function PlansScreen() {
             <Loading label={t('mobilePlans.loading')} />
           ) : firstPageFailed ? null : (
             <EmptyState
+              icon={filtered ? 'search' : 'plans'}
               title={t(planWindow === 'history' ? 'mobilePlans.emptyHistoryTitle' : 'mobilePlans.emptyUpcomingTitle')}
               description={t(filtered ? 'mobilePlans.emptyFilteredDescription' : 'mobilePlans.emptyDescription')}
             />
@@ -203,7 +222,7 @@ export default function PlansScreen() {
         }
         renderItem={({ item, index }) => (
           <Reveal index={Math.min(index, 8)}>
-            <PlanSummaryCard plan={item} onOpen={() => router.push({ pathname: '/plan/[id]', params: { id: item.id } })} />
+            <PlanSummaryCard plan={item} past={planWindow === 'history'} onOpen={() => router.push({ pathname: '/plan/[id]', params: { id: item.id } })} />
           </Reveal>
         )}
       />
@@ -213,36 +232,52 @@ export default function PlansScreen() {
 
 interface PlanSummaryCardProps {
   plan: PlanSummary;
+  /** Past plans draw a muted date. */
+  past: boolean;
   onOpen: () => void;
 }
 
 /** One plan as the website's Plans list shows it: status, service type, when/where and answers. */
-const PlanSummaryCard = ({ plan, onOpen }: PlanSummaryCardProps) => {
+const PlanSummaryCard = ({ plan, past, onOpen }: PlanSummaryCardProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation(['plans', 'common']);
   const format = useFormatters();
 
   return (
-    <Card>
-      <PressableScale onPress={onOpen} pressedOpacity={0.65} accessibilityRole="button" accessibilityLabel={plan.title}>
-        <View style={styles.topRow}>
-          <Text style={styles.date}>
-            {plan.location
-              ? t('plansPage.dateLocation', { date: format.dateTime(plan.service_date), location: plan.location })
-              : format.dateTime(plan.service_date)}
-          </Text>
-          <Tag label={t(`common:planStatus.${plan.status}`)} accent={theme.accent[PLAN_STATUS_ACCENTS[plan.status]]} />
+    <PressableScale
+      onPress={onOpen}
+      pressedOpacity={0.65}
+      accessibilityRole="button"
+      accessibilityLabel={plan.title}
+    >
+      <Card>
+        <View style={styles.cardTop}>
+          <DateBadge date={plan.service_date} muted={past} />
+          <View style={styles.cardBody}>
+            <View style={styles.titleRow}>
+              <Text style={styles.title} numberOfLines={2}>{plan.title}</Text>
+              <Tag label={t(`common:planStatus.${plan.status}`)} accent={theme.accent[PLAN_STATUS_ACCENTS[plan.status]]} />
+            </View>
+            <MetaItem icon="clock" label={format.dateTime(plan.service_date)} />
+            {plan.location ? <MetaItem icon="mapPin" label={plan.location} /> : null}
+            {plan.service_type ? (
+              <MetaItem
+                icon="plans"
+                label={t(`plansPage.serviceTypeRecurrence.${plan.service_type.recurrence}`, { name: plan.service_type.name })}
+              />
+            ) : null}
+          </View>
         </View>
-        <Text style={styles.title}>{plan.title}</Text>
-        {plan.service_type ? (
-          <Text style={styles.muted}>
-            {t(`plansPage.serviceTypeRecurrence.${plan.service_type.recurrence}`, { name: plan.service_type.name })}
-          </Text>
-        ) : null}
         <View style={styles.counts}>
-          <Text style={styles.muted}>{t('common:count.songs', { count: plan.counts.songs })}</Text>
-          <Text style={styles.muted}>{t('plansPage.confirmedCount', { number: plan.counts.confirmed })}</Text>
+          <View style={styles.count}>
+            <Icon name="music" size={14} color={theme.color.inkFaint} />
+            <Text style={styles.countLabel}>{t('common:count.songs', { count: plan.counts.songs })}</Text>
+          </View>
+          <View style={styles.count}>
+            <Icon name="check" size={14} color={theme.accent.green.fg} />
+            <Text style={styles.countLabel}>{t('plansPage.confirmedCount', { number: plan.counts.confirmed })}</Text>
+          </View>
           {plan.counts.unconfirmed > 0 ? (
             <Tag
               label={t('plansPage.pendingCount', { number: plan.counts.unconfirmed })}
@@ -256,20 +291,54 @@ const PlanSummaryCard = ({ plan, onOpen }: PlanSummaryCardProps) => {
             />
           ) : null}
         </View>
-      </PressableScale>
-    </Card>
+      </Card>
+    </PressableScale>
+  );
+};
+
+interface MetaItemProps {
+  icon: IconName;
+  label: string;
+}
+
+/** One line of supporting detail with a small leading glyph. */
+const MetaItem = ({ icon, label }: MetaItemProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.metaRow}>
+      <Icon name={icon} size={14} color={theme.color.inkFaint} />
+      <Text style={styles.metaText} numberOfLines={1}>{label}</Text>
+    </View>
   );
 };
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    header: { gap: theme.space.lg, marginBottom: theme.space.lg },
-    chips: { flexDirection: 'row', gap: theme.space.sm },
+    list: { gap: theme.space.md },
+    header: { gap: theme.space.lg },
+    filters: { gap: theme.space.md },
+    chipScroller: { marginHorizontal: -theme.space.lg, flexGrow: 0 },
+    chips: { flexDirection: 'row', gap: theme.space.sm, paddingHorizontal: theme.space.lg },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    action: { flexGrow: 1 },
     retry: { gap: theme.space.md, paddingVertical: theme.space.md },
-    topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.space.md },
-    date: { ...theme.type.label, color: theme.color.inkMuted, flex: 1 },
-    title: { ...theme.type.heading, color: theme.color.ink, marginTop: theme.space.xs },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-    counts: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.md, marginTop: theme.space.sm },
+    cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md },
+    cardBody: { flex: 1, gap: theme.space.xs },
+    titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.sm, marginBottom: 2 },
+    title: { ...theme.type.heading, color: theme.color.ink, flex: 1 },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    metaText: { ...theme.type.bodySmall, color: theme.color.inkMuted, flexShrink: 1 },
+    counts: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: theme.space.md,
+      paddingTop: theme.space.md,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.color.border,
+    },
+    count: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    countLabel: { ...theme.type.bodySmall, color: theme.color.inkMuted },
   });

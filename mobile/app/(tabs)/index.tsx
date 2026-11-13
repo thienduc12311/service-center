@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../src/lib/api';
@@ -8,17 +8,23 @@ import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Card,
+  Chip,
+  DateBadge,
   Divider,
   EmptyState,
   ErrorNotice,
+  IconWell,
   ListRow,
   Loading,
   Screen,
   ScreenHeader,
+  SectionHeader,
   SegmentedControl,
+  StatTile,
   screenPadding,
   type SegmentOption,
 } from '../../src/components/ui';
+import { Icon, type IconName } from '../../src/components/icons';
 import { NotificationBell } from '../../src/components/NotificationBell';
 import { PressableScale, Reveal } from '../../src/components/motion';
 import {
@@ -39,7 +45,7 @@ import {
   useAssignmentResponses,
   type AssignmentResponses,
 } from '../../src/lib/useAssignmentResponses';
-import type { Theme } from '../../src/lib/theme';
+import type { Accent, Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { useFormatters } from '../../src/i18n';
 
@@ -90,6 +96,10 @@ export default function MyScheduleScreen() {
   const visible = useMemo(() => filterScheduleGroups(groups, filter), [filter, groups]);
   const awaiting = groups.reduce((total, group) => total + group.pendingCount, 0);
 
+  const pendingPlans = useMemo(() => filterScheduleGroups(groups, 'pending').length, [groups]);
+  const confirmedPlans = useMemo(() => filterScheduleGroups(groups, 'confirmed').length, [groups]);
+  const showStats = scheduleWindow === 'upcoming' && groups.length > 0;
+
   const summary =
     scheduleWindow === 'upcoming' && groups.length
       ? awaiting
@@ -99,11 +109,10 @@ export default function MyScheduleScreen() {
 
   return (
     <Screen safeTop>
-      <NotificationBell />
       <FlatList
         data={visible}
         keyExtractor={(group) => group.key}
-        contentContainerStyle={screenPadding(theme)}
+        contentContainerStyle={[screenPadding(theme), styles.list]}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
@@ -118,20 +127,77 @@ export default function MyScheduleScreen() {
               eyebrow={summary}
               title={t('mySchedule.title')}
               description={t('mySchedule.mobileDescription')}
+              trailing={<NotificationBell bar={false} />}
             />
-            <SegmentedControl options={windowOptions} value={scheduleWindow} onChange={setScheduleWindow} />
-            <SegmentedControl options={filterOptions} value={filter} onChange={setFilter} />
-            <Card compact>
-              <ListRow showChevron onPress={() => router.push('/opportunities')}>
-                <Text style={styles.entryTitle}>{t('staffing:openPositions.entry')}</Text>
-                <Text style={styles.entryHint}>{t('staffing:openPositions.entryHint')}</Text>
-              </ListRow>
-              <ListRow divided showChevron onPress={() => router.push('/replacements')}>
-                <Text style={styles.entryTitle}>{t('staffing:replacements.entry')}</Text>
-                <Text style={styles.entryHint}>{t('staffing:replacements.entryHint')}</Text>
-              </ListRow>
+
+            {showStats ? (
+              <View style={styles.stats}>
+                <StatTile
+                  label={t('mySchedule.window.upcoming')}
+                  value={groups.length}
+                  icon="calendar"
+                  accent={theme.accent.blue}
+                  onPress={() => setFilter('all')}
+                />
+                <StatTile
+                  label={t('mySchedule.filter.pending')}
+                  value={pendingPlans}
+                  icon="clock"
+                  accent={theme.accent.yellow}
+                  onPress={() => setFilter('pending')}
+                />
+                <StatTile
+                  label={t('mySchedule.filter.confirmed')}
+                  value={confirmedPlans}
+                  icon="check"
+                  accent={theme.accent.green}
+                  onPress={() => setFilter('confirmed')}
+                />
+              </View>
+            ) : null}
+
+            <View style={styles.filters}>
+              <SegmentedControl options={windowOptions} value={scheduleWindow} onChange={setScheduleWindow} />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chips}
+                style={styles.chipScroller}
+              >
+                {filterOptions.map((option) => (
+                  <Chip
+                    key={option.value}
+                    label={option.label}
+                    active={filter === option.value}
+                    onPress={() => setFilter(option.value)}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+
+            <Card compact style={styles.entries}>
+              <EntryRow
+                icon="search"
+                accent={theme.accent.blue}
+                title={t('staffing:openPositions.entry')}
+                hint={t('staffing:openPositions.entryHint')}
+                onPress={() => router.push('/opportunities')}
+              />
+              <EntryRow
+                divided
+                icon="people"
+                accent={theme.accent.yellow}
+                title={t('staffing:replacements.entry')}
+                hint={t('staffing:replacements.entryHint')}
+                onPress={() => router.push('/replacements')}
+              />
             </Card>
+
             <ErrorNotice error={schedule.error} />
+
+            {visible.length ? (
+              <SectionHeader title={t(`mySchedule.window.${scheduleWindow}`)} count={visible.length} />
+            ) : null}
           </View>
         }
         ListEmptyComponent={
@@ -139,16 +205,19 @@ export default function MyScheduleScreen() {
             <Loading label={t('mySchedule.loading')} />
           ) : schedule.error ? null : groups.length && filter !== 'all' ? (
             <EmptyState
+              icon="search"
               title={t('mySchedule.noMatchingTitle')}
               description={t(`mySchedule.emptyFilter.${filter}`)}
             />
           ) : scheduleWindow === 'history' ? (
             <EmptyState
+              icon="clock"
               title={t('mySchedule.noPastTitle')}
               description={t('mySchedule.noPastDescription')}
             />
           ) : (
             <EmptyState
+              icon="schedule"
               title={t('mySchedule.nothingScheduledTitle')}
               description={t('mySchedule.nothingScheduledDescription')}
             />
@@ -168,6 +237,31 @@ export default function MyScheduleScreen() {
     </Screen>
   );
 }
+
+interface EntryRowProps {
+  icon: IconName;
+  accent: Accent;
+  title: string;
+  hint: string;
+  onPress: () => void;
+  divided?: boolean;
+}
+
+/** A navigational row into a related staffing screen. */
+const EntryRow = ({ icon, accent, title, hint, onPress, divided = false }: EntryRowProps) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <ListRow
+      divided={divided}
+      showChevron
+      onPress={onPress}
+      leading={<IconWell name={icon} accent={accent} size={36} />}
+    >
+      <Text style={styles.entryTitle}>{title}</Text>
+      <Text style={styles.entryHint}>{hint}</Text>
+    </ListRow>
+  );
+};
 
 interface PlanGroupCardProps {
   group: SchedulePlanGroup;
@@ -191,14 +285,18 @@ const PlanGroupCard = ({ group, responses, canRespond, onOpen }: PlanGroupCardPr
         accessibilityRole="button"
         accessibilityLabel={t('mySchedule.openPlan', { title: group.plan.title })}
       >
-        <View style={styles.topRow}>
-          <Text style={styles.date}>{f.dateTime(group.startsAt)}</Text>
-          <GroupStatusTag status={group.status} />
+        <View style={styles.cardTop}>
+          <DateBadge date={group.startsAt} muted={!canRespond} />
+          <View style={styles.cardBody}>
+            <View style={styles.titleRow}>
+              <Text style={styles.title} numberOfLines={2}>{group.plan.title}</Text>
+              <GroupStatusTag status={group.status} />
+            </View>
+            <MetaItem icon="clock" label={f.dateTime(group.startsAt)} />
+            {group.plan.location ? <MetaItem icon="mapPin" label={group.plan.location} /> : null}
+            {count > 1 ? <MetaItem icon="people" label={t('mySchedule.positions', { count })} /> : null}
+          </View>
         </View>
-        <Text style={styles.title}>{group.plan.title}</Text>
-        <Text style={styles.meta}>
-          {[group.plan.location, count > 1 ? t('mySchedule.positions', { count }) : null].filter(Boolean).join(' · ')}
-        </Text>
         <View style={styles.times}>
           <ScheduleTimes times={group.times} responsibilities={group.responsibilities} />
         </View>
@@ -217,20 +315,45 @@ const PlanGroupCard = ({ group, responses, canRespond, onOpen }: PlanGroupCardPr
   );
 };
 
+interface MetaItemProps {
+  icon: IconName;
+  label: string;
+}
+
+/** One line of supporting detail with a small leading glyph. */
+const MetaItem = ({ icon, label }: MetaItemProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.metaRow}>
+      <Icon name={icon} size={14} color={theme.color.inkFaint} />
+      <Text style={styles.meta} numberOfLines={1}>{label}</Text>
+    </View>
+  );
+};
+
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    header: { gap: theme.space.md, marginBottom: theme.space.md },
-    entryTitle: { ...theme.type.body, fontWeight: '600', color: theme.color.ink },
+    list: { gap: theme.space.md },
+    header: { gap: theme.space.lg },
+    stats: { flexDirection: 'row', gap: theme.space.sm },
+    filters: { gap: theme.space.md },
+    chipScroller: { marginHorizontal: -theme.space.lg, flexGrow: 0 },
+    chips: { gap: theme.space.sm, paddingHorizontal: theme.space.lg },
+    entries: { paddingVertical: theme.space.xs },
+    entryTitle: { ...theme.type.heading, color: theme.color.ink },
     entryHint: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-    topRow: {
+    cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md },
+    cardBody: { flex: 1, gap: theme.space.xs },
+    titleRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
-      gap: theme.space.md,
-      marginBottom: theme.space.md,
+      gap: theme.space.sm,
+      marginBottom: 2,
     },
-    date: { ...theme.type.label, color: theme.color.inkMuted, flex: 1 },
-    title: { ...theme.type.title, color: theme.color.ink },
-    meta: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: theme.space.xs },
+    title: { ...theme.type.heading, color: theme.color.ink, flex: 1 },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    meta: { ...theme.type.bodySmall, color: theme.color.inkMuted, flexShrink: 1 },
     times: { marginTop: theme.space.md },
   });

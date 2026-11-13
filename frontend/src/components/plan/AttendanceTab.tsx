@@ -23,6 +23,7 @@ import { api } from '../../lib/api';
 import { keys } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Badge, Button, ErrorNotice, Loading, Modal } from '../ui';
+import { Icon } from '../icons';
 import { assignmentTone } from '../../lib/format';
 import { useFormatters } from '../../i18n';
 import { timeKindLabel } from './attendance';
@@ -32,9 +33,9 @@ export interface AttendanceTabProps {
 }
 
 const STATUS_TONES: Record<AttendanceStatus, string> = {
-  present: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  absent: 'bg-rose-50 text-rose-700 ring-rose-600/20',
-  unknown: 'bg-slate-100 text-slate-600 ring-slate-500/20',
+  present: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30',
+  absent: 'bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/30',
+  unknown: 'bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600/40',
 };
 const RESPONSE_KEYS = {
   confirmed: 'responses.confirmed',
@@ -131,7 +132,7 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="attendance-heading" className="text-base font-semibold text-slate-900 dark:text-white">{t('attendance.title')}</h2>
-          <p className="text-sm text-slate-500">{t('attendance.intro')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('attendance.intro')}</p>
         </div>
         <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
           {t('attendance.time')}
@@ -153,25 +154,25 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
       <AttendanceCountsBar sheet={data} />
 
       {data.rows.length === 0 ? (
-        <p className="card px-4 py-6 text-sm text-slate-500">
+        <p className="card border-dashed px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
           {data.hidden_people ? t('attendance.nobodyOnYourTeams') : t('attendance.nobody')}
         </p>
       ) : (
         <>
           {data.can_mark_any && (
-            <div className="flex flex-wrap gap-2 text-sm">
-              <span className="self-center text-slate-500">{t('attendance.markEveryone')}</span>
+            <div className="surface-inset flex flex-wrap items-center gap-2 px-3 py-2.5 text-sm">
+              <span className="section-label mr-1">{t('attendance.markEveryone')}</span>
               {ATTENDANCE_STATUSES.map((status) => (
-                <Button key={status} variant="secondary" onClick={() => setAll(status)}>
+                <Button key={status} variant="secondary" size="sm" onClick={() => setAll(status)}>
                   {t(`attendance.status.${status}`)}
                 </Button>
               ))}
               {changes.length > 0 && (
-                <Button variant="ghost" onClick={() => setDraft({})}>{t('attendance.discardChanges')}</Button>
+                <Button variant="ghost" size="sm" onClick={() => setDraft({})}>{t('attendance.discardChanges')}</Button>
               )}
             </div>
           )}
-          <ul className="card divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="card row-list overflow-hidden">
             {data.rows.map((row) => (
               <AttendanceRowView
                 key={row.person_id}
@@ -189,10 +190,10 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
       )}
 
       {data.hidden_people > 0 && (
-        <p className="text-xs text-slate-500">{t('attendance.hiddenPeople', { count: data.hidden_people })}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{t('attendance.hiddenPeople', { count: data.hidden_people })}</p>
       )}
       {data.orphaned_records.length > 0 && (
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-500 dark:text-slate-400">
           {t('attendance.orphaned', {
             list: formatters.list(
               data.orphaned_records.map((record) =>
@@ -204,7 +205,7 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
       )}
 
       {superseded && (
-        <div role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
           <p>{t('attendance.staleKept')}</p>
           {superseded.length > 0 && (
             <ul className="mt-1 list-disc pl-5">
@@ -216,15 +217,16 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
         </div>
       )}
       {saved && (
-        <p role="status" className="text-sm text-emerald-700">
+        <p role="status" className="inline-flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-300">
+          <Icon name="check" className="size-4" />
           {saved.replayed ? t('attendance.savedReplayed') : t('attendance.saved', { count: saved.applied })}
         </p>
       )}
 
       {changes.length > 0 && (
-        <div className="sticky bottom-4 flex items-center justify-between gap-3 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-lg">
+        <div className="animate-pop-in sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-xl shadow-slate-900/20 ring-1 ring-white/10 dark:bg-slate-800">
           <span>{t('attendance.unsavedChanges', { count: changes.length })}</span>
-          <Button onClick={() => setReviewing(true)}>{t('attendance.reviewAndSave')}</Button>
+          <Button icon="check" onClick={() => setReviewing(true)}>{t('attendance.reviewAndSave')}</Button>
         </div>
       )}
 
@@ -259,13 +261,13 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
           {t('attendance.reason')}
           <input className="input" maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
         </label>
-        <p className="mt-2 text-xs text-slate-500">{t('attendance.allOrNothing')}</p>
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('attendance.allOrNothing')}</p>
         {stale ? (
-          <p role="alert" className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p role="alert" className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
             {t('attendance.stale')}
           </p>
         ) : uncertain ? (
-          <p role="alert" className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p role="alert" className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
             {t('attendance.uncertain')}
           </p>
         ) : (
@@ -299,7 +301,7 @@ const AttendanceCountsBar = ({ sheet }: AttendanceCountsBarProps) => {
   const { t } = useTranslation('reports');
   const formatters = useFormatters();
   return (
-    <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
+    <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
       {(
         [
           ['scheduledPeople', sheet.counts.scheduled_people],
@@ -309,9 +311,9 @@ const AttendanceCountsBar = ({ sheet }: AttendanceCountsBarProps) => {
           ['notMarked', sheet.counts.unmarked],
         ] as const
       ).map(([key, value]) => (
-        <div key={key} className="card px-3 py-2">
-          <dt className="text-xs text-slate-500">{t(`attendance.counts.${key}`)}</dt>
-          <dd className="text-lg font-semibold tabular-nums">{formatters.number(value)}</dd>
+        <div key={key} className="card px-4 py-3">
+          <dt className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{t(`attendance.counts.${key}`)}</dt>
+          <dd className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums text-slate-900 dark:text-white">{formatters.number(value)}</dd>
         </div>
       ))}
     </dl>
@@ -335,9 +337,9 @@ const AttendanceRowView = ({ row, draft, onChange, onHistory }: AttendanceRowVie
       <div className="min-w-0">
         <p className="font-medium text-slate-900 dark:text-white">
           {row.person_name}
-          {row.archived && <span className="ml-2 text-xs text-slate-400">{t('attendance.archived')}</span>}
+          {row.archived && <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">{t('attendance.archived')}</span>}
         </p>
-        <ul className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
+        <ul className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
           {row.roles.map((role) => (
             <li key={role.assignment_id} className="flex items-center gap-1">
               {role.team_name}
@@ -347,7 +349,7 @@ const AttendanceRowView = ({ row, draft, onChange, onHistory }: AttendanceRowVie
           ))}
         </ul>
         {row.record && (
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
             {t(`attendance.recorded.${row.record.status}`, {
               name: row.record.marked_by_name ?? t('attendance.someone'),
               time: formatters.dateTime(row.record.marked_at),
@@ -358,7 +360,7 @@ const AttendanceRowView = ({ row, draft, onChange, onHistory }: AttendanceRowVie
         )}
       </div>
       {row.mark_team_id ? (
-        <div role="radiogroup" aria-label={t('attendance.rowLabel', { name: row.person_name })} className="flex gap-1">
+        <div role="radiogroup" aria-label={t('attendance.rowLabel', { name: row.person_name })} className="flex flex-wrap gap-1">
           {ATTENDANCE_STATUSES.map((status) => (
             <button
               key={status}
@@ -367,7 +369,7 @@ const AttendanceRowView = ({ row, draft, onChange, onHistory }: AttendanceRowVie
               aria-checked={current === status}
               onClick={() => onChange(status)}
               className={`min-h-9 rounded-lg px-3 text-sm ring-1 ring-inset transition ${
-                current === status ? STATUS_TONES[status] + ' font-semibold' : 'text-slate-600 ring-slate-300 hover:bg-slate-50'
+                current === status ? STATUS_TONES[status] + ' font-semibold' : 'text-slate-600 ring-slate-300 hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800'
               }`}
             >
               {t(`attendance.status.${status}`)}
@@ -378,7 +380,7 @@ const AttendanceRowView = ({ row, draft, onChange, onHistory }: AttendanceRowVie
       ) : row.record ? (
         <Badge tone={STATUS_TONES[row.record.status]}>{t(`attendance.status.${row.record.status}`)}</Badge>
       ) : (
-        <span className="text-xs text-slate-400">{t('attendance.counts.notMarked')}</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500">{t('attendance.counts.notMarked')}</span>
       )}
     </li>
   );
@@ -424,7 +426,7 @@ const AttendanceHistoryModal = ({ planId, timeId, row, onClose }: AttendanceHist
                     time: formatters.dateTime(event.occurred_at),
                   })
                 : t('attendance.by', { name: event.actor_name ?? t('attendance.someone'), time: formatters.dateTime(event.occurred_at) })}
-              {event.reason && <p className="text-xs text-slate-500">“{event.reason}”</p>}
+              {event.reason && <p className="text-xs text-slate-500 dark:text-slate-400">“{event.reason}”</p>}
             </li>
           ))}
         </ol>

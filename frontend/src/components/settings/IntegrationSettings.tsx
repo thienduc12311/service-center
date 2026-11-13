@@ -424,7 +424,7 @@ export const IntegrationSettings = () => {
   return (
     <section className="card space-y-6 p-5">
       <div>
-        <h2 className="mb-1 font-semibold">{t('integrations.title')}</h2>
+        <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('integrations.title')}</h2>
         <p className="text-sm text-slate-500">
           {t('integrations.description')}
           {status.data && (
@@ -443,7 +443,7 @@ export const IntegrationSettings = () => {
 
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-sm font-medium">{t('integrations.apiKeys')}</h3>
+          <h3 className="text-sm font-medium text-slate-800 dark:text-slate-100">{t('integrations.apiKeys')}</h3>
           {!creatingKey && <Button variant="secondary" onClick={() => setCreatingKey(true)}>{t('integrations.newKey')}</Button>}
         </div>
         {creatingKey && <NewCredentialForm onClose={() => setCreatingKey(false)} />}
@@ -461,7 +461,7 @@ export const IntegrationSettings = () => {
 
       <div>
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h3 className="text-sm font-medium">{t('integrations.webhooks')}</h3>
+          <h3 className="text-sm font-medium text-slate-800 dark:text-slate-100">{t('integrations.webhooks')}</h3>
           {!creatingEndpoint && status.data?.webhooks_available && (
             <Button variant="secondary" onClick={() => setCreatingEndpoint(true)}>{t('integrations.addEndpoint')}</Button>
           )}

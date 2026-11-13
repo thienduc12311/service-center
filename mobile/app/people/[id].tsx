@@ -30,13 +30,14 @@ import {
   ErrorNotice,
   Field,
   IconButton,
-  Label,
   ListRow,
   Loading,
   Screen,
+  SectionHeader,
   Tag,
   screenPadding,
 } from '../../src/components/ui';
+import { Icon, type IconName } from '../../src/components/icons';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
@@ -53,6 +54,7 @@ export default function PersonScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const { t } = useTranslation(['people', 'common']);
   const { queryScope, role } = useAuth();
+  const theme = useTheme();
   const owner = canOpenPeopleDetails(role);
   const personId = uuid.safeParse(single(params.id));
   const id = personId.success ? personId.data : null;
@@ -75,7 +77,7 @@ export default function PersonScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('list.title') }} />
-        <EmptyState title={t('mobileDirectory.notFound')} />
+        <EmptyState icon="person" title={t('mobileDirectory.notFound')} />
       </Screen>
     );
   }
@@ -91,7 +93,7 @@ export default function PersonScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('list.title') }} />
-        <EmptyState title={t('mobileDirectory.notFound')} description={t('mobileDirectory.goneDescription')} />
+        <EmptyState icon="person" title={t('mobileDirectory.notFound')} description={t('mobileDirectory.goneDescription')} />
       </Screen>
     );
   }
@@ -99,7 +101,7 @@ export default function PersonScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('list.title') }} />
-        <View style={{ padding: 24, gap: 16 }}>
+        <View style={screenPadding(theme)}>
           <ErrorNotice error={record.error ?? directory.error} />
           <Button title={t('common:actions.retry')} onPress={() => void record.refetch()} />
         </View>
@@ -132,6 +134,7 @@ interface PersonViewProps {
 interface DetailLine {
   label: string;
   value: string;
+  icon: IconName;
 }
 
 const PersonView = ({ personId, person, row, refreshing, onRefresh }: PersonViewProps) => {
@@ -267,14 +270,15 @@ const PersonView = ({ personId, person, row, refreshing, onRefresh }: PersonView
         .join(', ')
     : '';
   // Only what the server returned to this caller; nothing is filled in.
-  const lines: DetailLine[] = [
-    { label: t('person.fields.email'), value: person?.email ?? row?.email ?? '' },
-    { label: t('person.fields.phone'), value: person?.phone ?? row?.phone ?? '' },
-    { label: t('person.fields.phoneCarrier'), value: person?.phone_carrier ?? '' },
-    { label: t('person.sections.address'), value: address },
-    { label: t('person.fields.campus'), value: person?.campus ?? row?.campus ?? '' },
-    { label: t('person.fields.school'), value: person?.school ?? '' },
-  ].filter((line) => line.value);
+  const allLines: DetailLine[] = [
+    { label: t('person.fields.email'), value: person?.email ?? row?.email ?? '', icon: 'mail' },
+    { label: t('person.fields.phone'), value: person?.phone ?? row?.phone ?? '', icon: 'chat' },
+    { label: t('person.fields.phoneCarrier'), value: person?.phone_carrier ?? '', icon: 'info' },
+    { label: t('person.sections.address'), value: address, icon: 'mapPin' },
+    { label: t('person.fields.campus'), value: person?.campus ?? row?.campus ?? '', icon: 'mapPin' },
+    { label: t('person.fields.school'), value: person?.school ?? '', icon: 'document' },
+  ];
+  const lines = allLines.filter((line) => line.value);
   const badgeLabel = { archived: t('list.archived'), inviteSent: t('list.inviteSent'), noLogin: t('list.noLogin') } as const;
   const role = person?.membership?.role ?? row?.role ?? null;
 
@@ -287,8 +291,8 @@ const PersonView = ({ personId, person, row, refreshing, onRefresh }: PersonView
         automaticallyAdjustKeyboardInsets
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View style={styles.hero}>
-          <Avatar name={name} url={person?.avatar_url ?? row?.avatar_url} size={56} />
+        <Card style={styles.hero}>
+          <Avatar name={name} url={person?.avatar_url ?? row?.avatar_url} size={80} />
           <Text style={styles.title}>{name}</Text>
           <View style={styles.tags}>
             {role ? <Tag label={t(`common:roles.${role}`)} accent={theme.accent.blue} /> : null}
@@ -299,158 +303,177 @@ const PersonView = ({ personId, person, row, refreshing, onRefresh }: PersonView
               : null}
             {isSelf ? <Tag label={t('mobileDirectory.you')} accent={theme.accent.green} /> : null}
           </View>
-        </View>
-
-        {archived ? (
-          <Text accessibilityRole="alert" style={styles.warning}>
-            {t('person.archivedSubtitle')}
-          </Text>
-        ) : null}
-
-        <Card>
-          <Label>{t('mobileDirectory.details')}</Label>
-          {lines.length ? (
-            lines.map((line) => (
-              <View key={line.label} style={styles.line}>
-                <Text style={styles.muted}>{line.label}</Text>
-                <Text style={styles.body} selectable>
-                  {line.value}
-                </Text>
-              </View>
-            ))
-          ) : null}
-          {!person ? <Text style={styles.muted}>{t('mobileDirectory.privateRecord')}</Text> : null}
-          {isSelf ? (
-            <>
-              <Text style={styles.muted}>{t('mobileDirectory.selfHint')}</Text>
-              <Button title={t('mobileDirectory.editMyProfile')} variant="secondary" onPress={() => router.navigate('/(tabs)/profile')} />
-            </>
-          ) : null}
         </Card>
 
-        {person && canManagePeople ? (
+        {archived ? (
+          <View accessibilityRole="alert" style={styles.warning}>
+            <Icon name="alert" size={16} color={theme.accent.yellow.fg} />
+            <Text style={styles.warningText}>{t('person.archivedSubtitle')}</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.section}>
+          <SectionHeader title={t('mobileDirectory.details')} />
           <Card>
-            <Label>{t('mobileDirectory.editRecord')}</Label>
-            {editing && draft ? (
+            {lines.length ? (
+              <View>
+                {lines.map((line, index) => (
+                  <View key={line.label} style={[styles.line, index > 0 && styles.lineDivided]}>
+                    <Icon name={line.icon} size={16} color={theme.color.inkFaint} />
+                    <View style={styles.flex}>
+                      <Text style={styles.lineLabel}>{line.label}</Text>
+                      <Text style={styles.body} selectable>
+                        {line.value}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {!person ? <Text style={styles.muted}>{t('mobileDirectory.privateRecord')}</Text> : null}
+            {isSelf ? (
               <>
-                <Field label={t('person.fields.firstName')} value={draft.first_name} onChangeText={(value) => setDraft({ ...draft, first_name: value })} />
-                <Field label={t('person.fields.lastName')} value={draft.last_name} onChangeText={(value) => setDraft({ ...draft, last_name: value })} />
-                {contactIsLoginManaged(person) ? (
-                  <Text style={styles.muted}>{t('mobileDirectory.contactLoginManaged')}</Text>
-                ) : (
-                  <>
-                    <Field
-                      label={t('person.fields.email')}
-                      value={draft.email}
-                      onChangeText={(value) => setDraft({ ...draft, email: value })}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
+                <Text style={styles.muted}>{t('mobileDirectory.selfHint')}</Text>
+                <Button title={t('mobileDirectory.editMyProfile')} variant="secondary" onPress={() => router.navigate('/(tabs)/profile')} />
+              </>
+            ) : null}
+          </Card>
+        </View>
+
+        {person && canManagePeople ? (
+          <View style={styles.section}>
+            <SectionHeader title={t('mobileDirectory.editRecord')} />
+            <Card>
+              {editing && draft ? (
+                <>
+                  <Field label={t('person.fields.firstName')} value={draft.first_name} onChangeText={(value) => setDraft({ ...draft, first_name: value })} />
+                  <Field label={t('person.fields.lastName')} value={draft.last_name} onChangeText={(value) => setDraft({ ...draft, last_name: value })} />
+                  {contactIsLoginManaged(person) ? (
+                    <Text style={styles.muted}>{t('mobileDirectory.contactLoginManaged')}</Text>
+                  ) : (
+                    <>
+                      <Field
+                        label={t('person.fields.email')}
+                        value={draft.email}
+                        onChangeText={(value) => setDraft({ ...draft, email: value })}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                      <Field
+                        label={t('person.fields.phone')}
+                        value={draft.phone}
+                        onChangeText={(value) => setDraft({ ...draft, phone: value })}
+                        keyboardType="phone-pad"
+                      />
+                    </>
+                  )}
+                  <Field label={t('person.fields.campus')} value={draft.campus} onChangeText={(value) => setDraft({ ...draft, campus: value })} />
+                  <Text style={styles.muted}>{t('mobileDirectory.moreOnWebsite')}</Text>
+                  <ErrorNotice error={save.error} />
+                  <View style={styles.actions}>
+                    <Button
+                      title={t('common:actions.cancel')}
+                      variant="secondary"
+                      onPress={() => {
+                        save.reset();
+                        setEditing(false);
+                        setDraft(personEditDraft(person));
+                      }}
                     />
-                    <Field
-                      label={t('person.fields.phone')}
-                      value={draft.phone}
-                      onChangeText={(value) => setDraft({ ...draft, phone: value })}
-                      keyboardType="phone-pad"
-                    />
-                  </>
-                )}
-                <Field label={t('person.fields.campus')} value={draft.campus} onChangeText={(value) => setDraft({ ...draft, campus: value })} />
-                <Text style={styles.muted}>{t('mobileDirectory.moreOnWebsite')}</Text>
-                <ErrorNotice error={save.error} />
+                    <Button title={t('common:actions.saveChanges')} loading={save.isPending} disabled={!draft.first_name.trim()} onPress={submitEdit} />
+                  </View>
+                </>
+              ) : (
+                <Button title={t('common:actions.edit')} variant="secondary" icon="pencil" onPress={() => setEditing(true)} />
+              )}
+            </Card>
+          </View>
+        ) : null}
+
+        <View style={styles.section}>
+          <SectionHeader title={t('teams:teamsPage.title')} count={memberships.length || undefined} />
+          <Card compact={memberships.length > 0}>
+            {teams.isLoading ? <Loading /> : null}
+            <ErrorNotice error={teams.error ?? removeMembership.error} />
+            {memberships.length ? (
+              memberships.map((membership, index) => {
+                const team = teams.data?.find((entry) => entry.id === membership.teamId);
+                const manageable = team ? canEditRoster(teamManageTarget(team)) : false;
+                return (
+                  <View key={membership.membershipId} style={styles.memberRow}>
+                    <View style={styles.flex}>
+                      <ListRow
+                        divided={index > 0}
+                        showChevron
+                        onPress={() => router.push({ pathname: '/teams/[id]', params: { id: membership.teamId } })}
+                        leading={
+                          <View style={styles.teamTile}>
+                            <Icon name="people" size={18} color={membership.teamColor} />
+                          </View>
+                        }
+                      >
+                        <Text style={styles.teamName}>{membership.teamName}</Text>
+                        {membership.positionName ? <Text style={styles.muted}>{membership.positionName}</Text> : null}
+                      </ListRow>
+                    </View>
+                    {manageable ? (
+                      <IconButton
+                        name="trash"
+                        accessibilityLabel={t('teams:mobileTeams.removeLabel', { name, team: membership.teamName })}
+                        disabled={removeMembership.isPending}
+                        onPress={() => confirmRemove(membership)}
+                      />
+                    ) : null}
+                  </View>
+                );
+              })
+            ) : teams.isLoading ? null : (
+              <Text style={styles.muted}>{t('mobileDirectory.noTeams')}</Text>
+            )}
+          </Card>
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader title={t('policy.tags')} count={tags.data?.length || undefined} />
+          <Card>
+            <ErrorNotice error={tags.error} />
+            {canManagePeople && tagDraft !== null ? (
+              <>
+                <Field
+                  accessibilityLabel={t('policy.tags')}
+                  value={tagDraft}
+                  onChangeText={setTagDraft}
+                  placeholder={t('policy.tagsPlaceholder')}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <ErrorNotice error={saveTags.error} />
                 <View style={styles.actions}>
-                  <Button
-                    title={t('common:actions.cancel')}
-                    variant="secondary"
-                    onPress={() => {
-                      save.reset();
-                      setEditing(false);
-                      setDraft(personEditDraft(person));
-                    }}
-                  />
-                  <Button title={t('common:actions.saveChanges')} loading={save.isPending} disabled={!draft.first_name.trim()} onPress={submitEdit} />
+                  <Button title={t('common:actions.cancel')} variant="secondary" onPress={() => { saveTags.reset(); setTagDraft(null); }} />
+                  <Button title={t('policy.saveTags')} loading={saveTags.isPending} onPress={submitTags} />
                 </View>
               </>
             ) : (
-              <Button title={t('common:actions.edit')} variant="secondary" icon="pencil" onPress={() => setEditing(true)} />
+              <>
+                {tags.data?.length ? (
+                  <View style={[styles.tags, styles.tagsStart]}>
+                    {tags.data.map((tag) => (
+                      <Tag key={tag} label={tag} accent={theme.accent.neutral} />
+                    ))}
+                  </View>
+                ) : tags.isLoading ? (
+                  <Loading />
+                ) : (
+                  <Text style={styles.muted}>{t('mobileDirectory.noTags')}</Text>
+                )}
+                {canManagePeople && tags.data ? (
+                  <Button title={t('mobileDirectory.editTags')} icon="pencil" variant="secondary" onPress={() => setTagDraft(tagText(tags.data))} />
+                ) : null}
+              </>
             )}
           </Card>
-        ) : null}
-
-        <Card>
-          <Label>{t('teams:teamsPage.title')}</Label>
-          {teams.isLoading ? <Loading /> : null}
-          <ErrorNotice error={teams.error ?? removeMembership.error} />
-          {memberships.length ? (
-            memberships.map((membership, index) => {
-              const team = teams.data?.find((entry) => entry.id === membership.teamId);
-              const manageable = team ? canEditRoster(teamManageTarget(team)) : false;
-              return (
-                <View key={membership.membershipId} style={styles.memberRow}>
-                  <View style={styles.flex}>
-                    <ListRow divided={index > 0} showChevron onPress={() => router.push({ pathname: '/teams/[id]', params: { id: membership.teamId } })}>
-                      <View style={styles.teamLine}>
-                        <View style={[styles.swatch, { backgroundColor: membership.teamColor }]} />
-                        <Text style={styles.body}>
-                          {membership.positionName ? `${membership.teamName} · ${membership.positionName}` : membership.teamName}
-                        </Text>
-                      </View>
-                    </ListRow>
-                  </View>
-                  {manageable ? (
-                    <IconButton
-                      name="trash"
-                      accessibilityLabel={t('teams:mobileTeams.removeLabel', { name, team: membership.teamName })}
-                      disabled={removeMembership.isPending}
-                      onPress={() => confirmRemove(membership)}
-                    />
-                  ) : null}
-                </View>
-              );
-            })
-          ) : teams.isLoading ? null : (
-            <Text style={styles.muted}>{t('mobileDirectory.noTeams')}</Text>
-          )}
-        </Card>
-
-        <Card>
-          <Label>{t('policy.tags')}</Label>
-          <ErrorNotice error={tags.error} />
-          {canManagePeople && tagDraft !== null ? (
-            <>
-              <Field
-                accessibilityLabel={t('policy.tags')}
-                value={tagDraft}
-                onChangeText={setTagDraft}
-                placeholder={t('policy.tagsPlaceholder')}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <ErrorNotice error={saveTags.error} />
-              <View style={styles.actions}>
-                <Button title={t('common:actions.cancel')} variant="secondary" onPress={() => { saveTags.reset(); setTagDraft(null); }} />
-                <Button title={t('policy.saveTags')} loading={saveTags.isPending} onPress={submitTags} />
-              </View>
-            </>
-          ) : (
-            <>
-              {tags.data?.length ? (
-                <View style={styles.tags}>
-                  {tags.data.map((tag) => (
-                    <Tag key={tag} label={tag} accent={theme.accent.neutral} />
-                  ))}
-                </View>
-              ) : tags.isLoading ? (
-                <Loading />
-              ) : (
-                <Text style={styles.muted}>{t('mobileDirectory.noTags')}</Text>
-              )}
-              {canManagePeople && tags.data ? (
-                <Button title={t('mobileDirectory.editTags')} variant="secondary" onPress={() => setTagDraft(tagText(tags.data))} />
-              ) : null}
-            </>
-          )}
-        </Card>
+        </View>
 
         {person && canManagePeople ? (
           <View style={styles.stack}>
@@ -471,22 +494,37 @@ const PersonView = ({ personId, person, row, refreshing, onRefresh }: PersonView
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    stack: { gap: theme.space.lg },
-    hero: { alignItems: 'center', gap: theme.space.sm },
-    title: { ...theme.type.title, color: theme.color.ink, textAlign: 'center' },
+    stack: { gap: theme.space.xl },
+    section: { gap: theme.space.sm },
+    hero: { alignItems: 'center', gap: theme.space.sm, paddingVertical: theme.space.xl },
+    title: { ...theme.type.title, fontSize: 24, lineHeight: 30, color: theme.color.ink, textAlign: 'center' },
     body: { ...theme.type.body, color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     tags: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: theme.space.xs },
-    line: { gap: 2, marginBottom: theme.space.sm },
+    tagsStart: { justifyContent: 'flex-start' },
+    line: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md, paddingVertical: theme.space.sm },
+    lineDivided: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.border },
+    lineLabel: { ...theme.type.label, fontSize: 12, color: theme.color.inkFaint },
     actions: { flexDirection: 'row', gap: theme.space.sm, justifyContent: 'flex-end', flexWrap: 'wrap' },
     memberRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    teamLine: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    swatch: { width: 10, height: 10, borderRadius: 5 },
-    warning: {
-      ...theme.type.bodySmall,
-      color: theme.accent.yellow.fg,
-      backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+    teamTile: {
+      width: 36,
+      height: 36,
+      borderRadius: theme.radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.color.surfaceInset,
+      borderWidth: 1,
+      borderColor: theme.color.border,
     },
+    teamName: { ...theme.type.heading, color: theme.color.ink },
+    warning: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: theme.space.sm,
+      backgroundColor: theme.accent.yellow.bg,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
+    },
+    warningText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg, flex: 1 },
   });

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { keyGridFor, type KeyQuality } from '@service-center/shared';
+import { Icon } from './icons';
 
 export interface KeyGridProps {
   quality: KeyQuality;
@@ -115,7 +116,7 @@ export const KeySelect = ({
           ${open ? 'border-brand-500 ring-2 ring-brand-100' : ''}`}
       >
         <span className={value ? '' : 'text-slate-400'}>{value ?? placeholder ?? t('keySelect.placeholder')}</span>
-        <span aria-hidden="true" className="text-xs text-slate-400">{open ? '▴' : '▾'}</span>
+        <Icon name="chevronDown" className={`size-4 shrink-0 text-slate-400 transition ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (

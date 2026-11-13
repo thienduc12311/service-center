@@ -12,7 +12,7 @@ import {
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { Button, Card, Divider, EmptyState, ErrorNotice, Label, Loading, Screen, Tag, screenPadding } from '../../src/components/ui';
+import { Avatar, Button, Card, Divider, EmptyState, ErrorNotice, Loading, Screen, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
 import { useFormatters } from '../../src/i18n';
 import { type Accent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
@@ -73,6 +73,7 @@ export default function MessageDetailScreen() {
       <Screen>
         <Stack.Screen options={{ title }} />
         <EmptyState
+          icon="mail"
           title={t('messageDetail.notAvailableTitle')}
           description={t('messageDetail.notAvailableDescription')}
           action={<Button title={t('common:actions.retry')} variant="secondary" onPress={() => void message.refetch()} />}
@@ -89,18 +90,22 @@ export default function MessageDetailScreen() {
     <Screen>
       <Stack.Screen options={{ title }} />
       <ScrollView
-        contentContainerStyle={screenPadding(theme)}
+        contentContainerStyle={[screenPadding(theme), styles.stack]}
         refreshControl={<RefreshControl refreshing={message.isRefetching} onRefresh={() => void message.refetch()} />}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>{rendered_for_me?.subject ?? row.subject}</Text>
-          <Text style={styles.muted}>
-            {sender_name
-              ? t('messageDetail.fromLine', { name: sender_name, date: format.dateTime(row.created_at) })
-              : t('messageDetail.fromLineUnknown', { date: format.dateTime(row.created_at) })}
-          </Text>
-        </View>
         <Card>
+          <View style={styles.header}>
+            <Text accessibilityRole="header" style={styles.title}>{rendered_for_me?.subject ?? row.subject}</Text>
+            <View style={styles.sender}>
+              <Avatar name={sender_name} size={32} />
+              <Text style={[styles.muted, styles.flex]}>
+                {sender_name
+                  ? t('messageDetail.fromLine', { name: sender_name, date: format.dateTime(row.created_at) })
+                  : t('messageDetail.fromLineUnknown', { date: format.dateTime(row.created_at) })}
+              </Text>
+            </View>
+          </View>
+          <Divider bleed={theme.space.lg} />
           <Text style={styles.body} selectable>{rendered_for_me?.body ?? row.body}</Text>
         </Card>
         {!rendered_for_me && /\{\{/.test(`${row.subject}${row.body}`) ? (
@@ -109,38 +114,40 @@ export default function MessageDetailScreen() {
         {message.error ? <ErrorNotice error={message.error} /> : null}
 
         {outcomes ? (
-          <Card>
-            <Label>
-              {row.excluded_count
+          <View style={styles.section}>
+            <SectionHeader
+              title={row.excluded_count
                 ? t('messageDetail.recipientsHeadingWithExcluded', { included: row.recipient_count, excluded: row.excluded_count })
                 : t('messageDetail.recipientsHeading', { included: row.recipient_count })}
-            </Label>
-            {can_retry ? (
-              <Button
-                title={t('messageDetail.retry', { count: failed })}
-                variant="secondary"
-                loading={retry.isPending}
-                onPress={() => retry.mutate()}
-              />
-            ) : null}
-            {retry.isSuccess ? (
-              <Text accessibilityRole="alert" style={styles.body}>{t('messageDetail.requeued', { count: retry.data.requeued })}</Text>
-            ) : null}
-            {retryUncertain ? (
-              <Text accessibilityRole="alert" style={styles.warning}>{t('mobileMessages.retryUncertain')}</Text>
-            ) : retry.isError ? (
-              <ErrorNotice error={retry.error} />
-            ) : null}
-            <Text style={styles.muted}>{t('messageDetail.simulatedNote')}</Text>
-            <View>
-              {outcomes.map((outcome, index) => (
-                <View key={outcome.person_id}>
-                  {index > 0 ? <Divider /> : null}
-                  <OutcomeRow outcome={outcome} />
-                </View>
-              ))}
-            </View>
-          </Card>
+            />
+            <Card>
+              {can_retry ? (
+                <Button
+                  title={t('messageDetail.retry', { count: failed })}
+                  variant="secondary"
+                  loading={retry.isPending}
+                  onPress={() => retry.mutate()}
+                />
+              ) : null}
+              {retry.isSuccess ? (
+                <Text accessibilityRole="alert" style={styles.body}>{t('messageDetail.requeued', { count: retry.data.requeued })}</Text>
+              ) : null}
+              {retryUncertain ? (
+                <Text accessibilityRole="alert" style={styles.warning}>{t('mobileMessages.retryUncertain')}</Text>
+              ) : retry.isError ? (
+                <ErrorNotice error={retry.error} />
+              ) : null}
+              <Text style={styles.muted}>{t('messageDetail.simulatedNote')}</Text>
+              <View>
+                {outcomes.map((outcome, index) => (
+                  <View key={outcome.person_id}>
+                    {index > 0 ? <Divider /> : null}
+                    <OutcomeRow outcome={outcome} />
+                  </View>
+                ))}
+              </View>
+            </Card>
+          </View>
         ) : null}
       </ScrollView>
     </Screen>
@@ -188,7 +195,11 @@ function OutcomeRow({ outcome }: OutcomeRowProps) {
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    header: { gap: theme.space.xs },
+    flex: { flex: 1 },
+    stack: { gap: theme.space.xl },
+    section: { gap: theme.space.sm },
+    header: { gap: theme.space.md },
+    sender: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
     title: { ...theme.type.title, color: theme.color.ink },
     body: { ...theme.type.body, color: theme.color.ink },
     strong: { fontWeight: '600' },
@@ -197,8 +208,8 @@ const makeStyles = (theme: Theme) =>
       ...theme.type.bodySmall,
       color: theme.accent.yellow.fg,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
     outcome: { gap: theme.space.xs, paddingVertical: theme.space.sm },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.xs },

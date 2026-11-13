@@ -6,7 +6,8 @@ import { canEditTeamRoster } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePeople, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Avatar, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
+import { Avatar, Button, EmptyState, ErrorNotice, IconButton, Menu, MenuItem, Modal, PageHeader, SectionHeader, SkeletonList } from '../components/ui';
+import { Icon } from '../components/icons';
 import { TeamEditor } from '../components/TeamEditor';
 import { TeamPolicyModal } from '../components/TeamPolicyModal';
 import { AvailabilityRequestsModal } from '../components/team/AvailabilityRequestsModal';
@@ -105,118 +106,137 @@ export const TeamsPage = () => {
       <PageHeader
         title={t('teamsPage.title')}
         subtitle={t('teamsPage.subtitle')}
-        actions={canCreateTeams && <Button onClick={() => setCreating(true)}>{t('teamsPage.newTeam')}</Button>}
+        actions={canCreateTeams && <Button icon="plus" onClick={() => setCreating(true)}>{t('teamsPage.newTeam')}</Button>}
       />
 
-      <ErrorNotice error={teams.error ?? addMember.error ?? removeMember.error} />
+      <div className="mb-4 empty:hidden">
+        <ErrorNotice error={teams.error ?? addMember.error ?? removeMember.error} />
+      </div>
 
       {teams.isLoading ? (
-        <Loading />
+        <SkeletonList rows={4} />
       ) : teams.data?.length ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {teams.data.map((team) => (
-            <div
-              key={team.id}
-              id={`team-${team.id}`}
-              className={`card overflow-hidden ${focusedTeamId === team.id ? 'ring-2 ring-brand-500' : ''}`}
-            >
-              <div className="border-b border-slate-100 px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="size-3 rounded-full" style={{ backgroundColor: team.color }} aria-hidden="true" />
-                  <h2 className="font-semibold">{team.name}</h2>
-                  <span className="ml-auto text-xs text-slate-400">{t('common:count.people', { count: team.members.length })}</span>
-                  {canManageTeam(team) && (
-                    <Button
-                      variant="ghost"
-                      className="!px-2 text-xs"
-                      onClick={() => setEditingTeamId(team.id)}
+        <>
+          <SectionHeader title={t('teamsPage.title')} meta={teams.data.length} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            {teams.data.map((team) => {
+              const manage = canManageTeam(team);
+              const schedule = canScheduleTeam(team);
+              const policy = manage || access?.can_administer_access;
+              const rosterEditable = canEditRoster(team);
+              return (
+                <section
+                  key={team.id}
+                  id={`team-${team.id}`}
+                  aria-labelledby={`team-title-${team.id}`}
+                  className={`card flex flex-col overflow-hidden ${focusedTeamId === team.id ? 'ring-2 ring-brand-500' : ''}`}
+                >
+                  <div className="flex items-start gap-3 px-4 pt-4 pb-3 sm:px-5">
+                    <span
+                      className="grid size-10 shrink-0 place-items-center rounded-xl text-white shadow-sm"
+                      style={{ backgroundColor: team.color }}
+                      aria-hidden="true"
                     >
-                      {t('common:actions.edit')}
-                    </Button>
-                  )}
-                  {canScheduleTeam(team) && (
-                    <Button
-                      variant="ghost"
-                      className="!px-2 text-xs"
-                      onClick={() => setAvailabilityTeamId(team.id)}
-                    >
-                      {t('teamsPage.availability')}
-                    </Button>
-                  )}
-                  {(canManageTeam(team) || access?.can_administer_access) && (
-                    <Button
-                      variant="ghost"
-                      className="!px-2 text-xs"
-                      onClick={() => setPolicyTeamId(team.id)}
-                    >
-                      {t('teamsPage.settings')}
-                    </Button>
-                  )}
-                </div>
-                {team.description && (
-                  <p className="mt-1 text-sm text-slate-500">{team.description}</p>
-                )}
-              </div>
-
-              {team.positions.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 border-b border-slate-50 px-4 py-2">
-                  {team.positions.map((position) => (
-                    <span key={position.id} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                      {position.name}
+                      <Icon name="team" className="size-5" />
                     </span>
-                  ))}
-                </div>
-              )}
+                    <div className="min-w-0 flex-1">
+                      <h2 id={`team-title-${team.id}`} className="truncate font-semibold text-slate-900 dark:text-white">{team.name}</h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{t('common:count.people', { count: team.members.length })}</p>
+                    </div>
+                    {(manage || schedule || policy) && (
+                      <Menu label={<span className="sr-only">{t('common:actions.more')}</span>} icon="more">
+                        {(close) => (
+                          <>
+                            {manage && (
+                              <MenuItem icon="pencil" onClick={() => { setEditingTeamId(team.id); close(); }}>
+                                {t('common:actions.edit')}
+                              </MenuItem>
+                            )}
+                            {schedule && (
+                              <MenuItem icon="calendar" onClick={() => { setAvailabilityTeamId(team.id); close(); }}>
+                                {t('teamsPage.availability')}
+                              </MenuItem>
+                            )}
+                            {policy && (
+                              <MenuItem icon="settings" onClick={() => { setPolicyTeamId(team.id); close(); }}>
+                                {t('teamsPage.settings')}
+                              </MenuItem>
+                            )}
+                          </>
+                        )}
+                      </Menu>
+                    )}
+                  </div>
+                  {team.description && (
+                    <p className="-mt-1 px-4 pb-3 text-sm text-slate-500 sm:px-5 dark:text-slate-400">{team.description}</p>
+                  )}
 
-              <ul className="divide-y divide-slate-50">
-                {team.members.map((member) => {
-                  const position = team.positions.find((p) => p.id === member.position_id);
-                  const memberName = member.profile?.full_name || member.profile?.email || t('common:states.unknown');
-                  return (
-                    <li key={member.membership_id} className="flex items-center gap-3 px-4 py-2.5">
-                      <Avatar
-                        name={member.profile?.full_name ?? member.profile?.email}
-                        url={member.profile?.avatar_url}
-                        size="sm"
-                      />
-                      <span className="flex-1 text-sm">
-                        {member.profile?.full_name ?? member.profile?.email ?? t('common:states.unknown')}
-                      </span>
-                      {position && <span className="text-xs text-slate-500">{position.name}</span>}
-                      {canEditRoster(team) && (
-                        <Button
-                          variant="ghost"
-                          className="!px-2 text-xs text-rose-600"
-                          aria-label={t('mobileTeams.removeLabel', { name: memberName, team: team.name })}
-                          disabled={removeMember.isPending}
-                          onClick={() => confirmRemove(team, member.membership_id, memberName)}
+                  {team.positions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 px-4 pb-3 sm:px-5">
+                      {team.positions.map((position) => (
+                        <span
+                          key={position.id}
+                          className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                         >
-                          {t('mobileTeams.remove')}
-                        </Button>
-                      )}
-                    </li>
-                  );
-                })}
-                {team.members.length === 0 && (
-                  <li className="px-4 py-3 text-sm text-slate-400">{t('teamsPage.noMembers')}</li>
-                )}
-              </ul>
+                          {position.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
-              {canEditRoster(team) && (
-                <div className="border-t border-slate-100 px-4 py-2">
-                  <Button variant="ghost" className="!px-2 text-sm" onClick={() => setAddingTo(team.id)}>
-                    {t('teamsPage.addPerson')}
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                  <ul className="row-list flex-1 border-t border-app-border">
+                    {team.members.map((member) => {
+                      const position = team.positions.find((p) => p.id === member.position_id);
+                      const memberName = member.profile?.full_name || member.profile?.email || t('common:states.unknown');
+                      return (
+                        <li key={member.membership_id} className="group flex items-center gap-3 px-4 py-2.5 sm:px-5">
+                          <Avatar
+                            name={member.profile?.full_name ?? member.profile?.email}
+                            url={member.profile?.avatar_url}
+                            size="sm"
+                          />
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                            {member.profile?.full_name ?? member.profile?.email ?? t('common:states.unknown')}
+                          </span>
+                          {position && (
+                            <span className="truncate text-xs text-slate-500 dark:text-slate-400">{position.name}</span>
+                          )}
+                          {rosterEditable && (
+                            <IconButton
+                              icon="close"
+                              size="sm"
+                              label={t('mobileTeams.removeLabel', { name: memberName, team: team.name })}
+                              disabled={removeMember.isPending}
+                              onClick={() => confirmRemove(team, member.membership_id, memberName)}
+                              className="hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10 dark:hover:!text-rose-400"
+                            />
+                          )}
+                        </li>
+                      );
+                    })}
+                    {team.members.length === 0 && (
+                      <li className="px-4 py-4 text-sm text-slate-400 sm:px-5">{t('teamsPage.noMembers')}</li>
+                    )}
+                  </ul>
+
+                  {rosterEditable && (
+                    <div className="border-t border-app-border bg-slate-50/60 px-3 py-2 dark:bg-slate-900/40">
+                      <Button variant="ghost" size="sm" onClick={() => setAddingTo(team.id)}>
+                        {t('teamsPage.addPerson')}
+                      </Button>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        </>
       ) : (
         <EmptyState
+          icon="team"
           title={t('teamsPage.empty.title')}
           description={t('teamsPage.empty.description')}
-          action={canCreateTeams ? <Button onClick={() => setCreating(true)}>{t('teamsPage.empty.action')}</Button> : undefined}
+          action={canCreateTeams ? <Button icon="plus" onClick={() => setCreating(true)}>{t('teamsPage.empty.action')}</Button> : undefined}
         />
       )}
 
@@ -258,7 +278,7 @@ export const TeamsPage = () => {
             <input
               id="team-color"
               type="color"
-              className="h-10 w-20 rounded border border-slate-300"
+              className="h-10 w-20 cursor-pointer rounded-lg border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
               value={color}
               onChange={(e) => setColor(e.target.value)}
             />
@@ -278,17 +298,17 @@ export const TeamsPage = () => {
       </Modal>
 
       <Modal open={Boolean(addingTo)} title={t('teamsPage.addMember.title', { team: activeTeam?.name ?? t('common:fallback.team') })} onClose={() => setAddingTo(null)}>
-        <p className="mb-2 text-xs text-slate-400">
+        <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
           {t('teamsPage.addMember.hint')}
         </p>
         <ul className="max-h-80 space-y-1 overflow-y-auto">
           {(people.data ?? []).filter((person) => person.person_id).map((person) => (
-            <li key={person.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-slate-50">
+            <li key={person.id} className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
               <Avatar name={person.full_name ?? person.email} url={person.avatar_url} size="sm" />
-              <span className="flex-1 text-sm">{person.full_name ?? person.email}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">{person.full_name ?? person.email}</span>
               <select
                 aria-label={t('teamsPage.addMember.positionFor', { name: person.full_name ?? person.email })}
-                className="input w-40"
+                className="input w-36 shrink-0 sm:w-40"
                 defaultValue=""
                 onChange={(event) => {
                   if (!addingTo) return;

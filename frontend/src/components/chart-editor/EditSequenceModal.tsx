@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SEQUENCE_LABEL_GROUPS } from '@service-center/shared';
 import { Button, Modal } from '../ui';
+import { Icon } from '../icons';
 
 export interface EditSequenceModalProps {
   open: boolean;
@@ -85,29 +86,29 @@ export const EditSequenceModal = ({ open, sequence, onClose, onSave }: EditSeque
                     </span>
                     <button
                       type="button"
-                      className="px-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                      className="grid size-7 place-items-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                       onClick={() => moveBy(index, -1)}
                       disabled={index === 0}
                       aria-label={t('sequence.moveEarlier', { label })}
                     >
-                      ↑
+                      <Icon name="chevronDown" className="size-4 rotate-180" />
                     </button>
                     <button
                       type="button"
-                      className="px-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                      className="grid size-7 place-items-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                       onClick={() => moveBy(index, 1)}
                       disabled={index === draft.length - 1}
                       aria-label={t('sequence.moveLater', { label })}
                     >
-                      ↓
+                      <Icon name="chevronDown" className="size-4" />
                     </button>
                     <button
                       type="button"
-                      className="px-1 text-slate-400 hover:text-rose-600"
+                      className="grid size-7 place-items-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10"
                       onClick={() => removeAt(index)}
                       aria-label={t('sequence.remove', { label })}
                     >
-                      ×
+                      <Icon name="close" className="size-4" />
                     </button>
                   </li>
                 ))}

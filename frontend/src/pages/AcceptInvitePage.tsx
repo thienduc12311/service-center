@@ -6,6 +6,8 @@ import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Loading } from '../components/ui';
+import { Icon } from '../components/icons';
+import { AuthLayout, BrandMark } from '../components/AuthLayout';
 import { LocaleSwitcher, useRecipientLanguage } from '../i18n';
 import { localizeAuthError } from './LoginPage';
 
@@ -120,61 +122,65 @@ export const AcceptInvitePage = () => {
   };
 
   return (
-    <div className="relative grid min-h-full place-items-center px-4 py-12">
-      <div className="absolute right-4 top-4">
-        <LocaleSwitcher />
+    <AuthLayout corner={<LocaleSwitcher />} hideBrand>
+      <div className="mb-8 flex flex-col items-center text-center">
+        <BrandMark size="lg" />
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{t('invite.setUpTitle')}</h1>
       </div>
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <span className="mx-auto grid size-12 place-items-center rounded-xl bg-brand-600 text-lg font-bold text-white">
-            SC
+
+      {stage === 'loading' && <Loading />}
+
+      {(stage === 'invalid' || stage === 'expired' || stage === 'already-used') && (
+        <div className="card flex flex-col items-center gap-3 p-8 text-center text-sm text-slate-600 dark:text-slate-300">
+          <span className="grid size-11 place-items-center rounded-2xl bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-600/15 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25">
+            <Icon name="alert" className="size-5" />
           </span>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">{t('invite.setUpTitle')}</h1>
+          {t(STAGE_MESSAGE_KEY[stage])}
         </div>
+      )}
 
-        {stage === 'loading' && <Loading />}
+      {stage === 'existing-account' && (
+        <div className="card flex flex-col items-center gap-3 p-8 text-center text-sm text-slate-600 dark:text-slate-300">
+          <span className="grid size-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25">
+            <Icon name="check" className="size-5" />
+          </span>
+          {t('invite.existingAccount')}
+          <Button size="lg" className="mt-2 w-full" onClick={() => navigate('/login')}>{t('invite.goToSignIn')}</Button>
+        </div>
+      )}
 
-        {(stage === 'invalid' || stage === 'expired' || stage === 'already-used') && (
-          <div className="card p-6 text-center text-sm text-slate-600">{t(STAGE_MESSAGE_KEY[stage])}</div>
-        )}
-
-        {stage === 'existing-account' && (
-          <div className="card p-6 text-center text-sm text-slate-600">
-            {t('invite.existingAccount')}
-            <div className="mt-4">
-              <Button onClick={() => navigate('/login')}>{t('invite.goToSignIn')}</Button>
-            </div>
+      {stage === 'legacy-set-password' && (
+        <form onSubmit={submitLegacy} className="card space-y-5 p-6 shadow-xl shadow-slate-900/5 sm:p-8 dark:shadow-none">
+          <p className="text-sm text-slate-600 dark:text-slate-300">{t('invite.legacyIntro')}</p>
+          <div>
+            <label className="label" htmlFor="password">
+              {t('invite.password')}
+            </label>
+            <input
+              id="password"
+              type="password"
+              className="input h-11"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
           </div>
-        )}
+          <ErrorNotice error={error} />
+          <Button type="submit" size="lg" loading={busy} className="w-full">
+            {t('invite.finishSetup')}
+          </Button>
+        </form>
+      )}
 
-        {stage === 'legacy-set-password' && (
-          <form onSubmit={submitLegacy} className="card space-y-4 p-6">
-            <p className="text-sm text-slate-500">{t('invite.legacyIntro')}</p>
-            <div>
-              <label className="label" htmlFor="password">
-                {t('invite.password')}
-              </label>
-              <input
-                id="password"
-                type="password"
-                className="input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={8}
-                required
-              />
-            </div>
-            <ErrorNotice error={error} />
-            <Button type="submit" loading={busy} className="w-full">
-              {t('invite.finishSetup')}
-            </Button>
-          </form>
-        )}
-
-        {stage === 'preview' && preview && (
-          <form onSubmit={submitAccept} className="card space-y-4 p-6">
-            <p className="text-sm text-slate-500">
+      {stage === 'preview' && preview && (
+        <form onSubmit={submitAccept} className="card space-y-5 p-6 shadow-xl shadow-slate-900/5 sm:p-8 dark:shadow-none">
+          <div className="surface-inset flex items-start gap-3 p-4">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-200">
+              <Icon name="mail" className="size-4" />
+            </span>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
               <Trans
                 t={t}
                 i18nKey={preview.person_first_name ? 'invite.invitedNamed' : 'invite.invitedGeneric'}
@@ -184,31 +190,31 @@ export const AcceptInvitePage = () => {
                   role: t(`common:roles.${preview.role}`),
                   email: preview.email,
                 }}
-                components={[<strong key="organization" />, <strong key="email" />]}
+                components={[<strong key="organization" className="text-slate-900 dark:text-white" />, <strong key="email" className="text-slate-900 dark:text-white" />]}
               />
             </p>
-            <div>
-              <label className="label" htmlFor="password">
-                {t('invite.password')}
-              </label>
-              <input
-                id="password"
-                type="password"
-                className="input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={8}
-                required
-              />
-            </div>
-            <ErrorNotice error={error} />
-            <Button type="submit" loading={busy} className="w-full">
-              {t('invite.createAccount')}
-            </Button>
-          </form>
-        )}
-      </div>
-    </div>
+          </div>
+          <div>
+            <label className="label" htmlFor="password">
+              {t('invite.password')}
+            </label>
+            <input
+              id="password"
+              type="password"
+              className="input h-11"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </div>
+          <ErrorNotice error={error} />
+          <Button type="submit" size="lg" loading={busy} className="w-full">
+            {t('invite.createAccount')}
+          </Button>
+        </form>
+      )}
+    </AuthLayout>
   );
 };

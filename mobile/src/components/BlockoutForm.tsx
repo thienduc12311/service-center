@@ -148,27 +148,167 @@ export const BlockoutForm = ({ editing = null, onSaved, onCancelEdit, personId }
     catch (error) { setValidationError(error instanceof Error ? error : new LocalizedError({ key: 'scheduling:blockoutForm.errors.invalid' })); }
   };
 
-  return <View style={styles.form}>
-    {personId ? null : <Text style={styles.description}>{t('blockoutForm.description', { timezone })}</Text>}
-    <View style={styles.switchRow}><Text style={styles.label}>{t('blockoutForm.allDay')}</Text><Switch value={allDay} onValueChange={(value) => { setAllDay(value); setAffected(null); }} /></View>
-    <View style={styles.row}><Button title={t('blockoutForm.start', { date: f.calendarDate(startDate, 'medium') })} variant="secondary" onPress={() => setPicker('startDate')} /><Button title={t('blockoutForm.end', { date: f.calendarDate(endDate, 'medium') })} variant="secondary" onPress={() => setPicker('endDate')} /></View>
-    {!allDay ? <View style={styles.row}><Button title={t('blockoutForm.from', { time: startTime })} variant="secondary" onPress={() => setPicker('startTime')} /><Button title={t('blockoutForm.to', { time: endTime })} variant="secondary" onPress={() => setPicker('endTime')} /></View> : <Text style={styles.hint}>{t('blockoutForm.endExclusiveHint')}</Text>}
-    {!allDay ? <><Text style={styles.label}>{t('blockoutForm.ambiguousLabel')}</Text><SegmentedControl options={ambiguousOptions} value={ambiguousPolicy} onChange={setAmbiguousPolicy} /><Text style={styles.hint}>{t('blockoutForm.skippedHint')}</Text></> : null}
-    {!editing ? <><Text style={styles.label}>{t('blockoutForm.repeatLabel')}</Text><SegmentedControl options={repeatOptions} value={repeat} onChange={(value) => { setRepeat(value); setAffected(null); }} />{repeat !== 'none' ? <><Text style={styles.label}>{t('blockoutForm.endsLabel')}</Text><SegmentedControl options={endKindOptions} value={endKind} onChange={setEndKind} />{endKind === 'count' ? <Field label={t('blockoutForm.occurrences')} value={countText} keyboardType="number-pad" onChangeText={setCountText} /> : <Button title={t('blockoutForm.until', { date: f.calendarDate(untilDate, 'medium') })} variant="secondary" onPress={() => setPicker('untilDate')} />}<Text style={styles.hint}>{t('blockoutForm.monthlySkipHint')}</Text></> : null}</> : null}
-    <Field label={t('blockoutForm.reasonLabel')} value={reason} onChangeText={(value) => { setReason(value); setAffected(null); }} placeholder={t('blockoutForm.reasonPlaceholder')} maxLength={200} />
-    {picker ? <DateTimePicker value={pickerValue} mode={picker.includes('Time') ? 'time' : 'date'} display={Platform.OS === 'ios' ? 'inline' : 'default'} timeZoneName={timezone} onChange={onPickerChange} /> : null}
-    <ErrorNotice error={validationError ?? review.error ?? save.error} />
-    <Button title={t('blockoutForm.reviewButton')} variant="secondary" onPress={submitReview} loading={review.isPending} disabled={save.isPending} />
-    {affected ? <View style={styles.review}><Text style={styles.label}>{t('blockoutForm.reviewHeading')}</Text>{occurrences.map((item) => <Text key={item.occurrence_key} style={styles.hint}>{item.local_start_time ? t('blockoutForm.occurrenceTimed', { date: f.calendarDate(item.local_start_date, 'medium'), time: item.local_start_time }) : t('blockoutForm.occurrenceAllDay', { date: f.calendarDate(item.local_start_date, 'medium') })}</Text>)}<Text style={styles.description}>{affected.length ? t('blockoutForm.overlaps', { count: affected.length }) : t('blockoutForm.noOverlaps')}</Text>{affected.map((item) => <Text key={`${item.assignment_id}:${item.time_id}`} style={styles.commitment}>{t('blockoutForm.commitment', { plan: item.plan_title, time: item.time_name ?? t(`timeKind.${item.time_kind ?? 'service'}`) })}</Text>)}<Button title={editing ? t('common:actions.saveChanges') : repeat === 'none' ? t('blockoutForm.saveBlockout') : t('blockoutForm.createSeries')} onPress={() => save.mutate()} loading={save.isPending} disabled={review.isPending} /></View> : null}
-    {editing && onCancelEdit ? <Button title={t('blockoutForm.cancelEdit')} variant="quiet" onPress={onCancelEdit} /> : null}
-  </View>;
+  return (
+    <View style={styles.form}>
+      {personId ? null : <Text style={styles.description}>{t('blockoutForm.description', { timezone })}</Text>}
+
+      <View style={styles.switchRow}>
+        <Text style={styles.switchLabel}>{t('blockoutForm.allDay')}</Text>
+        <Switch value={allDay} onValueChange={(value) => { setAllDay(value); setAffected(null); }} />
+      </View>
+
+      <View style={styles.row}>
+        <Button
+          title={t('blockoutForm.start', { date: f.calendarDate(startDate, 'medium') })}
+          icon="calendar"
+          variant="secondary"
+          style={styles.pick}
+          onPress={() => setPicker('startDate')}
+        />
+        <Button
+          title={t('blockoutForm.end', { date: f.calendarDate(endDate, 'medium') })}
+          icon="calendar"
+          variant="secondary"
+          style={styles.pick}
+          onPress={() => setPicker('endDate')}
+        />
+      </View>
+      {!allDay ? (
+        <View style={styles.row}>
+          <Button
+            title={t('blockoutForm.from', { time: startTime })}
+            icon="clock"
+            variant="secondary"
+            style={styles.pick}
+            onPress={() => setPicker('startTime')}
+          />
+          <Button
+            title={t('blockoutForm.to', { time: endTime })}
+            icon="clock"
+            variant="secondary"
+            style={styles.pick}
+            onPress={() => setPicker('endTime')}
+          />
+        </View>
+      ) : (
+        <Text style={styles.hint}>{t('blockoutForm.endExclusiveHint')}</Text>
+      )}
+
+      {!allDay ? (
+        <View style={styles.group}>
+          <Text style={styles.label}>{t('blockoutForm.ambiguousLabel')}</Text>
+          <SegmentedControl options={ambiguousOptions} value={ambiguousPolicy} onChange={setAmbiguousPolicy} />
+          <Text style={styles.hint}>{t('blockoutForm.skippedHint')}</Text>
+        </View>
+      ) : null}
+
+      {!editing ? (
+        <View style={styles.group}>
+          <Text style={styles.label}>{t('blockoutForm.repeatLabel')}</Text>
+          <SegmentedControl options={repeatOptions} value={repeat} onChange={(value) => { setRepeat(value); setAffected(null); }} />
+          {repeat !== 'none' ? (
+            <>
+              <Text style={styles.label}>{t('blockoutForm.endsLabel')}</Text>
+              <SegmentedControl options={endKindOptions} value={endKind} onChange={setEndKind} />
+              {endKind === 'count' ? (
+                <Field label={t('blockoutForm.occurrences')} value={countText} keyboardType="number-pad" onChangeText={setCountText} />
+              ) : (
+                <Button
+                  title={t('blockoutForm.until', { date: f.calendarDate(untilDate, 'medium') })}
+                  icon="calendar"
+                  variant="secondary"
+                  onPress={() => setPicker('untilDate')}
+                />
+              )}
+              <Text style={styles.hint}>{t('blockoutForm.monthlySkipHint')}</Text>
+            </>
+          ) : null}
+        </View>
+      ) : null}
+
+      <Field
+        label={t('blockoutForm.reasonLabel')}
+        value={reason}
+        onChangeText={(value) => { setReason(value); setAffected(null); }}
+        placeholder={t('blockoutForm.reasonPlaceholder')}
+        maxLength={200}
+      />
+      {picker ? (
+        <DateTimePicker
+          value={pickerValue}
+          mode={picker.includes('Time') ? 'time' : 'date'}
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          timeZoneName={timezone}
+          onChange={onPickerChange}
+        />
+      ) : null}
+      <ErrorNotice error={validationError ?? review.error ?? save.error} />
+      <Button
+        title={t('blockoutForm.reviewButton')}
+        variant="secondary"
+        onPress={submitReview}
+        loading={review.isPending}
+        disabled={save.isPending}
+      />
+      {affected ? (
+        <View style={styles.review}>
+          <Text style={styles.reviewHeading}>{t('blockoutForm.reviewHeading')}</Text>
+          {occurrences.map((item) => (
+            <Text key={item.occurrence_key} style={styles.hint}>
+              {item.local_start_time
+                ? t('blockoutForm.occurrenceTimed', { date: f.calendarDate(item.local_start_date, 'medium'), time: item.local_start_time })
+                : t('blockoutForm.occurrenceAllDay', { date: f.calendarDate(item.local_start_date, 'medium') })}
+            </Text>
+          ))}
+          <Text style={styles.description}>
+            {affected.length ? t('blockoutForm.overlaps', { count: affected.length }) : t('blockoutForm.noOverlaps')}
+          </Text>
+          {affected.map((item) => (
+            <Text key={`${item.assignment_id}:${item.time_id}`} style={styles.commitment}>
+              {t('blockoutForm.commitment', { plan: item.plan_title, time: item.time_name ?? t(`timeKind.${item.time_kind ?? 'service'}`) })}
+            </Text>
+          ))}
+          <Button
+            title={editing ? t('common:actions.saveChanges') : repeat === 'none' ? t('blockoutForm.saveBlockout') : t('blockoutForm.createSeries')}
+            onPress={() => save.mutate()}
+            loading={save.isPending}
+            disabled={review.isPending}
+          />
+        </View>
+      ) : null}
+      {editing && onCancelEdit ? <Button title={t('blockoutForm.cancelEdit')} variant="quiet" onPress={onCancelEdit} /> : null}
+    </View>
+  );
 };
 
-const makeStyles = (theme: Theme) => StyleSheet.create({
-  form: { gap: theme.space.md }, description: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-  hint: { ...theme.type.bodySmall, color: theme.color.inkFaint }, label: { ...theme.type.label, color: theme.color.ink },
-  row: { flexDirection: 'row', gap: theme.space.sm, flexWrap: 'wrap' },
-  switchRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  review: { gap: theme.space.sm, padding: theme.space.md, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.color.border, borderRadius: theme.radius.md },
-  commitment: { ...theme.type.bodySmall, color: theme.color.ink },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    form: { gap: theme.space.md },
+    group: { gap: theme.space.sm },
+    description: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    hint: { ...theme.type.bodySmall, color: theme.color.inkFaint },
+    label: { ...theme.type.label, color: theme.color.inkMuted },
+    row: { flexDirection: 'row', gap: theme.space.sm, flexWrap: 'wrap' },
+    pick: { flexGrow: 1, flexBasis: 140 },
+    switchRow: {
+      minHeight: 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.space.md,
+      paddingHorizontal: theme.space.md,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.color.surfaceInset,
+    },
+    switchLabel: { ...theme.type.body, color: theme.color.ink, flexShrink: 1 },
+    review: {
+      gap: theme.space.sm,
+      padding: theme.space.md,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.color.surfaceInset,
+    },
+    reviewHeading: { ...theme.type.heading, color: theme.color.ink },
+    commitment: { ...theme.type.bodySmall, color: theme.color.ink },
+  });

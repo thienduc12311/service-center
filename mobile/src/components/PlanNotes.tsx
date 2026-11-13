@@ -10,7 +10,7 @@ import {
 import type { Theme } from '../lib/theme';
 import { useTheme, useThemedStyles } from '../lib/useTheme';
 import { useFormatters } from '../i18n';
-import { Button, Divider, ErrorNotice, IconButton, Label, Loading, Tag } from './ui';
+import { Button, Card, Divider, ErrorNotice, IconButton, IconWell, Loading, SectionHeader, Tag } from './ui';
 
 /** A team as note audiences name it. */
 export interface NoteTeam {
@@ -66,7 +66,7 @@ export const NoteList = ({ notes, categories, teams, canEdit, onEdit }: NoteList
                 ) : null}
               </View>
               <Text selectable style={styles.body}>{note.body}</Text>
-              <Text style={styles.meta}>
+              <Text style={styles.byline}>
                 {[note.author_name ? t('mobileNotes.by', { name: note.author_name }) : null, format.dateTime(note.updated_at)]
                   .filter(Boolean)
                   .join(' · ')}
@@ -107,31 +107,42 @@ export const PlanNotesSection = ({
   onEdit,
 }: PlanNotesSectionProps) => {
   const { t } = useTranslation(['messages', 'common']);
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const showAdd = canEdit && !error;
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.header}>
-        <Label>{t('notesPanel.title')}</Label>
-        {canEdit && !error ? <Button title={t('common:actions.add')} icon="plus" variant="quiet" onPress={onAdd} /> : null}
-      </View>
+      <SectionHeader
+        title={t('notesPanel.title')}
+        count={loading || error ? undefined : notes.length}
+        actionLabel={showAdd ? t('common:actions.add') : undefined}
+        onAction={showAdd ? onAdd : undefined}
+      />
       {loading ? (
-        <Loading />
+        <Card>
+          <Loading />
+        </Card>
       ) : error ? (
-        <View style={styles.wrap}>
+        <Card>
           <ErrorNotice error={error} />
           {simpleNote ? (
-            <>
+            <View style={styles.fallback}>
               <Text style={styles.meta}>{t('mobileNotes.refreshFailed')}</Text>
               <Text selectable style={styles.body}>{simpleNote}</Text>
-            </>
+            </View>
           ) : null}
           <Button title={t('common:actions.retry')} variant="secondary" onPress={onRetry} />
-        </View>
+        </Card>
       ) : notes.length === 0 ? (
-        <Text style={styles.meta}>{t('notesPanel.empty')}</Text>
+        <Card style={styles.emptyCard}>
+          <IconWell name="document" accent={theme.accent.neutral} size={36} />
+          <Text style={[styles.meta, styles.flex]}>{t('notesPanel.empty')}</Text>
+        </Card>
       ) : (
-        <NoteList notes={notes} categories={categories} teams={teams} canEdit={canEdit} onEdit={onEdit} />
+        <Card compact>
+          <NoteList notes={notes} categories={categories} teams={teams} canEdit={canEdit} onEdit={onEdit} />
+        </Card>
       )}
     </View>
   );
@@ -139,12 +150,14 @@ export const PlanNotesSection = ({
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    wrap: { gap: theme.space.sm },
+    wrap: { gap: theme.space.md },
     flex: { flex: 1 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.space.md },
-    note: { gap: theme.space.xs, paddingVertical: theme.space.sm },
+    fallback: { gap: theme.space.xs },
+    emptyCard: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, padding: theme.space.md },
+    note: { gap: 6, paddingVertical: theme.space.sm + 2 },
     noteTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },
-    category: { ...theme.type.bodySmall, color: theme.color.ink, fontWeight: '600' },
-    body: { ...theme.type.body, color: theme.color.inkMuted },
-    meta: { ...theme.type.bodySmall, color: theme.color.inkFaint },
+    category: { ...theme.type.heading, fontSize: 15, color: theme.color.ink },
+    body: { ...theme.type.body, color: theme.color.ink },
+    meta: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    byline: { ...theme.type.label, fontSize: 12, color: theme.color.inkFaint },
   });

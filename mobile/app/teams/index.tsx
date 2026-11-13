@@ -7,7 +7,8 @@ import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { teamManageTarget } from '../../src/lib/directory';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { EmptyState, ErrorNotice, ListRow, Loading, Screen, ScreenHeader, Tag, screenPadding } from '../../src/components/ui';
+import { EmptyState, ErrorNotice, ListRow, Loading, Screen, ScreenHeader, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
+import { Icon } from '../../src/components/icons';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 
@@ -30,22 +31,32 @@ export default function TeamsScreen() {
     enabled: Boolean(queryScope),
   });
 
+  const count = teams.data?.length ?? 0;
   const renderRow = ({ item, index }: { item: TeamWithPositions; index: number }) => (
-    <ListRow divided={index > 0} showChevron onPress={() => router.push({ pathname: '/teams/[id]', params: { id: item.id } })}>
-      <View style={styles.row}>
-        <View style={[styles.swatch, { backgroundColor: item.color }]} />
-        <View style={styles.flex}>
-          <Text style={styles.title}>{item.name}</Text>
-          {item.description ? <Text style={styles.muted}>{item.description}</Text> : null}
+    <View style={[styles.groupRow, index === 0 && styles.groupFirst, index === count - 1 && styles.groupLast]}>
+      <ListRow
+        divided={index > 0}
+        showChevron
+        onPress={() => router.push({ pathname: '/teams/[id]', params: { id: item.id } })}
+        leading={
+          <View style={styles.tile}>
+            <Icon name="people" size={20} color={item.color} />
+          </View>
+        }
+      >
+        <Text style={styles.title}>{item.name}</Text>
+        {item.description ? <Text style={styles.muted} numberOfLines={2}>{item.description}</Text> : null}
+        <View style={styles.metaRow}>
+          <Icon name="person" size={14} color={theme.color.inkFaint} />
           <Text style={styles.muted}>{t('common:count.people', { count: item.members.length })}</Text>
-          {canEditRoster(teamManageTarget(item)) ? (
-            <View style={styles.tags}>
-              <Tag label={t('mobileTeams.youManage')} accent={theme.accent.blue} />
-            </View>
-          ) : null}
         </View>
-      </View>
-    </ListRow>
+        {canEditRoster(teamManageTarget(item)) ? (
+          <View style={styles.tags}>
+            <Tag label={t('mobileTeams.youManage')} accent={theme.accent.blue} />
+          </View>
+        ) : null}
+      </ListRow>
+    </View>
   );
 
   return (
@@ -55,18 +66,19 @@ export default function TeamsScreen() {
         data={teams.data ?? []}
         keyExtractor={(team) => team.id}
         renderItem={renderRow}
-        contentContainerStyle={screenPadding(theme)}
+        contentContainerStyle={[screenPadding(theme), styles.list]}
         refreshControl={<RefreshControl refreshing={teams.isRefetching} onRefresh={() => void teams.refetch()} />}
         ListHeaderComponent={
           <View style={styles.header}>
             <ScreenHeader title={t('teamsPage.title')} description={t('teamsPage.subtitle')} />
             {can('teams.manage') ? <Text style={styles.muted}>{t('mobileTeams.setupOnWebsite')}</Text> : null}
             <ErrorNotice error={teams.error} />
+            {count ? <SectionHeader title={t('teamsPage.title')} count={count} /> : null}
           </View>
         }
         ListEmptyComponent={
           teams.isLoading ? <Loading /> : teams.error ? null : (
-            <EmptyState title={t('teamsPage.empty.title')} description={t('teamsPage.empty.description')} />
+            <EmptyState icon="people" title={t('teamsPage.empty.title')} description={t('teamsPage.empty.description')} />
           )
         }
       />
@@ -76,11 +88,37 @@ export default function TeamsScreen() {
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    flex: { flex: 1 },
-    header: { gap: theme.space.md, marginBottom: theme.space.md },
-    row: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md },
-    swatch: { width: 12, height: 12, borderRadius: 6, marginTop: 5 },
+    header: { gap: theme.space.lg, marginBottom: theme.space.md },
+    list: { gap: 0 },
+    groupRow: {
+      backgroundColor: theme.color.surface,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: theme.color.border,
+      paddingHorizontal: theme.space.md,
+    },
+    groupFirst: {
+      borderTopWidth: 1,
+      borderTopLeftRadius: theme.radius.lg + 2,
+      borderTopRightRadius: theme.radius.lg + 2,
+    },
+    groupLast: {
+      borderBottomWidth: 1,
+      borderBottomLeftRadius: theme.radius.lg + 2,
+      borderBottomRightRadius: theme.radius.lg + 2,
+    },
+    tile: {
+      width: 40,
+      height: 40,
+      borderRadius: theme.radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.color.surfaceInset,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+    },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
     tags: { flexDirection: 'row', gap: theme.space.xs, marginTop: theme.space.xs },
-    title: { ...theme.type.body, color: theme.color.ink, fontWeight: '600' },
+    title: { ...theme.type.heading, color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
   });

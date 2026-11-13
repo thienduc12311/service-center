@@ -19,7 +19,7 @@ export const ServiceTypeFilesSettings = () => {
   return (
     <div className="space-y-3">
       <section className="card p-5">
-        <h2 className="mb-1 font-semibold">{t('serviceTypeFiles.title')}</h2>
+        <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('serviceTypeFiles.title')}</h2>
         <p className="mb-3 text-sm text-slate-500">{t('serviceTypeFiles.description')}</p>
         <label className="block max-w-sm">
           <span className="label">{t('access.serviceType')}</span>

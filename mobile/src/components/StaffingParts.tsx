@@ -50,7 +50,7 @@ export const TimeSlotList = ({ times, emptyText }: TimeSlotListProps) => {
             accessible
             accessibilityLabel={`${name}, ${format.date(time.starts_at, 'short')}, ${format.time(time.starts_at)}–${format.time(time.ends_at)}`}
           >
-            <IconWell name="calendar" accent={accent} size={40} />
+            <IconWell name={time.kind === 'rehearsal' ? 'music' : 'clock'} accent={accent} size={40} />
             <View style={styles.slotText}>
               <Text style={styles.slotName}>{name}</Text>
               <Text style={styles.slotDate}>{format.date(time.starts_at, 'short')}</Text>
@@ -119,8 +119,12 @@ export interface ProgressStep {
   done: boolean;
 }
 
+export interface StepPillsProps {
+  steps: readonly ProgressStep[];
+}
+
 /** Steps that must all be done, as checked or open pills (e.g. "Agreed", "Leader approved"). */
-export const StepPills = ({ steps }: { steps: readonly ProgressStep[] }) => {
+export const StepPills = ({ steps }: StepPillsProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (

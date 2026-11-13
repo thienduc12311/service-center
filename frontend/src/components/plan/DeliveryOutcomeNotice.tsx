@@ -37,17 +37,19 @@ export const DeliveryOutcomeNotice = ({ result, canRetry }: DeliveryOutcomeNotic
 
   if (result.outcomes.length === 0) {
     return (
-      <p className="rounded-lg bg-slate-50 px-4 py-2 text-sm text-slate-600">
+      <p className="surface-inset px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
         {t('deliveryOutcome.nothingSent')}
       </p>
     );
   }
 
   const problems = result.outcomes.filter((outcome) => PROBLEM_STATUSES.includes(outcome.status));
-  const tone = problems.length > 0 ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-700';
+  const tone = problems.length > 0
+    ? 'bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25'
+    : 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-500/25';
 
   return (
-    <div className={`space-y-1 rounded-lg px-4 py-2 text-sm ${tone}`} role="status">
+    <div className={`space-y-1 rounded-xl px-4 py-3 text-sm ring-1 ring-inset ${tone}`} role="status">
       {CHANNELS.filter((channel) => Object.keys(result.summary[channel]).length > 0).map((channel) => (
         <p key={channel}>
           <span className="font-medium">{t('deliveryOutcome.channelLabel', { channel: t(`deliveryChannel.${channel}`) })}</span>{' '}

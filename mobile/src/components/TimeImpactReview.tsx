@@ -165,7 +165,7 @@ const makeStyles = (theme: Theme) =>
       ...theme.type.bodySmall,
       color: theme.accent.yellow.fg,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
   });

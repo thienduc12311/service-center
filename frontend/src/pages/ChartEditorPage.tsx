@@ -10,6 +10,7 @@ import { useInvalidateOrg, useSong } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useLanguage } from '../i18n';
 import { Button, EmptyState, ErrorNotice, Loading } from '../components/ui';
+import { Icon } from '../components/icons';
 import { ChartNotationSelect, ORIGINAL_KEY_VIEW, type ChartView } from '../components/ChartNotationSelect';
 import { ChartSourceEditor } from '../components/chart-editor/ChartSourceEditor';
 import { ChartPreview } from '../components/chart-editor/ChartPreview';
@@ -126,33 +127,43 @@ export const ChartEditorPage = () => {
   };
 
   return (
-    <div className="flex h-dvh flex-col bg-slate-100 dark:bg-slate-950">
-      <header className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex h-dvh flex-col bg-app-canvas">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-app-border bg-app-surface px-3 py-2.5 sm:px-4">
         <button
           type="button"
           onClick={leave}
-          className="text-sm text-slate-600 transition hover:text-slate-900 dark:text-slate-300"
+          className="inline-flex h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
         >
-          {t('chartEditor.back')}
+          <Icon name="chevronLeft" className="size-4" />
+          {t('common:actions.back')}
         </button>
 
-        <h1 className="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-white">
-          {song.data.title}
-          <span className="ml-2 font-normal text-slate-400">{arrangement.name}</span>
-        </h1>
+        <span className="hidden h-6 w-px bg-app-border sm:block" aria-hidden="true" />
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => setDialog('sequence')} disabled={!canManage}>
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <span className="hidden size-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-violet-700 text-white sm:grid">
+            <Icon name="music" className="size-4" />
+          </span>
+          <h1 className="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-white">
+            {song.data.title}
+            <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">{arrangement.name}</span>
+          </h1>
+          {dirty && <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" size="sm" icon="grid" onClick={() => setDialog('sequence')} disabled={!canManage}>
             {t('chartEditor.sequence')}
           </Button>
-          <Button variant="secondary" onClick={() => setDialog('formatting')} disabled={!canManage}>
+          <Button variant="ghost" size="sm" icon="pencil" onClick={() => setDialog('formatting')} disabled={!canManage}>
             {t('chartEditor.formatting')}
           </Button>
-          <Button variant="secondary" onClick={openInTab}>
+          <Button variant="secondary" size="sm" icon="document" onClick={openInTab}>
             {t('chartEditor.openInNewTab')}
           </Button>
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => chart && pdf.download(chart)}
             loading={pdf.isExporting}
           >
@@ -160,6 +171,8 @@ export const ChartEditorPage = () => {
           </Button>
           {canManage && (
             <Button
+              size="sm"
+              icon={dirty ? undefined : 'check'}
               onClick={() => save.mutate()}
               loading={save.isPending}
               disabled={!dirty || !form.title.trim()}
@@ -175,14 +188,15 @@ export const ChartEditorPage = () => {
           <ErrorNotice error={save.error} />
           <ErrorNotice error={pdf.error} />
           {popupBlocked && (
-            <div role="alert" className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
+            <div role="alert" className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
+              <Icon name="alert" className="mt-px size-4 shrink-0" />
               {t('chartEditor.popupBlocked')}
             </div>
           )}
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-2">
+      <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-3 sm:p-4 lg:grid-cols-2 lg:overflow-hidden">
         <section className="card flex min-h-0 flex-col p-4">
           <ChartSourceEditor
             values={form}
@@ -198,13 +212,13 @@ export const ChartEditorPage = () => {
             <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
               <input
                 type="checkbox"
-                className="size-4 rounded border-slate-300"
+                className="size-4 rounded border-slate-300 accent-brand-600"
                 checked={autoRefresh}
                 onChange={(event) => setAutoRefresh(event.target.checked)}
               />
               {t('chartEditor.autoRefresh')}
             </label>
-            <span className="ml-auto text-xs text-slate-400">
+            <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               {form.formatting.columns === 2 ? t('chartEditor.twoColumns') : t('chartEditor.oneColumn')}
             </span>
           </div>

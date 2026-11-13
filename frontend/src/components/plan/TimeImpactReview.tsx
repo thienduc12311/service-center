@@ -59,12 +59,12 @@ export const TimeImpactReview = ({ impact, resolutions, onResolve }: TimeImpactR
       {changedTimes.length > 0 && (
         <div>
           <p className="label">{t('timeImpact.times')}</p>
-          <ul className="space-y-0.5 text-xs text-slate-600">
+          <ul className="space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
             {changedTimes.map((time) => (
               <li key={time.id}>
                 <span className="font-medium">{t(`timeImpact.change.${time.change}`)}</span> — {timeLabel(time)}
                 {time.change === 'changed' && time.previous_starts_at && time.previous_ends_at && (
-                  <span className="text-slate-400">
+                  <span className="text-slate-400 dark:text-slate-500">
                     {' '}{t('timeImpact.was', { start: format.time(time.previous_starts_at), end: format.time(time.previous_ends_at) })}
                   </span>
                 )}
@@ -77,12 +77,12 @@ export const TimeImpactReview = ({ impact, resolutions, onResolve }: TimeImpactR
       {impact.assignments.length > 0 && (
         <div>
           <p className="label">{t('timeImpact.requestsThatChange')}</p>
-          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+          <ul className="divide-y divide-slate-100 rounded-xl border border-app-border dark:divide-slate-800">
             {impact.assignments.map((assignment) => (
               <li key={assignment.assignment_id} className="space-y-1 px-3 py-2">
                 <p>
                   <span className="font-medium">{assignment.person_name ?? someone}</span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     {' '}· {[
                       assignment.team_name ?? t('common:fallback.team'),
                       ...(assignment.position_name ? [assignment.position_name] : []),
@@ -115,7 +115,7 @@ export const TimeImpactReview = ({ impact, resolutions, onResolve }: TimeImpactR
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-600">{describe(context, impact, assignment)}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{describe(context, impact, assignment)}</p>
                 )}
               </li>
             ))}
@@ -124,11 +124,11 @@ export const TimeImpactReview = ({ impact, resolutions, onResolve }: TimeImpactR
       )}
 
       {impact.hidden_affected > 0 && (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           {t('timeImpact.hiddenAffected', { count: impact.hidden_affected })}
         </p>
       )}
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         {[
           impact.notify_people > 0 ? t('timeImpact.notifyPeople', { count: impact.notify_people }) : t('timeImpact.notifyNobody'),
           ...(impact.live_requests > 0 ? [t('timeImpact.liveRequests', { count: impact.live_requests })] : []),
@@ -138,7 +138,7 @@ export const TimeImpactReview = ({ impact, resolutions, onResolve }: TimeImpactR
 
       {impact.conflicts.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs font-medium text-slate-700">{t('timeImpact.conflicts')}</p>
+          <p className="text-xs font-medium text-slate-700 dark:text-slate-200">{t('timeImpact.conflicts')}</p>
           <ConflictList conflicts={impact.conflicts} nameOf={(personId) => names.get(personId) ?? someone} />
         </div>
       )}

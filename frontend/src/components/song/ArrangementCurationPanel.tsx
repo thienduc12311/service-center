@@ -70,7 +70,7 @@ const CurationWorkspace = ({ arrangement, canManage, onDuplicated }: Arrangement
   const keys = materials.data?.keys ?? [];
   const selectedFiles = files.filter((f) => !f.key_ids.length || f.key_ids.includes(selectedKey));
   return <section className="card space-y-4 p-5" aria-label={t('curation.sectionLabel')}>
-    <h2 className="font-semibold">{t('curation.title')}</h2>
+    <h2 className="font-semibold text-slate-900 dark:text-white">{t('curation.title')}</h2>
     <p className="text-sm text-slate-500">{t('curation.intro')}</p>
     {materials.isLoading && <Loading />}
     <ErrorNotice error={materials.error ?? save.error ?? review.error ?? duplicate.error} />

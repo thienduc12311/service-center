@@ -118,7 +118,7 @@ export default function ChartEditorScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title }} />
-        <EmptyState title={t('mobileChart.unavailable.invalidLink.title')} />
+        <EmptyState icon="alert" title={t('mobileChart.unavailable.invalidLink.title')} />
       </Screen>
     );
   }
@@ -141,7 +141,7 @@ export default function ChartEditorScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title }} />
-        <EmptyState title={t('mobileAuthoring.noAccess')} />
+        <EmptyState icon="alert" title={t('mobileAuthoring.noAccess')} />
       </Screen>
     );
   }
@@ -150,7 +150,7 @@ export default function ChartEditorScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title }} />
-        <EmptyState title={t('chartEditor.arrangementNotFound')} description={t('chartEditor.arrangementNotFoundDescription')} />
+        <EmptyState icon="music" title={t('chartEditor.arrangementNotFound')} description={t('chartEditor.arrangementNotFoundDescription')} />
       </Screen>
     );
   }
@@ -443,7 +443,7 @@ const ChartEditor = ({ song, arrangement, title }: ChartEditorProps) => {
               <ChordChart chart={preview} />
             ) : (
               <Card>
-                <EmptyState title={t('mobileChart.render.noChart.title')} description={t('mobileChartEditor.emptyChart')} />
+                <EmptyState icon="document" title={t('mobileChart.render.noChart.title')} description={t('mobileChartEditor.emptyChart')} />
               </Card>
             )}
             <Text style={styles.muted}>{t('mobileChartEditor.previewNote')}</Text>
@@ -496,7 +496,7 @@ const makeStyles = (theme: Theme) =>
       ...theme.type.bodySmall,
       color: theme.accent.yellow.fg,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
   });

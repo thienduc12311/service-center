@@ -114,7 +114,7 @@ export const StageCanvas = ({ ref, background, objects, selectedId, editable, fl
       xmlns="http://www.w3.org/2000/svg"
       role="group"
       aria-label={t('stage.canvas.label')}
-      className="w-full touch-none select-none rounded-lg bg-white ring-1 ring-slate-200 dark:ring-slate-700"
+      className="w-full touch-none select-none rounded-xl bg-white ring-1 ring-slate-200 dark:ring-slate-700"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onSelect(null);
       }}

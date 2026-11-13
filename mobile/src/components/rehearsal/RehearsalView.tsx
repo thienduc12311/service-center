@@ -22,7 +22,9 @@ import {
   type NativeRehearsalPlayerState,
   type RehearsalLocalSource,
 } from '../../lib/useRehearsalPlayer';
-import { Button, Card, Chip, Divider, KeyCap, Label, Tag, screenPadding } from '../ui';
+import { Button, Card, Chip, Divider, IconWell, KeyCap, Label, Tag, screenPadding } from '../ui';
+import { Icon, type IconName } from '../icons';
+import { PressableScale } from '../motion';
 import { ChordChart } from '../ChordChart';
 import { useFormatters } from '../../i18n';
 import type { Theme } from '../../lib/theme';
@@ -90,7 +92,7 @@ export const RehearsalView = ({ manifest, localSource, savedOffline, children, a
   const [state, controls] = useRehearsalPlayer(manifest, localSource);
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{manifest.plan_title}</Text>
+      <Text accessibilityRole="header" style={styles.title}>{manifest.plan_title}</Text>
       {children}
       <PlayerCard state={state} controls={controls} items={manifest.items} />
       {afterPlayer}
@@ -136,6 +138,7 @@ interface PlayerCardProps {
 const PlayerCard = ({ state, controls, items }: PlayerCardProps) => {
   const { t } = useTranslation(['plans', 'common', 'media']);
   const format = useFormatters();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { track, status, mode } = state;
   const [openError, setOpenError] = useState<MaterialOpenError | null>(null);
@@ -143,8 +146,13 @@ const PlayerCard = ({ state, controls, items }: PlayerCardProps) => {
   if (!state.tracks.length) {
     return (
       <Card>
-        <Label>{t('rehearse.player')}</Label>
-        <Text style={styles.muted}>{t('rehearse.noTracks')}</Text>
+        <View style={styles.row}>
+          <IconWell name="music" accent={theme.accent.neutral} size={36} />
+          <View style={styles.flex}>
+            <Text style={styles.cardTitle}>{t('rehearse.player')}</Text>
+            <Text style={styles.muted}>{t('rehearse.noTracks')}</Text>
+          </View>
+        </View>
       </Card>
     );
   }
@@ -162,13 +170,14 @@ const PlayerCard = ({ state, controls, items }: PlayerCardProps) => {
   const externalHost = track?.material.external_url ? hostname(track.material.external_url) : null;
 
   return (
-    <Card>
+    <Card style={styles.player}>
       <View style={styles.row}>
-        <Label>{t('rehearse.player')}</Label>
-        <Text style={[styles.muted, styles.end]}>{t('rehearse.tracks', { count: state.tracks.length })}</Text>
+        <IconWell name="music" accent={theme.accent.blue} size={36} />
+        <Text style={[styles.cardTitle, styles.flex]}>{t('rehearse.player')}</Text>
+        <Text style={styles.muted}>{t('rehearse.tracks', { count: state.tracks.length })}</Text>
       </View>
-      <View accessibilityLiveRegion="polite">
-        <Text style={styles.itemTitle}>
+      <View accessibilityLiveRegion="polite" style={styles.nowPlaying}>
+        <Text style={styles.playerTitle}>
           {track ? t('rehearse.trackTitle', { number: state.index + 1, title: track.title }) : t('rehearse.chooseTrack')}
         </Text>
         {track ? (
@@ -192,8 +201,15 @@ const PlayerCard = ({ state, controls, items }: PlayerCardProps) => {
         />
       ) : null}
 
+      <Button
+        title={playing ? t('rehearse.pause') : t('rehearse.play')}
+        onPress={controls.togglePlay}
+        loading={status === 'loading'}
+        disabled={!audio || status === 'loading'}
+        style={styles.playButton}
+      />
       <View style={styles.transport}>
-        <Button variant="secondary" title="⏮" accessibilityLabel={t('rehearse.previousTrack')} onPress={controls.previous} />
+        <TransportButton glyph="chevronLeft" accessibilityLabel={t('rehearse.previousTrack')} onPress={controls.previous} />
         {audio ? (
           <Button
             variant="secondary"
@@ -201,14 +217,9 @@ const PlayerCard = ({ state, controls, items }: PlayerCardProps) => {
             accessibilityLabel={t('mobileRehearse.player.backLabel', { seconds: REHEARSAL_SKIP_SECONDS })}
             onPress={() => controls.skip(-1)}
             disabled={!state.duration}
+            style={styles.flex}
           />
-        ) : null}
-        <Button
-          title={playing ? t('rehearse.pause') : t('rehearse.play')}
-          onPress={controls.togglePlay}
-          loading={status === 'loading'}
-          disabled={!audio || status === 'loading'}
-        />
+        ) : <View style={styles.flex} />}
         {audio ? (
           <Button
             variant="secondary"
@@ -216,16 +227,17 @@ const PlayerCard = ({ state, controls, items }: PlayerCardProps) => {
             accessibilityLabel={t('mobileRehearse.player.forwardLabel', { seconds: REHEARSAL_SKIP_SECONDS })}
             onPress={() => controls.skip(1)}
             disabled={!state.duration}
+            style={styles.flex}
           />
         ) : null}
-        <Button variant="secondary" title="⏭" accessibilityLabel={t('rehearse.nextTrack')} onPress={controls.next} />
+        <TransportButton glyph="chevronRight" accessibilityLabel={t('rehearse.nextTrack')} onPress={controls.next} />
       </View>
       <View style={styles.chips}>
         <Chip label={t(`rehearse.repeat.${state.repeat}`)} active={state.repeat !== 'off'} toggle onPress={controls.cycleRepeat} />
       </View>
       {audio ? (
         <View style={styles.speed}>
-          <Text style={styles.muted}>{t('rehearse.speed')}</Text>
+          <Label>{t('rehearse.speed')}</Label>
           <View style={styles.chips} accessibilityRole="radiogroup" accessibilityLabel={t('rehearse.speedLabel')}>
             {REHEARSAL_PLAYBACK_RATES.map((rate) => (
               <Chip
@@ -273,8 +285,25 @@ const PlayerCard = ({ state, controls, items }: PlayerCardProps) => {
           <Button variant="secondary" title={t('common:actions.retry')} onPress={controls.retry} />
         </View>
       ) : null}
-      <Text style={styles.muted}>{t('mobileRehearse.player.backgroundNote', { seconds: REHEARSAL_SKIP_SECONDS })}</Text>
+      <Text style={styles.hint}>{t('mobileRehearse.player.backgroundNote', { seconds: REHEARSAL_SKIP_SECONDS })}</Text>
     </Card>
+  );
+};
+
+interface TransportButtonProps {
+  glyph: IconName;
+  accessibilityLabel: string;
+  onPress: () => void;
+}
+
+/** A round previous/next-track control, sized for use without looking. */
+const TransportButton = ({ glyph, accessibilityLabel, onPress }: TransportButtonProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <PressableScale accessibilityLabel={accessibilityLabel} onPress={onPress} pressedOpacity={0.6} style={styles.transportButton}>
+      <Icon name={glyph} size={22} color={theme.color.ink} strokeWidth={2.2} />
+    </PressableScale>
   );
 };
 
@@ -338,6 +367,7 @@ const RehearseItemCard = ({ item, track, current, savedOffline, onPlay, onChoose
   return (
     <Card style={current ? styles.current : undefined}>
       <View style={styles.row}>
+        <IconWell name={item.item_type === 'song' ? 'music' : 'document'} accent={current ? theme.accent.green : theme.accent.neutral} size={36} />
         <View style={styles.flex}>
           <Text style={styles.itemTitle}>{item.title}</Text>
           <Text style={styles.muted}>
@@ -348,8 +378,12 @@ const RehearseItemCard = ({ item, track, current, savedOffline, onPlay, onChoose
         </View>
         {chart ? <KeyCap>{chart.key ?? '—'}</KeyCap> : null}
       </View>
-      {current ? <Tag label={t('mobileRehearse.player.nowPlaying')} accent={theme.accent.green} /> : null}
-      {item.media ? <Tag label={t(item.media.archived ? 'rehearse.mediaArchived' : 'rehearse.media', { title: item.media.title })} accent={theme.accent.blue} /> : null}
+      {current || item.media ? (
+        <View style={styles.chips}>
+          {current ? <Tag label={t('mobileRehearse.player.nowPlaying')} accent={theme.accent.green} /> : null}
+          {item.media ? <Tag label={t(item.media.archived ? 'rehearse.mediaArchived' : 'rehearse.media', { title: item.media.title })} accent={theme.accent.blue} /> : null}
+        </View>
+      ) : null}
       {track ? (
         <Button
           variant={current ? 'primary' : 'secondary'}
@@ -361,7 +395,7 @@ const RehearseItemCard = ({ item, track, current, savedOffline, onPlay, onChoose
         <Text style={styles.muted}>{t('rehearse.noRecording')}</Text>
       ) : null}
       {playable.length > 1 ? (
-        <View>
+        <View style={styles.speed}>
           <Label>{t('rehearse.recording')}</Label>
           <View style={styles.chips}>
             {playable.map((material) => (
@@ -398,7 +432,7 @@ const RehearseItemCard = ({ item, track, current, savedOffline, onPlay, onChoose
         )
       ) : null}
       {item.materials.length ? (
-        <View>
+        <View style={styles.materials}>
           <Label>{t('mobileRehearse.materials')}</Label>
           {item.materials.map((material, index) => (
             <View key={material.file_id}>
@@ -477,22 +511,39 @@ const MaterialRow = ({ material, isTrack, chartKey, savedOffline }: MaterialRowP
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     content: { ...screenPadding(theme), gap: theme.space.lg, paddingBottom: theme.space.section },
-    title: { ...theme.type.title, color: theme.color.ink },
+    title: { ...theme.type.display, fontSize: 26, lineHeight: 32, color: theme.color.ink },
     flex: { flex: 1 },
     end: { marginLeft: 'auto' },
     row: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
-    speed: { gap: theme.space.xs },
-    transport: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },
+    speed: { gap: theme.space.sm },
+    materials: { gap: theme.space.xs },
+    cardTitle: { ...theme.type.heading, color: theme.color.ink },
+    player: { borderColor: theme.color.borderStrong },
+    nowPlaying: { gap: 4 },
+    playerTitle: { ...theme.type.title, fontSize: 22, lineHeight: 28, color: theme.color.ink },
+    playButton: { minHeight: 56, borderRadius: theme.radius.lg },
+    transport: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    transportButton: {
+      width: 52,
+      height: 52,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: theme.radius.pill,
+      borderWidth: 1,
+      borderColor: theme.color.borderStrong,
+      backgroundColor: theme.color.surface,
+    },
     notice: { gap: theme.space.sm, padding: theme.space.md, borderRadius: theme.radius.md, backgroundColor: theme.color.surfaceInset },
     current: { borderColor: theme.color.brand, borderWidth: 2 },
     progress: { gap: theme.space.xs },
-    track: { height: 8, borderRadius: 4, backgroundColor: theme.color.surfaceInset, overflow: 'hidden', justifyContent: 'center' },
-    fill: { height: 8, backgroundColor: theme.color.brand },
+    track: { height: 10, borderRadius: 5, backgroundColor: theme.color.surfaceInset, overflow: 'hidden', justifyContent: 'center' },
+    fill: { height: 10, borderRadius: 5, backgroundColor: theme.color.brand },
     itemTitle: { ...theme.type.heading, color: theme.color.ink },
     body: { ...theme.type.body, color: theme.color.ink },
     material: { gap: theme.space.xs, paddingVertical: theme.space.sm },
-    materialTitle: { ...theme.type.body, color: theme.color.ink },
+    materialTitle: { ...theme.type.body, fontWeight: '500', color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    hint: { ...theme.type.bodySmall, color: theme.color.inkFaint },
     error: { ...theme.type.bodySmall, color: theme.color.danger },
   });

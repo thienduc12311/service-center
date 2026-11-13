@@ -10,14 +10,16 @@ import { useAuth } from '../src/providers/AuthProvider';
 import { useNotifications } from '../src/providers/NotificationsProvider';
 import {
   Button,
-  Divider,
   EmptyState,
+  IconWell,
   ErrorNotice,
   Loading,
   Screen,
   ScreenHeader,
+  SectionHeader,
   screenPadding,
 } from '../src/components/ui';
+import { Icon, type IconName } from '../src/components/icons';
 import { PressableScale, Reveal } from '../src/components/motion';
 import type { Theme } from '../src/lib/theme';
 import { useTheme, useThemedStyles } from '../src/lib/useTheme';
@@ -81,7 +83,7 @@ export default function NotificationsScreen() {
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={screenPadding(theme)}
+        contentContainerStyle={[screenPadding(theme), styles.list]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -94,7 +96,7 @@ export default function NotificationsScreen() {
           if (feed.hasNextPage && !feed.isFetchingNextPage) void feed.fetchNextPage();
         }}
         ListHeaderComponent={
-          <View>
+          <View style={styles.header}>
             <ScreenHeader
               eyebrow={unread ? t('notifications.unreadCount', { count: unread }) : t('notifications.allCaughtUp')}
               title={t('common:nav.notifications')}
@@ -113,15 +115,20 @@ export default function NotificationsScreen() {
             {/* MOB-020: the feed is the fallback when push is off; say so and offer the way back. */}
             {push.recovery !== 'none' ? (
               <View style={styles.pushHint}>
-                <Text style={styles.pushHintText}>{t('settings:mobileNotifications.feedHint')}</Text>
+                <View style={styles.pushHintRow}>
+                  <Icon name="info" size={17} color={theme.accent.yellow.fg} />
+                  <Text style={styles.pushHintText}>{t('settings:mobileNotifications.feedHint')}</Text>
+                </View>
                 <Button
                   title={t('settings:mobileNotifications.feedHintAction')}
-                  variant="quiet"
+                  variant="secondary"
+                  icon="settings"
                   onPress={() => router.push('/notification-settings')}
                 />
               </View>
             ) : null}
             <ErrorNotice error={feed.error ?? markRead.error} />
+            {items.length ? <SectionHeader title={t('common:nav.notifications')} /> : null}
           </View>
         }
         ListEmptyComponent={
@@ -129,6 +136,7 @@ export default function NotificationsScreen() {
             <Loading label={t('notifications.loading')} />
           ) : (
             <EmptyState
+              icon="bell"
               title={t('notifications.emptyTitle')}
               description={t('notifications.emptyDescription')}
             />
@@ -136,10 +144,14 @@ export default function NotificationsScreen() {
         }
         renderItem={({ item, index }) => (
           <Reveal index={index}>
-            <NotificationRow item={item} onPress={() => open(item)} />
+            <NotificationRow
+              item={item}
+              first={index === 0}
+              last={index === items.length - 1}
+              onPress={() => open(item)}
+            />
           </Reveal>
         )}
-        ItemSeparatorComponent={() => <Divider />}
       />
     </Screen>
   );
@@ -147,10 +159,22 @@ export default function NotificationsScreen() {
 
 interface NotificationRowProps {
   item: NotificationFeedItem;
+  /** First and last rows round the grouped list's surface. */
+  first: boolean;
+  last: boolean;
   onPress: () => void;
 }
 
-const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
+/** The glyph for where a notification leads. */
+const notificationIcon = (item: NotificationFeedItem): IconName => {
+  if (item.operational_message_id) return 'mail';
+  if (conversationNotificationTarget(item)) return 'chat';
+  if (item.plan_id) return 'calendar';
+  return 'bell';
+};
+
+const NotificationRow = ({ item, first, last, onPress }: NotificationRowProps) => {
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const unread = !item.read_at;
   const { t } = useTranslation('scheduling');
@@ -162,14 +186,17 @@ const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
       accessibilityLabel={unread ? t('notifications.unreadItem', { title: item.title }) : item.title}
       onPress={onPress}
       pressedOpacity={0.6}
-      style={styles.row}
+      style={[styles.groupRow, first && styles.groupFirst, last && styles.groupLast]}
     >
-      {/* The only marker of unread state: a dot in the left margin. */}
-      <View style={[styles.dot, unread ? styles.dotUnread : null]} />
-      <View style={styles.body}>
-        <Text style={[styles.title, unread ? styles.titleUnread : null]}>{item.title}</Text>
-        {item.body ? <Text style={styles.detail}>{item.body}</Text> : null}
-        <Text style={styles.time}>{f.dateTime(item.created_at)}</Text>
+      <View style={[styles.row, !first && styles.rowDivided]}>
+        <IconWell name={notificationIcon(item)} accent={unread ? theme.accent.blue : theme.accent.neutral} size={36} />
+        <View style={styles.body}>
+          <Text style={[styles.title, unread ? styles.titleUnread : null]}>{item.title}</Text>
+          {item.body ? <Text style={styles.detail}>{item.body}</Text> : null}
+          <Text style={[styles.time, unread ? styles.timeUnread : null]}>{f.dateTime(item.created_at)}</Text>
+        </View>
+        {/* Unread marker: a brand dot at the trailing edge. */}
+        <View style={[styles.dot, unread ? styles.dotUnread : null]} />
       </View>
     </PressableScale>
   );
@@ -177,24 +204,52 @@ const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    pushHint: { gap: theme.space.xs, marginTop: theme.space.md },
-    pushHintText: { color: theme.color.inkMuted, fontSize: 13, lineHeight: 18 },
+    list: { gap: 0 },
+    header: { gap: theme.space.lg, marginBottom: theme.space.md },
+    pushHint: {
+      gap: theme.space.md,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.accent.yellow.bg,
+    },
+    pushHintRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.sm },
+    pushHintText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg, flex: 1 },
+    groupRow: {
+      backgroundColor: theme.color.surface,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: theme.color.border,
+      paddingHorizontal: theme.space.md,
+    },
+    groupFirst: {
+      borderTopWidth: 1,
+      borderTopLeftRadius: theme.radius.lg + 2,
+      borderTopRightRadius: theme.radius.lg + 2,
+    },
+    groupLast: {
+      borderBottomWidth: 1,
+      borderBottomLeftRadius: theme.radius.lg + 2,
+      borderBottomRightRadius: theme.radius.lg + 2,
+    },
     row: {
       flexDirection: 'row',
+      alignItems: 'flex-start',
       gap: theme.space.md,
-      paddingVertical: theme.space.lg,
+      paddingVertical: theme.space.md,
     },
+    rowDivided: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.border },
     dot: {
-      width: 7,
-      height: 7,
+      width: 8,
+      height: 8,
       borderRadius: theme.radius.pill,
       marginTop: 6,
       backgroundColor: 'transparent',
     },
-    dotUnread: { backgroundColor: theme.accent.blue.fg },
-    body: { flex: 1, gap: theme.space.xs },
+    dotUnread: { backgroundColor: theme.color.brand },
+    body: { flex: 1, gap: 2 },
     title: { ...theme.type.body, color: theme.color.inkMuted },
-    titleUnread: { color: theme.color.ink },
+    titleUnread: { color: theme.color.ink, fontWeight: '600' },
     detail: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-    time: { ...theme.type.label, color: theme.color.inkFaint },
+    time: { ...theme.type.label, fontSize: 12, color: theme.color.inkFaint, marginTop: 2 },
+    timeUnread: { color: theme.color.brandText },
   });

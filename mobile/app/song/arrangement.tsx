@@ -74,7 +74,7 @@ export default function ArrangementScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title }} />
-        <EmptyState title={t('mobileChart.unavailable.invalidLink.title')} />
+        <EmptyState icon="alert" title={t('mobileChart.unavailable.invalidLink.title')} />
       </Screen>
     );
   }
@@ -97,7 +97,7 @@ export default function ArrangementScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title }} />
-        <EmptyState title={t('mobileAuthoring.noAccess')} />
+        <EmptyState icon="alert" title={t('mobileAuthoring.noAccess')} />
       </Screen>
     );
   }
@@ -108,7 +108,7 @@ export default function ArrangementScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title }} />
-        <EmptyState title={t('mobileAuthoring.arrangementGone')} />
+        <EmptyState icon="alert" title={t('mobileAuthoring.arrangementGone')} />
       </Screen>
     );
   }
@@ -350,7 +350,7 @@ const makeStyles = (theme: Theme) =>
       ...theme.type.bodySmall,
       color: theme.accent.yellow.fg,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
   });

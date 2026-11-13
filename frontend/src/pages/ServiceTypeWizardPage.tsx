@@ -12,6 +12,7 @@ import { api } from '../lib/api';
 import { useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice } from '../components/ui';
+import { Icon } from '../components/icons';
 import { WizardProgress } from '../components/service-type/WizardProgress';
 import { NameStep } from '../components/service-type/NameStep';
 import { TimesStep, emptyServiceTime } from '../components/service-type/TimesStep';
@@ -84,7 +85,10 @@ export const ServiceTypeWizardPage = () => {
 
   if (!canManage) {
     return (
-      <div className="card mx-auto max-w-lg p-6 text-center text-sm text-slate-500">
+      <div className="card mx-auto flex max-w-lg flex-col items-center gap-3 p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+        <span className="grid size-12 place-items-center rounded-2xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+          <Icon name="alert" className="size-6" />
+        </span>
         {t('serviceTypeWizard.notAllowed')}
       </div>
     );
@@ -95,7 +99,7 @@ export const ServiceTypeWizardPage = () => {
       <WizardProgress current={step} />
 
       <div className="card overflow-hidden">
-        <div className="p-8 sm:p-10">
+        <div className="p-5 sm:p-10">
           {step === 'name' && <NameStep value={name} onChange={setName} />}
           {step === 'times' && (
             <TimesStep serviceTypeName={displayName} times={times} onChange={setTimes} />
@@ -118,7 +122,7 @@ export const ServiceTypeWizardPage = () => {
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-200 px-8 py-4">
+        <div className="flex items-center justify-between gap-2 border-t border-app-border bg-slate-50/70 px-5 py-4 sm:px-10 dark:bg-slate-950/40">
           {step === 'name' ? (
             <Button type="button" variant="ghost" onClick={() => navigate('/plans')}>
               {t('common:actions.cancel')}
@@ -127,6 +131,7 @@ export const ServiceTypeWizardPage = () => {
             <Button
               type="button"
               variant="ghost"
+              icon="chevronLeft"
               onClick={() => setStep(step === 'teams' ? 'times' : 'name')}
             >
               {t('serviceTypeWizard.back')}
@@ -144,7 +149,7 @@ export const ServiceTypeWizardPage = () => {
             </Button>
           )}
           {step === 'teams' && (
-            <Button type="button" loading={setUp.isPending} onClick={() => setUp.mutate()}>
+            <Button type="button" icon="check" loading={setUp.isPending} onClick={() => setUp.mutate()}>
               {t('serviceTypeWizard.finish')}
             </Button>
           )}
@@ -152,7 +157,8 @@ export const ServiceTypeWizardPage = () => {
       </div>
 
       {step === 'times' && !timesAreValid && (
-        <p className="mt-3 text-center text-sm text-amber-600">
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-sm text-amber-600 dark:text-amber-300">
+          <Icon name="alert" className="size-4 shrink-0" />
           {t('serviceTypeWizard.timesInvalid')}
         </p>
       )}

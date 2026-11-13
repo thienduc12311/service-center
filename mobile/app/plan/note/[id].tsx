@@ -92,7 +92,7 @@ export default function PlanNoteScreen() {
   if (!canEdit) {
     return (
       <Screen>
-        <EmptyState title={t('templates:generate.noAccess')} />
+        <EmptyState icon="alert" title={t('templates:generate.noAccess')} />
       </Screen>
     );
   }
@@ -100,7 +100,7 @@ export default function PlanNoteScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('mobileNotes.screenTitle') }} />
-        <EmptyState title={missing ? t('noteEditor.gone') : t('plans:mobileOrder.itemGone')} />
+        <EmptyState icon="alert" title={missing ? t('noteEditor.gone') : t('plans:mobileOrder.itemGone')} />
       </Screen>
     );
   }
@@ -392,8 +392,8 @@ const makeStyles = (theme: Theme) =>
       ...theme.type.bodySmall,
       color: theme.accent.yellow.fg,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
     staleBox: {
       gap: theme.space.sm,

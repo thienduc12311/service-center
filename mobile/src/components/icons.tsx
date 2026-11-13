@@ -34,7 +34,13 @@ export type IconName =
   | 'signOut'
   | 'sun'
   | 'moon'
-  | 'chat';
+  | 'chat'
+  | 'people'
+  | 'mapPin'
+  | 'settings'
+  | 'sparkle'
+  | 'mail'
+  | 'info';
 
 export interface IconProps {
   name: IconName;
@@ -185,6 +191,42 @@ const paths: Record<IconName, (stroke: number) => ReactElement> = {
   ),
   moon: (w) => <Path d="M20 14.2A8.6 8.6 0 019.8 4 8.6 8.6 0 1020 14.2z" strokeWidth={w} />,
   chat: (w) => <Path d="M4.5 5.5h15a1.5 1.5 0 011.5 1.5v9a1.5 1.5 0 01-1.5 1.5H11l-4.5 3.5V17.5h-2A1.5 1.5 0 013 16V7a1.5 1.5 0 011.5-1.5z" strokeWidth={w} />,
+  people: (w) => (
+    <>
+      <Circle cx={9} cy={8.5} r={3.5} strokeWidth={w} />
+      <Path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" strokeWidth={w} />
+      <Path d="M15.5 5.2a3.5 3.5 0 0 1 0 6.6" strokeWidth={w} />
+      <Path d="M18 14.4c2.1.7 3.5 2.7 3.5 5.6" strokeWidth={w} />
+    </>
+  ),
+  mapPin: (w) => (
+    <>
+      <Path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" strokeWidth={w} />
+      <Circle cx={12} cy={10} r={2.4} strokeWidth={w} />
+    </>
+  ),
+  settings: (w) => (
+    <>
+      <Circle cx={12} cy={12} r={3} strokeWidth={w} />
+      <Path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5A7.6 7.6 0 0 0 7 6.5l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 3l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.4 1 2-3.4z" strokeWidth={w} />
+    </>
+  ),
+  sparkle: (w) => (
+    <Path d="M12 3.5c.6 3.9 2.6 5.9 6.5 6.5-3.9.6-5.9 2.6-6.5 6.5-.6-3.9-2.6-5.9-6.5-6.5 3.9-.6 5.9-2.6 6.5-6.5zM18.5 15.5c.3 1.6 1 2.3 2.5 2.5-1.5.2-2.2.9-2.5 2.5-.3-1.6-1-2.3-2.5-2.5 1.5-.2 2.2-.9 2.5-2.5z" strokeWidth={w} />
+  ),
+  mail: (w) => (
+    <>
+      <Rect x={3} y={5} width={18} height={14} rx={3} strokeWidth={w} />
+      <Path d="m4 7 8 6 8-6" strokeWidth={w} />
+    </>
+  ),
+  info: (w) => (
+    <>
+      <Circle cx={12} cy={12} r={9} strokeWidth={w} />
+      <Line x1={12} y1={11} x2={12} y2={16.5} strokeWidth={w} />
+      <Line x1={12} y1={7.8} x2={12} y2={8} strokeWidth={w} />
+    </>
+  ),
 };
 
 export const Icon = ({ name, size = 20, color, strokeWidth = 1.75 }: IconProps) => (

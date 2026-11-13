@@ -7,7 +7,7 @@ import { api } from '../../lib/api';
 import { queryKeys } from '../../lib/query-keys';
 import { fileKeyLabels } from '../../lib/file-view';
 import { useAuth } from '../../providers/AuthProvider';
-import { Button, Card, ErrorNotice, Label, Loading } from '../ui';
+import { Button, Card, ErrorNotice, Loading, SectionHeader } from '../ui';
 import { FileRow } from './FileRow';
 import type { Theme } from '../../lib/theme';
 import { useThemedStyles } from '../../lib/useTheme';
@@ -82,29 +82,32 @@ export const SongFiles = ({ songId, songTitle, arrangementId, arrangementName }:
   };
 
   return (
-    <Card>
-      <Label>{t('filesPanel.title')}</Label>
-      {songFiles.isLoading ? <Loading label={t('filesPanel.loading')} /> : null}
-      <ErrorNotice error={songFiles.error ?? arrangementFiles.error} />
-      {songFiles.data
-        ? section(t('mobileFiles.songFiles'), songFiles.data.files, songFiles.data.can_add, () => add('song', songId, songTitle), false)
-        : null}
-      {arrangementId && arrangementFiles.data
-        ? section(
-            t('mobileFiles.arrangementFiles', { name: arrangementName ?? '' }),
-            arrangementFiles.data.files,
-            arrangementFiles.data.can_add,
-            () => add('arrangement', arrangementId, arrangementName ?? songTitle),
-            true,
-          )
-        : null}
-    </Card>
+    <View style={styles.wrap}>
+      <SectionHeader title={t('filesPanel.title')} />
+      <Card>
+        {songFiles.isLoading ? <Loading label={t('filesPanel.loading')} /> : null}
+        <ErrorNotice error={songFiles.error ?? arrangementFiles.error} />
+        {songFiles.data
+          ? section(t('mobileFiles.songFiles'), songFiles.data.files, songFiles.data.can_add, () => add('song', songId, songTitle), false)
+          : null}
+        {arrangementId && arrangementFiles.data
+          ? section(
+              t('mobileFiles.arrangementFiles', { name: arrangementName ?? '' }),
+              arrangementFiles.data.files,
+              arrangementFiles.data.can_add,
+              () => add('arrangement', arrangementId, arrangementName ?? songTitle),
+              true,
+            )
+          : null}
+      </Card>
+    </View>
   );
 };
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
+    wrap: { gap: theme.space.md },
     section: { gap: theme.space.xs },
-    sectionTitle: { ...theme.type.body, color: theme.color.ink, fontWeight: '600' },
+    sectionTitle: { ...theme.type.heading, fontSize: 15, color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
   });

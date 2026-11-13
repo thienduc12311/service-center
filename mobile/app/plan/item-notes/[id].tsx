@@ -24,9 +24,10 @@ import {
   EmptyState,
   ErrorNotice,
   Field,
-  Label,
+  IconWell,
   Loading,
   Screen,
+  SectionHeader,
   screenPadding,
 } from '../../../src/components/ui';
 import { useErrorText, useFormatters } from '../../../src/i18n';
@@ -70,7 +71,7 @@ export default function ItemNotesScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('mobileNotes.discussionTitle') }} />
-        <EmptyState title={t('plans:mobileOrder.itemGone')} />
+        <EmptyState icon="alert" title={t('plans:mobileOrder.itemGone')} />
       </Screen>
     );
   }
@@ -151,81 +152,85 @@ function ItemNotes({ planId, item }: ItemNotesProps) {
     <Screen>
       <Stack.Screen options={{ title: t('mobileNotes.discussionTitle') }} />
       <ScrollView contentContainerStyle={[screenPadding(theme), styles.page]} keyboardShouldPersistTaps="handled">
-        <Text accessibilityRole="header" style={styles.title}>{t('itemDiscussion.title', { item: item.title })}</Text>
+        <View style={styles.titleRow}>
+          <IconWell name="chat" accent={theme.accent.blue} size={44} />
+          <Text accessibilityRole="header" style={[styles.title, styles.flex]}>{t('itemDiscussion.title', { item: item.title })}</Text>
+        </View>
 
-        <Card>
-          <View style={styles.header}>
-            <Label>{t('itemDiscussion.itemNotes')}</Label>
-            {canEditNotes ? (
-              <Button
-                title={t('itemDiscussion.addNote')}
-                icon="plus"
-                variant="quiet"
-                onPress={() => router.push({ pathname: '/plan/note/[id]', params: { id: planId, itemId: item.id } })}
+        <View style={styles.section}>
+          <SectionHeader
+            title={t('itemDiscussion.itemNotes')}
+            count={notes.isLoading || (notes.error && !notes.data) ? undefined : itemNotes.length}
+            actionLabel={canEditNotes ? t('itemDiscussion.addNote') : undefined}
+            onAction={canEditNotes
+              ? () => router.push({ pathname: '/plan/note/[id]', params: { id: planId, itemId: item.id } })
+              : undefined}
+          />
+          <Card>
+            {notes.isLoading ? (
+              <Loading />
+            ) : notes.error && !notes.data ? (
+              <View style={styles.group}>
+                <ErrorNotice error={notes.error} />
+                <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void notes.refetch()} />
+              </View>
+            ) : itemNotes.length === 0 ? (
+              <Text style={styles.muted}>{t('itemDiscussion.noItemNotes')}</Text>
+            ) : (
+              <NoteList
+                notes={itemNotes}
+                categories={notes.data?.categories ?? []}
+                teams={teamChoices}
+                canEdit={canEditNotes}
+                onEdit={(note) => router.push({ pathname: '/plan/note/[id]', params: { id: planId, noteId: note.id } })}
               />
-            ) : null}
-          </View>
-          {notes.isLoading ? (
-            <Loading />
-          ) : notes.error && !notes.data ? (
-            <View style={styles.group}>
-              <ErrorNotice error={notes.error} />
-              <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void notes.refetch()} />
-            </View>
-          ) : itemNotes.length === 0 ? (
-            <Text style={styles.muted}>{t('itemDiscussion.noItemNotes')}</Text>
-          ) : (
-            <NoteList
-              notes={itemNotes}
-              categories={notes.data?.categories ?? []}
-              teams={teamChoices}
-              canEdit={canEditNotes}
-              onEdit={(note) => router.push({ pathname: '/plan/note/[id]', params: { id: planId, noteId: note.id } })}
-            />
-          )}
-        </Card>
+            )}
+          </Card>
+        </View>
 
-        <Card>
-          <Label>{t('itemDiscussion.discussion')}</Label>
-          {thread.isLoading ? (
-            <Loading />
-          ) : access === 'unavailable' ? (
-            <Text style={styles.muted}>{t('itemDiscussion.unavailable')}</Text>
-          ) : access === 'error' ? (
-            <View style={styles.group}>
-              <ErrorNotice error={thread.error} />
-              <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void thread.refetch()} />
-            </View>
-          ) : (
-            <View style={styles.group}>
-              {cursor ? (
-                <Button
-                  title={t('itemDiscussion.showOlder')}
-                  variant="quiet"
-                  loading={loadOlder.isPending}
-                  onPress={() => loadOlder.mutate()}
-                />
-              ) : null}
-              {known.length === 0 ? (
-                <Text style={styles.muted}>{t('itemDiscussion.noComments')}</Text>
-              ) : (
-                known.map((comment) => (
-                  <CommentEntry
-                    key={comment.id}
-                    itemId={item.id}
-                    comment={comment}
-                    canDelete={!comment.deleted_at && (comment.is_mine || Boolean(thread.data?.can_moderate))}
-                    onDelete={() => confirmDelete(comment)}
-                    onEdited={refreshThread}
+        <View style={styles.section}>
+          <SectionHeader title={t('itemDiscussion.discussion')} count={access === 'open' ? known.length : undefined} />
+          <Card>
+            {thread.isLoading ? (
+              <Loading />
+            ) : access === 'unavailable' ? (
+              <Text style={styles.muted}>{t('itemDiscussion.unavailable')}</Text>
+            ) : access === 'error' ? (
+              <View style={styles.group}>
+                <ErrorNotice error={thread.error} />
+                <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void thread.refetch()} />
+              </View>
+            ) : (
+              <View style={styles.group}>
+                {cursor ? (
+                  <Button
+                    title={t('itemDiscussion.showOlder')}
+                    variant="quiet"
+                    loading={loadOlder.isPending}
+                    onPress={() => loadOlder.mutate()}
                   />
-                ))
-              )}
-              <ErrorNotice error={remove.error ?? loadOlder.error} />
-              <CommentComposer itemId={item.id} candidates={candidates.data ?? []} onPosted={refreshThread} />
-              <Text style={styles.hint}>{t('itemDiscussion.mentionNote')}</Text>
-            </View>
-          )}
-        </Card>
+                ) : null}
+                {known.length === 0 ? (
+                  <Text style={styles.muted}>{t('itemDiscussion.noComments')}</Text>
+                ) : (
+                  known.map((comment) => (
+                    <CommentEntry
+                      key={comment.id}
+                      itemId={item.id}
+                      comment={comment}
+                      canDelete={!comment.deleted_at && (comment.is_mine || Boolean(thread.data?.can_moderate))}
+                      onDelete={() => confirmDelete(comment)}
+                      onEdited={refreshThread}
+                    />
+                  ))
+                )}
+                <ErrorNotice error={remove.error ?? loadOlder.error} />
+                <CommentComposer itemId={item.id} candidates={candidates.data ?? []} onPosted={refreshThread} />
+                <Text style={styles.hint}>{t('itemDiscussion.mentionNote')}</Text>
+              </View>
+            )}
+          </Card>
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -418,7 +423,9 @@ function CommentComposer({ itemId, candidates, onPosted }: CommentComposerProps)
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    page: { gap: theme.space.lg },
+    page: { gap: theme.space.xl },
+    section: { gap: theme.space.md },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     group: { gap: theme.space.sm },
     flex: { flex: 1 },
     row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },

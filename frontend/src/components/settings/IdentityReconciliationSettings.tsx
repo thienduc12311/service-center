@@ -23,7 +23,7 @@ export const IdentityReconciliationSettings = () => {
 
   return (
     <section className="card p-5">
-      <h2 className="text-base font-semibold">{t('identity.title')}</h2>
+      <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('identity.title')}</h2>
       <p className="mb-3 text-sm text-slate-500">{t('identity.description')}</p>
       <ErrorNotice error={reports.error ?? resolve.error} />
       {reports.isLoading ? (

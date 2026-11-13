@@ -6,6 +6,7 @@ import { LocalizedError, type MaintainBlockoutSeriesInput, type PreviewBlockoutS
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
+import { Icon } from '../components/icons';
 import { keys } from '../hooks/queries';
 import { useFormatters } from '../i18n';
 
@@ -89,20 +90,19 @@ export const BlockoutSeriesPage = () => {
   };
 
   if (query.isLoading || actualRows.isLoading) return <Loading />;
-  if (!series) return <div className="space-y-4"><ErrorNotice error={query.error ?? new LocalizedError({ key: 'scheduling:blockoutSeries.notFound' })} /><Link to="/settings">{t('blockoutSeries.backToSettings')}</Link></div>;
+  if (!series) return <div className="space-y-4"><ErrorNotice error={query.error ?? new LocalizedError({ key: 'scheduling:blockoutSeries.notFound' })} /><Link className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline dark:text-brand-200" to="/settings"><Icon name="chevronLeft" className="size-4" />{t('blockoutSeries.backToSettings')}</Link></div>;
 
   return <div className="max-w-3xl space-y-6">
-    <PageHeader title={t('blockoutSeries.title')} subtitle={t(`blockoutSeries.subtitle.${series.frequency}`, { timezone: series.timezone })} />
-    <Link className="text-sm text-brand-700 underline" to="/settings">{t('blockoutSeries.backToSettingsArrow')}</Link>
-    <section className="card p-5"><form className="space-y-4" onSubmit={submitUpdate}>
+    <PageHeader back={{ to: '/settings', label: t('blockoutSeries.backToSettings') }} title={t('blockoutSeries.title')} subtitle={t(`blockoutSeries.subtitle.${series.frequency}`, { timezone: series.timezone })} />
+    <section className="card overflow-hidden"><form className="space-y-4 p-5 sm:p-6" onSubmit={submitUpdate}>
       <label className="label">{t('blockoutSeries.changeLabel')}<select className="input mt-1" value={scope} onChange={(e) => setScope(e.target.value as Scope)}><option value="occurrence">{t('blockoutSeries.scope.occurrence')}</option><option value="future">{t('blockoutSeries.scope.future')}</option><option value="series">{t('blockoutSeries.scope.series')}</option></select></label>
       {scope !== 'series' && <label className="label">{t('blockoutSeries.occurrenceLabel')}<select className="input mt-1" value={occurrenceId} onChange={(e) => { const id = e.target.value; setOccurrenceId(id); const row = seriesRows.find((item) => item.id === id); if (row) { setStartDate(row.local_start_date!); setEndDate(row.local_end_date!); setStartTime(row.local_start_time?.slice(0,5) ?? '09:00'); setEndTime(row.local_end_time?.slice(0,5) ?? '17:00'); } }}>{seriesRows.map((row) => <option key={row.id} value={row.id}>{row.local_start_date ? f.calendarDate(row.local_start_date, 'medium') : ''}</option>)}</select></label>}
       <div className="grid gap-3 sm:grid-cols-2"><label className="label">{t('blockoutSeries.startDate')}<input className="input mt-1" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label><label className="label">{series.all_day ? t('blockoutSeries.endDateExclusive') : t('blockoutSeries.endDate')}<input className="input mt-1" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></label>{!series.all_day && <><label className="label">{t('blockoutSeries.startTime')}<input className="input mt-1" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></label><label className="label">{t('blockoutSeries.endTime')}<input className="input mt-1" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></label></>}</div>
       <label className="label">{t('blockoutSeries.reason')}<input className="input mt-1" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} /></label>
-      <div className="flex flex-wrap gap-2"><Button type="submit" loading={change.isPending}>{t(`blockoutSeries.save.${scope}`)}</Button><Button type="button" variant="danger" loading={change.isPending} onClick={submitDelete}>{t(`blockoutSeries.delete.${scope}`)}</Button></div>
       <ErrorNotice error={change.error} />
+      <div className="-mx-5 -mb-5 flex flex-wrap items-center gap-2 border-t border-app-border bg-slate-50/70 px-5 py-3 sm:-mx-6 sm:-mb-6 sm:px-6 dark:bg-slate-950/30"><Button type="button" variant="ghost" icon="trash" className="text-rose-600 hover:!bg-rose-50 hover:!text-rose-700 dark:text-rose-400 dark:hover:!bg-rose-500/10" loading={change.isPending} onClick={submitDelete}>{t(`blockoutSeries.delete.${scope}`)}</Button><span className="flex-1" /><Button type="submit" loading={change.isPending}>{t(`blockoutSeries.save.${scope}`)}</Button></div>
     </form></section>
-    <section className="card p-5"><h2 className="mb-3 font-semibold">{t('blockoutSeries.savedOccurrences')}</h2><ul className="divide-y divide-slate-100">{seriesRows.map((row) => <li key={row.id} className="py-2 text-sm">{row.all_day
+    <section className="card overflow-hidden"><h2 className="border-b border-app-border px-5 py-4 font-semibold text-slate-900 dark:text-white">{t('blockoutSeries.savedOccurrences')}</h2><ul className="row-list">{seriesRows.map((row) => <li key={row.id} className="flex items-center gap-3 px-5 py-2.5 text-sm text-slate-700 dark:text-slate-200"><Icon name="calendar" className="size-4 shrink-0 text-slate-400" />{row.all_day
       ? t('blockoutSeries.occurrenceAllDay', { date: row.local_start_date ? f.calendarDate(row.local_start_date, 'medium') : '' })
       : t('blockoutSeries.occurrenceTimed', { date: row.local_start_date ? f.calendarDate(row.local_start_date, 'medium') : '', start: row.local_start_time?.slice(0, 5) ?? '', end: row.local_end_time?.slice(0, 5) ?? '' })}</li>)}</ul></section>
   </div>;

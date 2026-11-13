@@ -11,6 +11,7 @@ import {
   type LiveView,
 } from '@service-center/shared';
 import { Badge, Button, Modal } from '../ui';
+import { Icon } from '../icons';
 import { useLiveRefusalText, type LiveConnection, type LiveRunHandle } from './useLiveRun';
 import { useFormatters, useLanguage } from '../../i18n';
 
@@ -18,11 +19,11 @@ import { useFormatters, useLanguage } from '../../i18n';
 export const LIVE_POLICIES: readonly LiveCountdownPolicy[] = ['item', 'planned_end', 'service_end'];
 
 const STATUS_TONE: Record<LiveRunState['run']['status'], string> = {
-  ready: 'bg-slate-50 text-slate-700 ring-slate-500/20',
-  live: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  paused: 'bg-amber-50 text-amber-800 ring-amber-600/20',
-  ended: 'bg-slate-100 text-slate-600 ring-slate-500/20',
-  discarded: 'bg-rose-50 text-rose-700 ring-rose-600/20',
+  ready: 'bg-slate-50 text-slate-700 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-200',
+  live: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/15 dark:text-emerald-300',
+  paused: 'bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300',
+  ended: 'bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300',
+  discarded: 'bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-500/15 dark:text-rose-300',
 };
 
 const WARNING_KEYS: Record<LiveRunWarningCode, 'live.warnings.planChanged' | 'live.warnings.timeMoved' | 'live.warnings.timeRemoved'> = {
@@ -63,7 +64,7 @@ const ConnectionIndicator = ({ connection, secondsAgo }: ConnectionIndicatorProp
     : t('live.connection.live', { count });
   const dot = connection === 'live' ? 'bg-emerald-500' : 'bg-amber-500';
   return (
-    <p className="flex items-center gap-2 text-xs text-slate-500" role="status" aria-live="polite">
+    <p className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400" role="status" aria-live="polite">
       <span className={`size-2 rounded-full ${dot}`} aria-hidden="true" />
       {text}
     </p>
@@ -91,8 +92,8 @@ export const Countdown = ({ view, large = false }: CountdownProps) => {
   if (view.overrun_seconds > 0) {
     return (
       <div>
-        <p className={`${size} font-semibold tabular-nums text-rose-600`}>+{formatLiveDuration(view.overrun_seconds)}</p>
-        <p className="text-sm text-rose-600">{t('live.countdown.over', { policy: t(`live.policies.${view.countdown_policy}`) })}</p>
+        <p className={`${size} font-semibold tabular-nums text-rose-600 dark:text-rose-400`}>+{formatLiveDuration(view.overrun_seconds)}</p>
+        <p className="text-sm text-rose-600 dark:text-rose-400">{t('live.countdown.over', { policy: t(`live.policies.${view.countdown_policy}`) })}</p>
       </div>
     );
   }
@@ -153,7 +154,7 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={STATUS_TONE[run.status]}>{t(`live.status.${run.status}`)}</Badge>
-          <span className="text-sm text-slate-600">
+          <span className="text-sm text-slate-600 dark:text-slate-300">
             {run.time_name ?? t('live.service')} · {formatters.dateTime(run.time_starts_at, { dateStyle: 'medium' })}
           </span>
         </div>
@@ -161,10 +162,15 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
       </div>
 
       {state.warnings.map((warning) => (
-        <div key={warning.code} role="note" className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-600/20">
-          {t(WARNING_KEYS[warning.code])}
+        <div
+          key={warning.code}
+          role="note"
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25"
+        >
+          <Icon name="alert" className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1">{t(WARNING_KEYS[warning.code])}</span>
           {warning.code === 'plan_changed_since_snapshot' && run.status === 'ready' && mine && (
-            <Button variant="secondary" className="ml-3" disabled={busy} onClick={() => live.send({ action: 'refresh_snapshot' })}>
+            <Button variant="secondary" size="sm" disabled={busy} onClick={() => live.send({ action: 'refresh_snapshot' })}>
               {t('live.useCurrentOrder')}
             </Button>
           )}
@@ -172,42 +178,44 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
       ))}
 
       {run.status === 'discarded' && (
-        <p className="text-sm text-slate-600">{t('live.discardedReason', { reason: run.discarded_reason })}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300">{t('live.discardedReason', { reason: run.discarded_reason })}</p>
       )}
 
-      <div className="card grid gap-6 p-6 md:grid-cols-[1fr_auto]">
+      <div className="card grid gap-6 border-t-4 border-t-brand-500 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0 space-y-2">
           {run.status === 'ready' && (
             <>
-              <p className="text-sm text-slate-500">{t('live.notStarted')}</p>
-              <p className="text-3xl font-semibold text-slate-900">{view.next?.title ?? t('live.nothingToRun')}</p>
+              <p className="section-label">{t('live.notStarted')}</p>
+              <p className="text-2xl font-semibold tracking-tight text-balance text-slate-900 sm:text-3xl dark:text-white">{view.next?.title ?? t('live.nothingToRun')}</p>
             </>
           )}
           {active && view.current && (
             <>
-              {view.section && <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{view.section}</p>}
-              <p className="text-3xl font-semibold text-slate-900">{view.current.title}</p>
-              {run.status === 'paused' && <p className="text-sm font-medium text-amber-700">{t('live.status.paused')}</p>}
-              <p className="text-sm text-slate-600">
+              {view.section && <p className="section-label text-brand-600 dark:text-brand-200">{view.section}</p>}
+              <p className="text-2xl font-semibold tracking-tight text-balance text-slate-900 sm:text-3xl dark:text-white">{view.current.title}</p>
+              {run.status === 'paused' && <p className="text-sm font-medium text-amber-700 dark:text-amber-300">{t('live.status.paused')}</p>}
+              <p className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
+                <Icon name="chevronRight" className="size-4 shrink-0 text-slate-400" />
                 {view.next ? t('live.next', { title: view.next.title }) : t('live.nextNothing')}
               </p>
             </>
           )}
           {over && (
-            <p className="text-lg text-slate-700">
+            <p className="text-lg text-slate-700 dark:text-slate-200">
               {run.status === 'ended' ? t('live.endedAt', { time: timeOfDay(run.ended_at) }) : t('live.wasDiscarded')}
             </p>
           )}
-          {finishLine(view, t, timeOfDay) && <p className="text-sm text-slate-500">{finishLine(view, t, timeOfDay)}</p>}
+          {finishLine(view, t, timeOfDay) && <p className="text-sm text-slate-500 dark:text-slate-400">{finishLine(view, t, timeOfDay)}</p>}
         </div>
-        <div className="text-right text-slate-900">
+        <div className="surface-inset px-5 py-4 text-left text-slate-900 md:text-right dark:text-white">
           <Countdown view={view} />
         </div>
       </div>
 
-      <div className="card space-y-3 p-4">
+      <div className="card space-y-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-slate-600">
+          <p className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+            <Icon name="person" className="size-4 shrink-0 text-slate-400" />
             {control.held_by_you
               ? t('live.control.you', { count: control.lease_seconds_left ?? 0 })
               : control.held
@@ -218,7 +226,7 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
                   ? t('live.control.finished')
                   : t('live.control.nobody')}
           </p>
-          <Button variant="secondary" onClick={onStage}>{t('live.stageDisplay')}</Button>
+          <Button variant="secondary" size="sm" icon="grid" onClick={onStage}>{t('live.stageDisplay')}</Button>
         </div>
 
         {canAct && !over && !mine && (
@@ -238,7 +246,7 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
         {canAct && mine && (
           <div className="flex flex-wrap items-center gap-2">
             {run.status === 'ready' && (
-              <Button disabled={busy} loading={live.pending?.action === 'start'} onClick={() => live.send({ action: 'start' })}>
+              <Button icon="play" disabled={busy} loading={live.pending?.action === 'start'} onClick={() => live.send({ action: 'start' })}>
                 {t('live.start')}
               </Button>
             )}
@@ -246,6 +254,7 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
               <>
                 <Button
                   variant="secondary"
+                  icon="chevronLeft"
                   disabled={busy || previous === null}
                   onClick={() => previous !== null && live.send({ action: 'jump', target_index: previous })}
                 >
@@ -260,13 +269,13 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
                     {t('live.resume')}
                   </Button>
                 )}
-                <Button disabled={busy || view.next === null} loading={live.pending?.action === 'advance'} onClick={() => live.send({ action: 'advance' })}>
+                <Button icon="chevronRight" disabled={busy || view.next === null} loading={live.pending?.action === 'advance'} onClick={() => live.send({ action: 'advance' })}>
                   {t('live.nextButton')}
                 </Button>
                 <Button variant="danger" disabled={busy} onClick={() => setConfirm('end')}>{t('live.endRun')}</Button>
               </>
             )}
-            <label className="ml-auto flex items-center gap-2 text-sm text-slate-600">
+            <label className="flex items-center gap-2 text-sm text-slate-600 sm:ml-auto dark:text-slate-300">
               {t('live.countdownLabel')}
               <select
                 className="input w-auto"
@@ -284,29 +293,30 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
         )}
 
         {canAct && run.status !== 'discarded' && (run.status === 'ready' || run.status === 'ended' || mine) && (
-          <Button variant="ghost" className="text-rose-700" disabled={busy} onClick={() => setConfirm('discard')}>
+          <Button variant="ghost" size="sm" icon="trash" className="!text-rose-700 dark:!text-rose-400" disabled={busy} onClick={() => setConfirm('discard')}>
             {t('live.discardRun')}
           </Button>
         )}
 
         {live.pending && (
-          <p className="text-sm text-slate-500" role="status">
+          <p className="text-sm text-slate-500 dark:text-slate-400" role="status">
             {t('live.sending', { action: t(`live.actions.${live.pending.action}`) })}
           </p>
         )}
-        {offline && state.can_control && <p className="text-sm text-amber-700">{t('live.offlineCommands')}</p>}
+        {offline && state.can_control && <p className="text-sm text-amber-700 dark:text-amber-300">{t('live.offlineCommands')}</p>}
         {live.commandError !== null && (
-          <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-600/20">
-            <span>{refusalText(live.commandError)}</span>
-            {live.retry && <Button variant="secondary" onClick={live.retry}>{t('live.retryCommand')}</Button>}
-            <Button variant="ghost" onClick={live.clearCommandError}>{t('common:a11y.dismiss')}</Button>
+          <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30">
+            <Icon name="alert" className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1">{refusalText(live.commandError)}</span>
+            {live.retry && <Button variant="secondary" size="sm" onClick={live.retry}>{t('live.retryCommand')}</Button>}
+            <Button variant="ghost" size="sm" onClick={live.clearCommandError}>{t('common:a11y.dismiss')}</Button>
           </div>
         )}
       </div>
 
       <div className="card overflow-hidden">
-        <h3 className="border-b border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">{t('live.orderPinned')}</h3>
-        <ol>
+        <h3 className="section-label border-b border-app-border bg-slate-50/70 px-4 py-2.5 dark:bg-slate-900/40">{t('live.orderPinned')}</h3>
+        <ol className="row-list">
           {run.snapshot.map((item, index) => {
             const isCurrent = view.current_index === index;
             const isHeader = item.item_type === 'header';
@@ -315,17 +325,21 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
               <li
                 key={item.id}
                 aria-current={isCurrent ? 'step' : undefined}
-                className={`flex items-center gap-3 border-b border-slate-100 px-4 py-2 text-sm last:border-0 ${
-                  isHeader ? 'bg-slate-50 font-semibold uppercase tracking-wide text-slate-500' : ''
-                } ${isCurrent ? 'bg-emerald-50 font-semibold text-emerald-900' : ''}`}
+                className={`flex items-center gap-3 px-4 py-2 text-sm ${
+                  isCurrent
+                    ? 'bg-emerald-50 font-semibold text-emerald-900 shadow-[inset_3px_0_0] shadow-emerald-500 dark:bg-emerald-500/10 dark:text-emerald-200'
+                    : isHeader
+                      ? 'bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:bg-slate-900/50 dark:text-slate-400'
+                      : 'text-slate-800 dark:text-slate-200'
+                }`}
               >
-                <span className="w-16 shrink-0 tabular-nums text-xs text-slate-500">
+                <span className="w-16 shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
                   {isHeader ? '' : formatters.time(plannedStart.get(item.id) ?? run.time_starts_at)}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{item.title}</span>
-                {!isHeader && <span className="tabular-nums text-xs text-slate-500">{formatLiveDuration(item.length_seconds)}</span>}
+                {!isHeader && <span className="tabular-nums text-xs text-slate-500 dark:text-slate-400">{formatLiveDuration(item.length_seconds)}</span>}
                 {jumpable && (
-                  <Button variant="ghost" className="px-2 py-1 text-xs" onClick={() => live.send({ action: 'jump', target_index: index })}>
+                  <Button variant="ghost" size="sm" onClick={() => live.send({ action: 'jump', target_index: index })}>
                     {isHeader ? t('live.goToSection') : t('live.goHere')}
                   </Button>
                 )}
@@ -357,9 +371,9 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
           </>
         }
       >
-        {confirm === 'end' && <p className="text-sm text-slate-600">{t('live.confirm.endBody')}</p>}
+        {confirm === 'end' && <p className="text-sm text-slate-600 dark:text-slate-300">{t('live.confirm.endBody')}</p>}
         {confirm === 'take_over' && (
-          <div className="space-y-3 text-sm text-slate-600">
+          <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
             <p>
               {control.holder_name
                 ? t('live.confirm.takeOverBody', { name: control.holder_name })
@@ -372,7 +386,7 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
           </div>
         )}
         {confirm === 'discard' && (
-          <div className="space-y-3 text-sm text-slate-600">
+          <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
             <p>{t('live.confirm.discardBody')}</p>
             <label className="field">
               {t('live.confirm.reasonRequired')}

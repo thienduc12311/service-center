@@ -13,8 +13,8 @@ import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { newIdempotencyKey } from '../../src/lib/idempotency';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { Button, Card, EmptyState, ErrorNotice, Label, ListRow, Loading, Screen, Tag, screenPadding } from '../../src/components/ui';
-import { StatusBanner, TimeSlotList } from '../../src/components/StaffingParts';
+import { Button, Card, DateBadge, EmptyState, ErrorNotice, Label, ListRow, Loading, Screen, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
+import { MetaLine, StatusBanner, TimeSlotList } from '../../src/components/StaffingParts';
 import {
   ClaimAttempts,
   canCancelClaim,
@@ -149,6 +149,7 @@ export default function OpeningScreen() {
         <View style={screenPadding(theme)}>
           {hidden ? (
             <EmptyState
+              icon="search"
               title={t('openPositions.notAvailable')}
               action={<Button variant="secondary" title={t('common:actions.back')} onPress={() => router.back()} />}
             />
@@ -203,24 +204,30 @@ export default function OpeningScreen() {
         contentContainerStyle={[screenPadding(theme), styles.gap]}
         refreshControl={<RefreshControl refreshing={opening.isRefetching} onRefresh={() => void opening.refetch()} tintColor={theme.color.inkFaint} />}
       >
-        <Card>
-          <View style={styles.rowTop}>
+        <Card style={styles.hero}>
+          <DateBadge date={`${data.service_date.slice(0, 10)}T12:00:00`} />
+          <View style={styles.heroBody}>
             <Text style={styles.heading} accessibilityRole="header">{title}</Text>
             <Tag label={t(openingStatusKey(status))} accent={theme.accent[openingAccent(status)]} />
+            <View style={styles.metaList}>
+              <MetaLine icon="plans">{`${data.plan_title} · ${format.calendarDate(data.service_date, 'medium')}`}</MetaLine>
+              <MetaLine icon="people">{t('opportunities.remaining', { count: data.remaining_capacity })}</MetaLine>
+              <MetaLine icon="clock">
+                {t(
+                  data.approval_policy === 'direct' ? 'opportunities.policySummary.direct' : 'opportunities.policySummary.leader_approval',
+                  { time: format.dateTime(data.closes_at) },
+                )}
+              </MetaLine>
+            </View>
           </View>
-          <Text style={styles.muted}>{`${data.plan_title} · ${format.calendarDate(data.service_date, 'medium')}`}</Text>
-          <Text style={styles.muted}>
-            {`${t('opportunities.remaining', { count: data.remaining_capacity })} · ${t(
-              data.approval_policy === 'direct' ? 'opportunities.policySummary.direct' : 'opportunities.policySummary.leader_approval',
-              { time: format.dateTime(data.closes_at) },
-            )}`}
-          </Text>
         </Card>
 
-        <Card>
-          <Label>{t('openPositions.requiredTimes')}</Label>
-          <TimeSlotList times={data.times} emptyText={t('openPositions.noTimes')} />
-        </Card>
+        <View style={styles.section}>
+          <SectionHeader title={t('openPositions.requiredTimes')} count={data.times.length || undefined} />
+          <Card>
+            <TimeSlotList times={data.times} emptyText={t('openPositions.noTimes')} />
+          </Card>
+        </View>
 
         {myClaim ? (
           <StatusBanner
@@ -319,9 +326,12 @@ export default function OpeningScreen() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    gap: { gap: theme.space.md },
-    rowTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: theme.space.sm },
-    heading: { ...theme.type.body, fontWeight: '600', color: theme.color.ink, flex: 1 },
+    gap: { gap: theme.space.lg },
+    section: { gap: theme.space.sm },
+    hero: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md },
+    heroBody: { flex: 1, gap: theme.space.sm, alignItems: 'flex-start' },
+    metaList: { gap: theme.space.xs, alignSelf: 'stretch' },
+    heading: { ...theme.type.title, color: theme.color.ink },
     body: { ...theme.type.body, color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: theme.space.sm, marginTop: theme.space.sm },

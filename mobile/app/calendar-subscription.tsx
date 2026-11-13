@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Linking, ScrollView, Share, StyleSheet, Text } from 'react-native';
+import { Alert, Linking, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { personalFeedState, type CalendarFeedTokenResponse } from '@service-center/shared';
 import { api } from '../src/lib/api';
@@ -8,7 +8,7 @@ import { queryKeys } from '../src/lib/query-keys';
 import { shareOutcome, type ShareOutcome } from '../src/lib/calendar-sharing';
 import { useScreenVisible } from '../src/lib/useScreenVisible';
 import { useAuth } from '../src/providers/AuthProvider';
-import { Button, Card, ErrorNotice, Label, Loading, Meta, Screen, screenPadding } from '../src/components/ui';
+import { Button, Card, ErrorNotice, Loading, Meta, Screen, SectionHeader, screenPadding } from '../src/components/ui';
 import type { Theme } from '../src/lib/theme';
 import { useTheme, useThemedStyles } from '../src/lib/useTheme';
 
@@ -88,53 +88,59 @@ export default function CalendarSubscriptionScreen() {
       <ScrollView contentContainerStyle={[screenPadding(theme), styles.content]}>
         <Text style={styles.body}>{t('settings:settingsPage.calendar.description')}</Text>
 
-        <Card>
-          <Label>{t('mobileSubscription.personalTitle')}</Label>
-          {state === 'loading' ? (
-            status.error ? null : <Loading />
-          ) : state === 'none' ? (
-            <>
-              <Text style={styles.body}>{t('mobileSubscription.none')}</Text>
-              <Button
-                title={t('settings:settingsPage.calendar.create')}
-                icon="calendar"
-                loading={rotate.isPending}
-                onPress={() => rotate.mutate()}
-              />
-            </>
-          ) : state === 'active' ? (
-            <>
-              <Text style={styles.body}>{t('settings:settingsPage.calendar.activeHidden')}</Text>
-              <Button
-                title={t('settings:settingsPage.calendar.rotate')}
-                variant="secondary"
-                loading={rotate.isPending}
-                onPress={confirmRotate}
-              />
-            </>
-          ) : (
-            <>
-              <Text style={styles.body} accessibilityLiveRegion="polite">{t('mobileSubscription.revealed')}</Text>
-              <Button title={t('settings:settingsPage.calendar.openInApp')} icon="calendar" onPress={() => void openInCalendar()} />
-              <Button title={t('mobileSubscription.share')} variant="secondary" onPress={() => void shareLink()} />
-              {handoff === 'openFailed' ? <Meta>{t('mobileSubscription.openFailed')}</Meta> : null}
-              {handoff === 'cancelled' ? <Meta>{t('mobileSubscription.shareCancelled')}</Meta> : null}
-              <Meta>{t('mobileSubscription.hiddenOnLeave')}</Meta>
-            </>
-          )}
-          <ErrorNotice error={status.error ?? rotate.error} />
-          {status.error ? <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void status.refetch()} /> : null}
-        </Card>
+        <View style={styles.section}>
+          <SectionHeader title={t('mobileSubscription.personalTitle')} />
+          <Card>
+            {state === 'loading' ? (
+              status.error ? null : <Loading />
+            ) : state === 'none' ? (
+              <>
+                <Text style={styles.body}>{t('mobileSubscription.none')}</Text>
+                <Button
+                  title={t('settings:settingsPage.calendar.create')}
+                  icon="calendar"
+                  loading={rotate.isPending}
+                  onPress={() => rotate.mutate()}
+                />
+              </>
+            ) : state === 'active' ? (
+              <>
+                <Text style={styles.body}>{t('settings:settingsPage.calendar.activeHidden')}</Text>
+                <Button
+                  title={t('settings:settingsPage.calendar.rotate')}
+                  variant="secondary"
+                  loading={rotate.isPending}
+                  onPress={confirmRotate}
+                />
+              </>
+            ) : (
+              <>
+                <Text style={styles.body} accessibilityLiveRegion="polite">{t('mobileSubscription.revealed')}</Text>
+                <Button title={t('settings:settingsPage.calendar.openInApp')} icon="calendar" onPress={() => void openInCalendar()} />
+                <Button title={t('mobileSubscription.share')} variant="secondary" onPress={() => void shareLink()} />
+                {handoff === 'openFailed' ? <Meta>{t('mobileSubscription.openFailed')}</Meta> : null}
+                {handoff === 'cancelled' ? <Meta>{t('mobileSubscription.shareCancelled')}</Meta> : null}
+                <Meta>{t('mobileSubscription.hiddenOnLeave')}</Meta>
+              </>
+            )}
+            <ErrorNotice error={status.error ?? rotate.error} />
+            {status.error ? <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void status.refetch()} /> : null}
+          </Card>
+        </View>
 
-        <Card>
-          <Label>{t('mobileSubscription.refreshTitle')}</Label>
-          <Text style={styles.body}>{t('feeds.help')}</Text>
-        </Card>
+        <View style={styles.section}>
+          <SectionHeader title={t('mobileSubscription.refreshTitle')} />
+          <Card>
+            <Text style={styles.body}>{t('feeds.help')}</Text>
+          </Card>
+        </View>
 
-        <Card>
-          <Label>{t('feeds.heading')}</Label>
-          <Text style={styles.body}>{t('mobileSubscription.sharedFeedsOnWeb')}</Text>
-        </Card>
+        <View style={styles.section}>
+          <SectionHeader title={t('feeds.heading')} />
+          <Card>
+            <Text style={styles.body}>{t('mobileSubscription.sharedFeedsOnWeb')}</Text>
+          </Card>
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -142,6 +148,7 @@ export default function CalendarSubscriptionScreen() {
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    content: { gap: theme.space.lg },
+    content: { gap: theme.space.xl },
+    section: { gap: theme.space.sm },
     body: { ...theme.type.body, color: theme.color.inkMuted },
   });

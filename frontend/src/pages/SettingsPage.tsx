@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useId, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { isAdmin, isLeader, personalFeedState, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useCalendarFeed, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, PageHeader } from '../components/ui';
+import { Icon, type IconName } from '../components/icons';
 import { AvatarUpload } from '../components/AvatarUpload';
 import { DeliverySettings } from '../components/settings/DeliverySettings';
 import { IntegrationSettings } from '../components/settings/IntegrationSettings';
@@ -52,122 +53,254 @@ export const SettingsPage = () => {
     await Promise.all([refreshUser(), invalidate()]);
   };
 
+  const admin = isAdmin(role);
+  const navItems: SettingsNavItem[] = [
+    { id: 'settings-profile', label: t('settingsPage.profile.title'), icon: 'person' },
+    { id: 'settings-appearance', label: t('profile.appearance.title'), icon: 'sun' },
+    { id: 'settings-church', label: t('profile.organizations.title'), icon: 'home' },
+    { id: 'settings-reminders', label: t('myReminders.title'), icon: 'bell' },
+    { id: 'settings-calendar', label: t('settingsPage.calendar.title'), icon: 'calendar' },
+    ...(organization
+      ? [{ id: 'settings-availability', label: t('settingsPage.availability.title'), icon: 'clock' } satisfies SettingsNavItem]
+      : []),
+  ];
+
   return (
-    <div className="max-w-3xl space-y-8">
+    <div>
       <PageHeader title={t('settingsPage.title')} subtitle={t('settingsPage.subtitle')} />
 
-      <section className="card p-5">
-        <h2 className="mb-4 font-semibold">{t('settingsPage.profile.title')}</h2>
-        {user && (
-          <div className="mb-4">
-            <AvatarUpload
-              name={user.profile.full_name ?? user.profile.email}
-              url={user.profile.avatar_url}
-              target={{ kind: 'self', userId: user.profile.id }}
-              onChange={saveAvatar}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10">
+        <SettingsNav items={navItems} label={t('settingsPage.title')} />
+
+        <div className="min-w-0 max-w-3xl space-y-10">
+          <div id="settings-profile" className="scroll-mt-6 space-y-6">
+            <SettingsCard
+              title={t('settingsPage.profile.title')}
+              description={t('settingsPage.profile.signedInAs', { email: user?.profile.email ?? '' })}
+            >
+              {user && (
+                <div className="mb-5">
+                  <AvatarUpload
+                    name={user.profile.full_name ?? user.profile.email}
+                    url={user.profile.avatar_url}
+                    target={{ kind: 'self', userId: user.profile.id }}
+                    onChange={saveAvatar}
+                  />
+                </div>
+              )}
+              <form
+                className="space-y-4"
+                onSubmit={(event: FormEvent) => {
+                  event.preventDefault();
+                  saveProfile.mutate();
+                }}
+              >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="label" htmlFor="profile-name">{t('settingsPage.profile.fullName')}</label>
+                    <input id="profile-name" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="profile-phone">{t('settingsPage.profile.phone')}</label>
+                    <input id="profile-phone" className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  </div>
+                </div>
+
+                <ErrorNotice error={saveProfile.error} />
+                <div className="-mx-5 -mb-5 flex items-center justify-end gap-3 border-t border-app-border bg-slate-50/70 px-5 py-3 dark:bg-slate-950/30">
+                  {saveProfile.isSuccess && (
+                    <span className="inline-flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400">
+                      <Icon name="check" className="size-4" />
+                      {t('settingsPage.saved')}
+                    </span>
+                  )}
+                  <Button type="submit" loading={saveProfile.isPending}>
+                    {t('settingsPage.profile.save')}
+                  </Button>
+                </div>
+              </form>
+            </SettingsCard>
+
+            <section className="card p-5" aria-labelledby="language-settings-heading">
+              <h2 id="language-settings-heading" className="mb-4 font-semibold text-slate-900 dark:text-white" lang="en">
+                Language / <span lang="vi">Ngôn ngữ</span>
+              </h2>
+              <LanguageSelect organizationName={organization?.name} />
+            </section>
+          </div>
+
+          <div id="settings-appearance" className="scroll-mt-6">
+            <AppearanceSettings />
+          </div>
+
+          <div id="settings-church" className="scroll-mt-6 space-y-6">
+            <OrganizationSettings
+              organization={organization}
+              canEdit={admin}
+              onChanged={refreshUser}
+              onCreated={async (id) => {
+                await refreshUser();
+                switchOrganization(id);
+              }}
             />
+
+            {admin && <AccessSettings organization={organization ?? null} />}
+
+            {admin && <DeliverySettings />}
+
+            {admin && <IntegrationSettings />}
+
+            {isLeader(access) && <ReminderPolicySettings />}
+
+            {(canAnywhere('plans.edit') || canAnywhere('media.manage')) && <ServiceTypeFilesSettings />}
+
+            {admin && <IdentityReconciliationSettings />}
           </div>
-        )}
-        <form
-          className="space-y-4"
-          onSubmit={(event: FormEvent) => {
-            event.preventDefault();
-            saveProfile.mutate();
-          }}
-        >
-          <div>
-            <label className="label" htmlFor="profile-name">{t('settingsPage.profile.fullName')}</label>
-            <input id="profile-name" className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+
+          <div id="settings-reminders" className="scroll-mt-6">
+            <MyReminderSettings />
           </div>
-          <div>
-            <label className="label" htmlFor="profile-phone">{t('settingsPage.profile.phone')}</label>
-            <input id="profile-phone" className="input" value={phone} onChange={(e) => setPhone(e.target.value)} />
+
+          <div id="settings-calendar" className="scroll-mt-6">
+            <SettingsCard title={t('settingsPage.calendar.title')} description={t('settingsPage.calendar.description')}>
+              <div className="space-y-3">
+                {feed?.url ? (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <input className="input min-w-0 flex-1 font-mono text-xs" readOnly value={feed.url} />
+                      <Button variant="secondary" onClick={() => void navigator.clipboard.writeText(feed.url!)}>{t('common:actions.copy')}</Button>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <a className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline dark:text-brand-200" href={feed.webcal_url ?? undefined}>
+                        <Icon name="calendar" className="size-4" />
+                        {t('settingsPage.calendar.openInApp')}
+                      </a>
+                      <Button variant="ghost" size="sm" loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.rotate')}</Button>
+                    </div>
+                  </div>
+                ) : feedState === 'active' ? (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-slate-600 dark:text-slate-300">{t('settingsPage.calendar.activeHidden')}</p>
+                    <Button variant="secondary" loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.rotate')}</Button>
+                  </div>
+                ) : feedState === 'none' ? (
+                  <div className="flex justify-end">
+                    <Button icon="plus" loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.create')}</Button>
+                  </div>
+                ) : null}
+                <ErrorNotice error={calendarFeed.error ?? rotateFeed.error} />
+              </div>
+            </SettingsCard>
           </div>
-          <p className="text-sm text-slate-500">{t('settingsPage.profile.signedInAs', { email: user?.profile.email ?? '' })}</p>
 
-          <ErrorNotice error={saveProfile.error} />
-          <div className="flex items-center gap-3">
-            <Button type="submit" loading={saveProfile.isPending}>
-              {t('settingsPage.profile.save')}
-            </Button>
-            {saveProfile.isSuccess && <span className="text-sm text-emerald-600">{t('settingsPage.saved')}</span>}
-          </div>
-        </form>
-      </section>
-
-      <section className="card p-5" aria-labelledby="language-settings-heading">
-        <h2 id="language-settings-heading" className="mb-4 font-semibold" lang="en">
-          Language / <span lang="vi">Ngôn ngữ</span>
-        </h2>
-        <LanguageSelect organizationName={organization?.name} />
-      </section>
-
-      <AppearanceSettings />
-
-      <OrganizationSettings
-        organization={organization}
-        canEdit={isAdmin(role)}
-        onChanged={refreshUser}
-        onCreated={async (id) => {
-          await refreshUser();
-          switchOrganization(id);
-        }}
-      />
-
-      {isAdmin(role) && <AccessSettings organization={organization ?? null} />}
-
-      {isAdmin(role) && <DeliverySettings />}
-
-      {isAdmin(role) && <IntegrationSettings />}
-
-      {isLeader(access) && <ReminderPolicySettings />}
-
-      {(canAnywhere('plans.edit') || canAnywhere('media.manage')) && <ServiceTypeFilesSettings />}
-
-      <MyReminderSettings />
-
-      {isAdmin(role) && <IdentityReconciliationSettings />}
-
-      <section className="card p-5">
-        <h2 className="mb-1 font-semibold">{t('settingsPage.calendar.title')}</h2>
-        <p className="mb-4 text-sm text-slate-500">{t('settingsPage.calendar.description')}</p>
-        {feed?.url ? (
-          <div className="space-y-3">
-            <div className="flex gap-2"><input className="input min-w-0 flex-1" readOnly value={feed.url} /><Button variant="secondary" onClick={() => void navigator.clipboard.writeText(feed.url!)}>{t('common:actions.copy')}</Button></div>
-            <a className="text-sm text-brand-700 underline" href={feed.webcal_url ?? undefined}>{t('settingsPage.calendar.openInApp')}</a>
-            <div><Button variant="ghost" loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.rotate')}</Button></div>
-          </div>
-        ) : feedState === 'active' ? (
-          <div className="space-y-3">
-            <p className="text-sm text-slate-600">{t('settingsPage.calendar.activeHidden')}</p>
-            <Button variant="secondary" loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.rotate')}</Button>
-          </div>
-        ) : feedState === 'none' ? (
-          <Button loading={rotateFeed.isPending} onClick={() => rotateFeed.mutate()}>{t('settingsPage.calendar.create')}</Button>
-        ) : null}
-        <ErrorNotice error={calendarFeed.error ?? rotateFeed.error} />
-      </section>
-
-      {organization ? (
-        <>
-          <section className="card space-y-4 p-5">
-            <div>
-              <h2 className="mb-1 font-semibold">{t('settingsPage.availability.title')}</h2>
-              <p className="text-sm text-slate-500">{t('settingsPage.availability.description')}</p>
+          {organization ? (
+            <div id="settings-availability" className="scroll-mt-6 space-y-6">
+              <SettingsCard title={t('settingsPage.availability.title')} description={t('settingsPage.availability.description')}>
+                <AvailabilityReview />
+              </SettingsCard>
+              <AvailabilitySettings timezone={organization.timezone} />
+              <SettingsCard title={t('settingsPage.preferences.title')} description={t('settingsPage.preferences.description')}>
+                <SchedulingPreferences />
+              </SettingsCard>
+              <ScheduleHelp />
+              <AcrossOrganizations />
             </div>
-            <AvailabilityReview />
-          </section>
-          <AvailabilitySettings timezone={organization.timezone} />
-          <section className="card p-5">
-            <h2 className="mb-1 font-semibold">{t('settingsPage.preferences.title')}</h2>
-            <p className="mb-4 text-sm text-slate-500">{t('settingsPage.preferences.description')}</p>
-            <SchedulingPreferences />
-          </section>
-          <ScheduleHelp />
-          <AcrossOrganizations />
-        </>
-      ) : null}
+          ) : null}
+        </div>
+      </div>
     </div>
+  );
+};
+
+/** One entry of the settings section navigation. */
+interface SettingsNavItem {
+  id: string;
+  label: string;
+  icon: IconName;
+}
+
+interface SettingsNavProps {
+  items: readonly SettingsNavItem[];
+  label: string;
+}
+
+/**
+ * Jump links to each settings group: a sticky vertical list beside the page on
+ * large screens, a horizontally scrolling pill row above it on small ones. The
+ * group nearest the top of the viewport is highlighted as you scroll.
+ */
+const SettingsNav = ({ items, label }: SettingsNavProps) => {
+  const [active, setActive] = useState<string>(items[0]?.id ?? '');
+  const ids = items.map((item) => item.id).join(',');
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const targets = ids
+      .split(',')
+      .map((id) => document.getElementById(id))
+      .filter((element): element is HTMLElement => element !== null);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((entry) => entry.isIntersecting);
+        const first = visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (first) setActive(first.target.id);
+      },
+      { rootMargin: '0px 0px -65% 0px' },
+    );
+    targets.forEach((target) => observer.observe(target));
+    return () => observer.disconnect();
+  }, [ids]);
+
+  return (
+    <nav aria-label={label} className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+      <ul className="scrollbar-thin -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
+        {items.map((item) => {
+          const current = active === item.id;
+          return (
+            <li key={item.id} className="shrink-0">
+              <a
+                href={`#${item.id}`}
+                onClick={() => setActive(item.id)}
+                aria-current={current ? 'true' : undefined}
+                className={`flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  current
+                    ? 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-100 dark:bg-brand-500/15 dark:text-brand-200 dark:ring-brand-500/25'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                }`}
+              >
+                <Icon name={item.icon} className="size-4 shrink-0 opacity-80" />
+                {item.label}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+};
+
+interface SettingsCardProps {
+  title: string;
+  description?: ReactNode;
+  /** Controls aligned to the right of the title. */
+  actions?: ReactNode;
+  children: ReactNode;
+}
+
+/** A settings group: title and description over its controls. */
+const SettingsCard = ({ title, description, actions, children }: SettingsCardProps) => {
+  const headingId = useId();
+  return (
+    <section className="card overflow-hidden p-5" aria-labelledby={headingId}>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 id={headingId} className="font-semibold text-slate-900 dark:text-white">{title}</h2>
+          {description && <p className="mt-1 text-sm text-pretty text-slate-500 dark:text-slate-400">{description}</p>}
+        </div>
+        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      </div>
+      {children}
+    </section>
   );
 };
 
@@ -226,17 +359,19 @@ const organizationProfileToInput = (form: OrganizationProfileForm) => ({
   member_count: form.member_count.trim() ? Number(form.member_count.trim()) : null,
 });
 
+interface OrganizationSettingsProps {
+  organization: OrganizationRow | undefined;
+  canEdit: boolean;
+  onChanged: () => Promise<void>;
+  onCreated: (id: string) => Promise<void>;
+}
+
 const OrganizationSettings = ({
   organization,
   canEdit,
   onChanged,
   onCreated,
-}: {
-  organization: OrganizationRow | undefined;
-  canEdit: boolean;
-  onChanged: () => Promise<void>;
-  onCreated: (id: string) => Promise<void>;
-}) => {
+}: OrganizationSettingsProps) => {
   const { t } = useTranslation(['settings', 'common']);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
@@ -314,17 +449,18 @@ const OrganizationSettings = ({
           </p>
         </div>
         {canEdit && organization && (
-          <label className="cursor-pointer rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+          <label className="button inline-flex h-9 cursor-pointer items-center gap-2 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm shadow-slate-900/5 ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800">
+            <Icon name="upload" className="size-4" />
             {uploading ? t('organization.uploading') : t('organization.updateLogo')}
             <input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={uploadLogo} disabled={uploading} />
           </label>
         )}
         {canEdit && organization && (
-          <Button variant="secondary" onClick={() => setEditingProfile((value) => !value)}>
+          <Button variant="secondary" icon={editingProfile ? undefined : 'pencil'} onClick={() => setEditingProfile((value) => !value)}>
             {editingProfile ? t('common:actions.cancel') : t('organization.editDetails')}
           </Button>
         )}
-        <Button variant="secondary" onClick={() => setCreating((value) => !value)}>
+        <Button variant="ghost" icon={creating ? undefined : 'plus'} onClick={() => setCreating((value) => !value)}>
           {creating ? t('common:actions.cancel') : t('organization.new')}
         </Button>
       </div>
@@ -335,7 +471,7 @@ const OrganizationSettings = ({
             event.preventDefault();
             saveProfile.mutate();
           }}
-          className="mt-5 grid grid-cols-1 gap-3 border-t border-slate-100 pt-5 dark:border-slate-800 sm:grid-cols-2"
+          className="mt-5 grid grid-cols-1 gap-4 border-t border-app-border pt-5 sm:grid-cols-2"
         >
           <div className="sm:col-span-2">
             <label className="label" htmlFor="org-profile-name">{t('organization.fields.name')}</label>
@@ -397,7 +533,7 @@ const OrganizationSettings = ({
       )}
 
       {creating && (
-        <form onSubmit={create} className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-5 dark:border-slate-800 sm:flex-row sm:items-end">
+        <form onSubmit={create} className="mt-5 flex flex-col gap-3 border-t border-app-border pt-5 sm:flex-row sm:items-end">
           <div className="flex-1">
             <label className="label" htmlFor="new-org-name">{t('organization.fields.name')}</label>
             <input id="new-org-name" className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder={t('organization.fields.namePlaceholder')} required />
@@ -406,7 +542,9 @@ const OrganizationSettings = ({
 
         </form>
       )}
-      <ErrorNotice error={error} />
+      <div className="mt-4 empty:hidden">
+        <ErrorNotice error={error} />
+      </div>
     </section>
   );
 };

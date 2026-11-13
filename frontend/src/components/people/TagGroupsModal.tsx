@@ -6,6 +6,7 @@ import { api } from '../../lib/api';
 import { keys, useTagCatalog } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Loading, Modal } from '../ui';
+import { Icon } from '../icons';
 
 export interface TagGroupsModalProps {
   open: boolean;
@@ -78,10 +79,10 @@ export const TagGroupsModal = ({ open, onClose }: TagGroupsModalProps) => {
                 <button
                   type="button"
                   aria-label={t('tagGroups.deleteGroup', { name: group.name })}
-                  className="rounded-full px-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  className="grid size-5 place-items-center rounded-full text-slate-500 hover:bg-slate-200 hover:text-rose-600 dark:hover:bg-slate-700"
                   onClick={() => deleteGroup.mutate(group.id)}
                 >
-                  ×
+                  <Icon name="close" className="size-3" />
                 </button>
               </li>
             ))}

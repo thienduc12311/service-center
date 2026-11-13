@@ -22,7 +22,7 @@ import {
 import { useAuth } from '../src/providers/AuthProvider';
 import { useNavigationIntents } from '../src/providers/NavigationIntentProvider';
 import { useFormatters } from '../src/i18n/useFormatters';
-import { Button, Card, Chip, EmptyState, ErrorNotice, Label, ListRow, Loading, Screen, ScreenHeader, Tag, screenPadding } from '../src/components/ui';
+import { Button, Card, Chip, EmptyState, ErrorNotice, Label, ListRow, Loading, Screen, ScreenHeader, Tag, screenPadding, SectionHeader } from '../src/components/ui';
 import type { Theme } from '../src/lib/theme';
 import { useTheme, useThemedStyles } from '../src/lib/useTheme';
 
@@ -141,7 +141,7 @@ export default function AcrossOrganizationsScreen() {
 
         {current.combined_schedule ? (
           <View style={styles.stack}>
-            <Label>{t('across.next30Days')}</Label>
+            <SectionHeader title={t('across.next30Days')} />
             {combined.isLoading ? <Loading /> : null}
             {turnedOffElsewhere ? (
               <Card>
@@ -208,7 +208,7 @@ export default function AcrossOrganizationsScreen() {
             ) : null}
           </View>
         ) : settings.data ? (
-          <EmptyState title={t('mobileAcross.offTitle')} description={t('mobileAcross.offDescription')} />
+          <EmptyState icon="schedule" title={t('mobileAcross.offTitle')} description={t('mobileAcross.offDescription')} />
         ) : null}
 
         {memberships.length > 1 ? <CopyBlockouts /> : null}

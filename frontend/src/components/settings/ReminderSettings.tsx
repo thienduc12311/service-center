@@ -22,7 +22,7 @@ export const ReminderPolicySettings = () => {
 
   return (
     <section className="card p-5">
-      <h2 className="mb-1 font-semibold">{t('reminders.title')}</h2>
+      <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('reminders.title')}</h2>
       <p className="mb-4 text-sm text-slate-500">{t('reminders.description')}</p>
       <label className="field mb-4">
         {t('reminders.scope')}
@@ -54,7 +54,7 @@ export const MyReminderSettings = () => {
 
   return (
     <section className="card p-5">
-      <h2 className="mb-1 font-semibold">{t('myReminders.title')}</h2>
+      <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('myReminders.title')}</h2>
       <p className="mb-4 text-sm text-slate-500">{t('myReminders.description')}</p>
       {preferences.isLoading ? (
         <Spinner />

@@ -13,7 +13,8 @@ import {
 import { api } from '../lib/api';
 import { keys, usePlans, useStaffingProposals, useTeams } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, Loading, Modal, Notice, PageHeader } from '../components/ui';
+import { Icon } from '../components/icons';
 import { useFormatters, useStructuredText } from '../i18n';
 import { ProposalReview } from '../components/scheduling/ProposalReview';
 import { RotationsPanel, rotationMembers } from '../components/scheduling/RotationEditor';
@@ -99,18 +100,19 @@ export const StaffingProposalsPage = () => {
   const policyLines = usePolicyLines(proposal);
 
   if (!canAnywhere('scheduling.manage')) {
-    return <EmptyState title={t('proposals.accessTitle')} description={t('proposals.accessDescription')} />;
+    return <EmptyState icon="people" title={t('proposals.accessTitle')} description={t('proposals.accessDescription')} />;
   }
 
   return (
     <div className="space-y-5">
       <PageHeader title={t('proposals.title')}
         subtitle={t('proposals.subtitle')}
-        actions={<Link to="/plans/matrix"><Button variant="secondary">{t('proposals.matrixLink')}</Button></Link>} />
+        back={{ to: '/plans', label: t('common:nav.plans') }}
+        actions={<Link to="/plans/matrix"><Button variant="secondary" icon="grid" tabIndex={-1}>{t('proposals.matrixLink')}</Button></Link>} />
 
       {!proposal && (
-        <section className="card space-y-4 p-4" aria-label={t('proposals.scope')}>
-          <div className="grid gap-3 md:grid-cols-3">
+        <section className="card space-y-5 p-4 sm:p-5" aria-label={t('proposals.scope')}>
+          <div className="grid gap-3 sm:grid-cols-3">
             <label className="field">{t('proposals.from')}<input className="input" type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPlanIds([]); }} /></label>
             <label className="field">{t('proposals.to')}<input className="input" type="date" value={to} onChange={(e) => { setTo(e.target.value); setPlanIds([]); }} /></label>
             <label className="field">{t('proposals.lookback')}
@@ -121,14 +123,15 @@ export const StaffingProposalsPage = () => {
           </div>
           <fieldset>
             <legend className="label">{t('proposals.plansLegend', { selected: planIds.length, max: MAX_PLANS })}</legend>
-            {plans.isLoading ? <Loading /> : !(plans.data?.data.length) ? <p className="text-sm text-slate-500">{t('proposals.noPlans')}</p> : (
-              <div className="grid gap-1 md:grid-cols-2">
+            {plans.isLoading ? <Loading /> : !(plans.data?.data.length) ? <p className="surface-inset px-3 py-3 text-sm text-slate-500 dark:text-slate-400">{t('proposals.noPlans')}</p> : (
+              <div className="scrollbar-thin grid max-h-80 gap-1.5 overflow-y-auto md:grid-cols-2">
                 {plans.data.data.map((plan) => (
-                  <label key={plan.id} className="flex items-center gap-2 text-sm">
+                  <label key={plan.id} className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-sm ring-1 ring-inset transition has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 ${planIds.includes(plan.id) ? 'bg-brand-50 ring-brand-200 dark:bg-brand-500/10 dark:ring-brand-500/30' : 'ring-app-border hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
                     <input type="checkbox" checked={planIds.includes(plan.id)}
                       disabled={!planIds.includes(plan.id) && planIds.length >= MAX_PLANS}
+                      className="size-4 shrink-0 rounded border-slate-300 accent-brand-600"
                       onChange={() => setPlanIds((current) => toggle(current, plan.id))} />
-                    {plan.title} <span className="text-xs text-slate-500">{dateTime(plan.service_date)}</span>
+                    <span className="min-w-0 flex-1"><span className="block truncate font-medium text-slate-800 dark:text-slate-100">{plan.title}</span> <span className="block text-xs text-slate-500 dark:text-slate-400">{dateTime(plan.service_date)}</span></span>
                   </label>
                 ))}
               </div>
@@ -136,24 +139,25 @@ export const StaffingProposalsPage = () => {
           </fieldset>
           <fieldset>
             <legend className="label">{t('proposals.teamsLegend')}</legend>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               {schedulableTeams.map((team) => (
-                <label key={team.id} className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={teamIds.includes(team.id)} onChange={() => setTeamIds((current) => toggle(current, team.id))} />
+                <label key={team.id} className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ring-1 ring-inset transition ${teamIds.includes(team.id) ? 'bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-500/15 dark:text-brand-200 dark:ring-brand-500/30' : 'text-slate-700 ring-app-border hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/50'}`}>
+                  <input type="checkbox" className="size-3.5 rounded border-slate-300 accent-brand-600" checked={teamIds.includes(team.id)} onChange={() => setTeamIds((current) => toggle(current, team.id))} />
                   {team.name}
                 </label>
               ))}
             </div>
           </fieldset>
           <ErrorNotice error={generate.error ?? plans.error ?? teams.error} />
-          <Button disabled={!planIds.length || !teamIds.length} loading={generate.isPending} onClick={() => generate.mutate()}>{t('proposals.preview')}</Button>
+          <div className="flex justify-end border-t border-app-border pt-4"><Button icon="sparkle" disabled={!planIds.length || !teamIds.length} loading={generate.isPending} onClick={() => generate.mutate()}>{t('proposals.preview')}</Button></div>
           {(drafts.data ?? []).length > 0 && (
             <div>
-              <p className="mb-1 text-sm font-medium">{t('proposals.recentDrafts')}</p>
-              <ul className="space-y-1 text-sm">
+              <p className="section-label mb-2">{t('proposals.recentDrafts')}</p>
+              <ul className="row-list surface-inset text-sm">
                 {drafts.data!.map((draft) => (
-                  <li key={draft.id}>
-                    <button type="button" className="underline" onClick={() => show(draft)}>
+                  <li key={draft.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-3 py-2">
+                    <Icon name="document" className="size-4 shrink-0 text-slate-400" />
+                    <button type="button" className="min-w-0 text-left font-medium text-brand-700 hover:underline dark:text-brand-200" onClick={() => show(draft)}>
                       {draft.plans.map((plan) => plan.title).join(t('common:format.listSeparator'))}
                     </button>{' '}
                     <span className="text-xs text-slate-500">{draft.expired ? t('proposals.draftCreatedExpired', { time: dateTime(draft.created_at) }) : dateTime(draft.created_at)}</span>
@@ -167,9 +171,9 @@ export const StaffingProposalsPage = () => {
 
       {proposal && (
         <>
-          <section className="card space-y-3 p-4" aria-label={t('proposals.summaryLabel')}>
+          <section className="card space-y-4 p-4 sm:p-5" aria-label={t('proposals.summaryLabel')}>
             <div className="flex flex-wrap items-center gap-2">
-              <p className="mr-auto text-sm">
+              <p className="mr-auto w-full text-sm text-slate-700 sm:w-auto dark:text-slate-200">
                 <Trans
                   t={t}
                   i18nKey="proposals.summary"
@@ -180,37 +184,37 @@ export const StaffingProposalsPage = () => {
                     slots: proposal.result.summary.slots,
                   }}
                   components={[
-                    <span key="proposed" className="font-medium" />,
-                    <span key="existing" className="font-medium" />,
-                    <span key="vacant" className="font-medium" />,
+                    <span key="proposed" className="font-semibold text-brand-700 dark:text-brand-200" />,
+                    <span key="existing" className="font-semibold text-slate-900 dark:text-white" />,
+                    <span key="vacant" className="font-semibold text-amber-700 dark:text-amber-300" />,
                   ]}
                 />
               </p>
               <Button variant="secondary" onClick={() => { setProposal(null); setCommitted(null); commitMutation.reset(); }}>{t('proposals.changeScope')}</Button>
-              {proposal.status === 'draft' && <Button variant="secondary" loading={refresh.isPending} onClick={() => refresh.mutate()}>{t('proposals.refreshFromCurrent')}</Button>}
+              {proposal.status === 'draft' && <Button variant="secondary" icon="sparkle" loading={refresh.isPending} onClick={() => refresh.mutate()}>{t('proposals.refreshFromCurrent')}</Button>}
               {proposal.status === 'draft' && (
-                <Button disabled={proposal.expired || toCreate === 0 || recompute.isPending}
+                <Button icon="check" disabled={proposal.expired || toCreate === 0 || recompute.isPending}
                   onClick={() => { setCommitKey(crypto.randomUUID()); commitMutation.reset(); setConfirming(true); }}>
                   {t('proposals.commitPrepared', { count: toCreate })}
                 </Button>
               )}
             </div>
             {proposal.expired && proposal.status === 'draft' && (
-              <p role="alert" className="text-sm text-amber-800">{t('proposals.expired')}</p>
+              <p role="alert" className="flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25"><Icon name="alert" className="mt-px size-4 shrink-0" />{t('proposals.expired')}</p>
             )}
-            {proposal.status === 'superseded' && <p className="text-sm text-slate-600">{t('proposals.superseded')}</p>}
+            {proposal.status === 'superseded' && <p className="surface-inset px-3 py-2 text-sm text-slate-600 dark:text-slate-300">{t('proposals.superseded')}</p>}
             {committed && (
-              <div role="status" className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-900">
+              <Notice tone="success">
                 {t('proposals.committed', { count: committed.assignment_ids.length })}{' '}
-                <Link className="underline" to="/plans/matrix">{t('proposals.reviewInMatrix')}</Link>
-              </div>
+                <Link className="font-medium underline" to="/plans/matrix">{t('proposals.reviewInMatrix')}</Link>
+              </Notice>
             )}
             <ErrorNotice error={recompute.error ?? refresh.error} />
-            <details className="text-sm">
-              <summary className="cursor-pointer font-medium">{t('proposals.howChosen', { rule: proposal.rule_version, seed: proposal.seed })}</summary>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-600">{policyLines.map((line) => <li key={line}>{line}</li>)}</ul>
+            <details className="surface-inset px-3 py-2.5 text-sm">
+              <summary className="cursor-pointer font-medium text-slate-700 dark:text-slate-200">{t('proposals.howChosen', { rule: proposal.rule_version, seed: proposal.seed })}</summary>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-600 dark:text-slate-300">{policyLines.map((line) => <li key={line}>{line}</li>)}</ul>
               {proposal.rotations.length > 0 && (
-                <p className="mt-2 text-slate-600">
+                <p className="mt-2 text-slate-600 dark:text-slate-300">
                   {t('proposals.rotationsUsed', {
                     list: proposal.rotations
                       .map((rotation) => t('proposals.rotationVersion', { name: rotation.name, revision: rotation.revision }))
@@ -220,9 +224,9 @@ export const StaffingProposalsPage = () => {
               )}
             </details>
             {proposal.result.warnings.length > 0 && (
-              <details className="text-sm" open>
-                <summary className="cursor-pointer font-medium text-amber-800">{t('proposals.warningCount', { count: proposal.result.warnings.length })}</summary>
-                <ul className="mt-2 space-y-1 text-amber-800">{proposal.result.warnings.map((warning, index) => <li key={index}>{proposalWarningText(warning, structured)}</li>)}</ul>
+              <details className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:ring-amber-500/25" open>
+                <summary className="cursor-pointer font-medium text-amber-900 dark:text-amber-200">{t('proposals.warningCount', { count: proposal.result.warnings.length })}</summary>
+                <ul className="mt-2 space-y-1 text-amber-800 dark:text-amber-200">{proposal.result.warnings.map((warning, index) => <li key={index}>{proposalWarningText(warning, structured)}</li>)}</ul>
               </details>
             )}
           </section>
@@ -231,9 +235,9 @@ export const StaffingProposalsPage = () => {
       )}
 
       <section className="space-y-3" aria-label={t('proposals.rotationsTitle')}>
-        <div className="flex flex-wrap items-end gap-3">
-          <h2 className="mr-auto text-lg font-semibold">{t('proposals.rotationsTitle')}</h2>
-          <label className="field">{t('proposals.team')}
+        <div className="flex flex-wrap items-end gap-3 border-t border-app-border pt-6">
+          <h2 className="mr-auto text-lg font-semibold tracking-tight text-slate-900 dark:text-white">{t('proposals.rotationsTitle')}</h2>
+          <label className="field w-full sm:w-56">{t('proposals.team')}
             <select className="input" value={rotationTeamId} onChange={(e) => setRotationTeamId(e.target.value)}>
               <option value="">{t('proposals.chooseTeam')}</option>
               {schedulableTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
@@ -249,7 +253,7 @@ export const StaffingProposalsPage = () => {
           <p>{t('proposals.confirmStale')}</p>
           <ErrorNotice error={commitError} />
           {needsRefresh && <Button variant="secondary" loading={refresh.isPending} onClick={() => { setConfirming(false); refresh.mutate(); }}>{t('proposals.refreshProposal')}</Button>}
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setConfirming(false)}>{t('common:actions.back')}</Button>
             <Button loading={commitMutation.isPending} disabled={needsRefresh} onClick={() => commitMutation.mutate()}>{t('proposals.commit')}</Button>
           </div>

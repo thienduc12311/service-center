@@ -28,7 +28,8 @@ import { useAuth } from '../providers/AuthProvider';
 import { useFormatters } from '../i18n';
 import { type Theme } from '../lib/theme';
 import { useTheme, useThemedStyles } from '../lib/useTheme';
-import { Button, Card, Chip, Divider, ErrorNotice, Field, Label, Loading, Tag } from './ui';
+import { Avatar, Button, Card, Chip, Divider, ErrorNotice, Field, IconWell, Label, Loading, Tag } from './ui';
+import { Icon } from './icons';
 
 const KINDS: readonly ReminderKind[] = ['pending_response', 'confirmed_service'];
 
@@ -57,6 +58,7 @@ export interface PlanReminderPolicyCardProps {
 export const PlanReminderPolicyCard = ({ serviceTypeId }: PlanReminderPolicyCardProps) => {
   const { t } = useTranslation(['plans', 'settings']);
   const { queryScope } = useAuth();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const policies = useQuery({
     queryKey: queryKeys.reminderPolicies(queryScope, serviceTypeId, null),
@@ -67,8 +69,13 @@ export const PlanReminderPolicyCard = ({ serviceTypeId }: PlanReminderPolicyCard
 
   return (
     <Card>
-      <Label>{t('mobileTimes.reminders')}</Label>
-      <Text style={styles.hint}>{t('mobileTimes.remindersHint')}</Text>
+      <View style={styles.header}>
+        <IconWell name="bell" accent={theme.accent.yellow} size={36} />
+        <View style={styles.flex}>
+          <Text accessibilityRole="header" style={styles.cardTitle}>{t('mobileTimes.reminders')}</Text>
+          <Text style={styles.muted}>{t('mobileTimes.remindersHint')}</Text>
+        </View>
+      </View>
       {policies.isLoading ? <Loading /> : null}
       <ErrorNotice error={policies.error} />
       {policies.data
@@ -108,6 +115,7 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, scopeLa
   const format = useFormatters();
   const { queryScope, generation, isCurrentGeneration } = useAuth();
   const queryClient = useQueryClient();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   // Keyed by the effective policy's revision: a save or reset elsewhere starts a fresh draft.
   const [draft, setDraft] = useState<ReminderPolicyDraft>(() => reminderPolicyDraftFrom(effective));
@@ -150,16 +158,28 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, scopeLa
   return (
     <View style={styles.policy}>
       <Divider />
-      <Text style={styles.strong}>{t(`reminders.kind.${kind}`)}</Text>
-      <Text style={styles.muted}>{t(`reminders.kindDescription.${kind}`)}</Text>
-      <Text style={styles.body}>{t('reminders.inEffect', { summary })}</Text>
-      <Text style={styles.muted}>{source}</Text>
+      <View style={styles.policyHead}>
+        <Text style={styles.strong}>{t(`reminders.kind.${kind}`)}</Text>
+        <Text style={styles.muted}>{t(`reminders.kindDescription.${kind}`)}</Text>
+      </View>
+      <View style={styles.summaryBox}>
+        <Text style={styles.body}>{t('reminders.inEffect', { summary })}</Text>
+        <Text style={styles.hint}>{source}</Text>
+      </View>
       {outcome === 'stale' ? (
-        <Text accessibilityRole="alert" style={styles.warning}>{t('plans:mobileTimes.policyStale')}</Text>
+        <View accessibilityRole="alert" style={styles.warning}>
+          <Icon name="alert" size={16} color={theme.accent.yellow.fg} />
+          <Text style={styles.warningText}>{t('plans:mobileTimes.policyStale')}</Text>
+        </View>
       ) : (
         <ErrorNotice error={error} />
       )}
-      {save.isSuccess ? <Text style={styles.muted}>{t('reminders.savedRecomputed')}</Text> : null}
+      {save.isSuccess ? (
+        <View style={styles.savedRow}>
+          <Icon name="check" size={15} color={theme.accent.green.fg} strokeWidth={2.4} />
+          <Text style={styles.saved}>{t('reminders.savedRecomputed')}</Text>
+        </View>
+      ) : null}
 
       {!canEdit ? (
         <Text style={styles.muted}>{t('reminders.readOnly')}</Text>
@@ -182,10 +202,11 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, scopeLa
             keyboardType="number-pad"
             onChangeText={(value) => edit({ maxPerDay: Number(value) })}
           />
-          <Text style={styles.muted}>{t('reminders.channels')}</Text>
+          <Label>{t('reminders.channels')}</Label>
           <View style={styles.chips}>
             {REMINDER_CHANNELS.map((channel) => (
               <Chip
+                toggle
                 key={channel}
                 label={t(`delivery.channel.${channel}`)}
                 active={draft.channels.includes(channel)}
@@ -212,7 +233,7 @@ const PolicyForm = ({ kind, effective, explicit, canEdit, serviceTypeId, scopeLa
             </View>
           ) : null}
           {problems.includes('quiet') ? <Text style={styles.problem}>{t('reminders.invalidQuiet')}</Text> : null}
-          <View style={styles.chips}>
+          <View style={styles.formActions}>
             <Button
               title={t('reminders.saveFor', { scope: scopeLabel })}
               loading={save.isPending}
@@ -258,6 +279,7 @@ export interface PlanDeliveryCardProps {
 export const PlanDeliveryCard = ({ planId }: PlanDeliveryCardProps) => {
   const { t } = useTranslation(['staffing', 'plans', 'common']);
   const { queryScope } = useAuth();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [open, setOpen] = useState(false);
   const history = useQuery({
@@ -270,16 +292,18 @@ export const PlanDeliveryCard = ({ planId }: PlanDeliveryCardProps) => {
   return (
     <Card>
       <View style={styles.header}>
+        <IconWell name="mail" accent={theme.accent.blue} size={36} />
         <View style={styles.flex}>
-          <Label>{t('planDelivery.title')}</Label>
+          <Text accessibilityRole="header" style={styles.cardTitle}>{t('planDelivery.title')}</Text>
           <Text style={styles.muted}>{t('planDelivery.description')}</Text>
         </View>
-        <Button
-          title={open ? t('planDelivery.hide') : t('planDelivery.show')}
-          variant="secondary"
-          onPress={() => setOpen((value) => !value)}
-        />
       </View>
+      <Button
+        title={open ? t('planDelivery.hide') : t('planDelivery.show')}
+        icon={open ? 'chevronUp' : 'chevronDown'}
+        variant="secondary"
+        onPress={() => setOpen((value) => !value)}
+      />
       {open ? (
         history.isLoading ? (
           <Loading />
@@ -289,7 +313,10 @@ export const PlanDeliveryCard = ({ planId }: PlanDeliveryCardProps) => {
           people.map((person) => (
             <View key={person.personId} style={styles.person}>
               <Divider />
-              <Text style={styles.strong}>{person.name}</Text>
+              <View style={styles.personHead}>
+                <Avatar name={person.name} size={28} />
+                <Text style={[styles.strong, styles.flex]}>{person.name}</Text>
+              </View>
               {person.reminders.map((job) => <ReminderLine key={job.id} job={job} />)}
               {person.deliveries.map((item) => <DeliveryLine key={item.id} item={item} planId={planId} />)}
             </View>
@@ -308,6 +335,7 @@ interface ReminderLineProps {
 const ReminderLine = ({ job }: ReminderLineProps) => {
   const { t } = useTranslation(['staffing']);
   const format = useFormatters();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const due = format.dateTime(job.due_at);
   return (
@@ -325,7 +353,7 @@ const ReminderLine = ({ job }: ReminderLineProps) => {
           </Text>
         ) : null}
       </View>
-      <Text style={styles.status}>{t(`reminderJobStatus.${job.status}`)}</Text>
+      <Tag label={t(`reminderJobStatus.${job.status}`)} accent={job.status === 'scheduled' ? theme.accent.blue : theme.accent.neutral} />
     </View>
   );
 };
@@ -379,10 +407,20 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
     header: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md },
-    policy: { gap: theme.space.xs },
-    form: { gap: theme.space.sm, marginTop: theme.space.sm },
-    person: { gap: theme.space.xs },
-    line: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.sm, paddingVertical: theme.space.xs },
+    cardTitle: { ...theme.type.heading, color: theme.color.ink },
+    policy: { gap: theme.space.sm },
+    policyHead: { gap: 2, marginTop: theme.space.xs },
+    summaryBox: {
+      gap: 2,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.color.surfaceInset,
+    },
+    form: { gap: theme.space.md, marginTop: theme.space.sm },
+    formActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm, marginTop: theme.space.xs },
+    person: { gap: theme.space.sm },
+    personHead: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm, marginTop: theme.space.sm },
+    line: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.sm, paddingVertical: theme.space.xs, paddingLeft: 28 + theme.space.sm },
     trailing: { alignItems: 'flex-end', gap: theme.space.xs },
     chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },
     switchRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, minHeight: 44 },
@@ -390,13 +428,16 @@ const makeStyles = (theme: Theme) =>
     strong: { ...theme.type.body, fontWeight: '600', color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     hint: { ...theme.type.bodySmall, color: theme.color.inkFaint },
-    status: { ...theme.type.label, color: theme.color.inkMuted },
     problem: { ...theme.type.bodySmall, color: theme.accent.red.fg },
+    savedRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    saved: { ...theme.type.bodySmall, color: theme.accent.green.fg, flex: 1 },
     warning: {
-      ...theme.type.bodySmall,
-      color: theme.accent.yellow.fg,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: theme.space.sm,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
+    warningText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg, flex: 1 },
   });

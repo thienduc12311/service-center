@@ -62,7 +62,7 @@ export const ScheduleHelp = () => {
 
   return (
     <section className="card p-5">
-      <h2 className="mb-1 font-semibold">{t('help.title')}</h2>
+      <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('help.title')}</h2>
       <p className="mb-4 text-sm text-slate-500">{t('help.description')}</p>
 
       {delegations.isLoading ? <Loading /> : (
@@ -113,7 +113,7 @@ export const ScheduleHelp = () => {
 
           {received.length > 0 && (
             <div className="mt-6">
-              <h3 className="mb-2 text-sm font-semibold">{t('help.peopleIHelp')}</h3>
+              <h3 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('help.peopleIHelp')}</h3>
               <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
                 {received.map((delegation) => (
                   <li key={delegation.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">

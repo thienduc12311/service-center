@@ -1,8 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { ArrangementRow } from '@service-center/shared';
 import type { Theme } from '../lib/theme';
-import { useThemedStyles } from '../lib/useTheme';
+import { useTheme, useThemedStyles } from '../lib/useTheme';
+import { Icon } from './icons';
+import { PressableScale } from './motion';
+import { KeyCap } from './ui';
 
 export interface ArrangementPickerProps {
   arrangements: readonly ArrangementRow[];
@@ -13,8 +16,9 @@ export interface ArrangementPickerProps {
 }
 
 /**
- * Wrapping chips rather than a segmented control: arrangement names are
- * free text and a song can have many, so they need room to wrap.
+ * A stacked list of selectable cards rather than a segmented control:
+ * arrangement names are free text and a song can have many, so each needs a
+ * full row to wrap in.
  */
 export const ArrangementPicker = ({
   arrangements,
@@ -23,6 +27,7 @@ export const ArrangementPicker = ({
   onSelect,
 }: ArrangementPickerProps) => {
   const { t } = useTranslation('songs');
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   return (
@@ -37,18 +42,31 @@ export const ArrangementPicker = ({
         ]
           .filter(Boolean)
           .join(' · ');
+        const flags = [
+          inPlan ? t('mobileArrangements.inPlan') : arrangement.is_default ? t('arrangement.defaultBadge') : null,
+          arrangement.archived_at ? t('songsPage.archivedBadge') : null,
+        ]
+          .filter(Boolean)
+          .join(' · ');
         return (
-          <Pressable
+          <PressableScale
             key={arrangement.id}
             accessibilityRole="radio"
             accessibilityState={{ checked: selected }}
             accessibilityLabel={[arrangement.name, detail].filter(Boolean).join(', ')}
             onPress={() => onSelect(arrangement.id)}
-            style={[styles.chip, selected && styles.chipSelected]}
+            pressedOpacity={0.7}
+            style={[styles.card, selected && styles.cardSelected]}
           >
-            <Text style={[styles.name, selected && styles.nameSelected]}>{arrangement.name}</Text>
-            {detail ? <Text style={styles.detail}>{detail}</Text> : null}
-          </Pressable>
+            <View style={[styles.radio, selected && styles.radioSelected]}>
+              {selected ? <Icon name="check" size={12} color={theme.color.onBrand} strokeWidth={3} /> : null}
+            </View>
+            <View style={styles.body}>
+              <Text style={[styles.name, selected && styles.nameSelected]}>{arrangement.name}</Text>
+              {flags ? <Text style={styles.detail}>{flags}</Text> : null}
+            </View>
+            {arrangement.song_key ? <KeyCap>{arrangement.song_key}</KeyCap> : null}
+          </PressableScale>
         );
       })}
     </View>
@@ -57,19 +75,32 @@ export const ArrangementPicker = ({
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    list: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
-    chip: {
-      minHeight: 44,
-      justifyContent: 'center',
+    list: { gap: theme.space.sm },
+    card: {
+      minHeight: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.space.md,
       paddingHorizontal: theme.space.md,
-      paddingVertical: theme.space.xs,
-      borderRadius: theme.radius.sm,
+      paddingVertical: theme.space.sm,
+      borderRadius: theme.radius.lg,
       borderWidth: 1,
       borderColor: theme.color.border,
-      backgroundColor: theme.color.surfaceInset,
+      backgroundColor: theme.color.surface,
     },
-    chipSelected: { borderColor: theme.color.brand, backgroundColor: theme.accent.blue.bg },
-    name: { ...theme.type.bodySmall, color: theme.color.ink },
+    cardSelected: { borderColor: theme.color.brand, borderWidth: 1.5, backgroundColor: theme.accent.blue.bg },
+    radio: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: theme.color.borderStrong,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    radioSelected: { borderColor: theme.color.brand, backgroundColor: theme.color.brand },
+    body: { flex: 1, gap: 2 },
+    name: { ...theme.type.body, fontWeight: '500', color: theme.color.ink },
     nameSelected: { fontWeight: '600', color: theme.color.brandText },
-    detail: { ...theme.type.bodySmall, fontSize: 12, color: theme.color.inkMuted },
+    detail: { ...theme.type.label, fontSize: 12, color: theme.color.inkMuted },
   });

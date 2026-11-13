@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -23,19 +23,23 @@ import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
+  Avatar,
   Button,
   Card,
+  DateBadge,
   Divider,
   ErrorNotice,
   IconButton,
-  Label,
+  IconWell,
   Loading,
   Screen,
+  SectionHeader,
   SegmentedControl,
   Tag,
   screenPadding,
 } from '../../src/components/ui';
-import { Reveal } from '../../src/components/motion';
+import { Icon, type IconName } from '../../src/components/icons';
+import { PressableScale, Reveal } from '../../src/components/motion';
 import {
   GroupStatusTag,
   BatchResponseReview,
@@ -44,7 +48,7 @@ import {
 } from '../../src/components/AssignmentResponses';
 import { groupStatus, mergeTimes, planResponsibilities } from '../../src/lib/schedule-groups';
 import { useAssignmentResponses } from '../../src/lib/useAssignmentResponses';
-import { type Theme } from '../../src/lib/theme';
+import { type Accent, type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { useFormatters } from '../../src/i18n';
 import { PlanTeams } from '../../src/components/PlanTeams';
@@ -299,48 +303,55 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
   if (!detail) return null;
 
   const isPast = new Date(detail.service_date).getTime() < Date.now();
+  const sectionGap = { gap: theme.space.xl };
 
   return (
     <Screen>
       <Stack.Screen options={{ title: detail.title }} />
-      <ScrollView contentContainerStyle={screenPadding(theme)}>
+      <ScrollView contentContainerStyle={[screenPadding(theme), sectionGap]}>
         <Reveal>
           <View style={styles.hero}>
             <View style={styles.heroTop}>
-              <Text style={styles.heroDate}>
-                {format.dateTime(detail.service_date)}
-              </Text>
-              <IconButton
-                name="chevronLeft"
-                accessibilityLabel={t('header.previousPlan')}
-                disabled={!neighbours.data?.previous}
-                onPress={() => neighbours.data?.previous && openPlan(neighbours.data.previous)}
-              />
-              <IconButton
-                name="chevronRight"
-                accessibilityLabel={t('header.nextPlan')}
-                disabled={!neighbours.data?.next}
-                onPress={() => neighbours.data?.next && openPlan(neighbours.data.next)}
+              <DateBadge date={detail.service_date} muted={isPast} />
+              <View style={styles.heroHeading}>
+                <View style={styles.heroTags}>
+                  <Tag label={t(`common:planStatus.${detail.status}`)} accent={theme.accent[PLAN_STATUS_ACCENTS[detail.status]]} />
+                  {detail.service_type ? (
+                    <Text style={styles.heroKind} numberOfLines={1}>
+                      {t(`plansPage.serviceTypeRecurrence.${detail.service_type.recurrence}`, { name: detail.service_type.name })}
+                    </Text>
+                  ) : null}
+                </View>
+                <MetaLine icon="clock" text={format.dateTime(detail.service_date)} />
+              </View>
+              <View style={styles.neighbours}>
+                <IconButton
+                  name="chevronLeft"
+                  accessibilityLabel={t('header.previousPlan')}
+                  disabled={!neighbours.data?.previous}
+                  onPress={() => neighbours.data?.previous && openPlan(neighbours.data.previous)}
+                />
+                <IconButton
+                  name="chevronRight"
+                  accessibilityLabel={t('header.nextPlan')}
+                  disabled={!neighbours.data?.next}
+                  onPress={() => neighbours.data?.next && openPlan(neighbours.data.next)}
+                />
+              </View>
+            </View>
+
+            <Text accessibilityRole="header" style={styles.heroTitle}>{detail.title}</Text>
+
+            <View style={styles.metaLines}>
+              {detail.location ? <MetaLine icon="mapPin" text={detail.location} /> : null}
+              <MetaLine
+                icon="music"
+                text={[
+                  t('mobilePlan.programmed', { duration: formatDuration(detail.total_length_seconds) }),
+                  t('common:count.songs', { count: detail.counts.songs }),
+                ].join('  ·  ')}
               />
             </View>
-            <View style={styles.heroTags}>
-              <Tag label={t(`common:planStatus.${detail.status}`)} accent={theme.accent[PLAN_STATUS_ACCENTS[detail.status]]} />
-              {detail.service_type ? (
-                <Text style={styles.heroMeta}>
-                  {t(`plansPage.serviceTypeRecurrence.${detail.service_type.recurrence}`, { name: detail.service_type.name })}
-                </Text>
-              ) : null}
-            </View>
-            <Text style={styles.heroTitle}>{detail.title}</Text>
-            <Text style={styles.heroMeta}>
-              {[
-                detail.location,
-                t('mobilePlan.programmed', { duration: formatDuration(detail.total_length_seconds) }),
-                t('common:count.songs', { count: detail.counts.songs }),
-              ]
-                .filter(Boolean)
-                .join('  ·  ')}
-            </Text>
 
             {detail.times.length ? (
               <View style={styles.times}>
@@ -353,75 +364,83 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                 ))}
               </View>
             ) : null}
-            <View style={styles.orderActions}>
-                {canEditPlan ? (
-                  <Button
-                    title={t('mobileTimes.editTimes')}
-                    icon="clock"
-                    variant="secondary"
-                    onPress={() => router.push({ pathname: '/plan/times/[id]', params: { id: detail.id } })}
-                  />
-                ) : null}
-                {canTakeAttendance && detail.times.length ? (
-                  <Button
-                    title={t('reports:mobileAttendance.open')}
-                    icon="check"
-                    variant="secondary"
-                    onPress={() => router.push({ pathname: '/plan/attendance/[id]', params: { id: detail.id } })}
-                  />
-                ) : null}
-                {/* MOB-018: the website's "Message people" — the same schedulers. */}
-                {canTakeAttendance ? (
-                  <Button
-                    title={t('planDetail.messagePeople')}
-                    icon="chat"
-                    variant="secondary"
-                    onPress={() => router.push({ pathname: '/messages/compose', params: { planId: detail.id } })}
-                  />
-                ) : null}
-                {/* MOB-022: this plan's day in the schedule report, shared on purpose (schedulers only). */}
-                {canSchedulePlan ? (
-                  <Button
-                    title={t('reports:mobileReport.planButton')}
-                    icon="document"
-                    variant="secondary"
-                    onPress={() =>
-                      router.push({
-                        pathname: '/schedule-report',
-                        params: {
-                          date: detail.service_date,
-                          ...(detail.service_type_id ? { serviceTypeId: detail.service_type_id } : {}),
-                        },
-                      })}
-                  />
-                ) : null}
-                {/* MOB-023: the website's "Live" — every member follows; plan editors control. */}
-                <Button
-                  title={t('planDetail.live')}
-                  icon="clock"
-                  variant="secondary"
-                  onPress={() => router.push({ pathname: '/plan/live/[id]', params: { id: detail.id } })}
-                />
-                {/* MOB-019: the website's "Plan chat"; the server decides who takes part. */}
-                <Button
-                  title={t('messages:mobileChat.planChat')}
-                  icon="chat"
-                  variant="secondary"
-                  loading={openChat.isPending}
-                  onPress={() => openChat.mutate()}
-                />
-              </View>
-              {openChat.error ? (
-                <ErrorNotice error={openChat.error instanceof ApiError && openChat.error.status === 404 ? PLAN_CHAT_RESTRICTED : openChat.error} />
-              ) : null}
           </View>
         </Reveal>
 
+        <View style={styles.section}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.actionsScroller}
+            contentContainerStyle={styles.actionsRow}
+          >
+            {/* MOB-023: the website's "Live" — every member follows; plan editors control. */}
+            <QuickAction
+              icon="clock"
+              accent={theme.accent.red}
+              title={t('planDetail.live')}
+              onPress={() => router.push({ pathname: '/plan/live/[id]', params: { id: detail.id } })}
+            />
+            {/* MOB-019: the website's "Plan chat"; the server decides who takes part. */}
+            <QuickAction
+              icon="chat"
+              accent={theme.accent.blue}
+              title={t('messages:mobileChat.planChat')}
+              loading={openChat.isPending}
+              onPress={() => openChat.mutate()}
+            />
+            {canEditPlan ? (
+              <QuickAction
+                icon="schedule"
+                accent={theme.accent.yellow}
+                title={t('mobileTimes.editTimes')}
+                onPress={() => router.push({ pathname: '/plan/times/[id]', params: { id: detail.id } })}
+              />
+            ) : null}
+            {canTakeAttendance && detail.times.length ? (
+              <QuickAction
+                icon="check"
+                accent={theme.accent.green}
+                title={t('reports:mobileAttendance.open')}
+                onPress={() => router.push({ pathname: '/plan/attendance/[id]', params: { id: detail.id } })}
+              />
+            ) : null}
+            {/* MOB-018: the website's "Message people" — the same schedulers. */}
+            {canTakeAttendance ? (
+              <QuickAction
+                icon="mail"
+                accent={theme.accent.blue}
+                title={t('planDetail.messagePeople')}
+                onPress={() => router.push({ pathname: '/messages/compose', params: { planId: detail.id } })}
+              />
+            ) : null}
+            {/* MOB-022: this plan's day in the schedule report, shared on purpose (schedulers only). */}
+            {canSchedulePlan ? (
+              <QuickAction
+                icon="document"
+                accent={theme.accent.neutral}
+                title={t('reports:mobileReport.planButton')}
+                onPress={() =>
+                  router.push({
+                    pathname: '/schedule-report',
+                    params: {
+                      date: detail.service_date,
+                      ...(detail.service_type_id ? { serviceTypeId: detail.service_type_id } : {}),
+                    },
+                  })}
+              />
+            ) : null}
+          </ScrollView>
+          {openChat.error ? (
+            <ErrorNotice error={openChat.error instanceof ApiError && openChat.error.status === 404 ? PLAN_CHAT_RESTRICTED : openChat.error} />
+          ) : null}
+        </View>
+
         {mine.length ? (
-          <Reveal index={1}>
+          <Reveal index={1} style={styles.section}>
+            <SectionHeader title={t('mobilePlan.yourPositions', { count: mine.length })} count={mine.length} />
             <Card>
-              <View style={styles.mineHeader}>
-                <Label>{t('mobilePlan.yourPositions', { count: mine.length })}</Label>
+              <View style={styles.cardTop}>
                 <GroupStatusTag status={groupStatus(mine.map((item) => item.scopeStatus))} />
               </View>
               <ScheduleTimes times={myTimes} responsibilities={mine} />
@@ -433,23 +452,26 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
         ) : null}
 
         {prepared.length ? (
-          <Reveal index={2}>
+          <Reveal index={2} style={styles.section}>
+            <SectionHeader title={t('mobilePlan.preparedRequests')} count={prepared.length} />
             <Card>
-              <Label>{t('mobilePlan.preparedRequests')}</Label>
               {releasePreview ? (
                 <View style={styles.releaseReview}>
                   <Text style={styles.muted}>{t('mobilePlan.releaseReviewHint')}</Text>
-                  {releasePreview.assignments.map((assignment) => (
-                    <View key={assignment.assignment_id} style={styles.releaseItem}>
-                      <Text style={styles.personName}>{assignment.person_name}</Text>
-                      <Text style={styles.personRole}>
-                        {[assignment.team_name, assignment.position_name].filter(Boolean).join(' — ')}
-                      </Text>
-                      {assignment.times.map((time) => (
-                        <Text key={time.id} style={styles.muted}>
-                          {t('mobilePlan.timeTag', { name: time.name ?? t(`timeKind.${time.kind}`), dateTime: format.dateTime(time.starts_at) })}
+                  {releasePreview.assignments.map((assignment, index) => (
+                    <View key={assignment.assignment_id} style={[styles.releaseItem, index > 0 && styles.releaseItemDivided]}>
+                      <Avatar name={assignment.person_name} size={32} />
+                      <View style={styles.flex}>
+                        <Text style={styles.personName}>{assignment.person_name}</Text>
+                        <Text style={styles.personRole}>
+                          {[assignment.team_name, assignment.position_name].filter(Boolean).join(' — ')}
                         </Text>
-                      ))}
+                        {assignment.times.map((time) => (
+                          <Text key={time.id} style={styles.muted}>
+                            {t('mobilePlan.timeTag', { name: time.name ?? t(`timeKind.${time.kind}`), dateTime: format.dateTime(time.starts_at) })}
+                          </Text>
+                        ))}
+                      </View>
                     </View>
                   ))}
                   <View style={styles.releaseActions}>
@@ -458,17 +480,21 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                       variant="secondary"
                       disabled={release.isPending}
                       onPress={() => setReleasePreview(null)}
+                      style={styles.grow}
                     />
                     <Button
                       title={t('mobilePlan.releaseAndNotify')}
+                      icon="bell"
                       loading={release.isPending}
                       onPress={() => release.mutate(releasePreview)}
+                      style={styles.grow}
                     />
                   </View>
                 </View>
               ) : (
                 <Button
                   title={t('mobilePlan.reviewAndRelease', { count: prepared.length })}
+                  icon="people"
                   variant="secondary"
                   loading={previewRelease.isPending}
                   onPress={() => previewRelease.mutate()}
@@ -479,164 +505,255 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
           </Reveal>
         ) : null}
 
-        <SegmentedControl<PlanView>
-          options={[
-            { value: 'order', label: t('tabs.order') },
-            { value: 'teams', label: t('tabs.teams') },
-            { value: 'files', label: t('tabs.files') },
-          ]}
-          value={view}
-          onChange={setView}
-        />
+        <View style={styles.section}>
+          <SegmentedControl<PlanView>
+            options={[
+              { value: 'order', label: t('tabs.order') },
+              { value: 'teams', label: t('tabs.teams') },
+              { value: 'files', label: t('tabs.files') },
+            ]}
+            value={view}
+            onChange={setView}
+          />
 
-        {view === 'order' ? (
-        <Reveal index={prepared.length ? 3 : 2}>
-          <Card>
-            <View style={styles.mineHeader}>
-              <Label>{t('mobilePlan.orderOfService')}</Label>
-              {detail.items.length ? (
-                <Button
-                  variant="quiet"
-                  icon="music"
-                  title={t('mobilePlan.rehearse')}
-                  onPress={() => router.push({ pathname: '/plan/rehearse/[id]', params: { id: detail.id } })}
-                />
-              ) : null}
-            </View>
-            {canEditPlan ? (
-              <View style={styles.orderActions}>
-                <Button
-                  title={t('orderTab.addItem')}
-                  icon="plus"
-                  variant="secondary"
-                  onPress={() => router.push({ pathname: '/plan/add-item/[id]', params: { id: detail.id } })}
-                />
-                <Button
-                  title={t('planDetail.applyTemplate')}
-                  variant="secondary"
-                  onPress={() => router.push({ pathname: '/plan/apply-template/[id]', params: { id: detail.id } })}
-                />
-              </View>
-            ) : null}
-            {orderOutcome === 'stale' ? (
-              <Text accessibilityRole="alert" style={styles.warning}>{t('planDetail.orderStale')}</Text>
-            ) : orderOutcome === 'uncertain' ? (
-              <Text accessibilityRole="alert" style={styles.warning}>{t('mobileOrder.uncertain')}</Text>
-            ) : (
-              <ErrorNotice error={orderError} />
-            )}
-            <PlanOrder
-              plan={detail}
-              schedule={schedule}
-              timeZone={timeZone}
-              serviceTimes={serviceTimes}
-              selectedTimeId={selectedTime?.id ?? null}
-              onSelectTime={setTimeId}
-              positionNames={positionNames}
-              canEdit={canEditPlan}
-              busy={orderBusy}
-              onEdit={(item) => router.push({ pathname: '/plan/edit-item/[id]', params: { id: detail.id, itemId: item.id } })}
-              onMove={moveItem}
-              onRemove={confirmRemove}
-              onMedia={(item) => router.push({ pathname: '/plan/media/[id]', params: { id: detail.id, itemId: item.id } })}
-              onOpenMedia={(mediaId) => router.push({ pathname: '/media/[id]', params: { id: mediaId } })}
-              onOpenSong={(item) =>
-                item.song &&
-                router.push({ pathname: '/song/[id]', params: { id: item.song.id, planId: detail.id, itemId: item.id } })}
-              noteCounts={noteCounts}
-              onDiscuss={(item) => router.push({ pathname: '/plan/item-notes/[id]', params: { id: detail.id, itemId: item.id } })}
-            />
-          </Card>
-        </Reveal>
-        ) : null}
-
-        {view === 'teams' ? (
-          <Reveal index={3}>
-            {orgTeams.error ? <ErrorNotice error={orgTeams.error} /> : null}
-            {orgTeams.isLoading ? (
-              <Loading />
-            ) : (
-              <PlanTeams
-                teams={planTeams}
-                canScheduleTeam={canScheduleTeam}
-                canEditPlan={canEditPlan}
-                editingNeeds={editingNeeds}
-                onEditingNeedsChange={setEditingNeeds}
-                onNeedChange={(positionId, needed) => setNeed.mutate({ positionId, needed })}
-                savingPositionId={setNeed.isPending ? (setNeed.variables?.positionId ?? null) : null}
-                showAllTeams={showAllTeams}
-                onToggleAllTeams={() => setShowAllTeams((value) => !value)}
-                onAddPeople={() => router.push({ pathname: '/plan/schedule/[id]', params: { id: detail.id } })}
-                onOpenPositions={() => router.push({ pathname: '/opportunities', params: { planId: detail.id } })}
+          {view === 'order' ? (
+            <Reveal index={prepared.length ? 3 : 2} style={styles.section}>
+              <SectionHeader
+                title={t('mobilePlan.orderOfService')}
+                count={detail.counts.items}
+                actionLabel={detail.items.length ? t('mobilePlan.rehearse') : undefined}
+                onAction={detail.items.length
+                  ? () => router.push({ pathname: '/plan/rehearse/[id]', params: { id: detail.id } })
+                  : undefined}
               />
-            )}
-            <ErrorNotice error={setNeed.error} />
-            {canSchedulePlan ? <PlanDeliveryCard planId={detail.id} /> : null}
-            {canEditPlan || canSchedulePlan ? <PlanReminderPolicyCard serviceTypeId={detail.service_type_id} /> : null}
-          </Reveal>
-        ) : null}
+              {canEditPlan ? (
+                <View style={styles.editorActions}>
+                  <Button
+                    title={t('orderTab.addItem')}
+                    icon="plus"
+                    variant="secondary"
+                    style={styles.grow}
+                    onPress={() => router.push({ pathname: '/plan/add-item/[id]', params: { id: detail.id } })}
+                  />
+                  <Button
+                    title={t('planDetail.applyTemplate')}
+                    icon="document"
+                    variant="secondary"
+                    style={styles.grow}
+                    onPress={() => router.push({ pathname: '/plan/apply-template/[id]', params: { id: detail.id } })}
+                  />
+                </View>
+              ) : null}
+              {orderOutcome === 'stale' ? (
+                <Notice text={t('planDetail.orderStale')} />
+              ) : orderOutcome === 'uncertain' ? (
+                <Notice text={t('mobileOrder.uncertain')} />
+              ) : (
+                <ErrorNotice error={orderError} />
+              )}
+              <Card>
+                <PlanOrder
+                  plan={detail}
+                  schedule={schedule}
+                  timeZone={timeZone}
+                  serviceTimes={serviceTimes}
+                  selectedTimeId={selectedTime?.id ?? null}
+                  onSelectTime={setTimeId}
+                  positionNames={positionNames}
+                  canEdit={canEditPlan}
+                  busy={orderBusy}
+                  onEdit={(item) => router.push({ pathname: '/plan/edit-item/[id]', params: { id: detail.id, itemId: item.id } })}
+                  onMove={moveItem}
+                  onRemove={confirmRemove}
+                  onMedia={(item) => router.push({ pathname: '/plan/media/[id]', params: { id: detail.id, itemId: item.id } })}
+                  onOpenMedia={(mediaId) => router.push({ pathname: '/media/[id]', params: { id: mediaId } })}
+                  onOpenSong={(item) =>
+                    item.song &&
+                    router.push({ pathname: '/song/[id]', params: { id: item.song.id, planId: detail.id, itemId: item.id } })}
+                  noteCounts={noteCounts}
+                  onDiscuss={(item) => router.push({ pathname: '/plan/item-notes/[id]', params: { id: detail.id, itemId: item.id } })}
+                />
+              </Card>
+            </Reveal>
+          ) : null}
 
-        {view === 'files' ? (
-          <Reveal index={3}>
-            <PlanFiles plan={detail} />
-          </Reveal>
-        ) : null}
+          {view === 'teams' ? (
+            <Reveal index={3} style={styles.section}>
+              <SectionHeader title={t('tabs.teams')} count={orgTeams.isLoading ? undefined : planTeams.length} />
+              {orgTeams.error ? <ErrorNotice error={orgTeams.error} /> : null}
+              {orgTeams.isLoading ? (
+                <Loading />
+              ) : (
+                <PlanTeams
+                  teams={planTeams}
+                  canScheduleTeam={canScheduleTeam}
+                  canEditPlan={canEditPlan}
+                  editingNeeds={editingNeeds}
+                  onEditingNeedsChange={setEditingNeeds}
+                  onNeedChange={(positionId, needed) => setNeed.mutate({ positionId, needed })}
+                  savingPositionId={setNeed.isPending ? (setNeed.variables?.positionId ?? null) : null}
+                  showAllTeams={showAllTeams}
+                  onToggleAllTeams={() => setShowAllTeams((value) => !value)}
+                  onAddPeople={() => router.push({ pathname: '/plan/schedule/[id]', params: { id: detail.id } })}
+                  onOpenPositions={() => router.push({ pathname: '/opportunities', params: { planId: detail.id } })}
+                />
+              )}
+              <ErrorNotice error={setNeed.error} />
+              {canSchedulePlan ? <PlanDeliveryCard planId={detail.id} /> : null}
+              {canEditPlan || canSchedulePlan ? <PlanReminderPolicyCard serviceTypeId={detail.service_type_id} /> : null}
+            </Reveal>
+          ) : null}
+
+          {view === 'files' ? (
+            <Reveal index={3}>
+              <PlanFiles plan={detail} />
+            </Reveal>
+          ) : null}
+        </View>
 
         <Reveal index={4}>
-          <Card>
-            <PlanNotesSection
-              notes={planLevelNotes}
-              categories={notes.data?.categories ?? []}
-              teams={noteTeams}
-              canEdit={canEditPlan && (notes.data?.can_edit ?? false)}
-              loading={notes.isLoading}
-              error={notes.data ? null : notes.error}
-              simpleNote={detail.notes}
-              onRetry={() => void notes.refetch()}
-              onAdd={() => router.push({ pathname: '/plan/note/[id]', params: { id: detail.id } })}
-              onEdit={(note) => router.push({ pathname: '/plan/note/[id]', params: { id: detail.id, noteId: note.id } })}
-            />
-          </Card>
+          <PlanNotesSection
+            notes={planLevelNotes}
+            categories={notes.data?.categories ?? []}
+            teams={noteTeams}
+            canEdit={canEditPlan && (notes.data?.can_edit ?? false)}
+            loading={notes.isLoading}
+            error={notes.data ? null : notes.error}
+            simpleNote={detail.notes}
+            onRetry={() => void notes.refetch()}
+            onAdd={() => router.push({ pathname: '/plan/note/[id]', params: { id: detail.id } })}
+            onEdit={(note) => router.push({ pathname: '/plan/note/[id]', params: { id: detail.id, noteId: note.id } })}
+          />
         </Reveal>
       </ScrollView>
     </Screen>
   );
 }
 
+interface MetaLineProps {
+  icon: IconName;
+  text: string;
+}
+
+/** One line of hero metadata with a small leading glyph. */
+const MetaLine = ({ icon, text }: MetaLineProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.metaLine}>
+      <Icon name={icon} size={15} color={theme.color.inkFaint} />
+      <Text style={styles.metaText}>{text}</Text>
+    </View>
+  );
+};
+
+interface QuickActionProps {
+  icon: IconName;
+  accent: Accent;
+  title: string;
+  onPress: () => void;
+  loading?: boolean;
+}
+
+/** A tile in the plan's quick-action row: icon well over a short label. */
+const QuickAction = ({ icon, accent, title, onPress, loading = false }: QuickActionProps) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <PressableScale
+      onPress={onPress}
+      disabled={loading}
+      accessibilityLabel={title}
+      accessibilityState={{ busy: loading }}
+      pressedOpacity={0.6}
+      style={styles.quickAction}
+    >
+      {loading ? (
+        <View style={styles.quickActionSpinner}>
+          <ActivityIndicator size="small" color={accent.fg} />
+        </View>
+      ) : (
+        <IconWell name={icon} accent={accent} size={38} />
+      )}
+      <Text style={styles.quickActionLabel} numberOfLines={2} maxFontSizeMultiplier={1.4}>{title}</Text>
+    </PressableScale>
+  );
+};
+
+interface NoticeProps {
+  text: string;
+}
+
+/** A warning about the order that is not an error (stale or uncertain write). */
+const Notice = ({ text }: NoticeProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View accessibilityRole="alert" style={styles.warning}>
+      <Icon name="alert" size={17} color={theme.accent.yellow.fg} />
+      <Text style={styles.warningText}>{text}</Text>
+    </View>
+  );
+};
+
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
+    grow: { flexGrow: 1 },
     errorWrap: { padding: theme.space.xl, gap: theme.space.md },
+    section: { gap: theme.space.md },
 
-    hero: { gap: theme.space.sm },
-    heroTop: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    heroDate: { ...theme.type.label, color: theme.color.inkMuted, flex: 1 },
-    heroTags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },
+    hero: { gap: theme.space.md, paddingTop: theme.space.xs },
+    heroTop: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    heroHeading: { flex: 1, gap: 6 },
+    heroTags: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    heroKind: { ...theme.type.label, color: theme.color.inkMuted, flexShrink: 1 },
+    neighbours: { flexDirection: 'row', gap: theme.space.xs },
     heroTitle: { ...theme.type.display, color: theme.color.ink },
-    heroMeta: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-    times: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm, marginTop: theme.space.md },
+    metaLines: { gap: 6 },
+    metaLine: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    metaText: { ...theme.type.bodySmall, color: theme.color.inkMuted, flexShrink: 1 },
+    times: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
 
-    mineHeader: {
-      flexDirection: 'row',
+    actionsScroller: { marginHorizontal: -theme.space.lg },
+    actionsRow: { paddingHorizontal: theme.space.lg, gap: theme.space.sm },
+    quickAction: {
+      width: 92,
+      minHeight: 92,
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: theme.space.md,
+      gap: theme.space.sm,
+      paddingVertical: theme.space.md,
+      paddingHorizontal: theme.space.xs,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      backgroundColor: theme.color.surface,
     },
+    quickActionSpinner: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+    quickActionLabel: { ...theme.type.label, fontSize: 12, lineHeight: 16, color: theme.color.ink, textAlign: 'center' },
 
-    orderActions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' },
+    editorActions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+
     warning: {
-      ...theme.type.bodySmall,
-      color: theme.accent.yellow.fg,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: theme.space.sm,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
+    warningText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg, flex: 1 },
 
-    personName: { ...theme.type.body, color: theme.color.ink },
+    personName: { ...theme.type.body, fontWeight: '600', color: theme.color.ink },
     personRole: { ...theme.type.bodySmall, color: theme.color.inkMuted },
 
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     releaseReview: { gap: theme.space.md },
-    releaseItem: { gap: theme.space.xs },
-    releaseActions: { flexDirection: 'row', gap: theme.space.sm },
+    releaseItem: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md, paddingTop: theme.space.xs },
+    releaseItemDivided: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.color.border,
+      paddingTop: theme.space.md,
+    },
+    releaseActions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
   });

@@ -12,6 +12,7 @@ import { api } from '../../lib/api';
 import { keys, useRotations } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Badge, Button, ErrorNotice, Loading } from '../ui';
+import { Icon } from '../icons';
 import { useFormatters } from '../../i18n';
 
 export interface RotationMember {
@@ -96,25 +97,25 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
   const nameOf = (personId: string | null) => members.find((member) => member.person_id === personId)?.name ?? t('rotations.formerMember');
 
   return (
-    <section className="card space-y-4 p-4" aria-label={t('rotations.panelLabel', { team: team.name })}>
+    <section className="card space-y-5 p-4 sm:p-5" aria-label={t('rotations.panelLabel', { team: team.name })}>
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="mr-auto font-semibold">{t('rotations.heading', { team: team.name })}</h3>
+        <h3 className="mr-auto w-full font-semibold text-slate-900 sm:w-auto dark:text-white">{t('rotations.heading', { team: team.name })}</h3>
         {(rotations.data ?? []).map((rotation) => (
-          <Button key={rotation.id} variant={draft?.id === rotation.id ? 'primary' : 'secondary'}
+          <Button key={rotation.id} size="sm" variant={draft?.id === rotation.id ? 'primary' : 'secondary'}
             onClick={() => { setDraft(toDraft(rotation)); setPreview(null); }}>{rotation.name}</Button>
         ))}
-        <Button variant="secondary" onClick={() => { setDraft(blankDraft()); setPreview(null); }}>{t('rotations.newRotation')}</Button>
+        <Button variant="secondary" size="sm" icon="plus" onClick={() => { setDraft(blankDraft()); setPreview(null); }}>{t('rotations.newRotation')}</Button>
       </div>
       {rotations.isLoading && <Loading />}
       <ErrorNotice error={rotations.error ?? save.error ?? archive.error ?? loadPreview.error} />
       {!draft && !rotations.isLoading && (
-        <p className="text-sm text-slate-500">
+        <p className="surface-inset px-3 py-3 text-sm text-slate-500 dark:text-slate-400">
           {t('rotations.intro')}
         </p>
       )}
       {draft && (
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); save.mutate(draft); }}>
-          <div className="grid gap-3 md:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="field">{t('rotations.name')}<input className="input" required maxLength={80} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
             <label className="field">{t('rotations.cycleWeeks')}
               <select className="input" value={draft.cycle_weeks} onChange={(e) => {
@@ -130,13 +131,13 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
               </select>
             </label>
           </div>
-          <div className="overflow-x-auto">
+          <div className="scrollbar-thin overflow-x-auto rounded-xl border border-app-border">
             <table className="min-w-full text-sm">
-              <thead><tr><th className="p-2 text-left">{t('rotations.position')}</th>{Array.from({ length: draft.cycle_weeks }, (_, week) => <th key={week} className="p-2 text-left">{t('rotations.week', { number: week + 1 })}</th>)}</tr></thead>
+              <thead><tr className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-900/50 dark:text-slate-400"><th className="p-2 text-left font-semibold">{t('rotations.position')}</th>{Array.from({ length: draft.cycle_weeks }, (_, week) => <th key={week} className="min-w-40 p-2 text-left font-semibold">{t('rotations.week', { number: week + 1 })}</th>)}</tr></thead>
               <tbody>
                 {team.positions.map((position) => (
-                  <tr key={position.id} className="border-t">
-                    <th className="p-2 text-left font-normal">{position.name}</th>
+                  <tr key={position.id} className="border-t border-app-border">
+                    <th className="p-2 text-left font-medium text-slate-700 dark:text-slate-200">{position.name}</th>
                     {Array.from({ length: draft.cycle_weeks }, (_, week) => (
                       <td key={week} className="p-1">
                         <select aria-label={t('rotations.slotLabel', { position: position.name, number: week + 1 })} className="input" value={slotPerson(week, position.id)}
@@ -154,10 +155,10 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
             </table>
           </div>
           <div className="space-y-2">
-            <p className="text-sm font-medium">{t('rotations.exceptions')}</p>
+            <p className="section-label">{t('rotations.exceptions')}</p>
             {exceptionDates.map((localDate) => (
               <div key={localDate} className="flex flex-wrap items-end gap-2 text-sm">
-                <span className="w-28 pb-2">{calendarDate(localDate, 'medium')}</span>
+                <span className="w-28 pb-2 font-medium text-slate-700 dark:text-slate-200">{calendarDate(localDate, 'medium')}</span>
                 {team.positions.map((position) => {
                   const current = draft.exceptions.find((item) => item.local_date === localDate && item.position_id === position.id);
                   const value = current === undefined ? '__pattern' : current.person_id ?? '__skip';
@@ -175,40 +176,40 @@ export const RotationsPanel = ({ team, members }: RotationsPanelProps) => {
                 <Button type="button" variant="secondary" onClick={() => setDraft({ ...draft, exceptions: draft.exceptions.filter((item) => item.local_date !== localDate) })}>{t('common:actions.remove')}</Button>
               </div>
             ))}
-            <div className="flex items-end gap-2">
+            <div className="flex flex-wrap items-end gap-2">
               <label className="field">{t('rotations.addExceptionDate')}<input className="input" type="date" value={exceptionDate} onChange={(e) => setExceptionDate(e.target.value)} /></label>
-              <Button type="button" variant="secondary" disabled={!exceptionDate || !team.positions.length} onClick={() => {
+              <Button type="button" variant="secondary" icon="plus" disabled={!exceptionDate || !team.positions.length} onClick={() => {
                 const first = team.positions[0];
                 if (first) setException(exceptionDate, first.id, null);
                 setExceptionDate('');
               }}>{t('common:actions.add')}</Button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" loading={save.isPending} disabled={!draft.name.trim()}>{draft.id ? t('rotations.saveVersion') : t('rotations.create')}</Button>
+          <div className="flex flex-wrap gap-2 border-t border-app-border pt-4">
+            <Button type="submit" icon="check" loading={save.isPending} disabled={!draft.name.trim()}>{draft.id ? t('rotations.saveVersion') : t('rotations.create')}</Button>
             {draft.id && <Button type="button" variant="secondary" loading={loadPreview.isPending} onClick={() => loadPreview.mutate(draft.id!)}>{t('rotations.previewWeeks', { count: 12 })}</Button>}
             {draft.id && <Button type="button" variant="secondary" loading={archive.isPending} onClick={() => archive.mutate(draft)}>{t('common:actions.archive')}</Button>}
-            {draft.id && <span className="self-center text-xs text-slate-500">{t('rotations.version', { number: draft.revision })}</span>}
+            {draft.id && <span className="self-center text-xs text-slate-500 dark:text-slate-400">{t('rotations.version', { number: draft.revision })}</span>}
           </div>
         </form>
       )}
       {preview && (
         <div>
-          <p className="mb-2 text-sm font-medium">{t('rotations.previewTitle')}</p>
-          {!preview.length ? <p className="text-sm text-slate-500">{t('rotations.previewEmpty')}</p> : (
-            <ul className="space-y-1 text-sm">
+          <p className="section-label mb-2">{t('rotations.previewTitle')}</p>
+          {!preview.length ? <p className="surface-inset px-3 py-3 text-sm text-slate-500 dark:text-slate-400">{t('rotations.previewEmpty')}</p> : (
+            <ul className="row-list surface-inset text-sm text-slate-700 dark:text-slate-300">
               {preview.map((entry) => (
-                <li key={`${entry.plan_id}:${entry.position_id}:${entry.person_id ?? 'none'}`}>
+                <li key={`${entry.plan_id}:${entry.position_id}:${entry.person_id ?? 'none'}`} className="px-3 py-2">
                   {t('rotations.previewEntry', {
                     date: calendarDate(entry.local_date, 'medium'),
                     plan: entry.plan_title,
                     position: team.positions.find((p) => p.id === entry.position_id)?.name ?? t('rotations.position'),
                     number: entry.week_index + 1,
                   })}{' '}
-                  <span className="font-medium">{entry.person_name ?? (entry.source === 'skipped' ? t('rotations.previewSkipped') : t('rotations.previewNobody'))}</span>
+                  <span className="font-medium text-slate-900 dark:text-white">{entry.person_name ?? (entry.source === 'skipped' ? t('rotations.previewSkipped') : t('rotations.previewNobody'))}</span>
                   {entry.source === 'exception' && <> <Badge tone="bg-sky-50 text-sky-700 ring-sky-600/20">{t('rotations.exceptionBadge')}</Badge></>}
-                  {entry.issue && <span className="ml-1 text-amber-700">⚠ {t(`rotations.issue.${entry.issue}`)}</span>}
-                  <span className="ml-1 text-xs text-slate-400">{dateTime(entry.service_date)}</span>
+                  {entry.issue && <span className="ml-1 inline-flex items-center gap-1 text-amber-700 dark:text-amber-300"><Icon name="alert" className="size-3.5" />{t(`rotations.issue.${entry.issue}`)}</span>}
+                  <span className="ml-1 text-xs text-slate-400 dark:text-slate-500">{dateTime(entry.service_date)}</span>
                 </li>
               ))}
             </ul>

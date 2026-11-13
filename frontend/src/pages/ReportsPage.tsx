@@ -15,7 +15,8 @@ import {
 import { api } from '../lib/api';
 import { keys, useServiceTypes, useTeams } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader, SectionHeader, Tabs } from '../components/ui';
+import { Icon } from '../components/icons';
 import { printDocument } from '../lib/print-document';
 import {
   followUpResponse,
@@ -69,11 +70,11 @@ const downloadText = (text: string, filename: string): void => {
 };
 
 const EXPORT_TONES: Record<ReportExportSummary['status'], string> = {
-  queued: 'bg-slate-100 text-slate-700 ring-slate-500/20',
-  running: 'bg-sky-50 text-sky-700 ring-sky-600/20',
-  ready: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-  failed: 'bg-rose-50 text-rose-700 ring-rose-600/20',
-  expired: 'bg-slate-100 text-slate-500 ring-slate-500/20',
+  queued: 'bg-slate-100 text-slate-700 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600/40',
+  running: 'bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-500/10 dark:text-sky-300 dark:ring-sky-500/25',
+  ready: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25',
+  failed: 'bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/25',
+  expired: 'bg-slate-100 text-slate-500 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-600/40',
 };
 
 /**
@@ -122,7 +123,7 @@ export const ReportsPage = () => {
   });
 
   if (available.length === 0) {
-    return <EmptyState title={t('page.leadersOnlyTitle')} description={t('page.leadersOnlyDescription')} />;
+    return <EmptyState icon="chart" title={t('page.leadersOnlyTitle')} description={t('page.leadersOnlyDescription')} />;
   }
 
   const toggle = <T extends string>(list: T[] | undefined, value: T, on: boolean): T[] =>
@@ -132,23 +133,15 @@ export const ReportsPage = () => {
     <div className="space-y-6">
       <PageHeader title={t('page.title')} subtitle={t('page.subtitle', { timezone })} />
 
-      <div role="tablist" aria-label={t('page.tabsLabel')} className="flex flex-wrap gap-2">
-        {available.map((value) => (
-          <button
-            key={value}
-            role="tab"
-            type="button"
-            aria-selected={kind === value}
-            onClick={() => setKind(value)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium ring-1 ring-inset ${kind === value ? 'bg-brand-600 text-white ring-brand-600' : 'text-slate-600 ring-slate-300'}`}
-          >
-            {reportTitle(value, t)}
-          </button>
-        ))}
-      </div>
+      <Tabs<ReportKind>
+        label={t('page.tabsLabel')}
+        value={kind}
+        onChange={setKind}
+        items={available.map((value) => ({ value, label: reportTitle(value, t) }))}
+      />
 
       <form
-        className="card grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="card grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4"
         onSubmit={(event) => {
           event.preventDefault();
           setFilters({ ...draft });
@@ -190,9 +183,11 @@ export const ReportsPage = () => {
         </label>
         <fieldset className="text-sm">
           <legend className="label">{t('filters.planStatus')}</legend>
+          <div className="flex flex-wrap gap-1.5">
           {PLAN_STATUSES.map((status) => (
-            <label key={status} className="mr-3 inline-flex items-center gap-1">
+            <label key={status} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-slate-700 ring-1 ring-inset ring-slate-200 transition has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 has-[:checked]:ring-brand-200 dark:text-slate-300 dark:ring-slate-700 dark:has-[:checked]:bg-brand-500/15 dark:has-[:checked]:text-brand-200 dark:has-[:checked]:ring-brand-500/30">
               <input
+                className="size-3.5 accent-brand-600"
                 type="checkbox"
                 checked={draft.plan_statuses?.includes(status) ?? false}
                 onChange={(e) => setDraft({ ...draft, plan_statuses: toggle(draft.plan_statuses, status, e.target.checked) })}
@@ -200,12 +195,15 @@ export const ReportsPage = () => {
               {t(`common:planStatus.${status}`)}
             </label>
           ))}
+          </div>
         </fieldset>
         <fieldset className="text-sm">
           <legend className="label">{t('filters.responses')}</legend>
+          <div className="flex flex-wrap gap-1.5">
           {RESPONSES.map(([value, label]) => (
-            <label key={value} className="mr-3 inline-flex items-center gap-1">
+            <label key={value} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-slate-700 ring-1 ring-inset ring-slate-200 transition has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 has-[:checked]:ring-brand-200 dark:text-slate-300 dark:ring-slate-700 dark:has-[:checked]:bg-brand-500/15 dark:has-[:checked]:text-brand-200 dark:has-[:checked]:ring-brand-500/30">
               <input
+                className="size-3.5 accent-brand-600"
                 type="checkbox"
                 checked={draft.assignment_statuses?.includes(value) ?? false}
                 onChange={(e) => setDraft({ ...draft, assignment_statuses: toggle(draft.assignment_statuses, value, e.target.checked) })}
@@ -213,8 +211,9 @@ export const ReportsPage = () => {
               {t(label)}
             </label>
           ))}
+          </div>
         </fieldset>
-        <div className="space-y-1 text-sm">
+        <div className="space-y-2 text-sm text-slate-700 sm:pt-6 dark:text-slate-300">
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -232,13 +231,13 @@ export const ReportsPage = () => {
             {t('filters.includeRehearsals')}
           </label>
         </div>
-        <div className="flex items-end">
-          <Button type="submit">{t('filters.run')}</Button>
+        <div className="flex items-end justify-end">
+          <Button type="submit" icon="chart" className="w-full sm:w-auto">{t('filters.run')}</Button>
         </div>
       </form>
 
       {!filters ? (
-        <EmptyState title={t('results.choose')} />
+        <EmptyState icon="chart" title={t('results.choose')} />
       ) : report.isLoading ? (
         <Loading label={t('results.building')} />
       ) : report.error ? (
@@ -249,7 +248,7 @@ export const ReportsPage = () => {
       ) : report.data && table ? (
         <section className="space-y-4" aria-label={reportTitle(report.data.kind, t)}>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-slate-500">
+            <p className="min-w-0 flex-1 text-xs text-slate-500 dark:text-slate-400">
               {[
                 t('results.generated', {
                   time: formatters.dateTime(report.data.generated_at, { timeZone: report.data.filters.timezone }),
@@ -264,39 +263,42 @@ export const ReportsPage = () => {
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="secondary"
+                size="sm"
                 onClick={() => printDocument(reportPrintHtml(report.data!, localization), reportTitle(report.data!.kind, t))}
               >
                 {t('common:actions.print')}
               </Button>
-              <Button variant="secondary" loading={csv.isPending} onClick={() => csv.mutate()}>{t('results.downloadCsv')}</Button>
-              <Button variant="secondary" loading={queueExport.isPending} onClick={() => queueExport.mutate()}>{t('results.queueExport')}</Button>
+              <Button variant="secondary" size="sm" icon="document" loading={csv.isPending} onClick={() => csv.mutate()}>{t('results.downloadCsv')}</Button>
+              <Button variant="secondary" size="sm" icon="clock" loading={queueExport.isPending} onClick={() => queueExport.mutate()}>{t('results.queueExport')}</Button>
             </div>
           </div>
           <ErrorNotice error={csv.error ?? queueExport.error} />
           <ReportSummary report={report.data} />
           {table.rows.length === 0 ? (
-            <EmptyState title={t('results.noMatches')} />
+            <EmptyState icon="search" title={t('results.noMatches')} />
           ) : (
-            <div className="card overflow-x-auto">
+            <div className="card overflow-hidden">
+              <div className="scrollbar-thin overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500 dark:bg-slate-900">
-                  <tr>{table.columns.map((column) => <th key={column} scope="col" className="px-3 py-2 font-medium">{column}</th>)}</tr>
+                <thead className="border-b border-app-border bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900/60 dark:text-slate-400">
+                  <tr>{table.columns.map((column) => <th key={column} scope="col" className="whitespace-nowrap px-4 py-2.5 font-semibold">{column}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {table.rows.map((row, index) => (
-                    <tr key={index}>{row.map((value, i) => <td key={i} className="whitespace-nowrap px-3 py-1.5">{value}</td>)}</tr>
+                    <tr key={index} className="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">{row.map((value, i) => <td key={i} className="whitespace-nowrap px-4 py-2 text-slate-700 dark:text-slate-200">{value}</td>)}</tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
-          <details className="text-sm">
-            <summary className="cursor-pointer font-medium">{t('results.howCounted')}</summary>
-            <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[max-content_1fr]">
+          <details className="card group p-4 text-sm">
+            <summary className="flex cursor-pointer list-none items-center gap-2 font-medium text-slate-800 dark:text-slate-100 [&::-webkit-details-marker]:hidden"><Icon name="chevronRight" className="size-4 text-slate-400 transition group-open:rotate-90" /><Icon name="info" className="size-4 text-slate-400" />{t('results.howCounted')}</summary>
+            <dl className="mt-3 grid gap-x-4 gap-y-1 sm:grid-cols-[max-content_1fr]">
               {localizedDefinitions(report.data, t).map((d) => (
                 <div key={d.key} className="contents">
                   <dt className="font-medium">{d.label}</dt>
-                  <dd className="text-slate-600">{d.definition}</dd>
+                  <dd className="text-slate-600 dark:text-slate-300">{d.definition}</dd>
                 </div>
               ))}
             </dl>
@@ -304,12 +306,14 @@ export const ReportsPage = () => {
         </section>
       ) : null}
 
-      <section aria-labelledby="exports-heading" className="space-y-2">
-        <h2 id="exports-heading" className="text-base font-semibold">{t('exports.title')}</h2>
-        <p className="text-xs text-slate-500">{t('exports.help')}</p>
+      <section aria-labelledby="exports-heading" className="space-y-3 pt-2">
+        <div>
+          <SectionHeader id="exports-heading" className="!mb-1" title={t('exports.title')} meta={exports.data?.length} />
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('exports.help')}</p>
+        </div>
         {exports.error && <ErrorNotice error={exports.error} />}
-        <ul className="card divide-y divide-slate-100 text-sm dark:divide-slate-800">
-          {(exports.data ?? []).length === 0 && <li className="px-4 py-3 text-slate-500">{t('exports.empty')}</li>}
+        <ul className="card row-list overflow-hidden text-sm">
+          {(exports.data ?? []).length === 0 && <li className="px-4 py-4 text-slate-500 dark:text-slate-400">{t('exports.empty')}</li>}
           {(exports.data ?? []).map((row) => (
             <ExportRow key={row.id} row={row} />
           ))}
@@ -358,16 +362,16 @@ const ReportSummary = ({ report }: ReportSummaryProps) => {
     <div className="space-y-3">
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {entries.map(([key, value]) => (
-          <div key={key} className="card px-3 py-2">
-            <dt className="text-xs text-slate-500">{t(`summary.${key}`)}</dt>
-            <dd className="text-lg font-semibold tabular-nums">{formatters.number(value)}</dd>
+          <div key={key} className="card px-4 py-3">
+            <dt className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{t(`summary.${key}`)}</dt>
+            <dd className="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900 tabular-nums dark:text-white">{formatters.number(value)}</dd>
           </div>
         ))}
       </dl>
       {report.kind === 'staffing' && report.summary.follow_ups.length > 0 && (
-        <div className="card p-4">
-          <h3 className="mb-2 text-sm font-semibold">{t('followUp.title', { total: formatters.number(report.summary.follow_ups.length) })}</h3>
-          <ul className="space-y-1 text-sm">
+        <div className="card p-5">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><Icon name="alert" className="size-4 text-amber-500" />{t('followUp.title', { total: formatters.number(report.summary.follow_ups.length) })}</h3>
+          <ul className="space-y-1 text-sm text-slate-700 dark:text-slate-300">
             {report.summary.follow_ups.slice(0, 50).map((row, index) => (
               <li key={index}>
                 {t('followUp.line', {
@@ -408,8 +412,8 @@ const ExportRow = ({ row }: ExportRowProps) => {
   const status = reportExportStatusAt(row, Date.now());
   const errorKey = reportExportErrorKey(row.error_code);
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
-      <span>
+    <li className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+      <span className="min-w-0 text-slate-700 dark:text-slate-200">
         {t('exports.range', {
           kind: reportTitle(row.kind, t),
           from: formatters.calendarDate(String(row.filters.from), 'medium'),
@@ -423,12 +427,12 @@ const ExportRow = ({ row }: ExportRowProps) => {
       </span>
       <span className="flex gap-2">
         {status === 'ready' && (
-          <Button variant="secondary" loading={download.isPending} onClick={() => download.mutate()}>
+          <Button variant="secondary" size="sm" loading={download.isPending} onClick={() => download.mutate()}>
             {t('common:actions.download')}
           </Button>
         )}
         {canRebuildReportExport(status) && (
-          <Button variant="ghost" loading={retry.isPending} onClick={() => retry.mutate()}>{t('exports.buildAgain')}</Button>
+          <Button variant="ghost" size="sm" loading={retry.isPending} onClick={() => retry.mutate()}>{t('exports.buildAgain')}</Button>
         )}
       </span>
       <ErrorNotice error={download.error ?? retry.error} />

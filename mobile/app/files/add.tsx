@@ -69,7 +69,7 @@ export default function AddFileScreen() {
   if (!owner) {
     return (
       <Screen>
-        <EmptyState title={t('mobileFiles.invalidLink')} description={t('mobileFiles.invalidLinkDescription')} />
+        <EmptyState icon="alert" title={t('mobileFiles.invalidLink')} description={t('mobileFiles.invalidLinkDescription')} />
       </Screen>
     );
   }

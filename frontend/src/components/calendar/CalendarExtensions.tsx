@@ -14,6 +14,7 @@ import { api } from '../../lib/api';
 import { keys, useServiceTypes, useTeams } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Modal } from '../ui';
+import { Icon } from '../icons';
 
 /** Opt-in layers for one team (null = none chosen); the server decides which the viewer may see. */
 export const useCalendarLayers = (query: CalendarLayersRequest | null) => {
@@ -37,20 +38,25 @@ export interface LayerTogglesProps {
 export const LayerToggles = ({ teamId, layers, onChange }: LayerTogglesProps) => {
   const { t } = useTranslation('scheduling');
   return (
-    <fieldset className="flex flex-wrap items-center gap-3 text-sm text-slate-600" disabled={!teamId}>
+    <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600 disabled:opacity-60 dark:text-slate-300" disabled={!teamId}>
       <legend className="sr-only">{t('layers.legend')}</legend>
       {CALENDAR_LAYERS.map((layer) => (
         <label key={layer} className="flex items-center gap-1.5">
           <input
             type="checkbox"
-            className="size-4 rounded border-slate-300"
+            className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
             checked={layers.includes(layer)}
             onChange={(event) => onChange(event.target.checked ? [...layers, layer] : layers.filter((l) => l !== layer))}
           />
           {t(`layers.label.${layer}`)}
         </label>
       ))}
-      {!teamId && <span className="text-xs text-slate-400">{t('layers.chooseTeam')}</span>}
+      {!teamId && (
+        <span className="inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+          <Icon name="info" className="size-3.5" />
+          {t('layers.chooseTeam')}
+        </span>
+      )}
     </fieldset>
   );
 };
@@ -89,19 +95,26 @@ export const ScopedFeedsPanel = () => {
   const revoke = useMutation({ mutationFn: (feedId: string) => api.revokeScopedCalendarFeed(feedId), onSuccess: refresh });
 
   return (
-    <section aria-labelledby="feeds-heading" className="card mt-6 space-y-3 p-4 text-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 id="feeds-heading" className="font-semibold">{t('feeds.heading')}</h2>
-          <p className="text-xs text-slate-500">{t('feeds.help')}</p>
+    <section aria-labelledby="feeds-heading" className="card space-y-4 p-5 text-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-200">
+            <Icon name="calendar" className="size-[18px]" />
+          </span>
+          <div className="min-w-0">
+            <h2 id="feeds-heading" className="font-semibold text-slate-900 dark:text-white">{t('feeds.heading')}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('feeds.help')}</p>
+          </div>
         </div>
-        <Button variant="secondary" onClick={() => setCreating(true)}>{t('feeds.newFeed')}</Button>
+        <Button variant="secondary" size="sm" icon="plus" onClick={() => setCreating(true)}>{t('feeds.newFeed')}</Button>
       </div>
-      <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-        {(feeds.data ?? []).length === 0 && <li className="py-2 text-slate-500">{t('feeds.empty')}</li>}
+      <ul className="row-list">
+        {(feeds.data ?? []).length === 0 && (
+          <li className="surface-inset px-3 py-3 text-center text-slate-500 dark:text-slate-400">{t('feeds.empty')}</li>
+        )}
         {(feeds.data ?? []).map((feed) => (
-          <li key={feed.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-            <span>
+          <li key={feed.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+            <span className="min-w-0 text-slate-700 dark:text-slate-200">
               {[
                 feed.label ?? feed.scope_name ?? t('feeds.fallbackName'),
                 feed.scope_type === 'team' ? t('feeds.scopeTeam') : t('feeds.scopeServiceType'),
@@ -114,8 +127,8 @@ export const ScopedFeedsPanel = () => {
                 .join(' · ')}
             </span>
             <span className="flex gap-2">
-              <Button variant="ghost" onClick={() => rotate.mutate(feed.id)}>{t('feeds.newLink')}</Button>
-              <Button variant="ghost" onClick={() => revoke.mutate(feed.id)}>{t('common:actions.remove')}</Button>
+              <Button variant="ghost" size="sm" onClick={() => rotate.mutate(feed.id)}>{t('feeds.newLink')}</Button>
+              <Button variant="ghost" size="sm" icon="trash" onClick={() => revoke.mutate(feed.id)}>{t('common:actions.remove')}</Button>
             </span>
           </li>
         ))}
@@ -133,7 +146,7 @@ export const ScopedFeedsPanel = () => {
           </>
         }
       >
-        <div className="space-y-3 text-sm">
+        <div className="space-y-4 text-sm">
           <label className="field">
             {t('feeds.scopeLabel')}
             <select
@@ -164,17 +177,18 @@ export const ScopedFeedsPanel = () => {
               </select>
             </label>
           )}
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
             <input
               type="checkbox"
+              className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
               checked={draft.include_rehearsals ?? true}
               onChange={(e) => setDraft({ ...draft, include_rehearsals: e.target.checked })}
             />
             {t('feeds.includeRehearsals')}
           </label>
           {draft.scope_type === 'team' && (
-            <div>
-              <p className="mb-1">{t('feeds.layersHint')}</p>
+            <div className="surface-inset p-3">
+              <p className="mb-2 text-slate-600 dark:text-slate-300">{t('feeds.layersHint')}</p>
               <LayerToggles teamId={draft.team_id ?? ''} layers={draft.layers ?? []} onChange={(layers) => setDraft({ ...draft, layers })} />
             </div>
           )}
@@ -191,7 +205,8 @@ export const ScopedFeedsPanel = () => {
           <div className="space-y-2 text-sm">
             <p>{t('feeds.linkOnce')}</p>
             <input className="input font-mono text-xs" readOnly value={created.url} onFocus={(event) => event.target.select()} aria-label={t('feeds.urlLabel')} />
-            <a className="text-brand-700 underline" href={created.webcal_url}>{t('feeds.openInApp')}</a>
+            <a className="inline-flex items-center gap-1 font-medium text-brand-700 underline dark:text-brand-200" href={created.webcal_url}>
+              <Icon name="calendar" className="size-4" />{t('feeds.openInApp')}</a>
           </div>
         )}
       </Modal>

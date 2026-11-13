@@ -18,9 +18,10 @@ import {
 import { useAuth } from '../src/providers/AuthProvider';
 import { useNotifications } from '../src/providers/NotificationsProvider';
 import { useFormatters } from '../src/i18n';
-import { Button, Card, ErrorNotice, Label, Loading, Meta, Screen, SegmentedControl, screenPadding } from '../src/components/ui';
-import type { Theme } from '../src/lib/theme';
-import { useThemedStyles } from '../src/lib/useTheme';
+import { Button, Card, ErrorNotice, IconWell, Loading, Meta, Screen, SegmentedControl, screenPadding } from '../src/components/ui';
+import type { IconName } from '../src/components/icons';
+import type { Accent, Theme } from '../src/lib/theme';
+import { useTheme, useThemedStyles } from '../src/lib/useTheme';
 
 /**
  * MOB-020: notification settings. Four separate choices, each read back from
@@ -33,6 +34,7 @@ import { useThemedStyles } from '../src/lib/useTheme';
  */
 export default function NotificationSettingsScreen() {
   const { t } = useTranslation(['settings', 'messages', 'common']);
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   return (
@@ -44,7 +46,7 @@ export default function NotificationSettingsScreen() {
         <ReminderSection />
         <ChatSection />
         <Card>
-          <Label>{t('mobileNotifications.other.title')}</Label>
+          <CardHeading icon="info" accent={theme.accent.neutral} title={t('mobileNotifications.other.title')} />
           <Text style={styles.body}>{t('mobileNotifications.other.description')}</Text>
         </Card>
       </ScrollView>
@@ -52,8 +54,26 @@ export default function NotificationSettingsScreen() {
   );
 }
 
+interface CardHeadingProps {
+  icon: IconName;
+  accent: Accent;
+  title: string;
+}
+
+/** A settings card's title with its tinted glyph. */
+const CardHeading = ({ icon, accent, title }: CardHeadingProps) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.heading}>
+      <IconWell name={icon} accent={accent} size={34} />
+      <Text accessibilityRole="header" style={styles.headingText}>{title}</Text>
+    </View>
+  );
+};
+
 const DeviceSection = () => {
   const { t } = useTranslation('settings');
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { push, pushEnabled, registering, registrationError, enablePush, retryRegistration, openDeviceSettings } = useNotifications();
 
@@ -68,7 +88,7 @@ const DeviceSection = () => {
 
   return (
     <Card>
-      <Label>{t('mobileNotifications.device.title')}</Label>
+      <CardHeading icon="bell" accent={theme.accent.blue} title={t('mobileNotifications.device.title')} />
       <Text style={styles.body} accessibilityLiveRegion="polite">{status}</Text>
       {push.recovery === 'request' ? (
         <Button title={t('mobileNotifications.device.turnOn')} loading={registering} onPress={() => void enablePush()} />
@@ -90,6 +110,7 @@ const DeviceSection = () => {
 
 const BadgeSection = () => {
   const { t } = useTranslation('settings');
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { badgePreference, serverShowBadge, setBadgePreference, accountUnread, push, registering, retryRegistration } = useNotifications();
   const sync = badgeSync(badgePreference, serverShowBadge);
@@ -97,7 +118,7 @@ const BadgeSection = () => {
 
   return (
     <Card>
-      <Label>{t('mobileNotifications.badge.title')}</Label>
+      <CardHeading icon="sparkle" accent={theme.accent.yellow} title={t('mobileNotifications.badge.title')} />
       <Text style={styles.body}>{t('mobileNotifications.badge.description')}</Text>
       <SegmentedControl options={options} value={badgePreference} onChange={(value) => void setBadgePreference(value)} />
       {badgePreference === 'unread' ? <Meta>{t('mobileNotifications.badge.currentCount', { count: accountUnread })}</Meta> : null}
@@ -114,6 +135,7 @@ const BadgeSection = () => {
 
 const ReminderSection = () => {
   const { t } = useTranslation('settings');
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const queryClient = useQueryClient();
   const { queryScope, generation, isCurrentGeneration, user, organizationId } = useAuth();
@@ -141,14 +163,14 @@ const ReminderSection = () => {
 
   return (
     <Card>
-      <Label>{t('myReminders.title')}</Label>
+      <CardHeading icon="clock" accent={theme.accent.green} title={t('myReminders.title')} />
       <Text style={styles.body}>{t('myReminders.description')}</Text>
       {organization ? <Meta>{t('mobileNotifications.reminders.organization', { organization: organization.name })}</Meta> : null}
       {preferences.isLoading ? <Loading /> : null}
       {shown ? (
         <View accessibilityLabel={t('myReminders.channels')}>
-          {REMINDER_CHANNELS.map((channel: DeliveryChannel) => (
-            <View key={channel} style={styles.switchRow}>
+          {REMINDER_CHANNELS.map((channel: DeliveryChannel, index: number) => (
+            <View key={channel} style={[styles.switchRow, index > 0 && styles.switchRowDivided]}>
               <Text style={styles.body}>{t(`delivery.channel.${channel}`)}</Text>
               <Switch
                 accessibilityLabel={t('mobileNotifications.reminders.toggle', { channel: t(`delivery.channel.${channel}`) })}
@@ -172,6 +194,7 @@ const ReminderSection = () => {
 const ChatSection = () => {
   const { t } = useTranslation(['settings', 'messages']);
   const { t: tMessages } = useTranslation('messages');
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const format = useFormatters();
@@ -197,16 +220,16 @@ const ChatSection = () => {
 
   return (
     <Card>
-      <Label>{t('mobileNotifications.chat.title')}</Label>
+      <CardHeading icon="chat" accent={theme.accent.blue} title={t('mobileNotifications.chat.title')} />
       <Text style={styles.body}>{t('mobileNotifications.chat.description')}</Text>
       {conversations.isLoading ? <Loading /> : null}
       {conversations.data && conversations.data.length === 0 ? (
         <Meta>{t('mobileNotifications.chat.empty')}</Meta>
       ) : null}
-      {(conversations.data ?? []).map((conversation) => {
+      {(conversations.data ?? []).map((conversation, index) => {
         const title = conversationTitle(conversation, tMessages, format);
         return (
-          <View key={conversation.id} style={styles.switchRow}>
+          <View key={conversation.id} style={[styles.switchRow, index > 0 && styles.switchRowDivided]}>
             <View style={styles.switchLabel}>
               <Text style={styles.body}>{title}</Text>
               {shownMuted(conversation) ? <Meta>{t('messages:chatPage.muted')}</Meta> : null}
@@ -234,6 +257,8 @@ interface MuteRequest {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     content: { ...screenPadding(theme), gap: theme.space.lg, paddingBottom: theme.space.xxl },
+    heading: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    headingText: { ...theme.type.heading, color: theme.color.ink, flex: 1 },
     body: { ...theme.type.body, color: theme.color.ink, flexShrink: 1 },
     warning: { ...theme.type.body, color: theme.accent.yellow.fg },
     switchRow: {
@@ -241,7 +266,9 @@ const makeStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: theme.space.md,
-      minHeight: 44,
+      minHeight: 48,
+      paddingVertical: theme.space.xs,
     },
+    switchRowDivided: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.border },
     switchLabel: { flex: 1 },
   });

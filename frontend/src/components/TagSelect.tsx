@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Icon } from './icons';
 
 export interface TagSelectProps {
   /** The vocabulary offered. Callers pass one of the SONG_* constants. */
@@ -38,7 +39,7 @@ export const TagSelect = ({ options, value, onChange, id, placeholder, optionLab
         className="input flex items-center justify-between text-left"
       >
         <span className={value.length ? '' : 'text-slate-400'}>{label}</span>
-        <span aria-hidden="true" className="text-xs text-slate-400">{open ? '▴' : '▾'}</span>
+        <Icon name="chevronDown" className={`size-4 shrink-0 text-slate-400 transition ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -49,7 +50,7 @@ export const TagSelect = ({ options, value, onChange, id, placeholder, optionLab
             className="fixed inset-0 z-40 cursor-default"
             onClick={() => setOpen(false)}
           />
-          <ul role="listbox" aria-multiselectable="true" className="card absolute z-50 mt-1 max-h-64 w-full overflow-y-auto py-1">
+          <ul role="listbox" aria-multiselectable="true" className="card animate-pop-in absolute z-50 mt-1 max-h-64 w-full overflow-y-auto p-1 shadow-lg shadow-slate-900/10">
             {options.map((option) => (
               <li key={option}>
                 <button
@@ -57,15 +58,15 @@ export const TagSelect = ({ options, value, onChange, id, placeholder, optionLab
                   role="option"
                   aria-selected={value.includes(option)}
                   onClick={() => toggle(option)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   <span
                     aria-hidden="true"
-                    className={`flex size-4 shrink-0 items-center justify-center rounded border text-[10px] text-white ${
-                      value.includes(option) ? 'border-brand-600 bg-brand-600' : 'border-slate-300'
+                    className={`flex size-4 shrink-0 items-center justify-center rounded border text-white ${
+                      value.includes(option) ? 'border-brand-600 bg-brand-600' : 'border-slate-300 dark:border-slate-600'
                     }`}
                   >
-                    {value.includes(option) ? '✓' : ''}
+                    {value.includes(option) && <Icon name="check" className="size-3" strokeWidth={2.5} />}
                   </span>
                   {optionLabel(option)}
                 </button>
@@ -111,16 +112,16 @@ export const TagInput = ({ value, onChange, id, placeholder }: TagInputProps) =>
       {value.map((tag) => (
         <span
           key={tag}
-          className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+          className="inline-flex items-center gap-1 rounded-full bg-slate-100 py-1 pr-1 pl-2.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
         >
           {tag}
           <button
             type="button"
             onClick={() => onChange(value.filter((current) => current !== tag))}
             aria-label={t('tagSelect.remove', { tag })}
-            className="text-slate-400 transition hover:text-rose-600"
+            className="grid size-4 place-items-center rounded-full text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10"
           >
-            ×
+            <Icon name="close" className="size-3" />
           </button>
         </span>
       ))}

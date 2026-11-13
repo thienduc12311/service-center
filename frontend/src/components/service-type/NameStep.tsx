@@ -38,27 +38,27 @@ export const NameStep = ({ value, onChange }: NameStepProps) => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{t('nameStep.title')}</h1>
-        <p className="mt-3 text-slate-600">
+        <h1 className="text-2xl font-semibold tracking-tight text-balance text-slate-900 sm:text-3xl dark:text-white">{t('nameStep.title')}</h1>
+        <p className="mt-3 text-pretty text-slate-600 dark:text-slate-300">
           {t('nameStep.intro')}
         </p>
       </div>
 
       <div>
-        <h2 className="mb-2 text-lg text-slate-700">{t('nameStep.examplesTitle')}</h2>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg bg-slate-50 p-6 sm:grid-cols-3">
+        <h2 className="section-label mb-2.5">{t('nameStep.examplesTitle')}</h2>
+        <div className="surface-inset grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 sm:p-4">
           {NAME_EXAMPLES.map((example) => (
             <button
               key={example}
               type="button"
               onClick={() => onChange({ ...value, name: t(`nameStep.examples.${example}`) })}
-              className="rounded-lg py-1 text-center text-slate-600 transition hover:bg-white hover:text-brand-700"
+              className="rounded-lg px-2 py-1.5 text-center text-sm text-slate-600 transition hover:bg-white hover:text-brand-700 hover:shadow-sm dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-brand-200"
             >
               {t(`nameStep.examples.${example}`)}
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-slate-400">{t('nameStep.examplesHint')}</p>
+        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">{t('nameStep.examplesHint')}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-[1fr_auto]">

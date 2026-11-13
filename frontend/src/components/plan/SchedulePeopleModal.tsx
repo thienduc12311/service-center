@@ -263,7 +263,7 @@ export const SchedulePeopleModal = ({
                     {t('common:actions.add')}
                   </Button>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {t('schedulePeople.planPositionHint', { team: team.name })}
                 </p>
                 {addPlanPosition.error && <ErrorNotice error={addPlanPosition.error} />}
@@ -312,24 +312,24 @@ export const SchedulePeopleModal = ({
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
-          <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-1">
+          <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-app-border p-1">
             {candidates.map((person) => {
               const personId = person.person_id!;
               const onTeam = team?.members.some((m) => m.person_id === personId);
               return (
                 <label
                   key={personId}
-                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-50"
+                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   <input
                     type="checkbox"
                     checked={selected.includes(personId)}
                     onChange={() => toggle(personId)}
-                    className="size-4 rounded border-slate-300"
+                    className="size-4 rounded border-slate-300 dark:border-slate-700"
                   />
                   <Avatar name={person.full_name ?? person.email} url={person.avatar_url} size="sm" />
                   <span className="flex-1 text-sm">{person.full_name ?? person.email}</span>
-                  {!person.has_login && <span className="text-xs text-slate-500">{t('schedulePeople.noLogin')}</span>}
+                  {!person.has_login && <span className="text-xs text-slate-500 dark:text-slate-400">{t('schedulePeople.noLogin')}</span>}
                   {onTeam && <span className="text-xs text-brand-600">{t('schedulePeople.onTeam')}</span>}
                 </label>
               );
@@ -340,13 +340,13 @@ export const SchedulePeopleModal = ({
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
-            className="mt-0.5 size-4 rounded border-slate-300"
+            className="mt-0.5 size-4 rounded border-slate-300 dark:border-slate-700"
             checked={visibility === 'prepared'}
             onChange={(e) => setVisibilityChoice(e.target.checked ? 'prepared' : 'released')}
           />
           <span>
             {t('schedulePeople.preparePrivately')}
-            <span className="block text-xs text-slate-500">
+            <span className="block text-xs text-slate-500 dark:text-slate-400">
               {t('schedulePeople.preparePrivatelyHint')}
             </span>
           </span>
@@ -375,15 +375,15 @@ export const SchedulePeopleModal = ({
             onChange={(e) => setConflictReason(e.target.value)}
           />
         ) : (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('schedulePeople.cannotOverride')}
           </p>
         ))}
 
         {warningsByPerson.size > 0 && (
-          <div role="status" className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 ring-1 ring-slate-300/60">
+          <div role="status" className="surface-inset p-3 text-sm text-slate-700 dark:text-slate-200">
             <p className="font-medium">{t('schedulePeople.preferencesTitle')}</p>
-            <p className="text-xs text-slate-500">{t('schedulePeople.preferencesHint')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('schedulePeople.preferencesHint')}</p>
             <ul className="mt-1 space-y-0.5 text-xs">
               {[...warningsByPerson.entries()].map(([personId, list]) => (
                 <li key={personId}>

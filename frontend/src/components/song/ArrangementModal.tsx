@@ -101,7 +101,7 @@ export const ArrangementModal = ({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="arrangement-key">{t('arrangement.fields.key')}</label>
             <KeySelect
@@ -129,7 +129,7 @@ export const ArrangementModal = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <label className="label" htmlFor="arrangement-length">{t('arrangement.fields.length')}</label>
             <input

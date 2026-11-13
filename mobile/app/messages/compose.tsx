@@ -71,7 +71,7 @@ export default function ComposeMessageScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title }} />
-        <EmptyState title={t('mobileMessages.noAccess')} />
+        <EmptyState icon="mail" title={t('mobileMessages.noAccess')} />
       </Screen>
     );
   }
@@ -95,7 +95,7 @@ export default function ComposeMessageScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title }} />
-        <EmptyState title={t('mobileMessages.noTeams')} />
+        <EmptyState icon="people" title={t('mobileMessages.noTeams')} />
       </Screen>
     );
   }

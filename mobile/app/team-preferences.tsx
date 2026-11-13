@@ -151,7 +151,7 @@ export default function TeamPreferencesScreen() {
     return (
       <Screen>
         <View style={styles.padded}>
-          <EmptyState title={t('home:help.notFoundTitle')} description={t('home:help.notFoundDescription')} />
+          <EmptyState icon="person" title={t('home:help.notFoundTitle')} description={t('home:help.notFoundDescription')} />
         </View>
       </Screen>
     );
@@ -162,7 +162,7 @@ export default function TeamPreferencesScreen() {
     return (
       <Screen>
         <View style={styles.padded}>
-          <EmptyState title={t('preferences.screenTitle')} description={t('preferences.noPerson')} />
+          <EmptyState icon="settings" title={t('preferences.screenTitle')} description={t('preferences.noPerson')} />
         </View>
       </Screen>
     );

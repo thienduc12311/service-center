@@ -33,7 +33,8 @@ import {
   WriteProblem,
   useVocabularyLabel,
 } from '../../../src/components/song/AuthoringParts';
-import { Button, EmptyState, ErrorNotice, Field, Label, Loading, Screen, screenPadding } from '../../../src/components/ui';
+import { Button, Card, EmptyState, ErrorNotice, Field, Label, Loading, Screen, screenPadding } from '../../../src/components/ui';
+import { Icon } from '../../../src/components/icons';
 import type { Theme } from '../../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
 
@@ -73,7 +74,7 @@ export default function EditSongScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('songInfo.title') }} />
-        <EmptyState title={t('mobileAuthoring.noAccess')} />
+        <EmptyState icon="alert" title={t('mobileAuthoring.noAccess')} />
       </Screen>
     );
   }
@@ -178,56 +179,68 @@ const EditSongForm = ({ song }: EditSongFormProps) => {
         {showRestored ? <RestoredDraftNotice onDiscard={discardRestored} /> : null}
         {song.archived_at ? <Text style={styles.muted}>{t('songDetail.archivedSong')}</Text> : null}
         {changedSinceDraft ? (
-          <Text accessibilityRole="alert" style={styles.warning}>{t('mobileAuthoring.changedSinceDraft')}</Text>
+          <View accessibilityRole="alert" style={styles.warning}>
+            <Icon name="alert" size={16} color={theme.accent.yellow.fg} />
+            <Text style={styles.warningText}>{t('mobileAuthoring.changedSinceDraft')}</Text>
+          </View>
         ) : null}
 
-        <Field label={t('songInfo.fields.title')} value={form.title} onChangeText={(value) => set('title', value)} maxLength={200} />
-        <Field
-          label={t('songInfo.fields.ccli')}
-          value={form.ccliNumber}
-          onChangeText={(value) => set('ccliNumber', value)}
-          keyboardType="number-pad"
-          maxLength={40}
-        />
-        <Field label={t('songInfo.fields.authors')} value={form.authors} onChangeText={(value) => set('authors', value)} maxLength={200} />
-        <View style={styles.group}>
-          <Label>{t('songInfo.fields.defaultKey')}</Label>
-          <KeyPicker
-            value={form.defaultKey}
-            onChange={(key) => set('defaultKey', key)}
-            label={t('songInfo.fields.defaultKey')}
-            placeholder={t('songInfo.noDefaultKey')}
-            resetLabel={t('songInfo.noDefaultKey')}
+        <Card>
+          <Field label={t('songInfo.fields.title')} value={form.title} onChangeText={(value) => set('title', value)} maxLength={200} />
+          <Field label={t('songInfo.fields.authors')} value={form.authors} onChangeText={(value) => set('authors', value)} maxLength={200} />
+          <Field
+            label={t('songInfo.fields.ccli')}
+            value={form.ccliNumber}
+            onChangeText={(value) => set('ccliNumber', value)}
+            keyboardType="number-pad"
+            maxLength={40}
           />
-        </View>
-        <Field label={t('songInfo.fields.copyright')} value={form.copyright} onChangeText={(value) => set('copyright', value)} maxLength={300} />
-        <Field
-          label={t('songInfo.fields.administration')}
-          value={form.administration}
-          onChangeText={(value) => set('administration', value)}
-          maxLength={300}
-        />
-        <ChoiceChips
-          label={t('addSong.fields.type')}
-          multiple
-          options={SONG_TYPES.map((value) => ({ value, label: vocabularyLabel(value) }))}
-          values={form.songTypes}
-          onChangeValues={(songTypes) => set('songTypes', songTypes)}
-        />
-        <TagListField label={t('songInfo.fields.themes')} values={form.themes} onChange={(themes) => set('themes', themes)} />
-        <Field
-          label={t('songInfo.fields.notes')}
-          value={form.notes}
-          onChangeText={(value) => set('notes', value)}
-          multiline
-          maxLength={4000}
-          style={styles.notes}
-        />
+          <View style={styles.group}>
+            <Label>{t('songInfo.fields.defaultKey')}</Label>
+            <KeyPicker
+              value={form.defaultKey}
+              onChange={(key) => set('defaultKey', key)}
+              label={t('songInfo.fields.defaultKey')}
+              placeholder={t('songInfo.noDefaultKey')}
+              resetLabel={t('songInfo.noDefaultKey')}
+            />
+          </View>
+        </Card>
+
+        <Card>
+          <Field label={t('songInfo.fields.copyright')} value={form.copyright} onChangeText={(value) => set('copyright', value)} maxLength={300} />
+          <Field
+            label={t('songInfo.fields.administration')}
+            value={form.administration}
+            onChangeText={(value) => set('administration', value)}
+            maxLength={300}
+          />
+        </Card>
+
+        <Card>
+          <ChoiceChips
+            label={t('addSong.fields.type')}
+            multiple
+            options={SONG_TYPES.map((value) => ({ value, label: vocabularyLabel(value) }))}
+            values={form.songTypes}
+            onChangeValues={(songTypes) => set('songTypes', songTypes)}
+          />
+          <TagListField label={t('songInfo.fields.themes')} values={form.themes} onChange={(themes) => set('themes', themes)} />
+          <Field
+            label={t('songInfo.fields.notes')}
+            value={form.notes}
+            onChangeText={(value) => set('notes', value)}
+            multiline
+            maxLength={4000}
+            style={styles.notes}
+          />
+        </Card>
 
         <ErrorNotice error={problem} />
         <WriteProblem error={save.error} outcome={outcome} onLoadLatest={() => void loadLatest()} loadingLatest={loadingLatest} />
         <Button
           title={t('common:actions.saveChanges')}
+          icon="check"
           loading={save.isPending}
           disabled={!dirty || outcome === 'stale' || outcome === 'gone'}
           onPress={submit}
@@ -244,10 +257,12 @@ const makeStyles = (theme: Theme) =>
     notes: { minHeight: 120, textAlignVertical: 'top' },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     warning: {
-      ...theme.type.bodySmall,
-      color: theme.accent.yellow.fg,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: theme.space.sm,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
+    warningText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg, flex: 1 },
   });

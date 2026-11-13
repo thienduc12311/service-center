@@ -2,14 +2,15 @@ import { StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from './motion';
 import { useTranslation } from 'react-i18next';
 import type { AssignmentDetail } from '@service-center/shared';
-import { Avatar, Button, Card, EmptyState, ListRow, Tag } from './ui';
+import { Avatar, Button, Card, EmptyState, IconWell, ListRow, Tag } from './ui';
+import { Icon, type IconName } from './icons';
 import {
   MAX_POSITION_NEED,
   visiblePositions,
   type PlanTeamPositionView,
   type PlanTeamView,
 } from '../lib/plan-teams';
-import { statusAccent, type Theme } from '../lib/theme';
+import { statusAccent, type Accent, type Theme } from '../lib/theme';
 import { useTheme, useThemedStyles } from '../lib/useTheme';
 
 /**
@@ -50,49 +51,67 @@ export const PlanTeams = ({
   onOpenPositions,
 }: PlanTeamsProps) => {
   const { t } = useTranslation(['staffing', 'common']);
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const canEditAnyNeeds = canEditPlan || teams.some((team) => canScheduleTeam(team.team.id));
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.toolbar}>
-        <Button
-          variant="quiet"
-          title={showAllTeams ? t('teamsTab.showServiceTeams') : t('teamsTab.showAllTeams')}
-          onPress={onToggleAllTeams}
-        />
-        {canEditAnyNeeds ? (
-          editingNeeds ? (
-            <Button title={t('common:actions.done')} onPress={() => onEditingNeedsChange(false)} />
-          ) : (
-            <View style={styles.actions}>
-              <Button
-                variant="secondary"
-                title={t('teamsTab.neededPositions')}
-                onPress={() => onEditingNeedsChange(true)}
-              />
-              <Button variant="secondary" title={t('teamsTab.addPeople')} onPress={onAddPeople} />
-            </View>
-          )
-        ) : null}
-      </View>
+      {canEditAnyNeeds ? (
+        editingNeeds ? (
+          <Button title={t('common:actions.done')} icon="check" onPress={() => onEditingNeedsChange(false)} />
+        ) : (
+          <View style={styles.actions}>
+            <Button
+              variant="secondary"
+              icon="plus"
+              title={t('teamsTab.addPeople')}
+              onPress={onAddPeople}
+              style={styles.grow}
+            />
+            <Button
+              variant="secondary"
+              icon="pencil"
+              title={t('teamsTab.neededPositions')}
+              onPress={() => onEditingNeedsChange(true)}
+              style={styles.grow}
+            />
+          </View>
+        )
+      ) : null}
 
       <Card compact>
-        <ListRow showChevron onPress={onOpenPositions}>
+        <ListRow
+          showChevron
+          onPress={onOpenPositions}
+          leading={<IconWell name="sparkle" accent={theme.accent.green} size={36} />}
+        >
           <Text style={styles.hintTitle}>{t('openPositions.planEntry')}</Text>
+        </ListRow>
+        <ListRow
+          divided
+          onPress={onToggleAllTeams}
+          leading={<IconWell name="people" accent={theme.accent.neutral} size={36} />}
+        >
+          <Text style={styles.toggleLabel}>
+            {showAllTeams ? t('teamsTab.showServiceTeams') : t('teamsTab.showAllTeams')}
+          </Text>
         </ListRow>
       </Card>
 
       {editingNeeds ? (
-        <Card compact>
-          <Text style={styles.hintTitle}>{t('teamsTab.editNeedsTitle')}</Text>
-          {/* The website hint's <0> marks "Done"; native shows it as plain text. */}
-          <Text style={styles.muted}>{t('teamsTab.editNeedsHint').replace(/<\/?0>/g, '')}</Text>
-        </Card>
+        <View style={styles.editHint}>
+          <Icon name="info" size={17} color={theme.accent.blue.fg} />
+          <View style={styles.flex}>
+            <Text style={styles.editHintTitle}>{t('teamsTab.editNeedsTitle')}</Text>
+            {/* The website hint's <0> marks "Done"; native shows it as plain text. */}
+            <Text style={styles.editHintBody}>{t('teamsTab.editNeedsHint').replace(/<\/?0>/g, '')}</Text>
+          </View>
+        </View>
       ) : null}
 
       {teams.length === 0 ? (
-        <EmptyState title={t('teamsTab.emptyTitle')} description={t('teamsTab.emptyDescription')} />
+        <EmptyState icon="people" title={t('teamsTab.emptyTitle')} description={t('teamsTab.emptyDescription')} />
       ) : (
         teams.map((team) => (
           <TeamCard
@@ -124,18 +143,22 @@ const TeamCard = ({ team, canEditNeeds, editingNeeds, onNeedChange, savingPositi
   const positions = visiblePositions(team, editingNeeds);
 
   return (
-    <Card>
+    <Card compact style={styles.teamCard}>
       <View style={styles.teamHeader}>
-        <View style={[styles.dot, { backgroundColor: team.team.color }]} />
-        <Text style={styles.teamName}>{team.team.name}</Text>
-      </View>
-      <View style={styles.counts}>
-        <Tag label={`✓ ${team.confirmed}`} accent={statusAccent(theme, 'confirmed')} />
-        <Tag label={`✕ ${team.declined}`} accent={statusAccent(theme, 'declined')} />
-        <Tag label={`? ${team.pending}`} accent={statusAccent(theme, 'unconfirmed')} />
-        {team.prepared.length ? (
-          <Tag label={t('teamsTab.preparedCount', { count: team.prepared.length })} accent={theme.accent.neutral} />
-        ) : null}
+        <View style={styles.teamWell}>
+          <View style={[styles.dot, { backgroundColor: team.team.color }]} />
+        </View>
+        <View style={styles.flex}>
+          <Text accessibilityRole="header" style={styles.teamName}>{team.team.name}</Text>
+          <View style={styles.counts}>
+            <CountBadge glyph="check" label={t('common:assignmentStatus.confirmed')} value={team.confirmed} accent={statusAccent(theme, 'confirmed')} />
+            <CountBadge glyph="close" label={t('common:assignmentStatus.declined')} value={team.declined} accent={statusAccent(theme, 'declined')} />
+            <CountBadge glyph="clock" label={t('common:assignmentStatus.unconfirmed')} value={team.pending} accent={statusAccent(theme, 'unconfirmed')} />
+            {team.prepared.length ? (
+              <Tag label={t('teamsTab.preparedCount', { count: team.prepared.length })} accent={theme.accent.neutral} />
+            ) : null}
+          </View>
+        </View>
       </View>
 
       {team.positions.length === 0 && team.unpositioned.length === 0 ? (
@@ -155,8 +178,10 @@ const TeamCard = ({ team, canEditNeeds, editingNeeds, onNeedChange, savingPositi
             />
           ))}
           {team.unpositioned.length ? (
-            <View>
-              <Text style={styles.positionName}>{t('teamsTab.noPosition')}</Text>
+            <View style={styles.position}>
+              <View style={styles.positionHeader}>
+                <Text style={styles.positionName}>{t('teamsTab.noPosition')}</Text>
+              </View>
               {team.unpositioned.map((assignment) => (
                 <ScheduledPerson key={assignment.id} assignment={assignment} />
               ))}
@@ -165,6 +190,25 @@ const TeamCard = ({ team, canEditNeeds, editingNeeds, onNeedChange, savingPositi
         </View>
       )}
     </Card>
+  );
+};
+
+interface CountBadgeProps {
+  glyph: IconName;
+  /** The status the count is of, read by screen readers. */
+  label: string;
+  value: number;
+  accent: Accent;
+}
+
+/** A response count (confirmed / declined / pending) as a small tinted pill. */
+const CountBadge = ({ glyph, label, value, accent }: CountBadgeProps) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View accessible accessibilityLabel={`${label}: ${value}`} style={[styles.countBadge, { backgroundColor: accent.bg }]}>
+      <Icon name={glyph} size={12} color={accent.fg} strokeWidth={2.4} />
+      <Text style={[styles.countBadgeLabel, { color: accent.fg }]}>{value}</Text>
+    </View>
   );
 };
 
@@ -190,9 +234,10 @@ const PositionBlock = ({ position, canEditNeeds, editingNeeds, saving, onNeedCha
           {position.planOnly ? ` ${t('teamsTab.planOnlySuffix')}` : ''}
         </Text>
         {!editingNeeds && position.needed > 0 ? (
-          <Text style={[styles.ratio, { color: filled ? theme.accent.green.fg : theme.accent.yellow.fg }]}>
-            {t('teamsTab.staffedOfNeeded', { scheduled: position.scheduled.length, needed: position.needed })}
-          </Text>
+          <Tag
+            label={t('teamsTab.staffedOfNeeded', { scheduled: position.scheduled.length, needed: position.needed })}
+            accent={filled ? theme.accent.green : theme.accent.yellow}
+          />
         ) : null}
       </View>
 
@@ -202,14 +247,14 @@ const PositionBlock = ({ position, canEditNeeds, editingNeeds, saving, onNeedCha
           <View style={styles.stepper}>
             <Text style={styles.muted}>{t('teamsTab.needed')}</Text>
             <StepButton
-              label="−"
+              glyph="minus"
               accessibilityLabel={t('teamsTab.oneFewer', { position: position.position.name })}
               disabled={!canEditNeeds || saving || position.needed === 0}
               onPress={() => onNeedChange(position.position.id, position.needed - 1)}
             />
             <Text accessibilityLiveRegion="polite" style={styles.needed}>{position.needed}</Text>
             <StepButton
-              label="+"
+              glyph="plus"
               accessibilityLabel={t('teamsTab.oneMore', { position: position.position.name })}
               disabled={!canEditNeeds || saving || position.needed >= MAX_POSITION_NEED}
               onPress={() => onNeedChange(position.position.id, position.needed + 1)}
@@ -226,13 +271,14 @@ const PositionBlock = ({ position, canEditNeeds, editingNeeds, saving, onNeedCha
 };
 
 interface StepButtonProps {
-  label: string;
+  glyph: IconName;
   accessibilityLabel: string;
   disabled: boolean;
   onPress: () => void;
 }
 
-const StepButton = ({ label, accessibilityLabel, disabled, onPress }: StepButtonProps) => {
+const StepButton = ({ glyph, accessibilityLabel, disabled, onPress }: StepButtonProps) => {
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <PressableScale
@@ -243,7 +289,7 @@ const StepButton = ({ label, accessibilityLabel, disabled, onPress }: StepButton
       pressedOpacity={0.6}
       style={[styles.stepButton, disabled && styles.stepDisabled]}
     >
-      <Text style={styles.stepLabel}>{label}</Text>
+      <Icon name={glyph} size={18} color={theme.color.ink} strokeWidth={2.2} />
     </PressableScale>
   );
 };
@@ -261,7 +307,7 @@ const ScheduledPerson = ({ assignment }: ScheduledPersonProps) => {
 
   return (
     <View style={styles.person}>
-      <Avatar name={name} size={32} />
+      <Avatar name={name} url={assignment.person?.avatar_url} size={34} />
       <Text style={[styles.personName, styles.flex]} numberOfLines={1}>{name}</Text>
       {prepared ? (
         <Tag label={t('teamsTab.prepared')} accent={theme.accent.neutral} />
@@ -278,40 +324,76 @@ const ScheduledPerson = ({ assignment }: ScheduledPersonProps) => {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    wrap: { gap: theme.space.lg },
-    toolbar: {
+    grow: { flexGrow: 1 },
+    wrap: { gap: theme.space.md },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    hintTitle: { ...theme.type.body, fontWeight: '600', color: theme.color.ink },
+    toggleLabel: { ...theme.type.body, color: theme.color.brandText, fontWeight: '500' },
+    editHint: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
+      alignItems: 'flex-start',
+      gap: theme.space.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.accent.blue.bg,
+    },
+    editHintTitle: { ...theme.type.bodySmall, fontWeight: '600', color: theme.accent.blue.fg },
+    editHintBody: { ...theme.type.bodySmall, color: theme.accent.blue.fg },
+    empty: { ...theme.type.bodySmall, color: theme.color.inkFaint, textAlign: 'center', paddingVertical: theme.space.lg },
+
+    teamCard: { paddingHorizontal: theme.space.lg },
+    teamHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md, paddingBottom: theme.space.xs },
+    teamWell: {
+      width: 36,
+      height: 36,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.color.surfaceInset,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dot: { width: 14, height: 14, borderRadius: 7 },
+    teamName: { ...theme.type.heading, color: theme.color.ink },
+    counts: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 6 },
+    countBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: theme.radius.pill,
+    },
+    countBadgeLabel: { ...theme.type.numeric, fontSize: 12, lineHeight: 16, fontWeight: '600' },
+
+    position: {
+      marginTop: theme.space.md,
+      paddingTop: theme.space.md,
+      gap: theme.space.xs,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.color.border,
+    },
+    positionHeader: {
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: theme.space.sm,
+      marginBottom: theme.space.xs,
     },
-    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
-    hintTitle: { ...theme.type.body, fontWeight: '600', color: theme.color.ink },
-    muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-    empty: { ...theme.type.bodySmall, color: theme.color.inkFaint, textAlign: 'center', paddingVertical: theme.space.lg },
-    teamHeader: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    dot: { width: 10, height: 10, borderRadius: 5 },
-    teamName: { ...theme.type.heading, color: theme.color.ink },
-    counts: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm, marginTop: theme.space.sm },
-    position: { marginTop: theme.space.md, gap: theme.space.sm },
-    positionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    positionName: { ...theme.type.label, color: theme.color.inkMuted },
-    ratio: { ...theme.type.numeric },
-    stepperRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    positionName: { ...theme.type.eyebrow, color: theme.color.inkFaint, flexShrink: 1 },
+    stepperRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.space.sm },
     stepper: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
     stepButton: {
       width: 44,
       height: 44,
-      borderRadius: theme.radius.md,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderRadius: theme.radius.pill,
+      borderWidth: 1,
       borderColor: theme.color.border,
+      backgroundColor: theme.color.surfaceInset,
       alignItems: 'center',
       justifyContent: 'center',
     },
     stepDisabled: { opacity: 0.3 },
-    stepLabel: { ...theme.type.heading, color: theme.color.ink },
-    needed: { ...theme.type.numeric, color: theme.color.ink, minWidth: 24, textAlign: 'center' },
-    person: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    needed: { ...theme.type.numeric, fontSize: 17, lineHeight: 22, fontWeight: '600', color: theme.color.ink, minWidth: 28, textAlign: 'center' },
+    person: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, minHeight: 44, paddingVertical: 4 },
     personName: { ...theme.type.body, color: theme.color.ink },
   });

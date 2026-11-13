@@ -49,7 +49,7 @@ export const AddGuestForm = ({ onCreated, onCancel }: AddGuestFormProps) => {
 
   return (
     <form
-      className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700"
+      className="space-y-3 rounded-xl border border-app-border p-3"
       onSubmit={(event) => {
         event.preventDefault();
         create.mutate();
@@ -85,7 +85,7 @@ export const AddGuestForm = ({ onCreated, onCancel }: AddGuestFormProps) => {
       </div>
       <div>
         <label className="label" htmlFor="guest-email">
-          {t('addGuest.email')} <span className="font-normal text-slate-500">{t('addGuest.optional')}</span>
+          {t('addGuest.email')} <span className="font-normal text-slate-500 dark:text-slate-400">{t('addGuest.optional')}</span>
         </label>
         <input
           id="guest-email"
@@ -104,14 +104,14 @@ export const AddGuestForm = ({ onCreated, onCancel }: AddGuestFormProps) => {
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
-            className="mt-0.5 size-4 rounded border-slate-300"
+            className="mt-0.5 size-4 rounded border-slate-300 dark:border-slate-700"
             disabled={!email}
             checked={draft.invite}
             onChange={(e) => setDraft({ ...draft, invite: e.target.checked })}
           />
           <span>
             {t('addGuest.alsoInvite')}
-            <span className="block text-xs text-slate-500">
+            <span className="block text-xs text-slate-500 dark:text-slate-400">
               {t('addGuest.alsoInviteHint')}
             </span>
           </span>

@@ -77,7 +77,7 @@ export const FolderSettings = () => {
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-sm font-semibold">{t('folders.title')}</h3>
+        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t('folders.title')}</h3>
         <p className="text-xs text-slate-500">{t('folders.description')}</p>
       </div>
 

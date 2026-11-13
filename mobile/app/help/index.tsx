@@ -21,6 +21,7 @@ import {
   ScreenHeader,
   Tag,
   screenPadding,
+  SectionHeader,
 } from '../../src/components/ui';
 import {
   delegationRights,
@@ -151,7 +152,7 @@ export default function HelpScreen() {
         ) : (
           <>
             <View style={styles.section}>
-              <Label>{t('help.whoseSchedule')}</Label>
+              <SectionHeader title={t('help.whoseSchedule')} />
               <Card>
                 <ListRow showChevron onPress={() => router.navigate('/(tabs)')}>
                   <View style={styles.row}>
@@ -183,7 +184,7 @@ export default function HelpScreen() {
             </View>
 
             <View style={styles.section}>
-              <Label>{t('help.helpsMe')}</Label>
+              <SectionHeader title={t('help.helpsMe')} />
               <Card>
                 {given.length === 0 ? <Text style={styles.muted}>{t('help.nobodyHelps')}</Text> : given.map((delegation, index) => (
                   <ListRow key={delegation.id} divided={index > 0}>
@@ -211,7 +212,7 @@ export default function HelpScreen() {
             </View>
 
             <View style={styles.section}>
-              <Label>{t('help.askSomeone')}</Label>
+              <SectionHeader title={t('help.askSomeone')} />
               <Card>
                 <Field
                   label={t('help.who')}
@@ -310,7 +311,7 @@ export default function HelpScreen() {
               </Card>
             </View>
             {candidates.length === 0 && !people.isLoading && !people.error ? (
-              <EmptyState title={t('help.noHelpers')} />
+              <EmptyState icon="people" title={t('help.noHelpers')} />
             ) : null}
           </>
         )}

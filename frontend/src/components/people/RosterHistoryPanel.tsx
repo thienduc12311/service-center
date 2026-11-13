@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 import type { PersonRosterEvent } from '@service-center/shared';
 import { useRosterAudit, useTeams } from '../../hooks/queries';
 import { ErrorNotice, Loading } from '../ui';
+import { Icon } from '../icons';
 import { useFormatters } from '../../i18n';
 
 export interface RosterHistoryPanelProps {
@@ -31,26 +32,30 @@ export const RosterHistoryPanel = ({ personId }: RosterHistoryPanelProps) => {
 
   return (
     <section className="card p-5">
-      <h2 className="mb-3 text-sm font-semibold">{t('history.title')}</h2>
+      <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
+        <Icon name="clock" className="size-4 text-slate-400" />
+        {t('history.title')}
+      </h2>
       <ErrorNotice error={audit.error} />
       {audit.isLoading ? (
         <Loading />
       ) : (audit.data?.length ?? 0) === 0 ? (
-        <p className="text-sm text-slate-500">{t('history.empty')}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('history.empty')}</p>
       ) : (
-        <ul className="space-y-1.5 text-sm">
+        <ol className="relative space-y-3 border-l border-app-border pl-5 text-sm">
           {audit.data?.map((event) => (
-            <li key={event.id} className="flex flex-wrap justify-between gap-2">
-              <span>
+            <li key={event.id} className="relative flex flex-wrap justify-between gap-x-3 gap-y-0.5">
+              <span aria-hidden="true" className="absolute top-1.5 -left-[1.6rem] size-2.5 rounded-full bg-brand-500 ring-4 ring-[var(--app-surface)]" />
+              <span className="min-w-0 text-slate-700 dark:text-slate-200">
                 {describe(event, teamName, t)}
-                {event.actor_name && <span className="text-slate-500"> {t('history.byActor', { name: event.actor_name })}</span>}
+                {event.actor_name && <span className="text-slate-500 dark:text-slate-400"> {t('history.byActor', { name: event.actor_name })}</span>}
               </span>
-              <time className="text-xs text-slate-500" dateTime={event.created_at}>
+              <time className="text-xs text-slate-500 tabular-nums dark:text-slate-400" dateTime={event.created_at}>
                 {f.dateTime(event.created_at, { dateStyle: 'medium' })}
               </time>
             </li>
           ))}
-        </ul>
+        </ol>
       )}
     </section>
   );

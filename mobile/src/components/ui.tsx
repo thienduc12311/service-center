@@ -1,5 +1,7 @@
 import { useErrorText } from '../i18n/useErrorText';
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { serviceCenterDesignTokens } from '@service-center/shared';
 import {
   ActivityIndicator,
   Image,
@@ -62,16 +64,21 @@ export interface ScreenHeaderProps {
   description?: string;
   /** A button or control pinned to the bottom of the header block. */
   action?: ReactNode;
+  /** A compact control (icon button, avatar) beside the title. */
+  trailing?: ReactNode;
 }
 
 /** Sans-serif page heading matching the website hierarchy. */
-export const ScreenHeader = ({ eyebrow, title, description, action }: ScreenHeaderProps) => {
+export const ScreenHeader = ({ eyebrow, title, description, action, trailing }: ScreenHeaderProps) => {
   const styles = useThemedStyles(makeStyles);
   return (
     <Reveal>
       <View style={styles.header}>
         {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-        <Text accessibilityRole="header" style={styles.headerTitle}>{title}</Text>
+        <View style={styles.headerTitleRow}>
+          <Text accessibilityRole="header" style={[styles.headerTitle, styles.flex]}>{title}</Text>
+          {trailing}
+        </View>
         {description ? <Text style={styles.headerDescription}>{description}</Text> : null}
         {action ? <View style={styles.headerAction}>{action}</View> : null}
       </View>
@@ -88,6 +95,37 @@ export interface LabelProps {
 export const Label = ({ children, style }: LabelProps) => {
   const styles = useThemedStyles(makeStyles);
   return <Text style={[styles.label, style]}>{children}</Text>;
+};
+
+export interface SectionHeaderProps {
+  title: string;
+  /** A count shown beside the title. */
+  count?: number;
+  /** A text action on the right, e.g. "See all". */
+  actionLabel?: string;
+  onAction?: () => void;
+}
+
+/** Small uppercase heading above a group of cards or rows. */
+export const SectionHeader = ({ title, count, actionLabel, onAction }: SectionHeaderProps) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionHeaderTitle}>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
+        {count !== undefined ? (
+          <View style={styles.countPill}>
+            <Text style={styles.countPillLabel}>{count}</Text>
+          </View>
+        ) : null}
+      </View>
+      {actionLabel && onAction ? (
+        <PressableScale onPress={onAction} pressedOpacity={0.5} hitSlop={10}>
+          <Text style={styles.sectionAction}>{actionLabel}</Text>
+        </PressableScale>
+      ) : null}
+    </View>
+  );
 };
 
 export interface CardProps {
@@ -259,6 +297,7 @@ export interface ChipProps {
 
 /** One choice in a row of mutually exclusive filters, or an on/off toggle. */
 export const Chip = ({ label, active, onPress, toggle = false }: ChipProps) => {
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     // PressableScale, not a function-form Pressable style: NativeWind drops that (MOB-001).
@@ -269,6 +308,7 @@ export const Chip = ({ label, active, onPress, toggle = false }: ChipProps) => {
       pressedOpacity={0.6}
       style={[styles.chip, active && styles.chipOn]}
     >
+      {active && toggle ? <Icon name="check" size={14} color={theme.color.onBrand} strokeWidth={2.4} /> : null}
       <Text style={[styles.chipLabel, active && styles.chipLabelOn]}>{label}</Text>
     </PressableScale>
   );
@@ -315,6 +355,64 @@ export const IconWell = ({ name, accent, size = 40 }: IconWellProps) => {
     >
       <Icon name={name} size={size * 0.5} color={accent.fg} />
     </View>
+  );
+};
+
+export interface DateBadgeProps {
+  /** ISO instant or date. */
+  date: string;
+  /** Muted styling, for past dates. */
+  muted?: boolean;
+}
+
+/** A calendar-page tile (month over day) that anchors a dated card or row. */
+export const DateBadge = ({ date, muted = false }: DateBadgeProps) => {
+  const styles = useThemedStyles(makeStyles);
+  const { i18n } = useTranslation();
+  const value = new Date(date);
+  const month = new Intl.DateTimeFormat(i18n.language, { month: 'short' }).format(value);
+  const day = new Intl.DateTimeFormat(i18n.language, { day: 'numeric' }).format(value);
+  const weekday = new Intl.DateTimeFormat(i18n.language, { weekday: 'short' }).format(value);
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.dateBadge, muted && styles.dateBadgeMuted]}
+    >
+      <View style={[styles.dateBadgeMonth, muted && styles.dateBadgeMonthMuted]}>
+        <Text maxFontSizeMultiplier={1.2} style={[styles.dateBadgeMonthLabel, muted && styles.dateBadgeMutedLabel]}>
+          {month}
+        </Text>
+      </View>
+      <Text maxFontSizeMultiplier={1.2} style={[styles.dateBadgeDay, muted && styles.dateBadgeMutedLabel]}>{day}</Text>
+      <Text maxFontSizeMultiplier={1.2} style={styles.dateBadgeWeekday}>{weekday}</Text>
+    </View>
+  );
+};
+
+export interface StatTileProps {
+  label: string;
+  value: string | number;
+  icon: IconName;
+  accent: Accent;
+  onPress?: () => void;
+}
+
+/** A headline number with its label, for summaries at the top of a screen. */
+export const StatTile = ({ label, value, icon, accent, onPress }: StatTileProps) => {
+  const styles = useThemedStyles(makeStyles);
+  const body = (
+    <View style={styles.statTile}>
+      <IconWell name={icon} accent={accent} size={34} />
+      <Text maxFontSizeMultiplier={1.4} style={styles.statValue}>{value}</Text>
+      <Text numberOfLines={1} maxFontSizeMultiplier={1.4} style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+  if (!onPress) return <View style={styles.flex}>{body}</View>;
+  return (
+    <PressableScale onPress={onPress} accessibilityLabel={`${label}: ${value}`} pressedOpacity={0.7} style={styles.flex}>
+      {body}
+    </PressableScale>
   );
 };
 
@@ -403,14 +501,17 @@ export interface ListRowProps {
   /** Draws a hairline above the row, for rows after the first. */
   divided?: boolean;
   showChevron?: boolean;
+  /** An icon well, avatar or badge before the row's text. */
+  leading?: ReactNode;
 }
 
 /** Accessible row for a card or list. */
-export const ListRow = ({ children, onPress, divided = false, showChevron = false }: ListRowProps) => {
+export const ListRow = ({ children, onPress, divided = false, showChevron = false, leading }: ListRowProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const content = (
     <View style={[styles.listRow, divided && styles.listRowDivided]}>
+      {leading}
       <View style={styles.flex}>{children}</View>
       {showChevron ? <Icon name="chevronRight" size={16} color={theme.color.inkFaint} /> : null}
     </View>
@@ -435,16 +536,25 @@ export interface FieldProps extends TextInputProps {
 }
 
 export const Field = forwardRef<TextInput, FieldProps>(
-  ({ label, style, containerStyle, ...props }, ref) => {
+  ({ label, style, containerStyle, onFocus, onBlur, ...props }, ref) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const [focused, setFocused] = useState(false);
   return (
     <View style={[styles.field, containerStyle]}>
       {label ? <Label>{label}</Label> : null}
       <TextInput
         ref={ref}
         placeholderTextColor={theme.color.inkFaint}
-        style={[styles.input, !props.multiline && styles.singleLine, style]}
+        style={[styles.input, !props.multiline && styles.singleLine, focused && styles.inputFocused, style]}
+        onFocus={(event) => {
+          setFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          onBlur?.(event);
+        }}
         {...props}
       />
     </View>
@@ -476,13 +586,19 @@ export interface EmptyStateProps {
   title: string;
   description?: string;
   action?: ReactNode;
+  /** The glyph in the illustration well above the title. */
+  icon?: IconName;
 }
 
-export const EmptyState = ({ title, description, action }: EmptyStateProps) => {
+export const EmptyState = ({ title, description, action, icon = 'sparkle' }: EmptyStateProps) => {
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <Reveal>
       <View style={styles.centered}>
+        <View style={styles.emptyIcon}>
+          <IconWell name={icon} accent={theme.accent.blue} size={56} />
+        </View>
         <Text style={styles.emptyTitle}>{title}</Text>
         {description ? <Text style={styles.centeredBody}>{description}</Text> : null}
         {action ? <View style={styles.emptyAction}>{action}</View> : null}
@@ -518,26 +634,48 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
 
-    header: { paddingTop: theme.space.lg, paddingBottom: theme.space.xs, gap: theme.space.sm },
-    eyebrow: { ...theme.type.label, color: theme.color.inkFaint },
+    header: { paddingTop: theme.space.md, paddingBottom: theme.space.xs, gap: 6 },
+    headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
+    eyebrow: { ...theme.type.label, fontWeight: '600', color: theme.color.brandText },
     headerTitle: { ...theme.type.display, color: theme.color.ink },
     headerDescription: { ...theme.type.body, color: theme.color.inkMuted, maxWidth: 420 },
     headerAction: { marginTop: theme.space.md, alignSelf: 'flex-start' },
 
     label: { ...theme.type.label, color: theme.color.inkMuted },
 
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.space.md,
+      paddingHorizontal: theme.space.xs,
+      marginTop: theme.space.sm,
+    },
+    sectionHeaderTitle: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm, flexShrink: 1 },
+    sectionTitle: { ...theme.type.eyebrow, color: theme.color.inkFaint },
+    sectionAction: { ...theme.type.label, fontWeight: '600', color: theme.color.brandText },
+    countPill: {
+      minWidth: 20,
+      alignItems: 'center',
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.color.surfaceInset,
+    },
+    countPillLabel: { ...theme.type.numeric, fontSize: 11.5, lineHeight: 16, fontWeight: '600', color: theme.color.inkMuted },
+
     card: {
       backgroundColor: theme.color.surface,
       borderWidth: 1,
       borderColor: theme.color.border,
-      borderRadius: theme.radius.lg,
+      borderRadius: theme.radius.lg + 2,
       padding: theme.space.lg,
       gap: theme.space.lg,
-      shadowColor: theme.color.ink,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
-      elevation: 1,
+      shadowColor: '#0f172a',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: theme.scheme === 'dark' ? 0 : 0.05,
+      shadowRadius: 8,
+      elevation: theme.scheme === 'dark' ? 0 : 1,
     },
     cardCompact: { padding: theme.space.md, gap: 0 },
 
@@ -546,35 +684,39 @@ const makeStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: theme.space.sm,
-      borderRadius: theme.radius.sm,
-      paddingHorizontal: theme.space.lg,
-      minHeight: 46,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.space.lg + 2,
+      minHeight: 48,
     },
     buttonDisabled: { opacity: 0.5 },
-    buttonLabel: { fontFamily: fonts.sansMedium, fontWeight: '500', fontSize: 14 },
+    buttonLabel: { fontFamily: fonts.sansSemiBold, fontWeight: '600', fontSize: 15, letterSpacing: -0.1 },
 
     iconButton: {
       width: 44,
       height: 44,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: theme.radius.sm,
+      borderRadius: theme.radius.pill,
       borderWidth: 1,
       borderColor: theme.color.border,
       backgroundColor: theme.color.surface,
     },
 
     chip: {
-      minHeight: 44,
+      minHeight: 40,
+      flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: theme.space.md,
-      borderRadius: theme.radius.md,
-      borderWidth: StyleSheet.hairlineWidth,
+      gap: 6,
+      paddingHorizontal: theme.space.lg - 2,
+      borderRadius: theme.radius.pill,
+      borderWidth: 1,
       borderColor: theme.color.border,
+      backgroundColor: theme.color.surface,
     },
-    chipOn: { backgroundColor: theme.accent.blue.bg, borderColor: theme.accent.blue.fg },
-    chipLabel: { ...theme.type.bodySmall, color: theme.color.ink },
-    chipLabelOn: { color: theme.accent.blue.fg, fontWeight: '600' },
+    chipOn: { backgroundColor: theme.color.brand, borderColor: theme.color.brand },
+    chipLabel: { ...theme.type.bodySmall, fontWeight: '500', color: theme.color.inkMuted },
+    chipLabelOn: { color: theme.color.onBrand, fontWeight: '600' },
     segmented: {
       flexDirection: 'row',
       backgroundColor: theme.color.surfaceInset,
@@ -584,15 +726,23 @@ const makeStyles = (theme: Theme) =>
     },
     segment: {
       flex: 1,
-      minHeight: 44,
+      minHeight: 40,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      paddingVertical: 6,
+      paddingHorizontal: theme.space.xs,
+      borderRadius: theme.radius.sm + 1,
     },
-    segmentActive: { backgroundColor: theme.accent.blue.bg },
-    segmentLabel: { fontFamily: fonts.sans, fontSize: 13.5, color: theme.color.inkMuted, textAlign: 'center' },
-    segmentLabelActive: { fontFamily: fonts.sansMedium, fontWeight: '600', color: theme.color.brandText },
+    segmentActive: {
+      backgroundColor: theme.scheme === 'dark' ? theme.color.borderStrong : theme.color.surface,
+      shadowColor: '#0f172a',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: theme.scheme === 'dark' ? 0 : 0.1,
+      shadowRadius: 3,
+      elevation: theme.scheme === 'dark' ? 0 : 2,
+    },
+    segmentLabel: { fontFamily: fonts.sans, fontWeight: '500', fontSize: 13.5, color: theme.color.inkMuted, textAlign: 'center' },
+    segmentLabelActive: { fontFamily: fonts.sansSemiBold, fontWeight: '600', color: theme.color.ink },
 
     tag: {
       alignSelf: 'flex-start',
@@ -616,6 +766,46 @@ const makeStyles = (theme: Theme) =>
 
     meta: { ...theme.type.bodySmall, color: theme.color.inkMuted },
 
+    dateBadge: {
+      width: 52,
+      alignItems: 'center',
+      overflow: 'hidden',
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.scheme === 'dark' ? theme.color.borderStrong : serviceCenterDesignTokens.brand[200],
+      backgroundColor: theme.accent.blue.bg,
+    },
+    dateBadgeMuted: { borderColor: theme.color.border, backgroundColor: theme.color.surfaceInset },
+    dateBadgeMonth: { alignSelf: 'stretch', alignItems: 'center', paddingVertical: 2, backgroundColor: theme.color.brand },
+    dateBadgeMonthMuted: { backgroundColor: theme.color.borderStrong },
+    dateBadgeMonthLabel: {
+      ...theme.type.eyebrow,
+      fontSize: 10,
+      lineHeight: 14,
+      color: theme.color.onBrand,
+    },
+    dateBadgeDay: {
+      ...theme.type.title,
+      fontSize: 21,
+      lineHeight: 25,
+      fontVariant: ['tabular-nums'],
+      color: theme.color.ink,
+      marginTop: 2,
+    },
+    dateBadgeMutedLabel: { color: theme.color.inkMuted },
+    dateBadgeWeekday: { ...theme.type.eyebrow, fontSize: 9.5, lineHeight: 13, letterSpacing: 0.4, color: theme.color.inkFaint, paddingBottom: 5 },
+
+    statTile: {
+      backgroundColor: theme.color.surface,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: theme.radius.lg,
+      padding: theme.space.md,
+      gap: 6,
+    },
+    statValue: { ...theme.type.title, fontSize: 24, lineHeight: 28, fontVariant: ['tabular-nums'], color: theme.color.ink, marginTop: 4 },
+    statLabel: { ...theme.type.label, fontSize: 12, color: theme.color.inkMuted },
+
     listRow: {
       minHeight: 48,
       flexDirection: 'row',
@@ -636,10 +826,11 @@ const makeStyles = (theme: Theme) =>
       borderColor: theme.color.borderStrong,
       borderRadius: theme.radius.md,
       backgroundColor: theme.color.field,
-      minHeight: 44,
-      paddingHorizontal: theme.space.md,
+      minHeight: 48,
+      paddingHorizontal: theme.space.md + 2,
       paddingVertical: theme.space.md,
     },
+    inputFocused: { borderColor: theme.color.brand, borderWidth: 1.5 },
     // iOS draws a single-line input's text and placeholder off-centre when a
     // lineHeight is set, so let the font's own metrics size the line instead.
     singleLine: { lineHeight: undefined, textAlignVertical: 'center' },
@@ -654,13 +845,14 @@ const makeStyles = (theme: Theme) =>
     centeredBody: { ...theme.type.bodySmall, color: theme.color.inkMuted, textAlign: 'center' },
     emptyTitle: { ...theme.type.title, fontSize: 21, lineHeight: 26, color: theme.color.ink },
     emptyAction: { marginTop: theme.space.md },
+    emptyIcon: { marginBottom: theme.space.sm },
 
     notice: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: theme.space.sm,
       backgroundColor: theme.accent.red.bg,
-      borderRadius: theme.radius.sm,
+      borderRadius: theme.radius.md,
       padding: theme.space.md,
     },
     noticeText: { ...theme.type.bodySmall, color: theme.accent.red.fg, flex: 1 },

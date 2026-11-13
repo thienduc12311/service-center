@@ -20,6 +20,7 @@ import { useInvalidateOrg, usePlans } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters } from '../i18n';
 import { Button, EmptyState, ErrorNotice, PageHeader } from '../components/ui';
+import { Icon } from '../components/icons';
 import { useTemplateNames, useTemplateNoticeText } from '../components/templates/useTemplateNames';
 
 type Mode = 'shift' | 'order_only';
@@ -55,7 +56,7 @@ interface NoticesProps {
 const Notices = ({ notices }: NoticesProps) => {
   const noticeText = useTemplateNoticeText();
   return notices.length === 0 ? null : (
-    <ul className="space-y-1 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-950/40 dark:text-amber-200">
+    <ul className="space-y-1 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
       {notices.map((notice) => <li key={`${notice.code}-${notice.message}`}>{noticeText(notice)}</li>)}
     </ul>
   );
@@ -72,9 +73,10 @@ const ShiftPlanReview = ({ plan, timezone }: ShiftPlanReviewProps) => {
   const names = useTemplateNames();
   return (
     <li className="card space-y-3 p-4">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <span className="font-medium">{plan.title}</span>
-        <span className="text-sm text-slate-500">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold text-slate-900 dark:text-white">{plan.title}</span>
+        <span className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+          <Icon name="calendar" className="size-3.5" />
           {t('reschedule.dateMove', {
             from: fmt.calendarDate(plan.from_local_date, 'medium'),
             to: fmt.calendarDate(plan.to_local_date, 'medium'),
@@ -83,24 +85,26 @@ const ShiftPlanReview = ({ plan, timezone }: ShiftPlanReviewProps) => {
         </span>
       </div>
       <Notices notices={plan.warnings} />
+      <div className="scrollbar-thin overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="text-left text-xs text-slate-500">
+        <thead className="text-left text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
           <tr>
-            <th className="py-1 font-medium">{t('reschedule.timeHeader')}</th>
-            <th className="font-medium">{t('reschedule.fromHeader')}</th>
-            <th className="font-medium">{t('reschedule.toHeader')}</th>
+            <th className="py-1.5 pr-3 font-semibold">{t('reschedule.timeHeader')}</th>
+            <th className="pr-3 font-semibold">{t('reschedule.fromHeader')}</th>
+            <th className="font-semibold">{t('reschedule.toHeader')}</th>
           </tr>
         </thead>
         <tbody>
           {plan.times.map((time) => (
-            <tr key={time.id} className="border-t border-slate-100 dark:border-slate-800">
-              <td className="py-1">{time.name ?? t(`timeKinds.${time.kind}`)}</td>
+            <tr key={time.id} className="border-t border-app-border">
+              <td className="py-1.5 pr-3 font-medium text-slate-800 dark:text-slate-100">{time.name ?? t(`timeKinds.${time.kind}`)}</td>
               <td>{fmt.dateTime(time.from_starts_at, { timeZone: timezone })}</td>
               <td>{fmt.dateTime(time.starts_at, { timeZone: timezone })}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
       <p className="text-sm text-slate-600 dark:text-slate-300">
         {t('reschedule.peopleSummary', {
           confirmed: plan.counts.confirmed,
@@ -109,11 +113,11 @@ const ShiftPlanReview = ({ plan, timezone }: ShiftPlanReviewProps) => {
           prepared: plan.counts.prepared,
         })}
       </p>
-      <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+      <dl className="surface-inset grid gap-x-6 gap-y-1 px-3 py-2.5 text-sm sm:grid-cols-2">
         {COUNT_KEYS.map((key) => (
           <div key={key} className="flex justify-between gap-2">
-            <dt className="text-slate-500">{t(`reschedule.counts.${key}`)}</dt>
-            <dd className="font-medium">{plan.counts[key]}</dd>
+            <dt className="text-slate-500 dark:text-slate-400">{t(`reschedule.counts.${key}`)}</dt>
+            <dd className="font-medium tabular-nums text-slate-900 dark:text-white">{plan.counts[key]}</dd>
           </div>
         ))}
       </dl>
@@ -160,7 +164,7 @@ const OrderReview = ({ preview }: OrderReviewProps) => {
           ? t('reschedule.orderReplacing', { count: preview.destination.items_removed })
           : t('reschedule.orderAfter', { count: preview.destination.items_kept })}
       </p>
-      <p className="text-xs text-slate-500">{preview.source.items.join(' · ')}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{preview.source.items.join(' · ')}</p>
       <p>
         {t('reschedule.rosterKept', {
           plan: preview.destination.title,
@@ -170,7 +174,7 @@ const OrderReview = ({ preview }: OrderReviewProps) => {
           prepared: preview.destination.roster_kept.prepared,
         })}
       </p>
-      <p className="text-slate-500">
+      <p className="text-slate-500 dark:text-slate-400">
         {t('reschedule.notChanged', {
           list: fmt.list(preview.unchanged.map((part) => (isUnchangedPart(part) ? t(`reschedule.unchanged.${part}`) : part.replaceAll('_', ' ')))),
         })}
@@ -245,7 +249,7 @@ export const ReschedulePlansPage = () => {
     },
   });
 
-  if (!canAnywhere('plans.edit')) return <EmptyState title={t('reschedule.noAccess')} />;
+  if (!canAnywhere('plans.edit')) return <EmptyState icon="calendar" title={t('reschedule.noAccess')} />;
 
   if (done) {
     return (
@@ -274,30 +278,31 @@ export const ReschedulePlansPage = () => {
   const orderPreview = preview?.mode === 'order_only' ? (preview as OrderOnlyReschedulePreview) : null;
 
   return (
-    <div>
-      <PageHeader title={t('reschedule.title')} subtitle={t('reschedule.subtitle')} />
-      <fieldset className="mb-4 flex flex-wrap gap-4 text-sm">
+    <div className="space-y-5">
+      <PageHeader title={t('reschedule.title')} subtitle={t('reschedule.subtitle')} back={{ to: '/plans', label: t('common:nav.plans') }} />
+      <fieldset className="flex flex-wrap gap-2 text-sm">
         <legend className="label">{t('reschedule.whatMoves')}</legend>
-        <label className="flex items-center gap-2">
-          <input type="radio" name="reschedule-mode" checked={mode === 'shift'} onChange={() => { setMode('shift'); clearReview(); }} />
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 font-medium text-slate-700 ring-1 ring-inset ring-app-border transition hover:bg-slate-50 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 has-[:checked]:ring-brand-200 dark:text-slate-200 dark:hover:bg-slate-800/50 dark:has-[:checked]:bg-brand-500/15 dark:has-[:checked]:text-brand-200 dark:has-[:checked]:ring-brand-500/30">
+          <input type="radio" className="accent-brand-600" name="reschedule-mode" checked={mode === 'shift'} onChange={() => { setMode('shift'); clearReview(); }} />
           {t('reschedule.modeShift')}
         </label>
-        <label className="flex items-center gap-2">
-          <input type="radio" name="reschedule-mode" checked={mode === 'order_only'} onChange={() => { setMode('order_only'); clearReview(); }} />
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 font-medium text-slate-700 ring-1 ring-inset ring-app-border transition hover:bg-slate-50 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700 has-[:checked]:ring-brand-200 dark:text-slate-200 dark:hover:bg-slate-800/50 dark:has-[:checked]:bg-brand-500/15 dark:has-[:checked]:text-brand-200 dark:has-[:checked]:ring-brand-500/30">
+          <input type="radio" className="accent-brand-600" name="reschedule-mode" checked={mode === 'order_only'} onChange={() => { setMode('order_only'); clearReview(); }} />
           {t('reschedule.modeOrder')}
         </label>
       </fieldset>
 
       {mode === 'shift' ? (
-        <div className="card space-y-4 p-5">
-          <div className="flex flex-wrap items-end gap-2 text-sm">
-            <label className="flex items-center gap-2">
+        <div className="card space-y-4 p-4 sm:p-5">
+          <div className="surface-inset flex flex-wrap items-center gap-2 p-3 text-sm">
+            <label className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
               {t('reschedule.moveByLabel')}
               <input aria-label={t('reschedule.moveByAria')} type="number" min={-365} max={365} className="input w-24" value={shiftDays} onChange={(event) => setShiftDays(Number(event.target.value))} />
             </label>
             <Button
               variant="secondary"
-              className="!py-1 text-xs"
+              size="sm"
+              icon="check"
               disabled={selected.length === 0 || shiftDays === 0}
               onClick={() => {
                 setDates(Object.fromEntries(selected.map((id) => {
@@ -310,14 +315,14 @@ export const ReschedulePlansPage = () => {
               {t('reschedule.applyToSelected')}
             </Button>
           </div>
-          {upcoming.length === 0 ? <p className="text-sm text-slate-500">{t('reschedule.noUpcoming')}</p> : (
-            <ul className="space-y-1">
+          {upcoming.length === 0 ? <p className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">{t('reschedule.noUpcoming')}</p> : (
+            <ul className="row-list overflow-hidden rounded-xl border border-app-border">
               {upcoming.map((plan) => (
-                <li key={plan.id} className="flex flex-wrap items-center gap-3 text-sm">
-                  <label className="flex min-w-64 flex-1 items-center gap-2">
+                <li key={plan.id} className={`flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 text-sm ${plan.id in dates ? 'bg-brand-50/50 dark:bg-brand-500/5' : ''}`}>
+                  <label className="flex min-w-0 flex-1 basis-64 cursor-pointer items-center gap-2.5">
                     <input
                       type="checkbox"
-                      className="size-4 rounded border-slate-300"
+                      className="size-4 shrink-0 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
                       checked={plan.id in dates}
                       disabled={!(plan.id in dates) && selected.length >= 12}
                       onChange={(event) => {
@@ -328,14 +333,16 @@ export const ReschedulePlansPage = () => {
                         clearReview();
                       }}
                     />
-                    <span className="font-medium">{plan.title}</span>
-                    <span className="text-slate-500">{fmt.dateTime(plan.service_date)}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-slate-900 dark:text-white">{plan.title}</span>
+                      <span className="block text-xs text-slate-500 dark:text-slate-400">{fmt.dateTime(plan.service_date)}</span>
+                    </span>
                   </label>
                   {plan.id in dates && (
                     <input
                       aria-label={t('reschedule.newDateFor', { title: plan.title })}
                       type="date"
-                      className="input w-44"
+                      className="input w-full sm:w-44"
                       value={dates[plan.id]}
                       onChange={(event) => { setDates({ ...dates, [plan.id]: event.target.value }); clearReview(); }}
                     />
@@ -344,20 +351,20 @@ export const ReschedulePlansPage = () => {
               ))}
             </ul>
           )}
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" className="size-4 rounded border-slate-300" checked={notify} onChange={(event) => { setNotify(event.target.checked); clearReview(); }} />
+          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <input type="checkbox" className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600" checked={notify} onChange={(event) => { setNotify(event.target.checked); clearReview(); }} />
             {t('reschedule.notify')}
           </label>
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" className="mt-0.5 size-4 rounded border-slate-300" checked={resetResponses} onChange={(event) => { setResetResponses(event.target.checked); clearReview(); }} />
+          <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <input type="checkbox" className="mt-0.5 size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600" checked={resetResponses} onChange={(event) => { setResetResponses(event.target.checked); clearReview(); }} />
             <span>
               {t('reschedule.resetAnswers')}
-              <span className="block text-xs text-slate-500">{t('reschedule.resetHint')}</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">{t('reschedule.resetHint')}</span>
             </span>
           </label>
         </div>
       ) : (
-        <div className="card grid gap-3 p-5 sm:grid-cols-2">
+        <div className="card grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
           <div>
             <label className="label" htmlFor="order-source">{t('reschedule.moveFrom')}</label>
             <select id="order-source" className="input" value={sourceId} onChange={(event) => { setSourceId(event.target.value); clearReview(); }}>
@@ -372,21 +379,22 @@ export const ReschedulePlansPage = () => {
               {upcoming.filter((plan) => plan.id !== sourceId).map((plan) => <option key={plan.id} value={plan.id}>{t('reschedule.planWithDate', { title: plan.title, date: fmt.dateTime(plan.service_date) })}</option>)}
             </select>
           </div>
-          <fieldset className="flex flex-wrap gap-4 text-sm sm:col-span-2">
+          <fieldset className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-700 sm:col-span-2 dark:text-slate-200">
             <legend className="label">{t('reschedule.destinationOrder')}</legend>
-            <label className="flex items-center gap-2"><input type="radio" name="items-mode" checked={itemsMode === 'append'} onChange={() => { setItemsMode('append'); clearReview(); }} /> {t('reschedule.keepAddAfter')}</label>
-            <label className="flex items-center gap-2"><input type="radio" name="items-mode" checked={itemsMode === 'replace'} onChange={() => { setItemsMode('replace'); clearReview(); }} /> {t('reschedule.replaceIt')}</label>
+            <label className="flex items-center gap-2"><input type="radio" className="accent-brand-600" name="items-mode" checked={itemsMode === 'append'} onChange={() => { setItemsMode('append'); clearReview(); }} /> {t('reschedule.keepAddAfter')}</label>
+            <label className="flex items-center gap-2"><input type="radio" className="accent-brand-600" name="items-mode" checked={itemsMode === 'replace'} onChange={() => { setItemsMode('replace'); clearReview(); }} /> {t('reschedule.replaceIt')}</label>
           </fieldset>
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
-            <input type="checkbox" className="size-4 rounded border-slate-300" checked={removeFromSource} onChange={(event) => { setRemoveFromSource(event.target.checked); clearReview(); }} />
+          <label className="flex items-center gap-2 text-sm text-slate-700 sm:col-span-2 dark:text-slate-200">
+            <input type="checkbox" className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600" checked={removeFromSource} onChange={(event) => { setRemoveFromSource(event.target.checked); clearReview(); }} />
             {t('reschedule.removeFromSource')}
           </label>
         </div>
       )}
 
       <ErrorNotice error={review.error} />
-      <div className="mt-4 flex justify-end">
+      <div className="flex justify-end">
         <Button
+          icon="sparkle"
           loading={review.isPending}
           disabled={mode === 'shift' ? selected.length === 0 : !sourceId || !destinationId}
           onClick={() => review.mutate()}
@@ -396,21 +404,21 @@ export const ReschedulePlansPage = () => {
       </div>
 
       {shiftPreview && (
-        <section className="mt-6 space-y-3">
+        <section className="space-y-3">
           <ul className="space-y-3">
             {shiftPreview.plans.map((plan) => <ShiftPlanReview key={plan.plan_id} plan={plan} timezone={shiftPreview.timezone} />)}
           </ul>
         </section>
       )}
-      {orderPreview && <section className="mt-6"><OrderReview preview={orderPreview} /></section>}
+      {orderPreview && <section><OrderReview preview={orderPreview} /></section>}
       {preview && (
-        <div className="mt-4 space-y-2">
+        <div className="space-y-2">
           <ErrorNotice error={commit.error} />
           {commit.error instanceof ApiError && commit.error.code === 'template_preview_changed' && (
-            <p className="text-sm text-amber-700">{t('reschedule.planChanged')}</p>
+            <p className="flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-300"><Icon name="alert" className="mt-0.5 size-4 shrink-0" />{t('reschedule.planChanged')}</p>
           )}
           <div className="flex justify-end">
-            <Button loading={commit.isPending} onClick={() => commit.mutate()}>
+            <Button icon="check" loading={commit.isPending} onClick={() => commit.mutate()}>
               {mode === 'shift' ? t('reschedule.movePlans', { count: shiftPreview?.plans.length ?? 0 }) : t('reschedule.moveOrder')}
             </Button>
           </div>
