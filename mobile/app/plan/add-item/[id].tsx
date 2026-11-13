@@ -23,9 +23,11 @@ import { KeyPicker } from '../../../src/components/KeyPicker';
 import { PressableScale } from '../../../src/components/motion';
 import {
   Button,
+  Card,
   EmptyState,
   ErrorNotice,
   Field,
+  KeyCap,
   Label,
   Loading,
   Screen,
@@ -33,6 +35,7 @@ import {
   screenPadding,
 } from '../../../src/components/ui';
 import { type Theme } from '../../../src/lib/theme';
+import { Icon } from '../../../src/components/icons';
 import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
 
 /** Lives as long as the app process, so leaving and coming back keeps the retry key. */
@@ -132,7 +135,7 @@ export default function AddPlanItemScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('addItem.title') }} />
-        {plan.error ? <ErrorNotice error={plan.error} /> : <EmptyState title={t('templates:generate.noAccess')} />}
+        {plan.error ? <ErrorNotice error={plan.error} /> : <EmptyState icon="alert" title={t('templates:generate.noAccess')} />}
       </Screen>
     );
   }
@@ -151,7 +154,7 @@ export default function AddPlanItemScreen() {
         />
 
         {itemType === 'song' ? (
-          <View style={styles.group}>
+          <Card>
             <Field
               label={t('addItem.findSong')}
               value={songQuery}
@@ -162,7 +165,7 @@ export default function AddPlanItemScreen() {
             />
             {songs.isLoading ? <Loading /> : null}
             <ErrorNotice error={songs.error} />
-            <View accessibilityRole="radiogroup" accessibilityLabel={t('addItem.findSong')}>
+            <View accessibilityRole="radiogroup" accessibilityLabel={t('addItem.findSong')} style={styles.songList}>
               {(songs.data?.data ?? []).slice(0, 30).map((candidate) => {
                 const chosen = song?.id === candidate.id;
                 return (
@@ -175,11 +178,14 @@ export default function AddPlanItemScreen() {
                     pressedOpacity={0.6}
                     style={[styles.songRow, chosen && styles.songRowOn]}
                   >
+                    <View style={[styles.radio, chosen && styles.radioOn]}>
+                      {chosen ? <Icon name="check" size={12} color={theme.color.onBrand} strokeWidth={3} /> : null}
+                    </View>
                     <View style={styles.flex}>
                       <Text style={[styles.songTitle, chosen && styles.songTitleOn]}>{candidate.title}</Text>
                       {candidate.author ? <Text style={styles.muted}>{candidate.author}</Text> : null}
                     </View>
-                    <Text style={styles.muted}>{candidate.default_key ?? ''}</Text>
+                    {candidate.default_key ? <KeyCap>{candidate.default_key}</KeyCap> : null}
                   </PressableScale>
                 );
               })}
@@ -192,19 +198,21 @@ export default function AddPlanItemScreen() {
                 <Text style={styles.hint}>{t('addItem.transposeHint')}</Text>
               </View>
             ) : null}
-          </View>
+          </Card>
         ) : (
-          <Field
-            label={t('addItem.fieldTitle')}
-            value={title}
-            onChangeText={setTitle}
-            placeholder={itemType === 'header' ? t('addItem.headerPlaceholder') : t('addItem.itemPlaceholder')}
-            maxLength={200}
-          />
+          <Card>
+            <Field
+              label={t('addItem.fieldTitle')}
+              value={title}
+              onChangeText={setTitle}
+              placeholder={itemType === 'header' ? t('addItem.headerPlaceholder') : t('addItem.itemPlaceholder')}
+              maxLength={200}
+            />
+          </Card>
         )}
 
         {itemType !== 'header' ? (
-          <>
+          <Card>
             <Field
               label={t('addItem.length')}
               value={length}
@@ -220,13 +228,16 @@ export default function AddPlanItemScreen() {
               maxLength={4000}
               style={styles.multiline}
             />
-          </>
+          </Card>
         ) : null}
 
         <ErrorNotice error={problem} />
         {uncertain ? (
           <View accessibilityRole="alert" style={styles.warning}>
-            <Text style={styles.warningText}>{t('mobileOrder.addUncertain')}</Text>
+            <View style={styles.warningRow}>
+              <Icon name="alert" size={16} color={theme.accent.yellow.fg} />
+              <Text style={styles.warningText}>{t('mobileOrder.addUncertain')}</Text>
+            </View>
             <Button variant="secondary" title={t('common:actions.retry')} onPress={submit} loading={add.isPending} />
           </View>
         ) : (
@@ -252,23 +263,35 @@ const makeStyles = (theme: Theme) =>
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     hint: { ...theme.type.bodySmall, color: theme.color.inkFaint },
     multiline: { minHeight: 88, paddingTop: theme.space.sm, textAlignVertical: 'top' },
+    songList: { marginHorizontal: -theme.space.sm },
     songRow: {
-      minHeight: 48,
+      minHeight: 52,
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.space.md,
-      paddingHorizontal: theme.space.md,
+      paddingHorizontal: theme.space.sm,
       paddingVertical: theme.space.sm,
       borderRadius: theme.radius.md,
     },
     songRowOn: { backgroundColor: theme.accent.blue.bg },
+    radio: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: theme.color.borderStrong,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    radioOn: { borderColor: theme.color.brand, backgroundColor: theme.color.brand },
     songTitle: { ...theme.type.body, color: theme.color.ink },
     songTitleOn: { fontWeight: '600', color: theme.accent.blue.fg },
     warning: {
-      gap: theme.space.sm,
+      gap: theme.space.md,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
-    warningText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg },
+    warningRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.sm },
+    warningText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg, flex: 1 },
   });

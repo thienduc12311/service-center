@@ -55,6 +55,8 @@ import {
   Screen,
   Tag,
 } from '../../src/components/ui';
+import { Icon } from '../../src/components/icons';
+import { PressableScale } from '../../src/components/motion';
 import { useErrorText, useFormatters } from '../../src/i18n';
 import { type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
@@ -281,12 +283,14 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
         <Stack.Screen options={{ title: t('chatPage.title') }} />
         {access === 'unavailable' ? (
           <EmptyState
+            icon="chat"
             title={t('conversation.notAvailableTitle')}
             description={t('conversation.notAvailableDescription')}
             action={<Button title={t('mobileChat.notAvailableAction')} variant="secondary" onPress={() => router.replace('/chat')} />}
           />
         ) : (
           <EmptyState
+            icon="alert"
             title={t('mobileChat.refreshFailed')}
             action={<Button title={t('common:actions.retry')} variant="secondary" onPress={() => void detail.refetch()} />}
           />
@@ -340,35 +344,44 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
             />
           }
         >
-          <View style={styles.toolbar}>
-            <Tag label={t(`conversation.kinds.${conversation.kind}`)} accent={theme.accent.neutral} />
-            {conversation.plan_id ? (
-              <Button title={t('conversation.openPlan')} variant="quiet" onPress={() => router.push(`/plan/${conversation.plan_id}`)} />
-            ) : null}
-            <View style={styles.flex} />
-            <Button
-              title={conversation.muted ? t('conversation.unmute') : t('conversation.mute')}
-              variant="secondary"
-              loading={mute.isPending}
-              onPress={() => mute.mutate(!conversation.muted)}
-            />
-          </View>
-          <Text style={styles.hint}>
-            {conversation.muted ? t('mobileChat.mutedNote') : t('mobileChat.everyoneNotified')}
-          </Text>
-          <Text style={styles.hint}>{t('conversation.privacyNote')}</Text>
+          <Card compact style={styles.infoCard}>
+            <View style={styles.toolbar}>
+              <Tag label={t(`conversation.kinds.${conversation.kind}`)} accent={theme.accent.neutral} />
+              {conversation.muted ? (
+                <Icon name="bell" size={14} color={theme.color.inkFaint} />
+              ) : null}
+              <View style={styles.flex} />
+              {conversation.plan_id ? (
+                <TextAction label={t('conversation.openPlan')} onPress={() => router.push(`/plan/${conversation.plan_id}`)} />
+              ) : null}
+              <Button
+                title={conversation.muted ? t('conversation.unmute') : t('conversation.mute')}
+                variant="secondary"
+                loading={mute.isPending}
+                onPress={() => mute.mutate(!conversation.muted)}
+              />
+            </View>
+            <Text style={styles.hint}>
+              {conversation.muted ? t('mobileChat.mutedNote') : t('mobileChat.everyoneNotified')}
+            </Text>
+            <Text style={styles.hint}>{t('conversation.privacyNote')}</Text>
+          </Card>
           {detail.error ? <ErrorNotice error={new LocalizedError({ key: 'messages:mobileChat.refreshFailed' })} /> : null}
 
           <View style={styles.searchRow}>
-            <Field
-              accessibilityLabel={t('conversation.searchLabel')}
-              placeholder={t('conversation.searchPlaceholder')}
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-              containerStyle={styles.flex}
-            />
-            {search ? <Button title={t('mobileChat.clearSearch')} variant="quiet" onPress={() => setSearch('')} /> : null}
+            <View style={styles.search}>
+              <Icon name="search" size={17} color={theme.color.inkFaint} />
+              <TextInput
+                accessibilityLabel={t('conversation.searchLabel')}
+                placeholder={t('conversation.searchPlaceholder')}
+                placeholderTextColor={theme.color.inkFaint}
+                value={search}
+                onChangeText={setSearch}
+                returnKeyType="search"
+                style={styles.searchInput}
+              />
+            </View>
+            {search ? <TextAction label={t('mobileChat.clearSearch')} onPress={() => setSearch('')} /> : null}
           </View>
 
           {conversation.can_moderate && reports.length > 0 ? (
@@ -406,10 +419,12 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
               }}
             />
           ) : known.length ? (
-            <Text style={styles.hint}>{t('mobileChat.allLoaded')}</Text>
+            <Text style={[styles.hint, styles.centerHint]}>{t('mobileChat.allLoaded')}</Text>
           ) : null}
 
-          {!searching && known.length === 0 ? <Text style={styles.empty}>{t('conversation.noMessages')}</Text> : null}
+          {!searching && known.length === 0 ? (
+            <EmptyState icon="chat" title={t('conversation.noMessages')} />
+          ) : null}
 
           {shown.map((message) => (
             <MessageEntry
@@ -542,21 +557,16 @@ function MessageEntry({
       : t('conversation.quoteRemoved', { author: parent.author_name ?? t('common:fallback.someone') })
     : null;
 
+  const mine = message.is_mine;
+  const hasActions = !editing && (allowed.reply || allowed.edit || allowed.report || allowed.delete || allowed.restore);
+
   return (
-    <View style={styles.entry}>
-      <Avatar name={author} size={32} />
-      <View style={styles.entryBody}>
-        <Text style={styles.entryTop}>
-          <Text style={styles.author}>{author}</Text>
-          <Text style={styles.hint}>{`  ${when}`}</Text>
-        </Text>
-        {quote && state === 'visible' ? <Text style={styles.quote} numberOfLines={2}>{quote}</Text> : null}
-        {state === 'hidden' ? (
-          <Text style={styles.removed}>{t('conversation.hiddenByModerator')}</Text>
-        ) : state === 'deleted' ? (
-          <Text style={styles.removed}>{t('conversation.messageDeleted')}</Text>
-        ) : editing ? (
-          <View style={styles.group}>
+    <View style={[styles.entry, mine && styles.entryMine]}>
+      {mine ? null : <Avatar name={author} size={32} />}
+      <View style={[styles.entryBody, mine && styles.entryBodyMine]}>
+        {mine ? null : <Text style={styles.author}>{author}</Text>}
+        {editing ? (
+          <View style={[styles.group, styles.editing]}>
             <Field
               accessibilityLabel={t('common:actions.edit')}
               value={text}
@@ -580,36 +590,74 @@ function MessageEntry({
             </View>
           </View>
         ) : (
-          <Text selectable style={styles.body}>{message.body}</Text>
+          <View
+            style={[
+              styles.bubble,
+              mine ? styles.bubbleMine : styles.bubbleOther,
+              state !== 'visible' && styles.bubbleRemoved,
+            ]}
+          >
+            {quote && state === 'visible' ? (
+              <Text style={[styles.quote, mine && styles.quoteMine]} numberOfLines={2}>{quote}</Text>
+            ) : null}
+            {state === 'hidden' ? (
+              <Text style={styles.removed}>{t('conversation.hiddenByModerator')}</Text>
+            ) : state === 'deleted' ? (
+              <Text style={styles.removed}>{t('conversation.messageDeleted')}</Text>
+            ) : (
+              <Text selectable style={[styles.body, mine && styles.bodyMine]}>{message.body}</Text>
+            )}
+          </View>
         )}
+        <Text style={[styles.time, mine && styles.timeMine]}>{when}</Text>
         {unnotified.length ? (
-          <Text style={styles.hint}>
+          <Text style={[styles.hint, mine && styles.timeMine]}>
             {unnotified
               .map((mention) => t('entry.mentionOutcome', { name: mention.name, outcome: t(`entry.resolution.${mention.resolution}`) }))
               .join(' · ')}
           </Text>
         ) : null}
-        {!editing && (allowed.reply || allowed.edit || allowed.report || allowed.delete || allowed.restore) ? (
-          <View style={styles.row}>
-            {allowed.reply ? <Button title={t('conversation.reply')} variant="quiet" onPress={onReply} /> : null}
+        {hasActions ? (
+          <View style={[styles.actions, mine && styles.actionsMine]}>
+            {allowed.reply ? <TextAction label={t('conversation.reply')} onPress={onReply} /> : null}
             {allowed.edit ? (
-              <Button
-                title={t('common:actions.edit')}
-                variant="quiet"
+              <TextAction
+                label={t('common:actions.edit')}
                 onPress={() => {
                   setText(message.body);
                   setEditing(true);
                 }}
               />
             ) : null}
-            {allowed.report ? <Button title={t('conversation.report')} variant="quiet" onPress={onReport} /> : null}
-            {allowed.delete ? <Button title={t('common:actions.delete')} variant="quiet" onPress={onDelete} /> : null}
-            {allowed.restore ? <Button title={t('common:actions.restore')} variant="quiet" onPress={onRestore} /> : null}
+            {allowed.report ? <TextAction label={t('conversation.report')} onPress={onReport} /> : null}
+            {allowed.delete ? <TextAction label={t('common:actions.delete')} danger onPress={onDelete} /> : null}
+            {allowed.restore ? <TextAction label={t('common:actions.restore')} onPress={onRestore} /> : null}
           </View>
         ) : null}
-        {reporting ? <ReportPanel conversationId={conversationId} message={message} onClose={onReportClosed} /> : null}
+        {reporting ? (
+          <View style={styles.reportWrap}>
+            <ReportPanel conversationId={conversationId} message={message} onClose={onReportClosed} />
+          </View>
+        ) : null}
       </View>
     </View>
+  );
+}
+
+interface TextActionProps {
+  label: string;
+  onPress: () => void;
+  /** Destructive wording, e.g. Delete. */
+  danger?: boolean;
+}
+
+/** A compact text-only action with a full 44pt touch target. */
+function TextAction({ label, onPress, danger = false }: TextActionProps) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <PressableScale onPress={onPress} accessibilityLabel={label} pressedOpacity={0.5} style={styles.textAction}>
+      <Text style={[styles.textActionLabel, danger && styles.textActionDanger]}>{label}</Text>
+    </PressableScale>
   );
 }
 
@@ -769,23 +817,13 @@ function Composer({
   return (
     <View style={[styles.composerBar, { paddingBottom: Math.max(insets.bottom, theme.space.md) }]}>
       {draft.replyToId ? (
-        <View style={styles.row}>
+        <View style={styles.replyBar}>
           <Text style={[styles.hint, styles.flex]} numberOfLines={1}>
             {replyTo?.author_name ? t('conversation.replyingTo', { name: replyTo.author_name }) : t('conversation.replyingToUnknown')}
           </Text>
-          <Button title={t('common:actions.cancel')} variant="quiet" onPress={() => setDraft((current) => ({ ...current, replyToId: null }))} />
+          <TextAction label={t('common:actions.cancel')} onPress={() => setDraft((current) => ({ ...current, replyToId: null }))} />
         </View>
       ) : null}
-      <TextInput
-        accessibilityLabel={t('conversation.composerPlaceholder', { name: conversation.title })}
-        value={draft.body}
-        onChangeText={(body) => setDraft((current) => ({ ...current, body }))}
-        placeholder={t('conversation.composerPlaceholder', { name: conversation.title })}
-        placeholderTextColor={theme.color.inkFaint}
-        multiline
-        maxLength={4000}
-        style={styles.composer}
-      />
       {draft.mentionIds.length ? (
         <Text style={styles.hint}>
           {`${t('composer.mentionsLabel')}: ${draft.mentionIds
@@ -807,22 +845,35 @@ function Composer({
       ) : null}
       {failure ? <ErrorNotice error={failure} /> : null}
       {notice === 'alreadySent' ? <Text style={styles.hint}>{t('mobileChat.alreadySent')}</Text> : null}
+      <View style={styles.composerRow}>
+        <TextInput
+          accessibilityLabel={t('conversation.composerPlaceholder', { name: conversation.title })}
+          value={draft.body}
+          onChangeText={(body) => setDraft((current) => ({ ...current, body }))}
+          placeholder={t('conversation.composerPlaceholder', { name: conversation.title })}
+          placeholderTextColor={theme.color.inkFaint}
+          multiline
+          maxLength={4000}
+          style={styles.composer}
+        />
+        <Button
+          title={post.error ? t('common:actions.retry') : t('common:actions.send')}
+          loading={post.isPending}
+          disabled={!draft.body.trim()}
+          style={styles.send}
+          onPress={() => {
+            setNotice(null);
+            post.mutate(draft);
+          }}
+        />
+      </View>
       <View style={styles.row}>
         <Button
           title={candidates.length ? t('composer.mentionPrompt') : t('composer.noOneToMention')}
           variant="quiet"
           disabled={candidates.length === 0}
+          style={styles.mention}
           onPress={() => setChoosing((open) => !open)}
-        />
-        <View style={styles.flex} />
-        <Button
-          title={post.error ? t('common:actions.retry') : t('common:actions.send')}
-          loading={post.isPending}
-          disabled={!draft.body.trim()}
-          onPress={() => {
-            setNotice(null);
-            post.mutate(draft);
-          }}
         />
       </View>
     </View>
@@ -836,11 +887,26 @@ const makeStyles = (theme: Theme) =>
     group: { gap: theme.space.sm },
     row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    infoCard: { gap: theme.space.sm, paddingVertical: theme.space.sm },
     toolbar: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },
     searchRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    search: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.space.sm,
+      minHeight: 44,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.color.surfaceInset,
+      paddingHorizontal: theme.space.md,
+    },
+    searchInput: { ...theme.type.body, flex: 1, color: theme.color.ink, paddingVertical: theme.space.sm },
     body: { ...theme.type.body, color: theme.color.ink },
+    bodyMine: { color: theme.color.onBrand },
     hint: { ...theme.type.bodySmall, color: theme.color.inkFaint },
-    empty: { ...theme.type.bodySmall, color: theme.color.inkMuted, textAlign: 'center', paddingVertical: theme.space.xl },
+    centerHint: { textAlign: 'center' },
     removed: { ...theme.type.body, color: theme.color.inkFaint, fontStyle: 'italic' },
     quote: {
       ...theme.type.bodySmall,
@@ -848,31 +914,78 @@ const makeStyles = (theme: Theme) =>
       borderLeftWidth: 2,
       borderLeftColor: theme.color.borderStrong,
       paddingLeft: theme.space.sm,
+      marginBottom: theme.space.xs,
     },
-    author: { ...theme.type.bodySmall, color: theme.color.ink, fontWeight: '600' },
-    entry: { flexDirection: 'row', gap: theme.space.md, paddingVertical: theme.space.sm },
-    entryBody: { flex: 1, gap: theme.space.xs },
-    entryTop: { flexWrap: 'wrap' },
+    quoteMine: { color: theme.color.onBrand, opacity: 0.85, borderLeftColor: theme.color.onBrand },
+    author: { ...theme.type.label, color: theme.color.inkMuted, fontWeight: '600', marginLeft: theme.space.xs },
+    entry: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.sm, paddingVertical: theme.space.xs },
+    entryMine: { justifyContent: 'flex-end' },
+    entryBody: { flexShrink: 1, maxWidth: '84%', gap: theme.space.xs, alignItems: 'flex-start' },
+    entryBodyMine: { alignItems: 'flex-end' },
+    editing: { alignSelf: 'stretch', minWidth: 240 },
+    bubble: {
+      paddingHorizontal: theme.space.md,
+      paddingVertical: theme.space.sm + 2,
+      borderRadius: theme.radius.lg + 4,
+    },
+    bubbleOther: {
+      backgroundColor: theme.color.surface,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderTopLeftRadius: theme.radius.xs,
+    },
+    bubbleMine: {
+      backgroundColor: theme.color.brand,
+      borderTopRightRadius: theme.radius.xs,
+    },
+    bubbleRemoved: {
+      backgroundColor: theme.color.surfaceInset,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      borderStyle: 'dashed',
+    },
+    time: { ...theme.type.numeric, fontSize: 12, lineHeight: 16, color: theme.color.inkFaint, marginHorizontal: theme.space.xs },
+    timeMine: { textAlign: 'right' },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: theme.space.md, marginTop: -theme.space.sm },
+    actionsMine: { justifyContent: 'flex-end' },
+    textAction: { minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: theme.space.xs },
+    textActionLabel: { ...theme.type.label, fontWeight: '600', color: theme.color.brandText },
+    textActionDanger: { color: theme.accent.red.fg },
+    reportWrap: { alignSelf: 'stretch' },
     report: { gap: theme.space.xs, paddingVertical: theme.space.sm },
     multiline: { minHeight: 72, paddingTop: theme.space.sm, textAlignVertical: 'top' },
     composerBar: {
-      gap: theme.space.sm,
+      gap: theme.space.xs,
       paddingHorizontal: theme.space.lg,
       paddingTop: theme.space.sm,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.color.border,
       backgroundColor: theme.color.surface,
     },
+    replyBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.space.sm,
+      paddingLeft: theme.space.sm,
+      borderLeftWidth: 2,
+      borderLeftColor: theme.color.brand,
+    },
+    composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: theme.space.sm },
     composer: {
       ...theme.type.body,
+      flex: 1,
       color: theme.color.ink,
-      minHeight: 44,
+      minHeight: 48,
       maxHeight: 140,
       textAlignVertical: 'top',
       borderWidth: 1,
-      borderColor: theme.color.borderStrong,
-      borderRadius: theme.radius.md,
-      backgroundColor: theme.color.field,
-      padding: theme.space.md,
+      borderColor: theme.color.border,
+      borderRadius: theme.radius.lg + 4,
+      backgroundColor: theme.color.surfaceInset,
+      paddingHorizontal: theme.space.md + 2,
+      paddingTop: theme.space.md,
+      paddingBottom: theme.space.md,
     },
+    send: { borderRadius: theme.radius.lg + 4, paddingHorizontal: theme.space.lg },
+    mention: { minHeight: 40, paddingHorizontal: theme.space.xs },
   });

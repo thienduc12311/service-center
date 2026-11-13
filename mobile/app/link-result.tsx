@@ -5,9 +5,9 @@ import {
   navigationFailureReasonSchema,
   type NavigationFailureReason,
 } from '@service-center/shared';
-import { Button, Card, Screen } from '../src/components/ui';
+import { Button, Card, IconWell, Screen } from '../src/components/ui';
 import { useAuth } from '../src/providers/AuthProvider';
-import { useThemedStyles } from '../src/lib/useTheme';
+import { useTheme, useThemedStyles } from '../src/lib/useTheme';
 import type { Theme } from '../src/lib/theme';
 
 const MESSAGE_KEY = {
@@ -24,16 +24,19 @@ export default function LinkResultScreen() {
   const { t } = useTranslation('auth');
   const { session } = useAuth();
   const router = useRouter();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   return (
     <Screen>
       <Card style={styles.card}>
-        <Text style={styles.title}>{t('link.unableTitle')}</Text>
+        <IconWell name="alert" accent={theme.accent.yellow} size={52} />
+        <Text accessibilityRole="header" style={styles.title}>{t('link.unableTitle')}</Text>
         <Text style={styles.body}>{t(MESSAGE_KEY[reason])}</Text>
         <Button
           title={session ? t('invite.goToApp') : t('invite.goToSignIn')}
           onPress={() => router.replace(session ? '/(tabs)' : '/(auth)/login')}
+          style={styles.action}
         />
       </Card>
     </Screen>
@@ -43,9 +46,12 @@ export default function LinkResultScreen() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
-      margin: theme.space.xl,
+      margin: theme.space.lg,
       marginTop: theme.space.hero,
+      alignItems: 'center',
+      paddingVertical: theme.space.xl,
     },
-    title: { ...theme.type.heading, color: theme.color.ink },
-    body: { ...theme.type.body, color: theme.color.inkMuted },
+    title: { ...theme.type.title, color: theme.color.ink, textAlign: 'center' },
+    body: { ...theme.type.body, color: theme.color.inkMuted, textAlign: 'center' },
+    action: { alignSelf: 'stretch' },
   });

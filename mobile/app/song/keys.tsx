@@ -85,7 +85,7 @@ export default function LabeledKeysScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('curation.title') }} />
-        <EmptyState title={t('mobileChart.unavailable.invalidLink.title')} />
+        <EmptyState icon="alert" title={t('mobileChart.unavailable.invalidLink.title')} />
       </Screen>
     );
   }

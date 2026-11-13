@@ -77,12 +77,12 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
 
   return (
     <section className="space-y-4" aria-label={t('live.history.title')}>
-      <div className="card overflow-x-auto">
-        <h3 className="border-b border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">
+      <div className="card scrollbar-thin overflow-x-auto">
+        <h3 className="section-label border-b border-app-border bg-slate-50/70 px-4 py-2.5 dark:bg-slate-900/40">
           {actuals.corrected ? t('live.history.plannedVsActualCorrected') : t('live.history.plannedVsActual')}
         </h3>
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs text-slate-500">
+        <table className="w-full min-w-[34rem] text-sm text-slate-800 dark:text-slate-200">
+          <thead className="text-left text-xs text-slate-500 dark:text-slate-400">
             <tr>
               <th className="px-4 py-2 font-medium">{t('live.history.columns.item')}</th>
               <th className="px-4 py-2 font-medium">{t('live.history.columns.started')}</th>
@@ -94,27 +94,27 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
           <tbody>
             {actuals.items.map((line) =>
               line.item_type === 'header' ? (
-                <tr key={line.item_id} className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr key={line.item_id} className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
                   <td className="px-4 py-1.5" colSpan={5}>{line.title}</td>
                 </tr>
               ) : (
-                <tr key={line.item_id} className="border-t border-slate-100">
+                <tr key={line.item_id} className="border-t border-app-border">
                   <td className="px-4 py-2">
                     {line.title}
-                    {line.segment !== 'service' && <span className="ml-2 text-xs text-slate-500">{line.segment === 'pre' ? t('live.history.beforeService') : t('live.history.afterService')}</span>}
-                    {line.visits > 1 && <span className="ml-2 text-xs text-slate-500">×{line.visits}</span>}
+                    {line.segment !== 'service' && <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">{line.segment === 'pre' ? t('live.history.beforeService') : t('live.history.afterService')}</span>}
+                    {line.visits > 1 && <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">×{line.visits}</span>}
                   </td>
-                  <td className="px-4 py-2 tabular-nums text-slate-600">{line.first_started_at ? timeOfDay(line.first_started_at) : t('live.history.notRun')}</td>
+                  <td className="px-4 py-2 tabular-nums text-slate-600 dark:text-slate-300">{line.first_started_at ? timeOfDay(line.first_started_at) : t('live.history.notRun')}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{formatLiveDuration(line.planned_seconds)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{line.visits > 0 ? formatLiveDuration(line.actual_seconds) : '—'}</td>
-                  <td className={`px-4 py-2 text-right tabular-nums ${(line.variance_seconds ?? 0) > 0 ? 'text-rose-700' : 'text-slate-600'}`}>
+                  <td className={`px-4 py-2 text-right tabular-nums ${(line.variance_seconds ?? 0) > 0 ? 'text-rose-700 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
                     {variance(line.variance_seconds)}
                   </td>
                 </tr>
               ),
             )}
           </tbody>
-          <tfoot className="border-t border-slate-200 text-slate-700">
+          <tfoot className="border-t border-app-border bg-slate-50/50 text-slate-700 dark:bg-slate-900/30 dark:text-slate-200">
             <tr>
               <td className="px-4 py-2 font-medium" colSpan={2}>{t('live.history.serviceItems')}</td>
               <td className="px-4 py-2 text-right tabular-nums">{formatLiveDuration(actuals.planned_service_seconds)}</td>
@@ -123,7 +123,7 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
             </tr>
             {actuals.elapsed_seconds !== null && (
               <tr>
-                <td className="px-4 pb-3 text-xs text-slate-500" colSpan={5}>
+                <td className="px-4 pb-3 text-xs text-slate-500 dark:text-slate-400" colSpan={5}>
                   {actuals.paused_seconds > 0
                     ? t('live.history.elapsedPaused', {
                         start: timeOfDay(actuals.started_at),
@@ -144,9 +144,9 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
       </div>
 
       <div className="card overflow-hidden">
-        <h3 className="border-b border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700">{t('live.history.transitions')}</h3>
-        {canCorrect && <p className="px-4 pt-2 text-xs text-slate-500">{t('live.history.correctHint')}</p>}
-        <ol className="divide-y divide-slate-100 text-sm">
+        <h3 className="section-label border-b border-app-border bg-slate-50/70 px-4 py-2.5 dark:bg-slate-900/40">{t('live.history.transitions')}</h3>
+        {canCorrect && <p className="px-4 pt-2.5 text-xs text-slate-500 dark:text-slate-400">{t('live.history.correctHint')}</p>}
+        <ol className="row-list text-sm">
           {data.transitions.map((transition) => {
             const fixes = data.corrections.filter((c) => c.transition_id === transition.id);
             const at = effective.get(transition.id) ?? Date.parse(transition.occurred_at);
@@ -155,17 +155,17 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
             const moved = item && (transition.action === 'start' || transition.action === 'advance' || transition.action === 'jump');
             return (
               <li key={transition.id} className="flex flex-wrap items-start gap-3 px-4 py-2">
-                <span className="w-24 shrink-0 tabular-nums text-slate-600">{timeOfDay(new Date(at).toISOString())}</span>
+                <span className="w-24 shrink-0 tabular-nums text-slate-600 dark:text-slate-300">{timeOfDay(new Date(at).toISOString())}</span>
                 <div className="min-w-0 flex-1">
                   <p>
                     {moved
                       ? t('live.history.actionTo', { action: t(`live.history.actions.${transition.action}`), item })
                       : t(`live.history.actions.${transition.action}`)}
-                    <span className="text-slate-500"> · {actor}</span>
+                    <span className="text-slate-500 dark:text-slate-400"> · {actor}</span>
                   </p>
-                  {transition.reason && <p className="text-xs text-slate-500">“{transition.reason}”</p>}
+                  {transition.reason && <p className="text-xs text-slate-500 dark:text-slate-400">“{transition.reason}”</p>}
                   {fixes.map((fix) => (
-                    <p key={fix.id} className="text-xs text-amber-800">
+                    <p key={fix.id} className="text-xs text-amber-800 dark:text-amber-300">
                       {t('live.history.corrected', {
                         from: timeOfDay(fix.previous_at),
                         to: timeOfDay(fix.corrected_at),
@@ -178,7 +178,8 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
                 {canCorrect && isLiveTimingAction(transition.action) && (
                   <Button
                     variant="ghost"
-                    className="px-2 py-1 text-xs"
+                    size="sm"
+                    icon="pencil"
                     onClick={() => {
                       setTarget({ transition, effectiveMs: at });
                       setValue(toLocalInput(at));
@@ -221,7 +222,7 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
         }
       >
         {target && (
-          <div className="space-y-3 text-sm text-slate-600">
+          <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
             <p>
               {t('live.history.correctBody', {
                 action: t(`live.history.actions.${target.transition.action}`),

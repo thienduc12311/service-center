@@ -15,7 +15,8 @@ import {
 import { keys, usePlanStageLayouts, useStageTemplates } from '../../hooks/queries';
 import { api } from '../../lib/api';
 import { useAuth } from '../../providers/AuthProvider';
-import { Badge, Button, EmptyState, ErrorNotice, Loading, Modal } from '../ui';
+import { Badge, Button, EmptyState, ErrorNotice, Loading, Menu, MenuItem, Modal } from '../ui';
+import { Icon } from '../icons';
 import { StageCanvas } from './StageCanvas';
 import { useErrorText, useFormatters } from '../../i18n';
 
@@ -71,14 +72,20 @@ export const StageTab = ({ plan }: StageTabProps) => {
             type="button"
             onClick={() => setSelectedId(view.layout.id)}
             aria-current={selected?.layout.id === view.layout.id ? 'true' : undefined}
-            className={`rounded-full px-3 py-1 text-sm ${selected?.layout.id === view.layout.id ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition ${
+              selected?.layout.id === view.layout.id
+                ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/20'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
+            }`}
           >
             {view.layout.name}
-            {view.issues.some((issue) => issue.kind !== 'unplaced') && <span aria-label={t('stage.needsAttention')}> •</span>}
+            {view.issues.some((issue) => issue.kind !== 'unplaced') && (
+              <span role="img" aria-label={t('stage.needsAttention')} className="size-1.5 rounded-full bg-amber-400" />
+            )}
           </button>
         ))}
         {canEdit && list.length < 10 && (
-          <Button variant="secondary" onClick={() => setCreating(true)}>
+          <Button variant="secondary" size="sm" icon="plus" onClick={() => setCreating(true)}>
             {t('stage.newLayout')}
           </Button>
         )}
@@ -86,6 +93,7 @@ export const StageTab = ({ plan }: StageTabProps) => {
 
       {!selected ? (
         <EmptyState
+          icon="grid"
           title={t('stage.emptyTitle')}
           description={canEdit ? t('stage.emptyEditor') : t('stage.emptyReader')}
         />
@@ -156,7 +164,7 @@ const CreateLayoutModal = ({ plan, onClose, onCreated }: CreateLayoutModalProps)
               </option>
             ))}
           </select>
-          {templateId && <span className="mt-1 block text-xs text-slate-500">{t('stage.templateHint')}</span>}
+          {templateId && <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{t('stage.templateHint')}</span>}
         </label>
         {!templateId && (
           <label className="block">
@@ -289,13 +297,13 @@ const LayoutEditor = ({ plan, view, canEdit }: LayoutEditorProps) => {
   const unplaced = view.roster.filter((person) => !person.archived && !objects.some((object) => object.person_id === person.person_id));
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_18rem]">
-      <section className="card space-y-3 p-4" aria-label={t('stage.layoutLabel')}>
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
+      <section className="card min-w-0 space-y-4 p-4" aria-label={t('stage.layoutLabel')}>
         <div className="flex flex-wrap items-center gap-2">
           {canEdit ? (
-            <input aria-label={t('stage.layoutName')} className="input max-w-xs" value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />
+            <input aria-label={t('stage.layoutName')} className="input min-w-0 flex-1 sm:max-w-xs" value={name} maxLength={120} onChange={(event) => setName(event.target.value)} />
           ) : (
-            <h3 className="font-semibold">{view.layout.name}</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-white">{view.layout.name}</h3>
           )}
           {canEdit && (
             <select aria-label={t('stage.background')} className="input w-auto" value={background} onChange={(event) => setBackground(event.target.value as StageBackground)}>
@@ -304,7 +312,8 @@ const LayoutEditor = ({ plan, view, canEdit }: LayoutEditorProps) => {
               ))}
             </select>
           )}
-          <span className="ml-auto text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1 text-xs text-slate-500 sm:ml-auto dark:text-slate-400">
+            <Icon name="clock" className="size-3.5" />
             {view.layout.refreshed_at
               ? t('stage.matchedAt', { time: formatters.dateTime(view.layout.refreshed_at) })
               : t('stage.notRefreshed')}
@@ -321,7 +330,7 @@ const LayoutEditor = ({ plan, view, canEdit }: LayoutEditorProps) => {
           onMove={(id, x, y) => update(id, { x, y })}
         />
         {canEdit && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 border-t border-app-border pt-4">
             <label className="text-sm">
               <span className="sr-only">{t('stage.addGear')}</span>
               <select
@@ -340,22 +349,36 @@ const LayoutEditor = ({ plan, view, canEdit }: LayoutEditorProps) => {
                 ))}
               </select>
             </label>
-            <Button variant="secondary" onClick={() => add({ kind: 'label', x: 0.5, y: 0.1, w: 0.2, h: 0.06, rotation: 0, label: t('stage.kinds.label'), color: null })}>
+            <Button variant="secondary" icon="plus" onClick={() => add({ kind: 'label', x: 0.5, y: 0.1, w: 0.2, h: 0.06, rotation: 0, label: t('stage.kinds.label'), color: null })}>
               {t('stage.addLabel')}
             </Button>
-            <Button variant="secondary" onClick={() => setRefreshing(true)}>{t('stage.refreshFromStaffing')}</Button>
-            <Button variant="secondary" onClick={exportPdf}>{t('stage.printPdf')}</Button>
-            <Button variant="secondary" loading={saveTemplate.isPending} onClick={() => saveTemplate.mutate()}>{t('stage.saveAsTemplate')}</Button>
-            <Button
-              variant="danger"
-              loading={remove.isPending}
-              onClick={() => {
-                if (window.confirm(t('stage.deleteConfirm', { name: view.layout.name }))) remove.mutate();
-              }}
-            >
-              {t('common:actions.delete')}
-            </Button>
-            <span className="ml-auto flex gap-2">
+            <Menu label={t('common:actions.more')} icon="more" align="left">
+              {(close) => (
+                <>
+                  <MenuItem icon="people" onClick={() => { close(); setRefreshing(true); }}>
+                    {t('stage.refreshFromStaffing')}
+                  </MenuItem>
+                  <MenuItem icon="document" onClick={() => { close(); exportPdf(); }}>
+                    {t('stage.printPdf')}
+                  </MenuItem>
+                  <MenuItem icon="upload" disabled={saveTemplate.isPending} onClick={() => { close(); saveTemplate.mutate(); }}>
+                    {t('stage.saveAsTemplate')}
+                  </MenuItem>
+                  <MenuItem
+                    icon="trash"
+                    tone="danger"
+                    disabled={remove.isPending}
+                    onClick={() => {
+                      close();
+                      if (window.confirm(t('stage.deleteConfirm', { name: view.layout.name }))) remove.mutate();
+                    }}
+                  >
+                    {t('common:actions.delete')}
+                  </MenuItem>
+                </>
+              )}
+            </Menu>
+            <span className="flex w-full justify-end gap-2 sm:ml-auto sm:w-auto">
               {dirty && (
                 <Button
                   variant="secondary"
@@ -370,17 +393,17 @@ const LayoutEditor = ({ plan, view, canEdit }: LayoutEditorProps) => {
                   {t('stage.discardChanges')}
                 </Button>
               )}
-              <Button loading={save.isPending} disabled={!dirty || !name.trim()} onClick={() => save.mutate()}>
+              <Button icon="check" loading={save.isPending} disabled={!dirty || !name.trim()} onClick={() => save.mutate()}>
                 {t('stage.saveLayout')}
               </Button>
             </span>
           </div>
         )}
-        {!canEdit && <Button variant="secondary" onClick={exportPdf}>{t('stage.printPdf')}</Button>}
-        {notice && <p role="status" className="text-sm text-slate-600">{notice}</p>}
+        {!canEdit && <Button variant="secondary" icon="document" onClick={exportPdf}>{t('stage.printPdf')}</Button>}
+        {notice && <p role="status" className="text-sm text-slate-600 dark:text-slate-300">{notice}</p>}
         {[save.error, remove.error, saveTemplate.error].map((error, index) =>
           error ? (
-            <p key={index} role="alert" className="text-sm text-rose-700">
+            <p key={index} role="alert" className="text-sm text-rose-700 dark:text-rose-400">
               {layoutError(error)}{' '}
               {error instanceof ApiError && error.code === 'layout_revision_stale' && (
                 <button type="button" className="underline" onClick={() => void invalidate()}>{t('stage.reloadTheirs')}</button>
@@ -396,40 +419,40 @@ const LayoutEditor = ({ plan, view, canEdit }: LayoutEditorProps) => {
 
       <aside className="space-y-4">
         <section className="card p-4">
-          <h3 className="mb-2 text-sm font-semibold">{t('stage.compared')}</h3>
+          <h3 className="section-label mb-3">{t('stage.compared')}</h3>
           {issues.filter((issue) => issue.kind !== 'unplaced').length === 0 ? (
-            <p className="text-sm text-slate-500">{t('stage.allStillScheduled')}</p>
+            <p className="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400"><Icon name="check" className="size-4 text-emerald-500" />{t('stage.allStillScheduled')}</p>
           ) : (
-            <ul className="space-y-1 text-sm">
+            <ul className="space-y-1.5 text-sm text-slate-700 dark:text-slate-200">
               {issues
                 .filter((issue) => issue.kind !== 'unplaced')
                 .map((issue) => (
                   <li key={`${issue.kind}:${issue.person_id}`}>
-                    <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">{t(`stage.issues.${issue.kind}`)}</Badge>{' '}
+                    <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300">{t(`stage.issues.${issue.kind}`)}</Badge>{' '}
                     {issue.name}
                   </li>
                 ))}
             </ul>
           )}
-          <p className="mt-2 text-xs text-slate-500">{t('stage.noAutoMove')}</p>
+          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('stage.noAutoMove')}</p>
         </section>
         <section className="card p-4">
-          <h3 className="mb-2 text-sm font-semibold">{t('stage.unplacedTitle')}</h3>
+          <h3 className="section-label mb-3">{t('stage.unplacedTitle')}</h3>
           {unplaced.length === 0 ? (
-            <p className="text-sm text-slate-500">{t('stage.allPlaced')}</p>
+            <p className="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400"><Icon name="check" className="size-4 text-emerald-500" />{t('stage.allPlaced')}</p>
           ) : (
-            <ul className="space-y-1 text-sm">
+            <ul className="row-list text-sm">
               {unplaced.map((person) => (
-                <li key={person.person_id} className="flex items-center justify-between gap-2">
+                <li key={person.person_id} className="flex items-center justify-between gap-2 py-2">
                   <span className="min-w-0">
-                    <span className="block truncate">{person.name}</span>
-                    <span className="text-xs text-slate-500">
+                    <span className="block truncate font-medium text-slate-800 dark:text-slate-100">{person.name}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       {person.roles.join(', ')}
                       {person.prepared ? ` · ${t('stage.notYetAsked')}` : ''}
                     </span>
                   </span>
                   {canEdit && (
-                    <Button variant="secondary" onClick={() => placePerson(person)} aria-label={t('stage.placeLabel', { name: person.name })}>
+                    <Button variant="secondary" size="sm" onClick={() => placePerson(person)} aria-label={t('stage.placeLabel', { name: person.name })}>
                       {t('stage.place')}
                     </Button>
                   )}
@@ -475,14 +498,14 @@ const RefreshModal = ({ objects, roster, onClose, onApply }: RefreshModalProps) 
       <div className="space-y-3 text-sm">
         <p>{t('stage.refresh.intro')}</p>
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={removeUnscheduled} onChange={(event) => setRemove(event.target.checked)} />
+          <input type="checkbox" className="size-4 rounded accent-brand-600" checked={removeUnscheduled} onChange={(event) => setRemove(event.target.checked)} />
           {t('stage.refresh.remove', { count: count('not_scheduled') + count('departed') })}
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={addUnplaced} onChange={(event) => setAdd(event.target.checked)} />
+          <input type="checkbox" className="size-4 rounded accent-brand-600" checked={addUnplaced} onChange={(event) => setAdd(event.target.checked)} />
           {t('stage.refresh.add', { count: count('unplaced') })}
         </label>
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={onClose}>{t('common:actions.cancel')}</Button>
           <Button onClick={() => onApply(refreshStageObjects(objects, roster, { removeUnscheduled, addUnplaced }, newId))}>{t('stage.refresh.apply')}</Button>
         </div>
@@ -504,9 +527,9 @@ const Inspector = ({ object, onChange, onRemove }: InspectorProps) => {
     return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
   };
   return (
-    <fieldset className="grid gap-3 rounded-lg border border-slate-200 p-3 text-sm sm:grid-cols-5 dark:border-slate-700">
-      <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{t(`stage.inspector.selected.${object.kind}`)}</legend>
-      <label className="sm:col-span-2">
+    <fieldset className="surface-inset grid grid-cols-2 gap-3 p-4 text-sm sm:grid-cols-5">
+      <legend className="section-label px-1">{t(`stage.inspector.selected.${object.kind}`)}</legend>
+      <label className="col-span-2">
         <span className="label">{t('stage.inspector.label')}</span>
         <input className="input" maxLength={80} value={object.label} onChange={(event) => onChange({ label: event.target.value })} />
       </label>
@@ -526,14 +549,14 @@ const Inspector = ({ object, onChange, onRemove }: InspectorProps) => {
         <span className="label">{t('stage.inspector.color')}</span>
         <input className="input h-9 p-1" type="color" value={object.color ?? '#94a3b8'} onChange={(event) => onChange({ color: event.target.value })} />
       </label>
-      <label className="sm:col-span-2">
+      <label className="col-span-2">
         <span className="label">{t('stage.inspector.nudge')}</span>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-slate-500 dark:text-slate-400">
           {t('stage.inspector.position', { x: Math.round(object.x * 100), y: Math.round(object.y * 100) })}
         </span>
       </label>
       <div className="flex items-end">
-        <Button variant="danger" onClick={onRemove}>{t('common:actions.remove')}</Button>
+        <Button variant="danger" size="sm" icon="trash" onClick={onRemove}>{t('common:actions.remove')}</Button>
       </div>
     </fieldset>
   );

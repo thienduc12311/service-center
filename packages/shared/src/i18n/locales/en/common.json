@@ -121,7 +121,16 @@
     "notifications": "Notifications",
     "mainNavigation": "Main navigation",
     "organization": "Church",
-    "switchOrganization": "Switch church"
+    "switchOrganization": "Switch church",
+    "openNavigation": "Open navigation",
+    "closeNavigation": "Close navigation",
+    "groups": {
+      "overview": "Overview",
+      "planning": "Planning",
+      "people": "People",
+      "communication": "Communication",
+      "insights": "Insights"
+    }
   },
   "count": {
     "people_one": "{{count}} person",

@@ -9,7 +9,8 @@ import { invalidateLibrary } from '../../lib/song-library';
 import { useAuth } from '../../providers/AuthProvider';
 import type { Theme } from '../../lib/theme';
 import { useTheme, useThemedStyles } from '../../lib/useTheme';
-import { Button, Card, ErrorNotice, Label, Tag } from '../ui';
+import { Button, Card, ErrorNotice, Label, SectionHeader, Tag } from '../ui';
+import { Icon } from '../icons';
 import { useVocabularyLabel } from './AuthoringParts';
 
 export interface SongStatusNoticesProps {
@@ -21,15 +22,17 @@ export interface SongStatusNoticesProps {
 export const SongStatusNotices = ({ song, arrangement }: SongStatusNoticesProps) => {
   const { t } = useTranslation('songs');
   const router = useRouter();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const mergedInto = song.merged_into_song_id;
   if (!mergedInto && !song.archived_at && !arrangement?.archived_at) return null;
   return (
-    <Card>
-      <View style={styles.group}>
+    <View style={styles.notice}>
+      <Icon name="alert" size={17} color={theme.accent.yellow.fg} />
+      <View style={[styles.group, styles.flex]}>
         {mergedInto ? (
           <>
-            <Text style={styles.body}>{t('mobileAuthoring.mergedNotice')}</Text>
+            <Text style={styles.noticeText}>{t('mobileAuthoring.mergedNotice')}</Text>
             <Button
               title={t('mobileAuthoring.openKept')}
               variant="secondary"
@@ -37,10 +40,10 @@ export const SongStatusNotices = ({ song, arrangement }: SongStatusNoticesProps)
             />
           </>
         ) : null}
-        {song.archived_at ? <Text style={styles.body}>{t('songDetail.archivedSong')}</Text> : null}
-        {arrangement?.archived_at ? <Text style={styles.body}>{t('songDetail.archivedArrangement')}</Text> : null}
+        {song.archived_at ? <Text style={styles.noticeText}>{t('songDetail.archivedSong')}</Text> : null}
+        {arrangement?.archived_at ? <Text style={styles.noticeText}>{t('songDetail.archivedArrangement')}</Text> : null}
       </View>
-    </Card>
+    </View>
   );
 };
 
@@ -64,29 +67,37 @@ export const SongDetails = ({ song }: SongDetailsProps) => {
   const tags = [...song.song_types.map(vocabularyLabel), ...song.themes];
 
   return (
-    <Card>
-      <View style={styles.group}>
-        <Label>{t('mobileAuthoring.detailsHeading')}</Label>
-        {facts.map((fact) => (
-          <Text key={fact.label} style={styles.body}>
-            <Text style={styles.muted}>{fact.label} </Text>
-            {fact.value}
-          </Text>
-        ))}
-        <Label>{t('addSong.fields.tags')}</Label>
-        {tags.length ? (
-          <View style={styles.tags}>
-            {tags.map((tag, index) => (
-              <Tag key={`${index}-${tag}`} label={tag} accent={theme.accent.neutral} />
+    <View style={styles.section}>
+      <SectionHeader title={t('mobileAuthoring.detailsHeading')} />
+      <Card>
+        {facts.length ? (
+          <View>
+            {facts.map((fact, index) => (
+              <View key={fact.label} style={[styles.fact, index > 0 && styles.factDivided]}>
+                <Text style={styles.factLabel}>{fact.label}</Text>
+                <Text selectable style={styles.factValue}>{fact.value}</Text>
+              </View>
             ))}
           </View>
-        ) : (
-          <Text style={styles.muted}>{t('tags.empty')}</Text>
-        )}
-        <Label>{t('songInfo.fields.notes')}</Label>
-        <Text style={song.notes ? styles.body : styles.muted}>{song.notes ?? t('notes.empty')}</Text>
-      </View>
-    </Card>
+        ) : null}
+        <View style={styles.group}>
+          <Label>{t('addSong.fields.tags')}</Label>
+          {tags.length ? (
+            <View style={styles.tags}>
+              {tags.map((tag, index) => (
+                <Tag key={`${index}-${tag}`} label={tag} accent={theme.accent.neutral} />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.muted}>{t('tags.empty')}</Text>
+          )}
+        </View>
+        <View style={styles.group}>
+          <Label>{t('songInfo.fields.notes')}</Label>
+          <Text style={song.notes ? styles.body : styles.muted}>{song.notes ?? t('notes.empty')}</Text>
+        </View>
+      </Card>
+    </View>
   );
 };
 
@@ -108,6 +119,7 @@ export const SongManage = ({ song, arrangement }: SongManageProps) => {
   const { queryScope, generation, isCurrentGeneration } = useAuth();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   const reread = () => {
@@ -155,70 +167,94 @@ export const SongManage = ({ song, arrangement }: SongManageProps) => {
   const busy = archiveSong.isPending || archiveArrangement.isPending;
 
   return (
-    <Card>
-      <View style={styles.group}>
-        <Label>{t('mobileAuthoring.manageLabel')}</Label>
-        <View style={styles.actions}>
-          <Button title={t('mobileAuthoring.editSong')} variant="secondary" icon="pencil" onPress={() => router.push({ pathname: '/song/edit/[id]', params: { id: song.id } })} />
-          <Button title={t('allArrangements.add')} variant="secondary" icon="plus" onPress={() => router.push({ pathname: '/song/arrangement', params: { songId: song.id } })} />
-        </View>
-        {arrangement ? (
-          <>
-            <Text style={styles.muted}>{arrangement.name}</Text>
-            <View style={styles.actions}>
-              <Button
-                title={arrangement.chord_chart ? t('mobileChartEditor.editChart') : t('arrangementPanel.addChart')}
-                variant="secondary"
-                icon="music"
-                onPress={() => router.push({ pathname: '/song/chart', params: { songId: song.id, arrangementId: arrangement.id } })}
-              />
-              <Button
-                title={t('mobileAuthoring.editArrangement')}
-                variant="secondary"
-                onPress={() => router.push({ pathname: '/song/arrangement', params: { songId: song.id, arrangementId: arrangement.id } })}
-              />
-              <Button
-                title={t('curation.title')}
-                variant="secondary"
-                onPress={() => router.push({ pathname: '/song/keys', params: { songId: song.id, arrangementId: arrangement.id } })}
-              />
-              {curatable ? (
+    <View style={styles.section}>
+      <SectionHeader title={t('mobileAuthoring.manageLabel')} />
+      <Card>
+        <View style={styles.group}>
+          <View style={styles.actions}>
+            <Button title={t('mobileAuthoring.editSong')} variant="secondary" icon="pencil" style={styles.grow} onPress={() => router.push({ pathname: '/song/edit/[id]', params: { id: song.id } })} />
+            <Button title={t('allArrangements.add')} variant="secondary" icon="plus" style={styles.grow} onPress={() => router.push({ pathname: '/song/arrangement', params: { songId: song.id } })} />
+          </View>
+          {arrangement ? (
+            <>
+              <View style={styles.arrangementHead}>
+                <Icon name="music" size={14} color={theme.color.inkFaint} />
+                <Text style={styles.arrangementName}>{arrangement.name}</Text>
+              </View>
+              <View style={styles.actions}>
                 <Button
-                  title={t('curation.duplicateSummary')}
+                  title={arrangement.chord_chart ? t('mobileChartEditor.editChart') : t('arrangementPanel.addChart')}
                   variant="secondary"
-                  onPress={() => router.push({ pathname: '/song/duplicate', params: { songId: song.id, arrangementId: arrangement.id } })}
+                  icon="music"
+                  onPress={() => router.push({ pathname: '/song/chart', params: { songId: song.id, arrangementId: arrangement.id } })}
                 />
-              ) : null}
-              <Button
-                title={arrangement.archived_at ? t('songDetail.restoreArrangement') : t('songDetail.archiveArrangement')}
-                variant="quiet"
-                disabled={busy || block !== null}
-                loading={archiveArrangement.isPending}
-                onPress={() => confirmArrangementArchive(arrangement)}
-              />
-            </View>
-            {block === 'last_active' ? <Text style={styles.muted}>{t('mobileAuthoring.lastActiveBlocked')}</Text> : null}
-          </>
-        ) : null}
-        <Button
-          title={song.archived_at ? t('songDetail.restoreSong') : t('songDetail.archiveSong')}
-          variant={song.archived_at ? 'secondary' : 'quiet'}
-          disabled={busy}
-          loading={archiveSong.isPending}
-          onPress={confirmSongArchive}
-        />
-        <ErrorNotice error={archiveSong.error ?? archiveArrangement.error} />
-        <Text style={styles.muted}>{t('mobileAuthoring.webOnly')}</Text>
-      </View>
-    </Card>
+                <Button
+                  title={t('mobileAuthoring.editArrangement')}
+                  variant="secondary"
+                  onPress={() => router.push({ pathname: '/song/arrangement', params: { songId: song.id, arrangementId: arrangement.id } })}
+                />
+                <Button
+                  title={t('curation.title')}
+                  variant="secondary"
+                  onPress={() => router.push({ pathname: '/song/keys', params: { songId: song.id, arrangementId: arrangement.id } })}
+                />
+                {curatable ? (
+                  <Button
+                    title={t('curation.duplicateSummary')}
+                    variant="secondary"
+                    onPress={() => router.push({ pathname: '/song/duplicate', params: { songId: song.id, arrangementId: arrangement.id } })}
+                  />
+                ) : null}
+                <Button
+                  title={arrangement.archived_at ? t('songDetail.restoreArrangement') : t('songDetail.archiveArrangement')}
+                  variant="quiet"
+                  disabled={busy || block !== null}
+                  loading={archiveArrangement.isPending}
+                  onPress={() => confirmArrangementArchive(arrangement)}
+                />
+              </View>
+              {block === 'last_active' ? <Text style={styles.muted}>{t('mobileAuthoring.lastActiveBlocked')}</Text> : null}
+            </>
+          ) : null}
+          <Button
+            title={song.archived_at ? t('songDetail.restoreSong') : t('songDetail.archiveSong')}
+            variant={song.archived_at ? 'secondary' : 'quiet'}
+            disabled={busy}
+            loading={archiveSong.isPending}
+            onPress={confirmSongArchive}
+          />
+          <ErrorNotice error={archiveSong.error ?? archiveArrangement.error} />
+          <Text style={styles.hint}>{t('mobileAuthoring.webOnly')}</Text>
+        </View>
+      </Card>
+    </View>
   );
 };
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
+    flex: { flex: 1 },
+    grow: { flexGrow: 1 },
+    section: { gap: theme.space.md },
     group: { gap: theme.space.sm },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
     body: { ...theme.type.body, color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
+    hint: { ...theme.type.bodySmall, color: theme.color.inkFaint },
+    notice: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: theme.space.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.accent.yellow.bg,
+    },
+    noticeText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg },
+    fact: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md, paddingVertical: theme.space.sm },
+    factDivided: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.border },
+    factLabel: { ...theme.type.bodySmall, color: theme.color.inkMuted, flex: 1 },
+    factValue: { ...theme.type.bodySmall, fontWeight: '500', color: theme.color.ink, flex: 1.4, textAlign: 'right' },
+    arrangementHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: theme.space.sm },
+    arrangementName: { ...theme.type.eyebrow, color: theme.color.inkFaint, flexShrink: 1 },
   });

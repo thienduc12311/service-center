@@ -12,7 +12,7 @@ import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { newIdempotencyKey } from '../../src/lib/idempotency';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { Avatar, Button, Card, EmptyState, ErrorNotice, Label, ListRow, Loading, Screen, Tag, screenPadding } from '../../src/components/ui';
+import { Avatar, Button, Card, EmptyState, ErrorNotice, ListRow, Loading, Screen, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
 import { MetaLine, StatusBanner, StepPills, TimeSlotList, type StatusBannerProps } from '../../src/components/StaffingParts';
 import {
   canAnswerOffer,
@@ -174,6 +174,7 @@ export default function ReplacementScreen() {
             </>
           ) : (
             <EmptyState
+              icon="people"
               title={t('replacements.notAvailable')}
               action={<Button variant="secondary" title={t('common:actions.back')} onPress={() => router.back()} />}
             />
@@ -309,50 +310,54 @@ export default function ReplacementScreen() {
           </StatusBanner>
         ) : null}
 
-        <Card>
-          <Label>{t('replacements.requiredTimes')}</Label>
-          {plan.isLoading ? <Loading /> : null}
-          <ErrorNotice error={plan.error} />
-          {plan.data ? <TimeSlotList times={required} emptyText={t('replacements.noTimes')} /> : null}
-        </Card>
+        <View style={styles.section}>
+          <SectionHeader title={t('replacements.requiredTimes')} />
+          <Card>
+            {plan.isLoading ? <Loading /> : null}
+            <ErrorNotice error={plan.error} />
+            {plan.data ? <TimeSlotList times={required} emptyText={t('replacements.noTimes')} /> : null}
+          </Card>
+        </View>
 
         {shownOffers.length > 0 || isRequester || mayLead ? (
-          <Card>
-            <Label>{t('replacements.offers')}</Label>
-            {shownOffers.length === 0 ? <Text style={styles.muted}>{t('replacements.noOffers')}</Text> : null}
-            {shownOffers.map((offer, index) => {
-              const stage = offerStage(offer);
-              const name = nameOf(offer.candidate_person_id);
-              return (
-                <ListRow key={offer.id} divided={index > 0}>
-                  <View style={styles.offer}>
-                    <Avatar name={name} />
-                    <View style={styles.offerText}>
-                      <Text style={styles.name}>{name}</Text>
-                      <Tag label={t(`replacements.stage.${stage}`)} accent={theme.accent[offerStageAccent(stage)]} />
-                      {mayLead && offerIsLive(offer) && reasons.get(offer.candidate_person_id) ? (
-                        <Tag label={t(`replacements.leader.unavailable.${reasons.get(offer.candidate_person_id)!}`)} accent={theme.accent.red} />
-                      ) : null}
+          <View style={styles.section}>
+            <SectionHeader title={t('replacements.offers')} count={shownOffers.length} />
+            <Card>
+              {shownOffers.length === 0 ? <Text style={styles.muted}>{t('replacements.noOffers')}</Text> : null}
+              {shownOffers.map((offer, index) => {
+                const stage = offerStage(offer);
+                const name = nameOf(offer.candidate_person_id);
+                return (
+                  <ListRow key={offer.id} divided={index > 0}>
+                    <View style={styles.offer}>
+                      <Avatar name={name} />
+                      <View style={styles.offerText}>
+                        <Text style={styles.name}>{name}</Text>
+                        <Tag label={t(`replacements.stage.${stage}`)} accent={theme.accent[offerStageAccent(stage)]} />
+                        {mayLead && offerIsLive(offer) && reasons.get(offer.candidate_person_id) ? (
+                          <Tag label={t(`replacements.leader.unavailable.${reasons.get(offer.candidate_person_id)!}`)} accent={theme.accent.red} />
+                        ) : null}
+                      </View>
                     </View>
-                  </View>
-                  {offerIsLive(offer) ? <StepPills steps={steps(offer)} /> : null}
-                  {stage === 'awaiting_leader' && offer.reservation_expires_at ? (
-                    <MetaLine icon="clock" strong>{t('replacements.heldUntil', { time: format.dateTime(offer.reservation_expires_at) })}</MetaLine>
-                  ) : null}
-                  {canApproveOffer(offer, request, mayLead) || canRejectOffer(offer, request, mayLead) ? (
-                    <View style={styles.actions}>
-                      {canRejectOffer(offer, request, mayLead) ? (
-                        <Button variant="secondary" title={t('replacements.leader.reject')} disabled={act.isPending} onPress={() => confirmReject(offer)} style={styles.flex} />
-                      ) : null}
-                      {canApproveOffer(offer, request, mayLead) ? (
-                        <Button title={t('replacements.leader.approve')} icon="check" disabled={act.isPending} onPress={() => act.mutate({ offer, action: 'approve' })} style={styles.flex} />
-                      ) : null}
-                    </View>
-                  ) : null}
-                </ListRow>
-              );
-            })}
-          </Card>
+                    {offerIsLive(offer) ? <StepPills steps={steps(offer)} /> : null}
+                    {stage === 'awaiting_leader' && offer.reservation_expires_at ? (
+                      <MetaLine icon="clock" strong>{t('replacements.heldUntil', { time: format.dateTime(offer.reservation_expires_at) })}</MetaLine>
+                    ) : null}
+                    {canApproveOffer(offer, request, mayLead) || canRejectOffer(offer, request, mayLead) ? (
+                      <View style={styles.actions}>
+                        {canRejectOffer(offer, request, mayLead) ? (
+                          <Button variant="secondary" title={t('replacements.leader.reject')} disabled={act.isPending} onPress={() => confirmReject(offer)} style={styles.flex} />
+                        ) : null}
+                        {canApproveOffer(offer, request, mayLead) ? (
+                          <Button title={t('replacements.leader.approve')} icon="check" disabled={act.isPending} onPress={() => act.mutate({ offer, action: 'approve' })} style={styles.flex} />
+                        ) : null}
+                      </View>
+                    ) : null}
+                  </ListRow>
+                );
+              })}
+            </Card>
+          </View>
         ) : null}
 
         {requestFailure ? (
@@ -362,56 +367,58 @@ export default function ReplacementScreen() {
         ) : null}
 
         {mayLead && request.status === 'open' ? (
-          <Card>
-            <Label>{t('replacements.leader.title')}</Label>
-            <Text style={styles.muted}>{t('replacements.leader.hint')}</Text>
-            {teams.isLoading ? <Loading /> : null}
-            <ErrorNotice error={teams.error} />
-            {!teams.isLoading && candidates.length === 0 && !candidate ? <Text style={styles.muted}>{t('replacements.leader.none')}</Text> : null}
-            {candidate ? (
-              <StatusBanner
-                accent="blue"
-                icon="person"
-                title={t('replacements.leader.review', { position, name: candidate.name ?? t('replacements.unnamed') })}
-              >
-                <MetaLine icon="bell">{t('replacements.noNotifications')}</MetaLine>
-                <View style={styles.actions}>
-                  <Button variant="secondary" title={t('common:actions.cancel')} disabled={issue.isPending} onPress={() => setCandidate(null)} style={styles.flex} />
-                  <Button
-                    title={issue.isPending ? t('replacements.leader.sending') : t('replacements.leader.send')}
-                    loading={issue.isPending}
-                    disabled={issue.isPending}
-                    onPress={() => issue.mutate(candidate)}
-                    style={styles.flex}
-                  />
-                </View>
-              </StatusBanner>
-            ) : (
-              candidates.map((item, index) => {
-                const reason = reasons.get(item.personId);
-                return (
-                  <ListRow
-                    key={item.personId}
-                    divided={index > 0}
-                    showChevron={!reason}
-                    onPress={reason ? undefined : () => setCandidate(item)}
-                  >
-                    <View style={styles.offer}>
-                      <Avatar name={item.name ?? t('replacements.unnamed')} />
-                      <View style={styles.offerText}>
-                        <Text style={[styles.name, reason && styles.dim]}>{item.name ?? t('replacements.unnamed')}</Text>
-                        {reason ? (
-                          <Tag label={t(`replacements.leader.unavailable.${reason}`)} accent={theme.accent.red} />
-                        ) : conflictCheck.isSuccess ? (
-                          <Tag label={t('replacements.leader.available')} accent={theme.accent.green} />
-                        ) : null}
+          <View style={styles.section}>
+            <SectionHeader title={t('replacements.leader.title')} />
+            <Card>
+              <Text style={styles.muted}>{t('replacements.leader.hint')}</Text>
+              {teams.isLoading ? <Loading /> : null}
+              <ErrorNotice error={teams.error} />
+              {!teams.isLoading && candidates.length === 0 && !candidate ? <Text style={styles.muted}>{t('replacements.leader.none')}</Text> : null}
+              {candidate ? (
+                <StatusBanner
+                  accent="blue"
+                  icon="person"
+                  title={t('replacements.leader.review', { position, name: candidate.name ?? t('replacements.unnamed') })}
+                >
+                  <MetaLine icon="bell">{t('replacements.noNotifications')}</MetaLine>
+                  <View style={styles.actions}>
+                    <Button variant="secondary" title={t('common:actions.cancel')} disabled={issue.isPending} onPress={() => setCandidate(null)} style={styles.flex} />
+                    <Button
+                      title={issue.isPending ? t('replacements.leader.sending') : t('replacements.leader.send')}
+                      loading={issue.isPending}
+                      disabled={issue.isPending}
+                      onPress={() => issue.mutate(candidate)}
+                      style={styles.flex}
+                    />
+                  </View>
+                </StatusBanner>
+              ) : (
+                candidates.map((item, index) => {
+                  const reason = reasons.get(item.personId);
+                  return (
+                    <ListRow
+                      key={item.personId}
+                      divided={index > 0}
+                      showChevron={!reason}
+                      onPress={reason ? undefined : () => setCandidate(item)}
+                    >
+                      <View style={styles.offer}>
+                        <Avatar name={item.name ?? t('replacements.unnamed')} />
+                        <View style={styles.offerText}>
+                          <Text style={[styles.name, reason && styles.dim]}>{item.name ?? t('replacements.unnamed')}</Text>
+                          {reason ? (
+                            <Tag label={t(`replacements.leader.unavailable.${reason}`)} accent={theme.accent.red} />
+                          ) : conflictCheck.isSuccess ? (
+                            <Tag label={t('replacements.leader.available')} accent={theme.accent.green} />
+                          ) : null}
+                        </View>
                       </View>
-                    </View>
-                  </ListRow>
-                );
-              })
-            )}
-          </Card>
+                    </ListRow>
+                  );
+                })
+              )}
+            </Card>
+          </View>
         ) : null}
 
         {canCancelRequest(request, myPersonId, mayLead) ? (
@@ -425,7 +432,8 @@ export default function ReplacementScreen() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    gap: { gap: theme.space.md },
+    gap: { gap: theme.space.lg },
+    section: { gap: theme.space.sm },
     header: { gap: theme.space.sm, alignItems: 'flex-start' },
     title: { ...theme.type.title, color: theme.color.ink },
     body: { ...theme.type.body, color: theme.color.ink },

@@ -7,7 +7,7 @@ import { type PlanDetail, type ReplacementRequestDetail, type ServiceCenterAccen
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { Card, EmptyState, ErrorNotice, IconWell, Label, ListRow, Loading, Screen, ScreenHeader, Tag, screenPadding } from '../../src/components/ui';
+import { Card, EmptyState, ErrorNotice, IconWell, ListRow, Loading, Screen, ScreenHeader, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
 import type { IconName } from '../../src/components/icons';
 import { replacementSection, requestAccent, type ReplacementSection } from '../../src/lib/replacements';
 import { useMyPersonId, useReplacementRequests } from '../../src/lib/useReplacements';
@@ -16,8 +16,14 @@ import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { useFormatters } from '../../src/i18n';
 
 const SECTIONS: readonly ReplacementSection[] = ['forYou', 'toReview', 'yours', 'past'];
+/** A section's glyph and tint. */
+interface SectionLook {
+  icon: IconName;
+  accent: ServiceCenterAccentName;
+}
+
 /** How each section looks, so what needs the person's attention stands out. */
-const SECTION_LOOK: Record<ReplacementSection, { icon: IconName; accent: ServiceCenterAccentName }> = {
+const SECTION_LOOK: Record<ReplacementSection, SectionLook> = {
   forYou: { icon: 'bell', accent: 'blue' },
   toReview: { icon: 'person', accent: 'yellow' },
   yours: { icon: 'search', accent: 'blue' },
@@ -100,12 +106,12 @@ export default function ReplacementsScreen() {
         {requests.isLoading ? (
           <Loading label={t('replacements.loading')} />
         ) : requests.error ? null : total === 0 ? (
-          <EmptyState title={t('replacements.empty')} />
+          <EmptyState icon="people" title={t('replacements.empty')} />
         ) : (
           SECTIONS.filter((section) => grouped.get(section)!.length > 0).map((section) => (
             <View key={section} style={styles.section}>
-              <Label>{t(`replacements.sections.${section}`)}</Label>
-              <Card>
+              <SectionHeader title={t(`replacements.sections.${section}`)} count={grouped.get(section)!.length} />
+              <Card compact style={styles.rows}>
                 {grouped.get(section)!.map((request, index) => {
                   const plan = planById.get(request.plan_id);
                   return (
@@ -114,16 +120,14 @@ export default function ReplacementsScreen() {
                       divided={index > 0}
                       showChevron
                       onPress={() => router.push({ pathname: '/replacements/[id]', params: { id: request.id } })}
+                      leading={<IconWell name={SECTION_LOOK[section].icon} accent={theme.accent[SECTION_LOOK[section].accent]} />}
                     >
-                      <View style={styles.row}>
-                        <IconWell name={SECTION_LOOK[section].icon} accent={theme.accent[SECTION_LOOK[section].accent]} />
-                        <View style={styles.rowText}>
-                          <Text style={styles.title} numberOfLines={2}>{label(request, teams.data ?? [])}</Text>
-                          {plan ? (
-                            <Text style={styles.muted} numberOfLines={1}>{`${plan.title} · ${format.calendarDate(plan.service_date, 'medium')}`}</Text>
-                          ) : null}
-                          <Tag label={t(`replacements.requestStatus.${request.status}`)} accent={theme.accent[requestAccent(request.status)]} />
-                        </View>
+                      <View style={styles.rowText}>
+                        <Text style={styles.title} numberOfLines={2}>{label(request, teams.data ?? [])}</Text>
+                        {plan ? (
+                          <Text style={styles.muted} numberOfLines={1}>{`${plan.title} · ${format.calendarDate(plan.service_date, 'medium')}`}</Text>
+                        ) : null}
+                        <Tag label={t(`replacements.requestStatus.${request.status}`)} accent={theme.accent[requestAccent(request.status)]} />
                       </View>
                     </ListRow>
                   );
@@ -139,9 +143,9 @@ export default function ReplacementsScreen() {
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    gap: { gap: theme.space.md },
+    gap: { gap: theme.space.xl },
     section: { gap: theme.space.sm },
-    row: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md },
+    rows: { paddingVertical: theme.space.xs },
     rowText: { flex: 1, gap: theme.space.xs, alignItems: 'flex-start' },
     title: { ...theme.type.heading, color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },

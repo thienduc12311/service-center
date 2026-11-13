@@ -12,7 +12,8 @@ import {
 import { openChartInNewTab } from '../../lib/chart-export';
 import { useLanguage } from '../../i18n';
 import { useChartPdfExport } from '../../hooks/chart-export';
-import { Badge, Button, EmptyState, ErrorNotice } from '../ui';
+import { Badge, Button, EmptyState, ErrorNotice, IconButton } from '../ui';
+import { Icon } from '../icons';
 import { ChordChart } from '../ChordChart';
 import { ChartNotationSelect, ORIGINAL_KEY_VIEW, type ChartView } from '../ChartNotationSelect';
 
@@ -33,7 +34,7 @@ interface StatProps {
 const Stat = ({ label, value }: StatProps) => {
   const { t } = useTranslation('songs');
   return (
-    <span className="text-slate-500">
+    <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
       <Trans
         t={t}
         i18nKey="arrangementPanel.stat"
@@ -44,8 +45,9 @@ const Stat = ({ label, value }: StatProps) => {
   );
 };
 
-const ICON_BUTTON =
-  'grid size-8 place-items-center rounded-lg text-slate-500 ring-1 ring-slate-300 transition hover:bg-slate-50 disabled:opacity-40';
+/** A secondary-button look for router links (a link must not wrap a button). */
+const LINK_BUTTON =
+  'button inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm shadow-slate-900/5 ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 hover:text-slate-900 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800';
 
 /**
  * One arrangement: its tempo and section order, and the chart itself, which
@@ -90,18 +92,18 @@ export const ArrangementPanel = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="card flex flex-wrap items-start justify-between gap-3 p-5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
               {arrangement.name}
             </h2>
             {arrangement.is_default && (
-              <Badge tone="bg-brand-50 text-brand-700 ring-brand-600/20">{t('arrangement.defaultBadge')}</Badge>
+              <Badge tone="bg-brand-50 text-brand-700 ring-brand-600/20 dark:bg-brand-500/15 dark:text-brand-200 dark:ring-brand-500/30">{t('arrangement.defaultBadge')}</Badge>
             )}
           </div>
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {arrangement.length_seconds !== null && (
               <Stat label={t('arrangement.fields.length')} value={formatDuration(arrangement.length_seconds)} />
             )}
@@ -112,7 +114,7 @@ export const ArrangementPanel = ({
           </div>
 
           {arrangement.sequence.length > 0 && (
-            <p className="mt-1.5 text-sm text-slate-500">
+            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
               <Trans
                 t={t}
                 i18nKey="arrangementPanel.sequence"
@@ -124,18 +126,14 @@ export const ArrangementPanel = ({
         </div>
 
         {canManage && (
-          <div className="flex items-center gap-2">
-            <button type="button" className={ICON_BUTTON} onClick={onEdit} aria-label={t('arrangementPanel.edit')}>
-              ✎
-            </button>
-            <button
-              type="button"
-              className={`${ICON_BUTTON} hover:text-rose-600`}
+          <div className="flex items-center gap-1">
+            <IconButton icon="pencil" label={t('arrangementPanel.edit')} onClick={onEdit} />
+            <IconButton
+              icon="trash"
+              label={t('arrangementPanel.delete')}
               onClick={onDelete}
-              aria-label={t('arrangementPanel.delete')}
-            >
-              🗑
-            </button>
+              className="hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10 dark:hover:!text-rose-400"
+            />
           </div>
         )}
       </div>
@@ -144,7 +142,7 @@ export const ArrangementPanel = ({
         <ChartNotationSelect value={view} onChange={setView} />
 
         {rendered.semitones !== 0 && (
-          <span className="text-xs text-slate-400">
+          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
             {t('arrangementPanel.transposed', {
               count: rendered.semitones > 6 ? rendered.semitones - 12 : rendered.semitones,
             })}
@@ -154,7 +152,7 @@ export const ArrangementPanel = ({
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {arrangement.chord_chart && (
             <>
-              <Button variant="secondary" onClick={() => openChartInNewTab(chartDocument())}>
+              <Button variant="secondary" icon="document" onClick={() => openChartInNewTab(chartDocument())}>
                 {t('arrangementPanel.viewPage')}
               </Button>
               <Button
@@ -167,10 +165,9 @@ export const ArrangementPanel = ({
             </>
           )}
           {canManage && (
-            <Link to={chartEditorPath}>
-              <Button variant="secondary">
-                {arrangement.chord_chart ? t('addSong.fields.chart') : t('arrangementPanel.addChart')}
-              </Button>
+            <Link to={chartEditorPath} className={LINK_BUTTON}>
+              <Icon name={arrangement.chord_chart ? 'pencil' : 'plus'} className="size-4" />
+              {arrangement.chord_chart ? t('addSong.fields.chart') : t('arrangementPanel.addChart')}
             </Link>
           )}
         </div>
@@ -178,7 +175,7 @@ export const ArrangementPanel = ({
 
       <ErrorNotice error={pdf.error} />
 
-      <div className="card p-5">
+      <div className="card p-5 sm:p-6">
         {arrangement.chord_chart ? (
           <ChordChart
             chordpro={arrangement.chord_chart}
@@ -188,12 +185,15 @@ export const ArrangementPanel = ({
           />
         ) : (
           <EmptyState
+            compact
+            icon="document"
             title={t('arrangementPanel.emptyTitle')}
             description={t('arrangementPanel.emptyDescription')}
             action={
               canManage ? (
-                <Link to={chartEditorPath}>
-                  <Button variant="secondary">{t('arrangementPanel.addChart')}</Button>
+                <Link to={chartEditorPath} className={LINK_BUTTON}>
+                  <Icon name="plus" className="size-4" />
+                  {t('arrangementPanel.addChart')}
                 </Link>
               ) : undefined
             }

@@ -91,7 +91,7 @@ export const AddSongModal = ({ open, onClose, onCreated }: AddSongModalProps) =>
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="song-key">{t('arrangement.fields.key')}</label>
             <KeySelect
@@ -117,7 +117,7 @@ export const AddSongModal = ({ open, onClose, onCreated }: AddSongModalProps) =>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <label className="label" htmlFor="song-type">{t('addSong.fields.type')}</label>
             <TagSelect
@@ -167,13 +167,13 @@ export const AddSongModal = ({ open, onClose, onCreated }: AddSongModalProps) =>
           />
         </div>
 
-        <div className="border-t border-slate-200 pt-4">
+        <div className="border-t border-app-border pt-4">
           <label className="label" htmlFor="song-chart">{t('addSong.fields.chart')}</label>
-          <p className="mb-2 text-xs text-slate-500">
+          <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
             <Trans
               t={t}
               i18nKey="addSong.chartHelp"
-              components={[<code key="example" className="rounded bg-slate-100 px-1" />]}
+              components={[<code key="example" className="rounded bg-slate-100 px-1 dark:bg-slate-800" />]}
             />
           </p>
           <textarea
@@ -187,7 +187,7 @@ export const AddSongModal = ({ open, onClose, onCreated }: AddSongModalProps) =>
 
         <ErrorNotice error={create.error} />
 
-        <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+        <div className="flex justify-end gap-2 border-t border-app-border pt-4">
           <Button type="button" variant="secondary" onClick={close}>
             {t('common:actions.cancel')}
           </Button>

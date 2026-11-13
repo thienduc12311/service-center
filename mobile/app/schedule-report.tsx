@@ -155,7 +155,7 @@ export default function ScheduleReportScreen() {
   if (!allowed) {
     return (
       <Screen>
-        <EmptyState title={t('page.leadersOnlyTitle')} description={t('page.leadersOnlyDescription')} />
+        <EmptyState icon="document" title={t('page.leadersOnlyTitle')} description={t('page.leadersOnlyDescription')} />
       </Screen>
     );
   }
@@ -243,7 +243,7 @@ export default function ScheduleReportScreen() {
         </Card>
 
         {!applied ? (
-          <EmptyState title={t('results.choose')} />
+          <EmptyState icon="document" title={t('results.choose')} />
         ) : report.isLoading ? (
           <Loading label={t('results.building')} />
         ) : report.error ? (
@@ -350,7 +350,7 @@ const ReportResult = ({
       </Card>
 
       {groups.length === 0 ? (
-        <EmptyState title={t('results.noMatches')} />
+        <EmptyState icon="search" title={t('results.noMatches')} />
       ) : (
         groups.map((group) => (
           <Card key={group.planId}>

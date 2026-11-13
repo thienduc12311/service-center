@@ -11,6 +11,7 @@ import {
 } from '@service-center/shared';
 import { supabase } from '../lib/supabase';
 import { Avatar, Button, ErrorNotice } from './ui';
+import { Icon } from './icons';
 
 export interface AvatarUploadProps {
   name: string | null | undefined;
@@ -63,7 +64,8 @@ export const AvatarUpload = ({ name, url, target, onChange }: AvatarUploadProps)
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-4">
         <Avatar name={name} url={url} size="lg" />
-        <label className="cursor-pointer rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+        <label className="button inline-flex h-9 cursor-pointer items-center gap-2 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm shadow-slate-900/5 ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800">
+          <Icon name="upload" className="size-4" />
           {busy ? t('avatar.uploading') : url ? t('avatar.change') : t('avatar.upload')}
           <input
             type="file"
@@ -79,7 +81,7 @@ export const AvatarUpload = ({ name, url, target, onChange }: AvatarUploadProps)
           </Button>
         )}
       </div>
-      <p className="text-xs text-slate-400">{t('avatar.hint')}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{t('avatar.hint')}</p>
       <ErrorNotice error={error} />
     </div>
   );

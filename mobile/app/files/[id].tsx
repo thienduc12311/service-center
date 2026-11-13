@@ -62,7 +62,7 @@ export default function FileScreen() {
   if (!id) {
     return (
       <Screen>
-        <EmptyState title={t('mobileFiles.invalidLink')} description={t('mobileFiles.invalidLinkDescription')} />
+        <EmptyState icon="alert" title={t('mobileFiles.invalidLink')} description={t('mobileFiles.invalidLinkDescription')} />
       </Screen>
     );
   }
@@ -212,7 +212,7 @@ function FileWorkspace({ id, planId, itemId, linkId }: FileWorkspaceProps) {
       <Screen>
         <View style={styles.errorWrap}>
           {lost ? (
-            <EmptyState title={t('fileErrors.notFound')} description={t('mobileFiles.goneDescription')} />
+            <EmptyState icon="document" title={t('fileErrors.notFound')} description={t('mobileFiles.goneDescription')} />
           ) : (
             <>
               <ErrorNotice error={detail.error} />

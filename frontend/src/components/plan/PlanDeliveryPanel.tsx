@@ -12,6 +12,7 @@ import {
 import { api } from '../../lib/api';
 import { useInvalidateOrg, usePlanDeliveries } from '../../hooks/queries';
 import { Badge, Button, ErrorNotice, Spinner } from '../ui';
+import { Icon } from '../icons';
 import { useFormatters } from '../../i18n';
 import { deliveryErrorText } from './DeliveryOutcomeNotice';
 
@@ -110,13 +111,18 @@ export const PlanDeliveryPanel = ({ planId }: PlanDeliveryPanelProps) => {
   const people = useMemo(() => planDeliveryByPerson(history.data), [history.data]);
 
   return (
-    <section className="card mt-6 p-5">
+    <section className="card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="font-semibold">{t('planDelivery.title')}</h2>
-          <p className="text-sm text-slate-500">{t('planDelivery.description')}</p>
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            <Icon name="bell" className="size-[18px]" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-semibold text-slate-900 dark:text-white">{t('planDelivery.title')}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('planDelivery.description')}</p>
+          </div>
         </div>
-        <Button variant="secondary" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+        <Button variant="secondary" size="sm" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
           {open ? t('planDelivery.hide') : t('planDelivery.show')}
         </Button>
       </div>
@@ -125,21 +131,21 @@ export const PlanDeliveryPanel = ({ planId }: PlanDeliveryPanelProps) => {
           {history.isLoading ? (
             <div className="flex justify-center py-6 text-slate-400"><Spinner /></div>
           ) : people.length === 0 ? (
-            <p className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-400 dark:bg-slate-900">
+            <p className="surface-inset px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
               {t('planDelivery.empty')}
             </p>
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            <ul className="row-list">
               {people.map((entry) => (
                 <li key={entry.personId} className="py-3">
-                  <p className="font-medium">{entry.name}</p>
+                  <p className="font-medium text-slate-900 dark:text-white">{entry.name}</p>
                   {entry.reminders.length > 0 && (
-                    <ul className="ml-3 divide-y divide-slate-50 dark:divide-slate-900">
+                    <ul className="ml-3 border-l border-app-border pl-3">
                       {entry.reminders.map((job) => <ReminderItem key={job.id} job={job} />)}
                     </ul>
                   )}
                   {entry.deliveries.length > 0 && (
-                    <ul className="ml-3 divide-y divide-slate-50 dark:divide-slate-900">
+                    <ul className="ml-3 border-l border-app-border pl-3">
                       {entry.deliveries.map((item) => <DeliveryItem key={item.id} item={item} />)}
                     </ul>
                   )}

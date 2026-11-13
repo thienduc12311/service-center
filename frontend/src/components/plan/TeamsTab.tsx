@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import type { AssignmentDetail } from '@service-center/shared';
-import { Avatar, Button, EmptyState } from '../ui';
+import { Avatar, Button, EmptyState, Notice } from '../ui';
+import { Icon } from '../icons';
 import { assignmentDot } from '../../lib/format';
 import type { PlanTeamPositionView, PlanTeamView } from './types';
 import { attendanceSummary } from './attendance';
@@ -58,50 +59,45 @@ export const TeamsTab = ({
   const { t } = useTranslation(['staffing', 'common']);
   return (
   <div>
-    <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-      <button
-        type="button"
-        onClick={onToggleAllTeams}
-        className="text-sm text-slate-500 hover:text-brand-600 hover:underline"
-      >
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <Button variant="ghost" size="sm" icon="team" onClick={onToggleAllTeams}>
         {showAllTeams ? t('teamsTab.showServiceTeams') : t('teamsTab.showAllTeams')}
-      </button>
-      {(canEditPlan || teams.some((team) => canScheduleTeam(team.team.id))) &&
-        (editingNeeds ? (
-          <Button onClick={() => onEditingNeedsChange(false)}>{t('common:actions.done')}</Button>
-        ) : (
-          <>
-            <Button variant="secondary" onClick={() => onEditingNeedsChange(true)}>
-              {t('teamsTab.neededPositions')}
-            </Button>
-            <Button variant="secondary" onClick={onAddPeople}>
-              {t('teamsTab.addPeople')}
-            </Button>
-          </>
-        ))}
+      </Button>
+      {(canEditPlan || teams.some((team) => canScheduleTeam(team.team.id))) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {editingNeeds ? (
+            <Button icon="check" onClick={() => onEditingNeedsChange(false)}>{t('common:actions.done')}</Button>
+          ) : (
+            <>
+              <Button variant="secondary" icon="people" onClick={() => onEditingNeedsChange(true)}>
+                {t('teamsTab.neededPositions')}
+              </Button>
+              <Button icon="plus" onClick={onAddPeople}>
+                {t('teamsTab.addPeople')}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
     </div>
 
     {editingNeeds && (
-      <div className="mb-4 flex items-start gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm">
-        <span aria-hidden="true" className="text-slate-400">
-          ⓘ
-        </span>
-        <div>
-          <p className="font-medium text-slate-700">{t('teamsTab.editNeedsTitle')}</p>
-          <p className="text-slate-500">
-            <Trans t={t} i18nKey="teamsTab.editNeedsHint" components={[<strong key="done" className="font-medium" />]} />
-          </p>
-        </div>
-      </div>
+      <Notice className="mb-4">
+        <p className="font-medium">{t('teamsTab.editNeedsTitle')}</p>
+        <p className="opacity-90">
+          <Trans t={t} i18nKey="teamsTab.editNeedsHint" components={[<strong key="done" className="font-semibold" />]} />
+        </p>
+      </Notice>
     )}
 
     {teams.length === 0 ? (
       <EmptyState
+        icon="team"
         title={t('teamsTab.emptyTitle')}
         description={t('teamsTab.emptyDescription')}
       />
     ) : (
-      <div className="flex gap-3 overflow-x-auto pb-3">
+      <div className="grid items-start gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {teams.map((team) => (
           <TeamColumn
             key={team.team.id}
@@ -163,32 +159,35 @@ const TeamColumn = ({
     team.positions.some((position) => position.scheduled.length > 0 || position.needed > 0);
 
   return (
-  <section className="card w-72 shrink-0 overflow-hidden">
-    <header className="border-b border-slate-100 px-4 py-3">
+  <section className="card min-w-0 overflow-hidden">
+    <header className="border-t-[3px] border-b border-b-app-border px-4 py-3" style={{ borderTopColor: team.team.color }}>
       <div className="flex items-center gap-2">
         <span
           className="size-2.5 rounded-full"
           style={{ backgroundColor: team.team.color }}
           aria-hidden="true"
         />
-        <h3 className="font-semibold">{team.team.name}</h3>
+        <h3 className="font-semibold text-slate-900 dark:text-white">{team.team.name}</h3>
       </div>
-      <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
-        <span title={t('common:assignmentStatus.confirmed')}>
-          <span className="mr-1 text-emerald-600">✓</span>
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 tabular-nums dark:text-slate-400">
+        <span title={t('common:assignmentStatus.confirmed')} className="inline-flex items-center gap-1">
+          <Icon name="check" className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+          <span className="sr-only">{t('common:assignmentStatus.confirmed')}</span>
           {team.confirmed}
         </span>
-        <span title={t('common:assignmentStatus.declined')}>
-          <span className="mr-1 text-rose-500">✕</span>
+        <span title={t('common:assignmentStatus.declined')} className="inline-flex items-center gap-1">
+          <Icon name="close" className="size-3.5 text-rose-500 dark:text-rose-400" />
+          <span className="sr-only">{t('common:assignmentStatus.declined')}</span>
           {team.declined}
         </span>
-        <span title={t('teamsTab.awaitingReply')}>
-          <span className="mr-1 text-amber-500">?</span>
+        <span title={t('teamsTab.awaitingReply')} className="inline-flex items-center gap-1">
+          <Icon name="help" className="size-3.5 text-amber-500 dark:text-amber-400" />
+          <span className="sr-only">{t('teamsTab.awaitingReply')}</span>
           {team.pending}
         </span>
         {team.prepared.length > 0 && (
-          <span title={t('teamsTab.preparedTitle')} className="text-slate-600">
-            <span className="mr-1" aria-hidden="true">◌</span>
+          <span title={t('teamsTab.preparedTitle')} className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
+            <span className="size-2.5 rounded-full border border-dashed border-current" aria-hidden="true" />
             {t('teamsTab.preparedCount', { count: team.prepared.length })}
           </span>
         )}
@@ -199,11 +198,11 @@ const TeamColumn = ({
     </header>
 
     {team.positions.length === 0 && team.unpositioned.length === 0 ? (
-      <p className="px-4 py-6 text-center text-xs text-slate-400">
+      <p className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
         {t('teamsTab.noPositions')}
       </p>
     ) : !hasVisibleRows ? (
-      <p className="px-4 py-6 text-center text-xs text-slate-400">
+      <p className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
         {t('teamsTab.nothingNeeded')}
       </p>
     ) : (
@@ -226,10 +225,10 @@ const TeamColumn = ({
 
         {team.unpositioned.length > 0 && (
           <div>
-            <p className="bg-slate-50 px-4 py-1.5 text-xs font-medium text-slate-500">
+            <p className="bg-slate-50 px-4 py-1.5 text-xs font-medium text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
               {t('teamsTab.noPosition')}
             </p>
-            <ul className="divide-y divide-slate-50">
+            <ul className="row-list">
               {team.unpositioned.map((assignment) => (
                 <ScheduledPerson
                   key={assignment.id}
@@ -282,15 +281,17 @@ const PositionBlock = ({
 
   return (
     <div>
-      <div className="flex items-center justify-between bg-slate-50 px-4 py-1.5">
-        <p className="text-xs font-medium text-slate-500">
+      <div className="flex items-center justify-between gap-2 border-y border-app-border bg-slate-50 px-4 py-1.5 dark:bg-slate-900/50">
+        <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
           {position.position.name}
-          {position.planOnly && <span className="ml-1.5 font-normal text-slate-400">{t('teamsTab.planOnlySuffix')}</span>}
+          {position.planOnly && <span className="ml-1.5 font-normal text-slate-400 dark:text-slate-500">{t('teamsTab.planOnlySuffix')}</span>}
         </p>
         {!editingNeeds && position.needed > 0 && (
           <p
-            className={`text-xs tabular-nums ${
-              position.scheduled.length >= position.needed ? 'text-emerald-600' : 'text-amber-600'
+            className={`rounded-full px-1.5 text-xs font-medium tabular-nums ${
+              position.scheduled.length >= position.needed
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
             }`}
           >
             {t('teamsTab.staffedOfNeeded', { scheduled: position.scheduled.length, needed: position.needed })}
@@ -300,7 +301,7 @@ const PositionBlock = ({
 
       {editingNeeds && (
         <div className="flex items-center justify-between px-4 py-2">
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-400 dark:text-slate-500">
             {t('teamsTab.scheduledCount', { count: position.scheduled.length })}
           </span>
           <NeededStepper
@@ -313,7 +314,7 @@ const PositionBlock = ({
       )}
 
       {position.scheduled.length > 0 && (
-        <ul className="divide-y divide-slate-50">
+        <ul className="row-list">
           {position.scheduled.map((assignment) => (
             <ScheduledPerson
               key={assignment.id}
@@ -333,7 +334,7 @@ const PositionBlock = ({
 };
 
 const STEPPER_BUTTON =
-  'grid size-6 place-items-center rounded border border-slate-300 text-slate-500 transition hover:bg-slate-50 disabled:opacity-30';
+  'grid size-7 place-items-center rounded-lg border border-slate-300 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white';
 
 interface NeededStepperProps {
   label: string;
@@ -346,7 +347,7 @@ const NeededStepper = ({ label, needed, disabled, onChange }: NeededStepperProps
   const { t } = useTranslation('staffing');
   return (
   <div className="flex items-center gap-1.5 text-xs">
-    <span className="text-slate-500">{t('teamsTab.needed')}</span>
+    <span className="text-slate-500 dark:text-slate-400">{t('teamsTab.needed')}</span>
     <button
       type="button"
       aria-label={t('teamsTab.oneFewer', { position: label })}
@@ -356,7 +357,7 @@ const NeededStepper = ({ label, needed, disabled, onChange }: NeededStepperProps
     >
       −
     </button>
-    <span aria-live="polite" className="w-5 text-center tabular-nums text-slate-700">
+    <span aria-live="polite" className="w-5 text-center font-medium tabular-nums text-slate-700 dark:text-slate-200">
       {needed}
     </span>
     <button
@@ -366,7 +367,7 @@ const NeededStepper = ({ label, needed, disabled, onChange }: NeededStepperProps
       disabled={disabled || needed >= 99}
       onClick={() => onChange(needed + 1)}
     >
-      +
+      <Icon name="plus" className="size-3.5" />
     </button>
   </div>
   );
@@ -399,17 +400,22 @@ const ScheduledPerson = ({
   const ownerName = assignment.response_owner?.full_name;
 
   return (
-    <li className="flex items-center gap-2 px-4 py-2">
+    <li className="flex items-center gap-2.5 px-4 py-2">
       <Avatar name={name} url={assignment.person?.avatar_url} size="sm" />
       <span className="min-w-0 flex-1">
         <span
-          className="block truncate text-sm"
+          className="block truncate text-sm text-slate-800 dark:text-slate-100"
           title={canManage && ownerName ? t('teamsTab.answersGoTo', { name: ownerName }) : undefined}
         >
           {name}
           {overrideReason && (
-            <span className="ml-1 text-amber-600" title={t('teamsTab.overConflictReason', { reason: overrideReason })} aria-label={t('teamsTab.overConflict')}>
-              ⚠
+            <span
+              role="img"
+              className="ml-1 inline-flex align-[-2px] text-amber-600 dark:text-amber-400"
+              title={t('teamsTab.overConflictReason', { reason: overrideReason })}
+              aria-label={t('teamsTab.overConflict')}
+            >
+              <Icon name="alert" className="size-3.5" />
             </span>
           )}
         </span>
@@ -418,17 +424,17 @@ const ScheduledPerson = ({
           <button
             type="button"
             onClick={onEditTimes}
-            className="block max-w-full truncate text-left text-[11px] text-slate-500 hover:text-brand-600 hover:underline"
+            className="block max-w-full truncate text-left text-[11px] text-slate-500 hover:text-brand-600 hover:underline dark:text-slate-400 dark:hover:text-brand-200"
             title={t('teamsTab.changeTimes')}
           >
             {attendanceLabel(assignment, t)}
           </button>
         ) : (
-          <span className="block truncate text-[11px] text-slate-500">{attendanceLabel(assignment, t)}</span>
+          <span className="block truncate text-[11px] text-slate-500 dark:text-slate-400">{attendanceLabel(assignment, t)}</span>
         )}
       </span>
       {prepared && (
-        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+        <span className="rounded-md border border-dashed border-slate-300 px-1.5 py-0.5 text-[11px] font-medium text-slate-600 dark:border-slate-600 dark:text-slate-300">
           {t('teamsTab.prepared')}
         </span>
       )}
@@ -438,14 +444,14 @@ const ScheduledPerson = ({
           <button
             type="button"
             onClick={() => onRespond(assignment.id, 'confirmed')}
-            className="rounded bg-emerald-600 px-1.5 py-0.5 text-[11px] font-medium text-white"
+            className="rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white transition hover:bg-emerald-700"
           >
             {t('teamsTab.accept')}
           </button>
           <button
             type="button"
             onClick={() => onRespond(assignment.id, 'declined')}
-            className="rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-500 ring-1 ring-slate-300"
+            className="rounded-md px-2 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
           >
             {t('common:actions.decline')}
           </button>
@@ -462,9 +468,9 @@ const ScheduledPerson = ({
           type="button"
           aria-label={t('teamsTab.removePerson', { name })}
           onClick={onRemove}
-          className="text-slate-300 hover:text-rose-500"
+          className="grid size-7 shrink-0 place-items-center rounded-lg text-slate-300 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
         >
-          ×
+          <Icon name="close" className="size-3.5" />
         </button>
       )}
     </li>
@@ -487,23 +493,23 @@ const ReleaseReview = ({ prepared, releasing, onRelease }: ReleaseReviewProps) =
 
   if (!reviewing) {
     return (
-      <Button variant="secondary" className="mt-2 !py-1 text-xs" onClick={() => setReviewing(prepared)}>
+      <Button variant="secondary" size="sm" icon="bell" className="mt-2.5" onClick={() => setReviewing(prepared)}>
         {t('teamsTab.reviewAndRelease', { count: prepared.length })}
       </Button>
     );
   }
 
   return (
-    <div className="mt-2 rounded-lg bg-slate-50 p-2 text-xs">
-      <p className="font-medium text-slate-700">{t('teamsTab.willBeNotified')}</p>
-      <ul className="mt-1 list-disc pl-4 text-slate-600">
+    <div className="surface-inset mt-2.5 p-3 text-xs">
+      <p className="font-medium text-slate-700 dark:text-slate-200">{t('teamsTab.willBeNotified')}</p>
+      <ul className="mt-1 list-disc pl-4 text-slate-600 dark:text-slate-300">
         {reviewing.map((assignment) => (
           <li key={assignment.id}>{assignment.person?.full_name ?? t('common:states.unknown')}</li>
         ))}
       </ul>
       <div className="mt-2 flex gap-2">
         <Button
-          className="!py-1 text-xs"
+          size="sm"
           loading={releasing}
           onClick={() => {
             onRelease(reviewing);
@@ -512,7 +518,7 @@ const ReleaseReview = ({ prepared, releasing, onRelease }: ReleaseReviewProps) =
         >
           {t('teamsTab.release')}
         </Button>
-        <Button variant="ghost" className="!py-1 text-xs" onClick={() => setReviewing(null)}>
+        <Button variant="ghost" size="sm" onClick={() => setReviewing(null)}>
           {t('common:actions.cancel')}
         </Button>
       </div>

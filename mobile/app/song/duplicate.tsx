@@ -77,7 +77,7 @@ export default function DuplicateArrangementScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('curation.duplicateSummary') }} />
-        <EmptyState title={t('mobileChart.unavailable.invalidLink.title')} />
+        <EmptyState icon="alert" title={t('mobileChart.unavailable.invalidLink.title')} />
       </Screen>
     );
   }
@@ -101,7 +101,7 @@ export default function DuplicateArrangementScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('curation.duplicateSummary') }} />
-        <EmptyState title={t('mobileAuthoring.noAccess')} description={t('mobileAuthoring.keysReadOnly')} />
+        <EmptyState icon="alert" title={t('mobileAuthoring.noAccess')} description={t('mobileAuthoring.keysReadOnly')} />
       </Screen>
     );
   }
@@ -310,7 +310,7 @@ const makeStyles = (theme: Theme) =>
       ...theme.type.bodySmall,
       color: theme.accent.yellow.fg,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
   });

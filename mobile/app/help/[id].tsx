@@ -22,6 +22,7 @@ import {
   ScreenHeader,
   Tag,
   screenPadding,
+  SectionHeader,
 } from '../../src/components/ui';
 import { BlockoutForm } from '../../src/components/BlockoutForm';
 import { TimeSlotList } from '../../src/components/StaffingParts';
@@ -185,6 +186,7 @@ export default function DelegatedPersonScreen() {
         <Stack.Screen options={{ title: t('settings:help.title') }} />
         <View style={screenPadding(theme)}>
           <EmptyState
+            icon="person"
             title={t('help.notFoundTitle')}
             description={t('help.notFoundDescription')}
             action={<Button title={t('settings:help.title')} variant="secondary" onPress={() => router.replace('/help')} />}
@@ -212,7 +214,7 @@ export default function DelegatedPersonScreen() {
 
         {canSeeRequests(grant) ? (
           <View style={styles.section}>
-            <Label>{t('help.requests')}</Label>
+            <SectionHeader title={t('help.requests')} />
             {failure === 'stale' ? <Text style={styles.warning}>{t('help.stale')}</Text> : failure === 'other' ? <ErrorNotice error={respond.error} /> : null}
             {schedule.isLoading ? <Loading /> : schedule.error ? (
               <>
@@ -299,7 +301,7 @@ export default function DelegatedPersonScreen() {
         {manageAvailability ? (
           <>
             <View style={styles.section}>
-              <Label>{t('help.availability')}</Label>
+              <SectionHeader title={t('help.availability')} />
               <Card>
                 {review.isLoading ? <Loading /> : (
                   <>
@@ -319,7 +321,7 @@ export default function DelegatedPersonScreen() {
             </View>
 
             <View style={styles.section}>
-              <Label>{t('settings:blockouts.titleFor', { name: grant.target_name })}</Label>
+              <SectionHeader title={t('settings:blockouts.titleFor', { name: grant.target_name })} />
               <Card>
                 <Text style={styles.muted}>{t('settings:blockouts.descriptionTheirs', { timezone })}</Text>
                 <BlockoutForm

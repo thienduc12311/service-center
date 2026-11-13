@@ -93,6 +93,7 @@ export default function MediaLibraryScreen() {
             <Loading />
           ) : list.error ? null : (
             <EmptyState
+              icon={settled ? 'search' : 'image'}
               title={settled ? t('mobileMedia.noMatch') : t('library.emptyTitle')}
               description={settled ? undefined : t('mobileMedia.emptyDescription')}
             />

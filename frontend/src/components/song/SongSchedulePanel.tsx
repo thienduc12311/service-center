@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useFormatters } from '../../i18n';
 import { useSongSchedule } from '../../hooks/queries';
 import { ErrorNotice, Spinner } from '../ui';
+import { Icon } from '../icons';
 
 export interface SongSchedulePanelProps {
   songId: string;
@@ -30,15 +31,17 @@ export const SongSchedulePanel = ({ songId, arrangementId }: SongSchedulePanelPr
   const entries = schedule.data ?? [];
 
   return (
-    <section>
-      <div className="mb-2 flex items-center gap-2">
-        <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('schedule.title')}</h2>
+    <section className="card flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-app-border px-4 py-3">
+        <Icon name="calendar" className="size-4 text-slate-400" />
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('schedule.title')}</h2>
         {schedule.isFetching && <Spinner className="size-3 text-slate-300" />}
       </div>
 
+      <div className="space-y-2 px-4 pt-3">
       <select
         aria-label={t('schedule.limitLabel')}
-        className="input mb-2"
+        className="input"
         value={limit}
         onChange={(event) => setLimit(Number(event.target.value))}
       >
@@ -50,10 +53,11 @@ export const SongSchedulePanel = ({ songId, arrangementId }: SongSchedulePanelPr
       </select>
 
       <ErrorNotice error={schedule.error} />
+      </div>
 
-      <div className="card divide-y divide-slate-100 dark:divide-slate-800">
+      <div className="row-list mt-2">
         {entries.length === 0 ? (
-          <p className="px-4 py-3 text-xs text-slate-400">
+          <p className="px-4 py-4 text-xs text-slate-400">
             {schedule.isLoading
               ? t('schedule.loading')
               : arrangementId
@@ -65,20 +69,23 @@ export const SongSchedulePanel = ({ songId, arrangementId }: SongSchedulePanelPr
             <Link
               key={entry.plan_id}
               to={`/plans/${entry.plan_id}`}
-              className="block px-4 py-3 transition hover:bg-slate-50"
+              className="group flex items-center gap-3 px-4 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/40"
             >
-              <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                {formatters.calendarDate(entry.service_date, 'long')}
-              </p>
-              {entry.arrangement_name && (
-                <p className="text-xs text-slate-500">
-                  {entry.arrangement_name}
-                  {entry.key && ` [${entry.key}]`}
-                </p>
-              )}
-              <p className="text-xs text-slate-400">
-                {entry.service_type_name ?? entry.plan_title}
-              </p>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-slate-800 dark:text-slate-100">
+                  {formatters.calendarDate(entry.service_date, 'long')}
+                </span>
+                {entry.arrangement_name && (
+                  <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                    {entry.arrangement_name}
+                    {entry.key && ` [${entry.key}]`}
+                  </span>
+                )}
+                <span className="block truncate text-xs text-slate-400">
+                  {entry.service_type_name ?? entry.plan_title}
+                </span>
+              </span>
+              <Icon name="chevronRight" className="size-4 shrink-0 text-slate-300 group-hover:text-brand-500 dark:text-slate-600" />
             </Link>
           ))
         )}

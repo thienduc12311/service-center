@@ -20,11 +20,12 @@ import { api } from '../lib/api';
 import { useInvalidateOrg, usePeople, usePlanTemplates } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters, useStructuredText } from '../i18n';
-import { Badge, Button, EmptyState, ErrorNotice, PageHeader } from '../components/ui';
+import { Badge, Button, DateTile, EmptyState, ErrorNotice, PageHeader, SectionHeader } from '../components/ui';
+import { Icon } from '../components/icons';
 import { ConflictList } from '../components/plan/attendance';
 import { TemplateApplyReview } from '../components/templates/TemplateApplyReview';
 
-const WARN_TONE = 'bg-amber-50 text-amber-700 ring-amber-600/20';
+const WARN_TONE = 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300';
 
 /** Next Sunday as a local `YYYY-MM-DD` (the form's starting suggestion). */
 const nextSunday = (): string => {
@@ -124,37 +125,51 @@ export const GeneratePlansPage = () => {
     people.data?.find((person) => person.person_id === personId)?.full_name ?? t('common:fallback.someone');
 
   if (!canAnywhere('plans.edit')) {
-    return <EmptyState title={t('generate.noAccess')} />;
+    return <EmptyState icon="sparkle" title={t('generate.noAccess')} />;
   }
 
   if (created) {
     return (
-      <div>
-        <PageHeader title={created.replayed ? t('generate.replayedTitle') : t('generate.createdTitle')} subtitle={t('generate.createdSubtitle')} />
-        <ul className="space-y-2">
+      <div className="space-y-6">
+        <PageHeader
+          title={created.replayed ? t('generate.replayedTitle') : t('generate.createdTitle')}
+          subtitle={t('generate.createdSubtitle')}
+          back={{ to: '/plans', label: t('common:nav.plans') }}
+        />
+        <ul className="space-y-3">
           {created.plans.map((plan) => (
-            <li key={plan.id} className="card p-3">
-              <Link to={`/plans/${plan.id}`} className="font-medium text-brand-700 hover:underline">{plan.title}</Link>
-              <span className="ml-2 text-sm text-slate-500">{fmt.dateTime(plan.service_date)}</span>
+            <li key={plan.id}>
+              <Link to={`/plans/${plan.id}`} className="card card-interactive flex items-center gap-4 p-3 sm:p-4">
+                <DateTile value={plan.service_date} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-slate-900 dark:text-white">{plan.title}</span>
+                  <span className="mt-0.5 inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+                    <Icon name="clock" className="size-3.5" />
+                    {fmt.dateTime(plan.service_date)}
+                  </span>
+                </span>
+                <Icon name="chevronRight" className="size-4 shrink-0 text-slate-300 dark:text-slate-600" />
+              </Link>
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex gap-2">
-          <Button variant="secondary" onClick={() => { setCreated(null); invalidatePreview(); setEdits([]); }}>{t('generate.createMore')}</Button>
-          <Link to="/plans" className="button inline-flex items-center px-3.5 py-2 text-sm font-medium text-slate-600">{t('generate.backToPlans')}</Link>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" icon="plus" onClick={() => { setCreated(null); invalidatePreview(); setEdits([]); }}>{t('generate.createMore')}</Button>
+          <Link to="/plans" className="button inline-flex h-9 items-center gap-1 rounded-xl px-3.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white">{t('generate.backToPlans')}</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title={t('generate.title')}
         subtitle={t('generate.subtitle', { max: MAX_GENERATED_PLANS })}
+        back={{ to: '/plans', label: t('common:nav.plans') }}
       />
 
-      <div className="card space-y-4 p-5">
+      <div className="card space-y-5 p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="gen-template">{t('generate.template')}</label>
@@ -171,7 +186,7 @@ export const GeneratePlansPage = () => {
               ))}
             </select>
             {template && template.counts.times === 0 && (
-              <p className="mt-1 text-xs text-amber-700">{t('generate.noTimesHint')}</p>
+              <p className="mt-1.5 flex items-start gap-1 text-xs text-amber-700 dark:text-amber-300"><Icon name="alert" className="mt-px size-3.5 shrink-0" />{t('generate.noTimesHint')}</p>
             )}
           </div>
           <div>
@@ -187,41 +202,41 @@ export const GeneratePlansPage = () => {
               <option value={4}>{t('generate.everyNWeeks', { weeks: 4 })}</option>
             </select>
           </div>
-          <div className="flex gap-3">
-            <div className="flex-1">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="min-w-0">
               <label className="label" htmlFor="gen-count">{t('generate.howMany')}</label>
               <input id="gen-count" type="number" min={1} max={MAX_GENERATED_PLANS} className="input" value={count} onChange={(event) => { setCount(Math.min(MAX_GENERATED_PLANS, Math.max(1, Number(event.target.value)))); invalidatePreview(); }} />
             </div>
-            <div className="flex-1">
+            <div className="min-w-0">
               <label className="label" htmlFor="gen-end">{t('generate.stopAfter')}</label>
               <input id="gen-end" type="date" className="input" value={endDate} onChange={(event) => { setEndDate(event.target.value); invalidatePreview(); }} />
             </div>
           </div>
         </div>
 
-        <div>
+        <div className="border-t border-app-border pt-5">
           <span className="label">{t('generate.leaveOutHeading')}</span>
           <div className="flex flex-wrap items-center gap-2">
             {excluded.map((date) => (
-              <span key={date} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs dark:bg-slate-800">
+              <span key={date} className="inline-flex items-center gap-1 rounded-full bg-slate-100 py-0.5 pl-2.5 pr-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                 {fmt.calendarDate(date, 'medium')}
-                <button type="button" aria-label={t('generate.includeAgain', { date: fmt.calendarDate(date, 'medium') })} onClick={() => { setExcluded(excluded.filter((d) => d !== date)); invalidatePreview(); }}>×</button>
+                <button type="button" className="grid size-5 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-white" aria-label={t('generate.includeAgain', { date: fmt.calendarDate(date, 'medium') })} onClick={() => { setExcluded(excluded.filter((d) => d !== date)); invalidatePreview(); }}><Icon name="close" className="size-3" /></button>
               </span>
             ))}
-            <input aria-label={t('generate.dateToLeaveOut')} type="date" className="input w-44" value={excludeInput} onChange={(event) => setExcludeInput(event.target.value)} />
-            <Button variant="secondary" className="!py-1 text-xs" disabled={!excludeInput || excluded.includes(excludeInput)} onClick={() => { setExcluded([...excluded, excludeInput].sort()); setExcludeInput(''); invalidatePreview(); }}>
+            <input aria-label={t('generate.dateToLeaveOut')} type="date" className="input w-full sm:w-44" value={excludeInput} onChange={(event) => setExcludeInput(event.target.value)} />
+            <Button variant="secondary" size="sm" icon="plus" disabled={!excludeInput || excluded.includes(excludeInput)} onClick={() => { setExcluded([...excluded, excludeInput].sort()); setExcludeInput(''); invalidatePreview(); }}>
               {t('generate.leaveOut')}
             </Button>
           </div>
         </div>
 
-        <fieldset className="flex flex-wrap gap-4">
+        <fieldset className="flex flex-wrap gap-x-4 gap-y-2 border-t border-app-border pt-5">
           <legend className="label">{t('generate.copyLegend')}</legend>
           {PLAN_TEMPLATE_COMPONENTS.filter((component) => component !== 'times').map((component) => (
-            <label key={component} className="flex items-center gap-2 text-sm">
+            <label key={component} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
               <input
                 type="checkbox"
-                className="size-4 rounded border-slate-300"
+                className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
                 checked={components.includes(component)}
                 onChange={(event) => {
                   setComponents((current) => event.target.checked ? [...current, component] : current.filter((c) => c !== component));
@@ -233,7 +248,7 @@ export const GeneratePlansPage = () => {
           ))}
         </fieldset>
 
-        <label className="flex flex-wrap items-center gap-2 text-sm">
+        <label className="flex flex-wrap items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
           {t('generate.ambiguousLabel')}
           <select aria-label={t('generate.ambiguousAria')} className="input w-auto" value={ambiguous} onChange={(event) => { setAmbiguous(event.target.value as AmbiguousTimeChoice); invalidatePreview(); }}>
             <option value="earlier">{t('generate.ambiguousEarlier')}</option>
@@ -242,25 +257,25 @@ export const GeneratePlansPage = () => {
         </label>
 
         <ErrorNotice error={review.error} />
-        <div className="flex justify-end">
-          <Button loading={review.isPending} disabled={!template} onClick={() => review.mutate(series())}>{t('generate.review')}</Button>
+        <div className="flex justify-end border-t border-app-border pt-4">
+          <Button icon="sparkle" loading={review.isPending} disabled={!template} onClick={() => review.mutate(series())}>{t('generate.review')}</Button>
         </div>
       </div>
 
       {preview && (
-        <section className="mt-6 space-y-3">
-          <h2 className="text-base font-semibold">
-            {t('generate.previewHeading', { count: preview.plans.length })}
-            <span className="ml-2 text-sm font-normal text-slate-500">{t('generate.timesIn', { timezone: preview.timezone })}</span>
-          </h2>
+        <section className="space-y-3">
+          <SectionHeader
+            title={t('generate.previewHeading', { count: preview.plans.length })}
+            action={<span className="text-xs text-slate-500 dark:text-slate-400">{t('generate.timesIn', { timezone: preview.timezone })}</span>}
+          />
           {preview.problems.length > 0 && (
-            <ul role="alert" className="space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-600/20">
+            <ul role="alert" className="space-y-1 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/30">
               {preview.problems.map((problem) => <li key={`${problem.local_date}-${problem.message}`}>{generationProblemText(problem, structured)}</li>)}
               <li className="font-medium">{t('generate.fixProblems')}</li>
             </ul>
           )}
           {preview.excluded.length > 0 && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('generate.leftOut', {
                 dates: fmt.list(preview.excluded.map((date) =>
                   t(date.reason === 'excluded' ? 'generate.leftOutHoliday' : 'generate.leftOutSkipped', {
@@ -270,9 +285,9 @@ export const GeneratePlansPage = () => {
             </p>
           )}
           {preview.problems.filter((problem) => edits.every((edit) => edit.local_date !== problem.local_date)).map((problem) => (
-            <div key={`fix-${problem.local_date}`} className="card flex items-center justify-between p-3 text-sm">
-              <span>{fmt.calendarDate(problem.local_date, 'medium')}</span>
-              <Button variant="secondary" className="!py-1 text-xs" onClick={() => editDate({ local_date: problem.local_date, skip: true })}>{t('generate.skipThisDate')}</Button>
+            <div key={`fix-${problem.local_date}`} className="card flex items-center justify-between gap-2 p-3 text-sm">
+              <span className="font-medium text-slate-800 dark:text-slate-100">{fmt.calendarDate(problem.local_date, 'medium')}</span>
+              <Button variant="secondary" size="sm" onClick={() => editDate({ local_date: problem.local_date, skip: true })}>{t('generate.skipThisDate')}</Button>
             </div>
           ))}
           <ul className="space-y-3">
@@ -281,10 +296,10 @@ export const GeneratePlansPage = () => {
               const seriesDate = edit?.local_date ?? plan.local_date;
               return (
                 <li key={plan.local_date} className="card space-y-3 p-4">
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <input
                       aria-label={t('generate.titleFor', { date: fmt.calendarDate(plan.local_date, 'medium') })}
-                      className="input w-64"
+                      className="input w-full sm:w-64"
                       defaultValue={plan.title}
                       onBlur={(event) => {
                         const title = event.target.value.trim();
@@ -294,18 +309,18 @@ export const GeneratePlansPage = () => {
                     <input
                       aria-label={t('generate.dateFor', { date: fmt.calendarDate(plan.local_date, 'medium') })}
                       type="date"
-                      className="input w-44"
+                      className="input w-full sm:w-44"
                       defaultValue={plan.local_date}
                       onBlur={(event) => {
                         const moveTo = event.target.value;
                         if (moveTo && moveTo !== plan.local_date) editDate({ ...edit, local_date: seriesDate, skip: false, move_to: moveTo });
                       }}
                     />
-                    <span className="text-sm text-slate-500">{fmt.dateTime(plan.service_date)}</span>
+                    <span className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400"><Icon name="clock" className="size-3.5" />{fmt.dateTime(plan.service_date)}</span>
                     {plan.existing_plans.length > 0 && (
                       <Badge tone={WARN_TONE}>{t('generate.alreadyHas', { titles: fmt.list(plan.existing_plans.map((existing) => existing.title)) })}</Badge>
                     )}
-                    <Button variant="ghost" className="ml-auto !py-1 text-xs" onClick={() => editDate({ local_date: seriesDate, skip: true })}>
+                    <Button variant="ghost" size="sm" className="ml-auto" onClick={() => editDate({ local_date: seriesDate, skip: true })}>
                       {t('generate.skip')}
                     </Button>
                   </div>
@@ -328,16 +343,17 @@ export const GeneratePlansPage = () => {
                   onChange={(event) => setConflictReason(event.target.value)}
                 />
               ) : (
-                <p className="text-xs text-slate-500">{t('generate.noOverride')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('generate.noOverride')}</p>
               )}
             </>
           )}
           {conflicts.length === 0 && <ErrorNotice error={generate.error} />}
           {generate.error instanceof ApiError && generate.error.code === 'template_preview_changed' && (
-            <p className="text-sm text-amber-700">{t('generate.previewChanged')}</p>
+            <p className="flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-300"><Icon name="alert" className="mt-0.5 size-4 shrink-0" />{t('generate.previewChanged')}</p>
           )}
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-2">
             <Button
+              icon="check"
               loading={generate.isPending}
               disabled={!preview.preview_hash || preview.plans.length === 0 || preview.plans.some((plan) => plan.preview.blocking.length > 0)}
               onClick={() => generate.mutate()}

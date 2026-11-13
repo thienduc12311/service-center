@@ -52,21 +52,26 @@ const makeStyles = (theme: Theme) =>
     bar: {
       flexDirection: 'row',
       justifyContent: 'flex-end',
-      paddingHorizontal: theme.space.xl,
+      paddingHorizontal: theme.space.lg,
       paddingTop: theme.space.sm,
     },
+    // Matches IconButton, so the bell sits evenly beside other header actions.
     button: {
       width: 44,
       height: 44,
       alignItems: 'center',
       justifyContent: 'center',
+      borderRadius: theme.radius.pill,
+      borderWidth: 1,
+      borderColor: theme.color.border,
+      backgroundColor: theme.color.surface,
     },
     badge: {
       position: 'absolute',
-      top: 2,
-      right: 1,
-      minWidth: 16,
-      minHeight: 16,
+      top: -3,
+      right: -3,
+      minWidth: 18,
+      minHeight: 18,
       paddingHorizontal: 4,
       borderRadius: theme.radius.pill,
       alignItems: 'center',
@@ -78,8 +83,8 @@ const makeStyles = (theme: Theme) =>
     badgeLabel: {
       fontFamily: fonts.sansMedium,
       fontWeight: '600',
-      fontSize: 9,
-      lineHeight: 12,
+      fontSize: 10,
+      lineHeight: 13,
       color: theme.color.onBrand,
     },
   });

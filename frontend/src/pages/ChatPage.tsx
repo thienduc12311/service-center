@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +17,8 @@ import { api } from '../lib/api';
 import { keys, useConversation, useConversations, useMentionCandidates, useTeams } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters, type Formatters } from '../i18n';
-import { Badge, Button, EmptyState, ErrorNotice, Loading, Modal, PageHeader } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, Modal, Notice, PageHeader, SkeletonList } from '../components/ui';
+import { Icon } from '../components/icons';
 import { DiscussionComposer } from '../components/collaboration/DiscussionComposer';
 import { DiscussionEntry } from '../components/collaboration/DiscussionEntry';
 
@@ -43,12 +44,12 @@ const ReportModal = ({ conversationId, message, onClose }: ReportModalProps) => 
     <Modal open title={t('reportModal.title')} onClose={onClose}>
       {report.isSuccess ? (
         <>
-          <p className="text-sm text-slate-600">{t('reportModal.thanks')}</p>
+          <Notice tone="success">{t('reportModal.thanks')}</Notice>
           <div className="mt-6 flex justify-end"><Button onClick={onClose}>{t('common:actions.done')}</Button></div>
         </>
       ) : (
         <div className="space-y-3 text-sm">
-          <p className="rounded bg-slate-50 px-3 py-2 text-slate-600 dark:bg-slate-900">{message.body}</p>
+          <p className="surface-inset whitespace-pre-wrap break-words px-3 py-2 text-slate-600 dark:text-slate-300">{message.body}</p>
           <select className="input" value={reason} onChange={(event) => setReason(event.target.value as ConversationReportReason)} aria-label={t('reportModal.reason')}>
             {REPORT_REASONS.map((value) => <option key={value} value={value}>{t(`reportModal.reasons.${value}`)}</option>)}
           </select>
@@ -86,6 +87,12 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   const refresh = () => client.invalidateQueries({ queryKey: keys.conversations(organizationId) });
 
   const newest = detail.data?.messages.data.at(-1)?.created_at;
+  const scroller = useRef<HTMLDivElement>(null);
+  // The pane scrolls on its own, so keep the newest message in view.
+  useEffect(() => {
+    const element = scroller.current;
+    if (element) element.scrollTop = element.scrollHeight;
+  }, [newest, detail.isLoading]);
   useEffect(() => {
     // Reading the thread moves the read position forward (never back), up to the newest message shown.
     const mark = conversationReadMark(detail.data?.messages.data ?? [], detail.data?.conversation.unread_count ?? 0, null);
@@ -101,13 +108,17 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
     onSuccess: refresh,
   });
 
-  if (detail.isLoading) return <Loading />;
+  if (detail.isLoading) return <div className="p-4"><SkeletonList rows={4} /></div>;
   if (detail.error || !detail.data) {
     return (
-      <EmptyState
-        title={t('conversation.notAvailableTitle')}
-        description={t('conversation.notAvailableDescription')}
-      />
+      <div className="grid flex-1 place-items-center p-4">
+        <EmptyState
+          compact
+          icon="chat"
+          title={t('conversation.notAvailableTitle')}
+          description={t('conversation.notAvailableDescription')}
+        />
+      </div>
     );
   }
   const { conversation, messages, reports } = detail.data;
@@ -115,112 +126,141 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   const shown = search.trim().length >= CONVERSATION_SEARCH_MIN ? results.data?.data ?? [] : messages.data;
 
   return (
-    <div className="flex min-h-0 flex-col">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold">{conversationLabel(conversation, t, format)}</h2>
-        <Badge tone="bg-slate-100 text-slate-600 ring-slate-500/20">{t(`conversation.kinds.${conversation.kind}`)}</Badge>
-        {conversation.plan_id && <Link className="text-xs text-brand-600 hover:underline" to={`/plans/${conversation.plan_id}`}>{t('conversation.openPlan')}</Link>}
-        <div className="ml-auto flex items-center gap-2">
-          <input className="input !w-44 text-sm" placeholder={t('conversation.searchPlaceholder')} value={search} onChange={(event) => setSearch(event.target.value)} aria-label={t('conversation.searchLabel')} />
-          <Button variant="secondary" loading={mute.isPending} onClick={() => mute.mutate(!conversation.muted)}>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-app-border px-4 py-3">
+        <Link
+          to="/chat"
+          className="-ml-1 grid size-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden dark:hover:bg-slate-800"
+          aria-label={t('common:actions.back')}
+        >
+          <Icon name="chevronLeft" className="size-4" />
+        </Link>
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-200">
+          <Icon name={conversation.kind === 'plan' ? 'plans' : 'team'} className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate font-semibold text-slate-900 dark:text-white">{conversationLabel(conversation, t, format)}</h2>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-slate-500 dark:text-slate-400">{t(`conversation.kinds.${conversation.kind}`)}</span>
+            {conversation.plan_id && <Link className="font-medium text-brand-600 hover:underline dark:text-brand-200" to={`/plans/${conversation.plan_id}`}>{t('conversation.openPlan')}</Link>}
+          </div>
+        </div>
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative min-w-0 flex-1 sm:w-48 sm:flex-none">
+            <Icon name="search" className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-slate-400" />
+            <input className="input h-9 pl-8 text-sm" placeholder={t('conversation.searchPlaceholder')} value={search} onChange={(event) => setSearch(event.target.value)} aria-label={t('conversation.searchLabel')} />
+          </div>
+          <Button variant="secondary" icon="bell" loading={mute.isPending} onClick={() => mute.mutate(!conversation.muted)}>
             {conversation.muted ? t('conversation.unmute') : t('conversation.mute')}
           </Button>
         </div>
       </div>
 
-      {conversation.can_moderate && reports.length > 0 && (
-        <section className="mb-3 rounded-lg bg-amber-50 p-3 text-sm ring-1 ring-amber-600/20">
-          <h3 className="mb-2 font-medium text-amber-900">{t('conversation.reportsHeading', { count: reports.length })}</h3>
-          <ul className="space-y-2">
-            {reports.map((report) => (
-              <li key={report.id} className="rounded bg-white p-2 dark:bg-slate-900">
-                <p className="text-xs text-slate-500">
-                  {report.message_author_name
-                    ? t('conversation.reportLine', {
-                        reporter: report.reporter_name ?? t('common:fallback.someone'),
-                        author: report.message_author_name,
-                        reason: t(`reportModal.reasons.${report.reason}`),
-                      })
-                    : t('conversation.reportLineNoAuthor', {
-                        reporter: report.reporter_name ?? t('common:fallback.someone'),
-                        reason: t(`reportModal.reasons.${report.reason}`),
-                      })}
-                </p>
-                {report.details && <p className="text-xs text-slate-600">{t('conversation.reportDetails', { details: report.details })}</p>}
-                <p className="my-1 text-slate-700">{report.message_body || <em className="text-slate-400">{t('conversation.alreadyRemoved')}</em>}</p>
-                <div className="flex gap-2">
-                  <Button variant="danger" className="!py-1 text-xs" onClick={() => resolve.mutate({ reportId: report.id, action: 'hide' })}>{t('conversation.hideMessage')}</Button>
-                  <Button variant="secondary" className="!py-1 text-xs" onClick={() => resolve.mutate({ reportId: report.id, action: 'dismiss' })}>{t('conversation.dismiss')}</Button>
-                </div>
-              </li>
-            ))}
+      <div ref={scroller} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        {conversation.can_moderate && reports.length > 0 && (
+          <section className="mb-4 rounded-xl bg-amber-50 p-3 text-sm ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:ring-amber-500/25">
+            <h3 className="mb-2 flex items-center gap-2 font-medium text-amber-900 dark:text-amber-200">
+              <Icon name="alert" className="size-4" />
+              {t('conversation.reportsHeading', { count: reports.length })}
+            </h3>
+            <ul className="space-y-2">
+              {reports.map((report) => (
+                <li key={report.id} className="rounded-lg bg-white p-3 ring-1 ring-amber-600/10 dark:bg-slate-900 dark:ring-amber-500/20">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {report.message_author_name
+                      ? t('conversation.reportLine', {
+                          reporter: report.reporter_name ?? t('common:fallback.someone'),
+                          author: report.message_author_name,
+                          reason: t(`reportModal.reasons.${report.reason}`),
+                        })
+                      : t('conversation.reportLineNoAuthor', {
+                          reporter: report.reporter_name ?? t('common:fallback.someone'),
+                          reason: t(`reportModal.reasons.${report.reason}`),
+                        })}
+                  </p>
+                  {report.details && <p className="text-xs text-slate-600 dark:text-slate-300">{t('conversation.reportDetails', { details: report.details })}</p>}
+                  <p className="my-2 text-slate-700 dark:text-slate-200">{report.message_body || <em className="text-slate-400">{t('conversation.alreadyRemoved')}</em>}</p>
+                  <div className="flex gap-2">
+                    <Button variant="danger" size="sm" onClick={() => resolve.mutate({ reportId: report.id, action: 'hide' })}>{t('conversation.hideMessage')}</Button>
+                    <Button variant="secondary" size="sm" onClick={() => resolve.mutate({ reportId: report.id, action: 'dismiss' })}>{t('conversation.dismiss')}</Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <div className="mb-3 empty:hidden">
+          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error} />
+        </div>
+        {messages.next_before && !search && <p className="mb-3 text-center text-xs text-slate-400">{t('conversation.showingLatest', { count: messages.data.length })}</p>}
+        {shown.length === 0 ? (
+          <EmptyState compact icon={search ? 'search' : 'chat'} title={search ? t('conversation.noMatches') : t('conversation.noMessages')} />
+        ) : (
+          <ul className="space-y-1">
+            {shown.map((message) => {
+              const state = conversationMessageState(message);
+              const removed = state === 'hidden' ? t('conversation.hiddenByModerator') : state === 'deleted' ? t('conversation.messageDeleted') : null;
+              const allowed = conversationMessageActions(message, conversation);
+              const parent = message.reply_to_id ? byId.get(message.reply_to_id) : null;
+              return (
+                <DiscussionEntry
+                  key={message.id}
+                  variant="bubble"
+                  mine={message.is_mine}
+                  authorName={message.author_name}
+                  body={message.body}
+                  createdAt={message.created_at}
+                  editedAt={message.edited_at}
+                  removedLabel={removed}
+                  mentions={message.mentions}
+                  showMentionOutcomes={message.is_mine}
+                  quote={parent
+                    ? parent.body
+                      ? t('conversation.quote', { author: parent.author_name ?? t('common:fallback.someone'), body: parent.body })
+                      : t('conversation.quoteRemoved', { author: parent.author_name ?? t('common:fallback.someone') })
+                    : null}
+                  canEdit={allowed.edit}
+                  onSaveEdit={async (body) => {
+                    await api.editConversationMessage(conversationId, message.id, { body });
+                    await refresh();
+                  }}
+                  actions={[
+                    ...(allowed.reply ? [{ label: t('conversation.reply'), onClick: () => setReplyTo(message) }] : []),
+                    ...(allowed.report ? [{ label: t('conversation.report'), onClick: () => setReporting(message) }] : []),
+                    ...(allowed.delete
+                      ? [{ label: t('common:actions.delete'), danger: true, onClick: () => { if (window.confirm(t('conversation.deleteConfirm'))) remove.mutate(message); } }]
+                      : []),
+                    ...(allowed.restore ? [{ label: t('common:actions.restore'), onClick: () => restore.mutate(message) }] : []),
+                  ]}
+                />
+              );
+            })}
           </ul>
-        </section>
-      )}
+        )}
+      </div>
 
-      <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error} />
-      {shown.length === 0 ? (
-        <p className="py-8 text-center text-sm text-slate-400">{search ? t('conversation.noMatches') : t('conversation.noMessages')}</p>
-      ) : (
-        <ul className="mb-3 divide-y divide-slate-100 dark:divide-slate-800">
-          {shown.map((message) => {
-            const state = conversationMessageState(message);
-            const removed = state === 'hidden' ? t('conversation.hiddenByModerator') : state === 'deleted' ? t('conversation.messageDeleted') : null;
-            const allowed = conversationMessageActions(message, conversation);
-            const parent = message.reply_to_id ? byId.get(message.reply_to_id) : null;
-            return (
-              <DiscussionEntry
-                key={message.id}
-                authorName={message.author_name}
-                body={message.body}
-                createdAt={message.created_at}
-                editedAt={message.edited_at}
-                removedLabel={removed}
-                mentions={message.mentions}
-                showMentionOutcomes={message.is_mine}
-                quote={parent
-                  ? parent.body
-                    ? t('conversation.quote', { author: parent.author_name ?? t('common:fallback.someone'), body: parent.body })
-                    : t('conversation.quoteRemoved', { author: parent.author_name ?? t('common:fallback.someone') })
-                  : null}
-                canEdit={allowed.edit}
-                onSaveEdit={async (body) => {
-                  await api.editConversationMessage(conversationId, message.id, { body });
-                  await refresh();
-                }}
-                actions={[
-                  ...(allowed.reply ? [{ label: t('conversation.reply'), onClick: () => setReplyTo(message) }] : []),
-                  ...(allowed.report ? [{ label: t('conversation.report'), onClick: () => setReporting(message) }] : []),
-                  ...(allowed.delete
-                    ? [{ label: t('common:actions.delete'), danger: true, onClick: () => { if (window.confirm(t('conversation.deleteConfirm'))) remove.mutate(message); } }]
-                    : []),
-                  ...(allowed.restore ? [{ label: t('common:actions.restore'), onClick: () => restore.mutate(message) }] : []),
-                ]}
-              />
-            );
-          })}
-        </ul>
-      )}
-      {messages.next_before && !search && <p className="mb-2 text-xs text-slate-400">{t('conversation.showingLatest', { count: messages.data.length })}</p>}
-
-      <DiscussionComposer
-        candidates={candidates.data ?? []}
-        placeholder={t('conversation.composerPlaceholder', { name: conversation.title })}
-        submitLabel={t('common:actions.send')}
-        context={replyTo
-          ? replyTo.author_name
-            ? t('conversation.replyingTo', { name: replyTo.author_name })
-            : t('conversation.replyingToUnknown')
-          : null}
-        onClearContext={() => setReplyTo(null)}
-        onSubmit={async ({ id, body, mentionIds }) => {
-          await api.postConversationMessage(conversationId, { id, body, reply_to_id: replyTo?.id ?? null, mention_person_ids: mentionIds });
-          await refresh();
-        }}
-      />
-      <p className="mt-2 text-xs text-slate-400">
-        {t('conversation.privacyNote')}
-      </p>
+      <div className="sticky bottom-0 border-t border-app-border bg-app-surface px-4 pt-3 pb-3">
+        <DiscussionComposer
+          candidates={candidates.data ?? []}
+          placeholder={t('conversation.composerPlaceholder', { name: conversation.title })}
+          submitLabel={t('common:actions.send')}
+          context={replyTo
+            ? replyTo.author_name
+              ? t('conversation.replyingTo', { name: replyTo.author_name })
+              : t('conversation.replyingToUnknown')
+            : null}
+          onClearContext={() => setReplyTo(null)}
+          onSubmit={async ({ id, body, mentionIds }) => {
+            await api.postConversationMessage(conversationId, { id, body, reply_to_id: replyTo?.id ?? null, mention_person_ids: mentionIds });
+            await refresh();
+          }}
+        />
+        <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-400">
+          <Icon name="info" className="size-3.5 shrink-0" />
+          {t('conversation.privacyNote')}
+        </p>
+      </div>
       {reporting && <ReportModal conversationId={conversationId} message={reporting} onClose={() => setReporting(null)} />}
     </div>
   );
@@ -248,51 +288,81 @@ export const ChatPage = () => {
     },
   });
 
+  const list = conversations.data ?? [];
+
   return (
     <div>
       <PageHeader title={t('chatPage.title')} subtitle={t('chatPage.subtitle')} />
-      <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
-        <aside className="space-y-3">
-          <select
-            className="input text-sm"
-            value=""
-            aria-label={t('chatPage.openTeamChat')}
-            onChange={(event) => event.target.value && open.mutate(event.target.value)}
-          >
-            <option value="">{t('chatPage.openTeamChatOption')}</option>
-            {startable.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-          </select>
-          <ErrorNotice error={open.error ?? conversations.error} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-6">
+        <aside className={`card flex min-h-0 flex-col overflow-hidden lg:h-[calc(100dvh-14rem)] lg:min-h-[28rem] ${conversationId ? 'hidden lg:flex' : ''}`}>
+          <div className="space-y-2 border-b border-app-border p-3">
+            <select
+              className="input text-sm"
+              value=""
+              aria-label={t('chatPage.openTeamChat')}
+              onChange={(event) => event.target.value && open.mutate(event.target.value)}
+            >
+              <option value="">{t('chatPage.openTeamChatOption')}</option>
+              {startable.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+            <ErrorNotice error={open.error ?? conversations.error} />
+          </div>
           {conversations.isLoading ? (
-            <Loading />
-          ) : (conversations.data ?? []).length === 0 ? (
-            <p className="text-sm text-slate-400">{t('chatPage.noConversations')}</p>
+            <div className="p-3"><SkeletonList rows={4} /></div>
+          ) : list.length === 0 ? (
+            <EmptyState compact icon="chat" title={t('chatPage.noConversations')} />
           ) : (
-            <ul className="card divide-y divide-slate-100 dark:divide-slate-800">
-              {(conversations.data ?? []).map((conversation) => (
-                <li key={conversation.id}>
-                  <Link
-                    to={`/chat/${conversation.id}`}
-                    aria-current={conversation.id === conversationId ? 'page' : undefined}
-                    className={`flex items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-900 ${conversation.id === conversationId ? 'bg-brand-50 dark:bg-slate-800' : ''}`}
-                  >
-                    <span className="min-w-0 flex-1 truncate">{conversationLabel(conversation, t, format)}</span>
-                    {conversation.muted && <span title={t('chatPage.muted')} aria-label={t('chatPage.muted')}>🔕</span>}
-                    {conversation.open_reports > 0 && <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">{t('chatPage.reports', { count: conversation.open_reports })}</Badge>}
-                    {conversation.unread_count > 0 && (
-                      <span className="rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white" aria-label={t('chatPage.unread', { count: conversation.unread_count })}>
-                        {conversation.unread_count}
+            <ul className="scrollbar-thin min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
+              {list.map((conversation) => {
+                const current = conversation.id === conversationId;
+                return (
+                  <li key={conversation.id}>
+                    <Link
+                      to={`/chat/${conversation.id}`}
+                      aria-current={current ? 'page' : undefined}
+                      className={`flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition ${
+                        current
+                          ? 'bg-brand-50 ring-1 ring-inset ring-brand-100 dark:bg-brand-500/15 dark:ring-brand-500/25'
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <span
+                        className={`grid size-9 shrink-0 place-items-center rounded-xl ${
+                          current ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        <Icon name={conversation.kind === 'plan' ? 'plans' : 'team'} className="size-4" />
                       </span>
-                    )}
-                  </Link>
-                </li>
-              ))}
+                      <span
+                        className={`min-w-0 flex-1 truncate ${
+                          conversation.unread_count > 0 ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        {conversationLabel(conversation, t, format)}
+                      </span>
+                      {conversation.muted && (
+                        <span title={t('chatPage.muted')} aria-label={t('chatPage.muted')} className="text-slate-400">
+                          <Icon name="bell" className="size-3.5 opacity-60" />
+                        </span>
+                      )}
+                      {conversation.open_reports > 0 && <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25">{t('chatPage.reports', { count: conversation.open_reports })}</Badge>}
+                      {conversation.unread_count > 0 && (
+                        <span className="min-w-5 rounded-full bg-brand-600 px-1.5 text-center text-xs font-semibold text-white tabular-nums" aria-label={t('chatPage.unread', { count: conversation.unread_count })}>
+                          {conversation.unread_count}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </aside>
-        <section className="card min-w-0 p-4">
+        <section className={`card flex min-h-[28rem] min-w-0 flex-col overflow-hidden lg:h-[calc(100dvh-14rem)] ${conversationId ? '' : 'hidden lg:flex'}`}>
           {conversationId ? <ConversationThread key={conversationId} conversationId={conversationId} /> : (
-            <p className="py-16 text-center text-sm text-slate-400">{t('chatPage.choose')}</p>
+            <div className="grid flex-1 place-items-center p-6">
+              <EmptyState compact icon="chat" title={t('chatPage.choose')} />
+            </div>
           )}
         </section>
       </div>

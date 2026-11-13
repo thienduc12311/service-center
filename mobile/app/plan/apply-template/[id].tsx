@@ -182,7 +182,7 @@ export default function ApplyTemplateScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('apply.title') }} />
-        <EmptyState title={t('generate.noAccess')} />
+        <EmptyState icon="alert" title={t('generate.noAccess')} />
       </Screen>
     );
   }

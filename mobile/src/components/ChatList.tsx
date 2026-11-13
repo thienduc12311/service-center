@@ -10,7 +10,7 @@ import {
 import { api } from '../lib/api';
 import { queryKeys } from '../lib/query-keys';
 import { useAuth } from '../providers/AuthProvider';
-import { Chip, EmptyState, ErrorNotice, Label, ListRow, Loading, Tag, screenPadding } from './ui';
+import { Card, Chip, EmptyState, ErrorNotice, IconWell, ListRow, Loading, SectionHeader, Tag, screenPadding } from './ui';
 import { useFormatters } from '../i18n';
 import { conversationTitle } from '../lib/conversation-labels';
 import { type Theme } from '../lib/theme';
@@ -72,7 +72,7 @@ export function ChatList({ header }: ChatListProps) {
     <FlatList
       data={conversations.data ?? []}
       keyExtractor={(conversation) => conversation.id}
-      contentContainerStyle={screenPadding(theme)}
+      contentContainerStyle={[screenPadding(theme), styles.list]}
       refreshControl={
         <RefreshControl
           refreshing={pulling}
@@ -87,76 +87,130 @@ export function ChatList({ header }: ChatListProps) {
         <View style={styles.header}>
           {header}
           <Text style={styles.muted}>{t('chatPage.subtitle')}</Text>
-          <ListRow onPress={() => setChoosing((value) => !value)} showChevron>
-            <Label>{t('mobileChat.openTeamChat')}</Label>
-          </ListRow>
-          {choosing ? (
-            teams.isLoading ? (
-              <Loading />
-            ) : startable.length === 0 ? (
-              <Text style={styles.muted}>{t('mobileChat.noTeams')}</Text>
-            ) : (
-              <View style={styles.chips}>
-                {startable.map((team) => (
-                  <Chip key={team.id} label={team.name} active={false} onPress={() => open.mutate(team.id)} />
-                ))}
+          <Card compact style={styles.entryCard}>
+            <ListRow
+              onPress={() => setChoosing((value) => !value)}
+              showChevron
+              leading={<IconWell name="plus" accent={theme.accent.blue} size={36} />}
+            >
+              <Text style={styles.entryTitle}>{t('mobileChat.openTeamChat')}</Text>
+            </ListRow>
+            {choosing ? (
+              <View style={styles.choices}>
+                {teams.isLoading ? (
+                  <Loading />
+                ) : startable.length === 0 ? (
+                  <Text style={styles.muted}>{t('mobileChat.noTeams')}</Text>
+                ) : (
+                  <View style={styles.chips}>
+                    {startable.map((team) => (
+                      <Chip key={team.id} label={team.name} active={false} onPress={() => open.mutate(team.id)} />
+                    ))}
+                  </View>
+                )}
               </View>
-            )
-          ) : null}
+            ) : null}
+          </Card>
           <ErrorNotice error={open.error ?? conversations.error} />
+          {conversations.data?.length ? (
+            <SectionHeader title={t('common:nav.chat')} count={conversations.data.length} />
+          ) : null}
         </View>
       }
       ListEmptyComponent={
         conversations.isLoading ? (
           <Loading />
         ) : conversations.error ? null : (
-          <EmptyState title={t('chatPage.noConversations')} />
+          <EmptyState icon="chat" title={t('chatPage.noConversations')} />
         )
       }
-      renderItem={({ item, index }) => (
-        <ListRow divided={index > 0} showChevron onPress={() => router.push({ pathname: '/chat/[id]', params: { id: item.id } })}>
-          <View style={styles.row}>
-            <Text style={[styles.title, item.unread_count > 0 && styles.unread]} numberOfLines={2}>
-              {conversationTitle(item, t, format)}
-            </Text>
-            {item.unread_count > 0 ? (
-              <View
-                style={styles.badge}
-                accessible
-                accessibilityLabel={t('chatPage.unread', { count: item.unread_count })}
-              >
-                <Text style={styles.badgeText}>{item.unread_count}</Text>
+      renderItem={({ item, index }) => {
+        const unread = item.unread_count > 0;
+        const last = index === (conversations.data?.length ?? 0) - 1;
+        return (
+          <View style={[styles.groupRow, index === 0 && styles.groupFirst, last && styles.groupLast]}>
+            <ListRow
+              divided={index > 0}
+              showChevron
+              onPress={() => router.push({ pathname: '/chat/[id]', params: { id: item.id } })}
+              leading={
+                <IconWell
+                  name={item.kind === 'plan' ? 'plans' : 'people'}
+                  accent={unread ? theme.accent.blue : theme.accent.neutral}
+                  size={40}
+                />
+              }
+            >
+              <View style={styles.row}>
+                <Text style={[styles.title, unread && styles.unread]} numberOfLines={2}>
+                  {conversationTitle(item, t, format)}
+                </Text>
+                {unread ? (
+                  <View
+                    style={styles.badge}
+                    accessible
+                    accessibilityLabel={t('chatPage.unread', { count: item.unread_count })}
+                  >
+                    <Text style={styles.badgeText} maxFontSizeMultiplier={1.4}>{item.unread_count}</Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
+              {item.last_message_at ? (
+                <Text style={[styles.time, unread && styles.timeUnread]}>{format.dateTime(item.last_message_at)}</Text>
+              ) : null}
+              <View style={styles.tags}>
+                <Tag label={t(`conversation.kinds.${item.kind}`)} accent={theme.accent.neutral} />
+                {item.muted ? <Tag label={t('chatPage.muted')} accent={theme.accent.neutral} /> : null}
+                {item.open_reports > 0 ? <Tag label={t('chatPage.reports', { count: item.open_reports })} accent={theme.accent.yellow} /> : null}
+              </View>
+            </ListRow>
           </View>
-          <View style={styles.tags}>
-            <Tag label={t(`conversation.kinds.${item.kind}`)} accent={theme.accent.neutral} />
-            {item.muted ? <Tag label={t('chatPage.muted')} accent={theme.accent.neutral} /> : null}
-            {item.open_reports > 0 ? <Tag label={t('chatPage.reports', { count: item.open_reports })} accent={theme.accent.yellow} /> : null}
-            {item.last_message_at ? <Text style={styles.muted}>{format.dateTime(item.last_message_at)}</Text> : null}
-          </View>
-        </ListRow>
-      )}
+        );
+      }}
     />
   );
 }
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    header: { gap: theme.space.md, marginBottom: theme.space.md },
+    list: { gap: 0 },
+    header: { gap: theme.space.lg, marginBottom: theme.space.md },
+    entryCard: { paddingVertical: theme.space.xs },
+    entryTitle: { ...theme.type.heading, color: theme.color.ink },
+    choices: { paddingBottom: theme.space.md, gap: theme.space.sm },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    groupRow: {
+      backgroundColor: theme.color.surface,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: theme.color.border,
+      paddingHorizontal: theme.space.md,
+    },
+    groupFirst: {
+      borderTopWidth: 1,
+      borderTopLeftRadius: theme.radius.lg + 2,
+      borderTopRightRadius: theme.radius.lg + 2,
+    },
+    groupLast: {
+      borderBottomWidth: 1,
+      borderBottomLeftRadius: theme.radius.lg + 2,
+      borderBottomRightRadius: theme.radius.lg + 2,
+    },
     row: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    tags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm, marginTop: theme.space.xs },
-    title: { ...theme.type.body, color: theme.color.ink, flex: 1 },
+    tags: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.xs, marginTop: theme.space.sm },
+    title: { ...theme.type.heading, fontWeight: '500', color: theme.color.ink, flex: 1 },
     unread: { fontWeight: '700' },
+    time: { ...theme.type.numeric, fontSize: 12.5, color: theme.color.inkFaint, marginTop: 2 },
+    timeUnread: { color: theme.color.brandText, fontWeight: '600' },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     badge: {
-      minWidth: 24,
-      paddingHorizontal: theme.space.xs,
-      borderRadius: 12,
+      minWidth: 22,
+      height: 22,
+      paddingHorizontal: 6,
+      borderRadius: theme.radius.pill,
       backgroundColor: theme.color.brand,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    badgeText: { ...theme.type.bodySmall, color: theme.color.onBrand, fontWeight: '700' },
+    badgeText: { ...theme.type.label, fontSize: 12, lineHeight: 16, color: theme.color.onBrand, fontWeight: '700' },
   });

@@ -35,6 +35,7 @@ import {
   EmptyState,
   ErrorNotice,
   Field,
+  IconWell,
   Label,
   Loading,
   Meta,
@@ -43,6 +44,7 @@ import {
   screenPadding,
 } from '../../../src/components/ui';
 import { type Theme } from '../../../src/lib/theme';
+import { Icon } from '../../../src/components/icons';
 import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
 
 /** Every countdown policy, in the website's picker order. */
@@ -224,11 +226,12 @@ export default function LiveScreen() {
 
           {!runId ? (
             <EmptyState
+              icon="clock"
               title={t('live.page.chooseTime')}
               description={data.can_control ? t('live.page.chooseTimeController') : t('live.page.chooseTimeViewer')}
             />
           ) : live.connection === 'revoked' ? (
-            <EmptyState title={t('live.page.unavailableTitle')} description={t('live.page.unavailableDescription')} />
+            <EmptyState icon="alert" title={t('live.page.unavailableTitle')} description={t('live.page.unavailableDescription')} />
           ) : live.loading ? (
             <Loading label={t('live.page.loadingRun')} />
           ) : !live.state && live.connection === 'offline' ? (
@@ -279,6 +282,7 @@ export default function LiveScreen() {
             title={t('live.page.planChat')}
             icon="chat"
             variant="secondary"
+            style={styles.sectionGap}
             loading={openChat.isPending}
             onPress={() => openChat.mutate()}
           />
@@ -305,14 +309,16 @@ interface ServiceTimesProps {
 /** Each service time is its own occurrence with at most one current run. */
 const ServiceTimes = ({ data, runId, policy, onPolicy, creatingTimeId, onCreate, onOpen }: ServiceTimesProps) => {
   const { t } = useTranslation('media');
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const f = useFormatters();
   return (
     <Card>
       <Label>{t('live.page.serviceTimes')}</Label>
       {data.service_times.length === 0 ? <Text style={styles.muted}>{t('live.page.noServiceTimes')}</Text> : null}
-      {data.service_times.map((time) => (
-        <View key={time.id} style={styles.timeRow}>
+      {data.service_times.map((time, index) => (
+        <View key={time.id} style={[styles.timeRow, index > 0 && styles.timeRowDivided]}>
+          <IconWell name="clock" accent={time.run_id === runId && runId ? theme.accent.green : theme.accent.blue} size={36} />
           <View style={styles.flex}>
             <Text style={styles.strong}>{time.name ?? t('live.service')}</Text>
             <Text style={styles.muted}>{f.dateTime(time.starts_at)}</Text>
@@ -365,7 +371,7 @@ const Countdown = ({ view }: CountdownProps) => {
     return (
       <View accessible accessibilityLabel={`${formatLiveDuration(view.elapsed_seconds)} ${t('live.countdown.elapsed')}`}>
         <Text style={styles.clock}>{formatLiveDuration(view.elapsed_seconds)}</Text>
-        <Text style={styles.muted}>{t('live.countdown.elapsed')}</Text>
+        <Text style={styles.clockLabel}>{t('live.countdown.elapsed')}</Text>
       </View>
     );
   }
@@ -374,7 +380,7 @@ const Countdown = ({ view }: CountdownProps) => {
     return (
       <View accessible accessibilityLabel={`+${formatLiveDuration(view.overrun_seconds)} ${label}`}>
         <Text style={[styles.clock, { color: theme.accent.red.fg }]}>+{formatLiveDuration(view.overrun_seconds)}</Text>
-        <Text style={[styles.muted, { color: theme.accent.red.fg }]}>{label}</Text>
+        <Text style={[styles.clockLabel, { color: theme.accent.red.fg }]}>{label}</Text>
       </View>
     );
   }
@@ -382,7 +388,7 @@ const Countdown = ({ view }: CountdownProps) => {
   return (
     <View accessible accessibilityLabel={`${formatLiveDuration(view.remaining_seconds)} ${label}`}>
       <Text style={styles.clock}>{formatLiveDuration(view.remaining_seconds)}</Text>
-      <Text style={styles.muted}>{label}</Text>
+      <Text style={styles.clockLabel}>{label}</Text>
     </View>
   );
 };
@@ -430,20 +436,28 @@ const RunPanel = ({ live }: RunPanelProps) => {
 
   return (
     <>
-      <Card>
+      <Card style={[styles.stage, active && styles.stageActive]}>
         <View style={styles.statusRow}>
           <Tag label={t(`live.status.${run.status}`)} accent={theme.accent[LIVE_STATUS_ACCENTS[run.status]]} />
           <Text style={[styles.muted, styles.flex]}>
             {t('live.mobile.runFor', { name: run.time_name ?? t('live.service'), date: f.dateTime(run.time_starts_at) })}
           </Text>
         </View>
-        <Text
-          style={[styles.muted, live.connection !== 'live' && { color: theme.accent.yellow.fg }]}
-          accessibilityRole="text"
-          accessibilityLiveRegion="polite"
-        >
-          {connectionText(live.connection, live.lastUpdatedSecondsAgo, t)}
-        </Text>
+        <View style={styles.connectionRow}>
+          <View
+            style={[
+              styles.connectionDot,
+              { backgroundColor: live.connection === 'live' ? theme.accent.green.fg : theme.accent.yellow.fg },
+            ]}
+          />
+          <Text
+            style={[styles.muted, styles.flex, live.connection !== 'live' && { color: theme.accent.yellow.fg }]}
+            accessibilityRole="text"
+            accessibilityLiveRegion="polite"
+          >
+            {connectionText(live.connection, live.lastUpdatedSecondsAgo, t)}
+          </Text>
+        </View>
 
         {state.warnings.map((warning) => (
           <View key={warning.code} style={[styles.notice, { backgroundColor: theme.accent.yellow.bg }]}>
@@ -458,8 +472,8 @@ const RunPanel = ({ live }: RunPanelProps) => {
         <Divider />
 
         {run.status === 'ready' ? (
-          <View>
-            <Text style={styles.muted}>{t('live.notStarted')}</Text>
+          <View style={styles.currentBlock}>
+            <Text style={styles.section}>{t('live.notStarted')}</Text>
             <Text style={styles.current}>{view.next?.title ?? t('live.nothingToRun')}</Text>
           </View>
         ) : null}
@@ -467,9 +481,18 @@ const RunPanel = ({ live }: RunPanelProps) => {
           <View style={styles.currentBlock}>
             {view.section ? <Text style={styles.section}>{view.section}</Text> : null}
             <Text style={styles.current} accessibilityRole="header">{view.current.title}</Text>
-            {run.status === 'paused' ? <Text style={[styles.strong, { color: theme.accent.yellow.fg }]}>{t('live.status.paused')}</Text> : null}
+            {run.status === 'paused' ? (
+              <View style={styles.pausedRow}>
+                <Tag label={t('live.status.paused')} accent={theme.accent.yellow} />
+              </View>
+            ) : null}
             <Countdown view={view} />
-            <Text style={styles.body}>{view.next ? t('live.next', { title: view.next.title }) : t('live.nextNothing')}</Text>
+            <View style={styles.nextPanel}>
+              <Icon name="chevronRight" size={18} color={theme.color.inkFaint} />
+              <Text style={[styles.nextText, styles.flex]}>
+                {view.next ? t('live.next', { title: view.next.title }) : t('live.nextNothing')}
+              </Text>
+            </View>
           </View>
         ) : null}
         {over ? (
@@ -477,7 +500,12 @@ const RunPanel = ({ live }: RunPanelProps) => {
             {run.status === 'ended' ? t('live.endedAt', { time: timeOfDay(run.ended_at) }) : t('live.wasDiscarded')}
           </Text>
         ) : null}
-        {finish ? <Text style={styles.muted}>{finish}</Text> : null}
+        {finish ? (
+          <View style={styles.connectionRow}>
+            <Icon name="clock" size={15} color={theme.color.inkFaint} />
+            <Text style={[styles.muted, styles.flex]}>{finish}</Text>
+          </View>
+        ) : null}
       </Card>
 
       <Card>
@@ -497,6 +525,7 @@ const RunPanel = ({ live }: RunPanelProps) => {
         {controls.takeControl ? (
           <Button
             title={t('live.takeControl')}
+            icon="person"
             loading={live.pending?.action === 'take_control'}
             onPress={() => live.send({ action: 'take_control' })}
           />
@@ -510,12 +539,20 @@ const RunPanel = ({ live }: RunPanelProps) => {
         ) : null}
 
         {controls.start ? (
-          <Button title={t('live.start')} loading={live.pending?.action === 'start'} onPress={() => live.send({ action: 'start' })} />
+          <Button
+            title={t('live.start')}
+            icon="chevronRight"
+            style={styles.bigButton}
+            loading={live.pending?.action === 'start'}
+            onPress={() => live.send({ action: 'start' })}
+          />
         ) : null}
         {control.held_by_you && active ? (
           <>
             <Button
               title={t('live.nextButton')}
+              icon="chevronRight"
+              style={styles.bigButton}
               disabled={!controls.next}
               loading={live.pending?.action === 'advance'}
               onPress={() => live.send({ action: 'advance' })}
@@ -523,6 +560,7 @@ const RunPanel = ({ live }: RunPanelProps) => {
             <View style={styles.row}>
               <Button
                 title={t('live.back')}
+                icon="chevronLeft"
                 variant="secondary"
                 disabled={!controls.back}
                 style={styles.flex}
@@ -548,7 +586,7 @@ const RunPanel = ({ live }: RunPanelProps) => {
                 />
               )}
             </View>
-            <Button title={t('live.endRun')} variant="danger" disabled={!controls.end} onPress={confirmEnd} />
+            <Button title={t('live.endRun')} icon="close" variant="danger" disabled={!controls.end} onPress={confirmEnd} />
           </>
         ) : null}
 
@@ -634,17 +672,20 @@ const RunPanel = ({ live }: RunPanelProps) => {
         ) : null}
       </Card>
 
-      <Card>
-        <Label>{t('live.orderPinned')}</Label>
+      <Card compact>
+        <View style={styles.orderHead}>
+          <Label>{t('live.orderPinned')}</Label>
+        </View>
         {run.snapshot.map((item, index) => {
           const isCurrent = view.current_index === index;
           const isHeader = item.item_type === 'header';
           return (
             <View
               key={item.id}
-              style={[styles.orderRow, isCurrent && { backgroundColor: theme.accent.green.bg }]}
+              style={[styles.orderRow, isHeader && styles.orderHeaderRow, isCurrent && styles.orderRowCurrent]}
               accessibilityState={{ selected: isCurrent }}
             >
+              {isCurrent ? <View style={styles.currentBar} /> : null}
               {isHeader ? (
                 <Text style={[styles.section, styles.flex]}>{item.title}</Text>
               ) : (
@@ -726,9 +767,9 @@ const HistoryCard = ({ runId, revision }: HistoryCardProps) => {
       ) : null}
       {actuals.items.map((line) =>
         line.item_type === 'header' ? (
-          <Text key={line.item_id} style={styles.section}>{line.title}</Text>
+          <Text key={line.item_id} style={[styles.section, styles.historyHeader]}>{line.title}</Text>
         ) : (
-          <View key={line.item_id} style={styles.actualRow}>
+          <View key={line.item_id} style={[styles.actualRow, styles.actualRowDivided]}>
             <Text style={styles.strong}>
               {line.title}
               {line.segment !== 'service' ? ` ${line.segment === 'pre' ? t('live.history.beforeService') : t('live.history.afterService')}` : ''}
@@ -790,27 +831,76 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
     content: { gap: theme.space.lg, paddingBottom: theme.space.section },
+    sectionGap: { marginTop: theme.space.sm },
     body: { ...theme.type.body, color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     strong: { ...theme.type.body, fontWeight: '600', color: theme.color.ink },
-    section: { ...theme.type.label, color: theme.color.inkFaint, textTransform: 'uppercase' },
-    current: { ...theme.type.display, color: theme.color.ink },
-    currentBlock: { gap: theme.space.sm },
-    clock: { ...theme.type.numeric, fontSize: 56, lineHeight: 64, fontWeight: '600', color: theme.color.ink, fontVariant: ['tabular-nums'] },
+    section: { ...theme.type.eyebrow, color: theme.color.brandText },
+
+    stage: { gap: theme.space.md },
+    stageActive: { borderColor: theme.color.brand, borderWidth: 1.5 },
     statusRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    row: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
-    timeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
-    notice: { borderRadius: theme.radius.md, padding: theme.space.md, gap: theme.space.sm },
-    confirm: { gap: theme.space.sm, borderTopWidth: 1, borderTopColor: theme.color.border, paddingTop: theme.space.md },
-    orderRow: {
+    connectionRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    connectionDot: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 3.5 },
+    current: { ...theme.type.display, fontSize: 34, lineHeight: 40, color: theme.color.ink },
+    currentBlock: { gap: theme.space.sm },
+    pausedRow: { flexDirection: 'row' },
+    clock: {
+      ...theme.type.numeric,
+      fontSize: 72,
+      lineHeight: 80,
+      fontWeight: '700',
+      letterSpacing: -1.5,
+      color: theme.color.ink,
+      fontVariant: ['tabular-nums'],
+    },
+    clockLabel: { ...theme.type.label, color: theme.color.inkMuted },
+    nextPanel: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.space.sm,
-      minHeight: 44,
-      paddingHorizontal: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      marginTop: theme.space.xs,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.color.surfaceInset,
     },
-    orderTime: { ...theme.type.bodySmall, color: theme.color.inkMuted, fontVariant: ['tabular-nums'] },
+    nextText: { ...theme.type.heading, color: theme.color.ink },
+
+    bigButton: { minHeight: 60, borderRadius: theme.radius.lg },
+    row: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    timeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, minHeight: 48 },
+    timeRowDivided: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.color.border,
+      paddingTop: theme.space.md,
+    },
+    notice: { borderRadius: theme.radius.md, padding: theme.space.md, gap: theme.space.sm },
+    confirm: { gap: theme.space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.border, paddingTop: theme.space.md },
+
+    orderHead: { paddingHorizontal: theme.space.xs, paddingBottom: theme.space.sm },
+    orderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.space.md,
+      minHeight: 48,
+      paddingHorizontal: theme.space.sm,
+      borderRadius: theme.radius.md,
+      overflow: 'hidden',
+    },
+    orderHeaderRow: { minHeight: 40, marginTop: theme.space.sm },
+    orderRowCurrent: { backgroundColor: theme.accent.green.bg },
+    currentBar: {
+      position: 'absolute',
+      left: 0,
+      top: 8,
+      bottom: 8,
+      width: 3,
+      borderRadius: 2,
+      backgroundColor: theme.accent.green.fg,
+    },
+    orderTime: { ...theme.type.numeric, fontSize: 13.5, color: theme.color.inkMuted, minWidth: 44 },
     actualRow: { gap: 2 },
+    actualRowDivided: { paddingTop: theme.space.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.border },
+    historyHeader: { marginTop: theme.space.sm },
   });

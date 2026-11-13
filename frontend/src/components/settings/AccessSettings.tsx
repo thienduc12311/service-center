@@ -139,12 +139,12 @@ export const AccessSettings = ({ organization }: { organization: OrganizationRow
   return (
     <section className="card space-y-6 p-5">
       <div>
-        <h2 className="font-semibold">{t('access.title')}</h2>
+        <h2 className="font-semibold text-slate-900 dark:text-white">{t('access.title')}</h2>
         <p className="text-sm text-slate-500">{t('access.description')}</p>
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold">{t('access.members')}</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('access.members')}</h3>
         <ErrorNotice error={members.error ?? setMode.error} />
         {members.isLoading ? (
           <Spinner />
@@ -184,7 +184,7 @@ export const AccessSettings = ({ organization }: { organization: OrganizationRow
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold">{t('access.organizationWide')}</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('access.organizationWide')}</h3>
         <ScopeAccessEditor
           scopeType="organization"
           scopeId={null}
@@ -195,12 +195,12 @@ export const AccessSettings = ({ organization }: { organization: OrganizationRow
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold">{t('access.explainTitle')}</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('access.explainTitle')}</h3>
         <ExplainAccess />
       </div>
 
       <div>
-        <h3 className="mb-1 text-sm font-semibold">{t('access.rosters.title')}</h3>
+        <h3 className="mb-1 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('access.rosters.title')}</h3>
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"

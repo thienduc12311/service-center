@@ -111,13 +111,13 @@ export const AssignmentTimesModal = ({ plan, assignment, onClose }: AssignmentTi
     <Modal open={Boolean(assignment)} title={t('assignmentTimes.title', { name })} onClose={onClose}>
       {assignment && (
         <div className="space-y-4">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {assignment.position
               ? t('common:format.teamPosition', { team: assignment.team?.name ?? t('common:fallback.team'), position: assignment.position.name })
               : assignment.team?.name ?? t('common:fallback.team')}
           </p>
           {assignment.visibility === 'released' && assignment.status !== 'declined' && (
-            <p className="text-sm text-slate-500">{t('assignmentTimes.resendHint')}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('assignmentTimes.resendHint')}</p>
           )}
           <TimeScopePicker
             idPrefix={`assignment-${assignment.id}`}
@@ -139,7 +139,7 @@ export const AssignmentTimesModal = ({ plan, assignment, onClose }: AssignmentTi
               onChange={(event) => setReason(event.target.value)}
             />
           ) : (
-            <p className="text-xs text-slate-500">{t('assignmentTimes.cannotOverride')}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('assignmentTimes.cannotOverride')}</p>
           ))}
           {stale ? (
             <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-600/20">

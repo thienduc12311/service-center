@@ -103,7 +103,7 @@ export default function AttendanceScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('attendance.title') }} />
-        <EmptyState title={t('mobileAttendance.noAccess')} />
+        <EmptyState icon="alert" title={t('mobileAttendance.noAccess')} />
       </Screen>
     );
   }
@@ -644,8 +644,8 @@ const makeStyles = (theme: Theme) =>
     warning: {
       gap: theme.space.xs,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
     warningText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg },
 

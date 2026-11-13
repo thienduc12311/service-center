@@ -101,7 +101,7 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     wrap: { gap: theme.space.sm },
     field: {
-      minHeight: 44,
+      minHeight: 48,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -109,16 +109,16 @@ const makeStyles = (theme: Theme) =>
       borderColor: theme.color.borderStrong,
       borderRadius: theme.radius.md,
       backgroundColor: theme.color.field,
-      paddingHorizontal: theme.space.md,
+      paddingHorizontal: theme.space.md + 2,
     },
-    fieldOpen: { borderColor: theme.color.brand },
+    fieldOpen: { borderColor: theme.color.brand, borderWidth: 1.5 },
     value: { ...theme.type.body, color: theme.color.ink },
     placeholder: { color: theme.color.inkFaint },
     panel: {
       gap: theme.space.sm,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.md,
-      borderWidth: StyleSheet.hairlineWidth,
+      padding: theme.space.md,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
       borderColor: theme.color.border,
       backgroundColor: theme.color.surface,
     },
@@ -136,6 +136,6 @@ const makeStyles = (theme: Theme) =>
     },
     cellEmpty: { opacity: 0.4 },
     cellOn: { backgroundColor: theme.color.brand },
-    cellLabel: { ...theme.type.body, color: theme.color.ink },
+    cellLabel: { ...theme.type.body, fontWeight: '500', color: theme.color.ink },
     cellLabelOn: { color: theme.color.onBrand, fontWeight: '600' },
   });

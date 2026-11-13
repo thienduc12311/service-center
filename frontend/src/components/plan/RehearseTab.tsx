@@ -16,6 +16,7 @@ import {
 import { useRehearsalManifest } from '../../hooks/queries';
 import { ChordChart } from '../ChordChart';
 import { Badge, Button, ErrorNotice, Loading } from '../ui';
+import { Icon } from '../icons';
 import { fileErrorMessage } from '../files/fileActions';
 import { api } from '../../lib/api';
 import {
@@ -54,7 +55,8 @@ export const RehearseTab = ({ plan }: RehearseTabProps) => {
   return (
     <div className="space-y-4">
       {manifest.error && (
-        <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-600/20">
+        <p role="status" className="flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
+          <Icon name="alert" className="mt-px size-4 shrink-0" />
           {t('rehearse.refreshFailed', { time: format.time(data.generated_at) })}
         </p>
       )}
@@ -62,15 +64,18 @@ export const RehearseTab = ({ plan }: RehearseTabProps) => {
       <PlayerBar state={state} controls={controls} media={media} items={data.items} />
 
       {!hasContent ? (
-        <div className="card px-6 py-16 text-center text-sm text-slate-500">
-          {t('rehearse.empty')}
+        <div className="card flex flex-col items-center gap-3 border-dashed px-6 py-14 text-center">
+          <span className="grid size-12 place-items-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-inset ring-brand-100 dark:bg-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20">
+            <Icon name="music" className="size-6" />
+          </span>
+          <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">{t('rehearse.empty')}</p>
         </div>
       ) : (
         <ol className="space-y-4" aria-label={t('rehearse.orderLabel')}>
           {items.map((item) =>
             item.item_type === 'header' ? (
               <li key={item.item_id}>
-                <h3 className="px-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{item.title}</h3>
+                <h3 className="section-label px-1 pt-2">{item.title}</h3>
               </li>
             ) : (
               <RehearseItem
@@ -92,7 +97,7 @@ export const RehearseTab = ({ plan }: RehearseTabProps) => {
       {data.plan_materials.length > 0 && (
         <section className="card p-4" aria-label={t('rehearse.planFiles')}>
           <h3 className="mb-2 text-sm font-semibold text-slate-900 dark:text-white">{t('rehearse.wholePlan')}</h3>
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="row-list">
             {data.plan_materials.map((material) => (
               <MaterialRow key={material.file_id} material={material} />
             ))}
@@ -100,7 +105,7 @@ export const RehearseTab = ({ plan }: RehearseTabProps) => {
         </section>
       )}
       {data.truncated && (
-        <p className="text-xs text-slate-500">{t('rehearse.truncated')}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{t('rehearse.truncated')}</p>
       )}
     </div>
   );
@@ -126,17 +131,17 @@ const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
   const tempoAtRate = state.rate === 1 ? null : rehearsalTempoAtRate(item?.tempo_bpm ?? null, state.rate);
 
   return (
-    <section className="card sticky top-2 z-10 space-y-3 p-4" aria-label={t('rehearse.player')}>
+    <section className="card sticky top-2 z-10 space-y-3 p-4 shadow-lg shadow-slate-900/5 backdrop-blur" aria-label={t('rehearse.player')}>
       {/* The one media element: it plays every inline track, audio or video. */}
       <video
         ref={media}
-        className={isVideo && state.source ? 'max-h-64 w-full rounded bg-black' : 'hidden'}
+        className={isVideo && state.source ? 'max-h-64 w-full rounded-xl bg-black' : 'hidden'}
         playsInline
         preload="metadata"
         {...controls.handlers}
       />
       {state.tracks.length === 0 ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {t('rehearse.noTracks')}
         </p>
       ) : (
@@ -147,7 +152,7 @@ const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
                 {track ? t('rehearse.trackTitle', { number: state.index + 1, title: track.title }) : t('rehearse.chooseTrack')}
               </p>
               {track && (
-                <p className="truncate text-xs text-slate-500">
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                   {track.material.title}
                   {track.material.version_number ? ` · ${t('rehearse.version', { number: track.material.version_number })}` : ''}
                   {track.material.pinned ? ` ${t('rehearse.pinnedForPlan')}` : ''}
@@ -157,26 +162,23 @@ const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
                 </p>
               )}
             </div>
-            <span className="text-xs tabular-nums text-slate-500">
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs tabular-nums text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               {t('rehearse.tracks', { count: state.tracks.length })}
             </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" onClick={controls.previous} aria-label={t('rehearse.previousTrack')}>
-              ⏮
-            </Button>
+            <Button variant="secondary" icon="chevronLeft" onClick={controls.previous} aria-label={t('rehearse.previousTrack')} />
             <Button
               onClick={controls.togglePlay}
               disabled={!state.source || status === 'loading' || Boolean(external)}
               aria-label={status === 'playing' ? t('rehearse.pause') : t('rehearse.play')}
+              icon={status === 'playing' ? undefined : 'play'}
               loading={status === 'loading'}
             >
               {status === 'playing' ? t('rehearse.pause') : t('rehearse.play')}
             </Button>
-            <Button variant="secondary" onClick={controls.next} aria-label={t('rehearse.nextTrack')}>
-              ⏭
-            </Button>
+            <Button variant="secondary" icon="chevronRight" onClick={controls.next} aria-label={t('rehearse.nextTrack')} />
             <Button
               variant="secondary"
               onClick={controls.cycleRepeat}
@@ -186,10 +188,10 @@ const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
               {t(`rehearse.repeat.${state.repeat}`)}
             </Button>
             {!external && (
-              <label className="flex items-center gap-1 text-xs text-slate-500">
+              <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                 <span>{t('rehearse.speed')}</span>
                 <select
-                  className="rounded border border-slate-300 bg-white px-1 py-1 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  className="input h-9 w-auto py-1"
                   value={state.rate}
                   aria-label={t('rehearse.speedLabel')}
                   onChange={(event) => {
@@ -206,11 +208,11 @@ const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
               </label>
             )}
             {!external && (
-              <label className="flex min-w-[12rem] flex-1 items-center gap-2 text-xs tabular-nums text-slate-500">
+              <label className="flex w-full min-w-0 flex-1 items-center gap-2 text-xs tabular-nums text-slate-500 sm:w-auto sm:min-w-[12rem] dark:text-slate-400">
                 <span>{time(state.position)}</span>
                 <input
                   type="range"
-                  className="flex-1"
+                  className="min-w-0 flex-1 accent-brand-600"
                   min={0}
                   max={Math.max(1, Math.floor(state.duration))}
                   step={1}
@@ -226,13 +228,13 @@ const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
           </div>
 
           {!external && state.rate !== 1 && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {tempoAtRate ? `${t('rehearse.speedTempo', { bpm: tempoAtRate })} · ` : ''}
               {t('rehearse.speedNote')}
             </p>
           )}
           {external?.external_url && (
-            <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+            <p className="surface-inset px-3 py-2 text-sm text-slate-700 dark:text-slate-200">
               {t('rehearse.externalTrack', { host: hostname(external.external_url) ?? t('rehearse.anotherSite') })}{' '}
               <a className="font-medium underline" href={external.external_url} target="_blank" rel="noopener noreferrer">
                 {t('rehearse.openExternal')}
@@ -240,7 +242,7 @@ const PlayerBar = ({ state, controls, media, items }: PlayerBarProps) => {
             </p>
           )}
           {state.error && (
-            <p role="alert" className="text-sm text-rose-700">
+            <p role="alert" className="text-sm text-rose-700 dark:text-rose-400">
               {state.error}{' '}
               <button type="button" className="underline" onClick={controls.retry}>
                 {t('common:actions.retry')}
@@ -275,39 +277,40 @@ const RehearseItem = ({ item, track, current, onPlay, onChoose }: RehearseItemPr
   const playable = item.materials.filter(isPlayable);
   const chart = item.chart;
   return (
-    <li className={`card overflow-hidden ${current ? 'ring-2 ring-indigo-400' : ''}`} aria-current={current ? 'true' : undefined}>
-      <header className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+    <li className={`card overflow-hidden ${current ? 'border-brand-300 ring-2 ring-brand-500/50 dark:border-brand-500/50' : ''}`} aria-current={current ? 'true' : undefined}>
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-app-border px-4 py-3">
         {item.song ? (
-          <Link to={`/songs/${item.song.id}`} className="font-medium hover:underline">
+          <Link to={`/songs/${item.song.id}`} className="inline-flex items-center gap-1.5 font-semibold text-slate-900 hover:text-brand-700 hover:underline dark:text-white dark:hover:text-brand-200">
+            <Icon name="music" className="size-4 shrink-0 text-brand-500 dark:text-brand-300" />
             {item.title}
           </Link>
         ) : (
-          <span className="font-medium">{item.title}</span>
+          <span className="font-semibold text-slate-900 dark:text-white">{item.title}</span>
         )}
         {chart && (
-          <span className="text-sm text-slate-500">
+          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             <span className="sr-only">{t('rehearse.serviceKey')} </span>
             {chart.key ?? '—'}
           </span>
         )}
-        {item.arrangement && <span className="text-sm text-slate-500">{item.arrangement.name}</span>}
+        {item.arrangement && <span className="text-sm text-slate-500 dark:text-slate-400">{item.arrangement.name}</span>}
         {item.tempo_bpm && <span className="text-sm text-slate-400">{t('rehearse.bpm', { bpm: item.tempo_bpm })}</span>}
         {item.media && (
-          <Badge tone="bg-sky-50 text-sky-800 ring-sky-600/20">
+          <Badge tone="bg-sky-50 text-sky-800 ring-sky-600/20 dark:bg-sky-500/15 dark:text-sky-300">
             {t(item.media.archived ? 'rehearse.mediaArchived' : 'rehearse.media', { title: item.media.title })}
           </Badge>
         )}
         <span className="ml-auto text-sm tabular-nums text-slate-400">{formatDuration(item.length_seconds)}</span>
         {track ? (
-          <Button variant={current ? 'primary' : 'secondary'} onClick={onPlay} aria-label={t('rehearse.playItem', { title: item.title })}>
+          <Button variant={current ? 'primary' : 'secondary'} size="sm" icon="play" onClick={onPlay} aria-label={t('rehearse.playItem', { title: item.title })}>
             {track.material.playback === 'external' ? t('common:actions.select') : current ? t('rehearse.restart') : t('rehearse.play')}
           </Button>
         ) : item.item_type === 'song' || item.media ? (
-          <span className="text-xs text-slate-400">{t('rehearse.noRecording')}</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">{t('rehearse.noRecording')}</span>
         ) : null}
       </header>
       {playable.length > 1 && (
-        <div className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500 dark:border-slate-800">
+        <div className="border-b border-app-border bg-slate-50/60 px-4 py-2 text-xs text-slate-500 dark:bg-slate-900/40 dark:text-slate-400">
           <label className="flex items-center gap-2">
             {t('rehearse.recording')}
             <select
@@ -325,7 +328,7 @@ const RehearseItem = ({ item, track, current, onPlay, onChoose }: RehearseItemPr
         </div>
       )}
       {chart && chart.sequence.length > 0 && (
-        <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500 dark:border-slate-800">
+        <p className="border-b border-app-border px-4 py-2 text-xs text-slate-500 dark:text-slate-400">
           {t(chart.sequence_from_plan ? 'rehearse.sequenceForPlan' : 'rehearse.sequence', { sequence: chart.sequence.join(' · ') })}
         </p>
       )}
@@ -335,7 +338,7 @@ const RehearseItem = ({ item, track, current, onPlay, onChoose }: RehearseItemPr
             // Already in the service key: rendered as given, no second transpose.
             <ChordChart chordpro={chart.chordpro} />
           ) : (
-            <p role="status" className={`text-sm ${chart.status === 'arrangement_missing' ? 'text-rose-700' : 'text-slate-500'}`}>
+            <p role="status" className={`text-sm ${chart.status === 'arrangement_missing' ? 'text-rose-700 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'}`}>
               {chart.status === 'arrangement_missing'
                 ? t('rehearse.arrangementMissing')
                 : chart.status === 'no_chart'
@@ -346,7 +349,7 @@ const RehearseItem = ({ item, track, current, onPlay, onChoose }: RehearseItemPr
         </div>
       )}
       {item.materials.length > 0 && (
-        <ul className="divide-y divide-slate-100 border-t border-slate-100 px-4 dark:divide-slate-800 dark:border-slate-800">
+        <ul className="row-list border-t border-app-border px-4">
           {item.materials.map((material) => (
             <MaterialRow key={material.file_id} material={material} />
           ))}
@@ -407,7 +410,7 @@ const MaterialRow = ({ material }: MaterialRowProps) => {
           {linkHost ? t('rehearse.openOn', { host: linkHost }) : t('rehearse.openOnWeb')}
         </button>
       ) : material.kind === 'document' ? (
-        <span className="text-xs text-slate-400">{t('rehearse.openFromFiles')}</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500">{t('rehearse.openFromFiles')}</span>
       ) : (
         <>
           <button type="button" className="text-xs underline" onClick={() => void open(false)}>
@@ -418,11 +421,11 @@ const MaterialRow = ({ material }: MaterialRowProps) => {
               {t('common:actions.download')}
             </button>
           ) : (
-            <span className="text-xs text-slate-400">{t('rehearse.playOnly')}</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">{t('rehearse.playOnly')}</span>
           )}
         </>
       )}
-      <span ref={errorRef} role="alert" className="w-full text-xs text-rose-700 empty:hidden" />
+      <span ref={errorRef} role="alert" className="w-full text-xs text-rose-700 empty:hidden dark:text-rose-400" />
     </li>
   );
 };

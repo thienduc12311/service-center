@@ -5,6 +5,7 @@ import { SONG_TYPES, type SongWithArrangements } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useInvalidateOrg } from '../../hooks/queries';
 import { Badge, Button, ErrorNotice } from '../ui';
+import { Icon } from '../icons';
 import { TagInput, TagSelect } from '../TagSelect';
 import { SONG_VOCABULARY_LABEL_KEYS } from './types';
 
@@ -51,17 +52,18 @@ export const SongTagsPanel = ({ song, canManage }: SongTagsPanelProps) => {
   const tagLabels = [...song.song_types.map(typeLabel), ...song.themes];
 
   return (
-    <section>
-      <div className="mb-2 flex items-center gap-2">
-        <h2 className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('addSong.fields.tags')}</h2>
+    <section className="card overflow-hidden">
+      <div className="flex min-h-12 items-center gap-2 border-b border-app-border px-4 py-2">
+        <Icon name="sparkle" className="size-4 text-slate-400" />
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t('addSong.fields.tags')}</h2>
         {canManage && !editing && (
-          <Button variant="ghost" className="ml-auto !px-2 !py-1 text-xs" onClick={startEditing}>
+          <Button variant="ghost" size="sm" icon="pencil" className="ml-auto" onClick={startEditing}>
             {tags.length ? t('common:actions.edit') : t('common:actions.add')}
           </Button>
         )}
       </div>
 
-      <div className="card p-4">
+      <div className="p-4">
         {editing ? (
           <div className="space-y-3">
             <div>
@@ -82,10 +84,10 @@ export const SongTagsPanel = ({ song, canManage }: SongTagsPanelProps) => {
             <ErrorNotice error={save.error} />
 
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" className="!py-1 text-xs" onClick={() => setEditing(false)}>
+              <Button variant="secondary" size="sm" onClick={() => setEditing(false)}>
                 {t('common:actions.cancel')}
               </Button>
-              <Button className="!py-1 text-xs" loading={save.isPending} onClick={() => save.mutate()}>
+              <Button size="sm" loading={save.isPending} onClick={() => save.mutate()}>
                 {t('common:actions.save')}
               </Button>
             </div>
@@ -97,7 +99,7 @@ export const SongTagsPanel = ({ song, canManage }: SongTagsPanelProps) => {
         ) : (
           <div className="flex flex-wrap gap-2">
             {tagLabels.map((tag, index) => (
-              <Badge key={`${index}-${tag}`} tone="bg-slate-100 text-slate-600 ring-slate-500/20">
+              <Badge key={`${index}-${tag}`} tone="bg-slate-100 text-slate-600 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600/40">
                 {tag}
               </Badge>
             ))}

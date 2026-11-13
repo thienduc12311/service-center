@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import {
@@ -10,15 +10,7 @@ import {
 import { api } from '../src/lib/api';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/providers/AuthProvider';
-import {
-  Button,
-  Card,
-  ErrorNotice,
-  Field,
-  Label,
-  Loading,
-  Screen,
-} from '../src/components/ui';
+import { Button, Card, ErrorNotice, Field, Loading, Screen, ScreenHeader } from '../src/components/ui';
 import { Reveal } from '../src/components/motion';
 import type { Theme } from '../src/lib/theme';
 import { useThemedStyles } from '../src/lib/useTheme';
@@ -134,10 +126,7 @@ export default function AcceptInviteScreen() {
       >
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <Reveal>
-            <View style={styles.masthead}>
-              <Label>{t('common:app.name')}</Label>
-              <Text style={styles.title}>{headline}</Text>
-            </View>
+            <ScreenHeader eyebrow={t('common:app.name')} title={headline} />
           </Reveal>
 
           {stage === 'loading' ? <Loading label={t('invite.checking')} /> : null}
@@ -206,7 +195,5 @@ const makeStyles = (theme: Theme) =>
       padding: theme.space.xl,
       gap: theme.space.xxl,
     },
-    masthead: { gap: theme.space.md },
-    title: { ...theme.type.display, color: theme.color.ink },
     body: { ...theme.type.body, color: theme.color.inkMuted },
   });

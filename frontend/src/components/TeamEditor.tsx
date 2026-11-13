@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { TeamPositionRow, TeamWithPositions } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useInvalidateOrg } from '../hooks/queries';
-import { Button, ErrorNotice, Modal } from './ui';
+import { Button, ErrorNotice, IconButton, Modal } from './ui';
 
 export interface TeamEditorProps {
   team: TeamWithPositions;
@@ -124,7 +124,7 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
           <input
             id="edit-team-color"
             type="color"
-            className="h-10 w-20 rounded border border-slate-300"
+            className="h-10 w-20 cursor-pointer rounded-lg border border-slate-300 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
             value={details.color}
             onChange={(e) => setDetails({ ...details, color: e.target.value })}
           />
@@ -142,12 +142,12 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
         </div>
       </form>
 
-      <div className="mt-6 border-t border-slate-100 pt-4">
-        <h3 className="mb-2 text-sm font-semibold text-slate-700">{t('teamEditor.roles')}</h3>
+      <div className="mt-6 border-t border-app-border pt-5">
+        <h3 className="section-label mb-3">{t('teamEditor.roles')}</h3>
 
-        <ul className="space-y-1">
+        <ul className="surface-inset row-list overflow-hidden">
           {team.positions.map((position) => (
-            <li key={position.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50">
+            <li key={position.id} className="flex items-center gap-2 px-3 py-2">
               {renaming?.positionId === position.id ? (
                 <>
                   <input
@@ -159,7 +159,7 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
                     onChange={(e) => setRenaming({ positionId: position.id, name: e.target.value })}
                   />
                   <Button
-                    className="!px-2 text-sm"
+                    size="sm"
                     loading={renamePosition.isPending}
                     disabled={!renaming.name.trim()}
                     onClick={() =>
@@ -168,33 +168,32 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
                   >
                     {t('common:actions.save')}
                   </Button>
-                  <Button variant="ghost" className="!px-2 text-sm" onClick={() => setRenaming(null)}>
+                  <Button variant="ghost" size="sm" onClick={() => setRenaming(null)}>
                     {t('common:actions.cancel')}
                   </Button>
                 </>
               ) : (
                 <>
-                  <span className="flex-1 text-sm">{position.name}</span>
-                  <Button
-                    variant="ghost"
-                    className="!px-2 text-sm"
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">{position.name}</span>
+                  <IconButton
+                    icon="pencil"
+                    size="sm"
+                    label={t('teamEditor.rename')}
                     onClick={() => setRenaming({ positionId: position.id, name: position.name })}
-                  >
-                    {t('teamEditor.rename')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="!px-2 text-sm text-rose-600 hover:bg-rose-50"
+                  />
+                  <IconButton
+                    icon="trash"
+                    size="sm"
+                    label={t('common:actions.delete')}
+                    className="hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10 dark:hover:!text-rose-400"
                     onClick={() => confirmRemove(position)}
-                  >
-                    {t('common:actions.delete')}
-                  </Button>
+                  />
                 </>
               )}
             </li>
           ))}
           {team.positions.length === 0 && (
-            <li className="px-2 py-1.5 text-sm text-slate-400">{t('teamEditor.noRoles')}</li>
+            <li className="px-3 py-3 text-sm text-slate-400">{t('teamEditor.noRoles')}</li>
           )}
         </ul>
 
@@ -207,7 +206,7 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
             value={newPosition}
             onChange={(e) => setNewPosition(e.target.value)}
           />
-          <Button type="submit" variant="secondary" loading={addPosition.isPending} disabled={!newPosition.trim()}>
+          <Button type="submit" variant="secondary" icon="plus" loading={addPosition.isPending} disabled={!newPosition.trim()}>
             {t('teamEditor.addRole')}
           </Button>
         </form>

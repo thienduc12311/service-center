@@ -52,8 +52,8 @@ export const SongBulkEditor = ({ songs, onDone }: SongBulkEditorProps) => {
     onSuccess: async (result) => { setPreview(result); await invalidate(); },
     onError: () => { void invalidate(); },
   });
-  return <section className="card mb-4 space-y-3 p-4" aria-label={t('bulk.sectionLabel')}>
-    <h2 className="font-semibold">{t('bulk.title', { count: songs.length })}</h2>
+  return <section className="card animate-fade-in space-y-3 p-5" aria-label={t('bulk.sectionLabel')}>
+    <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('bulk.title', { count: songs.length })}</h2>
     {!preview ? <>
       <label className="field">{t('bulk.field')}<select className="input" value={field} onChange={(event) => setField(event.target.value as MetadataField)}>
         {fields.map((name) => <option key={name} value={name}>{label(name)}</option>)}
@@ -71,10 +71,10 @@ export const SongBulkEditor = ({ songs, onDone }: SongBulkEditorProps) => {
       </li>)}</ul>
       {!preview.committed_at && <div className="flex gap-2">
         <Button disabled={commit.isPending} onClick={() => commit.mutate()}>{t('bulk.save')}</Button>
-        <Button disabled={commit.isPending} onClick={() => { setPreview(null); commit.reset(); review.reset(); }}>{t('imports.refreshPreview')}</Button>
+        <Button variant="secondary" disabled={commit.isPending} onClick={() => { setPreview(null); commit.reset(); review.reset(); }}>{t('imports.refreshPreview')}</Button>
       </div>}
     </>}
     <ErrorNotice error={review.error ?? commit.error} />
-    <Button disabled={review.isPending || commit.isPending} onClick={onDone}>{preview?.committed_at ? t('common:actions.done') : t('common:actions.cancel')}</Button>
+    <Button variant="secondary" disabled={review.isPending || commit.isPending} onClick={onDone}>{preview?.committed_at ? t('common:actions.done') : t('common:actions.cancel')}</Button>
   </section>;
 };

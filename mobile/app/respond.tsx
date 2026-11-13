@@ -12,10 +12,11 @@ import {
   assignmentResponseFailure,
   type AssignmentResponseFailure,
 } from '../src/lib/assignment-response-state';
-import { Button, Card, Label, Loading, Screen } from '../src/components/ui';
+import { Button, Card, DateBadge, IconWell, Loading, Screen, ScreenHeader, Tag } from '../src/components/ui';
+import { Icon } from '../src/components/icons';
 import { Reveal } from '../src/components/motion';
 import { useTheme, useThemedStyles } from '../src/lib/useTheme';
-import type { Theme } from '../src/lib/theme';
+import { statusAccent, type Theme } from '../src/lib/theme';
 import { useFormatters, useRecipientLanguage } from '../src/i18n';
 
 type Stage = 'loading' | 'ready' | 'submitting' | 'success' | AssignmentResponseFailure;
@@ -88,10 +89,7 @@ export default function RespondScreen() {
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Reveal>
-          <View style={styles.masthead}>
-            <Label>{t('respond.eyebrow')}</Label>
-            <Text style={styles.title}>{t('respond.title')}</Text>
-          </View>
+          <ScreenHeader eyebrow={t('respond.eyebrow')} title={t('respond.title')} />
         </Reveal>
 
         {stage === 'loading' ? <Loading label={t('respond.checking')} /> : null}
@@ -99,6 +97,7 @@ export default function RespondScreen() {
         {stage === 'invalid' || stage === 'expired' || stage === 'used' || stage === 'stale' || stage === 'network' ? (
           <Reveal index={1}>
             <Card>
+              <IconWell name="alert" accent={theme.accent.yellow} size={44} />
               <Text style={styles.body}>{t(FAILURE_MESSAGE_KEY[stage])}</Text>
               {stage === 'network' ? (
                 <Button title={t('common:actions.retry')} onPress={() => setAttempt((value) => value + 1)} />
@@ -114,28 +113,44 @@ export default function RespondScreen() {
               <Text style={styles.heading}>{preview.person_first_name
                   ? t('respond.greeting', { name: preview.person_first_name })
                   : t('respond.greetingGeneric')}</Text>
-              <View style={styles.section}>
-                <Text style={styles.planTitle}>{preview.plan_title}</Text>
-                <Text style={styles.body}>
-                  {fmt.calendarDate(preview.service_date)}
-                  {preview.service_time
-                    ? ` · ${fmt.time(preview.service_time.starts_at)}`
-                    : ''}
-                  {preview.location ? ` · ${preview.location}` : ''}
-                </Text>
+              <View style={styles.planRow}>
+                <DateBadge date={`${preview.service_date.slice(0, 10)}T12:00:00`} />
+                <View style={styles.section}>
+                  <Text style={styles.planTitle}>{preview.plan_title}</Text>
+                  <Text style={styles.body}>
+                    {fmt.calendarDate(preview.service_date)}
+                    {preview.service_time
+                      ? ` · ${fmt.time(preview.service_time.starts_at)}`
+                      : ''}
+                  </Text>
+                  {preview.location ? (
+                    <View style={styles.metaRow}>
+                      <Icon name="mapPin" size={14} color={theme.color.inkFaint} />
+                      <Text style={styles.status}>{preview.location}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
               <View style={styles.assignments}>
                 {preview.assignments.map((assignment, index) => (
-                  <View key={`${assignment.team_name}-${assignment.position_name ?? ''}-${index}`}>
-                    <Text style={styles.assignment}>
-                      {assignment.team_name}
-                      {assignment.position_name ? ` — ${assignment.position_name}` : ''}
-                    </Text>
-                    <Text style={styles.status}>{t(`common:assignmentStatus.${assignment.status}`)}</Text>
-                    {assignment.times.map((time) => (
-                      <Text key={time.id} style={styles.status}>
-                        {time.name ?? t(`respond.timeKinds.${time.kind}`)} · {fmt.dateTime(time.starts_at)}
+                  <View
+                    key={`${assignment.team_name}-${assignment.position_name ?? ''}-${index}`}
+                    style={styles.assignmentBox}
+                  >
+                    <View style={styles.assignmentTop}>
+                      <Text style={styles.assignment}>
+                        {assignment.team_name}
+                        {assignment.position_name ? ` — ${assignment.position_name}` : ''}
                       </Text>
+                      <Tag label={t(`common:assignmentStatus.${assignment.status}`)} accent={statusAccent(theme, assignment.status)} />
+                    </View>
+                    {assignment.times.map((time) => (
+                      <View key={time.id} style={styles.metaRow}>
+                        <Icon name="clock" size={14} color={theme.color.inkFaint} />
+                        <Text style={styles.status}>
+                          {time.name ?? t(`respond.timeKinds.${time.kind}`)} · {fmt.dateTime(time.starts_at)}
+                        </Text>
+                      </View>
                     ))}
                   </View>
                 ))}
@@ -161,6 +176,11 @@ export default function RespondScreen() {
         {stage === 'success' && result ? (
           <Reveal index={1}>
             <Card>
+              <IconWell
+                name={result.status === 'confirmed' ? 'check' : 'close'}
+                accent={result.status === 'confirmed' ? theme.accent.green : theme.accent.neutral}
+                size={44}
+              />
               <Text style={styles.heading}>{t('respond.thankYou')}</Text>
               <Text style={styles.body}>
                 {result.status === 'confirmed'
@@ -187,15 +207,22 @@ const makeStyles = (theme: Theme) =>
       padding: theme.space.xl,
       gap: theme.space.xxl,
     },
-    masthead: { gap: theme.space.md },
-    title: { ...theme.type.display, color: theme.color.ink },
-    heading: { ...theme.type.heading, color: theme.color.ink },
-    planTitle: { ...theme.type.body, fontWeight: '600', color: theme.color.ink },
+    heading: { ...theme.type.title, color: theme.color.ink },
+    planTitle: { ...theme.type.heading, color: theme.color.ink },
     body: { ...theme.type.body, color: theme.color.inkMuted },
-    section: { gap: theme.space.xs },
-    assignments: { gap: theme.space.md },
-    assignment: { ...theme.type.body, fontWeight: '600', color: theme.color.ink },
-    status: { ...theme.type.label, color: theme.color.inkMuted },
+    planRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md },
+    section: { gap: theme.space.xs, flex: 1 },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    assignments: { gap: theme.space.sm },
+    assignmentBox: {
+      gap: theme.space.xs,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.color.surfaceInset,
+    },
+    assignmentTop: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.sm },
+    assignment: { ...theme.type.heading, color: theme.color.ink, flex: 1 },
+    status: { ...theme.type.label, color: theme.color.inkMuted, flexShrink: 1 },
     scopeNotice: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     actions: { gap: theme.space.sm },
   });

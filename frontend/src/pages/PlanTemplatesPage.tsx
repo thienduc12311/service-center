@@ -12,10 +12,11 @@ import { api } from '../lib/api';
 import { useInvalidateOrg, usePlanTemplate, usePlanTemplates } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters } from '../i18n';
-import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, IconButton, Loading, Notice, PageHeader, SkeletonList } from '../components/ui';
+import { Icon } from '../components/icons';
 import { useTemplateNames } from '../components/templates/useTemplateNames';
 
-const MUTED_TONE = 'bg-slate-50 text-slate-600 ring-slate-500/20';
+const MUTED_TONE = 'bg-slate-50 text-slate-600 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300';
 
 /** Moves one entry of a list; out-of-range moves are ignored. */
 const move = <T,>(list: readonly T[], index: number, by: number): T[] => {
@@ -91,14 +92,14 @@ const TemplateEditor = ({ template, viewingOld }: TemplateEditorProps) => {
 
       {template.kind === 'plan' && (
         <section>
-          <h3 className="mb-2 text-sm font-semibold">{t('editor.timesHeading')} <span className="font-normal text-slate-400">{t('editor.timesHint')}</span></h3>
-          {draft.times.length === 0 ? <p className="text-sm text-slate-400">{t('editor.noTimes')}</p> : (
-            <ul className="space-y-2">
+          <h3 className="section-label mb-2.5">{t('editor.timesHeading')} <span className="font-normal normal-case tracking-normal text-slate-400 dark:text-slate-500">{t('editor.timesHint')}</span></h3>
+          {draft.times.length === 0 ? <p className="surface-inset px-3 py-2.5 text-sm text-slate-500 dark:text-slate-400">{t('editor.noTimes')}</p> : (
+            <ul className="row-list surface-inset">
               {draft.times.map((time, index) => {
                 const timeName = time.name ?? t(`timeKinds.${time.kind}`);
                 return (
-                <li key={`${time.kind}-${index}`} className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="w-28 truncate">{timeName}</span>
+                <li key={`${time.kind}-${index}`} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="w-full truncate font-medium text-slate-800 sm:w-28 dark:text-slate-100">{timeName}</span>
                   <label className="flex items-center gap-1">
                     {t('editor.day')}
                     <input
@@ -124,9 +125,7 @@ const TemplateEditor = ({ template, viewingOld }: TemplateEditorProps) => {
                     {t('editor.minutesUnit')}
                   </label>
                   {!readOnly && (
-                    <Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={() => setDraft((current) => ({ ...current, times: current.times.filter((_, i) => i !== index) }))}>
-                      {t('common:actions.remove')}
-                    </Button>
+                    <IconButton icon="trash" size="sm" label={t('common:actions.remove')} className="ml-auto hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10" onClick={() => setDraft((current) => ({ ...current, times: current.times.filter((_, i) => i !== index) }))} />
                   )}
                 </li>
                 );
@@ -137,19 +136,19 @@ const TemplateEditor = ({ template, viewingOld }: TemplateEditorProps) => {
       )}
 
       <section>
-        <h3 className="mb-2 text-sm font-semibold">{t('editor.orderHeading')}</h3>
-        {draft.items.length === 0 ? <p className="text-sm text-slate-400">{t('editor.noItems')}</p> : (
-          <ol className="space-y-1">
+        <h3 className="section-label mb-2.5">{t('editor.orderHeading')}</h3>
+        {draft.items.length === 0 ? <p className="surface-inset px-3 py-2.5 text-sm text-slate-500 dark:text-slate-400">{t('editor.noItems')}</p> : (
+          <ol className="row-list overflow-hidden rounded-xl border border-app-border">
             {draft.items.map((item, index) => (
-              <li key={`${item.title}-${index}`} className="flex items-center gap-2 text-sm">
-                <span className="w-6 text-right text-slate-400">{index + 1}.</span>
-                <span className={`flex-1 truncate ${item.item_type === 'header' ? 'font-semibold' : ''}`}>{item.title}</span>
-                {item.length_seconds > 0 && <span className="text-xs text-slate-400">{t('common:duration.minutesShort', { count: Math.round(item.length_seconds / 60) })}</span>}
+              <li key={`${item.title}-${index}`} className={`flex items-center gap-2 px-3 py-1.5 text-sm ${item.item_type === 'header' ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`}>
+                <span className="w-6 text-right text-xs tabular-nums text-slate-400 dark:text-slate-500">{index + 1}.</span>
+                <span className={`min-w-0 flex-1 truncate ${item.item_type === 'header' ? 'text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300' : 'text-slate-800 dark:text-slate-100'}`}>{item.title}</span>
+                {item.length_seconds > 0 && <span className="text-xs tabular-nums text-slate-400 dark:text-slate-500">{t('common:duration.minutesShort', { count: Math.round(item.length_seconds / 60) })}</span>}
                 {!readOnly && (
                   <>
-                    <Button variant="ghost" aria-label={t('editor.moveUp', { title: item.title })} className="!px-2 !py-1 text-xs" onClick={() => setDraft((c) => ({ ...c, items: move(c.items, index, -1) }))}>↑</Button>
-                    <Button variant="ghost" aria-label={t('editor.moveDown', { title: item.title })} className="!px-2 !py-1 text-xs" onClick={() => setDraft((c) => ({ ...c, items: move(c.items, index, 1) }))}>↓</Button>
-                    <Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={() => setDraft((c) => ({ ...c, items: c.items.filter((_, i) => i !== index) }))}>{t('common:actions.remove')}</Button>
+                    <Button variant="ghost" size="sm" aria-label={t('editor.moveUp', { title: item.title })} className="!px-2" onClick={() => setDraft((c) => ({ ...c, items: move(c.items, index, -1) }))}><Icon name="chevronDown" className="size-4 rotate-180" /></Button>
+                    <Button variant="ghost" size="sm" aria-label={t('editor.moveDown', { title: item.title })} className="!px-2" onClick={() => setDraft((c) => ({ ...c, items: move(c.items, index, 1) }))}><Icon name="chevronDown" className="size-4" /></Button>
+                    <IconButton icon="trash" size="sm" label={t('common:actions.remove')} className="hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10" onClick={() => setDraft((c) => ({ ...c, items: c.items.filter((_, i) => i !== index) }))} />
                   </>
                 )}
               </li>
@@ -161,7 +160,7 @@ const TemplateEditor = ({ template, viewingOld }: TemplateEditorProps) => {
       {template.kind === 'plan' && (
         <>
           <section>
-            <h3 className="mb-2 text-sm font-semibold">{t('editor.notesHeading')}</h3>
+            <h3 className="section-label mb-2.5">{t('editor.notesHeading')}</h3>
             <textarea
               aria-label={t('editor.notesHeading')}
               className="input min-h-20"
@@ -172,12 +171,12 @@ const TemplateEditor = ({ template, viewingOld }: TemplateEditorProps) => {
             />
           </section>
           <section>
-            <h3 className="mb-2 text-sm font-semibold">{t('editor.needsHeading')}</h3>
-            {draft.needs.length === 0 ? <p className="text-sm text-slate-400">{t('editor.none')}</p> : (
-              <ul className="space-y-1">
+            <h3 className="section-label mb-2.5">{t('editor.needsHeading')}</h3>
+            {draft.needs.length === 0 ? <p className="surface-inset px-3 py-2.5 text-sm text-slate-500 dark:text-slate-400">{t('editor.none')}</p> : (
+              <ul className="row-list surface-inset">
                 {draft.needs.map((need, index) => (
-                  <li key={need.position_id} className="flex items-center gap-2 text-sm">
-                    <span className="flex-1">{names.position(need.position_id)}</span>
+                  <li key={need.position_id} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+                    <span className="min-w-0 flex-1 truncate text-slate-800 dark:text-slate-100">{names.position(need.position_id)}</span>
                     <input
                       aria-label={t('editor.neededFor', { position: names.position(need.position_id) })}
                       type="number" min={1} max={99} className="input w-20" disabled={readOnly}
@@ -185,7 +184,7 @@ const TemplateEditor = ({ template, viewingOld }: TemplateEditorProps) => {
                       onChange={(event) => setDraft((c) => ({ ...c, needs: c.needs.map((n, i) => (i === index ? { ...n, needed: Number(event.target.value) } : n)) }))}
                     />
                     {!readOnly && (
-                      <Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={() => setDraft((c) => ({ ...c, needs: c.needs.filter((_, i) => i !== index) }))}>{t('common:actions.remove')}</Button>
+                      <IconButton icon="trash" size="sm" label={t('common:actions.remove')} className="hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10" onClick={() => setDraft((c) => ({ ...c, needs: c.needs.filter((_, i) => i !== index) }))} />
                     )}
                   </li>
                 ))}
@@ -193,19 +192,19 @@ const TemplateEditor = ({ template, viewingOld }: TemplateEditorProps) => {
             )}
           </section>
           <section>
-            <h3 className="mb-2 text-sm font-semibold">{t('editor.rosterHeading')} <span className="font-normal text-slate-400">{t('editor.rosterHint')}</span></h3>
-            {draft.roster.length === 0 ? <p className="text-sm text-slate-400">{t('editor.none')}</p> : (
-              <ul className="space-y-1">
+            <h3 className="section-label mb-2.5">{t('editor.rosterHeading')} <span className="font-normal normal-case tracking-normal text-slate-400 dark:text-slate-500">{t('editor.rosterHint')}</span></h3>
+            {draft.roster.length === 0 ? <p className="surface-inset px-3 py-2.5 text-sm text-slate-500 dark:text-slate-400">{t('editor.none')}</p> : (
+              <ul className="row-list surface-inset">
                 {draft.roster.map((entry, index) => (
-                  <li key={`${entry.person_id}-${entry.team_id}-${entry.position_id}`} className="flex items-center gap-2 text-sm">
-                    <span className="flex-1">
+                  <li key={`${entry.person_id}-${entry.team_id}-${entry.position_id}`} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+                    <span className="min-w-0 flex-1 text-slate-800 dark:text-slate-100">
                       {t('names.rosterEntry', {
                         person: names.person(entry.person_id),
                         target: entry.position_id ? names.position(entry.position_id) : names.team(entry.team_id),
                       })}
                     </span>
                     {!readOnly && (
-                      <Button variant="ghost" className="!px-2 !py-1 text-xs" onClick={() => setDraft((c) => ({ ...c, roster: c.roster.filter((_, i) => i !== index) }))}>{t('common:actions.remove')}</Button>
+                      <IconButton icon="trash" size="sm" label={t('common:actions.remove')} className="hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10" onClick={() => setDraft((c) => ({ ...c, roster: c.roster.filter((_, i) => i !== index) }))} />
                     )}
                   </li>
                 ))}
@@ -217,10 +216,10 @@ const TemplateEditor = ({ template, viewingOld }: TemplateEditorProps) => {
 
       <ErrorNotice error={save.error ?? archive.error} />
       {save.error instanceof ApiError && save.error.code === 'template_changed' && (
-        <p className="text-sm text-amber-700">{t('editor.changedMeanwhile')}</p>
+        <Notice tone="warning">{t('editor.changedMeanwhile')}</Notice>
       )}
 
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2 border-t border-app-border pt-4">
         {!viewingOld && (
           <Button variant="secondary" loading={archive.isPending} onClick={() => archive.mutate()}>
             {template.archived_at ? t('common:actions.restore') : t('common:actions.archive')}
@@ -228,6 +227,7 @@ const TemplateEditor = ({ template, viewingOld }: TemplateEditorProps) => {
         )}
         {!readOnly && (
           <Button
+            icon="check"
             loading={save.isPending}
             disabled={!contentChanged && !detailsChanged}
             onClick={() => save.mutate()}
@@ -242,7 +242,7 @@ const TemplateEditor = ({ template, viewingOld }: TemplateEditorProps) => {
 
 /** F10: the saved template and section library. */
 export const PlanTemplatesPage = () => {
-  const { t } = useTranslation('templates');
+  const { t } = useTranslation(['templates', 'common']);
   const fmt = useFormatters();
   const { canAnywhere } = useAuth();
   const navigate = useNavigate();
@@ -254,7 +254,7 @@ export const PlanTemplatesPage = () => {
   const detail = usePlanTemplate(selectedId, revision);
 
   if (!canAnywhere('plans.edit')) {
-    return <EmptyState title={t('library.noAccessTitle')} description={t('library.noAccessDescription')} />;
+    return <EmptyState icon="document" title={t('library.noAccessTitle')} description={t('library.noAccessDescription')} />;
   }
 
   const select = (id: string) => {
@@ -263,41 +263,45 @@ export const PlanTemplatesPage = () => {
   };
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title={t('library.title')}
         subtitle={t('library.subtitle')}
+        back={{ to: '/plans', label: t('common:nav.plans') }}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input type="checkbox" className="size-4 rounded border-slate-300" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} />
+            <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800">
+              <input type="checkbox" className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} />
               {t('library.showArchived')}
             </label>
-            <Button onClick={() => navigate('/plans/generate')}>{t('library.createPlans')}</Button>
+            <Button icon="sparkle" onClick={() => navigate('/plans/generate')}>{t('library.createPlans')}</Button>
           </div>
         }
       />
       <ErrorNotice error={templates.error} />
-      {templates.isLoading ? <Loading /> : !templates.data?.length ? (
+      {templates.isLoading ? <SkeletonList rows={3} /> : !templates.data?.length ? (
         <EmptyState
+          icon="document"
           title={t('library.emptyTitle')}
           description={t('library.emptyDescription')}
         />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
-          <ul className="space-y-1">
+        <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <ul className="card row-list h-fit overflow-hidden">
             {templates.data.map((template) => (
               <li key={template.id}>
                 <button
                   type="button"
                   onClick={() => select(template.id)}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-sm ${selectedId === template.id ? 'bg-brand-50 ring-1 ring-brand-200 dark:bg-brand-950/40' : 'hover:bg-slate-50 dark:hover:bg-slate-900'}`}
+                  aria-current={selectedId === template.id ? 'true' : undefined}
+                  className={`relative block w-full px-4 py-3 text-left text-sm transition ${selectedId === template.id ? 'bg-brand-50 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-brand-600 dark:bg-brand-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                 >
-                  <span className="flex items-center gap-2 font-medium">
+                  <span className="flex items-center gap-2 font-medium text-slate-900 dark:text-white">
+                    <Icon name={template.kind === 'plan' ? 'plans' : 'document'} className="size-4 shrink-0 text-slate-400" />
                     {template.name}
                     {template.archived_at && <Badge tone={MUTED_TONE}>{t('library.archivedBadge')}</Badge>}
                   </span>
-                  <span className="text-xs text-slate-500">
+                  <span className="mt-0.5 block pl-6 text-xs text-slate-500 dark:text-slate-400">
                     {[
                       t('library.summary', {
                         kind: t(`kind.${template.kind}`),
@@ -316,15 +320,15 @@ export const PlanTemplatesPage = () => {
           </ul>
           <div className="card min-w-0 p-5">
             {!selectedId ? (
-              <p className="text-sm text-slate-500">{t('library.chooseTemplate')}</p>
+              <EmptyState compact icon="document" title={t('library.chooseTemplate')} />
             ) : detail.isLoading ? <Loading /> : detail.data ? (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="text-lg font-semibold">{detail.data.name}</h2>
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center gap-3 border-b border-app-border pb-4">
+                  <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">{detail.data.name}</h2>
                   <Badge tone={MUTED_TONE}>{t(`kind.${detail.data.kind}`)}</Badge>
                   <select
                     aria-label={t('library.revisionLabel')}
-                    className="input w-auto"
+                    className="input w-full sm:ml-auto sm:w-auto"
                     value={revision ?? detail.data.current_revision}
                     onChange={(event) => {
                       const value = Number(event.target.value);
@@ -342,7 +346,7 @@ export const PlanTemplatesPage = () => {
                   </select>
                 </div>
                 {revision !== null && (
-                  <p className="text-sm text-amber-700">{t('library.viewingOld')}</p>
+                  <Notice tone="warning">{t('library.viewingOld')}</Notice>
                 )}
                 <TemplateEditor template={detail.data} viewingOld={revision !== null} />
               </div>

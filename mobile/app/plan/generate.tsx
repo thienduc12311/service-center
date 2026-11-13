@@ -232,7 +232,7 @@ export default function GeneratePlansScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('plans:plansPage.createFromTemplate') }} />
-        <EmptyState title={t('generate.noAccess')} />
+        <EmptyState icon="alert" title={t('generate.noAccess')} />
       </Screen>
     );
   }

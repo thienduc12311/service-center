@@ -51,7 +51,7 @@ export default function NewSongScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('addSong.title') }} />
-        <EmptyState title={t('mobileAuthoring.noAccess')} />
+        <EmptyState icon="alert" title={t('mobileAuthoring.noAccess')} />
       </Screen>
     );
   }
@@ -135,67 +135,75 @@ const NewSongForm = () => {
       <ScrollView contentContainerStyle={[screenPadding(theme), styles.form]} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         {showRestored ? <RestoredDraftNotice onDiscard={discardRestored} /> : null}
 
-        <Field label={t('addSong.fields.title')} value={form.title} onChangeText={(value) => set('title', value)} maxLength={200} />
-        <Field
-          label={t('arrangement.fields.name')}
-          value={form.arrangementName}
-          onChangeText={(value) => set('arrangementName', value)}
-          placeholder={t(DEFAULT_ARRANGEMENT_NAME_KEY)}
-          maxLength={120}
-        />
-
-        <View style={styles.group}>
-          <Label>{t('arrangement.fields.key')}</Label>
-          <KeyPicker
-            value={form.key}
-            onChange={(key) => set('key', key)}
-            label={t('arrangement.fields.key')}
-            placeholder={t('arrangement.noKey')}
-            resetLabel={t('arrangement.noKey')}
+        <Card>
+          <Field label={t('addSong.fields.title')} value={form.title} onChangeText={(value) => set('title', value)} maxLength={200} />
+          <Field
+            label={t('arrangement.fields.name')}
+            value={form.arrangementName}
+            onChangeText={(value) => set('arrangementName', value)}
+            placeholder={t(DEFAULT_ARRANGEMENT_NAME_KEY)}
+            maxLength={120}
           />
-        </View>
+        </Card>
 
-        <ChoiceChips
-          label={t('arrangement.fields.capo')}
-          options={CAPO_POSITIONS.map((fret) => ({ value: String(fret), label: String(fret) }))}
-          noneLabel={t('common:states.none')}
-          value={form.capo === null ? null : String(form.capo)}
-          onChange={(value) => set('capo', value === null ? null : Number(value))}
-        />
+        <Card>
+          <View style={styles.group}>
+            <Label>{t('arrangement.fields.key')}</Label>
+            <KeyPicker
+              value={form.key}
+              onChange={(key) => set('key', key)}
+              label={t('arrangement.fields.key')}
+              placeholder={t('arrangement.noKey')}
+              resetLabel={t('arrangement.noKey')}
+            />
+          </View>
 
-        <ChoiceChips
-          label={t('addSong.fields.type')}
-          multiple
-          options={SONG_TYPES.map((value) => ({ value, label: vocabularyLabel(value) }))}
-          values={form.types}
-          onChangeValues={(types) => set('types', types)}
-        />
-        <ChoiceChips
-          label={t('addSong.fields.style')}
-          options={SONG_STYLES.map((value) => ({ value, label: vocabularyLabel(value) }))}
-          noneLabel={t('common:states.none')}
-          value={form.style || null}
-          onChange={(value) => set('style', value ?? '')}
-        />
-        <ChoiceChips
-          label={t('addSong.fields.speed')}
-          options={SONG_SPEEDS.map((value) => ({ value, label: vocabularyLabel(value) }))}
-          noneLabel={t('common:states.none')}
-          value={form.speed || null}
-          onChange={(value) => set('speed', value ?? '')}
-        />
-        <TagListField label={t('addSong.fields.tags')} values={form.themes} onChange={(themes) => set('themes', themes)} />
+          <ChoiceChips
+            label={t('arrangement.fields.capo')}
+            options={CAPO_POSITIONS.map((fret) => ({ value: String(fret), label: String(fret) }))}
+            noneLabel={t('common:states.none')}
+            value={form.capo === null ? null : String(form.capo)}
+            onChange={(value) => set('capo', value === null ? null : Number(value))}
+          />
+        </Card>
 
-        <Field
-          label={t('addSong.fields.chart')}
-          value={form.chordChart}
-          onChangeText={(value) => set('chordChart', value)}
-          multiline
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.chart}
-        />
-        <Text style={styles.muted}>{t('mobileAuthoring.chartHelp')}</Text>
+        <Card>
+          <ChoiceChips
+            label={t('addSong.fields.type')}
+            multiple
+            options={SONG_TYPES.map((value) => ({ value, label: vocabularyLabel(value) }))}
+            values={form.types}
+            onChangeValues={(types) => set('types', types)}
+          />
+          <ChoiceChips
+            label={t('addSong.fields.style')}
+            options={SONG_STYLES.map((value) => ({ value, label: vocabularyLabel(value) }))}
+            noneLabel={t('common:states.none')}
+            value={form.style || null}
+            onChange={(value) => set('style', value ?? '')}
+          />
+          <ChoiceChips
+            label={t('addSong.fields.speed')}
+            options={SONG_SPEEDS.map((value) => ({ value, label: vocabularyLabel(value) }))}
+            noneLabel={t('common:states.none')}
+            value={form.speed || null}
+            onChange={(value) => set('speed', value ?? '')}
+          />
+          <TagListField label={t('addSong.fields.tags')} values={form.themes} onChange={(themes) => set('themes', themes)} />
+        </Card>
+
+        <Card>
+          <Field
+            label={t('addSong.fields.chart')}
+            value={form.chordChart}
+            onChangeText={(value) => set('chordChart', value)}
+            multiline
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.chart}
+          />
+          <Text style={styles.muted}>{t('mobileAuthoring.chartHelp')}</Text>
+        </Card>
 
         <ErrorNotice error={problem ?? (uncertain ? null : create.error)} />
         {uncertain ? (
@@ -222,6 +230,7 @@ const NewSongForm = () => {
 
         <Button
           title={uncertain ? t('mobileAuthoring.addAnyway') : t('songsPage.addSong')}
+          icon="plus"
           loading={create.isPending}
           disabled={uncertain && matches.isFetching}
           onPress={submit}

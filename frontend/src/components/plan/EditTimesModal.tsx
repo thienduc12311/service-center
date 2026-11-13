@@ -29,6 +29,7 @@ import { api } from '../../lib/api';
 import { useInvalidateOrg } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Modal } from '../ui';
+import { Icon } from '../icons';
 import { TimeImpactReview } from './TimeImpactReview';
 import { ConflictList } from './attendance';
 
@@ -143,11 +144,11 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
               <input type="checkbox" className="mt-0.5" checked={notify} onChange={(event) => setNotify(event.target.checked)} />
               <span>
                 {t('editTimes.notify')}
-                {!notify && <span className="block text-xs text-slate-500">{t('editTimes.notifyOff')}</span>}
+                {!notify && <span className="block text-xs text-slate-500 dark:text-slate-400">{t('editTimes.notifyOff')}</span>}
               </span>
             </label>
           )}
-          <p className="text-xs text-slate-500">{t('editTimes.remindersRecomputed')}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('editTimes.remindersRecomputed')}</p>
           {staleImpact ? (
             <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
               {t('editTimes.staleImpact')}
@@ -155,7 +156,7 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
           ) : commitConflicts.length > 0 ? (
             <>
               <ConflictList conflicts={commitConflicts} nameOf={nameOf} />
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('editTimes.conflictHint')}
               </p>
             </>
@@ -191,9 +192,9 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
   return (
     <Modal open={open} title={t('editTimes.title')} onClose={close}>
       <div className="space-y-3">
-        <p className="text-xs text-slate-500">{t('editTimes.timezoneHint', { timezone: timeZone })}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{t('editTimes.timezoneHint', { timezone: timeZone })}</p>
         {drafts.length === 0 && (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-400 dark:text-slate-500">
             {t('editTimes.empty')}
           </p>
         )}
@@ -201,11 +202,11 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
         {drafts.map((draft, index) => {
           const problem = problemFor(draft.id);
           return (
-            <div key={draft.id} className="space-y-2 rounded-lg bg-slate-50 p-3">
-              <div className="flex items-center gap-2">
+            <div key={draft.id} className="surface-inset space-y-2 p-3">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <select
                   aria-label={t('editTimes.kindFor', { number: index + 1 })}
-                  className="input w-36"
+                  className="input w-28 shrink-0 sm:w-36"
                   value={draft.kind}
                   onChange={(event) => update(draft.id, { kind: event.target.value as PlanTimeKind })}
                 >
@@ -217,7 +218,7 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
                 </select>
                 <input
                   aria-label={t('editTimes.labelFor', { number: index + 1 })}
-                  className="input flex-1"
+                  className="input min-w-0 flex-1"
                   value={draft.name}
                   placeholder={t('editTimes.labelPlaceholder')}
                   maxLength={120}
@@ -228,33 +229,33 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
                   aria-label={t('editTimes.moveUp', { number: index + 1 })}
                   disabled={index === 0}
                   onClick={() => move(index, -1)}
-                  className="px-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                  className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-700 disabled:opacity-30 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                 >
-                  ↑
+                  <Icon name="chevronDown" className="size-4 rotate-180" />
                 </button>
                 <button
                   type="button"
                   aria-label={t('editTimes.moveDown', { number: index + 1 })}
                   disabled={index === drafts.length - 1}
                   onClick={() => move(index, 1)}
-                  className="px-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                  className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-700 disabled:opacity-30 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                 >
-                  ↓
+                  <Icon name="chevronDown" className="size-4" />
                 </button>
                 <button
                   type="button"
                   aria-label={t('editTimes.removeTime', { number: index + 1 })}
                   onClick={() => setDrafts((current) => current.filter((d) => d.id !== draft.id))}
-                  className="px-1 text-lg text-slate-400 hover:text-rose-500"
+                  className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                 >
-                  ×
+                  <Icon name="close" className="size-4" />
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="date"
                   aria-label={t('editTimes.dateFor', { number: index + 1 })}
-                  className="input flex-1"
+                  className="input min-w-0 basis-full sm:basis-auto sm:flex-1"
                   value={draft.localDate}
                   onChange={(event) => update(draft.id, { localDate: event.target.value })}
                 />
@@ -265,7 +266,7 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
                   value={draft.localStart}
                   onChange={(event) => update(draft.id, { localStart: event.target.value })}
                 />
-                <span className="text-sm text-slate-500">{t('editTimes.to')}</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400">{t('editTimes.to')}</span>
                 <input
                   type="time"
                   aria-label={t('editTimes.endFor', { number: index + 1 })}
@@ -273,10 +274,10 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
                   value={draft.localEnd}
                   onChange={(event) => update(draft.id, { localEnd: event.target.value })}
                 />
-                {planTimeEndsNextDay(draft) && <span className="text-xs text-slate-500">{t('editTimes.nextDay')}</span>}
+                {planTimeEndsNextDay(draft) && <span className="text-xs text-slate-500 dark:text-slate-400">{t('editTimes.nextDay')}</span>}
               </div>
               {planTimeDraftIsRepeated(draft, timeZone) && (
-                <label className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                <label className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                   {t('templates:generate.ambiguousLabel')}
                   <select
                     aria-label={t('editTimes.repeatedFor', { number: index + 1 })}
@@ -290,7 +291,7 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
                 </label>
               )}
               {problem && ROW_PROBLEMS.includes(problem) && (
-                <p role="alert" className="text-xs text-amber-700">
+                <p role="alert" className="text-xs text-amber-700 dark:text-amber-300">
                   {t(problem === 'start_skipped' ? 'editTimes.startSkipped' : 'editTimes.endSkipped', { timezone: timeZone })}
                 </p>
               )}
@@ -301,13 +302,14 @@ export const EditTimesModal = ({ open, plan, onClose }: EditTimesModalProps) => 
         <Button
           type="button"
           variant="secondary"
+          icon="plus"
           disabled={drafts.length >= MAX_PLAN_TIMES}
           onClick={() =>
             setDrafts((current) => [...current, newPlanTimeDraft(newDraftId(), current.at(-1), localDateAt(Date.now(), timeZone))])}
         >
           {t('editTimes.addTime')}
         </Button>
-        {drafts.length >= MAX_PLAN_TIMES && <p className="text-xs text-slate-500">{t('editTimes.tooMany', { max: MAX_PLAN_TIMES })}</p>}
+        {drafts.length >= MAX_PLAN_TIMES && <p className="text-xs text-slate-500 dark:text-slate-400">{t('editTimes.tooMany', { max: MAX_PLAN_TIMES })}</p>}
 
         {!valid && resolution.problems.some((problem) => !ROW_PROBLEMS.includes(problem.code)) && (
           <p className="text-sm text-amber-600">{t('editTimes.invalid')}</p>

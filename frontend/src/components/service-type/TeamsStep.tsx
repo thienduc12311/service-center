@@ -42,10 +42,10 @@ export const TeamsStep = ({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+        <h1 className="text-2xl font-semibold tracking-tight text-balance text-slate-900 sm:text-3xl dark:text-white">
           {t('teamsStep.title')}
         </h1>
-        <p className="mt-3 text-slate-600">
+        <p className="mt-3 text-pretty text-slate-600 dark:text-slate-300">
           <Trans
             t={t}
             i18nKey="teamsStep.intro"
@@ -58,15 +58,15 @@ export const TeamsStep = ({
       <div className="grid gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-5">
         {TEAM_TEMPLATE_CATEGORIES.map((category) => (
           <fieldset key={category}>
-            <legend className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
+            <legend className="section-label mb-3">
               {t(`teamsStep.categories.${category}`)}
             </legend>
             <div className="space-y-2.5">
               {(byCategory.get(category) ?? []).map((template) => (
-                <label key={template.name} className="flex cursor-pointer items-center gap-2 text-sm">
+                <label key={template.name} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
                   <input
                     type="checkbox"
-                    className="size-4 rounded border-slate-300"
+                    className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
                     checked={selected.includes(template.name)}
                     onChange={() => toggle(template.name)}
                   />
@@ -79,10 +79,10 @@ export const TeamsStep = ({
       </div>
 
       {canJoinTeams && (
-        <label className="flex items-center justify-center gap-2 text-sm text-slate-500">
+        <label className="surface-inset flex items-center justify-center gap-2 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
           <input
             type="checkbox"
-            className="size-4 rounded border-slate-300"
+            className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
             checked={joinTeams}
             onChange={(event) => onJoinTeamsChange(event.target.checked)}
           />

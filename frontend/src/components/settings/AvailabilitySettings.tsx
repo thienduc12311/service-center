@@ -96,7 +96,7 @@ export const AvailabilitySettings = ({ timezone, personId, personName }: Availab
   };
 
   return <section id={forSomeoneElse ? undefined : 'availability'} className="card scroll-mt-20 p-5">
-    <h2 className="mb-1 font-semibold">{forSomeoneElse ? (personName ? t('blockouts.titleFor', { name: personName }) : t('blockouts.titleTheirs')) : t('blockouts.title')}</h2>
+    <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{forSomeoneElse ? (personName ? t('blockouts.titleFor', { name: personName }) : t('blockouts.titleTheirs')) : t('blockouts.title')}</h2>
     <p className="mb-4 text-sm text-slate-500">{t(forSomeoneElse ? 'blockouts.descriptionTheirs' : 'blockouts.description', { timezone })}</p>
     <form className="space-y-4" onSubmit={(event: FormEvent) => { event.preventDefault(); save.mutate(); }}>
       <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />{t('blockouts.allDay')}</label>

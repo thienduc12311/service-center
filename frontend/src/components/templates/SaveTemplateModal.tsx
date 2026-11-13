@@ -80,28 +80,30 @@ export const SaveTemplateModal = ({ plan, onClose, onSaved }: SaveTemplateModalP
 
         {target === 'new' && (
           <>
-            <fieldset className="flex flex-wrap gap-4 text-sm">
+            <fieldset className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-700 dark:text-slate-200">
               <legend className="label">{t('save.kind')}</legend>
               <label className="flex items-center gap-2">
-                <input type="radio" name="template-kind" checked={kind === 'plan'} onChange={() => setKind('plan')} />
+                <input type="radio" className="accent-brand-600" name="template-kind" checked={kind === 'plan'} onChange={() => setKind('plan')} />
                 {t('save.kindPlan')}
               </label>
               <label className="flex items-center gap-2">
-                <input type="radio" name="template-kind" checked={kind === 'section'} onChange={() => setKind('section')} />
+                <input type="radio" className="accent-brand-600" name="template-kind" checked={kind === 'section'} onChange={() => setKind('section')} />
                 {t('save.kindSection')}
               </label>
             </fieldset>
-            <div>
-              <label className="label" htmlFor="save-template-name">{t('save.name')}</label>
-              <input id="save-template-name" className="input" maxLength={120} value={name} onChange={(event) => setName(event.target.value)} />
-            </div>
-            <div>
-              <label className="label" htmlFor="save-template-description">{t('save.description')}</label>
-              <input id="save-template-description" className="input" maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label" htmlFor="save-template-name">{t('save.name')}</label>
+                <input id="save-template-name" className="input" maxLength={120} value={name} onChange={(event) => setName(event.target.value)} />
+              </div>
+              <div>
+                <label className="label" htmlFor="save-template-description">{t('save.description')}</label>
+                <input id="save-template-description" className="input" maxLength={2000} value={description} onChange={(event) => setDescription(event.target.value)} />
+              </div>
             </div>
             {plan.service_type && mayUseEveryType && (
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" className="size-4 rounded border-slate-300" checked={everyServiceType} onChange={(event) => setEveryServiceType(event.target.checked)} />
+              <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                <input type="checkbox" className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600" checked={everyServiceType} onChange={(event) => setEveryServiceType(event.target.checked)} />
                 {t('save.everyServiceType', { serviceType: plan.service_type.name })}
               </label>
             )}
@@ -109,13 +111,13 @@ export const SaveTemplateModal = ({ plan, onClose, onSaved }: SaveTemplateModalP
         )}
 
         {effectiveKind === 'plan' ? (
-          <fieldset className="space-y-2">
+          <fieldset className="surface-inset space-y-2 p-3">
             <legend className="label">{t('save.include')}</legend>
             {PLAN_TEMPLATE_COMPONENTS.map((component) => (
-              <label key={component} className="flex items-center gap-2 text-sm">
+              <label key={component} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
                 <input
                   type="checkbox"
-                  className="size-4 rounded border-slate-300"
+                  className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
                   checked={chosen.includes(component)}
                   onChange={(event) =>
                     setChosen((current) => event.target.checked ? [...current, component] : current.filter((c) => c !== component))
@@ -125,16 +127,16 @@ export const SaveTemplateModal = ({ plan, onClose, onSaved }: SaveTemplateModalP
               </label>
             ))}
             {chosen.includes('roster') && (
-              <p className="ml-6 text-xs text-slate-500">
+              <p className="ml-6 text-xs text-slate-500 dark:text-slate-400">
                 {t('save.rosterHint')}
               </p>
             )}
             {chosen.includes('times') && (
-              <p className="ml-6 text-xs text-slate-500">{t('save.timesHint')}</p>
+              <p className="ml-6 text-xs text-slate-500 dark:text-slate-400">{t('save.timesHint')}</p>
             )}
           </fieldset>
         ) : (
-          <p className="text-sm text-slate-500">{t('save.sectionItems', { count: plan.items.length })}</p>
+          <p className="surface-inset px-3 py-2.5 text-sm text-slate-500 dark:text-slate-400">{t('save.sectionItems', { count: plan.items.length })}</p>
         )}
 
         <ErrorNotice error={save.error} />

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LocalizedError,
@@ -11,7 +11,8 @@ import {
 import { api } from '../lib/api';
 import { keys, useLivePlanRuns, usePlan } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Button, EmptyState, ErrorNotice, Loading, PageHeader } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, Loading, PageHeader, SectionHeader } from '../components/ui';
+import { Icon } from '../components/icons';
 import { LIVE_POLICIES, LiveRunPanel } from '../components/live/LiveRunPanel';
 import { useLanguage } from '../i18n';
 import { LiveHistoryPanel } from '../components/live/LiveHistoryPanel';
@@ -87,38 +88,46 @@ export const LivePage = () => {
   const earlier = data.runs.filter((run) => run.status === 'discarded' || run.status === 'ended');
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
+        back={{ to: `/plans/${planId}`, label: t('live.page.back') }}
         title={plan.data?.title ? t('live.page.title', { title: plan.data.title }) : t('live.page.titleFallback')}
-        subtitle={<Link to={`/plans/${planId}`} className="text-brand-700 hover:underline">{t('live.page.back')}</Link>}
         actions={
-          <Button variant="secondary" loading={openChat.isPending} onClick={() => openChat.mutate()}>
+          <Button variant="secondary" icon="chat" loading={openChat.isPending} onClick={() => openChat.mutate()}>
             {t('live.page.planChat')}
           </Button>
         }
       />
       <ErrorNotice error={openChat.error ? new LocalizedError({ key: 'media:live.page.planChatDenied' }) : null} />
 
-      <div className="grid gap-8 lg:grid-cols-[16rem_1fr]">
+      <div className="grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)]">
         <aside className="space-y-4" aria-label={t('live.page.serviceTimes')}>
-          <h2 className="text-sm font-semibold text-slate-700">{t('live.page.serviceTimes')}</h2>
+          <SectionHeader title={t('live.page.serviceTimes')} meta={data.service_times.length || undefined} className="!mb-0" />
           {data.service_times.length === 0 && (
-            <p className="text-sm text-slate-500">{t('live.page.noServiceTimes')}</p>
+            <p className="surface-inset px-3 py-2.5 text-sm text-slate-500 dark:text-slate-400">{t('live.page.noServiceTimes')}</p>
           )}
           <ul className="space-y-2">
             {data.service_times.map((time) => (
-              <li key={time.id} className={`card p-3 ${time.run_id && time.run_id === runId ? 'ring-2 ring-brand-500' : ''}`}>
-                <p className="text-sm font-medium text-slate-800">{time.name ?? t('live.service')}</p>
-                <p className="text-xs text-slate-500">{when(time.starts_at)}</p>
+              <li
+                key={time.id}
+                className={`card p-3.5 ${time.run_id && time.run_id === runId ? 'border-brand-300 ring-2 ring-brand-500/60 dark:border-brand-500/50' : ''}`}
+              >
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">{time.name ?? t('live.service')}</p>
+                <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                  <Icon name="clock" className="size-3.5" />
+                  {when(time.starts_at)}
+                </p>
                 {time.run_id ? (
-                  <Button variant="secondary" className="mt-2 w-full" onClick={() => setParams({ run: time.run_id! })}>
+                  <Button variant="secondary" size="sm" icon="play" className="mt-3 w-full" onClick={() => setParams({ run: time.run_id! })}>
                     {time.run_id === runId
                       ? t('live.page.showing', { status: t(`live.status.${time.run_status!}`) })
                       : t('live.page.open', { status: t(`live.status.${time.run_status!}`) })}
                   </Button>
                 ) : data.can_control ? (
                   <Button
-                    className="mt-2 w-full"
+                    size="sm"
+                    icon="play"
+                    className="mt-3 w-full"
                     loading={create.isPending && create.variables?.time.id === time.id}
                     disabled={create.isPending}
                     onClick={() => {
@@ -130,7 +139,7 @@ export const LivePage = () => {
                     {t('live.page.createRun')}
                   </Button>
                 ) : (
-                  <p className="mt-2 text-xs text-slate-500">{t('live.page.noRun')}</p>
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('live.page.noRun')}</p>
                 )}
               </li>
             ))}
@@ -147,14 +156,16 @@ export const LivePage = () => {
           )}
           <ErrorNotice error={create.error} />
           {earlier.length > 0 && (
-            <div>
-              <h2 className="mt-4 text-sm font-semibold text-slate-700">{t('live.history.title')}</h2>
-              <ul className="mt-2 space-y-1 text-sm">
+            <div className="pt-2">
+              <SectionHeader title={t('live.history.title')} meta={earlier.length} />
+              <ul className="card row-list overflow-hidden text-sm">
                 {earlier.map((run) => (
                   <li key={run.id}>
                     <button
                       type="button"
-                      className={`text-left hover:underline ${run.id === runId ? 'font-semibold text-brand-700' : 'text-slate-600'}`}
+                      className={`block w-full px-3 py-2 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60 ${
+                        run.id === runId ? 'font-semibold text-brand-700 dark:text-brand-200' : 'text-slate-600 dark:text-slate-300'
+                      }`}
                       onClick={() => setParams({ run: run.id })}
                     >
                       {run.time_name ?? t('live.service')} · {t(`live.status.${run.status}`)}
@@ -170,12 +181,13 @@ export const LivePage = () => {
         <main className="min-w-0 space-y-6">
           {!runId && (
             <EmptyState
+              icon="play"
               title={t('live.page.chooseTime')}
               description={data.can_control ? t('live.page.chooseTimeController') : t('live.page.chooseTimeViewer')}
             />
           )}
           {runId && live.connection === 'revoked' && (
-            <EmptyState title={t('live.page.unavailableTitle')} description={t('live.page.unavailableDescription')} />
+            <EmptyState icon="alert" title={t('live.page.unavailableTitle')} description={t('live.page.unavailableDescription')} />
           )}
           {runId && live.loading && <Loading label={t('live.page.loadingRun')} />}
           <ErrorNotice error={live.loadError} />
@@ -183,7 +195,7 @@ export const LivePage = () => {
             <>
               <LiveRunPanel live={live} onStage={() => setStage(true)} />
               <div>
-                <Button variant="secondary" onClick={() => setShowHistory((open) => !open)}>
+                <Button variant="secondary" size="sm" icon="document" onClick={() => setShowHistory((open) => !open)}>
                   {showHistory ? t('live.page.hideHistory') : t('live.page.showHistory')}
                 </Button>
               </div>
@@ -191,7 +203,7 @@ export const LivePage = () => {
             </>
           )}
           {runId && !selected && !live.state && !live.loading && live.connection !== 'revoked' && (
-            <p className="text-sm text-slate-500">{t('live.page.notThisPlan')}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('live.page.notThisPlan')}</p>
           )}
         </main>
       </div>

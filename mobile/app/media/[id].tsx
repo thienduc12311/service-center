@@ -38,7 +38,7 @@ export default function MediaDetailScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('library.title') }} />
-        <EmptyState title={t('detail.notFound')} />
+        <EmptyState icon="image" title={t('detail.notFound')} />
       </Screen>
     );
   }
@@ -54,7 +54,7 @@ export default function MediaDetailScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('library.title') }} />
-        <EmptyState title={t('detail.notFound')} description={t('mobileMedia.goneDescription')} />
+        <EmptyState icon="image" title={t('detail.notFound')} description={t('mobileMedia.goneDescription')} />
       </Screen>
     );
   }
@@ -181,7 +181,7 @@ const makeStyles = (theme: Theme) =>
       ...theme.type.bodySmall,
       color: theme.accent.yellow.fg,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
   });

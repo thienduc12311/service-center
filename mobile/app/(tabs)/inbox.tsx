@@ -29,14 +29,17 @@ export default function InboxScreen() {
 
   const header = (
     <View style={styles.header}>
-      <ScreenHeader title={t('nav.messages')} description={t('messages:mobileInbox.description')} />
+      <ScreenHeader
+        title={t('nav.messages')}
+        description={t('messages:mobileInbox.description')}
+        trailing={<NotificationBell bar={false} />}
+      />
       <SegmentedControl options={views} value={view} onChange={setView} />
     </View>
   );
 
   return (
     <Screen safeTop>
-      <NotificationBell />
       {view === 'chat' ? <ChatList header={header} /> : <MessageList header={header} />}
     </Screen>
   );
@@ -44,5 +47,5 @@ export default function InboxScreen() {
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    header: { gap: theme.space.md },
+    header: { gap: theme.space.lg },
   });

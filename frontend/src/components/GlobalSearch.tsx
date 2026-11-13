@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import type { GlobalSearchKind } from '@service-center/shared';
 import { useGlobalSearch } from '../hooks/queries';
 import { ErrorNotice, Modal, Spinner } from './ui';
+import { Icon } from './icons';
 
 /** Waits for typing to pause before searching. */
 const useDebounced = (value: string, delayMs: number): string => {
@@ -52,21 +53,17 @@ export const GlobalSearch = () => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="grid size-9 place-items-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        className="flex h-9 items-center gap-2 rounded-xl text-slate-500 transition hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-brand-500
+          max-md:w-9 max-md:justify-center max-md:hover:bg-slate-100 md:w-64 md:bg-white md:px-3 md:shadow-sm md:shadow-slate-900/5 md:ring-1 md:ring-inset md:ring-slate-200
+          md:hover:ring-slate-300 dark:text-slate-400 dark:hover:text-white max-md:dark:hover:bg-slate-800 md:dark:bg-slate-900 md:dark:ring-slate-700"
         aria-label={t('common:actions.search')}
         title={t('search.button')}
       >
-        <svg
-          viewBox="0 0 20 20"
-          className="size-5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          aria-hidden="true"
-        >
-          <circle cx="9" cy="9" r="5.5" />
-          <path d="m13.5 13.5 3.5 3.5" strokeLinecap="round" />
-        </svg>
+        <Icon name="search" className="size-[18px] md:size-4" />
+        <span className="hidden flex-1 truncate text-left text-sm md:block">{t('search.placeholder')}</span>
+        <kbd className="hidden rounded-md bg-slate-100 px-1.5 py-0.5 font-sans text-[11px] font-medium text-slate-500 md:block dark:bg-slate-800 dark:text-slate-400">
+          ⌘K
+        </kbd>
       </button>
       {/* Portaled: the sticky header's backdrop blur would otherwise become the
           containing block for the fixed dialog and clip it. */}

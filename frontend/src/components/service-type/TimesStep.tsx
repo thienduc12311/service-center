@@ -1,5 +1,5 @@
 import { Trans, useTranslation } from 'react-i18next';
-import { Button } from '../ui';
+import { Button, IconButton } from '../ui';
 import type { ServiceTimeDraft } from './types';
 
 export interface TimesStepProps {
@@ -27,10 +27,10 @@ export const TimesStep = ({ serviceTypeName, times, onChange }: TimesStepProps) 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
+        <h1 className="text-2xl font-semibold tracking-tight text-balance text-slate-900 sm:text-3xl dark:text-white">
           {t('timesStep.title')}
         </h1>
-        <p className="mt-3 text-slate-600">
+        <p className="mt-3 text-pretty text-slate-600 dark:text-slate-300">
           <Trans
             t={t}
             i18nKey="timesStep.intro"
@@ -44,17 +44,17 @@ export const TimesStep = ({ serviceTypeName, times, onChange }: TimesStepProps) 
         {times.map((time, index) => (
           <li
             key={time.id}
-            className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 px-4 py-3"
+            className="surface-inset flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 sm:px-4"
           >
             <input
               type="date"
               aria-label={t('timesStep.dateFor', { number: index + 1 })}
-              className="input flex-1 sm:min-w-56"
+              className="input w-full sm:w-auto sm:min-w-56 sm:flex-1"
               value={time.date}
               onChange={(event) => update(time.id, { date: event.target.value })}
               required
             />
-            <span className="text-sm text-slate-500">{t('timesStep.from')}</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">{t('timesStep.from')}</span>
             <input
               type="time"
               aria-label={t('timesStep.startFor', { number: index + 1 })}
@@ -63,7 +63,7 @@ export const TimesStep = ({ serviceTypeName, times, onChange }: TimesStepProps) 
               onChange={(event) => update(time.id, { from: event.target.value })}
               required
             />
-            <span className="text-sm text-slate-500">{t('timesStep.to')}</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400">{t('timesStep.to')}</span>
             <input
               type="time"
               aria-label={t('timesStep.endFor', { number: index + 1 })}
@@ -73,14 +73,13 @@ export const TimesStep = ({ serviceTypeName, times, onChange }: TimesStepProps) 
               required
             />
             {times.length > 1 && (
-              <button
-                type="button"
-                aria-label={t('timesStep.removeFor', { number: index + 1 })}
+              <IconButton
+                icon="close"
+                size="sm"
+                label={t('timesStep.removeFor', { number: index + 1 })}
                 onClick={() => onChange(times.filter((candidate) => candidate.id !== time.id))}
-                className="px-1 text-lg text-slate-400 hover:text-rose-500"
-              >
-                ×
-              </button>
+                className="ml-auto hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10 dark:hover:!text-rose-400"
+              />
             )}
           </li>
         ))}
@@ -90,13 +89,14 @@ export const TimesStep = ({ serviceTypeName, times, onChange }: TimesStepProps) 
         <Button
           type="button"
           variant="secondary"
+          icon="plus"
           onClick={() => onChange([...times, emptyServiceTime(times.at(-1))])}
         >
           {t('timesStep.addAnother')}
         </Button>
       </div>
 
-      <p className="text-center text-sm text-slate-400">
+      <p className="text-center text-sm text-slate-400 dark:text-slate-500">
         {t('timesStep.footnote')}
       </p>
     </div>

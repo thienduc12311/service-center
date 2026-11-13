@@ -12,7 +12,7 @@ import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { newIdempotencyKey } from '../../src/lib/idempotency';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { Button, Card, EmptyState, ErrorNotice, Label, Loading, Screen, screenPadding } from '../../src/components/ui';
+import { Button, Card, EmptyState, ErrorNotice, Loading, Screen, SectionHeader, screenPadding } from '../../src/components/ui';
 import { MetaLine, StatusBanner, TimeSlotList } from '../../src/components/StaffingParts';
 import {
   RequestAttempts,
@@ -102,6 +102,7 @@ export default function NewReplacementScreen() {
             </>
           ) : (
             <EmptyState
+              icon="people"
               title={t('replacements.notAvailable')}
               action={<Button variant="secondary" title={t('common:actions.back')} onPress={() => router.back()} />}
             />
@@ -141,10 +142,12 @@ export default function NewReplacementScreen() {
           </View>
         </Card>
 
-        <Card>
-          <Label>{t('replacements.requiredTimes')}</Label>
-          <TimeSlotList times={required} emptyText={t('replacements.noTimes')} />
-        </Card>
+        <View style={styles.section}>
+          <SectionHeader title={t('replacements.requiredTimes')} count={required.length || undefined} />
+          <Card>
+            <TimeSlotList times={required} emptyText={t('replacements.noTimes')} />
+          </Card>
+        </View>
 
         {failure ? (
           <StatusBanner accent="yellow" icon="alert" title={t(`replacements.failure.${failure}`)} live>
@@ -180,7 +183,8 @@ export default function NewReplacementScreen() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    gap: { gap: theme.space.md },
+    gap: { gap: theme.space.lg },
+    section: { gap: theme.space.sm },
     header: { gap: theme.space.sm },
     title: { ...theme.type.title, color: theme.color.ink },
     actions: { flexDirection: 'row', gap: theme.space.sm, marginTop: theme.space.sm },

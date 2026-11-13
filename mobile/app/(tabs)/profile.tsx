@@ -18,18 +18,22 @@ import {
   Divider,
   Field,
   IconButton,
+  IconWell,
   Label,
   ListRow,
   Loading,
   Screen,
+  ScreenHeader,
+  SectionHeader,
   screenPadding,
   ErrorNotice,
 } from '../../src/components/ui';
 import { NotificationBell } from '../../src/components/NotificationBell';
 import { BlockoutForm } from '../../src/components/BlockoutForm';
-import { Reveal } from '../../src/components/motion';
+import { Icon, type IconName } from '../../src/components/icons';
+import { PressableScale, Reveal } from '../../src/components/motion';
 import { AppearanceSelector } from '../../src/components/AppearanceSelector';
-import type { Theme } from '../../src/lib/theme';
+import type { Accent, Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { env } from '../../src/lib/env';
 import { widgetsSupported } from '../../src/lib/widget-bridge';
@@ -253,256 +257,347 @@ export default function ProfileScreen() {
     );
   };
 
+  const displayName = user?.profile.full_name ?? user?.profile.email;
+
   return (
     <Screen safeTop>
-      <NotificationBell />
       <ScrollView
-        contentContainerStyle={screenPadding(theme)}
+        contentContainerStyle={[screenPadding(theme), styles.content]}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
+        <ScreenHeader
+          title={t('settingsPage.title')}
+          description={t('settingsPage.subtitle')}
+          trailing={<NotificationBell bar={false} />}
+        />
+
         <Reveal>
-          <View style={styles.identity}>
-            {organization?.logo_url ? (
-              <Image source={{ uri: organization.logo_url }} style={styles.logo} />
-            ) : (
-              <Avatar name={user?.profile.full_name ?? user?.profile.email} url={user?.profile.avatar_url} size={64} />
-            )}
-            <Text style={styles.name}>{user?.profile.full_name ?? t('profile.yourProfile')}</Text>
-            <Text style={styles.email}>{user?.profile.email}</Text>
-            {organization ? (
-              <Text style={styles.membership}>
-                {role
-                  ? t('common:format.nameWithRole', { name: organization.name, role: t(`common:roles.${role}`) })
-                  : organization.name}
-              </Text>
+          <Card style={styles.identity}>
+            <Avatar name={displayName} url={user?.profile.avatar_url} size={64} />
+            <View style={styles.identityText}>
+              <Text style={styles.name}>{user?.profile.full_name ?? t('profile.yourProfile')}</Text>
+              <Text style={styles.email} numberOfLines={1}>{user?.profile.email}</Text>
+              {organization ? (
+                <View style={styles.membershipRow}>
+                  {organization.logo_url ? (
+                    <Image source={{ uri: organization.logo_url }} style={styles.logo} />
+                  ) : (
+                    <Icon name="people" size={14} color={theme.color.inkFaint} />
+                  )}
+                  <Text style={styles.membership}>
+                    {role
+                      ? t('common:format.nameWithRole', { name: organization.name, role: t(`common:roles.${role}`) })
+                      : organization.name}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </Card>
+        </Reveal>
+
+        <Reveal index={1}>
+          <View style={styles.section}>
+            <SectionHeader title={t('settingsPage.profile.title')} />
+            <Card>
+              <View style={styles.avatarRow}>
+                <Avatar name={displayName} url={user?.profile.avatar_url} size={56} />
+                <View style={styles.avatarActions}>
+                  <Button
+                    title={user?.profile.avatar_url ? t('common:avatar.change') : t('common:avatar.upload')}
+                    icon="camera"
+                    variant="secondary"
+                    loading={avatarBusy}
+                    disabled={avatarBusy}
+                    onPress={() => void updateAvatar()}
+                  />
+                  {user?.profile.avatar_url ? (
+                    <Button
+                      title={t('common:avatar.remove')}
+                      variant="quiet"
+                      disabled={avatarBusy}
+                      onPress={() => void runAvatar(() => saveAvatar(null))}
+                    />
+                  ) : null}
+                </View>
+              </View>
+              <ErrorNotice error={avatarError} />
+              <Field label={t('settingsPage.profile.fullName')} value={fullName} onChangeText={setFullName} placeholder={t('settingsPage.profile.fullName')} />
+              <Field
+                label={t('settingsPage.profile.phone')}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder={t('common:states.optional')}
+                keyboardType="phone-pad"
+              />
+              <Text style={styles.body}>{t('settingsPage.profile.signedInAs', { email: user?.profile.email ?? '' })}</Text>
+              <ErrorNotice error={save.error} />
+              <Button title={t('settingsPage.profile.save')} onPress={() => save.mutate()} loading={save.isPending} />
+            </Card>
+          </View>
+        </Reveal>
+
+        <Reveal index={2}>
+          <View style={styles.section}>
+            <SectionHeader title={t('common:nav.groups.people')} />
+            <Card compact style={styles.rows}>
+              <SettingsRow
+                icon="people"
+                accent={theme.accent.blue}
+                title={t('people:mobileDirectory.entry')}
+                hint={t('people:mobileDirectory.entryDescription')}
+                onPress={() => router.push('/people')}
+              />
+              <SettingsRow
+                divided
+                icon="person"
+                accent={theme.accent.green}
+                title={t('teams:mobileTeams.entry')}
+                hint={t('teams:mobileTeams.entryDescription')}
+                onPress={() => router.push('/teams')}
+              />
+              {memberships.length > 1 ? (
+                <SettingsRow
+                  divided
+                  icon="schedule"
+                  accent={theme.accent.yellow}
+                  title={t('across.title')}
+                  hint={t('mobileAcross.entryDescription')}
+                  onPress={() => router.push('/across-organizations')}
+                />
+              ) : null}
+            </Card>
+          </View>
+        </Reveal>
+
+        <Reveal index={3}>
+          <View style={styles.section}>
+            <SectionHeader title={t('settingsPage.preferences.title')} />
+            <Card compact style={styles.rows}>
+              <SettingsRow
+                icon="bell"
+                accent={theme.accent.red}
+                title={t('mobileNotifications.entry')}
+                hint={t('mobileNotifications.entryDescription')}
+                onPress={() => router.push('/notification-settings')}
+              />
+              <SettingsRow
+                divided
+                icon="calendar"
+                accent={theme.accent.blue}
+                title={t('settingsPage.calendar.title')}
+                hint={t('scheduling:mobileSubscription.entryDescription')}
+                onPress={() => router.push('/calendar-subscription')}
+              />
+              <SettingsRow
+                divided
+                icon="settings"
+                accent={theme.accent.green}
+                title={t('preferences.entry')}
+                hint={t('preferences.entryDescription')}
+                onPress={() => router.push('/team-preferences')}
+              />
+              <SettingsRow
+                divided
+                icon="upload"
+                accent={theme.accent.neutral}
+                title={t('offlineDownloads.entry')}
+                hint={t('offlineDownloads.entryDescription')}
+                onPress={() => router.push('/offline-downloads')}
+              />
+            </Card>
+            {widgetsSupported() ? (
+              <Card>
+                <Label>{t('mobileWidget.settingsTitle')}</Label>
+                <Text style={styles.body}>{t('mobileWidget.settingsDescription')}</Text>
+              </Card>
             ) : null}
           </View>
         </Reveal>
 
-        <Reveal index={1}>
-          <Card>
-            <Label>{t('settingsPage.profile.title')}</Label>
-            <View style={styles.avatarRow}>
-              <Avatar name={user?.profile.full_name ?? user?.profile.email} url={user?.profile.avatar_url} size={56} />
-              <View style={styles.avatarActions}>
-                <Button
-                  title={user?.profile.avatar_url ? t('common:avatar.change') : t('common:avatar.upload')}
-                  variant="secondary"
-                  loading={avatarBusy}
-                  disabled={avatarBusy}
-                  onPress={() => void updateAvatar()}
-                />
-                {user?.profile.avatar_url ? (
-                  <Button
-                    title={t('common:avatar.remove')}
-                    variant="quiet"
-                    disabled={avatarBusy}
-                    onPress={() => void runAvatar(() => saveAvatar(null))}
-                  />
-                ) : null}
-              </View>
-            </View>
-            <ErrorNotice error={avatarError} />
-            <Field label={t('settingsPage.profile.fullName')} value={fullName} onChangeText={setFullName} placeholder={t('settingsPage.profile.fullName')} />
-            <Field
-              label={t('settingsPage.profile.phone')}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder={t('common:states.optional')}
-              keyboardType="phone-pad"
-            />
-            <Text style={styles.body}>{t('settingsPage.profile.signedInAs', { email: user?.profile.email ?? '' })}</Text>
-            <ErrorNotice error={save.error} />
-            <Button title={t('settingsPage.profile.save')} onPress={() => save.mutate()} loading={save.isPending} />
-          </Card>
-        </Reveal>
-
-        <Reveal index={2}>
-          <Card>
-            <Label>Language / Ngôn ngữ</Label>
-            <LanguageSelector organizationName={organization?.name} />
-          </Card>
-        </Reveal>
-
-        <Reveal index={2}>
-          <Card>
-            <Label>{t('profile.appearance.title')}</Label>
-            <Text style={styles.body}>{t('profile.appearance.description')}</Text>
-            <AppearanceSelector />
-          </Card>
-        </Reveal>
-
-        <Reveal index={3}>
-          <Card>
-            <ListRow onPress={() => router.push('/people')} showChevron>
-              <Label>{t('people:mobileDirectory.entry')}</Label>
-              <Text style={styles.body}>{t('people:mobileDirectory.entryDescription')}</Text>
-            </ListRow>
-            <ListRow divided onPress={() => router.push('/teams')} showChevron>
-              <Label>{t('teams:mobileTeams.entry')}</Label>
-              <Text style={styles.body}>{t('teams:mobileTeams.entryDescription')}</Text>
-            </ListRow>
-            {memberships.length > 1 ? (
-              <ListRow divided onPress={() => router.push('/across-organizations')} showChevron>
-                <Label>{t('across.title')}</Label>
-                <Text style={styles.body}>{t('mobileAcross.entryDescription')}</Text>
-              </ListRow>
-            ) : null}
-            <ListRow divided onPress={() => router.push('/notification-settings')} showChevron>
-              <Label>{t('mobileNotifications.entry')}</Label>
-              <Text style={styles.body}>{t('mobileNotifications.entryDescription')}</Text>
-            </ListRow>
-            <ListRow divided onPress={() => router.push('/calendar-subscription')} showChevron>
-              <Label>{t('settingsPage.calendar.title')}</Label>
-              <Text style={styles.body}>{t('scheduling:mobileSubscription.entryDescription')}</Text>
-            </ListRow>
-            <ListRow divided onPress={() => router.push('/team-preferences')} showChevron>
-              <Label>{t('preferences.entry')}</Label>
-              <Text style={styles.body}>{t('preferences.entryDescription')}</Text>
-            </ListRow>
-            <ListRow divided onPress={() => router.push('/offline-downloads')} showChevron>
-              <Label>{t('offlineDownloads.entry')}</Label>
-              <Text style={styles.body}>{t('offlineDownloads.entryDescription')}</Text>
-            </ListRow>
-            <ListRow divided onPress={() => router.push('/help')} showChevron>
-              <Label>{t('help.title')}</Label>
-              <Text style={styles.body}>{t('help.entryDescription')}</Text>
-            </ListRow>
-            <ListRow divided onPress={() => router.push('/about')} showChevron>
-              <Label>{t('about.entry')}</Label>
-              <Text style={styles.body}>{t('about.entryDescription')}</Text>
-            </ListRow>
-          </Card>
-        </Reveal>
-
-        {widgetsSupported() ? (
-          <Reveal index={3}>
+        <Reveal index={4}>
+          <View style={styles.section}>
+            <SectionHeader title={t('profile.appearance.title')} />
             <Card>
-              <Label>{t('mobileWidget.settingsTitle')}</Label>
-              <Text style={styles.body}>{t('mobileWidget.settingsDescription')}</Text>
+              <Text style={styles.body}>{t('profile.appearance.description')}</Text>
+              <AppearanceSelector />
             </Card>
-          </Reveal>
-        ) : null}
+          </View>
+        </Reveal>
 
-        <Reveal index={3}>
-          <Card>
-            <Label>{t('blockouts.title')}</Label>
-            <BlockoutForm
-              editing={editingBlockout}
-              onSaved={async () => { setEditingBlockout(null); await refreshBlockouts(); }}
-              onCancelEdit={() => setEditingBlockout(null)}
+        <Reveal index={4}>
+          <View style={styles.section}>
+            <SectionHeader title={t('common:language.bilingualLabel')} />
+            <Card>
+              <LanguageSelector organizationName={organization?.name} />
+            </Card>
+          </View>
+        </Reveal>
+
+        <Reveal index={5}>
+          <View style={styles.section}>
+            <SectionHeader
+              title={t('blockouts.title')}
+              count={visibleBlockouts.length ? visibleBlockouts.length : undefined}
             />
+            <Card>
+              <BlockoutForm
+                editing={editingBlockout}
+                onSaved={async () => { setEditingBlockout(null); await refreshBlockouts(); }}
+                onCancelEdit={() => setEditingBlockout(null)}
+              />
 
-            {blockouts.isLoading ? <Loading /> : null}
-            {visibleBlockouts.length ? (
-              <View>
-                {visibleBlockouts.map((blockout, index) => (
-                  <View key={blockout.id}>
-                    {index > 0 ? <Divider /> : null}
-                    <View style={styles.blockout}>
-                      <View style={styles.flex}>
-                        <Text style={styles.blockoutRange}>
-                          {blockout.all_day
-                            ? t('blockouts.occurrenceAllDay', {
-                                date: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
-                              })
-                            : blockout.local_start_time
-                              ? t('blockouts.rowTimes', {
+              {blockouts.isLoading ? <Loading /> : null}
+              {visibleBlockouts.length ? (
+                <View>
+                  {visibleBlockouts.map((blockout, index) => (
+                    <View key={blockout.id}>
+                      {index > 0 ? <Divider /> : null}
+                      <View style={styles.blockout}>
+                        <IconWell name="calendar" accent={theme.accent.red} size={34} />
+                        <View style={styles.flex}>
+                          <Text style={styles.blockoutRange}>
+                            {blockout.all_day
+                              ? t('blockouts.occurrenceAllDay', {
                                   date: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
-                                  start: blockout.local_start_time.slice(0, 5),
-                                  end: blockout.local_end_time?.slice(0, 5) ?? '',
                                 })
-                              : t('common:format.dateRange', {
-                                  start: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
-                                  end: date(blockout.ends_at),
-                                })}
-                        </Text>
-                        {blockout.reason ? (
-                          <Text style={styles.blockoutReason}>{blockout.reason}</Text>
-                        ) : null}
-                      </View>
-                      {blockout.series_id ? (
-                        <Button
-                          title={t('profile.manageOnWebsite')}
-                          variant="quiet"
-                          onPress={() => void Linking.openURL(`${env.webAppDomain ? `https://${env.webAppDomain}` : 'http://localhost:5173'}/settings/blockouts/${blockout.series_id}`)}
-                        />
-                      ) : (
-                        <View style={styles.blockoutActions}>
-                          <Button title={t('common:actions.edit')} variant="quiet" onPress={() => setEditingBlockout(blockout)} />
-                          <IconButton
-                            name="trash"
-                            accessibilityLabel={t('profile.removeBlockout', {
-                              date: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
-                            })}
-                            onPress={() => removeBlockout.mutate(blockout)}
-                          />
+                              : blockout.local_start_time
+                                ? t('blockouts.rowTimes', {
+                                    date: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
+                                    start: blockout.local_start_time.slice(0, 5),
+                                    end: blockout.local_end_time?.slice(0, 5) ?? '',
+                                  })
+                                : t('common:format.dateRange', {
+                                    start: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
+                                    end: date(blockout.ends_at),
+                                  })}
+                          </Text>
+                          {blockout.reason ? (
+                            <Text style={styles.blockoutReason}>{blockout.reason}</Text>
+                          ) : null}
                         </View>
-                      )}
+                        {blockout.series_id ? (
+                          <Button
+                            title={t('profile.manageOnWebsite')}
+                            variant="quiet"
+                            onPress={() => void Linking.openURL(`${env.webAppDomain ? `https://${env.webAppDomain}` : 'http://localhost:5173'}/settings/blockouts/${blockout.series_id}`)}
+                          />
+                        ) : (
+                          <View style={styles.blockoutActions}>
+                            <Button title={t('common:actions.edit')} variant="quiet" onPress={() => setEditingBlockout(blockout)} />
+                            <IconButton
+                              name="trash"
+                              accessibilityLabel={t('profile.removeBlockout', {
+                                date: blockout.local_start_date ? calendarDate(blockout.local_start_date) : date(blockout.starts_at),
+                              })}
+                              onPress={() => removeBlockout.mutate(blockout)}
+                            />
+                          </View>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.body}>{t('profile.noBlockouts')}</Text>
-            )}
-          </Card>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.body}>{t('profile.noBlockouts')}</Text>
+              )}
+            </Card>
+          </View>
         </Reveal>
 
         {memberships.length > 1 ? (
-          <Reveal index={4}>
-            <Card>
-              <Label>{t('common:nav.switchOrganization')}</Label>
-              {memberships.map((membership) => (
-                <Button
-                  key={membership.organization.id}
-                  title={membership.organization.name}
-                  variant={
-                    membership.organization.id === organizationId ? 'primary' : 'secondary'
-                  }
-                  onPress={() => void switchOrganization(membership.organization.id)}
-                />
-              ))}
-            </Card>
+          <Reveal index={6}>
+            <View style={styles.section}>
+              <SectionHeader title={t('common:nav.switchOrganization')} count={memberships.length} />
+              <Card compact style={styles.rows}>
+                {memberships.map((membership, index) => {
+                  const current = membership.organization.id === organizationId;
+                  return (
+                    <PressableScale
+                      key={membership.organization.id}
+                      accessibilityLabel={membership.organization.name}
+                      accessibilityState={{ selected: current }}
+                      pressedOpacity={0.6}
+                      onPress={() => void switchOrganization(membership.organization.id)}
+                      style={[styles.orgRow, index > 0 && styles.orgRowDivided]}
+                    >
+                      {membership.organization.logo_url ? (
+                        <Image source={{ uri: membership.organization.logo_url }} style={styles.orgLogo} />
+                      ) : (
+                        <Avatar name={membership.organization.name} size={36} />
+                      )}
+                      <Text style={[styles.orgName, current && styles.orgNameCurrent]} numberOfLines={2}>
+                        {membership.organization.name}
+                      </Text>
+                      {current ? <Icon name="check" size={18} color={theme.color.brandText} strokeWidth={2.4} /> : null}
+                    </PressableScale>
+                  );
+                })}
+              </Card>
+            </View>
           </Reveal>
         ) : null}
 
-        <Reveal index={5}>
-          <Card>
-            <Label>{t('profile.organizations.title')}</Label>
-            <Text style={styles.body}>{t('profile.organizations.description')}</Text>
-            {isAdmin(role) ? (
-              <Button
-                title={uploadingLogo ? t('organization.uploading') : t('profile.organizations.changeLogo')}
-                icon="image"
-                variant="secondary"
-                onPress={() => void updateLogo()}
-                disabled={uploadingLogo}
+        <Reveal index={6}>
+          <View style={styles.section}>
+            <SectionHeader title={t('profile.organizations.title')} />
+            <Card>
+              <Text style={styles.body}>{t('profile.organizations.description')}</Text>
+              {isAdmin(role) ? (
+                <Button
+                  title={uploadingLogo ? t('organization.uploading') : t('profile.organizations.changeLogo')}
+                  icon="image"
+                  variant="secondary"
+                  onPress={() => void updateLogo()}
+                  disabled={uploadingLogo}
+                />
+              ) : null}
+              <Field
+                label={t('organization.new')}
+                value={newOrganizationName}
+                onChangeText={setNewOrganizationName}
+                placeholder={t('profile.organizations.namePlaceholder')}
               />
-            ) : null}
-            <Field
-              label={t('organization.new')}
-              value={newOrganizationName}
-              onChangeText={setNewOrganizationName}
-              placeholder={t('profile.organizations.namePlaceholder')}
-            />
-            <ErrorNotice error={organizationError} />
-            <Button
-              title={t('organization.create')}
-              onPress={() => void createOrganization()}
-              loading={creatingOrganization}
-              disabled={newOrganizationName.trim().length < 2}
-            />
-          </Card>
+              <ErrorNotice error={organizationError} />
+              <Button
+                title={t('organization.create')}
+                icon="plus"
+                onPress={() => void createOrganization()}
+                loading={creatingOrganization}
+                disabled={newOrganizationName.trim().length < 2}
+              />
+            </Card>
+          </View>
         </Reveal>
 
-        <Reveal index={6}>
+        <Reveal index={7}>
+          <View style={styles.section}>
+            <SectionHeader title={t('common:nav.help')} />
+            <Card compact style={styles.rows}>
+              <SettingsRow
+                icon="person"
+                accent={theme.accent.yellow}
+                title={t('help.title')}
+                hint={t('help.entryDescription')}
+                onPress={() => router.push('/help')}
+              />
+              <SettingsRow
+                divided
+                icon="info"
+                accent={theme.accent.neutral}
+                title={t('about.entry')}
+                hint={t('about.entryDescription')}
+                onPress={() => router.push('/about')}
+              />
+            </Card>
+          </View>
+        </Reveal>
+
+        <Reveal index={8}>
           <View style={styles.signOut}>
             <ErrorNotice error={signOutError} />
             <Button
               title={t('common:actions.signOut')}
-
               icon="signOut"
               variant="danger"
               loading={signingOut}
@@ -515,18 +610,61 @@ export default function ProfileScreen() {
   );
 }
 
+interface SettingsRowProps {
+  icon: IconName;
+  accent: Accent;
+  title: string;
+  hint: string;
+  onPress: () => void;
+  divided?: boolean;
+}
+
+/** An iOS Settings-style row: tinted glyph, title and hint, chevron. */
+const SettingsRow = ({ icon, accent, title, hint, onPress, divided = false }: SettingsRowProps) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <ListRow
+      divided={divided}
+      showChevron
+      onPress={onPress}
+      leading={<IconWell name={icon} accent={accent} size={34} />}
+    >
+      <Text style={styles.rowTitle}>{title}</Text>
+      <Text style={styles.rowHint}>{hint}</Text>
+    </ListRow>
+  );
+};
+
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    identity: { alignItems: 'center', gap: theme.space.xs, paddingVertical: theme.space.xl },
-    logo: { width: 64, height: 64, borderRadius: theme.radius.lg },
+    content: { gap: theme.space.xl },
+    section: { gap: theme.space.sm },
+    rows: { paddingVertical: theme.space.xs },
+    identity: { flexDirection: 'row', alignItems: 'center', gap: theme.space.lg },
+    identityText: { flex: 1, gap: 2 },
+    logo: { width: 20, height: 20, borderRadius: theme.radius.xs },
     avatarRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     avatarActions: { flex: 1, gap: theme.space.xs },
-    name: { ...theme.type.display, fontSize: 30, lineHeight: 34, color: theme.color.ink, marginTop: theme.space.md },
+    name: { ...theme.type.title, color: theme.color.ink },
     email: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-    membership: { ...theme.type.label, color: theme.color.inkFaint, marginTop: theme.space.sm },
+    membershipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: theme.space.xs },
+    membership: { ...theme.type.label, color: theme.color.inkMuted, flexShrink: 1 },
     body: { ...theme.type.bodySmall, color: theme.color.inkMuted },
-    signOut: { gap: theme.space.md },
+    rowTitle: { ...theme.type.heading, color: theme.color.ink },
+    rowHint: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: 1 },
+    orgRow: {
+      minHeight: 52,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.space.md,
+      paddingVertical: theme.space.md,
+    },
+    orgRowDivided: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.border },
+    orgLogo: { width: 36, height: 36, borderRadius: theme.radius.md },
+    orgName: { ...theme.type.body, color: theme.color.ink, flex: 1 },
+    orgNameCurrent: { fontWeight: '600' },
+    signOut: { gap: theme.space.md, marginTop: theme.space.sm },
     blockout: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, paddingVertical: theme.space.md },
     blockoutRange: { ...theme.type.numeric, color: theme.color.ink },
     blockoutReason: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: 2 },

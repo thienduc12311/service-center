@@ -9,7 +9,7 @@ import { queryKeys } from '../../lib/query-keys';
 import { fileErrorForDisplay, groupPlanFiles, planFileBadges, planFileEntryKey } from '../../lib/file-view';
 import { useInvalidateFiles } from '../../lib/useFileUpload';
 import { useAuth } from '../../providers/AuthProvider';
-import { Button, Card, EmptyState, ErrorNotice, Label, Loading } from '../ui';
+import { Button, Card, EmptyState, ErrorNotice, Loading, SectionHeader } from '../ui';
 import { FileRow } from './FileRow';
 import type { Theme } from '../../lib/theme';
 import { useThemedStyles } from '../../lib/useTheme';
@@ -80,8 +80,8 @@ export const PlanFiles = ({ plan }: PlanFilesProps) => {
     <View style={styles.wrap}>
       <Text style={styles.intro}>{t('planFiles.intro')}</Text>
 
+      <SectionHeader title={t('planFiles.thisPlan')} count={groups.plan.length} />
       <Card>
-        <Label>{t('planFiles.thisPlan')}</Label>
         {groups.plan.length ? <View>{renderEntries(groups.plan)}</View> : <Text style={styles.muted}>{t('planFiles.noPlanFiles')}</Text>}
         {canEdit ? (
           <View style={styles.actions}>
@@ -101,18 +101,25 @@ export const PlanFiles = ({ plan }: PlanFilesProps) => {
         ) : null}
       </Card>
 
+      <SectionHeader title={t('planFiles.items')} />
       <Card>
-        <Label>{t('planFiles.items')}</Label>
         {!items.length ? <Text style={styles.muted}>{t('planFiles.noItems')}</Text> : null}
         {items.length > 0 && !anyItemFiles && !canEdit ? (
-          <EmptyState title={t('planFiles.noItemFilesTitle')} description={t('planFiles.noItemFilesDescription')} />
+          <EmptyState icon="document" title={t('planFiles.noItemFilesTitle')} description={t('planFiles.noItemFilesDescription')} />
         ) : null}
         {items.map((item) => {
           const list = groups.items.get(item.id) ?? [];
           if (!list.length && !canEdit) return null;
           return (
             <View key={item.id} style={styles.item}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
+              <View style={styles.itemHead}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                {list.length ? (
+                  <View style={styles.countPill}>
+                    <Text style={styles.countLabel}>{list.length}</Text>
+                  </View>
+                ) : null}
+              </View>
               {list.length ? <View>{renderEntries(list)}</View> : <Text style={styles.muted}>{t('planFiles.noFiles')}</Text>}
               {canEdit ? (
                 <Button
@@ -185,12 +192,22 @@ const LinkDefaults = ({ planId, serviceTypeId, linkedIds, onDone }: LinkDefaults
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    wrap: { gap: theme.space.lg },
+    wrap: { gap: theme.space.md },
     intro: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
     item: { gap: theme.space.xs },
-    itemTitle: { ...theme.type.body, color: theme.color.ink, fontWeight: '600' },
+    itemHead: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    itemTitle: { ...theme.type.heading, fontSize: 15, color: theme.color.ink, flexShrink: 1 },
+    countPill: {
+      minWidth: 20,
+      alignItems: 'center',
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.color.surfaceInset,
+    },
+    countLabel: { ...theme.type.numeric, fontSize: 11.5, lineHeight: 16, fontWeight: '600', color: theme.color.inkMuted },
     defaults: { gap: theme.space.sm },
     defaultRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     defaultTitle: { ...theme.type.body, color: theme.color.ink, flex: 1 },

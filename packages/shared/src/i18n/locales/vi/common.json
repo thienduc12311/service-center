@@ -121,7 +121,16 @@
     "notifications": "Thông báo",
     "mainNavigation": "Điều hướng chính",
     "organization": "Hội thánh",
-    "switchOrganization": "Chuyển hội thánh"
+    "switchOrganization": "Chuyển hội thánh",
+    "openNavigation": "Mở điều hướng",
+    "closeNavigation": "Đóng điều hướng",
+    "groups": {
+      "overview": "Tổng quan",
+      "planning": "Lên kế hoạch",
+      "people": "Con người",
+      "communication": "Liên lạc",
+      "insights": "Thống kê"
+    }
   },
   "count": {
     "people_other": "{{count}} người",

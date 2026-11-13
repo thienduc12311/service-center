@@ -7,7 +7,7 @@ import type { OperationalMessageSummary } from '@service-center/shared';
 import { api } from '../lib/api';
 import { queryKeys } from '../lib/query-keys';
 import { useAuth } from '../providers/AuthProvider';
-import { Button, EmptyState, ErrorNotice, ListRow, Loading, SegmentedControl, screenPadding } from './ui';
+import { Button, EmptyState, ErrorNotice, IconWell, ListRow, Loading, SectionHeader, SegmentedControl, screenPadding } from './ui';
 import { useFormatters } from '../i18n';
 import { type Theme } from '../lib/theme';
 import { useTheme, useThemedStyles } from '../lib/useTheme';
@@ -52,7 +52,7 @@ export function MessageList({ header }: MessageListProps) {
     <FlatList
       data={messages.data ?? []}
       keyExtractor={(message) => message.id}
-      contentContainerStyle={screenPadding(theme)}
+      contentContainerStyle={[screenPadding(theme), styles.list]}
       refreshControl={<RefreshControl refreshing={messages.isRefetching} onRefresh={() => void messages.refetch()} />}
       ListHeaderComponent={
         <View style={styles.header}>
@@ -72,6 +72,12 @@ export function MessageList({ header }: MessageListProps) {
             </>
           ) : null}
           {messages.error ? <ErrorNotice error={messages.error} /> : null}
+          {messages.data?.length ? (
+            <SectionHeader
+              title={isSender ? t(`messagesPage.tabs.${box}`) : t('common:nav.messages')}
+              count={messages.data.length}
+            />
+          ) : null}
         </View>
       }
       ListEmptyComponent={
@@ -79,16 +85,30 @@ export function MessageList({ header }: MessageListProps) {
           <Loading />
         ) : messages.error ? null : (
           <EmptyState
+            icon="mail"
             title={box === 'sent' ? t('messagesPage.empty.sentTitle') : t('messagesPage.empty.receivedTitle')}
             description={box === 'sent' ? t('messagesPage.empty.sentDescription') : undefined}
           />
         )
       }
       renderItem={({ item, index }) => (
-        <ListRow divided={index > 0} showChevron onPress={() => router.push({ pathname: '/messages/[id]', params: { id: item.id } })}>
-          <Text style={styles.subject}>{item.subject}</Text>
-          <Text style={styles.muted}>{meta(item)}</Text>
-        </ListRow>
+        <View
+          style={[
+            styles.groupRow,
+            index === 0 && styles.groupFirst,
+            index === (messages.data?.length ?? 0) - 1 && styles.groupLast,
+          ]}
+        >
+          <ListRow
+            divided={index > 0}
+            showChevron
+            onPress={() => router.push({ pathname: '/messages/[id]', params: { id: item.id } })}
+            leading={<IconWell name="mail" accent={item.sent_by_me ? theme.accent.neutral : theme.accent.blue} size={40} />}
+          >
+            <Text style={styles.subject} numberOfLines={2}>{item.subject}</Text>
+            <Text style={styles.muted}>{meta(item)}</Text>
+          </ListRow>
+        </View>
       )}
     />
   );
@@ -96,7 +116,25 @@ export function MessageList({ header }: MessageListProps) {
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    header: { gap: theme.space.md, marginBottom: theme.space.md },
-    subject: { ...theme.type.body, color: theme.color.ink, fontWeight: '600' },
+    list: { gap: 0 },
+    header: { gap: theme.space.lg, marginBottom: theme.space.md },
+    groupRow: {
+      backgroundColor: theme.color.surface,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: theme.color.border,
+      paddingHorizontal: theme.space.md,
+    },
+    groupFirst: {
+      borderTopWidth: 1,
+      borderTopLeftRadius: theme.radius.lg + 2,
+      borderTopRightRadius: theme.radius.lg + 2,
+    },
+    groupLast: {
+      borderBottomWidth: 1,
+      borderBottomLeftRadius: theme.radius.lg + 2,
+      borderBottomRightRadius: theme.radius.lg + 2,
+    },
+    subject: { ...theme.type.heading, color: theme.color.ink, marginBottom: 2 },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
   });

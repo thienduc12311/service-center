@@ -56,7 +56,7 @@ export const AcrossOrganizations = () => {
   return (
     <section className="card space-y-4 p-5">
       <div>
-        <h2 className="mb-1 font-semibold">{t('across.title')}</h2>
+        <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('across.title')}</h2>
         <p className="text-sm text-slate-500">{t('across.description', { count: others.length + 1 })}</p>
       </div>
       {settings.isLoading ? <Loading /> : (
@@ -76,7 +76,7 @@ export const AcrossOrganizations = () => {
 
       {current.combined_schedule && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold">{t('across.next30Days')}</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('across.next30Days')}</h3>
           {combined.isLoading ? <Loading /> : combined.data?.organizations.map((org) => (
             <div key={org.organization_id} className="mb-3">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{org.organization_name}</p>
@@ -106,7 +106,7 @@ export const AcrossOrganizations = () => {
       )}
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold">{t('across.copyTitle')}</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('across.copyTitle')}</h3>
         {(blockouts.data ?? []).filter((b) => !b.series_id).length === 0 ? (
           <p className="text-sm text-slate-400">{t('across.copyEmpty')}</p>
         ) : (

@@ -108,18 +108,18 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
                     setMainKey(arrangement?.song_key ?? song.default_key ?? null);
                   }}
                   className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
-                    songId === song.id ? 'bg-brand-50 ring-1 ring-brand-200' : 'hover:bg-slate-50'
+                    songId === song.id ? 'bg-brand-50 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:ring-brand-500/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
                 >
                   <span>
                     <span className="font-medium">{song.title}</span>
-                    {song.author && <span className="ml-2 text-xs text-slate-400">{song.author}</span>}
+                    {song.author && <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">{song.author}</span>}
                   </span>
-                  <span className="text-xs text-slate-400">{song.default_key ?? ''}</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500">{song.default_key ?? ''}</span>
                 </button>
               ))}
               {songs.data?.data.length === 0 && (
-                <p className="px-3 py-2 text-sm text-slate-400">{t('addItem.noSongs')}</p>
+                <p className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">{t('addItem.noSongs')}</p>
               )}
             </div>
             {selectedSong && (
@@ -133,7 +133,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
                   onChange={setMainKey}
                   placeholder={t('addItem.chooseKey')}
                 />
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                   {t('addItem.transposeHint')}
                 </p>
               </div>

@@ -1,14 +1,38 @@
 import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, type ColorValue } from 'react-native';
+import { StyleSheet, Text, View, type ColorValue } from 'react-native';
 import { Icon, type IconName } from '../../src/components/icons';
 import { fonts } from '../../src/lib/theme';
 import { useTheme } from '../../src/lib/useTheme';
 
 /** Tabs keep native navigation while using the website product colors. */
+interface TabIconProps {
+  color: ColorValue;
+  focused: boolean;
+}
+
+/** The active tab's glyph sits on a soft brand pill, like the website's sidebar. */
 const tabIcon =
   (name: IconName) =>
-  ({ color }: { color: ColorValue }) => <Icon name={name} size={22} color={color} />;
+  ({ color, focused }: TabIconProps) => <TabIcon name={name} color={color} focused={focused} />;
+
+interface TabIconViewProps extends TabIconProps {
+  name: IconName;
+}
+
+const TabIcon = ({ name, color, focused }: TabIconViewProps) => {
+  const theme = useTheme();
+  return (
+    <View
+      style={[
+        styles.iconPill,
+        focused && { backgroundColor: theme.accent.blue.bg },
+      ]}
+    >
+      <Icon name={name} size={21} color={color} strokeWidth={focused ? 2.1 : 1.75} />
+    </View>
+  );
+};
 
 interface TabLabelProps {
   color: ColorValue;
@@ -32,7 +56,8 @@ const TabLabel = ({ color, children }: TabLabelProps) => (
 );
 
 const styles = StyleSheet.create({
-  label: { fontFamily: fonts.sansMedium, fontWeight: '500', fontSize: 11, paddingHorizontal: 2 },
+  iconPill: { width: 48, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  label: { fontFamily: fonts.sansMedium, fontWeight: '600', fontSize: 10.5, letterSpacing: 0.1, paddingHorizontal: 2, marginTop: 2 },
 });
 
 export default function TabsLayout() {
@@ -51,7 +76,9 @@ export default function TabsLayout() {
           borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: theme.color.border,
           elevation: 0,
+          paddingTop: 6,
         },
+        tabBarItemStyle: { paddingTop: 2 },
       }}
     >
       <Tabs.Screen name="index" options={{ title: t('nav.mySchedule'), tabBarIcon: tabIcon('schedule') }} />

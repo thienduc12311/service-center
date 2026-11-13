@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
 import {
   formatFileSize,
+  type FileCategory,
   type FileSummary,
   type FileVersionSummary,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { Badge, Button, Menu, MenuItem } from '../ui';
+import { Icon, type IconName } from '../icons';
 import { DocumentModal } from './DocumentModal';
 import { FileDetailsModal } from './FileDetailsModal';
 import { FileVersionsModal } from './FileVersionsModal';
@@ -15,6 +17,17 @@ import { fileErrorMessage, fileUploadFailureText, fileUploadOutcomeText, fileVer
 import { useFormatters } from '../../i18n';
 import { useFileUpload } from './useFileUpload';
 
+
+/** The glyph shown beside a file of each category. */
+const CATEGORY_ICONS: Readonly<Record<FileCategory, IconName>> = {
+  chart: 'music',
+  lyrics: 'document',
+  audio: 'music',
+  video: 'play',
+  image: 'media',
+  document: 'document',
+  other: 'document',
+};
 export interface FileRowProps {
   file: FileSummary;
   /** The version this view uses (a plan's pinned one); defaults to the current version. */
@@ -73,18 +86,22 @@ export const FileRow = ({ file, version, planId = null, badges, extraActions, on
 
   return (
     <li className="py-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300" aria-hidden="true">
+          <Icon name={CATEGORY_ICONS[file.category]} className="size-4" />
+        </span>
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2 font-medium text-slate-900 dark:text-white">
             <span className="truncate">{file.title}</span>
-            <Badge tone="bg-slate-50 text-slate-600 ring-slate-500/20">{t(`files.kinds.${file.kind}`)}</Badge>
-            {file.archived_at && <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20">{t('files.archived')}</Badge>}
+            <Badge tone="bg-slate-50 text-slate-600 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600/40">{t(`files.kinds.${file.kind}`)}</Badge>
+            {file.archived_at && <Badge tone="bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25">{t('files.archived')}</Badge>}
             {file.kind === 'upload' && file.playback_rights === 'stream_only' && (
-              <Badge tone="bg-violet-50 text-violet-800 ring-violet-600/20">{t('files.playOnly')}</Badge>
+              <Badge tone="bg-violet-50 text-violet-800 ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/25">{t('files.playOnly')}</Badge>
             )}
             {badges}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
             {t(`files.categories.${file.category}`)} · {t(`files.audiences.${file.audience}`)}
             {shown && file.kind !== 'link' && (
               <>
@@ -97,9 +114,10 @@ export const FileRow = ({ file, version, planId = null, badges, extraActions, on
             {!usable && ` · ${t('files.noFinishedUpload')}`}
           </p>
         </div>
+        </div>
         <div className="flex items-center gap-2">
           {usable && (
-            <Button variant="secondary" onClick={() => open(false)}>
+            <Button variant="secondary" size="sm" onClick={() => open(false)}>
               {t('common:actions.open')}
             </Button>
           )}

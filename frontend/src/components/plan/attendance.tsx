@@ -67,7 +67,7 @@ export const TimeScopePicker = ({ times, value, onChange, idPrefix }: TimeScopeP
   const { t } = useTranslation('reports');
   if (times.length === 0) {
     return (
-      <p role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800 ring-1 ring-amber-600/20">
+      <p role="status" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
         {t('attendance.scope.noTimes')}
       </p>
     );
@@ -80,35 +80,35 @@ export const TimeScopePicker = ({ times, value, onChange, idPrefix }: TimeScopeP
         <input
           type="radio"
           name={`${idPrefix}-mode`}
-          className="mt-0.5"
+          className="mt-0.5 accent-brand-600"
           checked={value.mode === 'all'}
           onChange={() => onChange(ALL_TIMES)}
         />
         <span>
           {t('attendance.scope.all')}
-          <span className="block text-xs text-slate-500">{t('attendance.scope.allHint')}</span>
+          <span className="block text-xs text-slate-500 dark:text-slate-400">{t('attendance.scope.allHint')}</span>
         </span>
       </label>
       <label className="flex items-start gap-2 text-sm">
         <input
           type="radio"
           name={`${idPrefix}-mode`}
-          className="mt-0.5"
+          className="mt-0.5 accent-brand-600"
           checked={value.mode === 'selected'}
           onChange={() => onChange({ mode: 'selected', timeIds: value.timeIds })}
         />
         <span>
           {t('attendance.scope.selected')}
-          <span className="block text-xs text-slate-500">{t('attendance.scope.selectedHint')}</span>
+          <span className="block text-xs text-slate-500 dark:text-slate-400">{t('attendance.scope.selectedHint')}</span>
         </span>
       </label>
       {value.mode === 'selected' && (
-        <div className="ml-6 space-y-1">
+        <div className="surface-inset ml-6 space-y-1.5 p-3">
           {sorted.map((time) => (
             <label key={time.id} className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                className="size-4 rounded border-slate-300"
+                className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
                 checked={value.timeIds.includes(time.id)}
                 onChange={(event) =>
                   onChange({
@@ -122,7 +122,7 @@ export const TimeScopePicker = ({ times, value, onChange, idPrefix }: TimeScopeP
               <span>{timeLabel(time)}</span>
             </label>
           ))}
-          {value.timeIds.length === 0 && <p className="text-xs text-amber-600">{t('attendance.scope.chooseOne')}</p>}
+          {value.timeIds.length === 0 && <p className="text-xs text-amber-600 dark:text-amber-400">{t('attendance.scope.chooseOne')}</p>}
         </div>
       )}
     </fieldset>
@@ -170,7 +170,7 @@ export const ConflictList = ({ conflicts, nameOf }: ConflictListProps) => {
   return (
     <>
       {blocking.length > 0 && (
-        <div role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
+        <div role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25">
           <p className="font-medium">{t('attendance.conflicts.blockingTitle')}</p>
           <ul className="mt-1 space-y-0.5 text-xs">
             {blocking.map((conflict, index) => (
@@ -184,7 +184,7 @@ export const ConflictList = ({ conflicts, nameOf }: ConflictListProps) => {
         </div>
       )}
       {warnings.length > 0 && (
-        <div role="status" className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700 ring-1 ring-slate-300/60">
+        <div role="status" className="surface-inset p-3 text-sm text-slate-700 dark:text-slate-200">
           <p className="font-medium">{t('attendance.conflicts.warningTitle')}</p>
           <ul className="mt-1 space-y-0.5 text-xs">
             {warnings.map((conflict, index) => (
@@ -193,7 +193,7 @@ export const ConflictList = ({ conflicts, nameOf }: ConflictListProps) => {
               </li>
             ))}
           </ul>
-          <p className="mt-1 text-xs text-slate-500">{t('attendance.conflicts.warningHint')}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('attendance.conflicts.warningHint')}</p>
         </div>
       )}
     </>

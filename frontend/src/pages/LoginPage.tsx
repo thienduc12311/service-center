@@ -6,7 +6,8 @@ import { LocalizedError, type QualifiedTranslationKey } from '@service-center/sh
 import { supabase } from '../lib/supabase';
 import { LocaleSwitcher } from '../i18n';
 import { useAuth } from '../providers/AuthProvider';
-import { Button, ErrorNotice } from '../components/ui';
+import { Button, ErrorNotice, Notice } from '../components/ui';
+import { AuthLayout, BrandMark } from '../components/AuthLayout';
 
 type Mode = 'sign-in' | 'sign-up';
 
@@ -87,86 +88,81 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="relative grid min-h-full place-items-center px-4 py-12">
-      <div className="absolute right-4 top-4">
-        <LocaleSwitcher />
+    <AuthLayout corner={<LocaleSwitcher />} hideBrand>
+      <div className="mb-8 flex flex-col items-center text-center">
+        <BrandMark size="lg" />
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{t('common:app.name')}</h1>
+        <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{t('brand.tagline')}</p>
       </div>
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <span className="mx-auto grid size-12 place-items-center rounded-xl bg-brand-600 text-lg font-bold text-white">
-            SC
-          </span>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">{t('common:app.name')}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t('brand.tagline')}</p>
+
+      <form onSubmit={submit} className="card space-y-5 p-6 shadow-xl shadow-slate-900/5 sm:p-8 dark:shadow-none">
+        <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
+          {mode === 'sign-in' ? t('login.submitSignIn') : t('login.submitSignUp')}
+        </h2>
+
+        {mode === 'sign-up' && (
+          <div>
+            <label className="label" htmlFor="full-name">{t('login.fields.fullName')}</label>
+            <input
+              id="full-name"
+              className="input h-11"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              autoComplete="name"
+              required
+            />
+          </div>
+        )}
+
+        <div>
+          <label className="label" htmlFor="email">{t('login.fields.email')}</label>
+          <input
+            id="email"
+            type="email"
+            className="input h-11"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+          />
         </div>
 
-        <form onSubmit={submit} className="card space-y-4 p-6">
-          {mode === 'sign-up' && (
-            <div>
-              <label className="label" htmlFor="full-name">{t('login.fields.fullName')}</label>
-              <input
-                id="full-name"
-                className="input"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                autoComplete="name"
-                required
-              />
-            </div>
-          )}
+        <div>
+          <label className="label" htmlFor="password">{t('login.fields.password')}</label>
+          <input
+            id="password"
+            type="password"
+            className="input h-11"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+            minLength={8}
+            required
+          />
+        </div>
 
-          <div>
-            <label className="label" htmlFor="email">{t('login.fields.email')}</label>
-            <input
-              id="email"
-              type="email"
-              className="input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
-          </div>
+        <ErrorNotice error={error} />
+        {notice && <Notice tone="success">{notice}</Notice>}
 
-          <div>
-            <label className="label" htmlFor="password">{t('login.fields.password')}</label>
-            <input
-              id="password"
-              type="password"
-              className="input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-              minLength={8}
-              required
-            />
-          </div>
+        <Button type="submit" size="lg" loading={busy} className="w-full">
+          {mode === 'sign-in' ? t('login.submitSignIn') : t('login.submitSignUp')}
+        </Button>
+      </form>
 
-          <ErrorNotice error={error} />
-          {notice && (
-            <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{notice}</p>
-          )}
-
-          <Button type="submit" loading={busy} className="w-full">
-            {mode === 'sign-in' ? t('login.submitSignIn') : t('login.submitSignUp')}
-          </Button>
-
-          <p className="text-center text-sm text-slate-500">
-            {mode === 'sign-in' ? t('login.noAccount') : t('login.haveAccount')}{' '}
-            <button
-              type="button"
-              className="font-medium text-brand-600 hover:underline"
-              onClick={() => {
-                setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in');
-                setError(null);
-                setNotice(null);
-              }}
-            >
-              {mode === 'sign-in' ? t('login.switchToSignUp') : t('login.switchToSignIn')}
-            </button>
-          </p>
-        </form>
-      </div>
-    </div>
+      <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+        {mode === 'sign-in' ? t('login.noAccount') : t('login.haveAccount')}{' '}
+        <button
+          type="button"
+          className="font-medium text-brand-600 hover:underline dark:text-brand-200"
+          onClick={() => {
+            setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in');
+            setError(null);
+            setNotice(null);
+          }}
+        >
+          {mode === 'sign-in' ? t('login.switchToSignUp') : t('login.switchToSignIn')}
+        </button>
+      </p>
+    </AuthLayout>
   );
 };

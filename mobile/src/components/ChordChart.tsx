@@ -21,9 +21,11 @@ export const ChordChart = ({ chart }: ChordChartProps) => {
         {chart.sections.map((section, sectionIndex) => (
           <View key={sectionIndex} style={styles.section}>
             {section.label || section.type !== 'none' ? (
-              <Text style={styles.sectionLabel}>
-                {(section.label ?? section.type).toUpperCase()}
-              </Text>
+              <View style={styles.sectionTag}>
+                <Text style={styles.sectionLabel}>
+                  {(section.label ?? section.type).toUpperCase()}
+                </Text>
+              </View>
             ) : null}
             {section.lines.map((line, lineIndex) => {
               const { chordRow, lyricRow } = renderLineAsText(line);
@@ -45,13 +47,21 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     paper: {
       backgroundColor: theme.color.surface,
-      borderRadius: theme.radius.md,
+      borderRadius: theme.radius.lg + 2,
       borderWidth: 1,
       borderColor: theme.color.border,
     },
-    sheet: { padding: theme.space.lg },
-    section: { marginBottom: theme.space.lg },
-    sectionLabel: { ...theme.type.label, color: theme.color.brandText, marginBottom: theme.space.sm },
-    chordRow: { ...theme.type.code, color: theme.color.brandText },
-    lyricRow: { ...theme.type.code, color: theme.color.ink },
+    sheet: { paddingHorizontal: theme.space.lg, paddingTop: theme.space.lg, paddingBottom: theme.space.sm },
+    section: { marginBottom: theme.space.xl },
+    sectionTag: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: theme.space.sm,
+      paddingVertical: 2,
+      borderRadius: theme.radius.xs,
+      backgroundColor: theme.accent.blue.bg,
+      marginBottom: theme.space.sm,
+    },
+    sectionLabel: { ...theme.type.eyebrow, fontSize: 11, lineHeight: 15, color: theme.color.brandText },
+    chordRow: { ...theme.type.code, fontSize: 14.5, lineHeight: 20, fontWeight: '700', color: theme.color.brandText },
+    lyricRow: { ...theme.type.code, fontSize: 14.5, lineHeight: 22, color: theme.color.ink },
   });

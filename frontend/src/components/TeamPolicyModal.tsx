@@ -70,7 +70,7 @@ export const TeamPolicyModal = ({ team, onClose }: TeamPolicyModalProps) => {
       <div className="space-y-6">
         {access?.can_administer_access && (
           <section>
-            <h3 className="mb-1 text-sm font-semibold">{t('teamPolicy.leaders.title')}</h3>
+            <h3 className="mb-1 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('teamPolicy.leaders.title')}</h3>
             <p className="mb-2 text-xs text-slate-500">
               {t('teamPolicy.leaders.description', { team: team.name })}
             </p>
@@ -165,7 +165,7 @@ export const TeamPolicyModal = ({ team, onClose }: TeamPolicyModalProps) => {
         )}
 
         <section aria-labelledby="team-reminders-heading" className="space-y-2">
-          <h3 id="team-reminders-heading" className="text-sm font-medium">{t('teamPolicy.reminders.title')}</h3>
+          <h3 id="team-reminders-heading" className="text-sm font-medium text-slate-800 dark:text-slate-100">{t('teamPolicy.reminders.title')}</h3>
           <p className="text-sm text-slate-500">{t('teamPolicy.reminders.description')}</p>
           <ReminderPolicyEditor teamId={team.id} scopeLabel={t('teamPolicy.reminders.scope')} />
         </section>

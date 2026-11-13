@@ -39,7 +39,7 @@ export default function LinkMediaScreen() {
   if (!planId.success || !itemId.success) {
     return (
       <Screen>
-        <EmptyState title={t('mobileFiles.invalidLink')} />
+        <EmptyState icon="alert" title={t('mobileFiles.invalidLink')} />
       </Screen>
     );
   }
@@ -63,7 +63,7 @@ export default function LinkMediaScreen() {
   if (!item) {
     return (
       <Screen>
-        <EmptyState title={t('mobileMedia.itemGone')} />
+        <EmptyState icon="alert" title={t('mobileMedia.itemGone')} />
       </Screen>
     );
   }
@@ -119,7 +119,7 @@ const LinkMedia = ({ plan, item }: LinkMediaProps) => {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('linkMedia.title', { title: item.title }) }} />
-        <EmptyState title={item.item_type === 'item' ? t('mobileMedia.noAccess') : t('mobileMedia.regularItemsOnly')} />
+        <EmptyState icon="alert" title={item.item_type === 'item' ? t('mobileMedia.noAccess') : t('mobileMedia.regularItemsOnly')} />
       </Screen>
     );
   }
@@ -201,7 +201,7 @@ const makeStyles = (theme: Theme) =>
       ...theme.type.bodySmall,
       color: theme.accent.yellow.fg,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
   });

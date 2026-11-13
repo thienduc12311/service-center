@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { ORIGINAL_CHART_VIEW, type ChartNotation, type ChartViewSelection, type KeyQuality, type TranslationKey } from '@service-center/shared';
 import { KeyGrid, KeyQualityTabs } from './KeySelect';
+import { Icon } from './icons';
 
 /** How the chart is currently being shown: a key, or a key-independent system. */
 export type ChartView = ChartViewSelection;
@@ -57,7 +58,7 @@ export const ChartNotationSelect = ({ value, onChange }: ChartNotationSelectProp
         className="input flex min-w-44 items-center justify-between text-left"
       >
         <span>{viewLabel(value, t)}</span>
-        <span aria-hidden="true" className="text-xs text-slate-400">{open ? '▴' : '▾'}</span>
+        <Icon name="chevronDown" className={`size-4 shrink-0 text-slate-400 transition ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (

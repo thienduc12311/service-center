@@ -2,7 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { AttendanceConflict } from '@service-center/shared';
 import { type Theme } from '../lib/theme';
-import { useThemedStyles } from '../lib/useTheme';
+import { useTheme, useThemedStyles } from '../lib/useTheme';
+import { Icon } from './icons';
 import { useFormatters } from '../i18n';
 
 export interface ConflictListProps {
@@ -18,6 +19,7 @@ export interface ConflictListProps {
 export const ConflictList = ({ conflicts, nameOf }: ConflictListProps) => {
   const { t } = useTranslation('reports');
   const format = useFormatters();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
   const windowOf = (conflict: AttendanceConflict): string => {
@@ -39,8 +41,11 @@ export const ConflictList = ({ conflicts, nameOf }: ConflictListProps) => {
   return (
     <>
       {blocking.length > 0 ? (
-        <View accessibilityRole="alert" style={styles.box}>
-          <Text style={styles.warnTitle}>{t('attendance.conflicts.blockingTitle')}</Text>
+        <View accessibilityRole="alert" style={[styles.box, styles.blockingBox]}>
+          <View style={styles.titleRow}>
+            <Icon name="alert" size={16} color={theme.accent.yellow.fg} />
+            <Text style={styles.warnTitle}>{t('attendance.conflicts.blockingTitle')}</Text>
+          </View>
           {blocking.map((conflict, index) => (
             <Text key={`${conflict.candidate_key}-${conflict.starts_at}-${index}`} style={styles.line}>
               {conflict.kind === 'overlapping_commitment'
@@ -52,7 +57,10 @@ export const ConflictList = ({ conflicts, nameOf }: ConflictListProps) => {
       ) : null}
       {warnings.length > 0 ? (
         <View style={styles.box}>
-          <Text style={styles.title}>{t('attendance.conflicts.warningTitle')}</Text>
+          <View style={styles.titleRow}>
+            <Icon name="info" size={16} color={theme.color.inkMuted} />
+            <Text style={styles.title}>{t('attendance.conflicts.warningTitle')}</Text>
+          </View>
           {warnings.map((conflict, index) => (
             <Text key={`${conflict.candidate_key}-${conflict.starts_at}-${index}`} style={styles.line}>
               {t('attendance.conflicts.samePlan', { name: nameOf(conflict.person_id), detail: detailOf(conflict), window: windowOf(conflict) })}
@@ -70,11 +78,14 @@ const makeStyles = (theme: Theme) =>
     box: {
       gap: theme.space.xs,
       padding: theme.space.md,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderWidth: 1,
       borderColor: theme.color.border,
       borderRadius: theme.radius.md,
+      backgroundColor: theme.color.surfaceInset,
     },
-    warnTitle: { ...theme.type.body, fontWeight: '600', color: theme.accent.yellow.fg },
-    title: { ...theme.type.body, color: theme.color.ink },
+    blockingBox: { backgroundColor: theme.accent.yellow.bg, borderColor: theme.accent.yellow.bg },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    warnTitle: { ...theme.type.heading, color: theme.accent.yellow.fg, flex: 1 },
+    title: { ...theme.type.heading, color: theme.color.ink, flex: 1 },
     line: { ...theme.type.bodySmall, color: theme.color.inkMuted },
   });

@@ -21,10 +21,10 @@ const NoticeList = ({ notices, tone, context }: NoticeListProps) => {
   return notices.length === 0 ? null : (
     <ul
       role={tone === 'block' ? 'alert' : undefined}
-      className={`space-y-1 rounded-lg p-3 text-sm ring-1 ${
+      className={`space-y-1 rounded-xl px-4 py-3 text-sm ring-1 ring-inset ${
         tone === 'block'
-          ? 'bg-red-50 text-red-800 ring-red-600/20 dark:bg-red-950/40 dark:text-red-200'
-          : 'bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-950/40 dark:text-amber-200'
+          ? 'bg-rose-50 text-rose-800 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/30'
+          : 'bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25'
       }`}
     >
       {notices.map((notice) => (
@@ -40,8 +40,8 @@ interface RowProps {
 }
 
 const Row = ({ label, children }: RowProps) => (
-  <div className="flex gap-3 border-t border-slate-100 py-2 text-sm first:border-t-0 dark:border-slate-800">
-    <dt className="w-40 shrink-0 font-medium text-slate-600 dark:text-slate-300">{label}</dt>
+  <div className="flex flex-col gap-0.5 border-t border-app-border py-2.5 text-sm first:border-t-0 sm:flex-row sm:gap-3">
+    <dt className="shrink-0 font-medium text-slate-700 sm:w-40 dark:text-slate-200">{label}</dt>
     <dd className="min-w-0 flex-1 text-slate-600 dark:text-slate-300">{children}</dd>
   </div>
 );
@@ -60,7 +60,7 @@ export const TemplateApplyReview = ({ preview, newPlan = false }: TemplateApplyR
     <div className="space-y-3">
       <NoticeList notices={preview.blocking} tone="block" context={context} />
       <NoticeList notices={preview.warnings} tone="warn" context={context} />
-      <dl className="rounded-lg bg-slate-50 px-3 py-1 dark:bg-slate-900">
+      <dl className="surface-inset px-3 py-0.5">
         {preview.items && (
           <Row label={t('review.items')}>
             <span className="block">
@@ -76,7 +76,7 @@ export const TemplateApplyReview = ({ preview, newPlan = false }: TemplateApplyR
               <span className="block">{t('review.itemsRemoved', { count: preview.items.remove_count })}</span>
             )}
             {preview.items.add.length > 0 && (
-              <span className="block text-xs text-slate-500">{preview.items.add.map((item) => item.title).join(' · ')}</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">{preview.items.add.map((item) => item.title).join(' · ')}</span>
             )}
             {preview.items.skipped.map((skip) => (
               <span key={skip.title} className="block text-xs text-amber-700 dark:text-amber-300">
@@ -96,7 +96,7 @@ export const TemplateApplyReview = ({ preview, newPlan = false }: TemplateApplyR
                       when: fmt.dateTime(time.starts_at, { timeZone: preview.timezone }),
                       timezone: preview.timezone,
                     })}
-                    <span className="text-xs text-slate-400"> · {t('review.yourTime', { time: fmt.dateTime(time.starts_at) })}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500"> · {t('review.yourTime', { time: fmt.dateTime(time.starts_at) })}</span>
                   </li>
                 ))}
               </ul>
@@ -122,7 +122,7 @@ export const TemplateApplyReview = ({ preview, newPlan = false }: TemplateApplyR
               <span className="block">{t('review.needsCleared', { count: preview.needs.remove_count })}</span>
             )}
             {preview.needs.add.map((need) => (
-              <span key={need.position_id} className="block text-xs text-slate-500">
+              <span key={need.position_id} className="block text-xs text-slate-500 dark:text-slate-400">
                 {t('review.needLine', { position: names.position(need.position_id), needed: need.needed })}
               </span>
             ))}
@@ -140,7 +140,7 @@ export const TemplateApplyReview = ({ preview, newPlan = false }: TemplateApplyR
               <span className="block">{t('review.rosterExisting', { count: preview.roster.existing_count })}</span>
             )}
             {preview.roster.add.map((entry) => (
-              <span key={`${entry.person_id}-${entry.team_id}-${entry.position_id}`} className="block text-xs text-slate-500">
+              <span key={`${entry.person_id}-${entry.team_id}-${entry.position_id}`} className="block text-xs text-slate-500 dark:text-slate-400">
                 {t('names.rosterEntry', {
                   person: names.person(entry.person_id),
                   target: entry.position_id ? names.position(entry.position_id) : names.team(entry.team_id),
@@ -155,7 +155,7 @@ export const TemplateApplyReview = ({ preview, newPlan = false }: TemplateApplyR
           </Row>
         )}
       </dl>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         {preview.template.revision !== preview.template.latest_revision
           ? t('review.templateRevisionOlder', {
               name: preview.template.name,

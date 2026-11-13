@@ -99,7 +99,7 @@ export default function EditPlanTimesScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('mobileTimes.screenTitle') }} />
-        <EmptyState title={t('mobileTimes.noAccess')} />
+        <EmptyState icon="alert" title={t('mobileTimes.noAccess')} />
       </Screen>
     );
   }
@@ -390,7 +390,7 @@ const makeStyles = (theme: Theme) =>
       ...theme.type.bodySmall,
       color: theme.accent.yellow.fg,
       backgroundColor: theme.accent.yellow.bg,
-      padding: theme.space.sm,
-      borderRadius: theme.radius.sm,
+      padding: theme.space.md,
+      borderRadius: theme.radius.md,
     },
   });

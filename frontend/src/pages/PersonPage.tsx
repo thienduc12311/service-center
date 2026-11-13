@@ -7,7 +7,8 @@ import { ORG_ROLES, type CreatePersonInput, type PersonDetail } from '@service-c
 import { api } from '../lib/api';
 import { usePerson, useInvalidateOrg } from '../hooks/queries';
 import { PersonPolicyPanel } from '../components/PersonPolicyPanel';
-import { Badge, Button, ErrorNotice, Loading, PageHeader } from '../components/ui';
+import { Badge, Button, ErrorNotice, PageHeader, SkeletonList } from '../components/ui';
+import { Icon, type IconName } from '../components/icons';
 import { RosterHistoryPanel } from '../components/people/RosterHistoryPanel';
 import { useAuth } from '../providers/AuthProvider';
 import { AvatarUpload } from '../components/AvatarUpload';
@@ -122,6 +123,29 @@ const Field = ({ id, label, children }: FieldProps) => (
   </div>
 );
 
+interface FormSectionProps {
+  title: string;
+  icon: IconName;
+  description?: ReactNode;
+  children: ReactNode;
+}
+
+/** One titled group of the person form, as its own card. */
+const FormSection = ({ title, icon, description, children }: FormSectionProps) => (
+  <section className="card overflow-hidden">
+    <div className="flex items-start gap-3 border-b border-app-border px-5 py-4">
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+        <Icon name={icon} className="size-4" />
+      </span>
+      <div className="min-w-0">
+        <h2 className="font-semibold text-slate-900 dark:text-white">{title}</h2>
+        {description && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{description}</p>}
+      </div>
+    </div>
+    <div className="space-y-4 p-5">{children}</div>
+  </section>
+);
+
 export const PersonPage = () => {
   const { t } = useTranslation(['people', 'common']);
   const f = useFormatters();
@@ -181,13 +205,14 @@ export const PersonPage = () => {
     },
   });
 
-  if (!isNew && person.isLoading) return <Loading />;
+  if (!isNew && person.isLoading) return <SkeletonList rows={4} />;
 
   const hasLogin = Boolean(person.data?.profile_id);
 
   return (
-    <div className="max-w-3xl">
+    <div>
       <PageHeader
+        back={{ to: '/people', label: t('list.title') }}
         title={isNew ? t('person.addTitle') : (form.first_name || t('person.editTitle'))}
         subtitle={
           isNew
@@ -200,7 +225,7 @@ export const PersonPage = () => {
           !isNew &&
           canManage && (
             <div className="flex items-center gap-2">
-              {person.data?.archived_at && <Badge tone="bg-amber-50 text-amber-700 ring-amber-600/20">{t('person.archived')}</Badge>}
+              {person.data?.archived_at && <Badge tone="bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25">{t('person.archived')}</Badge>}
               <Button
                 variant="secondary"
                 loading={archive.isPending}
@@ -212,19 +237,19 @@ export const PersonPage = () => {
           )
         }
       />
-      <ErrorNotice error={archive.error} />
-      {/* F16: shown only to the person themselves or a roster manager (the server decides). */}
-      {!isNew && personId && <div className="mb-6"><CalendarSharingCard personId={personId} /></div>}
+      <div className="mb-4 empty:hidden">
+        <ErrorNotice error={archive.error} />
+      </div>
 
+      <div className={`grid grid-cols-1 gap-6 ${isNew ? 'max-w-3xl' : 'lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start'}`}>
       <form
-        className="space-y-6"
+        className="min-w-0 space-y-6"
         onSubmit={(event: FormEvent) => {
           event.preventDefault();
           save.mutate();
         }}
       >
-        <section className="card space-y-4 p-5">
-          <h2 className="font-semibold">{t('person.sections.basic')}</h2>
+        <FormSection icon="person" title={t('person.sections.basic')}>
           {!isNew && personId && organizationId && canManage && (
             <AvatarUpload
               name={[form.first_name, form.last_name].filter(Boolean).join(' ')}
@@ -284,15 +309,13 @@ export const PersonPage = () => {
               />
             </Field>
           </div>
-        </section>
+        </FormSection>
 
-        <section className="card space-y-4 p-5">
-          <h2 className="font-semibold">{t('person.sections.contact')}</h2>
-          {hasLogin && (
-            <p className="text-xs text-slate-500">
-              {t('person.loginManagedHint')}
-            </p>
-          )}
+        <FormSection
+          icon="mail"
+          title={t('person.sections.contact')}
+          description={hasLogin ? t('person.loginManagedHint') : undefined}
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field id="email" label={t('person.fields.email')}>
               <input
@@ -316,10 +339,9 @@ export const PersonPage = () => {
               />
             </Field>
           </div>
-        </section>
+        </FormSection>
 
-        <section className="card space-y-4 p-5">
-          <h2 className="font-semibold">{t('person.sections.address')}</h2>
+        <FormSection icon="mapPin" title={t('person.sections.address')}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field id="address1" label={t('person.fields.address1')}>
               <input id="address1" className="input" value={form.address_line1} onChange={(e) => set('address_line1', e.target.value)} />
@@ -340,10 +362,9 @@ export const PersonPage = () => {
               <input id="country" className="input" value={form.country} onChange={(e) => set('country', e.target.value)} />
             </Field>
           </div>
-        </section>
+        </FormSection>
 
-        <section className="card space-y-4 p-5">
-          <h2 className="font-semibold">{t('person.sections.other')}</h2>
+        <FormSection icon="info" title={t('person.sections.other')}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field id="campus" label={t('person.fields.campus')}>
               <input id="campus" className="input" value={form.campus} onChange={(e) => set('campus', e.target.value)} />
@@ -377,11 +398,11 @@ export const PersonPage = () => {
               onChange={(e) => set('medical_note', e.target.value)}
             />
           </Field>
-        </section>
+        </FormSection>
 
         <ErrorNotice error={save.error} />
 
-        <div className="flex justify-end gap-2">
+        <div className="sticky bottom-0 z-10 -mx-1 flex justify-end gap-2 border-t border-app-border bg-app-canvas/90 px-1 py-3 backdrop-blur">
           <Button type="button" variant="secondary" onClick={() => navigate('/people')}>
             {t('common:actions.cancel')}
           </Button>
@@ -391,17 +412,27 @@ export const PersonPage = () => {
         </div>
       </form>
 
-      {!isNew && !hasLogin && !person.data?.archived_at && (
-        <section className="card mt-6 space-y-4 p-5">
-          <div>
-            <h2 className="font-semibold">{t('person.invite.title')}</h2>
-            <p className="mt-1 text-sm text-slate-500">
+      {!isNew && (
+      <aside className="min-w-0 space-y-6 lg:sticky lg:top-4">
+      {/* F16: shown only to the person themselves or a roster manager (the server decides). */}
+      {personId && <CalendarSharingCard personId={personId} />}
+
+      {!hasLogin && !person.data?.archived_at && (
+        <section className="card space-y-4 p-5">
+          <div className="flex items-start gap-3">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-200">
+              <Icon name="mail" className="size-4" />
+            </span>
+            <div className="min-w-0">
+            <h2 className="font-semibold text-slate-900 dark:text-white">{t('person.invite.title')}</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {person.data?.pending_invitation
                 ? t('person.invite.sentTo', { email: person.data.pending_invitation.email, date: f.date(person.data.pending_invitation.expires_at, 'medium') })
                 : t('person.invite.explainer')}
             </p>
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4">
             <Field id="invite-email" label={t('person.invite.sendTo')}>
               <input
                 id="invite-email"
@@ -426,22 +457,27 @@ export const PersonPage = () => {
           <ErrorNotice error={invite.error} />
 
           {inviteUrl && (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-3 text-sm">
-              <span>{t('person.invite.shareHint')}</span>
-              <code className="max-w-[16rem] truncate rounded bg-white px-2 py-1 text-xs ring-1 ring-slate-200">{inviteUrl}</code>
-              <Button variant="secondary" onClick={() => navigator.clipboard.writeText(inviteUrl)}>
+            <div className="surface-inset space-y-2 p-3 text-sm">
+              <span className="block text-slate-600 dark:text-slate-300">{t('person.invite.shareHint')}</span>
+              <div className="flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-lg bg-white px-2 py-1 text-xs ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">{inviteUrl}</code>
+              <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(inviteUrl)}>
                 {t('common:actions.copy')}
               </Button>
+              </div>
             </div>
           )}
 
           <div className="flex justify-end">
-            <Button type="button" loading={invite.isPending} onClick={() => invite.mutate()} disabled={!inviteEmail}>
+            <Button type="button" icon="mail" className="w-full sm:w-auto lg:w-full" loading={invite.isPending} onClick={() => invite.mutate()} disabled={!inviteEmail}>
               {person.data?.pending_invitation ? t('person.invite.resend') : t('person.invite.send')}
             </Button>
           </div>
         </section>
       )}
+      </aside>
+      )}
+      </div>
 
       {!isNew && personId && (
         <div className="mt-6">

@@ -82,18 +82,18 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
   return (
     <Modal open={open} title={t('import.title')} onClose={onClose}>
       <div className="space-y-4">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {plan.service_type
             ? t('import.introWithType', { serviceType: plan.service_type.name })
             : t('import.intro')}
         </p>
 
         {candidates.isLoading ? (
-          <div className="flex justify-center py-6 text-slate-400">
+          <div className="flex justify-center py-6 text-slate-400 dark:text-slate-500">
             <Spinner />
           </div>
         ) : sources.length === 0 ? (
-          <p className="rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-400">
+          <p className="surface-inset px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
             {t('import.none')}
           </p>
         ) : (
@@ -107,11 +107,11 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
                   setAttemptKey(crypto.randomUUID());
                 }}
                 className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
-                  sourceId === source.id ? 'bg-brand-50 ring-1 ring-brand-200' : 'hover:bg-slate-50'
+                  sourceId === source.id ? 'bg-brand-50 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:ring-brand-500/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 <span className="font-medium">{source.title}</span>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-slate-400 dark:text-slate-500">
                   {t('import.sourceMeta', {
                     date: fmt.date(source.service_date),
                     items: t('count.items', { count: source.counts.items }),
@@ -129,7 +129,7 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              className="size-4 rounded border-slate-300"
+              className="size-4 rounded border-slate-300 dark:border-slate-700"
               checked={withOrder}
               onChange={(event) => {
                 setWithOrder(event.target.checked);
@@ -141,7 +141,7 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              className="size-4 rounded border-slate-300"
+              className="size-4 rounded border-slate-300 dark:border-slate-700"
               checked={withTeam}
               onChange={(event) => {
                 setWithTeam(event.target.checked);
@@ -151,14 +151,14 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
             {t('import.team')}
           </label>
           {withTeam && (
-            <p className="ml-6 text-xs text-slate-500">
+            <p className="ml-6 text-xs text-slate-500 dark:text-slate-400">
               {t('import.teamHint')}
             </p>
           )}
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              className="size-4 rounded border-slate-300"
+              className="size-4 rounded border-slate-300 dark:border-slate-700"
               checked={withNeeds}
               onChange={(event) => {
                 setWithNeeds(event.target.checked);
@@ -182,7 +182,7 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
                 onChange={(event) => setConflictReason(event.target.value)}
               />
             ) : (
-              <p className="text-xs text-slate-500">{t('import.noOverride')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('import.noOverride')}</p>
             )}
           </>
         ) : (

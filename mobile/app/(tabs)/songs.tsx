@@ -27,12 +27,14 @@ import {
   EmptyState,
   ErrorNotice,
   Field,
+  IconWell,
   KeyCap,
   Label,
   ListRow,
   Loading,
   Screen,
   ScreenHeader,
+  SectionHeader,
   SegmentedControl,
   Tag,
   screenPadding,
@@ -181,11 +183,10 @@ export default function SongsScreen() {
 
   return (
     <Screen safeTop>
-      <NotificationBell />
       <FlatList
         data={rows}
         keyExtractor={(song) => song.id}
-        contentContainerStyle={screenPadding(theme)}
+        contentContainerStyle={[screenPadding(theme), styles.list]}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.color.inkFaint} />}
         onEndReachedThreshold={0.4}
@@ -197,14 +198,27 @@ export default function SongsScreen() {
         ListHeaderComponent={
           <View style={styles.head}>
             <ScreenHeader
-              eyebrow={total !== null ? t('common:count.songs', { count: total }) : undefined}
               title={t('common:nav.songs')}
               description={t('mobileLibrary.description')}
+              trailing={<NotificationBell bar={false} />}
             />
             <View style={styles.actions}>
-              {canManage ? <Button title={t('songsPage.addSong')} icon="plus" onPress={() => router.push('/song/new')} /> : null}
+              {canManage ? (
+                <Button
+                  title={t('songsPage.addSong')}
+                  icon="plus"
+                  style={styles.action}
+                  onPress={() => router.push('/song/new')}
+                />
+              ) : null}
               {/* MOB-030: the F14 media library sits beside the song library, as on the website. */}
-              <Button title={t('media:library.title')} icon="image" variant="secondary" onPress={() => router.push('/media')} />
+              <Button
+                title={t('media:library.title')}
+                icon="image"
+                variant="secondary"
+                style={styles.action}
+                onPress={() => router.push('/media')}
+              />
             </View>
 
             <View style={styles.search}>
@@ -222,21 +236,22 @@ export default function SongsScreen() {
               />
             </View>
 
-            <View style={styles.group}>
-              <Label>{t('songsPage.sortLabel')}</Label>
-              <SegmentedControl options={sortOptions} value={sort} onChange={setSort} />
+            <View style={styles.controls}>
+              <View style={styles.group}>
+                <Label>{t('songsPage.filters.library')}</Label>
+                <SegmentedControl options={scopeOptions} value={scope} onChange={setScope} />
+              </View>
+              <View style={styles.group}>
+                <Label>{t('songsPage.sortLabel')}</Label>
+                <SegmentedControl options={sortOptions} value={sort} onChange={setSort} />
+              </View>
+              <Button
+                title={filterToggleLabel}
+                variant="secondary"
+                icon={showFilters ? 'chevronUp' : 'chevronDown'}
+                onPress={() => setShowFilters((open) => !open)}
+              />
             </View>
-            <View style={styles.group}>
-              <Label>{t('songsPage.filters.library')}</Label>
-              <SegmentedControl options={scopeOptions} value={scope} onChange={setScope} />
-            </View>
-
-            <Button
-              title={filterToggleLabel}
-              variant="secondary"
-              icon={showFilters ? 'chevronUp' : 'chevronDown'}
-              onPress={() => setShowFilters((open) => !open)}
-            />
             {showFilters ? (
               <Card>
                 <View style={styles.filters}>
@@ -278,6 +293,9 @@ export default function SongsScreen() {
                 <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void library.refetch()} />
               </View>
             ) : null}
+            {rows.length ? (
+              <SectionHeader title={t('common:nav.songs')} count={total ?? undefined} />
+            ) : null}
           </View>
         }
         ListEmptyComponent={
@@ -285,6 +303,7 @@ export default function SongsScreen() {
             <Loading />
           ) : firstPageFailed ? null : (
             <EmptyState
+              icon={narrowed ? 'search' : 'music'}
               title={narrowed ? t('mobileLibrary.emptyFiltered') : t('mobileSongs.emptyLibrary')}
               description={
                 narrowed
@@ -296,6 +315,7 @@ export default function SongsScreen() {
             />
           )
         }
+        ListFooterComponentStyle={styles.footerWrap}
         ListFooterComponent={
           library.isFetchingNextPage ? (
             <Loading label={t('mobileLibrary.loadingMore')} />
@@ -317,7 +337,11 @@ export default function SongsScreen() {
         }
         renderItem={({ item, index }) => (
           <Reveal index={Math.min(index, 8)}>
-            <SongRow song={item} first={index === 0} onPress={() => router.push({ pathname: '/song/[id]', params: { id: item.id } })} />
+            <SongRow
+              song={item}
+              first={index === 0}
+              last={index === rows.length - 1}
+              onPress={() => router.push({ pathname: '/song/[id]', params: { id: item.id } })} />
           </Reveal>
         )}
       />
@@ -328,11 +352,13 @@ export default function SongsScreen() {
 interface SongRowProps {
   song: SongListItem;
   first: boolean;
+  /** The last loaded row closes the grouped list's rounded surface. */
+  last: boolean;
   onPress: () => void;
 }
 
 /** One library row: title, archive state, author and tempo, the keys it is played in, last use. */
-const SongRow = ({ song, first, onPress }: SongRowProps) => {
+const SongRow = ({ song, first, last, onPress }: SongRowProps) => {
   const { t } = useTranslation('songs');
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -342,47 +368,76 @@ const SongRow = ({ song, first, onPress }: SongRowProps) => {
   const detail = [song.author, bpm ? t('arrangement.bpmValue', { bpm }) : null].filter(Boolean).join(' · ');
 
   return (
-    <ListRow onPress={onPress} showChevron divided={!first}>
-      <View style={styles.songRow}>
-        <View style={styles.flex}>
-          <Text style={styles.songTitle}>{song.title}</Text>
-          <Text style={styles.songDetail}>{detail || t('mobileSongs.authorUnknown')}</Text>
-          {song.last_scheduled_at ? (
-            <Text style={styles.songDetail}>{t('mobileLibrary.lastScheduled', { date: format.date(song.last_scheduled_at, 'medium') })}</Text>
-          ) : null}
-          {song.archived_at ? (
-            <View style={styles.badges}>
-              <Tag label={t('songsPage.archivedBadge')} accent={theme.accent.neutral} />
-            </View>
-          ) : null}
+    <View style={[styles.groupRow, first && styles.groupFirst, last && styles.groupLast]}>
+      <ListRow
+        onPress={onPress}
+        showChevron
+        divided={!first}
+        leading={<IconWell name="music" accent={song.archived_at ? theme.accent.neutral : theme.accent.blue} size={36} />}
+      >
+        <View style={styles.songRow}>
+          <View style={styles.flex}>
+            <Text style={styles.songTitle}>{song.title}</Text>
+            <Text style={styles.songDetail}>{detail || t('mobileSongs.authorUnknown')}</Text>
+            {song.last_scheduled_at ? (
+              <Text style={styles.songDetail}>{t('mobileLibrary.lastScheduled', { date: format.date(song.last_scheduled_at, 'medium') })}</Text>
+            ) : null}
+            {song.archived_at ? (
+              <View style={styles.badges}>
+                <Tag label={t('songsPage.archivedBadge')} accent={theme.accent.neutral} />
+              </View>
+            ) : null}
+          </View>
+          {keys ? <KeyCap>{keys}</KeyCap> : null}
         </View>
-        {keys ? <KeyCap>{keys}</KeyCap> : null}
-      </View>
-    </ListRow>
+      </ListRow>
+    </View>
   );
 };
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    head: { gap: theme.space.lg, marginBottom: theme.space.sm },
+    list: { gap: 0 },
+    head: { gap: theme.space.lg, marginBottom: theme.space.md },
     group: { gap: theme.space.sm },
+    controls: { gap: theme.space.md },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    action: { flexGrow: 1 },
+    groupRow: {
+      backgroundColor: theme.color.surface,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: theme.color.border,
+      paddingHorizontal: theme.space.md,
+    },
+    groupFirst: {
+      borderTopWidth: 1,
+      borderTopLeftRadius: theme.radius.lg + 2,
+      borderTopRightRadius: theme.radius.lg + 2,
+    },
+    groupLast: {
+      borderBottomWidth: 1,
+      borderBottomLeftRadius: theme.radius.lg + 2,
+      borderBottomRightRadius: theme.radius.lg + 2,
+    },
     filters: { gap: theme.space.md },
     retry: { gap: theme.space.md, paddingVertical: theme.space.md },
     footer: { marginTop: theme.space.lg },
+    footerWrap: { marginTop: theme.space.sm },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     search: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: theme.space.md,
+      gap: theme.space.sm,
+      minHeight: 46,
       borderWidth: 1,
       borderColor: theme.color.border,
-      borderRadius: theme.radius.sm,
-      backgroundColor: theme.color.surface,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.color.surfaceInset,
       paddingHorizontal: theme.space.md,
     },
-    searchInput: { ...theme.type.body, flex: 1, color: theme.color.ink, paddingVertical: theme.space.md },
+    searchInput: { ...theme.type.body, lineHeight: undefined, flex: 1, color: theme.color.ink, paddingVertical: theme.space.sm + 2 },
     songRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     songTitle: { ...theme.type.heading, color: theme.color.ink },
     songDetail: { ...theme.type.bodySmall, color: theme.color.inkMuted, marginTop: 2 },

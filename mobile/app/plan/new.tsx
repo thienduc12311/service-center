@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Button,
+  Card,
   Chip,
   EmptyState,
   ErrorNotice,
@@ -128,7 +129,7 @@ export default function NewPlanScreen() {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('plansPage.createTitle') }} />
-        <EmptyState title={t('templates:generate.noAccess')} />
+        <EmptyState icon="alert" title={t('templates:generate.noAccess')} />
       </Screen>
     );
   }
@@ -144,27 +145,40 @@ export default function NewPlanScreen() {
     <Screen>
       <Stack.Screen options={{ title: t('plansPage.createTitle') }} />
       <ScrollView contentContainerStyle={[screenPadding(theme), styles.form]} keyboardShouldPersistTaps="handled">
-        <Field
-          label={t('plansPage.fieldTitle')}
-          value={draft.title}
-          onChangeText={(title) => update({ title })}
-          placeholder={t('plansPage.titlePlaceholder')}
-          maxLength={200}
-          autoFocus
-        />
+        <Card>
+          <Field
+            label={t('plansPage.fieldTitle')}
+            value={draft.title}
+            onChangeText={(title) => update({ title })}
+            placeholder={t('plansPage.titlePlaceholder')}
+            maxLength={200}
+            autoFocus
+          />
+          <Field
+            label={t('plansPage.fieldLocation')}
+            value={draft.location}
+            onChangeText={(location) => update({ location })}
+            placeholder={t('plansPage.locationPlaceholder')}
+            maxLength={200}
+          />
+        </Card>
 
-        <View style={styles.group}>
+        <Card style={styles.group}>
           <Label>{t('plansPage.fieldServiceDate')}</Label>
           <Text style={styles.hint}>{t('mobileCreatePlan.timezoneHint', { timezone })}</Text>
           <View style={styles.row}>
             <Button
               title={t('mobileCreatePlan.dateButton', { date: format.calendarDate(draft.localDate, 'medium') })}
+              icon="calendar"
               variant="secondary"
+              style={styles.grow}
               onPress={() => setPicker(picker === 'date' ? null : 'date')}
             />
             <Button
               title={t('mobileCreatePlan.timeButton', { time: draft.localTime })}
+              icon="clock"
               variant="secondary"
+              style={styles.grow}
               onPress={() => setPicker(picker === 'time' ? null : 'time')}
             />
           </View>
@@ -184,9 +198,9 @@ export default function NewPlanScreen() {
           ) : null}
           {startProblem ? <Text accessibilityRole="alert" style={styles.problem}>{startProblem}</Text> : null}
           <Text style={styles.hint}>{t('mobileCreatePlan.serviceTimeHint', { minutes: NEW_PLAN_SERVICE_MINUTES })}</Text>
-        </View>
+        </Card>
 
-        <View style={styles.group}>
+        <Card style={styles.group}>
           <Label>{t('plansPage.fieldServiceType')}</Label>
           <View style={styles.chips}>
             {mayCreateUntyped ? (
@@ -203,19 +217,12 @@ export default function NewPlanScreen() {
           </View>
           {!mayCreateUntyped ? <Text style={styles.hint}>{t('mobileCreatePlan.noServiceTypeHint')}</Text> : null}
           <ErrorNotice error={serviceTypes.error} />
-        </View>
-
-        <Field
-          label={t('plansPage.fieldLocation')}
-          value={draft.location}
-          onChangeText={(location) => update({ location })}
-          placeholder={t('plansPage.locationPlaceholder')}
-          maxLength={200}
-        />
+        </Card>
 
         <ErrorNotice error={validationError ?? create.error} />
         <Button
           title={t('plansPage.createPlan')}
+          icon="plus"
           onPress={submit}
           loading={create.isPending}
           disabled={!draft.title.trim() || start.kind !== 'resolved' || (!mayCreateUntyped && !draft.serviceTypeId)}
@@ -226,7 +233,7 @@ export default function NewPlanScreen() {
           icon="calendar"
           onPress={() => router.replace('/plan/generate')}
         />
-        <Text style={styles.hint}>{t('mobileCreatePlan.createFromTemplateHint')}</Text>
+        <Text style={[styles.hint, styles.centered]}>{t('mobileCreatePlan.createFromTemplateHint')}</Text>
       </ScrollView>
     </Screen>
   );
@@ -235,7 +242,9 @@ export default function NewPlanScreen() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     form: { gap: theme.space.lg },
-    group: { gap: theme.space.sm },
+    group: { gap: theme.space.md },
+    grow: { flexGrow: 1 },
+    centered: { textAlign: 'center' },
     row: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
     hint: { ...theme.type.bodySmall, color: theme.color.inkFaint },
