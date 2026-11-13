@@ -29,7 +29,7 @@ const TabIcon = ({ name, color, focused }: TabIconViewProps) => {
         focused && { backgroundColor: theme.accent.blue.bg },
       ]}
     >
-      <Icon name={name} size={21} color={color} strokeWidth={focused ? 2.1 : 1.75} />
+      <Icon name={name} size={22} color={color} strokeWidth={focused ? 2.1 : 1.75} />
     </View>
   );
 };
@@ -40,24 +40,29 @@ interface TabLabelProps {
 }
 
 /**
- * Six tabs leave ~65pt per label: shrink a long one ("My schedule", Vietnamese
- * labels) to fit on one line rather than truncating it.
+ * Six tabs leave ~64pt per item, so tab labels are kept to one short word
+ * (see `nav.mySchedulePhoneTab`) and share one size — a single shrunken label
+ * made the bar look uneven. Shrinking stays only as a last resort for longer
+ * translations. Like UIKit's own tab bar, labels barely grow with Dynamic Type.
  */
 const TabLabel = ({ color, children }: TabLabelProps) => (
   <Text
     numberOfLines={1}
     adjustsFontSizeToFit
-    minimumFontScale={0.75}
-    maxFontSizeMultiplier={1.3}
+    minimumFontScale={0.85}
+    maxFontSizeMultiplier={1.15}
     style={[styles.label, { color }]}
   >
     {children}
   </Text>
 );
 
+/** Keeps the outermost tabs clear of the display's rounded corners. */
+const TAB_BAR_SIDE_INSET = 10;
+
 const styles = StyleSheet.create({
-  iconPill: { width: 48, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  label: { fontFamily: fonts.sansMedium, fontWeight: '600', fontSize: 10.5, letterSpacing: 0.1, paddingHorizontal: 2, marginTop: 2 },
+  iconPill: { width: 44, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  label: { fontFamily: fonts.sansMedium, fontWeight: '600', fontSize: 11, letterSpacing: 0, marginTop: 3 },
 });
 
 export default function TabsLayout() {
@@ -77,11 +82,19 @@ export default function TabsLayout() {
           borderTopColor: theme.color.border,
           elevation: 0,
           paddingTop: 6,
+          paddingHorizontal: TAB_BAR_SIDE_INSET,
         },
         tabBarItemStyle: { paddingTop: 2 },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: t('nav.mySchedule'), tabBarIcon: tabIcon('schedule') }} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: t('nav.mySchedulePhoneTab'),
+          tabBarAccessibilityLabel: t('nav.mySchedule'),
+          tabBarIcon: tabIcon('schedule'),
+        }}
+      />
       <Tabs.Screen name="calendar" options={{ title: t('nav.calendar'), tabBarIcon: tabIcon('calendar') }} />
       <Tabs.Screen name="plans" options={{ title: t('nav.plans'), tabBarIcon: tabIcon('plans') }} />
       <Tabs.Screen name="songs" options={{ title: t('nav.songs'), tabBarIcon: tabIcon('music') }} />

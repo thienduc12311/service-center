@@ -399,7 +399,7 @@ export default function ProfileScreen() {
               />
               <SettingsRow
                 divided
-                icon="upload"
+                icon="download"
                 accent={theme.accent.neutral}
                 title={t('offlineDownloads.entry')}
                 hint={t('offlineDownloads.entryDescription')}

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -307,7 +307,6 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: detail.title }} />
       <ScrollView contentContainerStyle={[screenPadding(theme), sectionGap]}>
         <Reveal>
           <View style={styles.hero}>
@@ -316,11 +315,6 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
               <View style={styles.heroHeading}>
                 <View style={styles.heroTags}>
                   <Tag label={t(`common:planStatus.${detail.status}`)} accent={theme.accent[PLAN_STATUS_ACCENTS[detail.status]]} />
-                  {detail.service_type ? (
-                    <Text style={styles.heroKind} numberOfLines={1}>
-                      {t(`plansPage.serviceTypeRecurrence.${detail.service_type.recurrence}`, { name: detail.service_type.name })}
-                    </Text>
-                  ) : null}
                 </View>
                 <MetaLine icon="clock" text={format.dateTime(detail.service_date)} />
               </View>
@@ -343,6 +337,13 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
             <Text accessibilityRole="header" style={styles.heroTitle}>{detail.title}</Text>
 
             <View style={styles.metaLines}>
+              {/* The service type gets its own line: squeezed beside the status tag it truncated. */}
+              {detail.service_type ? (
+                <MetaLine
+                  icon="repeat"
+                  text={t(`plansPage.serviceTypeRecurrence.${detail.service_type.recurrence}`, { name: detail.service_type.name })}
+                />
+              ) : null}
               {detail.location ? <MetaLine icon="mapPin" text={detail.location} /> : null}
               <MetaLine
                 icon="music"
@@ -706,7 +707,6 @@ const makeStyles = (theme: Theme) =>
     heroTop: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     heroHeading: { flex: 1, gap: 6 },
     heroTags: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    heroKind: { ...theme.type.label, color: theme.color.inkMuted, flexShrink: 1 },
     neighbours: { flexDirection: 'row', gap: theme.space.xs },
     heroTitle: { ...theme.type.display, color: theme.color.ink },
     metaLines: { gap: 6 },
