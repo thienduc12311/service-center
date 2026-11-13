@@ -370,7 +370,7 @@ const OrderRowBody = ({ item, ordinal, slot, clock, leader, misplaced, controls,
     <View style={styles.item}>
       <PressableScale disabled={!item.song} onPress={onOpenSong} pressedOpacity={0.6} style={styles.itemTop}>
         <View style={styles.lead}>
-          <Text maxFontSizeMultiplier={1.3} style={styles.start}>{slot ? clock(slot.starts_at) : '—'}</Text>
+          <Text maxFontSizeMultiplier={1.3} numberOfLines={1} adjustsFontSizeToFit style={styles.start}>{slot ? clock(slot.starts_at) : '—'}</Text>
           <Text maxFontSizeMultiplier={1.3} style={styles.ordinal}>{String(ordinal ?? 0).padStart(2, '0')}</Text>
         </View>
         <View style={styles.flex}>
@@ -432,7 +432,8 @@ const OrderRowBody = ({ item, ordinal, slot, clock, leader, misplaced, controls,
   );
 };
 
-const LEAD_WIDTH = 58;
+// Wide enough for a 12-hour time ("10:00 AM") at the start label's size.
+const LEAD_WIDTH = 72;
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
