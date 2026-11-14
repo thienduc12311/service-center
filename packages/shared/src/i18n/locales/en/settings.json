@@ -25,6 +25,11 @@
     "preferences": {
       "title": "Scheduling preferences",
       "description": "How often and when you’d like to serve. Schedulers see these as warnings, not rules."
+    },
+    "access": "Access",
+    "groups": {
+      "me": "My settings",
+      "church": "Church"
     }
   },
   "organization": {
@@ -80,7 +85,7 @@
   },
   "access": {
     "title": "Access",
-    "description": "Give leaders exactly the areas they run. Team leaders are set on the Teams page; library and directory permissions are church-wide.",
+    "description": "Find a person to see and change everything they can do. Team leaders are set on the Teams page.",
     "members": "Members",
     "member": "Member",
     "chooseMember": "Choose a member",
@@ -120,13 +125,27 @@
       "title": "Team rosters",
       "restrict": "Members see only their own teams’ rosters",
       "restrictHint": "Plus teams a team’s leaders open up to them. Leaders and schedulers still see every roster."
+    },
+    "searchMembers": "Search members by name or role",
+    "noMatchingMembers": "No members match your search.",
+    "moreGrants": "+{{count}} more",
+    "showing": "Showing {{shown}} of {{total}}",
+    "showMore": "Show more",
+    "filter": {
+      "label": "Filter members",
+      "all": "All",
+      "leaders": "Leaders",
+      "granted": "With permissions",
+      "churchWide": "Church-wide"
     }
   },
   "scopeAccess": {
     "empty": "Nobody has permissions for {{scope}} yet.",
     "unknownMember": "Unknown member",
     "removeLabel": "Remove {{permission}} from {{name}}",
-    "grant": "Grant"
+    "grant": "Grant",
+    "addTitle": "Add a permission",
+    "alreadyHeld": "This member already has that permission here."
   },
   "across": {
     "title": "Across my churches",
@@ -729,5 +748,46 @@
     "updated": "Updated from the app",
     "settingsTitle": "Home Screen widget",
     "settingsDescription": "Add the Service Center widget from your Home Screen or Lock Screen to see your next services in this church. It updates when you open the app; after 12 hours without a refresh it asks you to open the app. Titles are hidden on a locked phone, and signing out clears it."
+  },
+  "memberPicker": {
+    "placeholder": "Search by name or email…",
+    "noMatches": "No members match.",
+    "clear": "Clear {{name}}",
+    "more": "Showing {{shown}} of {{total}} — keep typing to narrow it down."
+  },
+  "memberAccess": {
+    "open": "Open access for {{name}}",
+    "wholeChurch": "Whole church",
+    "unknownPlace": "Removed item",
+    "grantAt": "{{permission}} · {{place}}",
+    "scopeLabel": "{{type}}: {{name}}",
+    "scopeTypes": {
+      "folder": "Folder",
+      "service_type": "Service type",
+      "team": "Team"
+    },
+    "groups": {
+      "folders": "Folders",
+      "serviceTypes": "Service types",
+      "teams": "Teams"
+    },
+    "roleHint": {
+      "owner": "Owns this church and can do everything.",
+      "admin": "Can do everything, including managing access.",
+      "scheduler": "Schedules people. Choose how far that reaches below.",
+      "member": "Can only do what you grant below."
+    },
+    "fullAccess": "Owners and admins already have every permission. Extra permissions below change nothing until their role changes.",
+    "schedulingScope": "Scheduling reach",
+    "modeHint": {
+      "legacy": "Can schedule for every service type and team in the church.",
+      "scoped": "Can schedule only where they have a permission below."
+    },
+    "permissions": "Permissions",
+    "noPermissions": "No permissions granted yet.",
+    "addPermission": "Add a permission",
+    "where": "Where",
+    "check": "Can {{name}}…?",
+    "checkWhat": "Do this"
   }
 }
