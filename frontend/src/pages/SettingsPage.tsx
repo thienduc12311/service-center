@@ -74,18 +74,61 @@ export const SettingsPage = () => {
   const requested = searchParams.get('section');
   // Unknown or unavailable sections (e.g. Access for a non-admin) fall back to Profile.
   const section: SettingsSection = navItems.find((item) => item.id === requested)?.id ?? 'profile';
-  const selectSection = (next: SettingsSection) => setSearchParams(next === 'profile' ? {} : { section: next });
+  const activeGroup: SettingsGroup = navItems.find((item) => item.id === section)?.group ?? 'me';
+  const personalIds = navItems.filter((item) => item.group === 'me').map((item) => item.id);
+  const showPersonal = activeGroup === 'me';
+
+  // "My settings" is one scrolling page; the nav jumps to each part of it.
+  // Church settings are separate pages, one at a time.
+  const [scrollRequest, setScrollRequest] = useState(0);
+  const [spied, setSpied] = useState<SettingsSection>(section);
+  const selectSection = (next: SettingsSection) => {
+    setSearchParams(next === 'profile' ? {} : { section: next });
+    setSpied(next);
+    setScrollRequest((count) => count + 1);
+  };
+
+  useEffect(() => {
+    if (section === personalIds[0] || !showPersonal) {
+      window.scrollTo({ top: 0, behavior: scrollRequest === 0 ? 'auto' : 'smooth' });
+      return;
+    }
+    document.getElementById(`settings-${section}`)?.scrollIntoView({ behavior: scrollRequest === 0 ? 'auto' : 'smooth' });
+    // personalIds is rebuilt every render; only section changes should scroll.
+  }, [section, scrollRequest, showPersonal]);
+
+  const personalKey = personalIds.join(',');
+  useEffect(() => {
+    if (!showPersonal) return;
+    const ids = personalKey.split(',') as SettingsSection[];
+    // The current section is the last one whose top has passed just below
+    // the sticky header and nav; at the very bottom it is the last section.
+    // Five rect reads per scroll event is cheap enough to skip batching.
+    const update = () => {
+      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      let current: SettingsSection = ids[0] ?? section;
+      for (const id of ids) {
+        const element = document.getElementById(`settings-${id}`);
+        if (element && element.getBoundingClientRect().top <= SPY_OFFSET_PX) current = id;
+      }
+      setSpied(atBottom ? (ids[ids.length - 1] ?? current) : current);
+    };
+    window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, [showPersonal, personalKey]);
+
+  const highlighted = showPersonal ? spied : section;
 
   return (
     <div>
       <PageHeader title={t('settingsPage.title')} subtitle={t('settingsPage.subtitle')} />
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10">
-        <SettingsNav items={navItems} label={t('settingsPage.title')} value={section} onChange={selectSection} />
+        <SettingsNav items={navItems} label={t('settingsPage.title')} value={highlighted} onChange={selectSection} />
 
-        <div className="min-w-0 max-w-3xl">
-          {section === 'profile' && (
-          <div id="settings-profile" className="space-y-6">
+        <div className="min-w-0 max-w-3xl space-y-10">
+          {showPersonal && (
+          <div id="settings-profile" className="scroll-mt-36 lg:scroll-mt-24 space-y-6">
             <SettingsCard
               title={t('settingsPage.profile.title')}
               description={t('settingsPage.profile.signedInAs', { email: user?.profile.email ?? '' })}
@@ -142,8 +185,8 @@ export const SettingsPage = () => {
           </div>
           )}
 
-          {section === 'appearance' && (
-          <div id="settings-appearance">
+          {showPersonal && (
+          <div id="settings-appearance" className="scroll-mt-36 lg:scroll-mt-24">
             <AppearanceSettings />
           </div>
           )}
@@ -186,14 +229,14 @@ export const SettingsPage = () => {
             </div>
           )}
 
-          {section === 'reminders' && (
-          <div id="settings-reminders">
+          {showPersonal && (
+          <div id="settings-reminders" className="scroll-mt-36 lg:scroll-mt-24">
             <MyReminderSettings />
           </div>
           )}
 
-          {section === 'calendar' && (
-          <div id="settings-calendar">
+          {showPersonal && (
+          <div id="settings-calendar" className="scroll-mt-36 lg:scroll-mt-24">
             <SettingsCard title={t('settingsPage.calendar.title')} description={t('settingsPage.calendar.description')}>
               <div className="space-y-3">
                 {feed?.url ? (
@@ -226,8 +269,8 @@ export const SettingsPage = () => {
           </div>
           )}
 
-          {section === 'availability' && organization ? (
-            <div id="settings-availability" className="space-y-6">
+          {showPersonal && organization ? (
+            <div id="settings-availability" className="scroll-mt-36 lg:scroll-mt-24 space-y-6">
               <SettingsCard title={t('settingsPage.availability.title')} description={t('settingsPage.availability.description')}>
                 <AvailabilityReview />
               </SettingsCard>
@@ -247,6 +290,9 @@ export const SettingsPage = () => {
 
 /** The settings pages, one shown at a time. */
 type SettingsSection = 'profile' | 'appearance' | 'church' | 'access' | 'reminders' | 'calendar' | 'availability';
+
+/** How far below the viewport top a section must reach to count as current (sticky bars + a little). */
+const SPY_OFFSET_PX = 160;
 
 /** Personal settings vs. settings for the whole church. */
 type SettingsGroup = 'me' | 'church';
@@ -276,13 +322,15 @@ interface SettingsNavProps {
  */
 const SettingsNav = ({ items, label, value, onChange }: SettingsNavProps) => {
   const { t } = useTranslation('settings');
-  const navRef = useRef<HTMLElement>(null);
+  const railRef = useRef<HTMLUListElement>(null);
 
-  // On phones the pill row scrolls sideways; keep the open section in view.
+  // On phones the pill row scrolls sideways; keep the current section's pill
+  // in view. Scrolls only the rail, never the page.
   useEffect(() => {
-    navRef.current
-      ?.querySelector<HTMLElement>('[aria-current="page"]')
-      ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    const rail = railRef.current;
+    const active = rail?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!rail || !active || rail.scrollWidth <= rail.clientWidth) return;
+    rail.scrollTo({ left: active.offsetLeft - rail.clientWidth / 2 + active.offsetWidth / 2 });
   }, [value]);
 
   const groups = SETTINGS_GROUPS.map((group) => ({ group, items: items.filter((item) => item.group === group) })).filter(
@@ -290,8 +338,11 @@ const SettingsNav = ({ items, label, value, onChange }: SettingsNavProps) => {
   );
 
   return (
-    <nav ref={navRef} aria-label={label} className="min-w-0 lg:sticky lg:top-4 lg:self-start">
-      <ul className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:items-stretch lg:overflow-visible lg:px-0">
+    <nav
+      aria-label={label}
+      className="sticky top-16 z-10 -mx-4 min-w-0 border-b border-app-border bg-app-canvas/90 px-4 py-2 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:top-24 lg:mx-0 lg:self-start lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
+    >
+      <ul ref={railRef} className="scrollbar-none relative -mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:items-stretch lg:overflow-visible lg:px-0">
         {groups.map(({ group, items: groupItems }, index) => (
           <li key={group} className="contents">
             {index > 0 && <span aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-app-border lg:hidden" />}
@@ -306,7 +357,7 @@ const SettingsNav = ({ items, label, value, onChange }: SettingsNavProps) => {
                     <button
                       type="button"
                       onClick={() => onChange(item.id)}
-                      aria-current={current ? 'page' : undefined}
+                      aria-current={current ? 'true' : undefined}
                       className={`flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
                         current
                           ? 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-100 dark:bg-brand-500/15 dark:text-brand-200 dark:ring-brand-500/25'
