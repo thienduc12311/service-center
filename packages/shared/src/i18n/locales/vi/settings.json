@@ -25,6 +25,11 @@
     "preferences": {
       "title": "Tùy chọn phân công",
       "description": "Bạn muốn phục vụ thường xuyên thế nào và vào lúc nào. Người phân công sẽ thấy đây là cảnh báo, không phải quy định bắt buộc."
+    },
+    "access": "Quyền truy cập",
+    "groups": {
+      "me": "Cài đặt của tôi",
+      "church": "Hội thánh"
     }
   },
   "organization": {
@@ -80,7 +85,7 @@
   },
   "access": {
     "title": "Quyền truy cập",
-    "description": "Giao cho các trưởng ban đúng những phần họ phụ trách. Trưởng ban được thiết lập ở trang Ban; quyền về thư viện và danh bạ áp dụng cho toàn hội thánh.",
+    "description": "Tìm một người để xem và thay đổi mọi việc họ có thể làm. Trưởng ban được thiết lập ở trang Ban.",
     "members": "Thành viên",
     "member": "Thành viên",
     "chooseMember": "Chọn thành viên",
@@ -120,13 +125,27 @@
       "title": "Danh sách ban",
       "restrict": "Thành viên chỉ xem danh sách các ban của mình",
       "restrictHint": "Cùng với những ban mà trưởng ban mở cho họ xem. Trưởng ban và người phân công vẫn xem được mọi danh sách."
+    },
+    "searchMembers": "Tìm thành viên theo tên hoặc vai trò",
+    "noMatchingMembers": "Không có thành viên nào phù hợp.",
+    "moreGrants": "+{{count}} quyền khác",
+    "showing": "Đang hiển thị {{shown}} / {{total}}",
+    "showMore": "Xem thêm",
+    "filter": {
+      "label": "Lọc thành viên",
+      "all": "Tất cả",
+      "leaders": "Người lãnh đạo",
+      "granted": "Có quyền",
+      "churchWide": "Toàn hội thánh"
     }
   },
   "scopeAccess": {
     "empty": "Chưa ai có quyền cho {{scope}}.",
     "unknownMember": "Thành viên không xác định",
     "removeLabel": "Gỡ quyền {{permission}} khỏi {{name}}",
-    "grant": "Cấp quyền"
+    "grant": "Cấp quyền",
+    "addTitle": "Thêm quyền",
+    "alreadyHeld": "Thành viên này đã có quyền đó ở đây."
   },
   "across": {
     "title": "Giữa các hội thánh của tôi",
@@ -716,5 +735,46 @@
     "updated": "Cập nhật từ ứng dụng",
     "settingsTitle": "Tiện ích màn hình chính",
     "settingsDescription": "Thêm tiện ích Service Center từ Màn hình chính hoặc Màn hình khóa để xem các lần phục vụ sắp tới ở hội thánh này. Tiện ích cập nhật khi bạn mở ứng dụng; sau 12 giờ không làm mới, nó sẽ nhắc bạn mở ứng dụng. Tiêu đề được ẩn khi điện thoại khóa, và đăng xuất sẽ xóa tiện ích."
+  },
+  "memberPicker": {
+    "placeholder": "Tìm theo tên hoặc email…",
+    "noMatches": "Không có thành viên nào phù hợp.",
+    "clear": "Bỏ chọn {{name}}",
+    "more": "Đang hiển thị {{shown}} / {{total}} — gõ thêm để thu hẹp."
+  },
+  "memberAccess": {
+    "open": "Mở quyền truy cập của {{name}}",
+    "wholeChurch": "Toàn hội thánh",
+    "unknownPlace": "Mục đã bị xóa",
+    "grantAt": "{{permission}} · {{place}}",
+    "scopeLabel": "{{type}}: {{name}}",
+    "scopeTypes": {
+      "folder": "Thư mục",
+      "service_type": "Loại buổi nhóm",
+      "team": "Ban"
+    },
+    "groups": {
+      "folders": "Thư mục",
+      "serviceTypes": "Loại buổi nhóm",
+      "teams": "Ban"
+    },
+    "roleHint": {
+      "owner": "Sở hữu hội thánh này và có thể làm mọi việc.",
+      "admin": "Có thể làm mọi việc, kể cả quản lý quyền truy cập.",
+      "scheduler": "Phân công mọi người. Chọn phạm vi bên dưới.",
+      "member": "Chỉ làm được những gì bạn cấp bên dưới."
+    },
+    "fullAccess": "Chủ sở hữu và quản trị viên đã có mọi quyền. Các quyền bổ sung bên dưới không thay đổi gì cho đến khi vai trò của họ thay đổi.",
+    "schedulingScope": "Phạm vi phân công",
+    "modeHint": {
+      "legacy": "Có thể phân công cho mọi loại buổi nhóm và mọi ban trong hội thánh.",
+      "scoped": "Chỉ phân công được ở những nơi họ có quyền bên dưới."
+    },
+    "permissions": "Quyền",
+    "noPermissions": "Chưa được cấp quyền nào.",
+    "addPermission": "Thêm quyền",
+    "where": "Ở đâu",
+    "check": "{{name}} có thể…?",
+    "checkWhat": "Làm việc này"
   }
 }

@@ -315,7 +315,7 @@ export function Tabs<T extends string>({ items, value, onChange, label, classNam
     <div
       role="tablist"
       aria-label={label}
-      className={`scrollbar-thin -mx-1 flex gap-1 overflow-x-auto border-b border-app-border px-1 ${className}`}
+      className={`scrollbar-none -mx-1 flex gap-1 overflow-x-auto border-b border-app-border px-1 ${className}`}
     >
       {items.map((item) => {
         const active = item.value === value;
@@ -513,12 +513,17 @@ export const SkeletonList = ({ rows = 3 }: { rows?: number }) => {
  * Overlays
  * ---------------------------------------------------------------------- */
 
-/** How wide the dialog is. `wide` is for the two-pane dialogs, e.g. Sequence. */
-type ModalSize = 'default' | 'wide';
+/**
+ * How wide the dialog is. `wide` is for the two-pane dialogs, e.g. Sequence;
+ * `side` is a full-height panel on the right (a bottom sheet on phones) for
+ * reviewing one record beside the list it came from.
+ */
+type ModalSize = 'default' | 'wide' | 'side';
 
 const MODAL_WIDTHS: Record<ModalSize, string> = {
   default: 'max-w-lg',
   wide: 'max-w-3xl',
+  side: 'sm:max-w-md',
 };
 
 export const Modal = ({
@@ -555,7 +560,11 @@ export const Modal = ({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
+    <div
+      className={`fixed inset-0 z-50 flex items-end p-0 ${
+        size === 'side' ? 'sm:items-stretch sm:justify-end' : 'justify-center sm:items-center sm:p-4'
+      }`}
+    >
       <div
         className="animate-fade-in absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
         onClick={onClose}
@@ -565,8 +574,12 @@ export const Modal = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`animate-pop-in relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-app-border bg-app-surface
-          shadow-2xl shadow-slate-950/20 sm:max-h-[85vh] sm:rounded-2xl ${MODAL_WIDTHS[size]}`}
+        className={`relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-app-border bg-app-surface
+          shadow-2xl shadow-slate-950/20 ${
+            size === 'side'
+              ? 'animate-slide-in-right sm:max-h-none sm:rounded-none sm:border-y-0 sm:border-r-0'
+              : 'animate-pop-in sm:max-h-[85vh] sm:rounded-2xl'
+          } ${MODAL_WIDTHS[size]}`}
       >
         <div className="flex items-start justify-between gap-4 border-b border-app-border px-6 pt-5 pb-4">
           <h2 id={titleId} className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">

@@ -1,6 +1,7 @@
-import { useEffect, useId, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { isAdmin, isLeader, personalFeedState, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -13,6 +14,8 @@ import { DeliverySettings } from '../components/settings/DeliverySettings';
 import { IntegrationSettings } from '../components/settings/IntegrationSettings';
 import { MyReminderSettings, ReminderPolicySettings } from '../components/settings/ReminderSettings';
 import { AccessSettings } from '../components/settings/AccessSettings';
+import { RosterVisibilitySettings } from '../components/settings/RosterVisibilitySettings';
+import { FolderSettings } from '../components/settings/FolderSettings';
 import { IdentityReconciliationSettings } from '../components/settings/IdentityReconciliationSettings';
 import { AvailabilitySettings } from '../components/settings/AvailabilitySettings';
 import { AvailabilityReview } from '../components/settings/AvailabilityReview';
@@ -55,25 +58,34 @@ export const SettingsPage = () => {
 
   const admin = isAdmin(role);
   const navItems: SettingsNavItem[] = [
-    { id: 'settings-profile', label: t('settingsPage.profile.title'), icon: 'person' },
-    { id: 'settings-appearance', label: t('profile.appearance.title'), icon: 'sun' },
-    { id: 'settings-church', label: t('profile.organizations.title'), icon: 'home' },
-    { id: 'settings-reminders', label: t('myReminders.title'), icon: 'bell' },
-    { id: 'settings-calendar', label: t('settingsPage.calendar.title'), icon: 'calendar' },
+    { id: 'profile', label: t('settingsPage.profile.title'), icon: 'person', group: 'me' },
+    { id: 'appearance', label: t('profile.appearance.title'), icon: 'sun', group: 'me' },
+    { id: 'reminders', label: t('myReminders.title'), icon: 'bell', group: 'me' },
+    { id: 'calendar', label: t('settingsPage.calendar.title'), icon: 'calendar', group: 'me' },
     ...(organization
-      ? [{ id: 'settings-availability', label: t('settingsPage.availability.title'), icon: 'clock' } satisfies SettingsNavItem]
+      ? [{ id: 'availability', label: t('settingsPage.availability.title'), icon: 'clock', group: 'me' } satisfies SettingsNavItem]
+      : []),
+    { id: 'church', label: t('profile.organizations.title'), icon: 'home', group: 'church' },
+    ...(admin && organization
+      ? [{ id: 'access', label: t('settingsPage.access'), icon: 'people', group: 'church' } satisfies SettingsNavItem]
       : []),
   ];
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested = searchParams.get('section');
+  // Unknown or unavailable sections (e.g. Access for a non-admin) fall back to Profile.
+  const section: SettingsSection = navItems.find((item) => item.id === requested)?.id ?? 'profile';
+  const selectSection = (next: SettingsSection) => setSearchParams(next === 'profile' ? {} : { section: next });
 
   return (
     <div>
       <PageHeader title={t('settingsPage.title')} subtitle={t('settingsPage.subtitle')} />
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10">
-        <SettingsNav items={navItems} label={t('settingsPage.title')} />
+        <SettingsNav items={navItems} label={t('settingsPage.title')} value={section} onChange={selectSection} />
 
-        <div className="min-w-0 max-w-3xl space-y-10">
-          <div id="settings-profile" className="scroll-mt-6 space-y-6">
+        <div className="min-w-0 max-w-3xl">
+          {section === 'profile' && (
+          <div id="settings-profile" className="space-y-6">
             <SettingsCard
               title={t('settingsPage.profile.title')}
               description={t('settingsPage.profile.signedInAs', { email: user?.profile.email ?? '' })}
@@ -128,12 +140,16 @@ export const SettingsPage = () => {
               <LanguageSelect organizationName={organization?.name} />
             </section>
           </div>
+          )}
 
-          <div id="settings-appearance" className="scroll-mt-6">
+          {section === 'appearance' && (
+          <div id="settings-appearance">
             <AppearanceSettings />
           </div>
+          )}
 
-          <div id="settings-church" className="scroll-mt-6 space-y-6">
+          {section === 'church' && (
+          <div id="settings-church" className="space-y-6">
             <OrganizationSettings
               organization={organization}
               canEdit={admin}
@@ -144,7 +160,13 @@ export const SettingsPage = () => {
               }}
             />
 
-            {admin && <AccessSettings organization={organization ?? null} />}
+            {admin && organization && <RosterVisibilitySettings organization={organization} />}
+
+            {admin && (
+              <section className="card p-5">
+                <FolderSettings />
+              </section>
+            )}
 
             {admin && <DeliverySettings />}
 
@@ -156,12 +178,22 @@ export const SettingsPage = () => {
 
             {admin && <IdentityReconciliationSettings />}
           </div>
+          )}
 
-          <div id="settings-reminders" className="scroll-mt-6">
+          {section === 'access' && admin && organization && (
+            <div id="settings-access">
+              <AccessSettings />
+            </div>
+          )}
+
+          {section === 'reminders' && (
+          <div id="settings-reminders">
             <MyReminderSettings />
           </div>
+          )}
 
-          <div id="settings-calendar" className="scroll-mt-6">
+          {section === 'calendar' && (
+          <div id="settings-calendar">
             <SettingsCard title={t('settingsPage.calendar.title')} description={t('settingsPage.calendar.description')}>
               <div className="space-y-3">
                 {feed?.url ? (
@@ -192,9 +224,10 @@ export const SettingsPage = () => {
               </div>
             </SettingsCard>
           </div>
+          )}
 
-          {organization ? (
-            <div id="settings-availability" className="scroll-mt-6 space-y-6">
+          {section === 'availability' && organization ? (
+            <div id="settings-availability" className="space-y-6">
               <SettingsCard title={t('settingsPage.availability.title')} description={t('settingsPage.availability.description')}>
                 <AvailabilityReview />
               </SettingsCard>
@@ -212,68 +245,83 @@ export const SettingsPage = () => {
   );
 };
 
+/** The settings pages, one shown at a time. */
+type SettingsSection = 'profile' | 'appearance' | 'church' | 'access' | 'reminders' | 'calendar' | 'availability';
+
+/** Personal settings vs. settings for the whole church. */
+type SettingsGroup = 'me' | 'church';
+
+const SETTINGS_GROUPS: readonly SettingsGroup[] = ['me', 'church'];
+
 /** One entry of the settings section navigation. */
 interface SettingsNavItem {
-  id: string;
+  id: SettingsSection;
   label: string;
   icon: IconName;
+  group: SettingsGroup;
 }
 
 interface SettingsNavProps {
   items: readonly SettingsNavItem[];
   label: string;
+  value: SettingsSection;
+  onChange: (section: SettingsSection) => void;
 }
 
 /**
- * Jump links to each settings group: a sticky vertical list beside the page on
- * large screens, a horizontally scrolling pill row above it on small ones. The
- * group nearest the top of the viewport is highlighted as you scroll.
+ * Picks which settings page is shown, grouped into "My settings" and
+ * "Church": a sticky vertical list with group headings beside the page on
+ * large screens, a horizontally scrolling pill row (groups split by a thin
+ * divider) above it on small ones.
  */
-const SettingsNav = ({ items, label }: SettingsNavProps) => {
-  const [active, setActive] = useState<string>(items[0]?.id ?? '');
-  const ids = items.map((item) => item.id).join(',');
+const SettingsNav = ({ items, label, value, onChange }: SettingsNavProps) => {
+  const { t } = useTranslation('settings');
+  const navRef = useRef<HTMLElement>(null);
 
+  // On phones the pill row scrolls sideways; keep the open section in view.
   useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return;
-    const targets = ids
-      .split(',')
-      .map((id) => document.getElementById(id))
-      .filter((element): element is HTMLElement => element !== null);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((entry) => entry.isIntersecting);
-        const first = visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (first) setActive(first.target.id);
-      },
-      { rootMargin: '0px 0px -65% 0px' },
-    );
-    targets.forEach((target) => observer.observe(target));
-    return () => observer.disconnect();
-  }, [ids]);
+    navRef.current
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [value]);
+
+  const groups = SETTINGS_GROUPS.map((group) => ({ group, items: items.filter((item) => item.group === group) })).filter(
+    (entry) => entry.items.length > 0,
+  );
 
   return (
-    <nav aria-label={label} className="min-w-0 lg:sticky lg:top-4 lg:self-start">
-      <ul className="scrollbar-thin -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
-        {items.map((item) => {
-          const current = active === item.id;
-          return (
-            <li key={item.id} className="shrink-0">
-              <a
-                href={`#${item.id}`}
-                onClick={() => setActive(item.id)}
-                aria-current={current ? 'true' : undefined}
-                className={`flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  current
-                    ? 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-100 dark:bg-brand-500/15 dark:text-brand-200 dark:ring-brand-500/25'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                }`}
-              >
-                <Icon name={item.icon} className="size-4 shrink-0 opacity-80" />
-                {item.label}
-              </a>
-            </li>
-          );
-        })}
+    <nav ref={navRef} aria-label={label} className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+      <ul className="scrollbar-none -mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:items-stretch lg:overflow-visible lg:px-0">
+        {groups.map(({ group, items: groupItems }, index) => (
+          <li key={group} className="contents">
+            {index > 0 && <span aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-app-border lg:hidden" />}
+            <p className={`hidden px-3 pb-1 text-xs font-semibold tracking-wide text-slate-400 uppercase lg:block ${index > 0 ? 'lg:pt-4' : ''}`}>
+              {t(`settingsPage.groups.${group}`)}
+            </p>
+            <ul className="contents lg:flex lg:flex-col lg:gap-1">
+              {groupItems.map((item) => {
+                const current = value === item.id;
+                return (
+                  <li key={item.id} className="shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onChange(item.id)}
+                      aria-current={current ? 'page' : undefined}
+                      className={`flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
+                        current
+                          ? 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-100 dark:bg-brand-500/15 dark:text-brand-200 dark:ring-brand-500/25'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                      }`}
+                    >
+                      <Icon name={item.icon} className="size-4 shrink-0 opacity-80" />
+                      {item.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        ))}
       </ul>
     </nav>
   );

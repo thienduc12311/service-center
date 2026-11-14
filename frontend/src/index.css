@@ -115,10 +115,22 @@
     animation: app-slide-in-left 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
+  .animate-slide-in-right {
+    animation: app-slide-in-right 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
   /* Thin, unobtrusive scrollbars for horizontally scrolling rails. */
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: rgb(148 163 184 / 0.5) transparent;
+  }
+
+  /* Rails whose clipped last item already signals more: no scrollbar at all. */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 
   .input {
@@ -201,8 +213,13 @@
   to { transform: none; }
 }
 
+@keyframes app-slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-in, .animate-pop-in, .animate-slide-in-left { animation: none; }
+  .animate-fade-in, .animate-pop-in, .animate-slide-in-left, .animate-slide-in-right { animation: none; }
   .card-interactive { transition: none; transform: none !important; }
 }
 

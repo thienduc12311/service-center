@@ -1,226 +1,196 @@
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ACCESS_CAPABILITIES,
-  type AccessCapability,
-  type AccessMode,
-  type CapabilityExplanation,
-  type EffectiveAccessEntry,
-  type OrganizationRow,
-} from '@service-center/shared';
-import { api } from '../../lib/api';
-import { useAccessMembers, useServiceTypes, useTeams, useInvalidateOrg } from '../../hooks/queries';
-import { Badge, Button, ErrorNotice, Spinner } from '../ui';
-import { useFormatters } from '../../i18n';
-import { ScopeAccessEditor } from './ScopeAccessEditor';
-import { FolderSettings } from './FolderSettings';
+import type { AccessMember } from '@service-center/shared';
+import { matchesSearch } from '../../lib/search';
+import { useAccessMembers } from '../../hooks/queries';
+import { Avatar, Badge, Button, ErrorNotice, Segmented, Spinner, type TabItem } from '../ui';
+import { Icon } from '../icons';
+import { MemberAccessPanel } from './MemberAccessPanel';
+import { ROLE_TONES } from './access-roles';
+import { groupGrants, useScopeCatalog, type ScopeCatalog } from './access-scopes';
 
-const ACCESS_MODES: readonly AccessMode[] = ['legacy', 'scoped'];
+type MemberFilter = 'all' | 'leaders' | 'granted' | 'churchWide';
 
-/** Catalog key describing where an effective permission comes from. */
-const ACCESS_SOURCE_KEYS = {
-  'role:owner': 'access.source.owner',
-  'role:admin': 'access.source.admin',
-  'role:scheduler_legacy': 'access.source.schedulerLegacy',
-  'grant:folder': 'access.source.folderGrant',
-  grant: 'access.source.grant',
-} as const satisfies Record<EffectiveAccessEntry['source'], string>;
+/** Rows rendered before "Show more"; keeps a 100+ member church snappy. */
+const PAGE_SIZE = 25;
+/** Permission tags shown per row before collapsing into "+N". */
+const MAX_GRANT_CHIPS = 3;
 
-/** Reviews one member's access to one thing, with the database's reasons. */
-const ExplainAccess = () => {
+const isLeaderRole = (role: AccessMember['role']): boolean => role !== 'member';
+const hasChurchWideGrant = (member: AccessMember): boolean =>
+  member.grants.some((grant) => grant.scope_type === 'organization');
+
+const FILTERS: Record<MemberFilter, (member: AccessMember) => boolean> = {
+  all: () => true,
+  leaders: (member) => isLeaderRole(member.role),
+  granted: (member) => member.grants.length > 0,
+  churchWide: hasChurchWideGrant,
+};
+
+/** One member's permissions as short tags, e.g. "Schedule people · Worship Band". */
+const useGrantLabels = (member: AccessMember, catalog: ScopeCatalog): string[] => {
+  const { t } = useTranslation('settings');
+  return groupGrants(member, catalog, t('memberAccess.unknownPlace')).flatMap((group) =>
+    group.capabilities.map((capability) =>
+      group.scopeType === 'organization'
+        ? t(`capabilities.${capability}`)
+        : t('memberAccess.grantAt', { permission: t(`capabilities.${capability}`), place: group.name }),
+    ),
+  );
+};
+
+interface MemberRowProps {
+  member: AccessMember;
+  catalog: ScopeCatalog;
+  onOpen: (userId: string) => void;
+}
+
+const MemberRow = ({ member, catalog, onOpen }: MemberRowProps) => {
   const { t } = useTranslation(['settings', 'common']);
-  const members = useAccessMembers();
-  const serviceTypes = useServiceTypes();
-  const teams = useTeams();
-  const [userId, setUserId] = useState('');
-  const [capability, setCapability] = useState<AccessCapability>('scheduling.manage');
-  const [serviceTypeId, setServiceTypeId] = useState('');
-  const [teamId, setTeamId] = useState('');
-
-  const explain = useMutation({
-    mutationFn: (): Promise<CapabilityExplanation> =>
-      api.explainAccess({
-        user_id: userId,
-        capability,
-        ...(serviceTypeId ? { service_type_id: serviceTypeId } : {}),
-        ...(teamId ? { team_id: teamId } : {}),
-      }),
-  });
-  const result = explain.data;
+  const labels = useGrantLabels(member, catalog);
+  const name = member.full_name ?? t('common:fallback.unnamed');
+  const hidden = labels.length - MAX_GRANT_CHIPS;
 
   return (
-    <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <select aria-label={t('access.member')} className="input" value={userId} onChange={(e) => setUserId(e.target.value)}>
-          <option value="">{t('access.chooseMember')}</option>
-          {(members.data ?? []).map((member) => (
-            <option key={member.user_id} value={member.user_id}>
-              {member.full_name ?? t('common:fallback.unnamed')}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label={t('access.permission')}
-          className="input"
-          value={capability}
-          onChange={(e) => setCapability(e.target.value as AccessCapability)}
-        >
-          {ACCESS_CAPABILITIES.map((value) => (
-            <option key={value} value={value}>
-              {t(`capabilities.${value}`)}
-            </option>
-          ))}
-        </select>
-        <select aria-label={t('access.serviceType')} className="input" value={serviceTypeId} onChange={(e) => setServiceTypeId(e.target.value)}>
-          <option value="">{t('access.anyServiceType')}</option>
-          {(serviceTypes.data ?? []).map((type) => (
-            <option key={type.id} value={type.id}>
-              {type.name}
-            </option>
-          ))}
-        </select>
-        <select aria-label={t('access.team')} className="input" value={teamId} onChange={(e) => setTeamId(e.target.value)}>
-          <option value="">{t('access.anyTeam')}</option>
-          {(teams.data ?? []).map((team) => (
-            <option key={team.id} value={team.id}>
-              {team.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <Button variant="secondary" disabled={!userId} loading={explain.isPending} onClick={() => explain.mutate()}>
-        {t('access.checkAccess')}
-      </Button>
-      <ErrorNotice error={explain.error} />
-      {result && (
-        <div role="status" className="rounded-lg bg-slate-50 p-3 text-sm">
-          <p className="font-medium">{result.allowed ? t('access.allowed') : t('access.notAllowed')}</p>
-          {result.allowed ? (
-            <ul className="mt-1 list-disc pl-5 text-slate-600">
-              {result.reasons.map((reason, index) => (
-                <li key={`${reason.source}-${reason.scope_id ?? index}`}>
-                  {t('access.reason', { source: t(ACCESS_SOURCE_KEYS[reason.source]), scope: t(`scopeType.${reason.scope_type}`) })}
-                </li>
-              ))}
-            </ul>
+    <li>
+      <button
+        type="button"
+        onClick={() => onOpen(member.user_id)}
+        aria-label={t('memberAccess.open', { name })}
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-slate-50 focus-visible:bg-slate-50 dark:hover:bg-slate-800/50 dark:focus-visible:bg-slate-800/50"
+      >
+        <Avatar name={member.full_name} url={member.avatar_url} size="sm" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{name}</p>
+            <Badge tone={ROLE_TONES[member.role]}>{t(`common:roles.${member.role}`)}</Badge>
+            {member.role === 'scheduler' && (
+              <span className="hidden text-xs text-slate-500 sm:inline">{t(`access.mode.${member.access_mode}`)}</span>
+            )}
+          </div>
+          {labels.length === 0 ? (
+            <p className="text-xs text-slate-400">{t('access.noExtraGrants')}</p>
           ) : (
-            result.denial && <p className="mt-1 text-slate-600">{t(`access.denial.${result.denial}`)}</p>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {labels.slice(0, MAX_GRANT_CHIPS).map((label) => (
+                <span
+                  key={label}
+                  className="max-w-full truncate rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  {label}
+                </span>
+              ))}
+              {hidden > 0 && (
+                <span className="rounded-md px-1.5 py-0.5 text-[11px] text-slate-500">
+                  {t('access.moreGrants', { count: hidden })}
+                </span>
+              )}
+            </div>
           )}
         </div>
-      )}
-    </div>
+        <Icon name="chevronRight" className="size-4 shrink-0 text-slate-400" />
+      </button>
+    </li>
   );
 };
 
 /**
- * F01 administration: who may do what, at which scope. Owners and admins
- * always have everything; schedulers keep organization-wide access until
- * they are switched to "Only granted areas".
+ * F01 administration, person first: find a member, open them, and see and
+ * change everything they can do in one panel. Owners and admins always have
+ * everything; schedulers keep church-wide access until switched to
+ * "Only granted areas".
  */
-export const AccessSettings = ({ organization }: { organization: OrganizationRow | null }) => {
+export const AccessSettings = () => {
   const { t } = useTranslation(['settings', 'common']);
-  const { list } = useFormatters();
-  const invalidate = useInvalidateOrg();
   const members = useAccessMembers();
+  const catalog = useScopeCatalog();
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<MemberFilter>('all');
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [openUserId, setOpenUserId] = useState<string | null>(null);
 
-  const setMode = useMutation({
-    mutationFn: ({ userId, mode }: { userId: string; mode: AccessMode }) =>
-      api.updateMemberAccess(userId, { access_mode: mode }),
-    onSuccess: invalidate,
-  });
-  const setRoster = useMutation({
-    mutationFn: (restricted: boolean) =>
-      api.setRosterVisibility({ assignment_visibility: restricted ? 'teams' : 'organization' }),
-    onSuccess: invalidate,
-  });
-  const [rosterRestricted, setRosterRestricted] = useState(organization?.assignment_visibility === 'teams');
+  const all = useMemo(() => members.data ?? [], [members.data]);
+  const filtered = useMemo(
+    () =>
+      all.filter(
+        (member) =>
+          FILTERS[filter](member) && matchesSearch(query, [member.full_name, t(`common:roles.${member.role}`)]),
+      ),
+    [all, filter, query, t],
+  );
+  const shown = filtered.slice(0, limit);
+  const filterItems: TabItem<MemberFilter>[] = (['all', 'leaders', 'granted', 'churchWide'] as const).map((value) => ({
+    value,
+    label: t(`access.filter.${value}`),
+    count: all.filter(FILTERS[value]).length,
+  }));
+  const resetPaging = () => setLimit(PAGE_SIZE);
 
   return (
-    <section className="card space-y-6 p-5">
+    <section className="card space-y-4 p-5" aria-labelledby="access-settings-heading">
       <div>
-        <h2 className="font-semibold text-slate-900 dark:text-white">{t('access.title')}</h2>
+        <h2 id="access-settings-heading" className="font-semibold text-slate-900 dark:text-white">{t('access.title')}</h2>
         <p className="text-sm text-slate-500">{t('access.description')}</p>
       </div>
 
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('access.members')}</h3>
-        <ErrorNotice error={members.error ?? setMode.error} />
-        {members.isLoading ? (
-          <Spinner />
-        ) : (
-          <ul className="divide-y divide-slate-100 text-sm">
-            {(members.data ?? []).map((member) => (
-              <li key={member.user_id} className="flex flex-wrap items-center justify-between gap-3 py-2">
-                <div className="min-w-0">
-                  <p className="font-medium">{member.full_name ?? t('common:fallback.unnamed')}</p>
-                  <p className="text-xs text-slate-500">
-                    {member.grants.length === 0
-                      ? t('access.noExtraGrants')
-                      : list(member.grants.map((grant) => t(`capabilities.${grant.capability}`)))}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge tone="bg-slate-100 text-slate-600 ring-slate-500/20">{t(`common:roles.${member.role}`)}</Badge>
-                  {member.role === 'scheduler' && (
-                    <select
-                      aria-label={t('access.schedulerAccessFor', { name: member.full_name ?? t('common:fallback.unnamed') })}
-                      className="input w-48"
-                      value={member.access_mode}
-                      onChange={(e) => setMode.mutate({ userId: member.user_id, mode: e.target.value as AccessMode })}
-                    >
-                      {ACCESS_MODES.map((mode) => (
-                        <option key={mode} value={mode}>
-                          {t(`access.mode.${mode}`)}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('access.organizationWide')}</h3>
-        <ScopeAccessEditor
-          scopeType="organization"
-          scopeId={null}
-          scopeName={t('access.wholeOrganization')}
-          load={() => api.organizationAccess()}
-          save={(input) => api.replaceOrganizationAccess(input)}
-        />
-      </div>
-
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('access.explainTitle')}</h3>
-        <ExplainAccess />
-      </div>
-
-      <div>
-        <h3 className="mb-1 text-sm font-semibold text-slate-800 dark:text-slate-100">{t('access.rosters.title')}</h3>
-        <label className="flex items-start gap-2 text-sm">
+      <div className="space-y-2">
+        <div className="relative">
+          <Icon
+            name="search"
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400"
+          />
           <input
-            type="checkbox"
-            className="mt-0.5 size-4 rounded border-slate-300"
-            checked={rosterRestricted}
+            type="search"
+            className="input !pl-9"
+            aria-label={t('access.searchMembers')}
+            placeholder={t('access.searchMembers')}
+            value={query}
             onChange={(e) => {
-              setRosterRestricted(e.target.checked);
-              setRoster.mutate(e.target.checked);
+              setQuery(e.target.value);
+              resetPaging();
             }}
           />
-          <span>
-            {t('access.rosters.restrict')}
-            <span className="block text-xs text-slate-500">{t('access.rosters.restrictHint')}</span>
-
-          </span>
-        </label>
-        <ErrorNotice error={setRoster.error} />
+        </div>
+        <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
+          <Segmented
+            label={t('access.filter.label')}
+            items={filterItems}
+            value={filter}
+            onChange={(value) => {
+              setFilter(value);
+              resetPaging();
+            }}
+          />
+        </div>
       </div>
 
-      <FolderSettings />
+      <ErrorNotice error={members.error} />
+
+      {members.isLoading ? (
+        <Spinner />
+      ) : filtered.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-app-border px-4 py-6 text-center text-sm text-slate-500">
+          {t('access.noMatchingMembers')}
+        </p>
+      ) : (
+        <>
+          <ul className="divide-y divide-app-border overflow-hidden rounded-xl border border-app-border">
+            {shown.map((member) => (
+              <MemberRow key={member.user_id} member={member} catalog={catalog} onOpen={setOpenUserId} />
+            ))}
+          </ul>
+          <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+            <span>{t('access.showing', { shown: shown.length, total: filtered.length })}</span>
+            {filtered.length > shown.length && (
+              <Button variant="ghost" size="sm" onClick={() => setLimit((current) => current + PAGE_SIZE)}>
+                {t('access.showMore')}
+              </Button>
+            )}
+          </div>
+        </>
+      )}
+
+      <MemberAccessPanel userId={openUserId} onClose={() => setOpenUserId(null)} />
     </section>
   );
 };
