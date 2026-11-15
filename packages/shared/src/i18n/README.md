@@ -27,7 +27,7 @@ locales/<code>/<namespace>.json
 
 Namespaces: `common`, `auth`, `errors`, `settings`, `people`, `plans`,
 `scheduling`, `songs`, `teams`, `messages`, `media`, `reports`,
-`notifications` (server-rendered email/push/feed text).
+`notifications` (server-rendered email/push/feed text), `legal` (public privacy and support pages).
 
 ## Adding or changing text
 

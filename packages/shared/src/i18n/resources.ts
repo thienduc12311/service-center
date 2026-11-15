@@ -24,6 +24,7 @@ import enTeams from './locales/en/teams.json' with { type: 'json' };
 import enHome from './locales/en/home.json' with { type: 'json' };
 import enStaffing from './locales/en/staffing.json' with { type: 'json' };
 import enTemplates from './locales/en/templates.json' with { type: 'json' };
+import enLegal from './locales/en/legal.json' with { type: 'json' };
 
 import viAuth from './locales/vi/auth.json' with { type: 'json' };
 import viCommon from './locales/vi/common.json' with { type: 'json' };
@@ -41,6 +42,7 @@ import viTeams from './locales/vi/teams.json' with { type: 'json' };
 import viHome from './locales/vi/home.json' with { type: 'json' };
 import viStaffing from './locales/vi/staffing.json' with { type: 'json' };
 import viTemplates from './locales/vi/templates.json' with { type: 'json' };
+import viLegal from './locales/vi/legal.json' with { type: 'json' };
 
 import type { SupportedLocale } from './locales.js';
 
@@ -62,6 +64,7 @@ export const NAMESPACES = [
   'media',
   'reports',
   'notifications',
+  'legal',
 ] as const;
 
 export type Namespace = (typeof NAMESPACES)[number];
@@ -86,6 +89,7 @@ export const englishResources = {
   media: enMedia,
   reports: enReports,
   notifications: enNotifications,
+  legal: enLegal,
 };
 
 export type EnglishResources = typeof englishResources;
@@ -121,5 +125,6 @@ export const resources: Record<SupportedLocale, LocaleResources> = {
     media: viMedia,
     reports: viReports,
     notifications: viNotifications,
+    legal: viLegal,
   },
 };

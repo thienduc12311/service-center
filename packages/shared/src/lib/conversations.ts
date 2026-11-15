@@ -74,6 +74,8 @@ export interface ConversationMessageActions {
   reply: boolean;
   edit: boolean;
   report: boolean;
+  /** Block the author: hides everything they write from the caller. Never offered on your own messages. */
+  block: boolean;
   delete: boolean;
   restore: boolean;
 }
@@ -88,6 +90,7 @@ export const conversationMessageActions = (
     reply: visible,
     edit: visible && message.is_mine,
     report: visible && !message.is_mine,
+    block: visible && !message.is_mine,
     delete: visible && (message.is_mine || conversation.can_moderate),
     restore: state === 'hidden' && conversation.can_moderate,
   };

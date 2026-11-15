@@ -9,4 +9,6 @@ export const env = {
   supabaseUrl: required('VITE_SUPABASE_URL', import.meta.env.VITE_SUPABASE_URL),
   supabaseAnonKey: required('VITE_SUPABASE_ANON_KEY', import.meta.env.VITE_SUPABASE_ANON_KEY),
   apiUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:4000',
+  /** Shown on the public Privacy Policy and Support pages. */
+  supportEmail: import.meta.env.VITE_SUPPORT_EMAIL || 'support@graceaogchurch.com',
 };

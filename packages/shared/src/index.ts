@@ -16,6 +16,7 @@ export * from './types/files.js';
 export * from './types/rehearsal.js';
 export * from './types/media.js';
 export * from './types/reports.js';
+export * from './types/account.js';
 export * from './schemas/index.js';
 export * from './lib/constants.js';
 export * from './lib/dates.js';

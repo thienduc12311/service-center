@@ -121,6 +121,13 @@ export const queryKeys = {
   /** MOB-018: personal and shared message templates (senders only). */
   messageTemplates: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'message-templates'] as const,
+  /**
+   * What deleting the account would do. Per login, not per church: someone
+   * who never joined a church must still be able to delete their account.
+   */
+  accountDeletionPlan: (userId: string | null | undefined) => ['account', userId ?? null, 'deletion-plan'] as const,
+  /** People this login blocked (per login, like `accountDeletionPlan`). */
+  blockedUsers: (userId: string | null | undefined) => ['account', userId ?? null, 'blocked-users'] as const,
   /** MOB-019: prefix for every F09 team/plan conversation read; invalidate this after a post, read, mute or moderation. */
   conversationsAll: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'conversations'] as const,

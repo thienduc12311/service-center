@@ -1,6 +1,8 @@
 import { Router, type Request } from 'express';
 import {
   PERSON_LINK_REQUIRED,
+  deleteAccountSchema,
+  userBlockParamsSchema,
   updateLanguagePreferenceSchema,
   updateProfileSchema,
   type UpdateLanguagePreferenceInput,
@@ -10,13 +12,21 @@ import {
   type OrgRole,
   type OrganizationRow,
 } from '@service-center/shared';
-import { validateBody } from '../lib/validate.js';
+import { parseOrThrow, validateBody } from '../lib/validate.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { generateCalendarFeedToken } from '../services/calendar-feed-tokens.js';
 import { loadMyAccess } from '../services/access.js';
 import { config } from '../config.js';
 import { mapLanguagePreferenceRow } from '../model/language.model.js';
+import {
+  blockUser,
+  deleteAccount,
+  getAccountDeletionPlan,
+  listBlockedUsers,
+  unblockUser,
+  type AccountCaller,
+} from '../services/account.js';
 
 export const meRouter: Router = Router();
 
@@ -65,6 +75,41 @@ meRouter.patch('/', validateBody(updateProfileSchema), async (req, res) => {
   );
   if (!updated) throw HttpError.notFound('Profile not found');
   res.json(await unwrapOne(req.db.rpc('my_profile')));
+});
+
+const accountCaller = (req: Request): AccountCaller => ({ db: req.db, userId: req.auth.userId });
+
+// ----------------------------------------------------- account deletion --
+
+/** What deleting the account would do, for the confirmation screen. */
+meRouter.get('/account-deletion', async (req, res) => {
+  res.json(await getAccountDeletionPlan(accountCaller(req)));
+});
+
+/**
+ * Permanently deletes the caller's account (App Store Review Guideline
+ * 5.1.1(v)). 409 `account_deletion_blocked` lists the organizations that
+ * need another owner first.
+ */
+meRouter.delete('/', validateBody(deleteAccountSchema), async (req, res) => {
+  res.json(await deleteAccount(accountCaller(req)));
+});
+
+// ---------------------------------------------------------------- blocks --
+
+meRouter.get('/blocks', async (req, res) => {
+  res.json(await listBlockedUsers(accountCaller(req)));
+});
+
+meRouter.put('/blocks/:userId', async (req, res) => {
+  const { userId } = parseOrThrow(userBlockParamsSchema, req.params);
+  res.json(await blockUser(accountCaller(req), userId));
+});
+
+meRouter.delete('/blocks/:userId', async (req, res) => {
+  const { userId } = parseOrThrow(userBlockParamsSchema, req.params);
+  await unblockUser(accountCaller(req), userId);
+  res.status(204).end();
 });
 
 const activeOrganizationForMe = async (req: Request): Promise<string> => {

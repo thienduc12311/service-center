@@ -59,7 +59,8 @@
     "template_stale": "Mẫu này đã thay đổi kể từ lúc bạn mở. Hãy tải lại rồi thử lại.",
     "message_id_conflict": "Mã tin nhắn này đã được dùng. Hãy gửi lại để đăng như một tin nhắn mới.",
     "message_removed": "Tin nhắn này đã bị xóa nên không thể thay đổi.",
-    "message_unrecoverable": "Không thể khôi phục tin nhắn này nữa."
+    "message_unrecoverable": "Không thể khôi phục tin nhắn này nữa.",
+    "account_deletion_blocked": "Hãy chỉ định người khác làm chủ sở hữu các tổ chức của bạn trước khi xoá tài khoản."
   },
   "validation": {
     "required": "Trường này là bắt buộc.",

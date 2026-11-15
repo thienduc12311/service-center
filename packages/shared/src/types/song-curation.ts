@@ -10,7 +10,7 @@ export interface SongBulkOutcome {
 export type SongBulkPreview = {
   id: string;
   organization_id: string;
-  created_by: string;
+  created_by: string | null;
   patch: SongBulkPatch;
   rows: SongBulkOutcome[];
   created_at: string;

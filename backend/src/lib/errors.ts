@@ -80,6 +80,8 @@ const PT409_HINTS: Record<string, string> = {
   publication_changed: 'publication_revision_stale',
   // F17
   webhook_changed: 'webhook_endpoint_stale',
+  // Account deletion: an organization would be left without an owner.
+  account_deletion_blocked: 'account_deletion_blocked',
 };
 
 export const fromPostgrestError = (error: {

@@ -56,6 +56,15 @@ only past services.
 > 2. Open a song in a plan (e.g. "Amazing Grace") to view its chord chart.
 > 3. Inbox: accept or decline a pending request to serve on a later Sunday.
 > 4. Calendar: see upcoming services; Songs: browse the song library.
+> 5. Messages → a team chat: tap the picture of the person who wrote a
+>    message, then choose Report message (sent to the church's moderators)
+>    or Block (hides everything that person writes; Settings → Blocked people
+>    lists and unblocks them).
+> 6. Settings → Delete account permanently deletes the account and its
+>    personal data (also available on the website under Settings → Account &
+>    privacy). The demo account owns a church that has other members, so
+>    it is asked to choose another owner first; sign up a new account to see
+>    deletion complete.
 >
 > Camera and photo library access are only requested when importing a photo of
 > a chord sheet (Songs → import). All song content in the demo is in the
@@ -120,5 +129,13 @@ Leave the app name out of the keywords; Apple indexes the name already.
 - **Screenshots**: at least one set for 6.9" iPhone (1320 × 2868), plus 13"
   iPad (2064 × 2752) because `supportsTablet` is on. Take them while signed in
   as the demo account so they show the demo data.
-- **Support URL** and **Privacy Policy URL** (required).
+- **Support URL**: `https://app.graceaogchurch.com/support`
+- **Privacy Policy URL**: `https://app.graceaogchurch.com/privacy`
+
+  Both are public pages of the website (no sign-in), in English and
+  Vietnamese. Their contact address comes from `VITE_SUPPORT_EMAIL` in the
+  website's environment and defaults to `support@graceaogchurch.com`; make
+  sure that mailbox exists. Bump `PRIVACY_POLICY_UPDATED` in
+  `frontend/src/pages/LegalPages.tsx` whenever the policy text changes, and
+  keep the App Privacy answers in App Store Connect consistent with it.
 - **Header asset** (the empty drop zone at the top) is optional.

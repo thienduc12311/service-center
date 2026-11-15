@@ -31,6 +31,8 @@ export type IconName =
   | 'plans'
   | 'search'
   | 'alert'
+  | 'flag'
+  | 'ban'
   | 'bell'
   | 'trash'
   | 'signOut'
@@ -164,6 +166,18 @@ const paths: Record<IconName, (stroke: number) => ReactElement> = {
     <>
       <Circle cx={10.5} cy={10.5} r={6.5} strokeWidth={w} />
       <Line x1={15.5} y1={15.5} x2={21} y2={21} strokeWidth={w} />
+    </>
+  ),
+  flag: (w) => (
+    <>
+      <Path d="M5 21V4" strokeWidth={w} />
+      <Path d="M5 4.5c2.5-1.5 5-1.5 7 0s4.5 1.5 7 0v9c-2.5 1.5-5 1.5-7 0s-4.5-1.5-7 0" strokeWidth={w} />
+    </>
+  ),
+  ban: (w) => (
+    <>
+      <Circle cx={12} cy={12} r={8.5} strokeWidth={w} />
+      <Line x1={6} y1={6} x2={18} y2={18} strokeWidth={w} />
     </>
   ),
   alert: (w) => (

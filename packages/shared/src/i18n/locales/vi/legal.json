@@ -1,0 +1,83 @@
+{
+  "nav": {
+    "privacy": "Chính sách quyền riêng tư",
+    "support": "Hỗ trợ",
+    "openApp": "Mở Service Center",
+    "lastUpdated": "Cập nhật lần cuối {{date}}",
+    "contactUs": "Liên hệ với chúng tôi tại {{email}}"
+  },
+  "privacy": {
+    "title": "Chính sách quyền riêng tư",
+    "intro": "Service Center giúp các hội thánh và mục vụ lên chương trình, xếp lịch đội tình nguyện và chia sẻ bài hát. Chính sách này giải thích Service Center thu thập thông tin gì qua trang web và ứng dụng iOS, sử dụng thông tin đó như thế nào, và những lựa chọn của bạn. Trong chính sách này, \"chúng tôi\" là Service Center.",
+    "collect": {
+      "title": "Thông tin chúng tôi thu thập",
+      "account": "Thông tin tài khoản: địa chỉ email, mật khẩu (chỉ được nhà cung cấp xác thực lưu dưới dạng mã băm an toàn), tên, số điện thoại nếu bạn thêm, và ảnh đại diện nếu bạn tải lên.",
+      "organization": "Thông tin tổ chức: các hội thánh bạn tham gia, vai trò của bạn, các đội và vị trí bạn phục vụ, lịch của bạn, các yêu cầu bạn chấp nhận hoặc từ chối, ngày bận, thời gian rảnh và tuỳ chọn xếp lịch.",
+      "content": "Nội dung bạn tạo: chương trình, ghi chú, tin nhắn trò chuyện, bình luận, bài hát, hợp âm, tệp và ảnh bạn tải lên (ví dụ ảnh chụp tờ hợp âm bạn nhập).",
+      "device": "Thông tin thiết bị: nếu bạn cho phép thông báo, mã thông báo đẩy của thiết bị, cùng với tuỳ chọn ngôn ngữ và thông báo của bạn.",
+      "technical": "Thông tin kỹ thuật: nhật ký máy chủ cơ bản (như thời gian yêu cầu và mã lỗi) cần thiết để giữ dịch vụ an toàn và hoạt động. Chúng tôi không dùng công cụ theo dõi quảng cáo hay phân tích."
+    },
+    "use": {
+      "title": "Cách chúng tôi sử dụng thông tin",
+      "body": "Chúng tôi chỉ dùng thông tin của bạn để cung cấp Service Center: đăng nhập, hiển thị lịch và chương trình, cho phép trưởng nhóm xếp lịch cho bạn, gửi email và thông báo bạn yêu cầu, giữ an toàn cho dịch vụ và trả lời yêu cầu hỗ trợ. Chúng tôi không bán thông tin của bạn và không dùng nó cho quảng cáo."
+    },
+    "sharing": {
+      "title": "Ai có thể xem thông tin của bạn",
+      "organization": "Những người trong tổ chức của bạn: những gì bạn chia sẻ trong một hội thánh (tên, lịch, tin nhắn…) được các thành viên khác xem theo vai trò và quyền mà hội thánh đó thiết lập.",
+      "providers": "Các nhà cung cấp dịch vụ vận hành Service Center cho chúng tôi: Supabase (cơ sở dữ liệu, đăng nhập và lưu trữ tệp), Vercel (lưu trữ trang web và API), Resend (gửi email) và Expo / Dịch vụ thông báo đẩy của Apple (thông báo đẩy). Họ chỉ xử lý thông tin để cung cấp các dịch vụ này.",
+      "integrations": "Tích hợp do tổ chức của bạn thiết lập: quản trị viên hội thánh có thể kết nối công cụ khác (ví dụ nguồn lịch hoặc webhook). Thông tin chỉ được gửi đến nơi tổ chức của bạn cấu hình.",
+      "legal": "Khi pháp luật yêu cầu: chúng tôi có thể tiết lộ thông tin nếu bị pháp luật bắt buộc."
+    },
+    "safety": {
+      "title": "Báo cáo và chặn",
+      "body": "Bạn có thể báo cáo một tin nhắn cho người kiểm duyệt của hội thánh, và chặn một người để không còn thấy tin nhắn, bình luận hay nhận thông báo từ họ. Người bị chặn không được báo. Bạn có thể xem và bỏ chặn trong Cài đặt."
+    },
+    "retention": {
+      "title": "Lưu giữ và xoá thông tin",
+      "body": "Chúng tôi giữ thông tin của bạn khi tài khoản còn tồn tại. Bạn có thể xoá tài khoản bất cứ lúc nào trong Cài đặt (Tài khoản và quyền riêng tư trên trang web, hoặc Cài đặt → Xoá tài khoản trong ứng dụng). Xoá tài khoản sẽ xoá vĩnh viễn thông tin đăng nhập, hồ sơ, ảnh, tin nhắn, bình luận, thông báo, thiết bị và tuỳ chọn của bạn. Nếu bạn là thành viên duy nhất của một tổ chức, tổ chức đó cũng bị xoá. Các tổ chức bạn từng tham gia có thể giữ hồ sơ riêng của họ, chẳng hạn lịch phục vụ đã qua, nhưng không còn gắn với tài khoản của bạn. Bản sao trong các bản sao lưu được mã hoá sẽ bị xoá khi các bản sao lưu đó hết hạn."
+    },
+    "security": {
+      "title": "Bảo mật",
+      "body": "Thông tin được truyền qua kết nối mã hoá, quyền truy cập trong mỗi hội thánh được giới hạn theo vai trò, và quy tắc cơ sở dữ liệu giữ dữ liệu của mỗi tổ chức tách biệt. Không hệ thống nào an toàn tuyệt đối, vì vậy hãy dùng mật khẩu mạnh và riêng."
+    },
+    "children": {
+      "title": "Trẻ em",
+      "body": "Service Center không dành cho trẻ em dưới 13 tuổi, và trẻ em không nên tạo tài khoản. Hội thánh có thể giữ hồ sơ cho tình nguyện viên nhỏ tuổi mà không có thông tin đăng nhập; hồ sơ đó do hội thánh quản lý."
+    },
+    "rights": {
+      "title": "Lựa chọn và quyền của bạn",
+      "body": "Bạn có thể xem và cập nhật hồ sơ trong Cài đặt, bật hoặc tắt thông báo, đổi ngôn ngữ, chặn người khác và xoá tài khoản. Tuỳ nơi bạn sống, bạn có thể có thêm quyền, chẳng hạn yêu cầu bản sao thông tin của mình; hãy liên hệ và chúng tôi sẽ giúp."
+    },
+    "changes": {
+      "title": "Thay đổi chính sách",
+      "body": "Nếu thay đổi chính sách này, chúng tôi sẽ cập nhật ngày ở đầu trang. Những thay đổi quan trọng cũng sẽ được thông báo trong ứng dụng."
+    },
+    "contact": {
+      "title": "Liên hệ",
+      "body": "Câu hỏi hoặc yêu cầu về quyền riêng tư: {{email}}."
+    }
+  },
+  "support": {
+    "title": "Hỗ trợ",
+    "intro": "Cần trợ giúp với Service Center? Hãy xem các câu trả lời bên dưới. Nếu vẫn cần trợ giúp, hãy gửi email và chúng tôi sẽ phản hồi.",
+    "contactTitle": "Liên hệ hỗ trợ",
+    "contactBody": "Gửi email đến {{email}}, cho chúng tôi biết bạn đang làm gì, dùng thiết bị nào và, nếu có thể, đính kèm ảnh chụp màn hình. Chúng tôi thường trả lời trong vòng hai ngày làm việc.",
+    "emailButton": "Gửi email hỗ trợ",
+    "faqTitle": "Câu hỏi thường gặp",
+    "faq": {
+      "joinQ": "Làm sao để tham gia hội thánh của tôi?",
+      "joinA": "Quản trị viên hội thánh sẽ mời bạn qua email. Mở liên kết mời để tạo thông tin đăng nhập, hoặc nhờ quản trị viên mời địa chỉ email bạn đang dùng.",
+      "passwordQ": "Tôi quên mật khẩu.",
+      "passwordA": "Hãy nhờ quản trị viên hội thánh gửi lời mời mới, hoặc liên hệ hỗ trợ để chúng tôi giúp bạn đăng nhập lại.",
+      "scheduleQ": "Làm sao để chấp nhận hoặc từ chối yêu cầu phục vụ?",
+      "scheduleA": "Mở Lịch của tôi (hoặc thẻ Lịch trong ứng dụng) và chọn Chấp nhận hoặc Từ chối trên yêu cầu. Bạn có thể thêm ngày bận trong Cài đặt để không bị xếp lịch khi vắng mặt.",
+      "notificationsQ": "Tôi không nhận được thông báo.",
+      "notificationsA": "Trong ứng dụng, mở Cài đặt → Thông báo và đảm bảo đã bật, đồng thời kiểm tra thông báo cho Service Center được cho phép trong Cài đặt của iPhone.",
+      "reportQ": "Làm sao để báo cáo hoặc chặn ai đó?",
+      "reportA": "Trong cuộc trò chuyện, chạm vào ảnh của người đó bên cạnh tin nhắn. Chọn Báo cáo tin nhắn để gửi cho người kiểm duyệt của hội thánh, hoặc Chặn để ẩn mọi thứ người đó viết. Cài đặt → Người đã chặn liệt kê những người bạn đã chặn.",
+      "deleteQ": "Làm sao để xoá tài khoản?",
+      "deleteA": "Mở Cài đặt → Xoá tài khoản trong ứng dụng, hoặc Cài đặt → Tài khoản và quyền riêng tư trên trang web. Việc xoá là vĩnh viễn. Nếu bạn là chủ sở hữu duy nhất của một hội thánh còn thành viên khác, hãy chỉ định người khác làm chủ sở hữu trước."
+    },
+    "privacyLink": "Đọc Chính sách quyền riêng tư"
+  }
+}

@@ -594,6 +594,29 @@ export default function ProfileScreen() {
         </Reveal>
 
         <Reveal index={8}>
+          <View style={styles.section}>
+            <SectionHeader title={t('account.entry')} />
+            <Card compact style={styles.rows}>
+              <SettingsRow
+                icon="people"
+                accent={theme.accent.neutral}
+                title={t('account.blockedEntry')}
+                hint={t('account.blockedEntryDescription')}
+                onPress={() => router.push('/blocked-users')}
+              />
+              <SettingsRow
+                divided
+                icon="trash"
+                accent={theme.accent.red}
+                title={t('account.deleteEntry')}
+                hint={t('account.deleteEntryDescription')}
+                onPress={() => router.push('/delete-account')}
+              />
+            </Card>
+          </View>
+        </Reveal>
+
+        <Reveal index={9}>
           <View style={styles.signOut}>
             <ErrorNotice error={signOutError} />
             <Button

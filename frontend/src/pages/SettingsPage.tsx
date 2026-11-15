@@ -25,6 +25,7 @@ import { AcrossOrganizations } from '../components/settings/AcrossOrganizations'
 import { ServiceTypeFilesSettings } from '../components/settings/ServiceTypeFilesSettings';
 import { LanguageSelect } from '../i18n';
 import { AppearanceSettings } from '../components/settings/AppearanceSettings';
+import { AccountPrivacySettings } from '../components/settings/AccountPrivacySettings';
 
 export const SettingsPage = () => {
   const { t } = useTranslation(['settings', 'common']);
@@ -65,6 +66,7 @@ export const SettingsPage = () => {
     ...(organization
       ? [{ id: 'availability', label: t('settingsPage.availability.title'), icon: 'clock', group: 'me' } satisfies SettingsNavItem]
       : []),
+    { id: 'account', label: t('account.entry'), icon: 'settings', group: 'me' },
     { id: 'church', label: t('profile.organizations.title'), icon: 'home', group: 'church' },
     ...(admin && organization
       ? [{ id: 'access', label: t('settingsPage.access'), icon: 'people', group: 'church' } satisfies SettingsNavItem]
@@ -282,6 +284,12 @@ export const SettingsPage = () => {
               <AcrossOrganizations />
             </div>
           ) : null}
+
+          {showPersonal && (
+            <div id="settings-account" className="scroll-mt-36 lg:scroll-mt-24">
+              <AccountPrivacySettings />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -289,7 +297,7 @@ export const SettingsPage = () => {
 };
 
 /** The settings pages, one shown at a time. */
-type SettingsSection = 'profile' | 'appearance' | 'church' | 'access' | 'reminders' | 'calendar' | 'availability';
+type SettingsSection = 'profile' | 'appearance' | 'church' | 'access' | 'reminders' | 'calendar' | 'availability' | 'account';
 
 /** How far below the viewport top a section must reach to count as current (sticky bars + a little). */
 const SPY_OFFSET_PX = 160;
