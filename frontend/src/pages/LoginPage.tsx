@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { isAuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { LocalizedError, type QualifiedTranslationKey } from '@service-center/shared';
 import { supabase } from '../lib/supabase';
+import { clearAccountDeleted, wasAccountDeleted } from '../lib/account-deleted-notice';
 import { LocaleSwitcher } from '../i18n';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, Notice } from '../components/ui';
@@ -47,9 +48,11 @@ export const localizeAuthError = (error: unknown, action: AuthAction): unknown =
 };
 
 export const LoginPage = () => {
-  const { t } = useTranslation(['auth', 'common']);
+  const { t } = useTranslation(['auth', 'common', 'legal']);
   const { session } = useAuth();
   const location = useLocation() as { state?: { from?: string } };
+  const [accountDeleted] = useState(wasAccountDeleted);
+  useEffect(clearAccountDeleted, []);
   const [mode, setMode] = useState<Mode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -94,6 +97,10 @@ export const LoginPage = () => {
         <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{t('common:app.name')}</h1>
         <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">{t('brand.tagline')}</p>
       </div>
+
+      {accountDeleted && (
+        <Notice tone="success" className="mb-4">{t('login.accountDeleted')}</Notice>
+      )}
 
       <form onSubmit={submit} className="card space-y-5 p-6 shadow-xl shadow-slate-900/5 sm:p-8 dark:shadow-none">
         <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
@@ -163,6 +170,11 @@ export const LoginPage = () => {
           {mode === 'sign-in' ? t('login.switchToSignUp') : t('login.switchToSignIn')}
         </button>
       </p>
+
+      <nav className="mt-4 flex justify-center gap-5 text-xs text-slate-500 dark:text-slate-400">
+        <Link className="hover:underline" to="/privacy">{t('legal:nav.privacy')}</Link>
+        <Link className="hover:underline" to="/support">{t('legal:nav.support')}</Link>
+      </nav>
     </AuthLayout>
   );
 };

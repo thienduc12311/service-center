@@ -59,7 +59,8 @@
     "template_stale": "This template changed since you opened it. Reload it and try again.",
     "message_id_conflict": "That message id is already used. Send again to post it as a new message.",
     "message_removed": "This message was removed, so it can’t be changed.",
-    "message_unrecoverable": "This message can no longer be restored."
+    "message_unrecoverable": "This message can no longer be restored.",
+    "account_deletion_blocked": "Make someone else an owner of your organizations before deleting your account."
   },
   "validation": {
     "required": "This field is required.",

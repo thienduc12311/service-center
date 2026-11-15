@@ -36,6 +36,7 @@ import { ReschedulePlansPage } from './pages/ReschedulePlansPage';
 import { MediaDetailPage, MediaLibraryPage } from './pages/MediaPage';
 import { PublicPlanPage } from './pages/PublicPlanPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { PrivacyPolicyPage, SupportPage } from './pages/LegalPages';
 
 /**
  * Gate for every authenticated route. Anyone signed in but not yet in an
@@ -66,6 +67,9 @@ export const router = createBrowserRouter([
   // F16: anonymous public projections (no session needed).
   { path: '/p/:slug', element: <PublicPlanPage kind="plan" /> },
   { path: '/s/:slug', element: <PublicPlanPage kind="set-list" /> },
+  // Public: the App Store's Privacy Policy and Support URLs.
+  { path: '/privacy', element: <PrivacyPolicyPage /> },
+  { path: '/support', element: <SupportPage /> },
   {
     element: <RequireAuth />,
     children: [

@@ -12,6 +12,7 @@ import type {
 } from '../types/integrations.js';
 import type { CreateApiCredentialRequest, CreateWebhookEndpointInput, SetWebhookEnabledInput } from '../schemas/integrations.js';
 import type { LanguagePreferenceResponse, UpdateLanguagePreferenceInput } from '../schemas/language.js';
+import type { AccountDeletionPlan, AccountDeletionResult, BlockedUser, UserBlockRow } from '../types/account.js';
 /**
  * Typed client for the Express API. Shared verbatim by the web app and the
  * React Native app — the only difference is how each supplies the access token.
@@ -584,6 +585,15 @@ export class ServiceCenterApi {
   /** Saves only the caller's own language in the given (or active) church. */
   updateLanguagePreference = (body: UpdateLanguagePreferenceInput, scope?: RequestScope) =>
     this.request<LanguagePreferenceResponse>('PATCH', '/api/v1/me/language-preference', body, undefined, scope);
+  /** What deleting the account would do; `can_delete` is false while an organization would be left without an owner. */
+  accountDeletionPlan = () => this.request<AccountDeletionPlan>('GET', '/api/v1/me/account-deletion');
+  /** Permanently deletes the caller's account (and any organization they are the only member of). Sign out afterwards. */
+  deleteAccount = () => this.request<AccountDeletionResult>('DELETE', '/api/v1/me', { confirm: true });
+  /** People the caller blocked, newest first. */
+  blockedUsers = () => this.request<BlockedUser[]>('GET', '/api/v1/me/blocks');
+  /** Hides this person's messages and comments from the caller and stops their notifications. Idempotent. */
+  blockUser = (userId: string) => this.request<UserBlockRow>('PUT', `/api/v1/me/blocks/${encodeURIComponent(userId)}`);
+  unblockUser = (userId: string) => this.request<void>('DELETE', `/api/v1/me/blocks/${encodeURIComponent(userId)}`);
 
   // ------------------------------------------------------ organizations --
   listOrganizations = () =>

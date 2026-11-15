@@ -74,7 +74,7 @@ export const importPreviewSchema = z.object({
   rows: z.array(importPreviewRowSchema), can_commit: z.boolean(),
 });
 export const importJobSchema = z.object({
-  id: uuid, organization_id: uuid, created_by: uuid, kind: importKindSchema,
+  id: uuid, organization_id: uuid, created_by: uuid.nullable(), kind: importKindSchema,
   filename: z.string(), source_hash: z.string(), preview_hash: z.string(),
   idempotency_key: z.string(), revision: z.number().int(), status: z.enum(['reviewed', 'committed']),
   created_at: z.string(), committed_at: z.string().nullable(),

@@ -358,9 +358,20 @@
     "moderation": "Moderation",
     "refreshFailed": "Could not refresh. Showing what was loaded earlier; pull down to try again.",
     "notAvailableAction": "Back to chats",
-    "unreadMarker": "New messages"
+    "unreadMarker": "New messages",
+    "block": "Block",
+    "blockTitle": "Block {{name}}?",
+    "blockMessage": "You won't see messages or comments from {{name}}, and they won't notify you. {{name}} isn't told. You can unblock them in Settings → Blocked people.",
+    "blockConfirm": "Block",
+    "blockAfterReport": "You can also block {{name}} so you no longer see anything they write."
   },
   "mobileInbox": {
     "description": "Team and plan chat, and messages from your leaders."
+  },
+  "authorMenu": {
+    "open": "Options for {{name}}",
+    "hint": "Report this message to your church's moderators, or block {{name}}.",
+    "report": "Report message",
+    "block": "Block {{name}}"
   }
 }

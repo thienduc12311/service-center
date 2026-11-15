@@ -39,6 +39,10 @@ export const keys = {
   mySchedule: (org: string | null, query: unknown) => [...keys.all(org), 'my-schedule', query] as const,
   blockouts: (org: string | null, query: unknown) => [...keys.all(org), 'blockouts', query] as const,
   calendarFeed: (org: string | null) => [...keys.all(org), 'calendar-feed'] as const,
+  /** People this account blocked (per person; under the org root so a sign-out clears it). */
+  blockedUsers: (org: string | null) => [...keys.all(org), 'blocked-users'] as const,
+  /** What deleting the account would do. Per login: it must work before joining any organization. */
+  accountDeletionPlan: (userId: string | null) => ['account', userId, 'deletion-plan'] as const,
   deliveryStatus: (org: string | null) => [...keys.all(org), 'delivery-status'] as const,
   deliveries: (org: string | null, query: unknown) => [...keys.all(org), 'deliveries', query] as const,
   // F17 developer API and webhooks.

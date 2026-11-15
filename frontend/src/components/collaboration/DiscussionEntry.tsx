@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DiscussionMention } from '@service-center/shared';
 import { useErrorText, useFormatters } from '../../i18n';
 import { Avatar, Button } from '../ui';
+import { Icon, type IconName } from '../icons';
 
 /** Mention outcomes worth telling the author about (everything but `notified`). */
 type UnnotifiedResolution = Exclude<DiscussionMention['resolution'], 'notified'>;
@@ -15,6 +16,8 @@ export interface DiscussionEntryAction {
   label: string;
   onClick: () => void;
   danger?: boolean;
+  /** Shown in the author menu only. */
+  icon?: IconName;
 }
 
 export interface DiscussionEntryProps {
@@ -37,7 +40,134 @@ export interface DiscussionEntryProps {
   variant?: 'list' | 'bubble';
   /** The signed-in person wrote this entry; only changes how a bubble is drawn. */
   mine?: boolean;
+  /**
+   * Actions about the author (report, block). They sit behind the author's
+   * picture and name rather than in the action row, so a stray click on a
+   * message can't block someone.
+   */
+  authorActions?: DiscussionEntryAction[];
+  /** One line under the author's name in that menu. */
+  authorMenuHint?: string;
 }
+
+/** Room the author menu needs below its trigger before it flips above (px). */
+const MENU_SPACE_BELOW = 240;
+const MENU_GAP = 6;
+
+interface AuthorMenuProps {
+  name: string;
+  actions: DiscussionEntryAction[];
+  hint?: string;
+  /** What opens the menu: the avatar, or the name. */
+  children: ReactNode;
+  className?: string;
+}
+
+/**
+ * The author's picture (or name) as a button that opens a small menu of
+ * actions about them. Positioned against the viewport so a scrolling chat
+ * pane can't clip it; closes on Escape, outside click, scroll or resize.
+ */
+const AuthorMenu = ({ name, actions, hint, children, className = '' }: AuthorMenuProps) => {
+  const { t } = useTranslation('messages');
+  const trigger = useRef<HTMLButtonElement>(null);
+  const firstItem = useRef<HTMLButtonElement>(null);
+  const [position, setPosition] = useState<CSSProperties | null>(null);
+  const close = (restoreFocus = true) => {
+    setPosition(null);
+    if (restoreFocus) trigger.current?.focus();
+  };
+
+  const open = () => {
+    const rect = trigger.current?.getBoundingClientRect();
+    if (!rect) return;
+    const below = window.innerHeight - rect.bottom >= MENU_SPACE_BELOW;
+    setPosition({
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - 272)),
+      ...(below ? { top: rect.bottom + MENU_GAP } : { bottom: window.innerHeight - rect.top + MENU_GAP }),
+    });
+  };
+
+  useEffect(() => {
+    if (!position) return;
+    firstItem.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+    const onMove = () => close(false);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onMove);
+    window.addEventListener('scroll', onMove, true);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onMove);
+      window.removeEventListener('scroll', onMove, true);
+    };
+  }, [position]);
+
+  return (
+    <>
+      <button
+        ref={trigger}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={Boolean(position)}
+        aria-label={t('authorMenu.open', { name })}
+        title={t('authorMenu.open', { name })}
+        onClick={() => (position ? close() : open())}
+        className={`cursor-pointer rounded-full outline-offset-2 transition hover:opacity-80 focus-visible:outline-2 focus-visible:outline-brand-500 ${className}`}
+      >
+        {children}
+      </button>
+      {position && (
+        <>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-hidden="true"
+            className="fixed inset-0 z-40 cursor-default"
+            onClick={() => close(false)}
+          />
+          <div
+            role="menu"
+            aria-label={t('authorMenu.open', { name })}
+            style={position}
+            className="card animate-pop-in fixed z-50 w-64 overflow-hidden p-1 text-sm shadow-lg shadow-slate-900/10"
+          >
+            <div className="flex items-center gap-2.5 px-3 pt-2.5 pb-2">
+              <Avatar name={name} size="sm" />
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-slate-900 dark:text-white">{name}</p>
+                {hint && <p className="text-xs text-pretty text-slate-500 dark:text-slate-400">{hint}</p>}
+              </div>
+            </div>
+            <div className="my-1 h-px bg-app-border" />
+            {actions.map((action, index) => (
+              <button
+                key={action.label}
+                ref={index === 0 ? firstItem : undefined}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  close(false);
+                  action.onClick();
+                }}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left font-medium transition focus-visible:outline-none ${
+                  action.danger
+                    ? 'text-rose-600 hover:bg-rose-50 focus-visible:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10 dark:focus-visible:bg-rose-500/10'
+                    : 'text-slate-700 hover:bg-slate-100 focus-visible:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800'
+                }`}
+              >
+                {action.icon && <Icon name={action.icon} className="size-4 shrink-0" />}
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  );
+};
 
 /** One comment or chat message: author, time, text, mentions and actions. */
 export const DiscussionEntry = ({
@@ -54,6 +184,8 @@ export const DiscussionEntry = ({
   actions = [],
   variant = 'list',
   mine = false,
+  authorActions = [],
+  authorMenuHint,
 }: DiscussionEntryProps) => {
   const { t } = useTranslation(['messages', 'common']);
   const format = useFormatters();
@@ -64,6 +196,8 @@ export const DiscussionEntry = ({
   const [error, setError] = useState<string | null>(null);
 
   const bubble = variant === 'bubble';
+  const author = authorName ?? t('common:fallback.someone');
+  const hasAuthorMenu = authorActions.length > 0;
   const ownBubble = bubble && mine;
   const timeLabel = editedAt && !removedLabel ? t('entry.edited', { time: format.dateTime(createdAt) }) : format.dateTime(createdAt);
 
@@ -127,10 +261,16 @@ export const DiscussionEntry = ({
   if (bubble) {
     return (
       <li className={`group flex gap-2.5 py-1.5 ${ownBubble ? 'flex-row-reverse' : ''}`}>
-        {!ownBubble && <Avatar name={authorName} size="sm" />}
+        {!ownBubble && (hasAuthorMenu ? (
+          <AuthorMenu name={author} actions={authorActions} hint={authorMenuHint} className="self-start">
+            <Avatar name={authorName} size="sm" />
+          </AuthorMenu>
+        ) : (
+          <Avatar name={authorName} size="sm" />
+        ))}
         <div className={`flex min-w-0 max-w-[85%] flex-col text-sm sm:max-w-[75%] ${ownBubble ? 'items-end' : 'items-start'}`}>
           <p className={`mb-0.5 flex flex-wrap items-baseline gap-x-2 px-1 ${ownBubble ? 'justify-end' : ''}`}>
-            {!ownBubble && <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{authorName ?? t('common:fallback.someone')}</span>}
+            {!ownBubble && <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{author}</span>}
             <span className="text-[11px] text-slate-400">{timeLabel}</span>
           </p>
           {editing ? (

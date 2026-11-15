@@ -88,15 +88,15 @@ describe('conversationMessageActions', () => {
   const moderator = { can_moderate: true };
 
   it('offers reply/report on others, edit/delete on own', () => {
-    expect(conversationMessageActions(message(id(1), 'x'), participant)).toEqual({ reply: true, edit: false, report: true, delete: false, restore: false });
-    expect(conversationMessageActions(message(id(1), 'x', { is_mine: true }), participant)).toEqual({ reply: true, edit: true, report: false, delete: true, restore: false });
+    expect(conversationMessageActions(message(id(1), 'x'), participant)).toEqual({ reply: true, edit: false, report: true, block: true, delete: false, restore: false });
+    expect(conversationMessageActions(message(id(1), 'x', { is_mine: true }), participant)).toEqual({ reply: true, edit: true, report: false, block: false, delete: true, restore: false });
   });
 
   it('lets moderators delete anyone and restore only hidden messages', () => {
     expect(conversationMessageActions(message(id(1), 'x'), moderator).delete).toBe(true);
     const hidden = message(id(1), 'x', { hidden_at: '2026-10-21T11:00:00Z', body: '' });
     expect(conversationMessageState(hidden)).toBe('hidden');
-    expect(conversationMessageActions(hidden, moderator)).toEqual({ reply: false, edit: false, report: false, delete: false, restore: true });
+    expect(conversationMessageActions(hidden, moderator)).toEqual({ reply: false, edit: false, report: false, block: false, delete: false, restore: true });
     expect(conversationMessageActions(hidden, participant).restore).toBe(false);
   });
 

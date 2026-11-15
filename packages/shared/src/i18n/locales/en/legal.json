@@ -1,0 +1,83 @@
+{
+  "nav": {
+    "privacy": "Privacy Policy",
+    "support": "Support",
+    "openApp": "Open Service Center",
+    "lastUpdated": "Last updated {{date}}",
+    "contactUs": "Contact us at {{email}}"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "intro": "Service Center helps churches and ministries plan services, schedule volunteer teams and share songs. This policy explains what information Service Center collects through the website and the iOS app, how it is used, and the choices you have. In this policy, \"we\" means Service Center.",
+    "collect": {
+      "title": "Information we collect",
+      "account": "Account information: your email address, password (stored only as a secure hash by our authentication provider), name, phone number if you add one, and a profile picture if you upload one.",
+      "organization": "Organization information: the churches you belong to, your role, the teams and positions you serve in, your schedule, requests you accept or decline, blockout dates, availability and scheduling preferences.",
+      "content": "Content you create: plans, notes, chat messages, comments, songs, chord charts, files and photos you upload (for example a photo of a chord sheet you import).",
+      "device": "Device information: if you allow notifications, a push notification token for your device, plus your language and notification preferences.",
+      "technical": "Technical information: basic server logs (such as request times and error codes) needed to keep the service secure and working. We do not use advertising or analytics trackers."
+    },
+    "use": {
+      "title": "How we use information",
+      "body": "We use your information only to provide Service Center: to sign you in, show your schedule and plans, let your team leaders schedule you, deliver the emails and notifications you asked for, keep the service secure, and answer support requests. We do not sell your information and do not use it for advertising."
+    },
+    "sharing": {
+      "title": "Who can see your information",
+      "organization": "People in your organization: what you share inside a church (your name, schedule, messages and so on) is visible to other members according to the roles and permissions that church sets.",
+      "providers": "Service providers that run Service Center for us: Supabase (database, sign-in and file storage), Vercel (website and API hosting), Resend (email delivery) and Expo / Apple Push Notification service (push notifications). They process information only to provide these services.",
+      "integrations": "Integrations your organization sets up: church administrators can connect other tools (for example a calendar feed or webhook). Information is sent only where your organization configures it.",
+      "legal": "When required by law: we may disclose information if we are legally required to do so."
+    },
+    "safety": {
+      "title": "Reporting and blocking",
+      "body": "You can report a chat message to your church's moderators, and block another person so you no longer see their messages and comments or receive notifications from them. Blocked people are not told. You can review and undo blocks in Settings."
+    },
+    "retention": {
+      "title": "Keeping and deleting your information",
+      "body": "We keep your information while your account exists. You can delete your account at any time in Settings (Account & privacy on the website, or Settings → Delete account in the app). Deleting your account permanently removes your login, profile, picture, messages, comments, notifications, devices and preferences. If you are the only member of an organization, that organization is deleted too. Organizations you belonged to may keep their own records, such as past service schedules, without your account. Copies in encrypted backups are removed as those backups expire."
+    },
+    "security": {
+      "title": "Security",
+      "body": "Information is sent over encrypted connections, access inside each church is limited by role, and database rules keep each organization's data separate. No system is perfectly secure, so please use a strong, unique password."
+    },
+    "children": {
+      "title": "Children",
+      "body": "Service Center is not directed to children under 13, and children should not create accounts. A church may keep a record for a young volunteer without a login; that record is managed by the church."
+    },
+    "rights": {
+      "title": "Your choices and rights",
+      "body": "You can view and update your profile in Settings, turn notifications on or off, change your language, block people and delete your account. Depending on where you live you may have further rights, such as asking for a copy of your information; contact us and we will help."
+    },
+    "changes": {
+      "title": "Changes to this policy",
+      "body": "If we change this policy we will update the date at the top of this page. Significant changes will also be announced in the app."
+    },
+    "contact": {
+      "title": "Contact",
+      "body": "Questions or requests about privacy: {{email}}."
+    }
+  },
+  "support": {
+    "title": "Support",
+    "intro": "Need help with Service Center? Start with the answers below. If you still need help, email us and we will get back to you.",
+    "contactTitle": "Contact support",
+    "contactBody": "Email {{email}} and tell us what you were trying to do, which device you were using and, if you can, include a screenshot. We usually reply within two business days.",
+    "emailButton": "Email support",
+    "faqTitle": "Common questions",
+    "faq": {
+      "joinQ": "How do I join my church?",
+      "joinA": "Your church administrator invites you by email. Open the invitation link to create your login, or ask an administrator to invite the address you already use.",
+      "passwordQ": "I forgot my password.",
+      "passwordA": "Ask your church administrator to send you a new invitation, or contact support and we will help you get back in.",
+      "scheduleQ": "How do I accept or decline a request to serve?",
+      "scheduleA": "Open My schedule (or the Schedule tab in the app) and choose Accept or Decline on the request. You can add blockout dates in Settings so you are not scheduled when you are away.",
+      "notificationsQ": "I'm not getting notifications.",
+      "notificationsA": "In the app, open Settings → Notifications and make sure they are on, and check that notifications for Service Center are allowed in your iPhone's Settings.",
+      "reportQ": "How do I report or block someone?",
+      "reportA": "In a chat, tap the person's picture next to their message. Choose Report message to send it to your church's moderators, or Block to hide everything that person writes. Settings → Blocked people lists the people you blocked.",
+      "deleteQ": "How do I delete my account?",
+      "deleteA": "Open Settings → Delete account in the app, or Settings → Account & privacy on the website. Deletion is permanent. If you are the only owner of a church that has other members, make someone else an owner first."
+    },
+    "privacyLink": "Read our Privacy Policy"
+  }
+}

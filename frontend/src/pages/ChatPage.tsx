@@ -33,9 +33,11 @@ interface ReportModalProps {
   conversationId: string;
   message: ConversationMessage;
   onClose: () => void;
+  /** Block the author too, once the report is in. */
+  onBlock: () => void;
 }
 
-const ReportModal = ({ conversationId, message, onClose }: ReportModalProps) => {
+const ReportModal = ({ conversationId, message, onClose, onBlock }: ReportModalProps) => {
   const { t } = useTranslation(['messages', 'common']);
   const [reason, setReason] = useState<ConversationReportReason>('inappropriate');
   const [details, setDetails] = useState('');
@@ -45,7 +47,13 @@ const ReportModal = ({ conversationId, message, onClose }: ReportModalProps) => 
       {report.isSuccess ? (
         <>
           <Notice tone="success">{t('reportModal.thanks')}</Notice>
-          <div className="mt-6 flex justify-end"><Button onClick={onClose}>{t('common:actions.done')}</Button></div>
+          <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
+            {t('mobileChat.blockAfterReport', { name: message.author_name ?? t('common:fallback.someone') })}
+          </p>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="danger" onClick={onBlock}>{t('mobileChat.block')}</Button>
+            <Button onClick={onClose}>{t('common:actions.done')}</Button>
+          </div>
         </>
       ) : (
         <div className="space-y-3 text-sm">
@@ -103,6 +111,18 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   const mute = useMutation({ mutationFn: (muted: boolean) => api.muteConversation(conversationId, muted), onSuccess: refresh });
   const remove = useMutation({ mutationFn: (message: ConversationMessage) => api.deleteConversationMessage(conversationId, message.id), onSuccess: refresh });
   const restore = useMutation({ mutationFn: (message: ConversationMessage) => api.restoreConversationMessage(conversationId, message.id), onSuccess: refresh });
+  const block = useMutation({
+    mutationFn: (message: ConversationMessage) => api.blockUser(message.author_id),
+    onSuccess: () => {
+      setReporting(null);
+      // Their messages and comments disappear everywhere, not only here.
+      void client.invalidateQueries({ queryKey: keys.all(organizationId) });
+    },
+  });
+  const confirmBlock = (message: ConversationMessage) => {
+    const name = message.author_name ?? t('common:fallback.someone');
+    if (window.confirm(`${t('mobileChat.blockTitle', { name })}\n\n${t('mobileChat.blockMessage', { name })}`)) block.mutate(message);
+  };
   const resolve = useMutation({
     mutationFn: (input: { reportId: string; action: 'dismiss' | 'hide' }) => api.resolveConversationReport(conversationId, input.reportId, { action: input.action }),
     onSuccess: refresh,
@@ -191,7 +211,7 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
         )}
 
         <div className="mb-3 empty:hidden">
-          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error} />
+          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? block.error} />
         </div>
         {messages.next_before && !search && <p className="mb-3 text-center text-xs text-slate-400">{t('conversation.showingLatest', { count: messages.data.length })}</p>}
         {shown.length === 0 ? (
@@ -225,9 +245,15 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
                     await api.editConversationMessage(conversationId, message.id, { body });
                     await refresh();
                   }}
+                  authorActions={[
+                    ...(allowed.report ? [{ label: t('authorMenu.report'), icon: 'flag' as const, onClick: () => setReporting(message) }] : []),
+                    ...(allowed.block
+                      ? [{ label: t('authorMenu.block', { name: message.author_name ?? t('common:fallback.someone') }), icon: 'ban' as const, danger: true, onClick: () => confirmBlock(message) }]
+                      : []),
+                  ]}
+                  authorMenuHint={t('authorMenu.hint', { name: message.author_name ?? t('common:fallback.someone') })}
                   actions={[
                     ...(allowed.reply ? [{ label: t('conversation.reply'), onClick: () => setReplyTo(message) }] : []),
-                    ...(allowed.report ? [{ label: t('conversation.report'), onClick: () => setReporting(message) }] : []),
                     ...(allowed.delete
                       ? [{ label: t('common:actions.delete'), danger: true, onClick: () => { if (window.confirm(t('conversation.deleteConfirm'))) remove.mutate(message); } }]
                       : []),
@@ -261,7 +287,7 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
           {t('conversation.privacyNote')}
         </p>
       </div>
-      {reporting && <ReportModal conversationId={conversationId} message={reporting} onClose={() => setReporting(null)} />}
+      {reporting && <ReportModal conversationId={conversationId} message={reporting} onClose={() => setReporting(null)} onBlock={() => confirmBlock(reporting)} />}
     </div>
   );
 };

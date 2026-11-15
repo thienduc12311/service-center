@@ -6,6 +6,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice } from '../components/ui';
 import { Icon } from '../components/icons';
 import { AuthLayout } from '../components/AuthLayout';
+import { DeleteAccountDialog } from '../components/settings/AccountPrivacySettings';
 
 const slugify = (value: string) =>
   value
@@ -15,8 +16,9 @@ const slugify = (value: string) =>
     .slice(0, 40);
 
 export const OnboardingPage = () => {
-  const { t } = useTranslation(['auth', 'common']);
+  const { t } = useTranslation(['auth', 'common', 'settings']);
   const { refreshUser, signOut } = useAuth();
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -94,14 +96,26 @@ export const OnboardingPage = () => {
         </Button>
       </form>
 
-      <button
-        type="button"
-        onClick={() => void signOut()}
-        className="mx-auto mt-6 inline-flex items-center gap-1.5 text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-      >
-        <Icon name="signOut" className="size-4" />
-        {t('common:actions.signOut')}
-      </button>
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+        >
+          <Icon name="signOut" className="size-4" />
+          {t('common:actions.signOut')}
+        </button>
+        {/* Someone who signed up but never joined a church can still delete their account. */}
+        <button
+          type="button"
+          onClick={() => setDeleting(true)}
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 transition hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400"
+        >
+          <Icon name="trash" className="size-4" />
+          {t('settings:account.deleteEntry')}
+        </button>
+      </div>
+      <DeleteAccountDialog open={deleting} onClose={() => setDeleting(false)} />
     </AuthLayout>
   );
 };

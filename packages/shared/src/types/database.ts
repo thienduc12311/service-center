@@ -1,6 +1,7 @@
 import type { LabeledKey } from '../schemas/arrangement-curation.js';
 import type { ImportJob, ImportJobRow } from '../schemas/imports.js';
 import type { SongBulkPreview, SongCurationEventRow } from './song-curation.js';
+import type { UserBlockRow } from './account.js';
 /**
  * Shape of the Postgres schema as supabase-js expects it.
  *
@@ -476,7 +477,7 @@ export type SongRow = {
 
 export type ArrangementKeyRow = Omit<LabeledKey, 'file_ids'>;
 export type ArrangementFileLinkRow = { id: string; arrangement_id: string; attachment_id: string; key_id: string | null };
-export type LibraryOperationRow = { id: string; organization_id: string; actor_id: string; idempotency_key: string;
+export type LibraryOperationRow = { id: string; organization_id: string; actor_id: string | null; idempotency_key: string;
   kind: 'duplicate_arrangement' | 'save_key' | 'merge_song'; input: unknown; before_state: unknown; result: unknown; created_at: string };
 
 export type ArrangementRow = {
@@ -854,7 +855,7 @@ export type BlockoutSeriesRow = {
   ambiguous_time_policy: 'earlier' | 'later';
   revision: number;
   idempotency_key: string;
-  created_by: string;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -865,7 +866,7 @@ export type BlockoutSeriesExceptionRow = {
   occurrence_key: string;
   kind: 'updated' | 'deleted' | 'future_split';
   replacement_blockout_id: string | null;
-  created_by: string;
+  created_by: string | null;
   created_at: string;
 }
 
@@ -1199,6 +1200,7 @@ export type Database = {
       webhook_events: Table<WebhookEventRow>;
       webhook_deliveries: Table<WebhookDeliveryRow>;
       webhook_delivery_attempts: Table<WebhookDeliveryAttemptRow>;
+      user_blocks: Table<UserBlockRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };

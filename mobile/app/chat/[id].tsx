@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActionSheetIOS,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -255,6 +256,17 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
     },
     onSettled: () => void refresh(),
   });
+  const block = useMutation({
+    mutationFn: (message: ConversationMessage) => api.blockUser(message.author_id),
+    onSuccess: (row) => {
+      if (!isCurrentGeneration(generation)) return;
+      // The server stops returning them; drop what is already on screen too.
+      setKnown((current) => current.filter((message) => message.author_id !== row.blocked_id));
+      setReportingId(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.blockedUsers(queryScope?.userId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.privateRoot(queryScope) });
+    },
+  });
   const [reportingId, setReportingId] = useState<string | null>(null);
   // Only a pull shows the spinner; background polls refresh silently.
   const [pulling, setPulling] = useState(false);
@@ -264,6 +276,14 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
       { text: t('common:actions.cancel'), style: 'cancel' },
       { text: t('common:actions.delete'), style: 'destructive', onPress: () => remove.mutate(message) },
     ]);
+
+  const confirmBlock = (message: ConversationMessage) => {
+    const name = message.author_name ?? t('common:fallback.someone');
+    Alert.alert(t('mobileChat.blockTitle', { name }), t('mobileChat.blockMessage', { name }), [
+      { text: t('common:actions.cancel'), style: 'cancel' },
+      { text: t('mobileChat.blockConfirm'), style: 'destructive', onPress: () => block.mutate(message) },
+    ]);
+  };
 
   // ----------------------------------------------------------------- draft --
   const [draft, setDraft] = useState<ConversationDraft>(() => conversationDrafts.get(queryScope, conversationId) ?? emptyDraft());
@@ -398,7 +418,7 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
             </Card>
           ) : null}
 
-          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? loadOlder.error ?? results.error} />
+          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? block.error ?? loadOlder.error ?? results.error} />
 
           {searching ? (
             results.isLoading ? (
@@ -436,10 +456,12 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
               reporting={reportingId === message.id}
               onReply={() => setDraft((current) => ({ ...current, replyToId: message.id }))}
               onReport={() => setReportingId((current) => (current === message.id ? null : message.id))}
+              onBlock={() => confirmBlock(message)}
               onDelete={() => confirmDelete(message)}
               onRestore={() => restore.mutate(message)}
               onEdited={mergeOne}
               onReportClosed={() => setReportingId(null)}
+              onBlockAfterReport={() => confirmBlock(message)}
             />
           ))}
         </ScrollView>
@@ -506,10 +528,14 @@ interface MessageEntryProps {
   reporting: boolean;
   onReply: () => void;
   onReport: () => void;
+  /** Asks first, then hides everything this author writes from the caller. */
+  onBlock: () => void;
   onDelete: () => void;
   onRestore: () => void;
   onEdited: (message: ConversationMessage) => void;
   onReportClosed: () => void;
+  /** Offered once a report is sent. */
+  onBlockAfterReport: () => void;
 }
 
 /** One message: author, time, quote, text (or why it is gone), mention outcomes for its author, actions. */
@@ -521,10 +547,12 @@ function MessageEntry({
   reporting,
   onReply,
   onReport,
+  onBlock,
   onDelete,
   onRestore,
   onEdited,
   onReportClosed,
+  onBlockAfterReport,
 }: MessageEntryProps) {
   const { t } = useTranslation(['messages', 'common']);
   const format = useFormatters();
@@ -558,11 +586,53 @@ function MessageEntry({
     : null;
 
   const mine = message.is_mine;
-  const hasActions = !editing && (allowed.reply || allowed.edit || allowed.report || allowed.delete || allowed.restore);
+
+  /**
+   * Report and block live behind the author's picture, not in the row under
+   * every message, so a stray tap can't block someone. Blocking still asks
+   * again before it happens.
+   */
+  const openAuthorMenu = (): void => {
+    const options: { label: string; run: () => void; destructive?: boolean }[] = [
+      ...(allowed.report ? [{ label: t('authorMenu.report'), run: onReport }] : []),
+      ...(allowed.block ? [{ label: t('authorMenu.block', { name: author }), run: onBlock, destructive: true }] : []),
+    ];
+    const cancel = t('common:actions.cancel');
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: author,
+          message: t('authorMenu.hint', { name: author }),
+          options: [...options.map((option) => option.label), cancel],
+          cancelButtonIndex: options.length,
+          destructiveButtonIndex: options.findIndex((option) => option.destructive),
+        },
+        (index) => options[index]?.run(),
+      );
+      return;
+    }
+    Alert.alert(author, t('authorMenu.hint', { name: author }), [
+      ...options.map((option) => ({ text: option.label, style: option.destructive ? ('destructive' as const) : ('default' as const), onPress: option.run })),
+      { text: cancel, style: 'cancel' as const },
+    ]);
+  };
+  const hasActions = !editing && (allowed.reply || allowed.edit || allowed.delete || allowed.restore);
 
   return (
     <View style={[styles.entry, mine && styles.entryMine]}>
-      {mine ? null : <Avatar name={author} size={32} />}
+      {mine ? null : allowed.report || allowed.block ? (
+        <PressableScale
+          onPress={openAuthorMenu}
+          accessibilityLabel={t('authorMenu.open', { name: author })}
+          pressedOpacity={0.6}
+          hitSlop={6}
+          style={styles.authorButton}
+        >
+          <Avatar name={author} size={32} />
+        </PressableScale>
+      ) : (
+        <Avatar name={author} size={32} />
+      )}
       <View style={[styles.entryBody, mine && styles.entryBodyMine]}>
         {mine ? null : <Text style={styles.author}>{author}</Text>}
         {editing ? (
@@ -629,14 +699,13 @@ function MessageEntry({
                 }}
               />
             ) : null}
-            {allowed.report ? <TextAction label={t('conversation.report')} onPress={onReport} /> : null}
             {allowed.delete ? <TextAction label={t('common:actions.delete')} danger onPress={onDelete} /> : null}
             {allowed.restore ? <TextAction label={t('common:actions.restore')} onPress={onRestore} /> : null}
           </View>
         ) : null}
         {reporting ? (
           <View style={styles.reportWrap}>
-            <ReportPanel conversationId={conversationId} message={message} onClose={onReportClosed} />
+            <ReportPanel conversationId={conversationId} message={message} onClose={onReportClosed} onBlock={onBlockAfterReport} />
           </View>
         ) : null}
       </View>
@@ -665,10 +734,12 @@ interface ReportPanelProps {
   conversationId: string;
   message: ConversationMessage;
   onClose: () => void;
+  /** Block the author too, once the report is in. */
+  onBlock: () => void;
 }
 
 /** The website's report dialog, inline: reason, optional details, then the moderators review it. */
-function ReportPanel({ conversationId, message, onClose }: ReportPanelProps) {
+function ReportPanel({ conversationId, message, onClose, onBlock }: ReportPanelProps) {
   const { t } = useTranslation(['messages', 'common']);
   const styles = useThemedStyles(makeStyles);
   const [reason, setReason] = useState<ConversationReportReason>('inappropriate');
@@ -682,7 +753,13 @@ function ReportPanel({ conversationId, message, onClose }: ReportPanelProps) {
       <Card>
         <Label>{t('mobileChat.reportDone')}</Label>
         <Text style={styles.body}>{t('reportModal.thanks')}</Text>
-        <Button title={t('common:actions.done')} variant="secondary" onPress={onClose} />
+        <Text style={styles.hint}>
+          {t('mobileChat.blockAfterReport', { name: message.author_name ?? t('common:fallback.someone') })}
+        </Text>
+        <View style={styles.row}>
+          <Button title={t('common:actions.done')} variant="secondary" onPress={onClose} />
+          <Button title={t('mobileChat.block')} variant="danger" onPress={onBlock} />
+        </View>
       </Card>
     );
   }
@@ -948,6 +1025,7 @@ const makeStyles = (theme: Theme) =>
     timeMine: { textAlign: 'right' },
     actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: theme.space.md, marginTop: -theme.space.sm },
     actionsMine: { justifyContent: 'flex-end' },
+    authorButton: { alignSelf: 'flex-start', borderRadius: 999 },
     textAction: { minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: theme.space.xs },
     textActionLabel: { ...theme.type.label, fontWeight: '600', color: theme.color.brandText },
     textActionDanger: { color: theme.accent.red.fg },
