@@ -13,6 +13,29 @@ import type {
 import type { CreateApiCredentialRequest, CreateWebhookEndpointInput, SetWebhookEnabledInput } from '../schemas/integrations.js';
 import type { LanguagePreferenceResponse, UpdateLanguagePreferenceInput } from '../schemas/language.js';
 import type { AccountDeletionPlan, AccountDeletionResult, BlockedUser, UserBlockRow } from '../types/account.js';
+import type {
+  AdminChurchApplication,
+  AdminOrganizationDetail,
+  AdminOrganizationSummary,
+  AdminOverview,
+  AdminSession,
+  ChurchApplication,
+  ChurchApplicationStatus,
+  ChurchCreationPolicy,
+  OrganizationPlatformControls,
+  OrganizationStorageUsage,
+  PlatformAccessGrant,
+  PlatformAuditPage,
+  PlatformSettings,
+} from '../types/platform-admin.js';
+import type {
+  AdminActivityRequest,
+  AdminCreateChurchRequest,
+  EnterOrganizationRequest,
+  SubmitChurchApplicationRequest,
+  UpdateChurchApplicationRequest,
+  UpdatePlatformSettingsInput,
+} from '../schemas/platform-admin.js';
 /**
  * Typed client for the Express API. Shared verbatim by the web app and the
  * React Native app — the only difference is how each supplies the access token.
@@ -605,6 +628,59 @@ export class ServiceCenterApi {
     this.request<OrganizationRow>('POST', '/api/v1/organizations', body);
   updateOrganization = (id: string, body: Partial<OrganizationRow>) =>
     this.request<OrganizationRow>('PATCH', `/api/v1/organizations/${id}`, body);
+  /** Whether the app offers "Create a church" or "Apply for a church". */
+  churchCreationPolicy = () => this.request<ChurchCreationPolicy>('GET', '/api/v1/organizations/creation-policy');
+  /** The active church's media usage against its quota. */
+  organizationStorage = () => this.request<OrganizationStorageUsage>('GET', '/api/v1/organization-storage');
+
+  // ------------------------------------------------- church applications --
+  /** The caller's applications, newest first. */
+  myChurchApplications = () => this.request<ChurchApplication[]>('GET', '/api/v1/church-applications');
+  submitChurchApplication = (body: SubmitChurchApplicationRequest) =>
+    this.request<ChurchApplication>('POST', '/api/v1/church-applications', body);
+  /** Only while pending. */
+  updateChurchApplication = (id: string, body: UpdateChurchApplicationRequest) =>
+    this.request<ChurchApplication>('PATCH', `/api/v1/church-applications/${encodeURIComponent(id)}`, body);
+  withdrawChurchApplication = (id: string) =>
+    this.request<ChurchApplication>('POST', `/api/v1/church-applications/${encodeURIComponent(id)}/withdraw`);
+
+  // ---------------------------------------------------- platform admin ----
+  // Super admins only; every route except adminSession needs two-factor login.
+  adminSession = () => this.request<AdminSession>('GET', '/api/v1/admin/session');
+  adminOverview = () => this.request<AdminOverview>('GET', '/api/v1/admin/overview');
+  adminOrganizations = () => this.request<AdminOrganizationSummary[]>('GET', '/api/v1/admin/organizations');
+  adminOrganization = (id: string) =>
+    this.request<AdminOrganizationDetail>('GET', `/api/v1/admin/organizations/${encodeURIComponent(id)}`);
+  adminCreateChurch = (body: AdminCreateChurchRequest) =>
+    this.request<AdminOrganizationSummary>('POST', '/api/v1/admin/organizations', body);
+  /** Null returns the church to the platform default. */
+  adminSetOrganizationQuota = (id: string, storageQuotaBytes: number | null) =>
+    this.request<OrganizationPlatformControls>('PUT', `/api/v1/admin/organizations/${encodeURIComponent(id)}/quota`, {
+      storage_quota_bytes: storageQuotaBytes,
+    });
+  adminDisableOrganization = (id: string, reason: string) =>
+    this.request<OrganizationPlatformControls>('POST', `/api/v1/admin/organizations/${encodeURIComponent(id)}/disable`, { reason });
+  adminEnableOrganization = (id: string) =>
+    this.request<OrganizationPlatformControls>('POST', `/api/v1/admin/organizations/${encodeURIComponent(id)}/enable`);
+  /** Enter the church as a temporary owner (8 hours unless asked otherwise). */
+  adminEnterOrganization = (id: string, body: EnterOrganizationRequest = {}) =>
+    this.request<PlatformAccessGrant>('POST', `/api/v1/admin/organizations/${encodeURIComponent(id)}/access`, body);
+  adminExitOrganization = (id: string) =>
+    this.request<void>('DELETE', `/api/v1/admin/organizations/${encodeURIComponent(id)}/access`);
+  adminChurchApplications = (status?: ChurchApplicationStatus) =>
+    this.request<AdminChurchApplication[]>('GET', '/api/v1/admin/church-applications', undefined, { status });
+  adminUpdateChurchApplication = (id: string, body: UpdateChurchApplicationRequest) =>
+    this.request<AdminChurchApplication>('PATCH', `/api/v1/admin/church-applications/${encodeURIComponent(id)}`, body);
+  /** Creates the church; the applicant becomes its owner. */
+  adminApproveChurchApplication = (id: string, slug: string) =>
+    this.request<AdminChurchApplication>('POST', `/api/v1/admin/church-applications/${encodeURIComponent(id)}/approve`, { slug });
+  adminRejectChurchApplication = (id: string, reason: string) =>
+    this.request<AdminChurchApplication>('POST', `/api/v1/admin/church-applications/${encodeURIComponent(id)}/reject`, { reason });
+  adminSettings = () => this.request<PlatformSettings>('GET', '/api/v1/admin/settings');
+  adminUpdateSettings = (body: UpdatePlatformSettingsInput) =>
+    this.request<PlatformSettings>('PATCH', '/api/v1/admin/settings', body);
+  adminActivity = (query: AdminActivityRequest = {}) =>
+    this.request<PlatformAuditPage>('GET', '/api/v1/admin/activity', undefined, query as Query);
 
   /** Archived people are left out unless asked for. */
   listPeople = (query?: { include_archived?: boolean }) =>

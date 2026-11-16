@@ -20,6 +20,8 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   APP_URL: z.string().url().default('http://localhost:5173'),
+  /** The super-admin dashboard (admin.graceaogchurch.com), linked from application emails. */
+  ADMIN_APP_URL: z.string().url().default('http://localhost:5174'),
   API_URL: z.string().url().default('http://localhost:4000'),
 
   /** Send real push notifications through Expo. Off by default: local runs log instead. */

@@ -8,6 +8,7 @@ import {
   type WorkerRunResult,
 } from '../model/delivery.model.js';
 import { dispatchDelivery, resultFromError } from './delivery-dispatch.js';
+import { purgeExpiredPlatformAccess } from './platform-admin.js';
 
 /** Longer than the slowest provider call (email gives up after 15s). */
 export const DELIVERY_LEASE_SECONDS = 60;
@@ -88,6 +89,8 @@ export const runDeliveryWorker = async (options: WorkerRunOptions): Promise<Work
     tally.remindersEnqueued = (reminders ?? []).filter((row) => row.outcome === 'enqueued').length;
     // F09 retention: organizations that set a limit lose older chat messages.
     tally.conversationMessagesPurged = (await unwrap(adminDb.rpc('purge_expired_conversation_messages', { p_limit: 500 }))) ?? 0;
+    // Super admins' "enter as owner" windows that have run out.
+    await purgeExpiredPlatformAccess();
   }
 
   const rows = await unwrap(

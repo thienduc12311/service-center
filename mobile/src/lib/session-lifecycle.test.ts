@@ -65,7 +65,9 @@ const currentUser = (userId: string, organizationIds: string[]): CurrentUser => 
         can_administer_access: false,
         entries: [],
       },
+      platform_access_expires_at: null,
     })),
+    disabled_organizations: [],
   };
 };
 

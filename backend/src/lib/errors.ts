@@ -1,3 +1,4 @@
+import { CHURCH_APPLICATION_REQUIRED, STORAGE_QUOTA_EXCEEDED } from '@service-center/shared';
 import { parseConflictDetail } from '../model/attendance.model.js';
 
 /** An error that carries an HTTP status through to the response. */
@@ -82,6 +83,8 @@ const PT409_HINTS: Record<string, string> = {
   webhook_changed: 'webhook_endpoint_stale',
   // Account deletion: an organization would be left without an owner.
   account_deletion_blocked: 'account_deletion_blocked',
+  // Super-admin dashboard: the application was decided or withdrawn meanwhile.
+  application_not_pending: 'application_not_pending',
 };
 
 export const fromPostgrestError = (error: {
@@ -111,6 +114,10 @@ export const fromPostgrestError = (error: {
     case '23514':
       return HttpError.badRequest('A value failed a database constraint', error.details);
     case '42501':
+      // Self-serve church creation is off: the person should apply instead.
+      if (error.hint === 'church_application_required') {
+        return new HttpError(403, error.message, CHURCH_APPLICATION_REQUIRED);
+      }
       return HttpError.forbidden();
     // Raised by our own database functions with a message written for people.
     case 'PT404':
@@ -125,6 +132,9 @@ export const fromPostgrestError = (error: {
     // F09: posting faster than a conversation allows.
     case 'PT429':
       return new HttpError(429, error.message, 'rate_limited');
+    // The church is out of media storage.
+    case 'PT413':
+      return new HttpError(413, error.message, STORAGE_QUOTA_EXCEEDED);
     case 'PT410':
       return new HttpError(410, error.message, 'assignment_request_expired');
     default:

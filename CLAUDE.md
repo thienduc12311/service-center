@@ -8,7 +8,7 @@ These instructions apply to all new features, bug fixes, refactors, backend chan
 
 ## Commands
 
-This is an npm workspace (Node `20`). Packages: `backend`, `frontend`, `mobile`, `packages/shared`.
+This is an npm workspace (Node `>=26.8.1`, npm `>=11.19.0`). Packages: `backend`, `frontend`, `mobile`, `packages/shared`.
 
 `@service-center/shared` is consumed as compiled JS by both `backend` and `frontend` (not built on the fly by their dev servers), so build it first — the root scripts below do this automatically.
 
@@ -28,7 +28,7 @@ npm run dev:backend
 npm run dev:web
 npm run dev:mobile        # expo, from mobile/app
 
-# Whole-workspace checks (run per-package via `pnpm -r`)
+# Whole-workspace checks (run in each package via `npm run … --workspaces --if-present`)
 npm run typecheck
 npm run test
 

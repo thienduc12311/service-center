@@ -14,6 +14,9 @@ import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 
 import { meRouter } from './routes/me.js';
 import { organizationsRouter } from './routes/organizations.js';
+import { adminRouter } from './routes/admin.js';
+import { churchApplicationsRouter } from './routes/church-applications.js';
+import { organizationStorageRouter } from './routes/organization-storage.js';
 import { peopleRouter } from './routes/people.js';
 import { rosterRouter, searchRouter } from './routes/roster.js';
 import { invitationAcceptRouter } from './routes/invitation-accept.js';
@@ -139,6 +142,10 @@ export const createApp = (): Express => {
   app.use('/api/v1/device-revocations', deviceRevocationsRouter);
   app.use('/api/v1/me', requireAuth, meAvailabilityRouter, meRouter);
   app.use('/api/v1/organizations', requireAuth, organizationsRouter);
+  // Applying for a church happens before belonging to one.
+  app.use('/api/v1/church-applications', requireAuth, churchApplicationsRouter);
+  // Super-admin dashboard; the router checks platform admin and two-factor login.
+  app.use('/api/v1/admin', requireAuth, adminRouter);
   // Fully public: the caller isn't signed in yet — a valid token is the
   // entire authorisation for this route (see invitation-accept.ts).
   app.use('/api/v1/invitations', invitationAcceptRouter);
@@ -154,6 +161,7 @@ export const createApp = (): Express => {
   // Roster maintenance first: its fixed paths must not be read as a person id.
   app.use('/api/v1/people/:personId/calendar-sharing', scoped, personCalendarSharingRouter);
   app.use('/api/v1/people', scoped, rosterRouter, peopleRouter);
+  app.use('/api/v1/organization-storage', scoped, organizationStorageRouter);
   app.use('/api/v1/search', scoped, searchRouter);
   app.use('/api/v1/service-types/:serviceTypeId/public-links', scoped, servicePublicLinksRouter);
   app.use('/api/v1/service-types', scoped, serviceTypesRouter);

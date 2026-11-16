@@ -2,6 +2,7 @@ import type { LabeledKey } from '../schemas/arrangement-curation.js';
 import type { ImportJob, ImportJobRow } from '../schemas/imports.js';
 import type { SongBulkPreview, SongCurationEventRow } from './song-curation.js';
 import type { UserBlockRow } from './account.js';
+import type { ChurchApplicationStatus, OrganizationPlatformStatus } from './platform-admin.js';
 /**
  * Shape of the Postgres schema as supabase-js expects it.
  *
@@ -188,7 +189,8 @@ type Table<Row> = {
 };
 
 export type OrgRole = 'owner' | 'admin' | 'scheduler' | 'member';
-export type MemberStatus = 'invited' | 'active' | 'inactive';
+/** `suspended`: the church was disabled by a super admin; restored when it is enabled again. */
+export type MemberStatus = 'invited' | 'active' | 'inactive' | 'suspended';
 export type PlanStatus = 'draft' | 'published' | 'archived';
 export type PlanTimeKind = 'service' | 'rehearsal' | 'other';
 export type PlanItemType = 'song' | 'header' | 'item';
@@ -335,8 +337,69 @@ export type OrganizationMemberRow = {
   status: MemberStatus;
   access_mode: AccessMode;
   landing_folder_id: string | null;
+  /** Set only on a super admin's temporary owner membership ("enter as owner"). */
+  platform_access_expires_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** `platform_settings`: one row. */
+export type PlatformSettingsRow = {
+  id: true;
+  default_storage_quota_bytes: number;
+  allow_self_serve_church_creation: boolean;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+/** `organization_platform_controls`: written by super admins only. */
+export type OrganizationPlatformControlsRow = {
+  organization_id: string;
+  status: OrganizationPlatformStatus;
+  disabled_reason: string | null;
+  disabled_at: string | null;
+  disabled_by: string | null;
+  /** Null: the platform default applies. */
+  storage_quota_bytes: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** `church_applications` (`reviewed_by` is not readable by the applicant). */
+export type ChurchApplicationRow = {
+  id: string;
+  applicant_id: string;
+  status: ChurchApplicationStatus;
+  church_name: string;
+  leader_name: string;
+  contact_phone: string | null;
+  website: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string;
+  state_province: string | null;
+  postal_code: string | null;
+  country: string;
+  expected_member_count: number | null;
+  timezone: string;
+  note: string | null;
+  rejection_reason: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  organization_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** `platform_audit_log`: append-only, service role only. */
+export type PlatformAuditLogRow = {
+  id: number;
+  actor_id: string | null;
+  action: string;
+  organization_id: string | null;
+  application_id: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
 }
 
 export type PersonType = 'adult' | 'child';
@@ -1201,6 +1264,10 @@ export type Database = {
       webhook_deliveries: Table<WebhookDeliveryRow>;
       webhook_delivery_attempts: Table<WebhookDeliveryAttemptRow>;
       user_blocks: Table<UserBlockRow>;
+      platform_settings: Table<PlatformSettingsRow>;
+      organization_platform_controls: Table<OrganizationPlatformControlsRow>;
+      church_applications: Table<ChurchApplicationRow>;
+      platform_audit_log: Table<PlatformAuditLogRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -2072,6 +2139,8 @@ export type Database = {
       delivery_template: DeliveryTemplate;
       access_capability: AccessCapability;
       release_batch_status: ReleaseBatchStatus;
+      organization_platform_status: OrganizationPlatformStatus;
+      church_application_status: ChurchApplicationStatus;
     };
     CompositeTypes: Record<string, never>;
   };

@@ -33,6 +33,7 @@ import { activeDeviceTokens } from './device-registrations.js';
 import { deliveryLinkToken } from './assignment-tokens.js';
 import { excerpt } from '../model/collaboration.model.js';
 import { recipientLanguage, type RecipientLanguage } from '../lib/i18n.js';
+import { isOrganizationDisabled } from './organization-platform.js';
 
 /**
  * Called by the dispatcher immediately before contacting a provider. Returns
@@ -158,6 +159,8 @@ const reminderStillCurrent = async (jobId: string): Promise<boolean> =>
   (await unwrap(adminDb.rpc('reminder_job_is_current', { p_job: jobId }))) === true;
 
 const isEligiblePerson = async (orgId: string, personId: string): Promise<boolean> => {
+  // A disabled church sends nothing, also to roster people without a login.
+  if (await isOrganizationDisabled(orgId)) return false;
   const person = await unwrap(
     adminDb.from('people').select('profile_id, archived_at').eq('id', personId).eq('organization_id', orgId).maybeSingle(),
   );
