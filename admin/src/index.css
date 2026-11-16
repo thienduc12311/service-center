@@ -1,0 +1,155 @@
+@import 'tailwindcss';
+
+/* Same tokens and component classes as frontend/src/index.css. Dark mode follows
+   the system setting only (Tailwind's default `dark:` media variant). */
+
+@theme {
+  --color-brand-50: var(--app-brand-50);
+  --color-brand-100: var(--app-brand-100);
+  --color-brand-200: var(--app-brand-200);
+  --color-brand-400: var(--app-brand-400);
+  --color-brand-500: var(--app-brand-500);
+  --color-brand-600: var(--app-brand-600);
+  --color-brand-700: var(--app-brand-700);
+  --color-app-canvas: var(--app-canvas);
+  --color-app-surface: var(--app-surface);
+  --color-app-border: var(--app-border);
+  --color-app-ink: var(--app-ink);
+  --color-app-danger: var(--app-light-danger);
+  --color-app-danger-pressed: var(--app-light-danger-pressed);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+    --app-canvas: var(--app-light-canvas);
+    --app-surface: var(--app-light-surface);
+    --app-field: var(--app-light-field);
+    --app-border: var(--app-light-border);
+    --app-border-strong: var(--app-light-border-strong);
+    --app-ink: var(--app-light-ink);
+    --app-ink-muted: var(--app-light-ink-muted);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --app-canvas: var(--app-dark-canvas);
+      --app-surface: var(--app-dark-surface);
+      --app-field: var(--app-dark-field);
+      --app-border: var(--app-dark-border);
+      --app-border-strong: var(--app-dark-border-strong);
+      --app-ink: var(--app-dark-ink);
+      --app-ink-muted: var(--app-dark-ink-muted);
+    }
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-app-canvas text-app-ink antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply border border-app-border bg-app-surface shadow-[0_1px_2px_rgb(15_23_42/0.04),0_1px_3px_rgb(15_23_42/0.04)] dark:shadow-none;
+    border-radius: var(--app-radius-card);
+  }
+
+  .card-interactive {
+    @apply transition duration-150 hover:-translate-y-px hover:border-brand-200 hover:shadow-[0_4px_16px_-4px_rgb(79_70_229/0.18)]
+           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500
+           dark:hover:border-brand-500/40 dark:hover:shadow-none;
+  }
+
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400;
+  }
+
+  .row-list > * + * {
+    @apply border-t border-app-border;
+  }
+
+  .surface-inset {
+    @apply rounded-xl bg-slate-50 ring-1 ring-inset ring-slate-200/70 dark:bg-slate-800/40 dark:ring-slate-700/60;
+  }
+
+  .animate-fade-in {
+    animation: app-fade-in 140ms ease-out both;
+  }
+
+  .animate-pop-in {
+    animation: app-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
+           outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100
+           dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-brand-500/20;
+    border-radius: var(--app-radius-input);
+    border-color: var(--app-border-strong);
+    background-color: var(--app-field);
+    font-weight: 400;
+  }
+
+  .input[aria-invalid='true'] {
+    border-color: rgb(225 29 72);
+  }
+
+  select.input:not([multiple]):not([size]) {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25rem;
+  }
+
+  .label {
+    @apply mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+
+  .field {
+    @apply flex flex-col gap-1 text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+
+  .button {
+    border-radius: var(--app-radius-control);
+  }
+
+  /* Dense admin tables: sticky-free, hairline rows, numbers right-aligned by the caller. */
+  .data-table {
+    @apply w-full border-collapse text-left text-sm;
+  }
+  .data-table th {
+    @apply whitespace-nowrap border-b border-app-border px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400;
+  }
+  .data-table td {
+    @apply border-b border-app-border px-3 py-2.5 align-middle;
+  }
+  .data-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+}
+
+@keyframes app-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes app-pop-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in, .animate-pop-in { animation: none; }
+  .card-interactive { transition: none; transform: none !important; }
+}

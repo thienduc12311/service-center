@@ -46,6 +46,40 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Session storage key for a church requested by link, kept across the sign-in redirect. */
+const REQUESTED_ORG_KEY = 'service-center.requested-organization';
+
+/**
+ * `?organization=<id>` (the admin dashboard's "Open in Service Center") asks
+ * for one church. It is remembered for this tab until the user has loaded, so
+ * a sign-in in between doesn't lose it, and removed from the address bar.
+ */
+const captureRequestedOrganization = (): void => {
+  const url = new URL(window.location.href);
+  const requested = url.searchParams.get('organization');
+  if (!requested) return;
+  try {
+    sessionStorage.setItem(REQUESTED_ORG_KEY, requested);
+  } catch (error) {
+    console.warn('Could not remember the requested church', error);
+  }
+  url.searchParams.delete('organization');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+};
+
+const takeRequestedOrganization = (): string | null => {
+  try {
+    const requested = sessionStorage.getItem(REQUESTED_ORG_KEY);
+    sessionStorage.removeItem(REQUESTED_ORG_KEY);
+    return requested;
+  } catch (error) {
+    console.warn('Could not read the requested church', error);
+    return null;
+  }
+};
+
+captureRequestedOrganization();
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -99,11 +133,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const current = await api.me();
     setUser(current);
 
-    // Fall back to the first membership when nothing is stored, or when the
-    // stored organization is one the user no longer belongs to.
+    // A church requested by link wins when the user belongs to it. Otherwise
+    // the stored one, falling back to the first membership when nothing is
+    // stored or the user no longer belongs to it.
+    const isMember = (id: string | null) => current.memberships.some((m) => m.organization.id === id);
+    const requested = takeRequestedOrganization();
     const stored = getStoredOrganizationId();
-    const valid = current.memberships.some((m) => m.organization.id === stored);
-    const next = valid ? stored : (current.memberships[0]?.organization.id ?? null);
+    const next = isMember(requested)
+      ? requested
+      : isMember(stored)
+        ? stored
+        : (current.memberships[0]?.organization.id ?? null);
 
     setOrganizationId(next);
     setStoredOrganizationId(next);

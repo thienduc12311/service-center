@@ -297,7 +297,7 @@ const getApplicationRow = async (applicationId: string): Promise<ChurchApplicati
   return row;
 };
 
-const getAdminApplication = async (applicationId: string): Promise<AdminChurchApplication> => {
+export const getAdminApplication = async (applicationId: string): Promise<AdminChurchApplication> => {
   const [application] = await withApplicants([await getApplicationRow(applicationId)]);
   if (!application) throw HttpError.notFound('Application not found');
   return application;

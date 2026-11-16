@@ -29,6 +29,7 @@ import { requirePlatformAdmin } from '../middleware/platform-admin.js';
 import {
   approveApplication,
   createChurch,
+  getAdminApplication,
   getOrganizationDetail,
   getOverview,
   getSettings,
@@ -117,6 +118,11 @@ adminRouter.delete('/organizations/:id/access', async (req, res) => {
 adminRouter.get('/church-applications', validateQuery(adminChurchApplicationsQuerySchema), async (_req, res) => {
   const { status } = parsedQuery<AdminChurchApplicationsQuery>(res);
   res.json(await listApplications(status));
+});
+
+/** One application (the target of the links in admin emails). */
+adminRouter.get('/church-applications/:id', async (req, res) => {
+  res.json(await getAdminApplication(applicationId(req)));
 });
 
 adminRouter.patch('/church-applications/:id', validateBody(updateChurchApplicationSchema), async (req, res) => {
