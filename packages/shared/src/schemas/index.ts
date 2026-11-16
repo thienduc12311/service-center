@@ -27,3 +27,4 @@ export * from './media.js';
 export * from './reports.js';
 export * from './language.js';
 export * from './account.js';
+export * from './platform-admin.js';

@@ -17,6 +17,7 @@ import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { generateCalendarFeedToken } from '../services/calendar-feed-tokens.js';
 import { loadMyAccess } from '../services/access.js';
+import { isExpiredPlatformAccess, listMyDisabledOrganizations } from '../services/organization-platform.js';
 import { config } from '../config.js';
 import { mapLanguagePreferenceRow } from '../model/language.model.js';
 import {
@@ -33,6 +34,7 @@ export const meRouter: Router = Router();
 interface MembershipWithOrganization {
   role: OrgRole;
   access_mode: AccessMode;
+  platform_access_expires_at: string | null;
   organization: OrganizationRow | null;
 }
 
@@ -48,7 +50,7 @@ meRouter.get('/', async (req, res) => {
   const memberships = (await unwrap(
     raw(req.db)
       .from('organization_members')
-      .select('role, access_mode, organization:organizations(*)')
+      .select('role, access_mode, platform_access_expires_at, organization:organizations(*)')
       .eq('user_id', req.auth.userId)
       .eq('status', 'active'),
   )) as unknown as MembershipWithOrganization[];
@@ -57,13 +59,16 @@ meRouter.get('/', async (req, res) => {
     profile,
     memberships: await Promise.all(
       memberships
-        .filter((m): m is MembershipWithOrganization & { organization: OrganizationRow } => Boolean(m.organization))
+        .filter((m): m is MembershipWithOrganization & { organization: OrganizationRow } =>
+          Boolean(m.organization) && !isExpiredPlatformAccess(m.platform_access_expires_at))
         .map(async (m) => ({
           organization: m.organization,
           role: m.role,
           access: await loadMyAccess(req.db, m.organization.id, req.auth.userId, m),
+          platform_access_expires_at: m.platform_access_expires_at,
         })),
     ),
+    disabled_organizations: await listMyDisabledOrganizations(req.db),
   };
 
   res.json(payload);

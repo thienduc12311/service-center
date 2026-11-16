@@ -32,6 +32,15 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 enable_signup = true
 
+# Super admins must sign in with two-factor (TOTP); see docs/plans/super-admin-dashboard.md.
+# The hosted project needs the same setting (Authentication -> Multi-Factor).
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [auth.email]
 enable_signup = true
 enable_confirmations = false

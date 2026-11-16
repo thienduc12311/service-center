@@ -40,6 +40,7 @@ import type { ChartNotation } from '../lib/chordpro.js';
 import type { AttendanceInterval } from './attendance.js';
 import type { PlanItemLeaderPerson } from './plan-order.js';
 import type { RehearsalMediaRef } from './rehearsal.js';
+import type { DisabledOrganization } from './platform-admin.js';
 
 /** One rule of effective access: a capability at a scope, and where it comes from. */
 export interface EffectiveAccessEntry {
@@ -66,12 +67,16 @@ export interface CurrentUserMembership {
   organization: OrganizationRow;
   role: OrgRole;
   access: EffectiveAccess;
+  /** Set when a super admin entered this church as a temporary owner; access ends then. */
+  platform_access_expires_at: string | null;
 }
 
 /** The signed-in user plus every organization they belong to. */
 export interface CurrentUser {
   profile: ProfileRow;
   memberships: CurrentUserMembership[];
+  /** Churches the user belongs to that a super admin disabled (not in `memberships`). */
+  disabled_organizations: DisabledOrganization[];
 }
 
 export type CapabilityDenial =
