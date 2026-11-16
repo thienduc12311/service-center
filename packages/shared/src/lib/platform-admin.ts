@@ -9,6 +9,14 @@ export const STORAGE_QUOTA_EXCEEDED = 'storage_quota_exceeded';
 export const CHURCH_APPLICATION_REQUIRED = 'church_application_required';
 /** 403: the church in X-Organization-Id was disabled by a super admin. */
 export const ORGANIZATION_DISABLED = 'organization_disabled';
+/** 403: the signed-in account is not a super admin. */
+export const NOT_PLATFORM_ADMIN = 'not_platform_admin';
+/** 409: another church already uses that URL slug. */
+export const SLUG_TAKEN = 'slug_taken';
+/** 409: the application was decided or withdrawn meanwhile. */
+export const APPLICATION_NOT_PENDING = 'application_not_pending';
+/** 409: the applicant already has a request waiting for review. */
+export const APPLICATION_PENDING = 'application_pending';
 /** 403: platform-admin routes need a session that completed two-factor login. */
 export const MFA_REQUIRED = 'mfa_required';
 

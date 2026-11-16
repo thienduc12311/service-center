@@ -12,16 +12,18 @@
     "packages/*",
     "backend",
     "frontend",
-    "mobile"
+    "mobile",
+    "admin"
   ],
   "scripts": {
     "build:shared": "npm run build -w @service-center/shared",
     "dev:shared": "npm run dev -w @service-center/shared",
     "dev:backend": "npm run build:shared && npm run dev -w @service-center/backend",
     "dev:web": "npm run build:shared && npm run dev -w @service-center/frontend",
+    "dev:admin": "npm run build:shared && npm run dev -w @service-center/admin",
     "dev:mobile": "npm run build:shared && npm run start -w @service-center/mobile",
     "dev": "npm run build:shared && concurrently -n api,web -c blue,green \"npm run dev -w @service-center/backend\" \"npm run dev -w @service-center/frontend\"",
-    "build": "npm run build:shared && npm run build -w @service-center/backend && npm run build -w @service-center/frontend",
+    "build": "npm run build:shared && npm run build -w @service-center/backend && npm run build -w @service-center/frontend && npm run build -w @service-center/admin",
     "typecheck": "npm run build:shared && npm run typecheck --workspaces --if-present",
     "test": "npm run build:shared && npm run test --workspaces --if-present",
     "db:start": "supabase start",

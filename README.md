@@ -5,6 +5,7 @@ Service Center is a multi-tenant worship-service planning application. Organizat
 ## Architecture
 
 - `frontend` — React 19, Vite, TanStack Query, and Tailwind CSS web client.
+- `admin` — the super-admin dashboard (`admin.graceaogchurch.com`), same stack as `frontend`. See `docs/plans/super-admin-dashboard.md`.
 - `backend` — Express 5 API. Authenticated requests use the caller's Supabase token so Postgres RLS remains the primary tenant boundary.
 - `mobile` — Expo/React Native client using the same API and shared contracts.
 - `packages/shared` — Zod schemas, database/domain types, API client, and ChordPro helpers.
@@ -47,6 +48,22 @@ To run the mobile app instead, keep Supabase and the API running and use:
 npm run dev:mobile
 ```
 
+### Super-admin dashboard
+
+The `admin` app runs beside the API on its own port:
+
+```bash
+cp admin/.env.example admin/.env
+npm run dev:admin
+```
+
+Open `http://localhost:5174` and sign in with an account listed in `private.platform_admins`
+(see `docs/operations/platform-admins.md`); accounts themselves are created in the main app.
+The first sign-in walks you through setting up an authenticator app, because every admin route
+needs two-factor login. `VITE_APP_URL` is the main web app, used by "Open in Service Center".
+The API only answers origins listed in `CORS_ORIGINS`, so `backend/.env` needs
+`http://localhost:5174` there too.
+
 ## Run with Docker Compose
 
 Start local Supabase first. In `backend/.env`, use `http://host.docker.internal:54321` for `SUPABASE_URL` so the API container can reach the host service. Then export the public frontend build values and start the containers:
@@ -76,6 +93,7 @@ docker build -f frontend/Dockerfile \
 
 The deployment is three pieces: a hosted Supabase project, a Vercel project for the static
 web client, and a second Vercel project that runs the Express API as a serverless function.
+The super-admin dashboard is a third, optional Vercel project (section 4).
 The API gets its own project so it can have its own domain, region and function limits, and
 so an API deploy does not rebuild the web bundle.
 
@@ -159,6 +177,33 @@ API_URL=https://api.yourdomain.com
 the ICS calendar subscription feed. They are different hosts in this topology — do not set
 them to the same value.
 
+### 4. Admin dashboard project
+
+| Setting | Value |
+|---|---|
+| Root Directory | `admin` |
+| Include source files outside the Root Directory | enabled |
+| Build & install commands | from `admin/vercel.json` |
+| Domain | `admin.graceaogchurch.com` |
+
+Same setup as the web client: `admin/vercel.json` installs and builds from the repository
+root, rewrites every path to `index.html`, and sends `X-Robots-Tag: noindex` so the dashboard
+stays out of search results.
+
+Environment variables (Production and Preview):
+
+```
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_API_URL=https://api.yourdomain.com
+VITE_APP_URL=https://app.yourdomain.com
+```
+
+Add the dashboard's origin to the API project's `CORS_ORIGINS`
+(for example `CORS_ORIGINS=https://app.yourdomain.com,https://admin.graceaogchurch.com`).
+Supabase needs TOTP multi-factor authentication enabled (**Authentication → Multi-Factor**),
+since every admin route requires a session that completed two-factor login.
+
 ### Preview deployments and CORS
 
 `backend/src/app.ts` matches origins exactly, and every preview deployment of the web client
@@ -220,7 +265,7 @@ npm run test:watch -w @service-center/backend
 
 Backend variables are documented in `backend/.env.example`. Required secrets are `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`; the latter must never be committed or sent to a client.
 
-Frontend variables are documented in `frontend/.env.example`. Every frontend value is public because Vite includes it in the browser bundle.
+Frontend variables are documented in `frontend/.env.example`, and the admin dashboard's in `admin/.env.example`. Every value in either is public because Vite includes it in the browser bundle.
 
 ## Email delivery
 
