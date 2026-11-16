@@ -25,6 +25,7 @@ import { useAuth } from '../providers/AuthProvider';
  */
 export const keys = {
   all: (org: string | null) => ['org', org] as const,
+  organizationStorage: (org: string | null) => [...keys.all(org), 'organization-storage'] as const,
   people: (org: string | null) => [...keys.all(org), 'people'] as const,
   person: (org: string | null, id: string) => [...keys.people(org), id] as const,
   teams: (org: string | null) => [...keys.all(org), 'teams'] as const,
@@ -792,5 +793,37 @@ export const usePlanStageLayouts = (planId: string | undefined) => {
     queryKey: keys.stageLayouts(org, planId ?? ''),
     queryFn: () => api.planStageLayouts(planId!),
     enabled: Boolean(org && planId),
+  });
+};
+
+// ---------------------------------------------------- church applications --
+
+/**
+ * The caller's own church applications and whether churches can be created
+ * without one. Not tied to a church: an applicant usually has none yet.
+ */
+export const accountKeys = {
+  churchApplications: ['account', 'church-applications'] as const,
+  churchCreationPolicy: ['account', 'church-creation-policy'] as const,
+};
+
+export const useChurchCreationPolicy = () =>
+  useQuery({ queryKey: accountKeys.churchCreationPolicy, queryFn: () => api.churchCreationPolicy() });
+
+/** Newest first. */
+export const useMyChurchApplications = () =>
+  useQuery({ queryKey: accountKeys.churchApplications, queryFn: () => api.myChurchApplications() });
+
+/**
+ * The active church's media use against its quota. Only owners and admins
+ * ask: they are the ones who can free up space.
+ */
+export const useOrganizationStorage = (enabled: boolean) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.organizationStorage(org),
+    queryFn: () => api.organizationStorage(),
+    enabled: Boolean(org) && enabled,
+    staleTime: 5 * 60_000,
   });
 };

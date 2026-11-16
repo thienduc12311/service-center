@@ -23,6 +23,9 @@ export const queryKeys = {
   privateRoot,
   organization: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'organization'] as const,
+  /** The active church's media usage against its quota (owners and admins). */
+  organizationStorage: (scope: ProtectedQueryScope | null) =>
+    [...privateRoot(scope), 'organization-storage'] as const,
   /** Prefix for every schedule window; invalidate this after an answer. */
   schedule: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'schedule'] as const,
@@ -128,6 +131,12 @@ export const queryKeys = {
   accountDeletionPlan: (userId: string | null | undefined) => ['account', userId ?? null, 'deletion-plan'] as const,
   /** People this login blocked (per login, like `accountDeletionPlan`). */
   blockedUsers: (userId: string | null | undefined) => ['account', userId ?? null, 'blocked-users'] as const,
+  /** This login's church applications, newest first (per login: asked before joining any church). */
+  churchApplications: (userId: string | null | undefined) =>
+    ['account', userId ?? null, 'church-applications'] as const,
+  /** Whether this login may still create a church directly instead of applying. */
+  churchCreationPolicy: (userId: string | null | undefined) =>
+    ['account', userId ?? null, 'church-creation-policy'] as const,
   /** MOB-019: prefix for every F09 team/plan conversation read; invalidate this after a post, read, mute or moderation. */
   conversationsAll: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'conversations'] as const,

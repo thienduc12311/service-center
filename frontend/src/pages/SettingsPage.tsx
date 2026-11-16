@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { isAdmin, isLeader, personalFeedState, STORAGE_BUCKETS, type OrganizationRow } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { useCalendarFeed, useInvalidateOrg } from '../hooks/queries';
+import { useCalendarFeed, useInvalidateOrg, useOrganizationStorage } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Button, ErrorNotice, PageHeader } from '../components/ui';
 import { Icon, type IconName } from '../components/icons';
@@ -26,6 +26,9 @@ import { ServiceTypeFilesSettings } from '../components/settings/ServiceTypeFile
 import { LanguageSelect } from '../i18n';
 import { AppearanceSettings } from '../components/settings/AppearanceSettings';
 import { AccountPrivacySettings } from '../components/settings/AccountPrivacySettings';
+import { ChurchApplicationPanel } from '../components/church/ChurchApplicationPanel';
+import { StorageUsageBar } from '../components/church/StorageUsage';
+import { explainStorageUploadError } from '../lib/storage-quota';
 
 export const SettingsPage = () => {
   const { t } = useTranslation(['settings', 'common']);
@@ -411,12 +414,6 @@ const SettingsCard = ({ title, description, actions, children }: SettingsCardPro
   );
 };
 
-const slugify = (value: string) => value
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-')
-  .replace(/^-|-$/g, '')
-  .slice(0, 40);
-
 /** Editable organization-profile fields — `member_count` stays a string while typed, parsed to a number on submit. */
 interface OrganizationProfileForm {
   name: string;
@@ -481,8 +478,8 @@ const OrganizationSettings = ({
 }: OrganizationSettingsProps) => {
   const { t } = useTranslation(['settings', 'common']);
   const [creating, setCreating] = useState(false);
-  const [name, setName] = useState('');
   const [uploading, setUploading] = useState(false);
+  const storage = useOrganizationStorage(canEdit);
   const [error, setError] = useState<unknown>(null);
 
   const [editingProfile, setEditingProfile] = useState(false);
@@ -500,23 +497,6 @@ const OrganizationSettings = ({
     },
   });
 
-  const create = async (event: FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    try {
-      const created = await api.createOrganization({
-        name,
-        slug: `${slugify(name).slice(0, 35)}-${Date.now().toString(36).slice(-4)}`,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
-      setName('');
-      setCreating(false);
-      await onCreated(created.id);
-    } catch (reason) {
-      setError(reason);
-    }
-  };
-
   const uploadLogo = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !organization) return;
@@ -528,7 +508,7 @@ const OrganizationSettings = ({
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKETS.organizationLogos)
         .upload(path, file, { contentType: file.type, upsert: false });
-      if (uploadError) throw uploadError;
+      if (uploadError) throw await explainStorageUploadError(uploadError);
       const { data } = supabase.storage.from(STORAGE_BUCKETS.organizationLogos).getPublicUrl(path);
       await api.updateOrganization(organization.id, { logo_url: data.publicUrl });
       await onChanged();
@@ -568,7 +548,7 @@ const OrganizationSettings = ({
           </Button>
         )}
         <Button variant="ghost" icon={creating ? undefined : 'plus'} onClick={() => setCreating((value) => !value)}>
-          {creating ? t('common:actions.cancel') : t('organization.new')}
+          {creating ? t('common:actions.cancel') : t('churchApplication.newTitle')}
         </Button>
       </div>
 
@@ -639,15 +619,26 @@ const OrganizationSettings = ({
         </form>
       )}
 
-      {creating && (
-        <form onSubmit={create} className="mt-5 flex flex-col gap-3 border-t border-app-border pt-5 sm:flex-row sm:items-end">
-          <div className="flex-1">
-            <label className="label" htmlFor="new-org-name">{t('organization.fields.name')}</label>
-            <input id="new-org-name" className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder={t('organization.fields.namePlaceholder')} required />
-          </div>
-          <Button type="submit">{t('organization.create')}</Button>
+      {canEdit && storage.data && (
+        <div className="mt-5 border-t border-app-border pt-5">
+          <StorageUsageBar usage={storage.data} />
+        </div>
+      )}
 
-        </form>
+      {creating && (
+        <div className="mt-5 space-y-4 border-t border-app-border pt-5">
+          <div>
+            <h3 className="font-semibold text-slate-900 dark:text-white">{t('churchApplication.newTitle')}</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('churchApplication.intro')}</p>
+          </div>
+          <ChurchApplicationPanel
+            hasChurch
+            onChurchReady={async (id) => {
+              setCreating(false);
+              await onCreated(id);
+            }}
+          />
+        </div>
       )}
       <div className="mt-4 empty:hidden">
         <ErrorNotice error={error} />

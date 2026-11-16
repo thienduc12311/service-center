@@ -149,6 +149,7 @@ const RootNavigator = () => {
       <Stack.Screen name="about" options={{ title: t('settings:about.screenTitle') }} />
       <Stack.Screen name="blocked-users" options={{ title: t('settings:account.blockedScreenTitle') }} />
       <Stack.Screen name="delete-account" options={{ title: t('settings:account.deleteScreenTitle') }} />
+      <Stack.Screen name="church-application" options={{ title: t('settings:churchApplication.newTitle') }} />
       <Stack.Screen name="offline-downloads" options={{ title: t('settings:offlineDownloads.screenTitle') }} />
       <Stack.Screen name="calendar-subscription" options={{ title: t('scheduling:mobileSubscription.screenTitle') }} />
       <Stack.Screen name="schedule-report" options={{ title: t('reports:mobileReport.screenTitle') }} />
