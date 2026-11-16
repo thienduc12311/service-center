@@ -24,6 +24,14 @@ import type {
   PlatformSettings,
   UpdateChurchApplicationRequest,
   UpdatePlatformSettingsInput,
+  AdminUserDeletionResult,
+  AdminUserDetail,
+  AdminUserSummary,
+  InvitePlatformAdminRequest,
+  MyPlatformAdminInvitation,
+  PlatformAdminInvitation,
+  PlatformAdminRoster,
+  PlatformUserBlockRow,
 } from '@service-center/shared';
 import { api } from '../lib/api';
 
@@ -39,9 +47,21 @@ export const adminKeys = {
   applications: (status: ChurchApplicationStatus | 'all') => [...adminKeys.all, 'applications', status] as const,
   application: (id: string) => [...adminKeys.all, 'applications', 'one', id] as const,
   settings: () => [...adminKeys.all, 'settings'] as const,
-  activity: (organizationId: string | null, limit: number) =>
-    [...adminKeys.all, 'activity', organizationId ?? 'all', limit] as const,
+  activity: (scope: ActivityScope, limit: number) =>
+    [...adminKeys.all, 'activity', scope.organizationId ?? 'all', scope.targetUserId ?? 'all', limit] as const,
+  users: () => [...adminKeys.all, 'users'] as const,
+  user: (id: string) => [...adminKeys.all, 'users', id] as const,
+  admins: () => [...adminKeys.all, 'admins'] as const,
 };
+
+/** Which Activity lines to read: one church, one account, or (both null) everything. */
+export interface ActivityScope {
+  organizationId?: string | null;
+  targetUserId?: string | null;
+}
+
+/** The invitee's own invitation; outside `adminKeys.all` like the session. */
+export const myInvitationKey = (userId: string) => ['admin-invitation', userId] as const;
 
 /** The admin session lives outside `adminKeys.all` so a write never refetches it. */
 export const adminSessionKey = (userId: string) => ['admin-session', userId] as const;
@@ -76,17 +96,37 @@ export const usePlatformSettings = () =>
   useQuery<PlatformSettings>({ queryKey: adminKeys.settings(), queryFn: () => api.adminSettings() });
 
 /** Newest first; `fetchNextPage` loads older lines until `next_before` is null. */
-export const useAdminActivity = (organizationId: string | null, limit: number = ACTIVITY_PAGE_SIZE) =>
+export const useAdminActivity = (scope: ActivityScope, limit: number = ACTIVITY_PAGE_SIZE) =>
   useInfiniteQuery<PlatformAuditPage, Error, InfiniteData<PlatformAuditPage, number | null>, readonly unknown[], number | null>({
-    queryKey: adminKeys.activity(organizationId, limit),
+    queryKey: adminKeys.activity(scope, limit),
     queryFn: ({ pageParam }) =>
       api.adminActivity({
-        organization_id: organizationId ?? undefined,
+        organization_id: scope.organizationId ?? undefined,
+        target_user_id: scope.targetUserId ?? undefined,
         before: pageParam ?? undefined,
         limit,
       }),
     initialPageParam: null,
     getNextPageParam: (lastPage) => lastPage.next_before,
+  });
+
+export const useAdminUsers = () =>
+  useQuery<AdminUserSummary[]>({ queryKey: adminKeys.users(), queryFn: () => api.adminUsers() });
+
+export const useAdminUser = (id: string) =>
+  useQuery<AdminUserDetail>({ queryKey: adminKeys.user(id), queryFn: () => api.adminUser(id), enabled: Boolean(id) });
+
+export const usePlatformAdmins = () =>
+  useQuery<PlatformAdminRoster>({ queryKey: adminKeys.admins(), queryFn: () => api.adminPlatformAdmins() });
+
+/** The signed-in invitee's open invitation (null when there is none). */
+export const useMyPlatformAdminInvitation = (userId: string | null, enabled: boolean) =>
+  useQuery<MyPlatformAdminInvitation | null>({
+    queryKey: myInvitationKey(userId ?? 'signed-out'),
+    queryFn: () => api.myPlatformAdminInvitation(),
+    enabled: enabled && userId !== null,
+    staleTime: Infinity,
+    retry: false,
   });
 
 /* -------------------------------------------------------------------------
@@ -200,6 +240,68 @@ export const useUpdatePlatformSettings = () => {
   const queryClient = useQueryClient();
   return useMutation<PlatformSettings, Error, UpdatePlatformSettingsInput>({
     mutationFn: (body) => api.adminUpdateSettings(body),
+    onSuccess: () => invalidateAdminData(queryClient),
+  });
+};
+
+export interface BlockUserVariables {
+  userId: string;
+  reason: string;
+}
+
+export interface DeleteUserVariables {
+  userId: string;
+  confirmEmail: string;
+}
+
+export const useBlockUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation<PlatformUserBlockRow, Error, BlockUserVariables>({
+    mutationFn: ({ userId, reason }) => api.adminBlockUser(userId, reason),
+    onSuccess: () => invalidateAdminData(queryClient),
+  });
+};
+
+export const useUnblockUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: (userId) => api.adminUnblockUser(userId),
+    onSuccess: () => invalidateAdminData(queryClient),
+  });
+};
+
+export const useDeleteUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation<AdminUserDeletionResult, Error, DeleteUserVariables>({
+    mutationFn: ({ userId, confirmEmail }) => api.adminDeleteUser(userId, confirmEmail),
+    onSuccess: (_result, { userId }) => {
+      // The account is gone: don't refetch its page.
+      queryClient.removeQueries({ queryKey: adminKeys.user(userId) });
+      return invalidateAdminData(queryClient);
+    },
+  });
+};
+
+export const useInvitePlatformAdmin = () => {
+  const queryClient = useQueryClient();
+  return useMutation<PlatformAdminInvitation, Error, InvitePlatformAdminRequest>({
+    mutationFn: (body) => api.adminInvitePlatformAdmin(body),
+    onSuccess: () => invalidateAdminData(queryClient),
+  });
+};
+
+export const useRevokePlatformAdminInvitation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: (invitationId) => api.adminRevokePlatformAdminInvitation(invitationId),
+    onSuccess: () => invalidateAdminData(queryClient),
+  });
+};
+
+export const useRevokePlatformAdmin = () => {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: (userId) => api.adminRevokePlatformAdmin(userId),
     onSuccess: () => invalidateAdminData(queryClient),
   });
 };

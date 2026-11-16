@@ -3,6 +3,7 @@ import { useAdminAuth } from '../providers/AdminAuthProvider';
 import { SignInPage } from '../pages/SignInPage';
 import { TwoFactorPage } from '../pages/TwoFactorPage';
 import { NotAuthorizedPage } from '../pages/NotAuthorizedPage';
+import { AcceptInvitationPage } from '../pages/AcceptInvitationPage';
 import { AuthLayout } from './AuthLayout';
 import { Button, ErrorNotice, Loading } from './ui';
 
@@ -20,6 +21,8 @@ export const AuthGate = () => {
       return <SignInPage />;
     case 'not_authorized':
       return <NotAuthorizedPage email={stage.email} />;
+    case 'invited':
+      return <AcceptInvitationPage invitation={stage.invitation} />;
     case 'two_factor':
       return <TwoFactorPage key={stage.session.user.id} userId={stage.session.user.id} email={stage.adminSession.email} />;
     case 'error':

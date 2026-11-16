@@ -2,7 +2,9 @@
  * Who is signed in, and which step of the admin sign-in they are on:
  *
  *   signed out → password → GET /admin/session
- *     403 not_platform_admin → "Not authorized" (and signed out)
+ *     403 not_platform_admin → an open super-admin invitation for this
+ *                              address? "Accept invitation", else
+ *                              "Not authorized" (and signed out)
  *     mfa_required           → two-factor step (enroll or enter a code), then aal2
  *     otherwise              → the dashboard
  *
@@ -13,17 +15,18 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AdminSession } from '@service-center/shared';
+import type { AdminSession, MyPlatformAdminInvitation } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { onAccessProblem } from '../lib/access-events';
 import { accessProblemOf, NOT_PLATFORM_ADMIN } from '../lib/errors';
-import { adminSessionKey } from '../hooks/queries';
+import { adminSessionKey, myInvitationKey, useMyPlatformAdminInvitation } from '../hooks/queries';
 
 export type AdminAuthStage =
   | { kind: 'loading' }
   | { kind: 'signed_out' }
   | { kind: 'not_authorized'; email: string | null }
+  | { kind: 'invited'; session: Session; invitation: MyPlatformAdminInvitation }
   | { kind: 'two_factor'; session: Session; adminSession: AdminSession }
   | { kind: 'ready'; session: Session; adminSession: AdminSession }
   | { kind: 'error'; error: unknown };
@@ -36,6 +39,8 @@ export interface AdminAuthContextValue {
   signOut: () => Promise<void>;
   /** After a two-factor code was verified: ask the API again with the `aal2` session. */
   completeTwoFactor: () => Promise<void>;
+  /** Accept the open super-admin invitation, then go on to two-factor setup. */
+  acceptInvitation: (invitationId: string) => Promise<void>;
   /** Leave the "Not authorized" screen for the sign-in form. */
   dismissNotAuthorized: () => void;
   /** Retry loading the admin session after an error. */
@@ -96,23 +101,29 @@ export const AdminAuthProvider = ({ children }: AdminAuthProviderProps) => {
     [signOut],
   );
 
-  // GET /admin/session itself refused: not a super admin.
+  // GET /admin/session itself refused: not a super admin. Unless they were
+  // invited to become one, sign them out.
+  const notPlatformAdmin = accessProblemOf(adminSessionQuery.error) === NOT_PLATFORM_ADMIN;
+  const invitationQuery = useMyPlatformAdminInvitation(userId, notPlatformAdmin);
+  const noInvitation = invitationQuery.isError || (invitationQuery.isSuccess && invitationQuery.data === null);
   useEffect(() => {
-    if (accessProblemOf(adminSessionQuery.error) === NOT_PLATFORM_ADMIN) refuse(email);
-  }, [adminSessionQuery.error, email, refuse]);
+    if (notPlatformAdmin && noInvitation) refuse(email);
+  }, [notPlatformAdmin, noInvitation, email, refuse]);
 
-  // Any other call refused later on.
+  // Any other call refused later on. Before the session check has ever
+  // succeeded, its own refusal is handled above (an invitation may be waiting).
+  const hadAdminSession = adminSessionQuery.data !== undefined;
   useEffect(
     () =>
       onAccessProblem((problem) => {
         if (problem === NOT_PLATFORM_ADMIN) {
-          refuse(email);
+          if (hadAdminSession) refuse(email);
           return;
         }
         setTwoFactorForced(true);
         if (userId) void queryClient.invalidateQueries({ queryKey: adminSessionKey(userId) });
       }),
-    [email, userId, queryClient, refuse],
+    [email, userId, queryClient, refuse, hadAdminSession],
   );
 
   const signIn = useCallback(async (signInEmail: string, password: string) => {
@@ -133,6 +144,17 @@ export const AdminAuthProvider = ({ children }: AdminAuthProviderProps) => {
     if (!adminSession.mfa_required) setTwoFactorForced(false);
   }, [queryClient]);
 
+  const acceptInvitation = useCallback(
+    async (invitationId: string) => {
+      if (!userId) return;
+      await api.acceptPlatformAdminInvitation(invitationId);
+      // Now a super admin: the session check answers mfa_required (or ready).
+      await queryClient.resetQueries({ queryKey: adminSessionKey(userId) });
+      queryClient.removeQueries({ queryKey: myInvitationKey(userId) });
+    },
+    [userId, queryClient],
+  );
+
   const dismissNotAuthorized = useCallback(() => setNotAuthorized(null), []);
 
   const { refetch } = adminSessionQuery;
@@ -145,9 +167,9 @@ export const AdminAuthProvider = ({ children }: AdminAuthProviderProps) => {
     if (!sessionLoaded) return { kind: 'loading' };
     if (!session) return { kind: 'signed_out' };
     if (adminSessionQuery.isError) {
-      return accessProblemOf(adminSessionQuery.error) === NOT_PLATFORM_ADMIN
-        ? { kind: 'not_authorized', email }
-        : { kind: 'error', error: adminSessionQuery.error };
+      if (accessProblemOf(adminSessionQuery.error) !== NOT_PLATFORM_ADMIN) return { kind: 'error', error: adminSessionQuery.error };
+      if (invitationQuery.data) return { kind: 'invited', session, invitation: invitationQuery.data };
+      return invitationQuery.isPending ? { kind: 'loading' } : { kind: 'not_authorized', email };
     }
     const adminSession = adminSessionQuery.data;
     if (!adminSession) return { kind: 'loading' };
@@ -161,12 +183,14 @@ export const AdminAuthProvider = ({ children }: AdminAuthProviderProps) => {
     adminSessionQuery.isError,
     adminSessionQuery.error,
     adminSessionQuery.data,
+    invitationQuery.data,
+    invitationQuery.isPending,
     twoFactorForced,
   ]);
 
   const value = useMemo<AdminAuthContextValue>(
-    () => ({ stage, email, signIn, signOut, completeTwoFactor, dismissNotAuthorized, retry }),
-    [stage, email, signIn, signOut, completeTwoFactor, dismissNotAuthorized, retry],
+    () => ({ stage, email, signIn, signOut, completeTwoFactor, acceptInvitation, dismissNotAuthorized, retry }),
+    [stage, email, signIn, signOut, completeTwoFactor, acceptInvitation, dismissNotAuthorized, retry],
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

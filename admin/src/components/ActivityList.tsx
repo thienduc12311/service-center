@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { PlatformAuditEntry } from '@service-center/shared';
-import { auditActionLabel, summarizeAuditDetails } from '../lib/activity';
+import { auditActionLabel, auditTargetLabel, summarizeAuditDetails } from '../lib/activity';
 import { formatDateTime, formatRelativeTime } from '../lib/format';
 
 export interface ActivityListProps {
@@ -25,6 +25,7 @@ interface ActivityLineProps {
 
 const ActivityLine = ({ entry, showChurch }: ActivityLineProps) => {
   const summary = summarizeAuditDetails(entry);
+  const target = auditTargetLabel(entry);
   return (
     <li className="flex flex-col gap-0.5 px-4 py-2.5 text-sm sm:flex-row sm:items-baseline sm:gap-4">
       <time
@@ -43,6 +44,18 @@ const ActivityLine = ({ entry, showChurch }: ActivityLineProps) => {
               <Link to={`/churches/${entry.organization_id}`} className="text-brand-700 hover:underline dark:text-brand-200">
                 {entry.organization_name ?? 'Deleted church'}
               </Link>
+            </>
+          )}
+          {target && (
+            <>
+              <span className="text-slate-400"> · </span>
+              {entry.target_user_id && (entry.target_name !== null || entry.target_email !== null) ? (
+                <Link to={`/users/${entry.target_user_id}`} className="text-brand-700 hover:underline dark:text-brand-200">
+                  {target}
+                </Link>
+              ) : (
+                <span className="text-slate-600 dark:text-slate-300">{target}</span>
+              )}
             </>
           )}
           {entry.application_id && (

@@ -1,15 +1,19 @@
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAdminActivity, useAdminOrganizations } from '../hooks/queries';
 import { ActivityList } from '../components/ActivityList';
-import { Button, Card, EmptyState, ErrorNotice, Loading, PageHeader, SelectField } from '../components/ui';
+import { Button, Card, EmptyState, ErrorNotice, Loading, Notice, PageHeader, SelectField } from '../components/ui';
 
-/** Every super-admin action, newest first, optionally for one church (`?church=<id>`). */
+/**
+ * Every super-admin action, newest first, optionally for one church
+ * (`?church=<id>`) or about one account (`?user=<id>`).
+ */
 export const ActivityPage = () => {
   const [params, setParams] = useSearchParams();
   const churchId = params.get('church');
+  const userId = params.get('user');
   const churches = useAdminOrganizations();
-  const activity = useAdminActivity(churchId);
+  const activity = useAdminActivity({ organizationId: churchId, targetUserId: userId });
 
   const churchOptions = useMemo(
     () => [...(churches.data ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })),
@@ -23,11 +27,29 @@ export const ActivityPage = () => {
     <>
       <PageHeader title="Activity" subtitle="Everything super admins did, including changes made while inside a church." />
 
+      {userId && (
+        <Notice className="mb-4">
+          Showing actions about one account.{' '}
+          <Link to={`/users/${userId}`} className="font-medium underline">
+            Open the account
+          </Link>{' '}
+          ·{' '}
+          <button type="button" className="font-medium underline" onClick={() => setParams(churchId ? { church: churchId } : {})}>
+            Show everything
+          </button>
+        </Notice>
+      )}
+
       <div className="mb-4 max-w-sm">
         <SelectField
           label="Church"
           value={churchId ?? ''}
-          onChange={(event) => setParams(event.target.value ? { church: event.target.value } : {})}
+          onChange={(event) => {
+            const next: Record<string, string> = {};
+            if (event.target.value) next.church = event.target.value;
+            if (userId) next.user = userId;
+            setParams(next);
+          }}
           hint={churches.isError ? 'Could not load the church list.' : undefined}
         >
           <option value="">All churches and settings</option>
