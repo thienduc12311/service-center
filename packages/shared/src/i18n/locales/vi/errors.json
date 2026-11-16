@@ -60,7 +60,15 @@
     "message_id_conflict": "Mã tin nhắn này đã được dùng. Hãy gửi lại để đăng như một tin nhắn mới.",
     "message_removed": "Tin nhắn này đã bị xóa nên không thể thay đổi.",
     "message_unrecoverable": "Không thể khôi phục tin nhắn này nữa.",
-    "account_deletion_blocked": "Hãy chỉ định người khác làm chủ sở hữu các tổ chức của bạn trước khi xoá tài khoản."
+    "account_deletion_blocked": "Hãy chỉ định người khác làm chủ sở hữu các tổ chức của bạn trước khi xoá tài khoản.",
+    "storage_quota_exceeded": "Hội thánh của bạn đã hết dung lượng lưu trữ. Hãy xóa các tệp không còn cần, hoặc liên hệ bộ phận hỗ trợ Service Center để có thêm dung lượng.",
+    "church_application_required": "Hội thánh mới cần được duyệt trước. Hãy gửi yêu cầu đăng ký hội thánh của bạn.",
+    "organization_disabled": "Hội thánh này đã bị tạm ngưng. Không có dữ liệu nào bị xóa; hãy liên hệ bộ phận hỗ trợ Service Center.",
+    "application_pending": "Bạn đã có một yêu cầu đang chờ xét duyệt.",
+    "application_not_pending": "Yêu cầu này đã được xem xét hoặc đã được rút lại. Hãy tải lại để xem tình trạng.",
+    "slug_taken": "Địa chỉ web này đã được một hội thánh khác sử dụng. Hãy chọn địa chỉ khác.",
+    "not_platform_admin": "Chỉ quản trị viên Service Center mới có thể làm việc này.",
+    "mfa_required": "Hãy hoàn tất bước đăng nhập hai lớp trước."
   },
   "validation": {
     "required": "Trường này là bắt buộc.",

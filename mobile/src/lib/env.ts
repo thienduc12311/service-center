@@ -14,4 +14,6 @@ export const env = {
   supabaseAnonKey: read(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, 'supabaseAnonKey'),
   apiUrl: read(process.env.EXPO_PUBLIC_API_URL, 'apiUrl', 'http://localhost:4000'),
   webAppDomain: read(process.env.EXPO_PUBLIC_WEB_APP_DOMAIN, 'webAppDomain'),
+  /** Where people write about their account or a disabled church (same default as the website). */
+  supportEmail: read(process.env.EXPO_PUBLIC_SUPPORT_EMAIL, 'supportEmail', 'support@graceaogchurch.com'),
 };

@@ -26,6 +26,7 @@ import {
   type ProtectedQueryScope,
   type SessionLifecycleState,
 } from '../lib/session-lifecycle';
+import { isOrganizationDisabledError } from '../lib/church-platform';
 
 interface AuthContextValue {
   session: Session | null;
@@ -143,6 +144,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       subscription.subscription.unsubscribe();
     };
   }, [lifecycle, signOut]);
+
+  // A church disabled while in use: every request into it now fails with
+  // `organization_disabled` (shown by ErrorNotice). Re-read the account once
+  // per generation so the app leaves it for another church or the notice.
+  useEffect(() => {
+    const handledGenerations = new Set<number>();
+    const handleError = (error: unknown): void => {
+      if (!isOrganizationDisabledError(error)) return;
+      const { generation, phase } = lifecycle.getState();
+      if (phase !== 'ready' || handledGenerations.has(generation)) return;
+      handledGenerations.add(generation);
+      void lifecycle.refreshUser().catch((refreshError: unknown) => {
+        console.warn('[auth] could not re-read the account after a church was disabled', refreshError);
+      });
+    };
+    const unsubscribeQueries = queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'error') handleError(event.action.error);
+    });
+    const unsubscribeMutations = queryClient.getMutationCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'error') handleError(event.action.error);
+    });
+    return () => {
+      unsubscribeQueries();
+      unsubscribeMutations();
+    };
+  }, [lifecycle, queryClient]);
 
   const isCurrentGeneration = useCallback(
     (generation: number): boolean => {

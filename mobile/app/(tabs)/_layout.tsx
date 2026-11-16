@@ -1,7 +1,11 @@
 import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View, type ColorValue } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '../../src/components/icons';
+import { NoChurchScreen } from '../../src/components/church/NoChurchScreen';
+import { TabBanners } from '../../src/components/church/TabBanners';
+import { useAuth } from '../../src/providers/AuthProvider';
 import { fonts } from '../../src/lib/theme';
 import { useTheme } from '../../src/lib/useTheme';
 
@@ -63,43 +67,55 @@ const TAB_BAR_SIDE_INSET = 10;
 const styles = StyleSheet.create({
   iconPill: { width: 44, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   label: { fontFamily: fonts.sansMedium, fontWeight: '600', fontSize: 11, letterSpacing: 0, marginTop: 3 },
+  fill: { flex: 1 },
 });
 
 export default function TabsLayout() {
   const theme = useTheme();
   const { t } = useTranslation('common');
+  const { session, ready, organizationId } = useAuth();
+
+  // Signed in with no active church: apply for one (or see why a church is disabled).
+  if (session && ready && !organizationId) return <NoChurchScreen />;
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        sceneStyle: { backgroundColor: theme.color.canvas },
-        tabBarActiveTintColor: theme.color.brandText,
-        tabBarInactiveTintColor: theme.color.inkFaint,
-        tabBarLabel: ({ color, children }) => <TabLabel color={color}>{children}</TabLabel>,
-        tabBarStyle: {
-          backgroundColor: theme.color.surface,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: theme.color.border,
-          elevation: 0,
-          paddingTop: 6,
-          paddingHorizontal: TAB_BAR_SIDE_INSET,
-        },
-        tabBarItemStyle: { paddingTop: 2 },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: t('nav.mySchedulePhoneTab'),
-          tabBarAccessibilityLabel: t('nav.mySchedule'),
-          tabBarIcon: tabIcon('schedule'),
-        }}
-      />
-      <Tabs.Screen name="calendar" options={{ title: t('nav.calendar'), tabBarIcon: tabIcon('calendar') }} />
-      <Tabs.Screen name="plans" options={{ title: t('nav.plans'), tabBarIcon: tabIcon('plans') }} />
-      <Tabs.Screen name="songs" options={{ title: t('nav.songs'), tabBarIcon: tabIcon('music') }} />
-      <Tabs.Screen name="inbox" options={{ title: t('nav.messages'), tabBarIcon: tabIcon('chat') }} />
-      <Tabs.Screen name="profile" options={{ title: t('nav.settings'), tabBarIcon: tabIcon('person') }} />
-    </Tabs>
+    <View style={[styles.fill, { backgroundColor: theme.color.canvas }]}>
+      <TabBanners />
+      {/* Measures its own insets: below a banner the screens need no status-bar inset. */}
+      <SafeAreaProvider style={styles.fill}>
+        <Tabs
+          screenOptions={{
+            headerShown: false,
+            sceneStyle: { backgroundColor: theme.color.canvas },
+            tabBarActiveTintColor: theme.color.brandText,
+            tabBarInactiveTintColor: theme.color.inkFaint,
+            tabBarLabel: ({ color, children }) => <TabLabel color={color}>{children}</TabLabel>,
+            tabBarStyle: {
+              backgroundColor: theme.color.surface,
+              borderTopWidth: StyleSheet.hairlineWidth,
+              borderTopColor: theme.color.border,
+              elevation: 0,
+              paddingTop: 6,
+              paddingHorizontal: TAB_BAR_SIDE_INSET,
+            },
+            tabBarItemStyle: { paddingTop: 2 },
+          }}
+        >
+          <Tabs.Screen
+            name="index"
+            options={{
+              title: t('nav.mySchedulePhoneTab'),
+              tabBarAccessibilityLabel: t('nav.mySchedule'),
+              tabBarIcon: tabIcon('schedule'),
+            }}
+          />
+          <Tabs.Screen name="calendar" options={{ title: t('nav.calendar'), tabBarIcon: tabIcon('calendar') }} />
+          <Tabs.Screen name="plans" options={{ title: t('nav.plans'), tabBarIcon: tabIcon('plans') }} />
+          <Tabs.Screen name="songs" options={{ title: t('nav.songs'), tabBarIcon: tabIcon('music') }} />
+          <Tabs.Screen name="inbox" options={{ title: t('nav.messages'), tabBarIcon: tabIcon('chat') }} />
+          <Tabs.Screen name="profile" options={{ title: t('nav.settings'), tabBarIcon: tabIcon('person') }} />
+        </Tabs>
+      </SafeAreaProvider>
+    </View>
   );
 }
