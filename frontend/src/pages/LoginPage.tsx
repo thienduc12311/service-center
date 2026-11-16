@@ -13,7 +13,7 @@ import { AuthLayout, BrandMark } from '../components/AuthLayout';
 type Mode = 'sign-in' | 'sign-up';
 
 /** Which Supabase Auth call failed; picks the generic fallback message. */
-export type AuthAction = 'signIn' | 'signUp' | 'setPassword';
+export type AuthAction = 'signIn' | 'signUp' | 'setPassword' | 'resetPassword';
 
 const AUTH_CODE_KEYS: Readonly<Record<string, QualifiedTranslationKey>> = {
   invalid_credentials: 'auth:authErrors.invalidCredentials',
@@ -32,6 +32,7 @@ const AUTH_FALLBACK_KEYS: Readonly<Record<AuthAction, QualifiedTranslationKey>> 
   signIn: 'auth:authErrors.signInFailed',
   signUp: 'auth:authErrors.signUpFailed',
   setPassword: 'auth:authErrors.setPasswordFailed',
+  resetPassword: 'auth:authErrors.resetFailed',
 };
 
 /**
@@ -135,7 +136,14 @@ export const LoginPage = () => {
         </div>
 
         <div>
-          <label className="label" htmlFor="password">{t('login.fields.password')}</label>
+          <div className="flex items-baseline justify-between gap-3">
+            <label className="label" htmlFor="password">{t('login.fields.password')}</label>
+            {mode === 'sign-in' && (
+              <Link to="/forgot-password" className="text-sm font-medium text-brand-600 hover:underline dark:text-brand-200">
+                {t('passwordReset.forgot.link')}
+              </Link>
+            )}
+          </div>
           <input
             id="password"
             type="password"

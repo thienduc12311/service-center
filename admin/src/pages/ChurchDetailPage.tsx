@@ -257,7 +257,7 @@ interface RecentActivityProps {
 }
 
 const RecentActivity = ({ organizationId }: RecentActivityProps) => {
-  const activity = useAdminActivity(organizationId, RECENT_ACTIVITY_LIMIT);
+  const activity = useAdminActivity({ organizationId }, RECENT_ACTIVITY_LIMIT);
   const entries = activity.data?.pages[0]?.entries ?? [];
   return (
     <section aria-labelledby="activity-heading">

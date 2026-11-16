@@ -15,6 +15,13 @@ export const AUDIT_ACTION_LABELS: Record<PlatformAuditAction, string> = {
   'application.rejected': 'Rejected application',
   'application.edited': 'Edited application',
   'settings.updated': 'Updated platform settings',
+  'user.blocked': 'Blocked account',
+  'user.unblocked': 'Unblocked account',
+  'user.deleted': 'Deleted account',
+  'admin.invited': 'Invited super admin',
+  'admin.invitation_revoked': 'Cancelled super-admin invitation',
+  'admin.granted': 'Granted super admin',
+  'admin.revoked': 'Revoked super admin',
 };
 
 const isKnownAction = (action: string): action is PlatformAuditAction => Object.hasOwn(AUDIT_ACTION_LABELS, action);
@@ -24,6 +31,23 @@ export const auditActionLabel = (action: string): string => {
   if (isKnownAction(action)) return AUDIT_ACTION_LABELS[action];
   const words = action.replace(/[._]+/g, ' ').trim();
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'Unknown action';
+};
+
+/** The entry fields the target label reads. */
+export type AuditTargetInput = Pick<PlatformAuditEntry, 'target_user_id' | 'target_name' | 'target_email' | 'details'>;
+
+/**
+ * Who an entry was about: their current name or email, else the email the
+ * entry kept (the account was deleted). Null when the entry has no target
+ * and no invited address.
+ */
+export const auditTargetLabel = (entry: AuditTargetInput): string | null => {
+  const name = entry.target_name?.trim();
+  if (name) return name;
+  if (entry.target_email) return entry.target_email;
+  const kept = entry.details.email;
+  if (typeof kept === 'string' && kept.trim()) return kept.trim();
+  return entry.target_user_id ? 'Deleted account' : null;
 };
 
 /** The entry fields the summary reads. */
@@ -95,6 +119,19 @@ const genericSummary = (details: Details): string =>
     .map(([key, value]) => `${key.replace(/_/g, ' ')}: ${String(value)}`)
     .join(' · ');
 
+const deletedChurches = (details: Details): string | null => {
+  const churches = details.deleted_organizations;
+  if (!Array.isArray(churches) || churches.length === 0) return null;
+  const names = churches
+    .map((church: unknown) =>
+      typeof church === 'object' && church !== null && 'name' in church && typeof church.name === 'string' ? church.name : null,
+    )
+    .filter((name): name is string => name !== null);
+  return names.length ? `Also deleted ${names.join(', ')}` : null;
+};
+
+const plural = (count: number, one: string, many: string): string => `${count} ${count === 1 ? one : many}`;
+
 const joinParts = (parts: readonly (string | null)[]): string => parts.filter((part): part is string => !!part).join(' · ');
 
 /** A one-line summary of an entry's details; empty when there is nothing to add. */
@@ -144,6 +181,28 @@ export const summarizeAuditDetails = ({ action, details }: AuditSummaryInput): s
       return fieldList(details) ?? '';
     case 'settings.updated':
       return settingsChanges(details) ?? '';
+    case 'user.blocked': {
+      const reason = text(details, 'reason');
+      const sessions = number(details, 'sessions_ended');
+      return joinParts([reason && `Reason: ${reason}`, sessions ? `${plural(sessions, 'session', 'sessions')} ended` : null]);
+    }
+    case 'user.unblocked': {
+      const reason = text(details, 'blocked_reason');
+      return reason ? `Was blocked for: ${reason}` : '';
+    }
+    case 'user.deleted':
+      return deletedChurches(details) ?? '';
+    case 'admin.invited': {
+      const until = instant(details, 'expires_at');
+      return joinParts([bool(details, 'resent') ? 'Invitation renewed' : null, until && `Expires ${until}`]);
+    }
+    case 'admin.invitation_revoked':
+    case 'admin.granted':
+      return '';
+    case 'admin.revoked': {
+      const access = number(details, 'platform_access_removed');
+      return access ? `Ended owner access to ${plural(access, 'church', 'churches')}` : '';
+    }
     default:
       return genericSummary(details);
   }

@@ -25,7 +25,7 @@ export const getAccountDeletionPlan = async (caller: AccountCaller): Promise<Acc
 };
 
 /** Removes the caller's own pictures. Organization-uploaded pictures belong to the organization. */
-const removeOwnAvatars = async (userId: string): Promise<void> => {
+export const removeOwnAvatars = async (userId: string): Promise<void> => {
   const folder = userAvatarFolder(userId);
   const bucket = adminDb.storage.from(AVATAR_BUCKET);
   const { data, error } = await bucket.list(folder, { limit: 1000 });

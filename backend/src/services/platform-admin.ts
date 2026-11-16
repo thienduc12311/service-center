@@ -427,12 +427,15 @@ export const updateSettings = async (
 export const listActivity = async (query: AdminActivityQuery): Promise<PlatformAuditPage> => {
   let request = adminDb.from('platform_audit_log').select('*');
   if (query.organization_id) request = request.eq('organization_id', query.organization_id);
+  if (query.target_user_id) request = request.eq('target_user_id', query.target_user_id);
   if (query.before) request = request.lt('id', query.before);
   // One extra row says whether there is another page.
   const rows = ((await unwrap(request.order('id', { ascending: false }).limit(query.limit + 1))) ?? []) as PlatformAuditLogRow[];
   const page = rows.slice(0, query.limit);
 
-  const actors = await profilesById(page.flatMap((row) => (row.actor_id ? [row.actor_id] : [])));
+  const people = await profilesById(
+    page.flatMap((row) => [row.actor_id, row.target_user_id].filter((id): id is string => id !== null)),
+  );
   const organizationIds = [...new Set(page.flatMap((row) => (row.organization_id ? [row.organization_id] : [])))];
   const organizations =
     organizationIds.length === 0
@@ -441,12 +444,14 @@ export const listActivity = async (query: AdminActivityQuery): Promise<PlatformA
   const organizationNames = new Map(organizations.map((org) => [org.id, org.name]));
 
   const entries = page.map((row) => {
-    const actor = row.actor_id ? actors.get(row.actor_id) : undefined;
+    const actor = row.actor_id ? people.get(row.actor_id) : undefined;
+    const target = row.target_user_id ? people.get(row.target_user_id) : undefined;
     const withNames: PlatformAuditRowWithNames = {
       ...row,
       actor: actor ? { full_name: actor.full_name } : null,
       // A deleted church keeps its log lines; the name is gone with it.
       organization_name: row.organization_id ? organizationNames.get(row.organization_id) ?? null : null,
+      target: target ? { full_name: target.full_name, email: target.email } : null,
     };
     return mapPlatformAuditEntry(withNames);
   });

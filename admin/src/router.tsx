@@ -9,6 +9,9 @@ import { ApplicationsPage } from './pages/ApplicationsPage';
 import { ApplicationDetailPage } from './pages/ApplicationDetailPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { UsersPage } from './pages/UsersPage';
+import { UserDetailPage } from './pages/UserDetailPage';
+import { AdminsPage } from './pages/AdminsPage';
 
 /**
  * Every route sits behind the gate, which shows sign-in, two-factor or
@@ -29,6 +32,9 @@ export const router = createBrowserRouter([
           { path: 'churches/:id', element: <ChurchDetailPage /> },
           { path: 'applications', element: <ApplicationsPage /> },
           { path: 'applications/:id', element: <ApplicationDetailPage /> },
+          { path: 'users', element: <UsersPage /> },
+          { path: 'users/:id', element: <UserDetailPage /> },
+          { path: 'admins', element: <AdminsPage /> },
           { path: 'activity', element: <ActivityPage /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: '*', element: <NotFoundPage /> },

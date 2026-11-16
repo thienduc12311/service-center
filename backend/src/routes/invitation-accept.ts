@@ -53,7 +53,7 @@ invitationAcceptRouter.post(
   validateBody(acceptInvitationSchema),
   async (req, res) => {
     const token = param(req, 'token');
-    const { password } = req.body as { password: string };
+    const { password } = req.body as { password?: string };
     const invitation = await loadLiveInvitation(token);
     const tokenHash = hashInviteToken(token);
 
@@ -66,6 +66,8 @@ invitationAcceptRouter.post(
     const userId = existingProfile
       ? existingProfile.id
       : await (async () => {
+          // A new account needs a password; an existing one is only linked.
+          if (!password) throw new HttpError(422, 'Choose a password to create your account', 'password_required');
           const person = await unwrapOne(
             adminDb.from('people').select('first_name, last_name').eq('id', invitation.person_id).single(),
           );

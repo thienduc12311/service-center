@@ -68,6 +68,8 @@ export const AdminLayout = () => {
     { to: '/', label: 'Overview', icon: 'home', end: true },
     { to: '/churches', label: 'Churches', icon: 'grid' },
     { to: '/applications', label: 'Applications', icon: 'document', badge: overview.data?.pending_applications },
+    { to: '/users', label: 'Users', icon: 'people' },
+    { to: '/admins', label: 'Super admins', icon: 'person' },
     { to: '/activity', label: 'Activity', icon: 'clock' },
     { to: '/settings', label: 'Settings', icon: 'settings' },
   ];

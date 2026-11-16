@@ -202,5 +202,25 @@
     "noTags": "No tags.",
     "editTags": "Edit tags",
     "ownerOnlyNote": "Only the church owner can open someone's personal details. You can change your own name and phone in Settings."
+  },
+  "joinRequests": {
+    "title": "Join requests",
+    "shareHint": "People can ask to join from the welcome screen with your church ID <0>{{slug}}</0>.",
+    "empty": "No one is waiting to join.",
+    "askedOn": "Asked {{date}}",
+    "approve": "Approve and invite",
+    "decline": "Decline",
+    "declineTitle": "Decline the request from {{name}}?",
+    "declineReason": "Reason",
+    "declineReasonHint": "Optional. {{name}} will see it.",
+    "confirmDecline": "Decline request",
+    "alreadyInvited": "{{name}} was already approved and invited. To send the invitation again, open their profile.",
+    "openPerson": "Open profile",
+    "recent": "Recently decided",
+    "status": {
+      "approved": "Approved",
+      "declined": "Declined",
+      "withdrawn": "Withdrawn"
+    }
   }
 }

@@ -3,6 +3,13 @@ import type { ImportJob, ImportJobRow } from '../schemas/imports.js';
 import type { SongBulkPreview, SongCurationEventRow } from './song-curation.js';
 import type { UserBlockRow } from './account.js';
 import type { ChurchApplicationStatus, OrganizationPlatformStatus } from './platform-admin.js';
+import type {
+  ApproveChurchJoinRequestRow,
+  ChurchJoinRequestRow,
+  ChurchJoinRequestStatus,
+  ChurchSlugLookupRow,
+  MyChurchJoinRequestRow,
+} from './church-join-requests.js';
 /**
  * Shape of the Postgres schema as supabase-js expects it.
  *
@@ -398,8 +405,31 @@ export type PlatformAuditLogRow = {
   action: string;
   organization_id: string | null;
   application_id: string | null;
+  /** The account the action was about (user and super-admin management). */
+  target_user_id: string | null;
   details: Record<string, unknown>;
   created_at: string;
+}
+
+/** `platform_user_blocks`: why and by whom a super admin blocked an account. */
+export type PlatformUserBlockRow = {
+  user_id: string;
+  reason: string;
+  blocked_by: string | null;
+  blocked_at: string;
+}
+
+/** `platform_admin_invitations`: open while neither accepted nor revoked and not expired. */
+export type PlatformAdminInvitationRow = {
+  id: string;
+  email: string;
+  invited_by: string | null;
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+  accepted_by: string | null;
+  revoked_at: string | null;
+  revoked_by: string | null;
 }
 
 export type PersonType = 'adult' | 'child';
@@ -1268,6 +1298,7 @@ export type Database = {
       organization_platform_controls: Table<OrganizationPlatformControlsRow>;
       church_applications: Table<ChurchApplicationRow>;
       platform_audit_log: Table<PlatformAuditLogRow>;
+      church_join_requests: Table<ChurchJoinRequestRow>;
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
@@ -2125,6 +2156,19 @@ export type Database = {
         Args: { p_id: string; p_action: 'keep_separate' | 'merge' };
         Returns: PersonIdentityReconciliationRow;
       };
+      find_church_by_slug: { Args: { p_slug: string }; Returns: ChurchSlugLookupRow[] };
+      /** Returns the new request's id. */
+      request_to_join_church: { Args: { p_slug: string; p_message?: string | null }; Returns: string };
+      my_church_join_requests: { Args: { p_id?: string | null }; Returns: MyChurchJoinRequestRow[] };
+      approve_church_join_request: { Args: { p_request: string }; Returns: ApproveChurchJoinRequestRow[] };
+      record_church_join_request_invitation: {
+        Args: { p_request: string; p_invitation: string };
+        Returns: ChurchJoinRequestRow;
+      };
+      decline_church_join_request: {
+        Args: { p_request: string; p_reason?: string | null };
+        Returns: ChurchJoinRequestRow;
+      };
     };
     Enums: {
       org_role: OrgRole;
@@ -2141,6 +2185,7 @@ export type Database = {
       release_batch_status: ReleaseBatchStatus;
       organization_platform_status: OrganizationPlatformStatus;
       church_application_status: ChurchApplicationStatus;
+      church_join_request_status: ChurchJoinRequestStatus;
     };
     CompositeTypes: Record<string, never>;
   };

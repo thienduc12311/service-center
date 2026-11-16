@@ -72,6 +72,8 @@ export const keys = {
   rosterAudit: (org: string | null, personId: string | null) => [...keys.all(org), 'roster-audit', personId] as const,
   tagCatalog: (org: string | null) => [...keys.all(org), 'tag-catalog'] as const,
   reconciliations: (org: string | null) => [...keys.all(org), 'reconciliations'] as const,
+  /** Owners: people asking to join the active church. */
+  joinRequests: (org: string | null) => [...keys.all(org), 'join-requests'] as const,
   search: (org: string | null, q: string) => [...keys.all(org), 'search', q] as const,
   // F03 availability. Person-scoped keys include the person, so a delegate's
   // view of someone else never shares a cache entry with their own.
@@ -804,6 +806,8 @@ export const usePlanStageLayouts = (planId: string | undefined) => {
  */
 export const accountKeys = {
   churchApplications: ['account', 'church-applications'] as const,
+  /** The caller's requests to join churches (asked before belonging to any). */
+  churchJoinRequests: ['account', 'church-join-requests'] as const,
   churchCreationPolicy: ['account', 'church-creation-policy'] as const,
 };
 
@@ -813,6 +817,20 @@ export const useChurchCreationPolicy = () =>
 /** Newest first. */
 export const useMyChurchApplications = () =>
   useQuery({ queryKey: accountKeys.churchApplications, queryFn: () => api.myChurchApplications() });
+
+/** Newest first. */
+export const useMyChurchJoinRequests = () =>
+  useQuery({ queryKey: accountKeys.churchJoinRequests, queryFn: () => api.myChurchJoinRequests() });
+
+/** Owners only: the active church's pending and recently decided join requests. */
+export const useChurchJoinRequests = (enabled: boolean) => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.joinRequests(org),
+    queryFn: () => api.churchJoinRequests(),
+    enabled: enabled && Boolean(org),
+  });
+};
 
 /**
  * The active church's media use against its quota. Only owners and admins

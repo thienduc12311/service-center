@@ -10,6 +10,7 @@ import { Avatar, Badge, Button, EmptyState, ErrorNotice, IconButton, Menu, MenuI
 import { Icon } from '../components/icons';
 import { BulkRosterPanel } from '../components/people/BulkRosterPanel';
 import { TagGroupsModal } from '../components/people/TagGroupsModal';
+import { JoinRequestsSection } from '../components/people/JoinRequestsSection';
 
 /** Result of the most recently sent invitation — surfaced so an owner can share it manually. */
 interface SentInvite {
@@ -106,6 +107,9 @@ export const PeoplePage = () => {
             </div>
           </Notice>
         )}
+
+        {/* Who asked to join by the church ID: owners are the ones who invite. */}
+        {owner && <JoinRequestsSection onInvited={(personName, url) => setSentInvite({ personName, url })} />}
 
         <ErrorNotice error={people.error ?? changeRole.error ?? convert.error ?? invite.error} />
 

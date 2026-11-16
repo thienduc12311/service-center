@@ -41,15 +41,26 @@ export const updatePersonSchema = createPersonSchema.partial().extend({
   person_type: personTypeSchema.optional(),
 });
 
+/** Any role but owner (`person_invitations` refuses owner invitations). */
+export const invitationRoleSchema = orgRoleSchema.exclude(['owner']);
+export type InvitationRole = z.infer<typeof invitationRoleSchema>;
+
+/** The role a person is invited with unless the owner picks another (join-request approvals too). */
+export const DEFAULT_INVITATION_ROLE: InvitationRole = 'member';
+
 export const invitePersonSchema = z.object({
   // Overrides the person's stored email, in case they want to send it
   // somewhere else. Required when the person has no email on file.
   email: z.string().trim().toLowerCase().email().optional(),
-  role: orgRoleSchema.exclude(['owner']).default('member'),
+  role: invitationRoleSchema.default(DEFAULT_INVITATION_ROLE),
 });
 
+/**
+ * The password creates the account when the invited email has none yet. For
+ * an existing account it is not needed (and ignored): the login is linked.
+ */
 export const acceptInvitationSchema = z.object({
-  password: z.string().min(8).max(72),
+  password: z.string().min(8).max(72).optional(),
 });
 
 export type CreatePersonInput = z.infer<typeof createPersonSchema>;

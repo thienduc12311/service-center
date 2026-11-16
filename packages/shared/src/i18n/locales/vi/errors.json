@@ -68,7 +68,13 @@
     "application_not_pending": "Yêu cầu này đã được xem xét hoặc đã được rút lại. Hãy tải lại để xem tình trạng.",
     "slug_taken": "Địa chỉ web này đã được một hội thánh khác sử dụng. Hãy chọn địa chỉ khác.",
     "not_platform_admin": "Chỉ quản trị viên Service Center mới có thể làm việc này.",
-    "mfa_required": "Hãy hoàn tất bước đăng nhập hai lớp trước."
+    "mfa_required": "Hãy hoàn tất bước đăng nhập hai lớp trước.",
+    "church_not_found": "Không có hội thánh nào dùng mã này. Hãy kiểm tra lại với người lãnh đạo hội thánh.",
+    "already_church_member": "Bạn đã là thành viên của hội thánh này.",
+    "join_request_pending": "Bạn đã xin tham gia hội thánh này. Hãy chờ chủ sở hữu xem xét.",
+    "join_request_not_pending": "Yêu cầu này đã được xử lý hoặc đã được rút lại. Hãy tải lại để xem tình trạng.",
+    "requester_already_member": "Người này đã là thành viên của hội thánh. Hãy từ chối yêu cầu để xoá khỏi danh sách.",
+    "password_required": "Hãy chọn mật khẩu để tạo tài khoản."
   },
   "validation": {
     "required": "Trường này là bắt buộc.",

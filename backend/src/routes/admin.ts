@@ -24,6 +24,16 @@ import {
   type UpdateChurchApplicationInput,
   type UpdatePlatformSettingsInput,
 } from '@service-center/shared';
+import {
+  adminUserParamsSchema,
+  blockUserSchema,
+  deleteUserSchema,
+  invitePlatformAdminSchema,
+  platformAdminInvitationParamsSchema,
+  type BlockUserInput,
+  type DeleteUserInput,
+  type InvitePlatformAdminInput,
+} from '@service-center/shared';
 import { parseOrThrow, parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requirePlatformAdmin } from '../middleware/platform-admin.js';
 import {
@@ -45,6 +55,19 @@ import {
   updateSettings,
   type PlatformActor,
 } from '../services/platform-admin.js';
+import {
+  acceptPlatformAdminInvitation,
+  blockUser,
+  deleteUser,
+  getMyPlatformAdminInvitation,
+  getUserDetail,
+  invitePlatformAdmin,
+  listPlatformAdmins,
+  listUsers,
+  revokePlatformAdmin,
+  revokePlatformAdminInvitation,
+  unblockUser,
+} from '../services/platform-users.js';
 
 /**
  * `/api/v1/admin`: the super-admin dashboard (admin.graceaogchurch.com).
@@ -56,6 +79,8 @@ export const adminRouter: Router = Router();
 const actor = (req: Request): PlatformActor => ({ userId: req.auth.userId });
 const organizationId = (req: Request): string => parseOrThrow(adminOrganizationParamsSchema, req.params).id;
 const applicationId = (req: Request): string => parseOrThrow(churchApplicationParamsSchema, req.params).id;
+const userId = (req: Request): string => parseOrThrow(adminUserParamsSchema, req.params).id;
+const invitationId = (req: Request): string => parseOrThrow(platformAdminInvitationParamsSchema, req.params).id;
 
 adminRouter.get('/session', requirePlatformAdmin({ allowWithoutMfa: true }), (req, res) => {
   const aal = req.platformAdmin?.aal ?? 'aal1';
@@ -66,6 +91,16 @@ adminRouter.get('/session', requirePlatformAdmin({ allowWithoutMfa: true }), (re
     mfa_required: aal !== 'aal2',
   };
   res.json(session);
+});
+
+// The invitee's side: any signed-in account, not yet a super admin.
+adminRouter.get('/invitation', async (req, res) => {
+  res.json(await getMyPlatformAdminInvitation(req.auth.userId));
+});
+
+adminRouter.post('/invitation/:id/accept', async (req, res) => {
+  await acceptPlatformAdminInvitation(req.auth.userId, invitationId(req));
+  res.status(204).end();
 });
 
 adminRouter.use(requirePlatformAdmin());
@@ -137,6 +172,51 @@ adminRouter.post('/church-applications/:id/approve', validateBody(approveChurchA
 adminRouter.post('/church-applications/:id/reject', validateBody(rejectChurchApplicationSchema), async (req, res) => {
   const { reason } = req.body as RejectChurchApplicationInput;
   res.json(await rejectApplication(actor(req), applicationId(req), reason));
+});
+
+// --------------------------------------------------------------- users -----
+
+adminRouter.get('/users', async (_req, res) => {
+  res.json(await listUsers());
+});
+
+adminRouter.get('/users/:id', async (req, res) => {
+  res.json(await getUserDetail(actor(req), userId(req)));
+});
+
+adminRouter.post('/users/:id/block', validateBody(blockUserSchema), async (req, res) => {
+  const { reason } = req.body as BlockUserInput;
+  res.json(await blockUser(actor(req), userId(req), reason));
+});
+
+adminRouter.post('/users/:id/unblock', async (req, res) => {
+  await unblockUser(actor(req), userId(req));
+  res.status(204).end();
+});
+
+adminRouter.delete('/users/:id', validateBody(deleteUserSchema), async (req, res) => {
+  const { confirm_email } = req.body as DeleteUserInput;
+  res.json(await deleteUser(actor(req), userId(req), confirm_email));
+});
+
+// -------------------------------------------------------- super admins -----
+
+adminRouter.get('/admins', async (_req, res) => {
+  res.json(await listPlatformAdmins());
+});
+
+adminRouter.post('/admins/invitations', validateBody(invitePlatformAdminSchema), async (req, res) => {
+  res.status(201).json(await invitePlatformAdmin(actor(req), req.body as InvitePlatformAdminInput));
+});
+
+adminRouter.delete('/admins/invitations/:id', async (req, res) => {
+  await revokePlatformAdminInvitation(actor(req), invitationId(req));
+  res.status(204).end();
+});
+
+adminRouter.delete('/admins/:id', async (req, res) => {
+  await revokePlatformAdmin(actor(req), userId(req));
+  res.status(204).end();
 });
 
 // ------------------------------------------------------ settings, log ------

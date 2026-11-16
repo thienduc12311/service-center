@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { AuthLayout } from '../components/AuthLayout';
 import { Button, ErrorNotice, TextField } from '../components/ui';
 import { useAdminAuth } from '../providers/AdminAuthProvider';
+import { env } from '../lib/env';
 
 /** Email and password only: accounts are created in the main app, admin access by SQL. */
 export const SignInPage = () => {
@@ -49,6 +50,12 @@ export const SignInPage = () => {
         <Button type="submit" className="w-full" loading={submitting} disabled={!email.trim() || !password}>
           Sign in
         </Button>
+        {/* Passwords belong to the main app's accounts, so they are reset there. */}
+        <p className="text-center text-sm">
+          <a className="font-medium text-brand-600 hover:underline dark:text-brand-200" href={`${env.appUrl}/forgot-password`}>
+            Forgot your password?
+          </a>
+        </p>
       </form>
     </AuthLayout>
   );

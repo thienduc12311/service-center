@@ -1,4 +1,11 @@
-import { CHURCH_APPLICATION_REQUIRED, STORAGE_QUOTA_EXCEEDED } from '@service-center/shared';
+import {
+  ALREADY_CHURCH_MEMBER,
+  CHURCH_APPLICATION_REQUIRED,
+  CHURCH_NOT_FOUND,
+  JOIN_REQUEST_NOT_PENDING,
+  JOIN_REQUEST_PENDING,
+  STORAGE_QUOTA_EXCEEDED,
+} from '@service-center/shared';
 import { parseConflictDetail } from '../model/attendance.model.js';
 
 /** An error that carries an HTTP status through to the response. */
@@ -76,6 +83,12 @@ const PT409_HINTS: Record<string, string> = {
   // F13
   file_changed: 'file_revision_stale',
   file_in_use: 'file_in_use',
+  // Super-admin user management.
+  target_is_platform_admin: 'target_is_platform_admin',
+  last_platform_admin: 'last_platform_admin',
+  already_platform_admin: 'already_platform_admin',
+  user_blocked: 'user_blocked',
+  invitation_not_open: 'invitation_not_open',
   // F16
   attendance_changed: 'attendance_revision_stale',
   publication_changed: 'publication_revision_stale',
@@ -85,6 +98,10 @@ const PT409_HINTS: Record<string, string> = {
   account_deletion_blocked: 'account_deletion_blocked',
   // Super-admin dashboard: the application was decided or withdrawn meanwhile.
   application_not_pending: 'application_not_pending',
+  // Joining a church by its slug.
+  already_church_member: ALREADY_CHURCH_MEMBER,
+  join_request_pending: JOIN_REQUEST_PENDING,
+  join_request_not_pending: JOIN_REQUEST_NOT_PENDING,
 };
 
 export const fromPostgrestError = (error: {
@@ -100,6 +117,10 @@ export const fromPostgrestError = (error: {
       PT409_HINTS[error.hint],
       error.hint === 'scheduling_conflict' ? parseConflictDetail(error.details) : undefined,
     );
+  }
+  // Super-admin user management: blocking, deleting or revoking yourself.
+  if (error.code === '22023' && error.hint === 'cannot_target_self') {
+    return new HttpError(400, error.message, 'cannot_target_self');
   }
   switch (error.code) {
     case 'PGRST116':
@@ -122,6 +143,8 @@ export const fromPostgrestError = (error: {
     // Raised by our own database functions with a message written for people.
     case 'PT404':
     case 'P0002':
+      // Unknown and disabled churches read the same (request_to_join_church).
+      if (error.hint === 'church_not_found') return new HttpError(404, error.message, CHURCH_NOT_FOUND);
       return HttpError.notFound(error.message);
     case '22023':
       return HttpError.badRequest(error.message);

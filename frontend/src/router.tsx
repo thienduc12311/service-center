@@ -5,6 +5,8 @@ import { Loading } from './components/ui';
 import { useAuth } from './providers/AuthProvider';
 
 import { LoginPage } from './pages/LoginPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AcceptInvitePage } from './pages/AcceptInvitePage';
 import { RespondAssignmentPage } from './pages/RespondAssignmentPage';
 import { OnboardingPage } from './pages/OnboardingPage';
@@ -62,6 +64,9 @@ const RequirePeopleOwner = () => {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  // Password reset: the email's link lands on /reset-password with a recovery session.
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/accept-invite', element: <AcceptInvitePage /> },
   { path: '/respond', element: <RespondAssignmentPage /> },
   // F16: anonymous public projections (no session needed).

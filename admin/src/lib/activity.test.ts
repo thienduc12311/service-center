@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AUDIT_ACTION_LABELS, auditActionLabel, summarizeAuditDetails } from './activity';
+import { AUDIT_ACTION_LABELS, auditActionLabel, auditTargetLabel, summarizeAuditDetails } from './activity';
 
 const MB = 1_048_576;
 
@@ -85,5 +85,44 @@ describe('summarizeAuditDetails', () => {
     expect(summarizeAuditDetails({ action: 'church.renamed', details: { from: 'A', to: 'B', nested: { x: 1 } } })).toBe(
       'from: A · to: B',
     );
+  });
+});
+
+describe('user and super-admin actions', () => {
+  it('summarizes blocking, unblocking and deleting', () => {
+    expect(
+      summarizeAuditDetails({ action: 'user.blocked', details: { email: 'u@x.test', reason: 'Spam', sessions_ended: 2 } }),
+    ).toBe('Reason: Spam · 2 sessions ended');
+    expect(summarizeAuditDetails({ action: 'user.blocked', details: { reason: 'Spam', sessions_ended: 0 } })).toBe('Reason: Spam');
+    expect(summarizeAuditDetails({ action: 'user.unblocked', details: { blocked_reason: 'Spam' } })).toBe('Was blocked for: Spam');
+    expect(
+      summarizeAuditDetails({ action: 'user.deleted', details: { deleted_organizations: [{ id: 'o1', name: 'Solo Church' }] } }),
+    ).toBe('Also deleted Solo Church');
+    expect(summarizeAuditDetails({ action: 'user.deleted', details: { deleted_organizations: [] } })).toBe('');
+  });
+
+  it('summarizes super-admin changes', () => {
+    expect(summarizeAuditDetails({ action: 'admin.invited', details: { resent: true } })).toBe('Invitation renewed');
+    expect(summarizeAuditDetails({ action: 'admin.granted', details: { email: 'a@x.test' } })).toBe('');
+    expect(summarizeAuditDetails({ action: 'admin.revoked', details: { platform_access_removed: 1 } })).toBe(
+      'Ended owner access to 1 church',
+    );
+    expect(summarizeAuditDetails({ action: 'admin.revoked', details: { platform_access_removed: 0 } })).toBe('');
+  });
+});
+
+describe('auditTargetLabel', () => {
+  const entry = { target_user_id: 'u1', target_name: null, target_email: null, details: {} };
+
+  it('prefers the current name, then email, then the email the entry kept', () => {
+    expect(auditTargetLabel({ ...entry, target_name: 'Uma', target_email: 'u@x.test' })).toBe('Uma');
+    expect(auditTargetLabel({ ...entry, target_email: 'u@x.test' })).toBe('u@x.test');
+    expect(auditTargetLabel({ ...entry, details: { email: 'gone@x.test' } })).toBe('gone@x.test');
+    expect(auditTargetLabel(entry)).toBe('Deleted account');
+  });
+
+  it('labels an invitation to an address with no account, and nothing otherwise', () => {
+    expect(auditTargetLabel({ ...entry, target_user_id: null, details: { email: 'new@x.test' } })).toBe('new@x.test');
+    expect(auditTargetLabel({ ...entry, target_user_id: null })).toBeNull();
   });
 });

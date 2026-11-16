@@ -1,4 +1,4 @@
-import { ApiError, MFA_REQUIRED, NOT_PLATFORM_ADMIN } from '@service-center/shared';
+import { ACCOUNT_BLOCKED, ApiError, MFA_REQUIRED, NOT_PLATFORM_ADMIN } from '@service-center/shared';
 
 export { APPLICATION_NOT_PENDING, NOT_PLATFORM_ADMIN, SLUG_TAKEN } from '@service-center/shared';
 
@@ -19,11 +19,20 @@ export const accessProblemOf = (error: unknown): AccessProblem | null => {
   return null;
 };
 
+export const BLOCKED_ACCOUNT_MESSAGE = 'This account is blocked. Contact a Service Center super admin if you think this is a mistake.';
+
+/** Supabase Auth refusing a banned login (`user_banned`), or the API refusing a blocked account. */
+export const isBlockedAccountError = (error: unknown): boolean => {
+  if (error instanceof ApiError) return error.code === ACCOUNT_BLOCKED;
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'user_banned';
+};
+
 /**
  * Text to show for a failed call. The API writes its messages for people;
  * a failed fetch (offline, CORS, API down) gets a plain explanation instead.
  */
 export const errorMessage = (error: unknown, fallback: string = DEFAULT_ERROR_MESSAGE): string => {
+  if (isBlockedAccountError(error)) return BLOCKED_ACCOUNT_MESSAGE;
   if (error instanceof ApiError) return error.message.trim() || fallback;
   if (error instanceof TypeError) return NETWORK_ERROR_MESSAGE;
   if (error instanceof Error && error.message.trim()) return error.message;

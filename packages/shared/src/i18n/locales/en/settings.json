@@ -878,5 +878,46 @@
   },
   "platformAccess": {
     "banner": "You are in {{church}} as a Service Center admin until {{time}}. Every change you make is recorded."
+  },
+  "churchJoin": {
+    "choice": {
+      "title": "Get started",
+      "intro": "Join a church that already uses Service Center, or register a new one.",
+      "label": "How would you like to start?",
+      "join": "Join an existing church",
+      "joinDescription": "Ask your church to let you in, using its church ID.",
+      "register": "Register a new church",
+      "registerDescription": "Bring your church to Service Center. We review every request.",
+      "createDescription": "Set up a new church on Service Center right away."
+    },
+    "intro": "Enter your church's ID, a short name such as riverside. Your church's leaders can tell you what it is.",
+    "slugLabel": "Church ID",
+    "slugPlaceholder": "riverside",
+    "slugHint": "You can also paste a link to the church.",
+    "slugInvalid": "A church ID has 2–40 letters, numbers or dashes.",
+    "find": "Find church",
+    "confirmTitle": "Is this your church?",
+    "notThisOne": "Not this one",
+    "messageLabel": "Message to the church",
+    "messagePlaceholder": "Tell them who you are, for example which service you attend.",
+    "send": "Send request",
+    "pending": {
+      "title": "Request sent",
+      "body": "You asked to join {{church}} on {{date}}. When its owner approves, you'll get an invitation by email to accept.",
+      "withdraw": "Withdraw request",
+      "withdrawConfirm": "Withdraw your request to join {{church}}?"
+    },
+    "declined": {
+      "title": "Request declined",
+      "body": "{{church}} declined your request to join.",
+      "reason": "Reason: {{reason}}",
+      "tryAnother": "Try another church"
+    },
+    "approved": {
+      "title": "Request approved",
+      "body": "{{church}} approved your request. Check your email for the invitation and open its link to join.",
+      "tryAnother": "Ask another church"
+    },
+    "withdrawn": "You withdrew your last request."
   }
 }

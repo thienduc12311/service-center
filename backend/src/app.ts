@@ -16,6 +16,7 @@ import { meRouter } from './routes/me.js';
 import { organizationsRouter } from './routes/organizations.js';
 import { adminRouter } from './routes/admin.js';
 import { churchApplicationsRouter } from './routes/church-applications.js';
+import { churchJoinRequestsOwnerRouter, churchJoinRequestsRouter } from './routes/church-join-requests.js';
 import { organizationStorageRouter } from './routes/organization-storage.js';
 import { peopleRouter } from './routes/people.js';
 import { rosterRouter, searchRouter } from './routes/roster.js';
@@ -144,6 +145,8 @@ export const createApp = (): Express => {
   app.use('/api/v1/organizations', requireAuth, organizationsRouter);
   // Applying for a church happens before belonging to one.
   app.use('/api/v1/church-applications', requireAuth, churchApplicationsRouter);
+  // So is asking to join an existing church by its slug.
+  app.use('/api/v1/church-join-requests', requireAuth, churchJoinRequestsRouter);
   // Super-admin dashboard; the router checks platform admin and two-factor login.
   app.use('/api/v1/admin', requireAuth, adminRouter);
   // Fully public: the caller isn't signed in yet — a valid token is the
@@ -160,6 +163,7 @@ export const createApp = (): Express => {
   const scoped = [requireAuth, withOrganization];
   // Roster maintenance first: its fixed paths must not be read as a person id.
   app.use('/api/v1/people/:personId/calendar-sharing', scoped, personCalendarSharingRouter);
+  app.use('/api/v1/people/join-requests', scoped, churchJoinRequestsOwnerRouter);
   app.use('/api/v1/people', scoped, rosterRouter, peopleRouter);
   app.use('/api/v1/organization-storage', scoped, organizationStorageRouter);
   app.use('/api/v1/search', scoped, searchRouter);

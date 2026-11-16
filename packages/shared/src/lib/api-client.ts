@@ -14,6 +14,16 @@ import type { CreateApiCredentialRequest, CreateWebhookEndpointInput, SetWebhook
 import type { LanguagePreferenceResponse, UpdateLanguagePreferenceInput } from '../schemas/language.js';
 import type { AccountDeletionPlan, AccountDeletionResult, BlockedUser, UserBlockRow } from '../types/account.js';
 import type {
+  AdminUserDetail,
+  AdminUserDeletionResult,
+  AdminUserSummary,
+  MyPlatformAdminInvitation,
+  PlatformAdminInvitation,
+  PlatformAdminRoster,
+} from '../types/platform-users.js';
+import type { InvitePlatformAdminRequest } from '../schemas/platform-users.js';
+import type { PlatformUserBlockRow } from '../types/database.js';
+import type {
   AdminChurchApplication,
   AdminOrganizationDetail,
   AdminOrganizationSummary,
@@ -36,6 +46,17 @@ import type {
   UpdateChurchApplicationRequest,
   UpdatePlatformSettingsInput,
 } from '../schemas/platform-admin.js';
+import type {
+  ChurchJoinRequest,
+  ChurchJoinRequestApproval,
+  ChurchJoinRequestQueue,
+  ChurchLookup,
+  MyChurchJoinRequest,
+} from '../types/church-join-requests.js';
+import type {
+  CreateChurchJoinRequestRequest,
+  DeclineChurchJoinRequestRequest,
+} from '../schemas/church-join-requests.js';
 /**
  * Typed client for the Express API. Shared verbatim by the web app and the
  * React Native app — the only difference is how each supplies the access token.
@@ -644,6 +665,25 @@ export class ServiceCenterApi {
   withdrawChurchApplication = (id: string) =>
     this.request<ChurchApplication>('POST', `/api/v1/church-applications/${encodeURIComponent(id)}/withdraw`);
 
+  // ------------------------------------------------ church join requests --
+  /** An active church by its URL slug (404 `church_not_found` otherwise). */
+  findChurchBySlug = (slug: string) =>
+    this.request<ChurchLookup>('GET', '/api/v1/church-join-requests/lookup', undefined, { slug });
+  /** The caller's join requests, newest first. */
+  myChurchJoinRequests = () => this.request<MyChurchJoinRequest[]>('GET', '/api/v1/church-join-requests');
+  requestToJoinChurch = (body: CreateChurchJoinRequestRequest) =>
+    this.request<MyChurchJoinRequest>('POST', '/api/v1/church-join-requests', body);
+  /** Only while pending. */
+  withdrawChurchJoinRequest = (id: string) =>
+    this.request<MyChurchJoinRequest>('POST', `/api/v1/church-join-requests/${encodeURIComponent(id)}/withdraw`);
+  /** Owners: the active church's pending and recently decided requests. */
+  churchJoinRequests = () => this.request<ChurchJoinRequestQueue>('GET', '/api/v1/people/join-requests');
+  /** Owners: invites the requester (the normal invitation). Safe to retry. */
+  approveChurchJoinRequest = (id: string) =>
+    this.request<ChurchJoinRequestApproval>('POST', `/api/v1/people/join-requests/${encodeURIComponent(id)}/approve`);
+  declineChurchJoinRequest = (id: string, body: DeclineChurchJoinRequestRequest = {}) =>
+    this.request<ChurchJoinRequest>('POST', `/api/v1/people/join-requests/${encodeURIComponent(id)}/decline`, body);
+
   // ---------------------------------------------------- platform admin ----
   // Super admins only; every route except adminSession needs two-factor login.
   adminSession = () => this.request<AdminSession>('GET', '/api/v1/admin/session');
@@ -683,6 +723,29 @@ export class ServiceCenterApi {
     this.request<PlatformSettings>('PATCH', '/api/v1/admin/settings', body);
   adminActivity = (query: AdminActivityRequest = {}) =>
     this.request<PlatformAuditPage>('GET', '/api/v1/admin/activity', undefined, query as Query);
+  adminUsers = () => this.request<AdminUserSummary[]>('GET', '/api/v1/admin/users');
+  adminUser = (id: string) => this.request<AdminUserDetail>('GET', `/api/v1/admin/users/${encodeURIComponent(id)}`);
+  /** Bans the login and ends every session; church memberships stay. */
+  adminBlockUser = (id: string, reason: string) =>
+    this.request<PlatformUserBlockRow>('POST', `/api/v1/admin/users/${encodeURIComponent(id)}/block`, { reason });
+  adminUnblockUser = (id: string) =>
+    this.request<void>('POST', `/api/v1/admin/users/${encodeURIComponent(id)}/unblock`);
+  /** 409 `account_deletion_blocked` (details: the churches) while a church would be left without an owner. */
+  adminDeleteUser = (id: string, confirmEmail: string) =>
+    this.request<AdminUserDeletionResult>('DELETE', `/api/v1/admin/users/${encodeURIComponent(id)}`, {
+      confirm_email: confirmEmail,
+    });
+  adminPlatformAdmins = () => this.request<PlatformAdminRoster>('GET', '/api/v1/admin/admins');
+  adminInvitePlatformAdmin = (body: InvitePlatformAdminRequest) =>
+    this.request<PlatformAdminInvitation>('POST', '/api/v1/admin/admins/invitations', body);
+  adminRevokePlatformAdminInvitation = (id: string) =>
+    this.request<void>('DELETE', `/api/v1/admin/admins/invitations/${encodeURIComponent(id)}`);
+  adminRevokePlatformAdmin = (userId: string) =>
+    this.request<void>('DELETE', `/api/v1/admin/admins/${encodeURIComponent(userId)}`);
+  /** Works without being a super admin: the signed-in person's own open invitation, or null. */
+  myPlatformAdminInvitation = () => this.request<MyPlatformAdminInvitation | null>('GET', '/api/v1/admin/invitation');
+  acceptPlatformAdminInvitation = (id: string) =>
+    this.request<void>('POST', `/api/v1/admin/invitation/${encodeURIComponent(id)}/accept`);
 
   /** Archived people are left out unless asked for. */
   listPeople = (query?: { include_archived?: boolean }) =>
@@ -745,7 +808,7 @@ export class ServiceCenterApi {
   // -------------------------------------------------- invitation acceptance
   previewInvitation = (token: string) =>
     this.request<InvitationPreview>('GET', `/api/v1/invitations/${token}`);
-  acceptInvitation = (token: string, body: { password: string }) =>
+  acceptInvitation = (token: string, body: { password?: string }) =>
     this.request<{ email: string; linked_existing_account: boolean }>(
       'POST',
       `/api/v1/invitations/${token}/accept`,

@@ -21,7 +21,14 @@ export type PlatformAuditAction =
   | 'application.approved'
   | 'application.rejected'
   | 'application.edited'
-  | 'settings.updated';
+  | 'settings.updated'
+  | 'user.blocked'
+  | 'user.unblocked'
+  | 'user.deleted'
+  | 'admin.invited'
+  | 'admin.invitation_revoked'
+  | 'admin.granted'
+  | 'admin.revoked';
 
 /** A church application as its applicant sees it. */
 export interface ChurchApplication {
@@ -187,6 +194,11 @@ export interface PlatformAuditEntry {
   organization_id: string | null;
   organization_name: string | null;
   application_id: string | null;
+  /** The account the action was about; it may since have been deleted. */
+  target_user_id: string | null;
+  /** Null once the account is deleted (`details.email` keeps who it was). */
+  target_name: string | null;
+  target_email: string | null;
   details: Record<string, unknown>;
   created_at: string;
 }

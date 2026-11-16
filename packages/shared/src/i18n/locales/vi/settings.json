@@ -865,5 +865,46 @@
   },
   "platformAccess": {
     "banner": "Bạn đang ở trong {{church}} với tư cách quản trị viên Service Center đến {{time}}. Mọi thay đổi của bạn đều được ghi lại."
+  },
+  "churchJoin": {
+    "choice": {
+      "title": "Bắt đầu",
+      "intro": "Tham gia một hội thánh đã dùng Service Center, hoặc đăng ký một hội thánh mới.",
+      "label": "Bạn muốn bắt đầu thế nào?",
+      "join": "Tham gia hội thánh có sẵn",
+      "joinDescription": "Xin hội thánh của bạn cho tham gia bằng mã hội thánh.",
+      "register": "Đăng ký hội thánh mới",
+      "registerDescription": "Đưa hội thánh của bạn lên Service Center. Chúng tôi xem xét mọi yêu cầu.",
+      "createDescription": "Tạo ngay một hội thánh mới trên Service Center."
+    },
+    "intro": "Nhập mã hội thánh của bạn, một tên ngắn như riverside. Người lãnh đạo hội thánh có thể cho bạn biết mã này.",
+    "slugLabel": "Mã hội thánh",
+    "slugPlaceholder": "riverside",
+    "slugHint": "Bạn cũng có thể dán liên kết của hội thánh.",
+    "slugInvalid": "Mã hội thánh gồm 2–40 chữ cái, chữ số hoặc dấu gạch ngang.",
+    "find": "Tìm hội thánh",
+    "confirmTitle": "Đây có phải hội thánh của bạn?",
+    "notThisOne": "Không phải",
+    "messageLabel": "Lời nhắn gửi hội thánh",
+    "messagePlaceholder": "Hãy giới thiệu về bạn, ví dụ bạn tham dự buổi nhóm nào.",
+    "send": "Gửi yêu cầu",
+    "pending": {
+      "title": "Đã gửi yêu cầu",
+      "body": "Bạn đã xin tham gia {{church}} ngày {{date}}. Khi chủ sở hữu duyệt, bạn sẽ nhận được lời mời qua email để chấp nhận.",
+      "withdraw": "Rút lại yêu cầu",
+      "withdrawConfirm": "Rút lại yêu cầu tham gia {{church}}?"
+    },
+    "declined": {
+      "title": "Yêu cầu bị từ chối",
+      "body": "{{church}} đã từ chối yêu cầu tham gia của bạn.",
+      "reason": "Lý do: {{reason}}",
+      "tryAnother": "Thử hội thánh khác"
+    },
+    "approved": {
+      "title": "Yêu cầu đã được duyệt",
+      "body": "{{church}} đã duyệt yêu cầu của bạn. Hãy kiểm tra email và mở liên kết trong lời mời để tham gia.",
+      "tryAnother": "Xin tham gia hội thánh khác"
+    },
+    "withdrawn": "Bạn đã rút lại yêu cầu gần nhất."
   }
 }
