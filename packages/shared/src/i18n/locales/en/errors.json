@@ -68,7 +68,13 @@
     "application_not_pending": "This request was already reviewed or withdrawn. Reload to see where it stands.",
     "slug_taken": "That web address is already used by another church. Choose a different one.",
     "not_platform_admin": "Only Service Center admins can do that.",
-    "mfa_required": "Finish two-factor sign-in first."
+    "mfa_required": "Finish two-factor sign-in first.",
+    "church_not_found": "No church uses that ID. Check it with your church's leaders.",
+    "already_church_member": "You're already part of this church.",
+    "join_request_pending": "You already asked to join this church. Wait for its owner to review it.",
+    "join_request_not_pending": "This request was already decided or withdrawn. Reload to see where it stands.",
+    "requester_already_member": "This person is already part of the church. Decline the request to clear it.",
+    "password_required": "Choose a password to create your account."
   },
   "validation": {
     "required": "This field is required.",

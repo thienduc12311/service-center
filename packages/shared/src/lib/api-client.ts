@@ -36,6 +36,17 @@ import type {
   UpdateChurchApplicationRequest,
   UpdatePlatformSettingsInput,
 } from '../schemas/platform-admin.js';
+import type {
+  ChurchJoinRequest,
+  ChurchJoinRequestApproval,
+  ChurchJoinRequestQueue,
+  ChurchLookup,
+  MyChurchJoinRequest,
+} from '../types/church-join-requests.js';
+import type {
+  CreateChurchJoinRequestRequest,
+  DeclineChurchJoinRequestRequest,
+} from '../schemas/church-join-requests.js';
 /**
  * Typed client for the Express API. Shared verbatim by the web app and the
  * React Native app — the only difference is how each supplies the access token.
@@ -644,6 +655,25 @@ export class ServiceCenterApi {
   withdrawChurchApplication = (id: string) =>
     this.request<ChurchApplication>('POST', `/api/v1/church-applications/${encodeURIComponent(id)}/withdraw`);
 
+  // ------------------------------------------------ church join requests --
+  /** An active church by its URL slug (404 `church_not_found` otherwise). */
+  findChurchBySlug = (slug: string) =>
+    this.request<ChurchLookup>('GET', '/api/v1/church-join-requests/lookup', undefined, { slug });
+  /** The caller's join requests, newest first. */
+  myChurchJoinRequests = () => this.request<MyChurchJoinRequest[]>('GET', '/api/v1/church-join-requests');
+  requestToJoinChurch = (body: CreateChurchJoinRequestRequest) =>
+    this.request<MyChurchJoinRequest>('POST', '/api/v1/church-join-requests', body);
+  /** Only while pending. */
+  withdrawChurchJoinRequest = (id: string) =>
+    this.request<MyChurchJoinRequest>('POST', `/api/v1/church-join-requests/${encodeURIComponent(id)}/withdraw`);
+  /** Owners: the active church's pending and recently decided requests. */
+  churchJoinRequests = () => this.request<ChurchJoinRequestQueue>('GET', '/api/v1/people/join-requests');
+  /** Owners: invites the requester (the normal invitation). Safe to retry. */
+  approveChurchJoinRequest = (id: string) =>
+    this.request<ChurchJoinRequestApproval>('POST', `/api/v1/people/join-requests/${encodeURIComponent(id)}/approve`);
+  declineChurchJoinRequest = (id: string, body: DeclineChurchJoinRequestRequest = {}) =>
+    this.request<ChurchJoinRequest>('POST', `/api/v1/people/join-requests/${encodeURIComponent(id)}/decline`, body);
+
   // ---------------------------------------------------- platform admin ----
   // Super admins only; every route except adminSession needs two-factor login.
   adminSession = () => this.request<AdminSession>('GET', '/api/v1/admin/session');
@@ -745,7 +775,7 @@ export class ServiceCenterApi {
   // -------------------------------------------------- invitation acceptance
   previewInvitation = (token: string) =>
     this.request<InvitationPreview>('GET', `/api/v1/invitations/${token}`);
-  acceptInvitation = (token: string, body: { password: string }) =>
+  acceptInvitation = (token: string, body: { password?: string }) =>
     this.request<{ email: string; linked_existing_account: boolean }>(
       'POST',
       `/api/v1/invitations/${token}/accept`,

@@ -134,6 +134,9 @@ export const queryKeys = {
   /** This login's church applications, newest first (per login: asked before joining any church). */
   churchApplications: (userId: string | null | undefined) =>
     ['account', userId ?? null, 'church-applications'] as const,
+  /** This login's requests to join churches by slug, newest first (per login, like `churchApplications`). */
+  churchJoinRequests: (userId: string | null | undefined) =>
+    ['account', userId ?? null, 'church-join-requests'] as const,
   /** Whether this login may still create a church directly instead of applying. */
   churchCreationPolicy: (userId: string | null | undefined) =>
     ['account', userId ?? null, 'church-creation-policy'] as const,

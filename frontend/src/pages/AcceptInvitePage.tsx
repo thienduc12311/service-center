@@ -121,11 +121,30 @@ export const AcceptInvitePage = () => {
     }
   };
 
+  /** Already signed in as the invited email (e.g. after a join request): just join, no password. */
+  const signedInAsInvitee =
+    Boolean(session?.user.email && preview) && session?.user.email?.toLowerCase() === preview?.email.toLowerCase();
+
+  const joinSignedIn = async () => {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.acceptInvitation(token, {});
+      await refreshUser();
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <AuthLayout corner={<LocaleSwitcher />} hideBrand>
       <div className="mb-8 flex flex-col items-center text-center">
         <BrandMark size="lg" />
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{t('invite.setUpTitle')}</h1>
+        <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{stage === 'preview' && signedInAsInvitee ? t('invite.invitedHeadlineGeneric') : t('invite.setUpTitle')}</h1>
       </div>
 
       {stage === 'loading' && <Loading />}
@@ -144,7 +163,7 @@ export const AcceptInvitePage = () => {
           <span className="grid size-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25">
             <Icon name="check" className="size-5" />
           </span>
-          {t('invite.existingAccount')}
+          {preview ? t('invite.joinedExisting', { organization: preview.organization_name }) : t('invite.existingAccount')}
           <Button size="lg" className="mt-2 w-full" onClick={() => navigate('/login')}>{t('invite.goToSignIn')}</Button>
         </div>
       )}
@@ -174,7 +193,29 @@ export const AcceptInvitePage = () => {
         </form>
       )}
 
-      {stage === 'preview' && preview && (
+      {stage === 'preview' && preview && signedInAsInvitee && (
+        <div className="card space-y-5 p-6 shadow-xl shadow-slate-900/5 sm:p-8 dark:shadow-none">
+          <div className="surface-inset flex items-start gap-3 p-4">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-200">
+              <Icon name="mail" className="size-4" />
+            </span>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              <Trans
+                t={t}
+                i18nKey="invite.joinSignedIn"
+                values={{ organization: preview.organization_name, role: t(`common:roles.${preview.role}`) }}
+                components={[<strong key="organization" className="text-slate-900 dark:text-white" />]}
+              />
+            </p>
+          </div>
+          <ErrorNotice error={error} />
+          <Button size="lg" loading={busy} className="w-full" onClick={() => void joinSignedIn()}>
+            {t('invite.joinButton', { organization: preview.organization_name })}
+          </Button>
+        </div>
+      )}
+
+      {stage === 'preview' && preview && !signedInAsInvitee && (
         <form onSubmit={submitAccept} className="card space-y-5 p-6 shadow-xl shadow-slate-900/5 sm:p-8 dark:shadow-none">
           <div className="surface-inset flex items-start gap-3 p-4">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-200">

@@ -32,4 +32,18 @@ describe('church applications and platform notices (source contract)', () => {
     expect(profile).toContain('throw await explainDirectUploadError(error, () => api.organizationStorage())');
     expect(profile).toContain('{isAdmin(role) ? <StorageUsage /> : null}');
   });
+
+  it('offers joining an existing church beside registering one, on the welcome screen only', () => {
+    const joinFlow = read('src', 'components', 'church', 'ChurchJoinFlow.tsx');
+    expect(noChurch).toContain("title={t('churchJoin.choice.join')}");
+    expect(noChurch).toContain("title={t('churchJoin.choice.register')}");
+    expect(noChurch).toContain("{choice === 'join' ? (");
+    expect(noChurch).toContain('<ChurchJoinFlow />');
+    expect(noChurch).toContain('queryKeys.churchJoinRequests(user?.profile.id)');
+    expect(joinFlow).toContain('api.findChurchBySlug(slug)');
+    expect(joinFlow).toContain('api.requestToJoinChurch(body)');
+    expect(joinFlow).toContain('api.withdrawChurchJoinRequest(id)');
+    // Profile's "Register another church" stays the application only.
+    expect(profile).not.toContain('ChurchJoinFlow');
+  });
 });

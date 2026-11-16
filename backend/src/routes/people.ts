@@ -8,7 +8,6 @@ import {
   listPeopleQuerySchema,
   type ListPeopleQuery,
   personTagsSchema,
-  resolveRecipientLocale,
   updateMemberSchema,
   updatePersonSchema,
   type EligibilityRecordInput,
@@ -27,8 +26,7 @@ import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireAdmin, requireCapability } from '../middleware/organization.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
-import { generateInviteToken, inviteAcceptUrl } from '../services/invitations.js';
-import { sendPersonInvitation } from '../services/notifications.js';
+import { issuePersonInvitation } from '../services/person-invitations.js';
 import {
   PERSON_COLUMNS,
   PUBLIC_PROFILE_COLUMNS,
@@ -305,53 +303,18 @@ peopleRouter.post(
 
     if (person.archived_at) throw HttpError.conflict('Restore this person before inviting them');
 
-    // A login with the same email is never linked here: identity is linked
-    // only when the invitation is accepted by whoever controls that address.
-    // At most one live invitation per person — revoke any still-pending one first.
-    await unwrap(
-      req.db
-        .from('person_invitations')
-        .update({ revoked_at: new Date().toISOString() })
-        .eq('person_id', personId)
-        .is('accepted_at', null)
-        .is('revoked_at', null),
-    );
+    const issued = await issuePersonInvitation(req.db, {
+      organizationId: req.orgId,
+      personId,
+      email,
+      role,
+      invitedBy: req.auth.userId,
+      personName: personDisplayName(person),
+      // A manager may have set this before the Person has a login.
+      preferredLanguage: person.preferred_language,
+    });
 
-    const { token, tokenHash, expiresAt } = generateInviteToken();
-    await unwrap(
-      req.db.from('person_invitations').insert({
-        organization_id: req.orgId,
-        person_id: personId,
-        email,
-        role: role as never,
-        channel: 'email',
-        token_hash: tokenHash,
-        expires_at: expiresAt.toISOString(),
-        created_by: req.auth.userId,
-      }),
-    );
-
-    const inviteUrl = inviteAcceptUrl(token);
-    const organization = await unwrapOne(
-      req.db.from('organizations').select('name').eq('id', req.orgId).single(),
-    );
-
-    try {
-      await sendPersonInvitation({
-        to: email,
-        // A manager may have set this before the Person has a login.
-        locale: resolveRecipientLocale(person.preferred_language),
-        personName: personDisplayName(person),
-        organizationName: organization.name,
-        acceptUrl: inviteUrl,
-      });
-    } catch (error) {
-      // `invite_url` below still lets the admin share it manually — a
-      // delivery failure shouldn't block the response, but must be logged.
-      console.error('[invite] failed to send person invitation email', error);
-    }
-
-    const result: PersonInvitationResult = { linked: false, invited: true, invite_url: inviteUrl };
+    const result: PersonInvitationResult = { linked: false, invited: true, invite_url: issued.inviteUrl };
     res.status(201).json(result);
   },
 );

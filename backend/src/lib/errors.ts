@@ -1,4 +1,11 @@
-import { CHURCH_APPLICATION_REQUIRED, STORAGE_QUOTA_EXCEEDED } from '@service-center/shared';
+import {
+  ALREADY_CHURCH_MEMBER,
+  CHURCH_APPLICATION_REQUIRED,
+  CHURCH_NOT_FOUND,
+  JOIN_REQUEST_NOT_PENDING,
+  JOIN_REQUEST_PENDING,
+  STORAGE_QUOTA_EXCEEDED,
+} from '@service-center/shared';
 import { parseConflictDetail } from '../model/attendance.model.js';
 
 /** An error that carries an HTTP status through to the response. */
@@ -85,6 +92,10 @@ const PT409_HINTS: Record<string, string> = {
   account_deletion_blocked: 'account_deletion_blocked',
   // Super-admin dashboard: the application was decided or withdrawn meanwhile.
   application_not_pending: 'application_not_pending',
+  // Joining a church by its slug.
+  already_church_member: ALREADY_CHURCH_MEMBER,
+  join_request_pending: JOIN_REQUEST_PENDING,
+  join_request_not_pending: JOIN_REQUEST_NOT_PENDING,
 };
 
 export const fromPostgrestError = (error: {
@@ -122,6 +133,8 @@ export const fromPostgrestError = (error: {
     // Raised by our own database functions with a message written for people.
     case 'PT404':
     case 'P0002':
+      // Unknown and disabled churches read the same (request_to_join_church).
+      if (error.hint === 'church_not_found') return new HttpError(404, error.message, CHURCH_NOT_FOUND);
       return HttpError.notFound(error.message);
     case '22023':
       return HttpError.badRequest(error.message);

@@ -201,5 +201,25 @@
     "noTags": "Chưa có thẻ.",
     "editTags": "Sửa thẻ",
     "ownerOnlyNote": "Chỉ chủ hội thánh mới mở được thông tin cá nhân của người khác. Bạn có thể đổi tên và số điện thoại của mình trong Cài đặt."
+  },
+  "joinRequests": {
+    "title": "Yêu cầu tham gia",
+    "shareHint": "Mọi người có thể xin tham gia từ màn hình chào mừng bằng mã hội thánh <0>{{slug}}</0>.",
+    "empty": "Không có ai đang chờ tham gia.",
+    "askedOn": "Đã gửi {{date}}",
+    "approve": "Duyệt và mời",
+    "decline": "Từ chối",
+    "declineTitle": "Từ chối yêu cầu của {{name}}?",
+    "declineReason": "Lý do",
+    "declineReasonHint": "Không bắt buộc. {{name}} sẽ thấy lý do này.",
+    "confirmDecline": "Từ chối yêu cầu",
+    "alreadyInvited": "{{name}} đã được duyệt và mời trước đó. Để gửi lại lời mời, hãy mở hồ sơ của người này.",
+    "openPerson": "Mở hồ sơ",
+    "recent": "Đã xử lý gần đây",
+    "status": {
+      "approved": "Đã duyệt",
+      "declined": "Đã từ chối",
+      "withdrawn": "Đã rút lại"
+    }
   }
 }
