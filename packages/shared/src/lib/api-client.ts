@@ -669,6 +669,8 @@ export class ServiceCenterApi {
     this.request<void>('DELETE', `/api/v1/admin/organizations/${encodeURIComponent(id)}/access`);
   adminChurchApplications = (status?: ChurchApplicationStatus) =>
     this.request<AdminChurchApplication[]>('GET', '/api/v1/admin/church-applications', undefined, { status });
+  adminChurchApplication = (id: string) =>
+    this.request<AdminChurchApplication>('GET', `/api/v1/admin/church-applications/${encodeURIComponent(id)}`);
   adminUpdateChurchApplication = (id: string, body: UpdateChurchApplicationRequest) =>
     this.request<AdminChurchApplication>('PATCH', `/api/v1/admin/church-applications/${encodeURIComponent(id)}`, body);
   /** Creates the church; the applicant becomes its owner. */
