@@ -4,15 +4,10 @@
   "buildCommand": "cd .. && npm run build:shared && npm run build -w @service-center/admin",
   "outputDirectory": "dist",
   "framework": "vite",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ../packages/shared ../package.json ../package-lock.json",
   "headers": [
     {
       "source": "/(.*)",
-      "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "same-origin" }
-      ]
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ],
   "rewrites": [{ "source": "/:path*", "destination": "/index.html" }]
