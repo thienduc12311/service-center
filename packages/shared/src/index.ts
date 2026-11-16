@@ -56,6 +56,7 @@ export * from './lib/reports.js';
 export * from './lib/calendar-sharing.js';
 export * from './lib/platform-admin.js';
 export * from './lib/church-applications.js';
+export * from './lib/password-reset.js';
 export * from './lib/church-join-requests.js';
 export * from './lib/api-client.js';
 export * from './lib/design-tokens.js';

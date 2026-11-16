@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { isAuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
-import { LocalizedError, type QualifiedTranslationKey } from '@service-center/shared';
+import { LocalizedError, passwordResetRedirectUrl, type QualifiedTranslationKey } from '@service-center/shared';
 import { supabase } from '../../src/lib/supabase';
+import { env } from '../../src/lib/env';
 import {
   Button,
   Card,
@@ -20,7 +21,7 @@ import { useThemedStyles } from '../../src/lib/useTheme';
 type AuthMode = 'sign-in' | 'sign-up';
 
 /** Which Supabase Auth call failed; picks the generic fallback message. */
-export type AuthAction = 'signIn' | 'signUp' | 'setPassword';
+export type AuthAction = 'signIn' | 'signUp' | 'setPassword' | 'resetPassword';
 
 const AUTH_CODE_KEYS: Readonly<Record<string, QualifiedTranslationKey>> = {
   invalid_credentials: 'auth:authErrors.invalidCredentials',
@@ -39,6 +40,7 @@ const AUTH_FALLBACK_KEYS: Readonly<Record<AuthAction, QualifiedTranslationKey>> 
   signIn: 'auth:authErrors.signInFailed',
   signUp: 'auth:authErrors.signUpFailed',
   setPassword: 'auth:authErrors.setPasswordFailed',
+  resetPassword: 'auth:authErrors.resetFailed',
 };
 
 /**
@@ -68,6 +70,8 @@ export default function LoginScreen() {
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Showing "reset your password" instead of the sign-in form. */
+  const [forgot, setForgot] = useState(false);
 
   const submit = async (): Promise<void> => {
     setBusy(true);
@@ -98,8 +102,32 @@ export default function LoginScreen() {
 
   const switchMode = (next: AuthMode): void => {
     setMode(next);
+    setForgot(false);
     setError(null);
     setNotice(null);
+  };
+
+  /**
+   * Sends Supabase's reset email. Its link opens the web app's reset page
+   * (no app deep link needed); the same answer whether or not the address
+   * has an account.
+   */
+  const sendReset = async (): Promise<void> => {
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const address = email.trim();
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(address, {
+        redirectTo: env.webAppDomain ? passwordResetRedirectUrl(`https://${env.webAppDomain}`) : undefined,
+      });
+      if (resetError) throw resetError;
+      setNotice(`${t('passwordReset.forgot.sent', { email: address })}\n\n${t('passwordReset.forgot.openOnWeb')}`);
+    } catch (err) {
+      setError(localizeAuthError(err, 'resetPassword'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -121,6 +149,29 @@ export default function LoginScreen() {
           </Reveal>
 
           <Reveal index={1}>
+            {forgot ? (
+            <Card>
+              <Text accessibilityRole="header" style={styles.cardTitle}>{t('passwordReset.forgot.title')}</Text>
+              <Text style={styles.cardIntro}>{t('passwordReset.forgot.intro')}</Text>
+              <Field
+                label={t('login.fields.email')}
+                value={email}
+                onChangeText={setEmail}
+                placeholder={t('login.fields.emailPlaceholder')}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+              />
+              <ErrorNotice error={error} />
+              {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+              {notice ? null : (
+                <Button title={t('passwordReset.forgot.submit')} onPress={() => void sendReset()} loading={busy} />
+              )}
+              <Pressable accessibilityRole="button" onPress={() => switchMode('sign-in')} style={styles.switchTarget}>
+                <Text style={styles.switch}>{t('passwordReset.forgot.backToSignIn')}</Text>
+              </Pressable>
+            </Card>
+            ) : (
             <Card>
               <SegmentedControl options={modes} value={mode} onChange={switchMode} />
 
@@ -151,6 +202,19 @@ export default function LoginScreen() {
                 secureTextEntry
                 autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
               />
+              {mode === 'sign-in' ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setForgot(true);
+                    setError(null);
+                    setNotice(null);
+                  }}
+                  style={styles.forgotTarget}
+                >
+                  <Text style={styles.switch}>{t('passwordReset.forgot.link')}</Text>
+                </Pressable>
+              ) : null}
 
               <ErrorNotice error={error} />
               {notice ? <Text style={styles.notice}>{notice}</Text> : null}
@@ -161,8 +225,10 @@ export default function LoginScreen() {
                 loading={busy}
               />
             </Card>
+            )}
           </Reveal>
 
+          {forgot ? null : (
           <Reveal index={2}>
             <Pressable
               accessibilityRole="button"
@@ -176,6 +242,7 @@ export default function LoginScreen() {
               </Text>
             </Pressable>
           </Reveal>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
@@ -217,5 +284,8 @@ const makeStyles = (theme: Theme) =>
       padding: theme.space.md,
     },
     switchTarget: { minHeight: 44, justifyContent: 'center' },
+    forgotTarget: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-end' },
+    cardTitle: { ...theme.type.title, color: theme.color.ink },
+    cardIntro: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     switch: { ...theme.type.bodySmall, fontWeight: '600', color: theme.color.brandText, textAlign: 'center' },
   });
