@@ -405,8 +405,31 @@ export type PlatformAuditLogRow = {
   action: string;
   organization_id: string | null;
   application_id: string | null;
+  /** The account the action was about (user and super-admin management). */
+  target_user_id: string | null;
   details: Record<string, unknown>;
   created_at: string;
+}
+
+/** `platform_user_blocks`: why and by whom a super admin blocked an account. */
+export type PlatformUserBlockRow = {
+  user_id: string;
+  reason: string;
+  blocked_by: string | null;
+  blocked_at: string;
+}
+
+/** `platform_admin_invitations`: open while neither accepted nor revoked and not expired. */
+export type PlatformAdminInvitationRow = {
+  id: string;
+  email: string;
+  invited_by: string | null;
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+  accepted_by: string | null;
+  revoked_at: string | null;
+  revoked_by: string | null;
 }
 
 export type PersonType = 'adult' | 'child';

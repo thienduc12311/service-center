@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import type { EffectiveAccess } from '@service-center/shared';
+import { ACCOUNT_BLOCKED, type EffectiveAccess } from '@service-center/shared';
 import { adminDb, userDb, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 
@@ -35,6 +35,9 @@ export const requireAuth = async (req: Request, _res: Response, next: NextFuncti
     // getUser() validates the signature and expiry against the auth server.
     const { data, error } = await adminDb.auth.getUser(token);
     if (error || !data.user) throw HttpError.unauthorized('Invalid or expired session');
+    // A super admin blocked the account; its sessions were ended too, this covers the rest.
+    const bannedUntil = data.user.banned_until ? Date.parse(data.user.banned_until) : Number.NaN;
+    if (bannedUntil > Date.now()) throw new HttpError(401, 'This account is blocked', ACCOUNT_BLOCKED);
 
     req.auth = { userId: data.user.id, email: data.user.email ?? null, accessToken: token };
     req.db = userDb(token);

@@ -119,6 +119,7 @@ export const updatePlatformSettingsSchema = z
 /** `GET /api/v1/admin/activity`: newest first, paged by id. */
 export const adminActivityQuerySchema = z.object({
   organization_id: uuid.optional(),
+  target_user_id: uuid.optional(),
   before: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
 });

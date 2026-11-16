@@ -83,6 +83,12 @@ const PT409_HINTS: Record<string, string> = {
   // F13
   file_changed: 'file_revision_stale',
   file_in_use: 'file_in_use',
+  // Super-admin user management.
+  target_is_platform_admin: 'target_is_platform_admin',
+  last_platform_admin: 'last_platform_admin',
+  already_platform_admin: 'already_platform_admin',
+  user_blocked: 'user_blocked',
+  invitation_not_open: 'invitation_not_open',
   // F16
   attendance_changed: 'attendance_revision_stale',
   publication_changed: 'publication_revision_stale',
@@ -111,6 +117,10 @@ export const fromPostgrestError = (error: {
       PT409_HINTS[error.hint],
       error.hint === 'scheduling_conflict' ? parseConflictDetail(error.details) : undefined,
     );
+  }
+  // Super-admin user management: blocking, deleting or revoking yourself.
+  if (error.code === '22023' && error.hint === 'cannot_target_self') {
+    return new HttpError(400, error.message, 'cannot_target_self');
   }
   switch (error.code) {
     case 'PGRST116':

@@ -161,6 +161,8 @@ export const mapPlatformSettings = (row: PlatformSettingsRow): PlatformSettings 
 export interface PlatformAuditRowWithNames extends PlatformAuditLogRow {
   actor: { full_name: string | null } | null;
   organization_name: string | null;
+  /** Null when there is no target or the account was deleted. */
+  target: { full_name: string | null; email: string | null } | null;
 }
 
 export const mapPlatformAuditEntry = (row: PlatformAuditRowWithNames): PlatformAuditEntry => ({
@@ -171,6 +173,9 @@ export const mapPlatformAuditEntry = (row: PlatformAuditRowWithNames): PlatformA
   organization_id: row.organization_id,
   organization_name: row.organization_name,
   application_id: row.application_id,
+  target_user_id: row.target_user_id,
+  target_name: row.target?.full_name ?? null,
+  target_email: row.target?.email ?? null,
   details: row.details,
   created_at: row.created_at,
 });

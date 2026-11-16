@@ -14,6 +14,16 @@ import type { CreateApiCredentialRequest, CreateWebhookEndpointInput, SetWebhook
 import type { LanguagePreferenceResponse, UpdateLanguagePreferenceInput } from '../schemas/language.js';
 import type { AccountDeletionPlan, AccountDeletionResult, BlockedUser, UserBlockRow } from '../types/account.js';
 import type {
+  AdminUserDetail,
+  AdminUserDeletionResult,
+  AdminUserSummary,
+  MyPlatformAdminInvitation,
+  PlatformAdminInvitation,
+  PlatformAdminRoster,
+} from '../types/platform-users.js';
+import type { InvitePlatformAdminRequest } from '../schemas/platform-users.js';
+import type { PlatformUserBlockRow } from '../types/database.js';
+import type {
   AdminChurchApplication,
   AdminOrganizationDetail,
   AdminOrganizationSummary,
@@ -713,6 +723,29 @@ export class ServiceCenterApi {
     this.request<PlatformSettings>('PATCH', '/api/v1/admin/settings', body);
   adminActivity = (query: AdminActivityRequest = {}) =>
     this.request<PlatformAuditPage>('GET', '/api/v1/admin/activity', undefined, query as Query);
+  adminUsers = () => this.request<AdminUserSummary[]>('GET', '/api/v1/admin/users');
+  adminUser = (id: string) => this.request<AdminUserDetail>('GET', `/api/v1/admin/users/${encodeURIComponent(id)}`);
+  /** Bans the login and ends every session; church memberships stay. */
+  adminBlockUser = (id: string, reason: string) =>
+    this.request<PlatformUserBlockRow>('POST', `/api/v1/admin/users/${encodeURIComponent(id)}/block`, { reason });
+  adminUnblockUser = (id: string) =>
+    this.request<void>('POST', `/api/v1/admin/users/${encodeURIComponent(id)}/unblock`);
+  /** 409 `account_deletion_blocked` (details: the churches) while a church would be left without an owner. */
+  adminDeleteUser = (id: string, confirmEmail: string) =>
+    this.request<AdminUserDeletionResult>('DELETE', `/api/v1/admin/users/${encodeURIComponent(id)}`, {
+      confirm_email: confirmEmail,
+    });
+  adminPlatformAdmins = () => this.request<PlatformAdminRoster>('GET', '/api/v1/admin/admins');
+  adminInvitePlatformAdmin = (body: InvitePlatformAdminRequest) =>
+    this.request<PlatformAdminInvitation>('POST', '/api/v1/admin/admins/invitations', body);
+  adminRevokePlatformAdminInvitation = (id: string) =>
+    this.request<void>('DELETE', `/api/v1/admin/admins/invitations/${encodeURIComponent(id)}`);
+  adminRevokePlatformAdmin = (userId: string) =>
+    this.request<void>('DELETE', `/api/v1/admin/admins/${encodeURIComponent(userId)}`);
+  /** Works without being a super admin: the signed-in person's own open invitation, or null. */
+  myPlatformAdminInvitation = () => this.request<MyPlatformAdminInvitation | null>('GET', '/api/v1/admin/invitation');
+  acceptPlatformAdminInvitation = (id: string) =>
+    this.request<void>('POST', `/api/v1/admin/invitation/${encodeURIComponent(id)}/accept`);
 
   /** Archived people are left out unless asked for. */
   listPeople = (query?: { include_archived?: boolean }) =>
