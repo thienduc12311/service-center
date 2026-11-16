@@ -818,5 +818,65 @@
     "deleteAlertMessage": "Your account and personal data are deleted permanently. This cannot be undone.",
     "deleteDoneTitle": "Account deleted",
     "deleteDoneMessage": "Your account has been deleted. Thank you for using Service Center."
+  },
+  "churchApplication": {
+    "title": "Register your church",
+    "intro": "Tell us about your church. We review every request and email you when it is approved; you become the church's owner.",
+    "newTitle": "Register another church",
+    "openForm": "Register a church",
+    "fields": {
+      "churchName": "Church name",
+      "churchNamePlaceholder": "Grace Community Church",
+      "leaderName": "Pastor or leader",
+      "contactPhone": "Contact phone",
+      "website": "Website",
+      "addressLine1": "Address line 1",
+      "addressLine2": "Address line 2",
+      "city": "City",
+      "stateProvince": "State / province",
+      "postalCode": "Postal code",
+      "country": "Country",
+      "expectedMemberCount": "About how many people attend?",
+      "timezone": "Time zone",
+      "note": "Anything else we should know?",
+      "optional": "optional"
+    },
+    "submit": "Send for review",
+    "saveChanges": "Save changes",
+    "pending": {
+      "title": "Waiting for review",
+      "body": "Your request to register {{church}} was sent on {{date}}. We'll email you when it is reviewed.",
+      "edit": "Edit details",
+      "withdraw": "Withdraw request",
+      "withdrawConfirm": "Withdraw your request to register {{church}}? You can apply again later."
+    },
+    "rejected": {
+      "title": "Not approved",
+      "body": "Your request to register {{church}} was not approved.",
+      "reason": "Reason: {{reason}}",
+      "applyAgain": "Update and apply again"
+    },
+    "approved": {
+      "title": "Approved",
+      "body": "{{church}} is approved and you are its owner.",
+      "open": "Open {{church}}"
+    },
+    "withdrawn": "You withdrew your last request."
+  },
+  "disabledChurch": {
+    "title": "{{church}} has been disabled",
+    "body": "Nobody can use {{church}} in Service Center right now. Nothing has been deleted.",
+    "reason": "Reason given: {{reason}}",
+    "contact": "Questions? Contact {{email}}."
+  },
+  "storage": {
+    "title": "Media storage",
+    "usage": "{{used}} of {{quota}} used",
+    "warning": "Your church has used {{percent}}% of its media storage. Remove files you no longer need, or ask Service Center support for more space.",
+    "full": "Your church is out of media storage. New uploads are blocked until you remove files or get more space.",
+    "settingsLink": "See storage"
+  },
+  "platformAccess": {
+    "banner": "You are in {{church}} as a Service Center admin until {{time}}. Every change you make is recorded."
   }
 }

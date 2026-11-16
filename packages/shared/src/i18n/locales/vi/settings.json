@@ -805,5 +805,65 @@
     "deleteAlertMessage": "Tài khoản và dữ liệu cá nhân của bạn sẽ bị xoá vĩnh viễn. Không thể hoàn tác.",
     "deleteDoneTitle": "Đã xoá tài khoản",
     "deleteDoneMessage": "Tài khoản của bạn đã được xoá. Cảm ơn bạn đã sử dụng Service Center."
+  },
+  "churchApplication": {
+    "title": "Đăng ký hội thánh của bạn",
+    "intro": "Hãy cho chúng tôi biết về hội thánh của bạn. Chúng tôi xem xét mọi yêu cầu và gửi email cho bạn khi được duyệt; bạn sẽ là chủ sở hữu của hội thánh.",
+    "newTitle": "Đăng ký thêm một hội thánh",
+    "openForm": "Đăng ký hội thánh",
+    "fields": {
+      "churchName": "Tên hội thánh",
+      "churchNamePlaceholder": "Hội thánh Ân Điển",
+      "leaderName": "Mục sư hoặc người lãnh đạo",
+      "contactPhone": "Số điện thoại liên hệ",
+      "website": "Trang web",
+      "addressLine1": "Địa chỉ dòng 1",
+      "addressLine2": "Địa chỉ dòng 2",
+      "city": "Thành phố",
+      "stateProvince": "Tỉnh / Bang",
+      "postalCode": "Mã bưu chính",
+      "country": "Quốc gia",
+      "expectedMemberCount": "Khoảng bao nhiêu người tham dự?",
+      "timezone": "Múi giờ",
+      "note": "Bạn muốn cho chúng tôi biết thêm điều gì?",
+      "optional": "không bắt buộc"
+    },
+    "submit": "Gửi để xét duyệt",
+    "saveChanges": "Lưu thay đổi",
+    "pending": {
+      "title": "Đang chờ xét duyệt",
+      "body": "Yêu cầu đăng ký {{church}} của bạn đã được gửi ngày {{date}}. Chúng tôi sẽ gửi email khi yêu cầu được xem xét.",
+      "edit": "Sửa thông tin",
+      "withdraw": "Rút lại yêu cầu",
+      "withdrawConfirm": "Rút lại yêu cầu đăng ký {{church}}? Bạn có thể đăng ký lại sau."
+    },
+    "rejected": {
+      "title": "Chưa được duyệt",
+      "body": "Yêu cầu đăng ký {{church}} của bạn chưa được duyệt.",
+      "reason": "Lý do: {{reason}}",
+      "applyAgain": "Cập nhật và đăng ký lại"
+    },
+    "approved": {
+      "title": "Đã được duyệt",
+      "body": "{{church}} đã được duyệt và bạn là chủ sở hữu.",
+      "open": "Mở {{church}}"
+    },
+    "withdrawn": "Bạn đã rút lại yêu cầu gần nhất."
+  },
+  "disabledChurch": {
+    "title": "{{church}} đã bị tạm ngưng",
+    "body": "Hiện không ai có thể sử dụng {{church}} trong Service Center. Không có dữ liệu nào bị xóa.",
+    "reason": "Lý do: {{reason}}",
+    "contact": "Có thắc mắc? Liên hệ {{email}}."
+  },
+  "storage": {
+    "title": "Dung lượng lưu trữ",
+    "usage": "Đã dùng {{used}} trên {{quota}}",
+    "warning": "Hội thánh của bạn đã dùng {{percent}}% dung lượng lưu trữ. Hãy xóa các tệp không còn cần, hoặc liên hệ bộ phận hỗ trợ Service Center để có thêm dung lượng.",
+    "full": "Hội thánh của bạn đã hết dung lượng lưu trữ. Không thể tải tệp mới lên cho đến khi bạn xóa bớt tệp hoặc có thêm dung lượng.",
+    "settingsLink": "Xem dung lượng"
+  },
+  "platformAccess": {
+    "banner": "Bạn đang ở trong {{church}} với tư cách quản trị viên Service Center đến {{time}}. Mọi thay đổi của bạn đều được ghi lại."
   }
 }

@@ -37,6 +37,11 @@ import type { Accent, Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { env } from '../../src/lib/env';
 import { widgetsSupported } from '../../src/lib/widget-bridge';
+import { explainDirectUploadError } from '../../src/lib/church-platform';
+import { useChurchCreationPolicy } from '../../src/lib/useChurchApplications';
+import { CreateChurchForm } from '../../src/components/church/CreateChurchForm';
+import { DisabledChurchNotice } from '../../src/components/church/DisabledChurchNotice';
+import { StorageUsage } from '../../src/components/church/StorageUsage';
 
 export default function ProfileScreen() {
   const { t } = useTranslation(['settings', 'scheduling', 'people', 'teams', 'common']);
@@ -59,15 +64,16 @@ export default function ProfileScreen() {
 
   const [fullName, setFullName] = useState(user?.profile.full_name ?? '');
   const [phone, setPhone] = useState(user?.profile.phone ?? '');
-  const [newOrganizationName, setNewOrganizationName] = useState('');
   const [organizationError, setOrganizationError] = useState<unknown>(null);
-  const [creatingOrganization, setCreatingOrganization] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState<unknown>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<unknown>(null);
   const [editingBlockout, setEditingBlockout] = useState<BlockoutRow | null>(null);
+
+  const creationPolicy = useChurchCreationPolicy();
+  const selfServeChurches = creationPolicy.data?.self_serve_allowed === true;
 
   const blockouts = useQuery({
     queryKey: queryKeys.blockouts(queryScope),
@@ -102,33 +108,6 @@ export default function ProfileScreen() {
     (membership) => membership.organization.id === organizationId,
   )?.organization;
 
-  const createOrganization = async (): Promise<void> => {
-    const baseSlug = newOrganizationName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
-    const slug = `${baseSlug.slice(0, 35)}-${Date.now().toString(36).slice(-4)}`;
-
-    setCreatingOrganization(true);
-    setOrganizationError(null);
-    try {
-      const created = await api.createOrganization({
-        name: newOrganizationName,
-        slug,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
-      if (!isCurrentGeneration(generation)) return;
-      setNewOrganizationName('');
-      await refreshUser();
-      if (!isCurrentGeneration(generation)) return;
-      await switchOrganization(created.id);
-    } catch (error) {
-      if (isCurrentGeneration(generation)) setOrganizationError(error);
-    } finally {
-      if (isCurrentGeneration(generation)) setCreatingOrganization(false);
-    }
-  };
-
   const updateLogo = async (): Promise<void> => {
     if (!organizationId) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -153,8 +132,10 @@ export default function ProfileScreen() {
       const { error } = await supabase.storage
         .from(STORAGE_BUCKETS.organizationLogos)
         .upload(path, base64ToBytes(asset.base64), { contentType: 'image/jpeg' });
-      if (error) throw error;
+      // A logo the media quota refuses comes back as a storage policy error.
+      if (error) throw await explainDirectUploadError(error, () => api.organizationStorage());
       if (!isCurrentGeneration(generation)) return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.organizationStorage(queryScope) });
       const { data } = supabase.storage.from(STORAGE_BUCKETS.organizationLogos).getPublicUrl(path);
       await api.updateOrganization(organizationId, { logo_url: data.publicUrl });
       if (!isCurrentGeneration(generation)) return;
@@ -224,6 +205,7 @@ export default function ProfileScreen() {
   };
 
   const memberships = user?.memberships ?? [];
+  const disabledOrganizations = user?.disabled_organizations ?? [];
   const visibleBlockouts = useMemo(() => {
     const seenSeries = new Set<string>();
     return (blockouts.data ?? []).filter((row) => {
@@ -541,8 +523,13 @@ export default function ProfileScreen() {
         <Reveal index={6}>
           <View style={styles.section}>
             <SectionHeader title={t('profile.organizations.title')} />
+            {disabledOrganizations.map((disabled) => (
+              <DisabledChurchNotice key={disabled.organization_id} organization={disabled} />
+            ))}
             <Card>
-              <Text style={styles.body}>{t('profile.organizations.description')}</Text>
+              <Text style={styles.body}>
+                {selfServeChurches ? t('profile.organizations.description') : t('churchApplication.intro')}
+              </Text>
               {isAdmin(role) ? (
                 <Button
                   title={uploadingLogo ? t('organization.uploading') : t('profile.organizations.changeLogo')}
@@ -552,21 +539,18 @@ export default function ProfileScreen() {
                   disabled={uploadingLogo}
                 />
               ) : null}
-              <Field
-                label={t('organization.new')}
-                value={newOrganizationName}
-                onChangeText={setNewOrganizationName}
-                placeholder={t('profile.organizations.namePlaceholder')}
-              />
               <ErrorNotice error={organizationError} />
-              <Button
-                title={t('organization.create')}
-                icon="plus"
-                onPress={() => void createOrganization()}
-                loading={creatingOrganization}
-                disabled={newOrganizationName.trim().length < 2}
-              />
+              {selfServeChurches ? (
+                <CreateChurchForm />
+              ) : (
+                <Button
+                  title={t('churchApplication.newTitle')}
+                  icon="plus"
+                  onPress={() => router.push('/church-application')}
+                />
+              )}
             </Card>
+            {isAdmin(role) ? <StorageUsage /> : null}
           </View>
         </Reveal>
 

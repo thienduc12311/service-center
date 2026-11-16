@@ -10,6 +10,7 @@ import {
   LocalizedError,
 } from '@service-center/shared';
 import { supabase } from '../lib/supabase';
+import { explainStorageUploadError } from '../lib/storage-quota';
 import { Avatar, Button, ErrorNotice } from './ui';
 import { Icon } from './icons';
 
@@ -54,7 +55,8 @@ export const AvatarUpload = ({ name, url, target, onChange }: AvatarUploadProps)
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKETS.avatars)
         .upload(path, file, { contentType: file.type, upsert: false });
-      if (uploadError) throw uploadError;
+      // Pictures a church uploads for its people count against its storage.
+      if (uploadError) throw path.startsWith('orgs/') ? await explainStorageUploadError(uploadError) : uploadError;
       const { data } = supabase.storage.from(STORAGE_BUCKETS.avatars).getPublicUrl(path);
       await onChange(data.publicUrl);
     });

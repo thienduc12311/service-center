@@ -1,100 +1,60 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { api, setStoredOrganizationId } from '../lib/api';
+import { setStoredOrganizationId } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
-import { Button, ErrorNotice } from '../components/ui';
+import { useChurchCreationPolicy } from '../hooks/queries';
 import { Icon } from '../components/icons';
 import { AuthLayout } from '../components/AuthLayout';
 import { DeleteAccountDialog } from '../components/settings/AccountPrivacySettings';
+import { ChurchApplicationPanel } from '../components/church/ChurchApplicationPanel';
+import { DisabledChurchNotice } from '../components/church/DisabledChurchNotice';
 
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
-
+/**
+ * Where a signed-in person without a church lands. Any of their churches that
+ * Service Center disabled is explained first; then they can register a church
+ * (an application for review, or direct creation while that is switched on).
+ */
 export const OnboardingPage = () => {
   const { t } = useTranslation(['auth', 'common', 'settings']);
-  const { refreshUser, signOut } = useAuth();
+  const { user, refreshUser, signOut } = useAuth();
+  const policy = useChurchCreationPolicy();
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [slugEdited, setSlugEdited] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const [busy, setBusy] = useState(false);
+  const selfServe = policy.data?.self_serve_allowed === true;
+  const disabled = user?.disabled_organizations ?? [];
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const organization = await api.createOrganization({
-        name,
-        slug: slug || slugify(name),
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
-      setStoredOrganizationId(organization.id);
-      await refreshUser();
-      navigate('/', { replace: true });
-    } catch (err) {
-      setError(err);
-    } finally {
-      setBusy(false);
-    }
+  const openChurch = async (organizationId: string) => {
+    setStoredOrganizationId(organizationId);
+    await refreshUser();
+    navigate('/', { replace: true });
   };
 
   return (
     <AuthLayout width="md">
-      <form onSubmit={submit} className="card space-y-5 p-6 shadow-xl shadow-slate-900/5 sm:p-8 dark:shadow-none">
+      {disabled.length > 0 && (
+        <div className="mb-6 space-y-3">
+          {disabled.map((organization) => (
+            <DisabledChurchNotice key={organization.organization_id} organization={organization} />
+          ))}
+        </div>
+      )}
+
+      <div className="card space-y-5 p-6 shadow-xl shadow-slate-900/5 sm:p-8 dark:shadow-none">
         <div>
           <span className="mb-4 grid size-10 place-items-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-inset ring-brand-100 dark:bg-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20">
             <Icon name="home" className="size-5" />
           </span>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{t('onboarding.title')}</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
+            {selfServe ? t('onboarding.title') : t('settings:churchApplication.title')}
+          </h1>
           <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
-            {t('onboarding.intro')}
+            {selfServe ? t('onboarding.intro') : t('settings:churchApplication.intro')}
           </p>
         </div>
 
-        <div>
-          <label className="label" htmlFor="org-name">{t('onboarding.name')}</label>
-          <input
-            id="org-name"
-            className="input h-11"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              if (!slugEdited) setSlug(slugify(e.target.value));
-            }}
-            placeholder={t('onboarding.namePlaceholder')}
-            required
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="org-slug">{t('onboarding.slug')}</label>
-          <input
-            id="org-slug"
-            className="input h-11 font-mono"
-            value={slug}
-            onChange={(e) => {
-              setSlugEdited(true);
-              setSlug(slugify(e.target.value));
-            }}
-            pattern="[a-z0-9-]{2,40}"
-            required
-          />
-        </div>
-
-        <ErrorNotice error={error} />
-
-        <Button type="submit" size="lg" loading={busy} className="w-full">
-          {t('onboarding.submit')}
-        </Button>
-      </form>
+        <ChurchApplicationPanel hasChurch={(user?.memberships.length ?? 0) > 0} onChurchReady={openChurch} />
+      </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
         <button

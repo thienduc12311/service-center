@@ -8,6 +8,8 @@ import { Icon, type IconName } from './icons';
 import { GlobalSearch } from './GlobalSearch';
 import { useTheme } from '../providers/ThemeProvider';
 import { LocaleSwitcher } from '../i18n';
+import { PlatformAccessBanner } from './church/PlatformAccessBanner';
+import { StorageWarningBanner } from './church/StorageUsage';
 
 type NavLabelKey = Extract<TranslationKey<'common'>, `nav.${string}`>;
 type NavGroupKey = Extract<TranslationKey<'common'>, `nav.groups.${string}`>;
@@ -330,6 +332,8 @@ export const AppShell = () => {
         </header>
 
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <PlatformAccessBanner />
+          <StorageWarningBanner />
           <Outlet />
         </main>
 
