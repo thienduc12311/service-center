@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Documentation — Service Center</title>
+  <meta name="description" content="Everything you can do in Service Center, on the web and on the mobile app: plans, scheduling, songs and chord charts, rehearsal, messages, calendar, reports and settings.">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <script>try{var t=localStorage.getItem('sc-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <link rel="icon" type="image/png" href="../assets/img/favicon.png">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="../assets/css/site.css">
+  <link rel="stylesheet" href="../assets/css/docs.css">
+</head>
+<body class="docs">
+  <a class="skip-link" href="#docs-content">Skip to content</a>
+
+  <header class="nav" role="banner">
+    <div class="nav-inner">
+      <a class="brand" href="../"><img src="../assets/img/app-icon.png" alt="">Service Center</a>
+      <button class="nav-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span></button>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="../#film">Overview</a></li>
+        <li><a href="../#features">Features</a></li>
+        <li><a href="./" aria-current="page">Documentation</a></li>
+        <li><a data-email href="mailto:support@graceaogchurch.com">Contact</a></li>
+        <li><a class="nav-cta" data-link="webAppUrl" href="https://app.graceaogchurch.com">Open web app</a></li>
+      </ul>
+      <button class="theme-btn" type="button" data-theme-toggle aria-label="Appearance: automatic" title="Appearance: automatic"><svg viewBox="0 0 24 24" aria-hidden="true"></svg></button>
+    </div>
+  </header>
+
+  <section class="docs-hero">
+    <img src="../assets/img/app-icon.png" alt="">
+    <h1>Service Center Documentation</h1>
+    <p>Everything you can do in Service Center, on the web and in the mobile app — for volunteers, leaders and church admins.</p>
+    <div class="docs-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" placeholder="Search the docs (e.g. blockout, transpose, widget)" aria-label="Search the documentation" data-docs-search>
+      <p class="docs-search-empty" data-search-empty>No topics match that search. Try another word, or email <a data-email data-email-text href="mailto:support@graceaogchurch.com">support@graceaogchurch.com</a>.</p>
+    </div>
+  </section>
+
+  <div class="docs-layout">
+    <button class="docs-menu-btn" type="button" aria-expanded="false" aria-controls="docs-sidebar" data-docs-menu><span data-docs-menu-label>Overview</span></button>
+
+    <nav class="docs-sidebar" id="docs-sidebar" aria-label="Documentation">
+      <h2>Start here</h2>
+      <ul>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#get-the-apps">Get the apps</a></li>
+        <li><a href="#getting-started">Getting started</a></li>
+        <li><a href="#roles">Roles &amp; permissions</a></li>
+      </ul>
+      <h2>For everyone</h2>
+      <ul>
+        <li><a href="#my-schedule">My schedule &amp; responding</a></li>
+        <li><a href="#availability">Availability &amp; blockouts</a></li>
+        <li><a href="#songs">Songs &amp; chord charts</a></li>
+        <li><a href="#rehearsal">Rehearsal player</a></li>
+        <li><a href="#messages">Messages &amp; chat</a></li>
+        <li><a href="#calendar">Calendar &amp; sync</a></li>
+        <li><a href="#notifications">Notifications &amp; email</a></li>
+        <li><a href="#account">Profile, language &amp; account</a></li>
+      </ul>
+      <h2>For leaders</h2>
+      <ul>
+        <li><a href="#plans">Plans &amp; order of service</a></li>
+        <li><a href="#service-types">Service types &amp; templates</a></li>
+        <li><a href="#scheduling">Scheduling teams</a></li>
+        <li><a href="#people">People &amp; teams</a></li>
+        <li><a href="#media">Media &amp; files</a></li>
+        <li><a href="#live">Live, stage &amp; run times</a></li>
+        <li><a href="#reports">Reports &amp; attendance</a></li>
+        <li><a href="#sharing">Public sharing</a></li>
+        <li><a href="#church-settings">Church settings &amp; access</a></li>
+      </ul>
+      <h2>Platforms</h2>
+      <ul>
+        <li><a href="#mobile">The mobile app</a></li>
+        <li><a href="#platforms">Web vs. mobile</a></li>
+      </ul>
+      <h2>Help</h2>
+      <ul>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#contact">Contact support</a></li>
+      </ul>
+    </nav>
+
+    <main class="docs-content" id="docs-content">
+
+      <!-- ============================================================ OVERVIEW -->
+      <section class="doc-section" id="overview">
+        <h2>Overview</h2>
+        <p class="lead">Service Center helps churches plan worship services and schedule the volunteer teams who serve in them.</p>
+        <p>A church (an <strong>organization</strong>) runs recurring <strong>services</strong>. Each service has a <strong>plan</strong>: its date and times, the order of service (songs, headers and other items), and the people scheduled to serve. People belong to <strong>teams</strong> such as Band, Production or Hospitality, and can serve in a <strong>position</strong> on that team, such as Bass or Sound. Each time someone is asked to serve, they get an <strong>assignment</strong> they can accept or decline.</p>
+        <div class="cards">
+          <a class="card" href="#my-schedule"><b>I'm a volunteer</b><span>See when you serve, respond to requests, block out dates and prepare.</span></a>
+          <a class="card" href="#plans"><b>I lead a team or plan services</b><span>Build plans, schedule people, manage songs and run the service live.</span></a>
+          <a class="card" href="#getting-started"><b>I'm setting up a church</b><span>Register your church, invite people and set up teams.</span></a>
+          <a class="card" href="#mobile"><b>I'm using the mobile app</b><span>Tabs, widgets, offline downloads and push notifications.</span></a>
+        </div>
+        <h3>Key words</h3>
+        <div class="table-wrap"><table>
+          <tr><th>Term</th><th>Meaning</th></tr>
+          <tr><td><strong>Plan</strong></td><td>One service: its date, times, order of service and who is scheduled.</td></tr>
+          <tr><td><strong>Service type</strong></td><td>A recurring kind of service with its own default teams, like "Sunday Morning" or "Youth Night".</td></tr>
+          <tr><td><strong>Plan item</strong></td><td>One entry in the order of service: a song, a section header or any other item.</td></tr>
+          <tr><td><strong>Rehearsal</strong></td><td>A preparation time attached to a plan, separate from the service itself.</td></tr>
+          <tr><td><strong>Team / Position</strong></td><td>A group people are scheduled into (Band) and an optional role within it (Bass).</td></tr>
+          <tr><td><strong>Assignment</strong></td><td>A request for a person to serve on a plan. It is <em>Pending</em> until they reply, then <em>Confirmed</em> or <em>Declined</em>.</td></tr>
+          <tr><td><strong>Blockout</strong></td><td>A date or time someone is unavailable.</td></tr>
+        </table></div>
+      </section>
+
+      <!-- ======================================================== GET THE APPS -->
+      <section class="doc-section" id="get-the-apps">
+        <h2>Get the apps</h2>
+        <p class="lead">Use Service Center in any browser, or on your phone and tablet.</p>
+        <div class="table-wrap"><table>
+          <tr><th>Platform</th><th>Status</th><th>Best for</th></tr>
+          <tr><td><strong>Web app</strong></td><td><span class="pf web">Available</span></td><td>Everything, including planning, bulk scheduling, reports and church administration.</td></tr>
+          <tr><td><strong>iPhone &amp; iPad</strong></td><td><span class="pf soon">Coming soon to the App Store</span></td><td>Responding, availability, charts, rehearsal, messages, live view and quick plan edits.</td></tr>
+          <tr><td><strong>Android</strong></td><td><span class="pf soon">Coming soon</span></td><td>The same mobile experience as iPhone (the Home Screen widget is iOS only).</td></tr>
+        </table></div>
+        <div class="store-row">
+          <a class="store-badge" data-store="appStoreUrl" aria-disabled="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3M10 18.5h4"/></svg>
+            <span class="store-text"><small data-store-label>Coming soon to the</small><strong>App Store</strong></span>
+          </a>
+          <a class="store-badge" data-store="playStoreUrl" aria-disabled="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 3.2v17.6c0 .5.5.8.9.6L20 13c.4-.2.4-.8 0-1.1L5.9 2.6c-.4-.2-.9.1-.9.6z" opacity=".9"/></svg>
+            <span class="store-text"><small data-store-label>Coming soon on</small><strong>Google Play</strong></span>
+          </a>
+          <a class="btn btn-primary" data-link="webAppUrl" href="https://app.graceaogchurch.com">Open the web app</a>
+        </div>
+        <p>Your account works everywhere: sign in with the same email and password on the web and in the app, and everything stays in sync.</p>
+        <p><strong>Languages:</strong> English and Vietnamese (Tiếng Việt). Choose <em>Automatic</em> to follow your device's language.</p>
+      </section>
+
+      <!-- ===================================================== GETTING STARTED -->
+      <section class="doc-section" id="getting-started">
+        <h2>Getting started</h2>
+        <p class="lead">Create an account, then join your church or register a new one.</p>
+
+        <h3>Create an account or sign in <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <span class="where">Sign-in screen</span>
+        <ol class="steps">
+          <li>Open the web app or the mobile app and choose <strong>Create account</strong>.</li>
+          <li>Enter your email and a password.</li>
+          <li>Once you're signed in, the <strong>Get started</strong> screen helps you join a church or register a new one.</li>
+        </ol>
+        <p><strong>Forgot your password?</strong> Choose <em>Forgot password?</em> on the sign-in screen. We'll email you a reset link that works for one hour. On mobile, the link opens on the website.</p>
+
+        <h3>Accept an invitation <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>If a church owner invites you, you'll get an email. Open the link, set a password and you're in, with the role you were invited with. On a phone with the app installed, the link opens the app.</p>
+
+        <h3>Join an existing church <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ol class="steps">
+          <li>On <strong>Get started</strong>, choose <strong>Join an existing church</strong>.</li>
+          <li>Enter the <strong>Church ID</strong> (for example <code>riverside</code>), or paste a link your church shared.</li>
+          <li>Confirm it's the right church, add a short message and choose <strong>Send request</strong>.</li>
+          <li>The church owner approves it in <em>People → Join requests</em>, and you'll get an email invitation.</li>
+        </ol>
+        <p>You can withdraw a request while it's waiting.</p>
+
+        <h3>Register a new church <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ol class="steps">
+          <li>On <strong>Get started</strong>, choose <strong>Register a new church</strong>.</li>
+          <li>Fill in the church name, leader, phone, address, size and time zone, then choose <strong>Send for review</strong>.</li>
+          <li>While it's pending you can edit or withdraw the application. When it's approved, you become the church <strong>owner</strong>.</li>
+        </ol>
+
+        <h3>Belong to more than one church</h3>
+        <p>Switch churches from the church menu at the top of the web sidebar, or in the app from <em>Settings → Switch church</em>. To register another church, go to <em>Settings → Churches</em>.</p>
+
+        <h3>First steps for a new church owner <span class="pf web">Web</span></h3>
+        <ol class="steps">
+          <li>Add your church's details and logo in <em>Settings → Church</em>.</li>
+          <li>Create a <a href="#service-types">service type</a> with the wizard. It sets up your recurring schedule and common teams.</li>
+          <li>Add people, or <a href="#people">import them from a CSV</a>, and invite them.</li>
+          <li>Add your <a href="#songs">songs</a>, then create your first <a href="#plans">plan</a>.</li>
+        </ol>
+      </section>
+
+      <!-- ================================================================ ROLES -->
+      <section class="doc-section" id="roles">
+        <h2>Roles &amp; permissions</h2>
+        <p class="lead">Every member has one role. Owners and admins can add extra permissions for a whole church, a folder, a service type or a single team.</p>
+        <div class="table-wrap"><table>
+          <tr><th>Role</th><th>What they can do</th></tr>
+          <tr><td><strong>Owner</strong></td><td>Everything. Only owners manage <em>People</em> (add records, invite, change roles, bulk edits, join requests, CSV import) and see everyone's contact details.</td></tr>
+          <tr><td><strong>Admin</strong></td><td>Everything except owner-only People management, including access settings, delivery status, integrations and church settings.</td></tr>
+          <tr><td><strong>Scheduler</strong></td><td>Schedules people, prepares and releases requests, sends reminders, and sees blockouts and decline reasons. Can be <em>church-wide</em> or limited to <em>only granted areas</em>.</td></tr>
+          <tr><td><strong>Member</strong></td><td>Sees their own schedule, responds, sets availability, rehearses, chats, and reads the plans and files shared with them.</td></tr>
+        </table></div>
+        <h3>Extra permissions</h3>
+        <p>Owners and admins can grant any of these, for the whole church or a specific folder, service type or team:</p>
+        <ul>
+          <li><strong>Edit plans</strong>: change the order of service, times, notes and templates.</li>
+          <li><strong>Schedule people</strong>: send serving requests.</li>
+          <li><strong>Schedule over conflicts</strong>: schedule someone despite a blockout or double-booking (a reason is recorded).</li>
+          <li><strong>Manage teams</strong>: makes someone a <strong>team leader</strong> for that team's roster and settings.</li>
+          <li><strong>Manage songs</strong>, <strong>Manage media</strong>, <strong>Manage people</strong> and <strong>See private person details</strong>.</li>
+        </ul>
+        <div class="callout"><p>In the app, <b>leader</b> means anyone who can edit plans, schedule people or manage a team somewhere. Leaders see Reports and leader-only notes and files. Use <em>Settings → Access → Check access</em> to see why someone can or can't do something.</p></div>
+        <h3>Other kinds of people</h3>
+        <ul>
+          <li><strong>Helper</strong>: someone you trust to answer requests or manage availability for you. See <a href="#availability">Help with my schedule</a>.</li>
+          <li><strong>Guest</strong>: someone on the roster who has no login. They can be scheduled and answer from the email link.</li>
+        </ul>
+      </section>
+
+      <!-- ========================================================== MY SCHEDULE -->
+      <section class="doc-section" id="my-schedule">
+        <h2>My schedule &amp; responding</h2>
+        <p class="lead">See every service you're on and answer serving requests in one tap.</p>
+
+        <h3>Dashboard <span class="pf web">Web</span></h3>
+        <span class="where">Home page of the web app</span>
+        <ul>
+          <li><strong>Waiting on you</strong>: requests you haven't answered, with one-click Accept.</li>
+          <li><strong>Upcoming services</strong>: with confirmed and pending counts.</li>
+          <li><strong>Your next commitments</strong>: including rehearsal times.</li>
+        </ul>
+
+        <h3>My schedule <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <span class="where">Web: My schedule · App: Schedule tab</span>
+        <ul>
+          <li>Every plan you're on, with each position you're serving in.</li>
+          <li><strong>Accept</strong> or <strong>Decline</strong> (with an optional reason). You can <strong>Withdraw</strong> later if plans change.</li>
+          <li><strong>Review pending responses</strong> lets you answer several requests at once, per position and per service time.</li>
+          <li>Switch between <em>Upcoming</em> and <em>History</em>, and filter by Pending, Confirmed or Declined.</li>
+          <li>In the app, jump to <a href="#scheduling">Open positions</a> and <a href="#scheduling">Replacements</a> from here.</li>
+        </ul>
+
+        <h3>Respond from email without signing in <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>Every request email has Accept and Decline links. They work without a password and only change the positions and times shown in that email.</p>
+
+        <h3>Search <span class="pf web">Web</span></h3>
+        <p>Press <code>⌘ K</code> (Mac) or <code>Ctrl K</code> to search people, teams, positions, plans, songs and files.</p>
+      </section>
+
+      <!-- ========================================================= AVAILABILITY -->
+      <section class="doc-section" id="availability">
+        <h2>Availability &amp; blockouts</h2>
+        <p class="lead">Tell your schedulers when you can't serve, so they know before they ask.</p>
+
+        <h3>Blockout dates <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <span class="where">Settings → Availability</span>
+        <ul>
+          <li>Block out a single date, or a repeating weekly or monthly series.</li>
+          <li>All-day or a specific time range, with a private reason only schedulers can see.</li>
+          <li>The app adds, edits and removes one-off blockouts. Manage repeating series on the website.</li>
+        </ul>
+
+        <h3>Availability review <span class="pf web">Web</span></h3>
+        <p>When a team leader asks for an availability update, you'll be asked to confirm your dates by a reply-by date. If nothing has changed, just confirm.</p>
+
+        <h3>Scheduling preferences <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>For each team, or all teams at once, set how often you'd like to serve, a maximum per month, preferred or avoided weeks of the month, preferred start times and dates to avoid. Schedulers see these as gentle warnings, not hard rules.</p>
+
+        <h3>Help with my schedule (helpers) <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>Let a trusted person, like a spouse or parent, <strong>see your requests</strong>, <strong>answer requests</strong> for you, or <strong>manage your availability</strong>, optionally until a set date. Helpers never see plan notes or files. In the app, a household picker lets helpers switch between the people they help.</p>
+
+        <h3>Across my churches <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>If you serve at more than one church, opt in to see a combined schedule, let other churches' schedulers see that you're busy, and copy blockouts to another church.</p>
+      </section>
+
+      <!-- =============================================================== SONGS -->
+      <section class="doc-section" id="songs">
+        <h2>Songs &amp; chord charts</h2>
+        <p class="lead">A shared song library with arrangements, keys and readable chord charts.</p>
+
+        <h3>Song library <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <span class="where">Web: Songs · App: Songs tab</span>
+        <ul>
+          <li>Search and filter by key, theme, type, style, speed, author, BPM and last-scheduled date. Show active, archived or all songs.</li>
+          <li><strong>Add a song</strong> with its details, and paste a chart as chords-over-lyrics or ChordPro (<code>[G]Amazing grace</code>).</li>
+          <li><span class="pf web">Web</span> Edit many songs at once, import songs from a CSV file, merge duplicates and delete songs.</li>
+          <li>Adding and changing songs needs the <em>Manage songs</em> permission.</li>
+        </ul>
+
+        <h3>Song page &amp; arrangements <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ul>
+          <li><strong>Arrangements</strong>: each has its own key, BPM, meter, capo, length, sequence and chart. Mark one as the default.</li>
+          <li><strong>Keys</strong>: save labeled keys (sounding key, capo and a vocal label such as "Female") with their own files.</li>
+          <li><strong>Duplicate arrangement</strong> to start a new version, and archive or restore songs and arrangements.</li>
+          <li>See the song's <strong>schedule history</strong>: when and where it was last used. Attach files to the song, an arrangement or a key.</li>
+        </ul>
+
+        <h3>Viewing charts <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>Charts inside a plan show automatically in that service's key. Choose how chords appear:</p>
+        <div class="table-wrap"><table>
+          <tr><th>Notation</th><th>Example</th></tr>
+          <tr><td><strong>Chords</strong></td><td>G · C · D</td></tr>
+          <tr><td><strong>Numbers</strong> (Nashville)</td><td>1 · 4 · 5</td></tr>
+          <tr><td><strong>Numerals</strong></td><td>I · IV · V</td></tr>
+          <tr><td><strong>Lyrics</strong></td><td>Lyrics only, no chords</td></tr>
+          <tr><td><strong>Original key</strong></td><td>The chart as written, without transposing</td></tr>
+        </table></div>
+
+        <h3>Chart editor <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ul>
+          <li><span class="pf web">Web</span> A full-screen editor with a live preview, a <strong>sequence</strong> editor, and <strong>formatting</strong> (font, size, chord color, one or two columns). Choose <strong>Download PDF</strong> to save it.</li>
+          <li><span class="pf ios">iOS</span> Edit lyrics and chords with a preview in any key, then <strong>Share PDF</strong> or <strong>Print</strong> from the share sheet.</li>
+        </ul>
+
+        <h3>Song book export <span class="pf web">Web</span></h3>
+        <p>From any plan, choose <strong>Export song book</strong> to print every chart in the set, each in its service key.</p>
+      </section>
+
+      <!-- =========================================================== REHEARSAL -->
+      <section class="doc-section" id="rehearsal">
+        <h2>Rehearsal player</h2>
+        <p class="lead">Practice the whole set in order, with the charts in front of you.</p>
+        <span class="where">A plan's Rehearse tab</span>
+        <ul>
+          <li>Plays the plan's recordings in service order, with repeat off, all or one.</li>
+          <li>Change practice speed from <strong>0.5× to 1.25×</strong> without changing the pitch.</li>
+          <li>Charts are shown in the service key. External links (for example a video) open in their own player.</li>
+          <li><span class="pf ios">iOS</span> <strong>Background audio</strong> keeps playing when the screen is locked or you switch apps.</li>
+          <li><span class="pf ios">iOS</span> <strong>Offline downloads</strong> save a plan's rehearsal pack for when there's no signal. Manage them in <em>Settings → Offline downloads</em>.</li>
+        </ul>
+      </section>
+
+      <!-- ============================================================ MESSAGES -->
+      <section class="doc-section" id="messages">
+        <h2>Messages &amp; chat</h2>
+        <p class="lead">Keep conversations next to the plan they're about.</p>
+
+        <h3>Chat <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <span class="where">Web: Chat · App: Messages tab → Chat</span>
+        <ul>
+          <li>Team conversations and plan conversations. A plan's chat is open to its leaders and the people scheduled on it.</li>
+          <li>@mention people, reply to or quote a message, search, mute a conversation, and delete your own messages.</li>
+          <li>Each plan item also has its own <strong>discussion</strong> thread.</li>
+        </ul>
+
+        <h3>Messages from leaders <span class="pf web">Web</span><span class="pf ios">iOS</span><span class="pf lead">Schedulers</span></h3>
+        <ul>
+          <li>Send a message to everyone on a plan, or to a team. Preview the recipients first.</li>
+          <li>Deliver it in the app, by email, or both. Replies go to the sender's email.</li>
+          <li>Use variables like first name and plan title, and save personal or shared message templates.</li>
+          <li>See Sent and Received lists, with delivery results.</li>
+        </ul>
+
+        <h3>Report &amp; block <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ol class="steps">
+          <li>Tap the picture of the person who wrote a message.</li>
+          <li>Choose <strong>Report message</strong> (spam, harassment, inappropriate, safety or other). It goes to your church's moderators.</li>
+          <li>Or choose <strong>Block</strong> to hide everything that person writes.</li>
+        </ol>
+        <p>See and unblock people in <em>Settings → Account &amp; privacy</em> on the web, or <em>Settings → Blocked people</em> in the app. Moderators review reports and can hide a message or dismiss the report.</p>
+      </section>
+
+      <!-- ============================================================ CALENDAR -->
+      <section class="doc-section" id="calendar">
+        <h2>Calendar &amp; sync</h2>
+        <p class="lead">See every service at a glance, and put your schedule in the calendar you already use.</p>
+        <h3>Calendar <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <span class="where">Web: Calendar · App: Calendar tab</span>
+        <ul>
+          <li>Month and agenda views. Show <em>Everyone</em> or <em>Only mine</em>, and filter by team.</li>
+          <li>Turn on extra layers for a team: blockouts, birthdays and anniversaries (for people who choose to share them).</li>
+        </ul>
+        <h3>Subscribe in Apple Calendar, Google Calendar or Outlook <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ol class="steps">
+          <li>Go to <em>Settings → Calendar sync</em>.</li>
+          <li>Create your personal feed link, then copy it or open it in your calendar app. In the app you can also share it.</li>
+          <li>If the link is ever shared by mistake, <strong>rotate</strong> it to make a new one and stop the old one.</li>
+        </ol>
+        <p><span class="pf web">Web</span> Leaders can also create team and service-type feeds from the Calendar page, with or without rehearsals. Every schedule email includes an <code>.ics</code> file you can add to any calendar.</p>
+      </section>
+
+      <!-- ======================================================= NOTIFICATIONS -->
+      <section class="doc-section" id="notifications">
+        <h2>Notifications &amp; email</h2>
+        <p class="lead">Know when you're scheduled, when something changes, and when it's almost time.</p>
+        <h3>Email</h3>
+        <ul>
+          <li>Serving requests: combined into one email per person, with an <code>.ics</code> attachment.</li>
+          <li>Reminders for unanswered requests and "coming up" reminders for confirmed services.</li>
+          <li>Decline and withdraw notices to schedulers, availability requests, leader messages, invitations and password resets.</li>
+          <li>Emails are written in each person's chosen language.</li>
+        </ul>
+        <h3>Push notifications <span class="pf ios">iOS</span></h3>
+        <ul>
+          <li>New requests, schedule updates and chat messages. Lock-screen notifications keep details private.</li>
+          <li>The bell icon opens your <strong>Notifications</strong> feed.</li>
+          <li>In <em>Settings → Notifications</em>: allow push, choose the app-icon badge (unread count or off), pick reminder channels, and mute individual chats.</li>
+        </ul>
+        <h3>Reminders</h3>
+        <p>Churches set automatic reminders for unanswered requests and upcoming services. They can be set per church, service type or team: how many hours before, which channels, quiet hours and a daily limit. You choose your own reminder channels under <em>My reminders</em> (web) or <em>Notifications</em> (app).</p>
+      </section>
+
+      <!-- ============================================================== ACCOUNT -->
+      <section class="doc-section" id="account">
+        <h2>Profile, language &amp; account</h2>
+        <p class="lead">Personal settings that follow you across devices.</p>
+        <ul>
+          <li><strong>Profile</strong>: photo, name and phone number.</li>
+          <li><strong>Language / Ngôn ngữ</strong>: English, Tiếng Việt or Automatic. Emails and push notifications use your choice too. The web app also has a quick language switcher in the header.</li>
+          <li><strong>Appearance</strong> <span class="pf web">Web</span>: light, dark or match your system. The app follows your device setting.</li>
+        </ul>
+        <h3>Delete your account <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <span class="where">Web: Settings → Account &amp; privacy · App: Settings → Delete account</span>
+        <p>This permanently deletes your account and personal data. Before you confirm, you'll see exactly what will be deleted, including any church where you're the only member.</p>
+        <div class="callout warn"><p><b>Own a church with other members?</b> Choose another owner first. You can't delete your account while you're the only owner of a church that still has other people in it.</p></div>
+        <p>Read the <a data-link="privacyUrl" href="https://app.graceaogchurch.com/privacy">Privacy Policy</a>.</p>
+      </section>
+
+      <!-- ================================================================ PLANS -->
+      <section class="doc-section" id="plans">
+        <h2>Plans &amp; order of service</h2>
+        <p class="lead">Build each service from songs, headers and items, with times that add themselves up.</p>
+
+        <h3>Plans list <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ul>
+          <li>Plans are grouped by service type. Filter by Draft, Published or Archived, or show past plans.</li>
+          <li><strong>New plan</strong>: title, date and time, service type and location. Needs <em>Edit plans</em>.</li>
+        </ul>
+
+        <h3>The plan workspace <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>Each plan has tabs: <strong>Order</strong>, <strong>Teams</strong>, <strong>Files</strong>, <strong>Rehearse</strong>, <strong>Attendance</strong>, plus <strong>Stage</strong> and <strong>Share</strong> on the web. From the header you can:</p>
+        <ul>
+          <li>Go to the previous or next plan, or <strong>add the next plan</strong>.</li>
+          <li><strong>Publish</strong> or unpublish, <strong>Send notifications</strong>, or delete the plan.</li>
+          <li>Open <strong>Live</strong>, the <strong>plan chat</strong>, or <strong>Message people</strong>.</li>
+          <li><span class="pf web">Web</span> <strong>Print this plan</strong> and <strong>Export song book</strong>.</li>
+        </ul>
+
+        <h3>Order of service <span class="pf web">Web</span><span class="pf ios">iOS</span><span class="pf lead">Edit plans</span></h3>
+        <ul>
+          <li>Add a <strong>Song</strong>, <strong>Header</strong> or <strong>Item</strong>. Edit, move up or down, or remove items.</li>
+          <li>Give each item a length, notes, a leader, and a segment: <em>Before</em>, <em>During</em> or <em>After</em> the service.</li>
+          <li>For songs, choose the arrangement and the <strong>service key</strong>, and set a sequence just for this plan.</li>
+          <li>Start times are calculated for every item, with a planned finish time and a warning if the service runs long.</li>
+          <li>Link <strong>media</strong> to an item, and use each item's <strong>notes and discussion</strong>.</li>
+          <li><span class="pf web">Web</span> <strong>Print order</strong>: pick a service time, include leaders and choose which notes to print.</li>
+        </ul>
+
+        <h3>Plan notes <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>Add categorized notes and choose who sees each one: everyone, people scheduled, selected teams, or plan leaders only.</p>
+
+        <h3>Service &amp; rehearsal times <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ul>
+          <li>A plan can have several times: <em>Service</em>, <em>Rehearsal</em> or <em>Other</em>, each with a label (for example "9 AM" and "11 AM").</li>
+          <li>Daylight-saving changes are handled for you.</li>
+          <li>When you move a time, <strong>Review time changes</strong> shows who's affected and can send them updated requests.</li>
+        </ul>
+      </section>
+
+      <!-- ======================================================= SERVICE TYPES -->
+      <section class="doc-section" id="service-types">
+        <h2>Service types &amp; templates</h2>
+        <p class="lead">Set up a recurring service once, then create plans in seconds.</p>
+
+        <h3>Add a service type <span class="pf web">Web</span></h3>
+        <ol class="steps">
+          <li>Name it (for example "Sunday Morning") and choose how often it happens: weekly, every other week, monthly or occasionally.</li>
+          <li>Set its usual times.</li>
+          <li>Pick common teams by category: Music, Technical, Kids, Hospitality or Other. Optionally add yourself to them.</li>
+        </ol>
+        <p><strong>Folders</strong> (<em>Settings → Church</em>) group service types by campus or ministry. Permissions given on a folder apply to everything inside it. <strong>Default files</strong> are added automatically to every new plan of a service type.</p>
+
+        <h3>Templates <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ul>
+          <li><span class="pf web">Web</span> The <strong>Templates</strong> library holds plan templates and smaller <strong>section templates</strong>. They can include times, notes, items, needed positions and roster. Older revisions are kept.</li>
+          <li><span class="pf web">Web</span> <strong>Save as template</strong> from any plan.</li>
+          <li><strong>Apply template</strong> to a plan, with a preview of the changes before you confirm.</li>
+        </ul>
+
+        <h3>Generate plans <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>Create up to 12 plans at once from a template: choose the first date, repeat every week or every few weeks, set how many (or a stop date), and leave out dates you skip.</p>
+
+        <h3>Reschedule <span class="pf web">Web</span></h3>
+        <p>Move several plans at once, either whole plans or just their order, with a review step and options to reset the roster and notify people.</p>
+      </section>
+
+      <!-- ========================================================== SCHEDULING -->
+      <section class="doc-section" id="scheduling">
+        <h2>Scheduling teams</h2>
+        <p class="lead">Fill every position, spot problems before you ask, and track every answer.</p>
+
+        <h3>Schedule people on a plan <span class="pf web">Web</span><span class="pf ios">iOS</span><span class="pf lead">Schedule people</span></h3>
+        <span class="where">A plan's Teams tab</span>
+        <ul>
+          <li>Set the <strong>needed positions</strong> for each team.</li>
+          <li><strong>Schedule people</strong>: pick a team and position, or create a position just for this plan.</li>
+          <li><strong>Add a guest</strong> who doesn't have a login, with an optional email invite.</li>
+          <li>Choose which service and rehearsal times each person covers.</li>
+          <li>See warnings for blockouts, double-booking, preferences ("serves too often", avoided dates) and out-of-date availability.</li>
+          <li>Schedule over a conflict only with <em>Schedule over conflicts</em>, and a reason is recorded.</li>
+          <li>See whether each request was delivered, and the plan's delivery history.</li>
+        </ul>
+
+        <h3>Prepare privately, then release <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>Build the schedule without anyone being notified. When you're ready, choose <strong>Review and release</strong>. On the web, the <strong>Release review</strong> page shows prepared requests across all plans, so you can release now or at a set time, with or without notifications. Each person gets one combined message.</p>
+
+        <h3>Staffing matrix <span class="pf web">Web</span></h3>
+        <p>See up to 12 plans side by side in a grid. Filter it, save views, select many cells with the keyboard, and prepare or schedule in bulk after a review.</p>
+
+        <h3>Propose staffing <span class="pf web">Web</span></h3>
+        <p>Get an automatic, fair proposal that respects blockouts, conflicts and <strong>team rotations</strong>. Lock people in, exclude someone or ask for an alternative, then commit the result as prepared requests.</p>
+
+        <h3>Open positions &amp; sign-ups <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ul>
+          <li>Leaders open a position with a number of spots, a closing time, and a rule: <em>Direct confirmation</em> or <em>Leader approval</em>.</li>
+          <li>Members browse <strong>Open positions</strong>, sign up and can cancel. Leaders approve or reject sign-ups.</li>
+        </ul>
+
+        <h3>Replacements <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>After declining, choose <strong>Ask for a replacement</strong>. Leaders send offers, a candidate accepts, and a leader approves. On the web, leaders can also approve swaps between people.</p>
+
+        <h3>Availability requests <span class="pf web">Web</span></h3>
+        <p>Team leaders can ask a team to update their availability by a reply-by date, from <em>Teams → Availability</em>.</p>
+      </section>
+
+      <!-- ============================================================== PEOPLE -->
+      <section class="doc-section" id="people">
+        <h2>People &amp; teams</h2>
+        <p class="lead">Your church directory and the teams people serve on.</p>
+
+        <h3>People <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <span class="where">Web: People · App: Settings → People</span>
+        <ul>
+          <li>Everyone can browse the directory. Contact details are visible only to owners and to the person themselves.</li>
+          <li><span class="pf lead">Owner</span> <strong>Add person</strong> and edit their full record: contact details, address, tags, eligibility records and roster history. Archive or restore people.</li>
+          <li><span class="pf lead">Owner</span> <strong>Send or resend an invite</strong> with a role, and change a member's role.</li>
+          <li><span class="pf web">Web</span><span class="pf lead">Owner</span> Bulk changes (add or remove tags, add to or remove from a team), <strong>tags and groups</strong>, <strong>join requests</strong> and <strong>import from CSV</strong>.</li>
+          <li><span class="pf web">Web</span> <strong>Possible duplicate people</strong> (<em>Settings → Church</em>): merge records or keep them separate.</li>
+        </ul>
+
+        <h3>Teams <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ul>
+          <li><span class="pf web">Web</span> Create teams with a name, description, color and positions (needs <em>Manage teams</em>).</li>
+          <li>Add or remove members: owners, admins and that team's leaders. The app can view teams and change rosters.</li>
+          <li><span class="pf web">Web</span> <strong>Team settings</strong>: team leaders, whether new requests are sent right away or prepared first, <strong>secure team</strong> (requires an eligibility record, such as a background check), suggest-by-tag rules, which teams can see this roster, and reminders.</li>
+          <li><strong>Roster visibility</strong> (<em>Settings → Access</em>): optionally let members see only their own teams' rosters.</li>
+        </ul>
+      </section>
+
+      <!-- =============================================================== MEDIA -->
+      <section class="doc-section" id="media">
+        <h2>Media &amp; files</h2>
+        <p class="lead">Keep charts, audio, videos and documents where your team will look for them.</p>
+
+        <h3>Files <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>Attach files to plans (the <strong>Files</strong> tab), songs, arrangements, keys, media and service-type defaults.</p>
+        <ul>
+          <li>Upload a file, add a <strong>link</strong>, or write a <strong>text document</strong>.</li>
+          <li>Categories: chart, lyrics, audio, video, image, document or other.</li>
+          <li><strong>Audience</strong>: everyone, people scheduled, selected teams, selected positions, or leaders only.</li>
+          <li><strong>Versions</strong>: replace a file with a new version. Plans keep the version they were given.</li>
+          <li><strong>Play-only</strong> files can be streamed but not downloaded, for licensed recordings.</li>
+          <li><span class="pf ios">iOS</span> Add from Files or Photos, or use <strong>Scan pages</strong> to turn paper into a PDF with the camera.</li>
+        </ul>
+
+        <h3>Media library <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <span class="where">Web: Media · App: Songs tab → Media</span>
+        <p>Reusable bundles of videos, cues and graphics, each with a title, length, themes, thumbnail, and usage count. Link them to items in the order of service. Creating and editing bundles is on the web; the app can browse, add files and link media.</p>
+        <p>Your church's storage usage is shown with a warning before you reach the limit.</p>
+      </section>
+
+      <!-- ================================================================ LIVE -->
+      <section class="doc-section" id="live">
+        <h2>Live, stage &amp; run times</h2>
+        <p class="lead">Run the service from the plan, and let everyone follow along.</p>
+
+        <h3>Live <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <ul>
+          <li>One live run per service time. The person in control can start, go to the next item, jump, pause, resume and end.</li>
+          <li>Countdown by item length, planned item end or service end, with a projected finish (on time, early or late).</li>
+          <li>Control can be taken, released, or taken over with a reason. Anyone who can see the plan can watch.</li>
+          <li>Run history shows planned vs. actual times. <span class="pf web">Web</span> Leaders can correct recorded times (changes are logged).</li>
+          <li><span class="pf web">Web</span> <strong>Stage display</strong>: a full-screen confidence view for musicians and speakers.</li>
+        </ul>
+
+        <h3>Stage layouts <span class="pf web">Web</span></h3>
+        <p>On a plan's <strong>Stage</strong> tab, draw where people and gear go on a blank, proscenium, thrust or in-the-round stage. Start from a template, place scheduled people, gear and labels, and get warnings such as "scheduled but not placed".</p>
+      </section>
+
+      <!-- ============================================================= REPORTS -->
+      <section class="doc-section" id="reports">
+        <h2>Reports &amp; attendance</h2>
+        <p class="lead">Learn from every service.</p>
+        <h3>Reports <span class="pf web">Web</span><span class="pf lead">Leaders</span></h3>
+        <div class="table-wrap"><table>
+          <tr><th>Report</th><th>Who can run it</th></tr>
+          <tr><td>Staffing and follow-up</td><td>Schedule people</td></tr>
+          <tr><td>Participation and response history</td><td>Schedule people</td></tr>
+          <tr><td>Multi-plan schedule</td><td>Schedule people</td></tr>
+          <tr><td>Song usage</td><td>Edit plans or Manage songs</td></tr>
+          <tr><td>Actual run times</td><td>Edit plans</td></tr>
+        </table></div>
+        <p>Filter, print or export to CSV. Large exports are built in the background and kept in <strong>My exports</strong> for 24 hours. <span class="pf ios">iOS</span> The app's <strong>Schedule report</strong> can share a CSV.</p>
+        <h3>Attendance <span class="pf web">Web</span><span class="pf ios">iOS</span></h3>
+        <p>Schedulers mark each person <strong>Present</strong> or <strong>Absent</strong> for each service time, and see the history.</p>
+      </section>
+
+      <!-- ============================================================= SHARING -->
+      <section class="doc-section" id="sharing">
+        <h2>Public sharing</h2>
+        <p class="lead">Share a set list with anyone, without giving them an account.</p>
+        <span class="where">A plan's Share tab (web, plan editors)</span>
+        <ul>
+          <li>Publish a public link and choose exactly what it shows: title, date, times, location, service type, item titles, lengths, song titles, authors and keys.</li>
+          <li>Publish now or on the day of the service. Make a new link or stop sharing at any time.</li>
+          <li><strong>Stable service-type links</strong> always point to the next upcoming (or most recent) set list.</li>
+        </ul>
+        <div class="callout tip"><p><b>Always private:</b> people, notes, files and chat are never included in a public link.</p></div>
+      </section>
+
+      <!-- ===================================================== CHURCH SETTINGS -->
+      <section class="doc-section" id="church-settings">
+        <h2>Church settings &amp; access</h2>
+        <p class="lead">For owners and admins.</p>
+        <ul>
+          <li><strong>Church</strong>: name, logo, address, denomination and congregation size.</li>
+          <li><strong>Folders</strong>, <strong>default files</strong>, <strong>reminders</strong> and <strong>duplicate people</strong>, described above.</li>
+          <li><strong>Access</strong>: open a member to set their role, a scheduler's reach (church-wide or only granted areas), and permissions per folder, service type or team. <strong>Check access</strong> explains any decision.</li>
+          <li><strong>Delivery</strong>: the status of recent emails, push notifications and in-app messages. Filter to problems and <strong>Retry</strong>.</li>
+          <li><strong>Developer API &amp; webhooks</strong>: read-only API keys for published plans, service types and songs, and signed webhooks when a plan is published. Revoke keys at any time.</li>
+        </ul>
+      </section>
+
+      <!-- ============================================================== MOBILE -->
+      <section class="doc-section" id="mobile">
+        <h2>The mobile app</h2>
+        <p class="lead">Respond, prepare and follow along from your pocket. iPhone and iPad first, with Android coming soon.</p>
+        <h3>Tabs</h3>
+        <div class="table-wrap"><table>
+          <tr><th>Tab</th><th>What's there</th></tr>
+          <tr><td><strong>Schedule</strong></td><td>Your requests and upcoming services, open positions and replacements.</td></tr>
+          <tr><td><strong>Calendar</strong></td><td>Month and agenda views, team layers, schedule report.</td></tr>
+          <tr><td><strong>Plans</strong></td><td>Plans by service type, plan workspace, live view, rehearsal, attendance.</td></tr>
+          <tr><td><strong>Songs</strong></td><td>Song library, arrangements, charts in any key, and the media library.</td></tr>
+          <tr><td><strong>Messages</strong></td><td>Leader messages and chat conversations.</td></tr>
+          <tr><td><strong>Settings</strong></td><td>Profile, availability, notifications, calendar sync, offline downloads, people, teams, switch church, blocked people and account.</td></tr>
+        </table></div>
+
+        <h3>Only in the app</h3>
+        <ul>
+          <li><strong>"Next serving" widget</strong> <span class="pf ios">iOS</span>: small, medium and Lock Screen sizes. Shows your next services, a Rehearse shortcut and requests awaiting an answer. Titles are hidden while the phone is locked.</li>
+          <li><strong>Push notifications</strong>, an app-icon badge and a notifications feed.</li>
+          <li><strong>Background audio</strong> and <strong>offline downloads</strong> for rehearsal.</li>
+          <li><strong>Scan pages → PDF</strong> with the camera, and adding files from Photos.</li>
+          <li><strong>Share or print a chart as PDF</strong> from the share sheet.</li>
+          <li>Email links for invitations, responses and plans open straight in the app.</li>
+          <li><strong>About</strong> screen: version, build and what's stored on your device.</li>
+        </ul>
+        <div class="callout"><p><b>Android:</b> the Android app is coming soon with the same features, except the Home Screen widget, which is iOS only for now.</p></div>
+      </section>
+
+      <!-- =========================================================== PLATFORMS -->
+      <section class="doc-section" id="platforms">
+        <h2>Web vs. mobile</h2>
+        <p class="lead">Volunteers can do everything they need in the app. Some big-screen leader tools live only on the web.</p>
+        <div class="table-wrap"><table>
+          <tr><th>Feature</th><th>Web</th><th>Mobile</th></tr>
+          <tr><td>Respond to requests, my schedule</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Blockouts (one-off) &amp; preferences</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Repeating blockout series</td><td class="yes">✓</td><td class="no">View only</td></tr>
+          <tr><td>Chord charts in any key</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Rehearsal player</td><td class="yes">✓</td><td class="yes">✓ + background &amp; offline</td></tr>
+          <tr><td>Chat, messages, report &amp; block</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Create &amp; edit plans, order, times</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Schedule people, prepare &amp; release</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Generate plans / apply template</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Live</td><td class="yes">✓ + stage display</td><td class="yes">✓</td></tr>
+          <tr><td>Attendance</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td>Staffing matrix, propose staffing, release review, reschedule</td><td class="yes">✓</td><td class="no">—</td></tr>
+          <tr><td>Templates library, save as template, service type wizard</td><td class="yes">✓</td><td class="no">—</td></tr>
+          <tr><td>Create teams, positions, team settings</td><td class="yes">✓</td><td class="no">Roster only</td></tr>
+          <tr><td>People bulk changes, CSV import, join requests</td><td class="yes">✓</td><td class="no">—</td></tr>
+          <tr><td>Song bulk edit, merge, delete, CSV import</td><td class="yes">✓</td><td class="no">—</td></tr>
+          <tr><td>Full chart editor with formatting, song book export</td><td class="yes">✓</td><td class="no">Basic editor + PDF</td></tr>
+          <tr><td>Stage layouts, public sharing, reports</td><td class="yes">✓</td><td class="no">CSV schedule report</td></tr>
+          <tr><td>Access, delivery, API &amp; webhooks, reminders policy</td><td class="yes">✓</td><td class="no">—</td></tr>
+          <tr><td>Widget, push notifications, scan to PDF</td><td class="no">—</td><td class="yes">✓</td></tr>
+        </table></div>
+      </section>
+
+      <!-- ================================================================= FAQ -->
+      <section class="doc-section faq" id="faq">
+        <h2>FAQ</h2>
+        <details><summary>When will the iPhone app be in the App Store?</summary><p>It's in review with Apple now. The download button on this site will go live as soon as it's approved. Until then, everything works in the <a data-link="webAppUrl" href="https://app.graceaogchurch.com">web app</a>.</p></details>
+        <details><summary>Is there an Android app?</summary><p>Yes, it's coming soon. It has the same features as the iPhone app, except the Home Screen widget. In the meantime, the web app works in any Android browser.</p></details>
+        <details><summary>Do volunteers need an account?</summary><p>Not to respond. Guests and people without a login can accept or decline from the link in their email. An account lets them see their full schedule, charts, files and chat.</p></details>
+        <details><summary>Can I change the key of a song for one service only?</summary><p>Yes. In the plan's order of service, choose a service key for that song. The chart shows in that key for everyone on the plan, and the song's library key stays the same.</p></details>
+        <details><summary>Who can see my phone number and email?</summary><p>Only church owners and you. Other members see your name and the teams you serve on.</p></details>
+        <details><summary>Can someone respond for me?</summary><p>Yes. Add a helper under <em>Settings → Availability → Help with my schedule</em>. You choose whether they can see requests, answer them or manage your availability, and until when.</p></details>
+        <details><summary>Which languages are supported?</summary><p>English and Vietnamese (Tiếng Việt). Each person picks their own, and emails and notifications follow that choice.</p></details>
+        <details><summary>How do I delete my account?</summary><p>On the web, go to <em>Settings → Account &amp; privacy</em>. In the app, go to <em>Settings → Delete account</em>. See <a href="#account">Profile, language &amp; account</a>.</p></details>
+      </section>
+
+      <!-- ============================================================= CONTACT -->
+      <section class="doc-section" id="contact">
+        <h2>Contact support</h2>
+        <p class="lead">Questions, feedback, or want to bring Service Center to your church? We'd love to hear from you.</p>
+        <div class="cards">
+          <a class="card" data-email href="mailto:support@graceaogchurch.com"><b>Email us</b><span data-email-label>support@graceaogchurch.com</span></a>
+          <a class="card" data-link="supportUrl" href="https://app.graceaogchurch.com/support"><b>Support center</b><span>Help articles and account support</span></a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="../"><img src="../assets/img/app-icon.png" alt="">Service Center</a>
+          <p>Service planning and team scheduling for churches and worship teams.</p>
+        </div>
+        <div>
+          <h3>Product</h3>
+          <ul>
+            <li><a href="../#features">Features</a></li>
+            <li><a href="#get-the-apps">Get the apps</a></li>
+            <li><a data-link="webAppUrl" href="https://app.graceaogchurch.com">Web app</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Learn</h3>
+          <ul>
+            <li><a href="#getting-started">Getting started</a></li>
+            <li><a href="#mobile">Mobile app</a></li>
+            <li><a href="#faq">FAQ</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Help</h3>
+          <ul>
+            <li><a data-email data-email-text href="mailto:support@graceaogchurch.com">support@graceaogchurch.com</a></li>
+            <li><a data-link="privacyUrl" href="https://app.graceaogchurch.com/privacy">Privacy</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year>2026</span> Service Center. All rights reserved.</span>
+        <span>Web · iPhone &amp; iPad · Android coming soon · English &amp; Tiếng Việt</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/common.js"></script>
+  <script src="../assets/js/docs.js"></script>
+</body>
+</html>

@@ -14,6 +14,12 @@
       "port": 5173
     },
     {
+      "name": "website",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4321", "--directory", "website"],
+      "port": 4321
+    },
+    {
       "name": "mobile-metro",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev:mobile"],

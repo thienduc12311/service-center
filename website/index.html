@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Service Center — Plan worship services and schedule your teams</title>
+  <meta name="description" content="Service Center brings your whole worship team onto the same page. Plan services, schedule volunteers, and share songs and chord charts — on the web and on iPhone, with Android coming soon.">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <script>try{var t=localStorage.getItem('sc-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <meta property="og:title" content="Service Center">
+  <meta property="og:description" content="Plan every service, schedule your teams, and keep chord charts in everyone's pocket.">
+  <meta property="og:image" content="assets/img/app-icon.png">
+  <link rel="icon" type="image/png" href="assets/img/favicon.png">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="stylesheet" href="assets/css/landing.css">
+</head>
+<body class="landing">
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="nav" role="banner">
+    <div class="nav-inner">
+      <a class="brand" href="./"><img src="assets/img/app-icon.png" alt="">Service Center</a>
+      <button class="nav-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span></button>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#film">Overview</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#everywhere">Web &amp; Mobile</a></li>
+        <li><a href="docs/">Documentation</a></li>
+        <li><a class="nav-cta" data-link="webAppUrl" href="https://app.graceaogchurch.com">Open web app</a></li>
+      </ul>
+      <button class="theme-btn" type="button" data-theme-toggle aria-label="Appearance: automatic" title="Appearance: automatic"><svg viewBox="0 0 24 24" aria-hidden="true"></svg></button>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============================================================ HERO -->
+    <section class="hero" data-scene="hero">
+      <div class="hero-glow" aria-hidden="true"></div>
+      <div class="hero-content">
+        <img class="hero-icon reveal-load" src="assets/img/app-icon.png" alt="Service Center app icon" width="112" height="112">
+        <p class="eyebrow reveal-load">Service Center</p>
+        <h1 class="hero-title reveal-load">Every service.<br><span class="gradient-text">In perfect harmony.</span></h1>
+        <p class="hero-sub reveal-load">Plan the order of service, schedule your teams, and put chord charts in everyone's pocket — on the web and on iPhone. Android is coming soon.</p>
+        <div class="hero-actions reveal-load">
+          <a class="store-badge" data-store="appStoreUrl" aria-disabled="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3M10 18.5h4"/></svg>
+            <span class="store-text"><small data-store-label>Coming soon to the</small><strong>App Store</strong></span>
+          </a>
+          <a class="store-badge" data-store="playStoreUrl" aria-disabled="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 3.2v17.6c0 .5.5.8.9.6L20 13c.4-.2.4-.8 0-1.1L5.9 2.6c-.4-.2-.9.1-.9.6z" opacity=".9"/></svg>
+            <span class="store-text"><small data-store-label>Coming soon on</small><strong>Google Play</strong></span>
+          </a>
+          <a class="btn btn-ghost hero-web" data-link="webAppUrl" href="https://app.graceaogchurch.com">Open the web app</a>
+        </div>
+        <button class="play-film reveal-load" type="button" data-play-film>
+          <span class="play-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span>
+          Watch the film
+        </button>
+      </div>
+      <div class="scroll-cue" aria-hidden="true"><span></span></div>
+    </section>
+
+    <!-- ============================================== THE FILM (scroll-scrubbed) -->
+    <section class="film" id="film" data-scene="film" aria-label="Service Center in four scenes">
+      <div class="film-sticky">
+        <div class="film-bg" aria-hidden="true"></div>
+
+        <div class="film-captions" aria-live="polite">
+          <article class="caption" data-caption="0">
+            <p class="caption-kicker">01 · Scheduling</p>
+            <h2>Get asked.<br> Answer in a tap.</h2>
+            <p>Serving requests arrive as a notification. Accept or decline right from your phone — your leader sees it instantly.</p>
+          </article>
+          <article class="caption" data-caption="1">
+            <p class="caption-kicker">02 · Planning</p>
+            <h2>Build the order.<br> Watch the clock.</h2>
+            <p>Songs, headers, announcements, the sermon. Every item gets a start time, and the whole service adds itself up.</p>
+          </article>
+          <article class="caption" data-caption="2">
+            <p class="caption-kicker">03 · Songs &amp; charts</p>
+            <h2>Any key.<br> One tap away.</h2>
+            <p>Clean, readable chord charts for every arrangement. Change the key and every chord follows — Nashville numbers too.</p>
+          </article>
+          <article class="caption" data-caption="3">
+            <p class="caption-kicker">04 · Live</p>
+            <h2>Sunday morning,<br> right on cue.</h2>
+            <p>Follow the service live. Everyone sees what's on now, what's next, and how much time is left.</p>
+          </article>
+        </div>
+
+        <div class="phone-wrap">
+          <div class="phone" aria-hidden="true">
+            <div class="phone-screen">
+              <div class="island"></div>
+              <div class="statusbar"><span>9:41</span><span class="sb-icons"><i></i><i></i><b></b></span></div>
+
+              <!-- Scene 0: My schedule + serving request -->
+              <div class="screen" data-screen="0">
+                <div class="app-head"><small>Sunday, Nov 22</small><h3>My Schedule</h3></div>
+                <div class="notif" data-notif>
+                  <img src="assets/img/app-icon.png" alt="">
+                  <div><b>Service Center</b><span>You're scheduled for Sunday Worship · Acoustic Guitar. Can you serve?</span></div>
+                  <em>now</em>
+                </div>
+                <div class="sched-card is-request" data-request>
+                  <div class="date-tile"><small>NOV</small><b>22</b></div>
+                  <div class="sched-body">
+                    <b>Sunday Worship</b>
+                    <span>10:00 AM · Band · Acoustic Guitar</span>
+                    <span class="status" data-status>Pending</span>
+                  </div>
+                  <div class="sched-actions" data-actions>
+                    <button class="mini-btn decline" tabindex="-1">Decline</button>
+                    <button class="mini-btn accept" tabindex="-1" data-accept>Accept<i class="tap" data-tap></i></button>
+                  </div>
+                  <div class="confirm-pop" data-confirm><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                </div>
+                <div class="sched-card muted">
+                  <div class="date-tile"><small>NOV</small><b>29</b></div>
+                  <div class="sched-body"><b>Sunday Worship</b><span>10:00 AM · Band · Vocals</span><span class="status ok">Confirmed</span></div>
+                </div>
+                <div class="sched-card muted">
+                  <div class="date-tile"><small>DEC</small><b>06</b></div>
+                  <div class="sched-body"><b>Youth Night</b><span>7:00 PM · Hosts</span><span class="status ok">Confirmed</span></div>
+                </div>
+                <div class="tabbar"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+              </div>
+
+              <!-- Scene 1: Order of service builds itself -->
+              <div class="screen" data-screen="1">
+                <div class="app-head"><small>Sun, Nov 22 · 10:00 AM</small><h3>Order of Service</h3></div>
+                <div class="plan-total"><span>Service length</span><b data-total>0:00</b></div>
+                <ol class="plan-list" data-plan>
+                  <li class="hdr" data-dur="0">Pre-service</li>
+                  <li data-dur="300"><time>10:00</time><span>Countdown</span><em>5:00</em></li>
+                  <li data-dur="180"><time>10:05</time><span>Welcome</span><em>3:00</em></li>
+                  <li class="hdr" data-dur="0">Worship set</li>
+                  <li class="song" data-dur="285"><time>10:08</time><span>Amazing Grace <small>G</small></span><em>4:45</em></li>
+                  <li class="song" data-dur="240"><time>10:12</time><span>Holy, Holy, Holy <small>D</small></span><em>4:00</em></li>
+                  <li class="song" data-dur="300"><time>10:16</time><span>Come Thou Fount <small>D</small></span><em>5:00</em></li>
+                  <li class="hdr" data-dur="0">Message</li>
+                  <li data-dur="1800"><time>10:21</time><span>Sermon</span><em>30:00</em></li>
+                  <li class="song" data-dur="260"><time>10:51</time><span>Be Thou My Vision <small>E</small></span><em>4:20</em></li>
+                </ol>
+              </div>
+
+              <!-- Scene 2: Chord chart transposes -->
+              <div class="screen chart-screen" data-screen="2">
+                <div class="app-head"><small>Band Arrangement · 72 bpm · 3/4</small><h3>Amazing Grace</h3></div>
+                <div class="key-row">
+                  <span>Key</span>
+                  <div class="key-pills" data-keys><b data-key="G" class="on">G</b><b data-key="A">A</b><b data-key="Bb">B♭</b><b data-key="C">C</b></div>
+                </div>
+                <div class="chart" data-chart>
+                  <p class="sec">Verse 1</p>
+                  <p class="ln">A-<c data-c="G">G</c>mazing <c data-c="G7">G7</c>grace how <c data-c="C">C</c>sweet the <c data-c="G">G</c>sound</p>
+                  <p class="ln">That saved a wretch like <c data-c="D">D</c>me</p>
+                  <p class="ln">I <c data-c="G">G</c>once was <c data-c="G7">G7</c>lost but <c data-c="C">C</c>now am <c data-c="G">G</c>found</p>
+                  <p class="ln">Was <c data-c="Em">Em</c>blind but <c data-c="D">D</c>now I <c data-c="G">G</c>see</p>
+                  <p class="sec">Verse 2</p>
+                  <p class="ln">'Twas <c data-c="G">G</c>grace that <c data-c="G7">G7</c>taught my <c data-c="C">C</c>heart to <c data-c="G">G</c>fear</p>
+                  <p class="ln">And grace my fears re-<c data-c="D">D</c>lieved</p>
+                </div>
+              </div>
+
+              <!-- Scene 3: Live -->
+              <div class="screen live-screen" data-screen="3">
+                <div class="live-top"><span class="live-dot"></span>LIVE <em data-clock>10:12:04</em></div>
+                <div class="live-now">
+                  <small>Now</small>
+                  <h3 data-live-title>Holy, Holy, Holy</h3>
+                  <div class="live-bar"><i data-live-bar></i></div>
+                  <span class="live-left" data-live-left>3:12 left</span>
+                </div>
+                <ol class="live-list" data-live-list>
+                  <li>Amazing Grace</li>
+                  <li>Holy, Holy, Holy</li>
+                  <li>Come Thou Fount</li>
+                  <li>Sermon</li>
+                  <li>Be Thou My Vision</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="film-controls">
+          <button class="film-play" type="button" data-film-toggle aria-label="Play the film">
+            <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+            <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>
+          </button>
+          <ol class="chapters">
+            <li><button type="button" data-chapter="0"><span>Schedule</span><i><b></b></i></button></li>
+            <li><button type="button" data-chapter="1"><span>Plan</span><i><b></b></i></button></li>
+            <li><button type="button" data-chapter="2"><span>Charts</span><i><b></b></i></button></li>
+            <li><button type="button" data-chapter="3"><span>Live</span><i><b></b></i></button></li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================== TEXT REVEAL -->
+    <section class="statement" data-scene="statement">
+      <div class="statement-sticky">
+        <p class="statement-text" data-words>Planning a service used to mean a spreadsheet, a group text, and a binder of chord charts. Now your whole team is on the same page — the same plan, the same key, the same moment.</p>
+      </div>
+    </section>
+
+    <!-- ========================================================= iPAD ZOOM -->
+    <section class="tablet" data-scene="tablet" aria-label="Service Center on iPad">
+      <div class="tablet-sticky">
+        <div class="tablet-head">
+          <h2 data-tablet-title>Big screen. Same plan.</h2>
+          <p class="tablet-sub" data-tablet-sub>Made for iPad, too — everything your team needs, laid out with room to breathe.</p>
+        </div>
+        <div class="ipad" data-ipad>
+          <div class="ipad-screen">
+            <img data-shot src="assets/img/screens/01-my-schedule.jpg" alt="My Schedule on iPad: upcoming services with confirmed and pending requests" loading="lazy">
+            <img data-shot src="assets/img/screens/02-plans.jpg" alt="Plans list on iPad" loading="lazy">
+            <img data-shot src="assets/img/screens/03-order-of-service.jpg" alt="Order of service with item times and keys" loading="lazy">
+            <img data-shot src="assets/img/screens/04-chord-chart.jpg" alt="A chord chart for Amazing Grace" loading="lazy">
+          </div>
+        </div>
+        <ol class="shot-labels" aria-hidden="true">
+          <li data-shot-label>My Schedule</li>
+          <li data-shot-label>Plans</li>
+          <li data-shot-label>Order of service</li>
+          <li data-shot-label>Chord charts</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ========================================================== FEATURES -->
+    <section class="features" id="features">
+      <div class="container">
+        <header class="section-head reveal">
+          <p class="eyebrow">Everything in one place</p>
+          <h2>Made for the way<br>worship teams work.</h2>
+        </header>
+
+        <div class="bento">
+          <article class="tile tile-wide tile-dark reveal">
+            <div class="tile-copy">
+              <p class="tile-kicker">Scheduling</p>
+              <h3>Fill every position. Without the group text.</h3>
+              <p>Schedule people onto teams and positions, see conflicts and blockouts before you ask, and track every answer at a glance.</p>
+            </div>
+            <div class="viz viz-matrix" aria-hidden="true">
+              <div class="row"><span>Vocals</span><i class="ok"></i><i class="ok"></i><i class="wait"></i><i class="ok"></i></div>
+              <div class="row"><span>Keys</span><i class="ok"></i><i class="no"></i><i class="ok"></i><i class="wait"></i></div>
+              <div class="row"><span>Guitar</span><i class="wait"></i><i class="ok"></i><i class="ok"></i><i class="ok"></i></div>
+              <div class="row"><span>Sound</span><i class="ok"></i><i class="ok"></i><i class="block"></i><i class="ok"></i></div>
+              <div class="legend"><b class="ok"></b>Confirmed <b class="wait"></b>Pending <b class="no"></b>Declined <b class="block"></b>Blocked out</div>
+            </div>
+          </article>
+
+          <article class="tile reveal">
+            <p class="tile-kicker">Blockouts</p>
+            <h3>Away? Say so once.</h3>
+            <p>Block out single dates or repeating ones. Schedulers see it before they ask.</p>
+            <div class="viz viz-cal" aria-hidden="true">
+              <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i class="x"></i>
+              <i class="x"></i><i></i><i></i><i></i><i></i><i></i><i class="sv"></i>
+              <i class="sv"></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </article>
+
+          <article class="tile tile-gradient reveal">
+            <p class="tile-kicker">Songs</p>
+            <h3>A library that remembers every key.</h3>
+            <p>Arrangements, keys, tempo, meter, themes, and the history of when each song was last used.</p>
+            <div class="viz viz-keys" aria-hidden="true"><b>G</b><b>A</b><b class="on">B♭</b><b>C</b><b>D</b><b>E</b></div>
+          </article>
+
+          <article class="tile reveal">
+            <p class="tile-kicker">Files</p>
+            <h3>Scan it. Share it.</h3>
+            <p>Scan paper charts to PDF, attach audio, links and documents — each with its own audience and version.</p>
+            <div class="viz viz-scan" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
+          </article>
+
+          <article class="tile tile-dark reveal">
+            <p class="tile-kicker">Rehearsal</p>
+            <h3>Practice on the drive in.</h3>
+            <p>Play the set's reference tracks with background audio, and keep plans downloaded for when there's no signal.</p>
+            <div class="viz viz-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          </article>
+
+          <article class="tile reveal">
+            <p class="tile-kicker">Messages</p>
+            <h3>Talk where the plan is.</h3>
+            <p>Team chats, messages to who's scheduled, and discussion on any plan item. Report or block in a tap.</p>
+            <div class="viz viz-chat" aria-hidden="true"><span class="in">Capo 2 this week?</span><span class="out">Yep — key of A 👍</span></div>
+          </article>
+
+          <article class="tile tile-wide reveal">
+            <div class="tile-copy">
+              <p class="tile-kicker">Calendar &amp; notifications</p>
+              <h3>Your schedule, wherever you already look.</h3>
+              <p>Push notifications and email when you're scheduled or a plan changes. Subscribe to your serving schedule in Apple Calendar, Google Calendar or Outlook — and see it across every church you serve with.</p>
+            </div>
+            <div class="viz viz-stack" aria-hidden="true">
+              <div><b>Scheduled</b>Sunday Worship · Vocals</div>
+              <div><b>Plan updated</b>Key changed to A for Amazing Grace</div>
+              <div><b>Reminder</b>Rehearsal tonight at 7:00 PM</div>
+            </div>
+          </article>
+
+          <article class="tile reveal">
+            <p class="tile-kicker">Permissions</p>
+            <h3>The right access for every role.</h3>
+            <p>Owners, admins, schedulers and members — plus permissions by team or service type.</p>
+            <div class="viz viz-roles" aria-hidden="true"><span>Owner</span><span>Admin</span><span>Scheduler</span><span>Team leader</span><span>Member</span></div>
+          </article>
+
+          <article class="tile tile-warm reveal">
+            <p class="tile-kicker">Languages</p>
+            <h3>English. Tiếng Việt.</h3>
+            <p>The whole app, in the language each person chooses.</p>
+            <div class="viz viz-lang" aria-hidden="true"><span>Lịch phục vụ</span><span>My Schedule</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= EVERYWHERE -->
+    <section class="everywhere" id="everywhere" data-scene="everywhere">
+      <div class="container">
+        <header class="section-head reveal">
+          <p class="eyebrow">Web, iPhone &amp; Android</p>
+          <h2>Plan on the big screen.<br><span class="gradient-text">Serve from your pocket.</span></h2>
+          <p class="section-sub">Leaders build plans, schedules and reports on the web. Volunteers answer requests, rehearse and follow along on their phone — iPhone and iPad today, Android soon. Same account, same data, always in sync.</p>
+        </header>
+        <div class="devices reveal" data-devices>
+          <div class="laptop">
+            <div class="laptop-screen"><img src="assets/img/screens/02-plans.jpg" alt="Plans on the web app" loading="lazy"></div>
+            <div class="laptop-base"></div>
+          </div>
+          <div class="mini-phone" role="img" aria-label="A chord chart for Amazing Grace on iPhone, in the key of A">
+            <div class="phone">
+              <div class="phone-screen">
+                <div class="island"></div>
+                <div class="statusbar"><span>9:41</span><span class="sb-icons"><i></i><i></i><b></b></span></div>
+                <div class="screen chart-screen is-active">
+                  <div class="app-head"><small>Sunday Morning · 72 bpm · 3/4</small><h3>Amazing Grace</h3></div>
+                  <div class="key-row"><span>Key</span><div class="key-pills"><b>G</b><b class="on">A</b><b>B♭</b></div></div>
+                  <div class="chart">
+                    <p class="sec">Verse 1</p>
+                    <p class="ln">A-<c data-show="A">A</c>mazing <c data-show="A7">A7</c>grace</p>
+                    <p class="ln">How <c data-show="D">D</c>sweet the <c data-show="A">A</c>sound</p>
+                    <p class="ln">That saved a</p>
+                    <p class="ln">wretch like <c data-show="E">E</c>me</p>
+                    <p class="ln">I <c data-show="A">A</c>once was <c data-show="A7">A7</c>lost</p>
+                    <p class="ln">but <c data-show="D">D</c>now am <c data-show="A">A</c>found</p>
+                    <p class="ln">Was <c data-show="F♯m">F♯m</c>blind but</p>
+                    <p class="ln"><c data-show="E">E</c>now I <c data-show="A">A</c>see</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="compare reveal">
+          <div>
+            <h3>On the web</h3>
+            <ul>
+              <li>Build plans, templates and recurring services</li>
+              <li>Scheduling matrix and auto-staffing proposals</li>
+              <li>Chart editor, song book export and PDFs</li>
+              <li>People, teams, permissions and reports</li>
+              <li>Live control for the service</li>
+            </ul>
+            <a class="btn-link" data-link="webAppUrl" href="https://app.graceaogchurch.com">Open the web app</a>
+          </div>
+          <div>
+            <h3>On iPhone &amp; iPad <span class="soon-tag">Android soon</span></h3>
+            <ul>
+              <li>Accept or decline requests from a notification</li>
+              <li>Blockouts, sign-ups and replacement requests</li>
+              <li>Chord charts in any key, offline downloads</li>
+              <li>Rehearsal player with background audio</li>
+              <li>Home Screen widget for what's next (iOS)</li>
+            </ul>
+            <a class="btn-link" href="docs/#mobile">See everything on mobile</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================ CTA -->
+    <section class="cta" id="download">
+      <div class="cta-glow" aria-hidden="true"></div>
+      <div class="container cta-inner reveal">
+        <img src="assets/img/app-icon.png" alt="" width="96" height="96" class="cta-icon">
+        <h2>Get your team<br>on the same page.</h2>
+        <p>Free to start. Create your church on the web today — the iPhone app is on its way to the App Store, and Android follows soon.</p>
+        <div class="hero-actions">
+          <a class="store-badge" data-store="appStoreUrl" aria-disabled="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3M10 18.5h4"/></svg>
+            <span class="store-text"><small data-store-label>Coming soon to the</small><strong>App Store</strong></span>
+          </a>
+          <a class="store-badge" data-store="playStoreUrl" aria-disabled="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 3.2v17.6c0 .5.5.8.9.6L20 13c.4-.2.4-.8 0-1.1L5.9 2.6c-.4-.2-.9.1-.9.6z" opacity=".9"/></svg>
+            <span class="store-text"><small data-store-label>Coming soon on</small><strong>Google Play</strong></span>
+          </a>
+          <a class="btn btn-primary" data-link="webAppUrl" href="https://app.graceaogchurch.com">Get started on the web</a>
+        </div>
+        <div class="cta-links">
+          <a class="btn-link" href="docs/">Read the documentation</a>
+          <a class="btn-link" data-email href="mailto:support@graceaogchurch.com">Questions? Email us</a>
+        </div>
+        <p class="cta-email">support@graceaogchurch.com</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="./"><img src="assets/img/app-icon.png" alt="">Service Center</a>
+          <p>Service planning and team scheduling for churches and worship teams.</p>
+        </div>
+        <div>
+          <h3>Product</h3>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#everywhere">Web &amp; Mobile</a></li>
+            <li><a data-link="webAppUrl" href="https://app.graceaogchurch.com">Web app</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Learn</h3>
+          <ul>
+            <li><a href="docs/">Documentation</a></li>
+            <li><a href="docs/#getting-started">Getting started</a></li>
+            <li><a href="docs/#faq">FAQ</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Help</h3>
+          <ul>
+            <li><a data-email data-email-text href="mailto:support@graceaogchurch.com">support@graceaogchurch.com</a></li>
+            <li><a data-link="supportUrl" href="https://app.graceaogchurch.com/support">Support center</a></li>
+            <li><a data-link="privacyUrl" href="https://app.graceaogchurch.com/privacy">Privacy</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year>2026</span> Service Center. All rights reserved.</span>
+        <span>Web · iPhone &amp; iPad · Android coming soon · English &amp; Tiếng Việt</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/common.js"></script>
+  <script src="assets/js/landing.js"></script>
+</body>
+</html>
