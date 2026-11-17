@@ -99,7 +99,9 @@ export interface StaffingMatrixPreviewItem {
 export type StaffingMatrixWarning =
   | { kind: 'preference'; warning: PreferenceWarning }
   | { kind: 'copy_resets_answers' }
-  | { kind: 'team_unavailable' };
+  | { kind: 'team_unavailable' }
+  /** The Person is archived or no longer an active member; the commit would be refused. */
+  | { kind: 'person_unavailable' };
 
 export interface StaffingMatrixPreview {
   operation_id: string;

@@ -69,6 +69,8 @@ export const staffingMatrixWarningText = (warning: StaffingMatrixWarning, contex
       return say(context, 'staffing:structured.matrix.copy_resets_answers');
     case 'team_unavailable':
       return say(context, 'staffing:structured.matrix.team_unavailable');
+    case 'person_unavailable':
+      return say(context, 'staffing:structured.matrix.person_unavailable');
   }
 };
 

@@ -585,7 +585,8 @@
     },
     "matrix": {
       "copy_resets_answers": "Câu trả lời và thời điểm gửi sẽ được đặt lại trên yêu cầu được sao chép.",
-      "team_unavailable": "Ban đã chọn hiện không khả dụng."
+      "team_unavailable": "Ban đã chọn hiện không khả dụng.",
+      "person_unavailable": "Người này đã được lưu trữ hoặc không còn là thành viên hoạt động, nên không thể xếp lịch."
     },
     "prepared": "đang chuẩn bị",
     "exclusion": {

@@ -10,8 +10,8 @@ import {
 } from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
-import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
-import { HttpError } from '../lib/errors.js';
+import { raw, unwrap } from '../lib/supabase.js';
+import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { resolveAvailabilityTarget } from '../services/availability.js';
 
 export const blockoutsRouter: Router = Router();
@@ -63,7 +63,7 @@ const affectedAssignments = async (
     p_organization_id: req.orgId, p_person_id: personId,
     p_ranges: occurrences.map(({ starts_at, ends_at }) => ({ starts_at, ends_at })),
   });
-  if (error) throw new HttpError(error.code === '42501' ? 403 : 400, error.message, error.code);
+  if (error) throw fromPostgrestError(error);
   return (data ?? []) as AffectedAssignmentPreview[];
 };
 
@@ -80,14 +80,18 @@ const seriesPayload = (input: PreviewBlockoutSeriesInput): Record<string, unknow
 
 blockoutsRouter.get('/', validateQuery(listQuerySchema), async (req, res) => {
   const { person_id, user_id, from, to, scope } = parsedQuery<z.infer<typeof listQuerySchema>>(res);
-  let query = req.db.from('blockouts').select('*').eq('organization_id', req.orgId).order('starts_at');
+  // The database returns only blockouts the caller may manage (self, admin,
+  // delegate, or a leader of a team the Person is on) and withholds the
+  // private reason from team leaders (W2-AVAIL-D3).
+  let personFilter: string | null = null;
   if (scope === 'organization') {
     if (!canAccessAnywhere(req.access, 'scheduling.manage')) throw HttpError.forbidden('Only schedulers can see everyone’s blockouts');
-    if (person_id) query = query.eq('person_id', person_id);
-    if (user_id) query = query.eq('user_id', user_id);
-  } else query = query.eq('person_id', (await resolveTarget(req, person_id)).personId);
-  if (from) query = query.gt('ends_at', from);
-  if (to) query = query.lt('starts_at', to);
+    personFilter = person_id ?? null;
+  } else personFilter = (await resolveTarget(req, person_id)).personId;
+  let query = req.db.rpc('list_blockouts', {
+    p_organization_id: req.orgId, p_person_id: personFilter, p_from: from ?? null, p_to: to ?? null,
+  });
+  if (scope === 'organization' && user_id) query = query.eq('user_id', user_id);
   res.json((await unwrap(query)) ?? []);
 });
 
@@ -112,7 +116,7 @@ blockoutsRouter.post('/series', validateBody(createBlockoutSeriesSchema), async 
     p_organization_id: req.orgId, p_person_id: target.personId, p_series: seriesPayload(input),
     p_occurrences: occurrences, p_idempotency_key: input.idempotency_key,
   });
-  if (error) throw new HttpError(error.code === '23505' ? 409 : 400, error.message, error.code);
+  if (error) throw fromPostgrestError(error);
   res.status(201).json({ series: data, occurrences,
     affected_assignments: await affectedAssignments(req, target.personId, occurrences),
   } satisfies BlockoutSeriesSaveResult);
@@ -157,7 +161,7 @@ blockoutsRouter.post('/series/:id/change', validateBody(maintainBlockoutSeriesSc
     p_action: input.action, p_series: payload, p_occurrences: occurrences,
     p_idempotency_key: input.idempotency_key,
   });
-  if (error) throw new HttpError(error.code === 'PT409' ? 409 : 400, error.message, error.code);
+  if (error) throw error.code === 'PT409' ? HttpError.conflict(error.message) : fromPostgrestError(error);
   res.json(data);
 });
 
@@ -165,10 +169,14 @@ blockoutsRouter.post('/', validateBody(blockoutSchema), async (req, res) => {
   const body = req.body as z.infer<typeof blockoutSchema>;
   if ('starts_at' in body) {
     const target = await resolveTarget(req, undefined, body.user_id);
-    const created = await unwrapOne(req.db.from('blockouts').insert({
-      starts_at: body.starts_at, ends_at: body.ends_at, reason: body.reason ?? null,
-      organization_id: req.orgId, person_id: target.personId, user_id: target.profileId,
-    }).select('*').single());
+    // Through the RPC so a team leader (who cannot read reasons) can still
+    // create one and gets back only the row they wrote.
+    const { data: created, error: createError } = await raw(req.db).rpc('create_blockout', {
+      p_organization_id: req.orgId, p_person_id: target.personId,
+      p_payload: { starts_at: body.starts_at, ends_at: body.ends_at, reason: body.reason ?? null, timezone: null, all_day: false },
+      p_idempotency_key: null,
+    });
+    if (createError) throw fromPostgrestError(createError);
     res.status(201).json(created);
     return;
   }
@@ -179,7 +187,7 @@ blockoutsRouter.post('/', validateBody(blockoutSchema), async (req, res) => {
     p_payload: { ...occurrence, reason: body.reason ?? null, timezone: body.timezone, all_day: body.all_day },
     p_idempotency_key: body.idempotency_key ?? null,
   });
-  if (error) throw new HttpError(400, error.message, error.code);
+  if (error) throw fromPostgrestError(error);
   res.status(201).json({ blockout: data,
     affected_assignments: await affectedAssignments(req, target.personId, [occurrence]) });
 });
@@ -192,15 +200,15 @@ blockoutsRouter.patch('/:id', validateBody(updateBlockoutSchema), async (req, re
     p_blockout_id: param(req, 'id'), p_expected_revision: input.expected_revision,
     p_payload: { ...occurrence, reason: input.reason ?? null, timezone: input.timezone, all_day: input.all_day },
   });
-  if (error) throw new HttpError(error.code === 'PT409' ? 409 : 400, error.message, error.code);
+  if (error) throw error.code === 'PT409' ? HttpError.conflict(error.message) : fromPostgrestError(error);
   res.json({ blockout: data, affected_assignments: await affectedAssignments(req, target.personId, [occurrence]) });
 });
 
 blockoutsRouter.delete('/:id', validateQuery(deleteQuerySchema), async (req, res) => {
   const { expected_revision } = parsedQuery<z.infer<typeof deleteQuerySchema>>(res);
-  let query = req.db.from('blockouts').delete().eq('id', param(req, 'id')).is('series_id', null);
-  if (expected_revision != null) query = query.eq('revision', expected_revision);
-  const deleted = await unwrap(query.select('id').maybeSingle());
+  const deleted = await unwrap(req.db.rpc('delete_blockout', {
+    p_blockout_id: param(req, 'id'), p_expected_revision: expected_revision ?? null,
+  }));
   if (!deleted) throw HttpError.conflict('This blockout changed or is part of a repeating series');
   res.status(204).end();
 });
