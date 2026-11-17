@@ -134,7 +134,16 @@ export const fromPostgrestError = (error: {
       return HttpError.badRequest('Referenced record does not exist', error.details);
     case '23514':
       return HttpError.badRequest('A value failed a database constraint', error.details);
+    // Malformed uuid/number/date literals that slipped past request
+    // validation: the caller's input, never the engine's message.
+    case '22P02':
+      return HttpError.badRequest('Invalid identifier or value');
+    case '22007':
+    case '22008':
+      return HttpError.badRequest('Invalid date or time');
     case '42501':
+      // A beneficiary tried to approve their own claim, offer or swap (W2-RESP-D2).
+      if (error.hint === 'self_approval') return new HttpError(403, error.message, 'self_approval');
       // Self-serve church creation is off: the person should apply instead.
       if (error.hint === 'church_application_required') {
         return new HttpError(403, error.message, CHURCH_APPLICATION_REQUIRED);

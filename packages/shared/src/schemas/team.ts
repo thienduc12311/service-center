@@ -10,7 +10,11 @@ export const createTeamSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, 'Expected a hex colour like #6366f1')
     .default('#6366f1'),
   sort_order: z.number().int().min(0).default(0),
-  positions: z.array(nonEmpty.max(80)).max(50).optional(),
+  positions: z
+    .array(nonEmpty.max(80))
+    .max(50)
+    .refine((names) => new Set(names).size === names.length, 'Each position name can be used only once')
+    .optional(),
 });
 
 export const updateTeamSchema = createTeamSchema

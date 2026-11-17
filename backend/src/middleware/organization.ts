@@ -11,6 +11,7 @@ import {
   type OrgRole,
 } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
+import { isUuid } from '../lib/params.js';
 import { loadMyAccess } from '../services/access.js';
 import { isExpiredPlatformAccess, listMyDisabledOrganizations } from '../services/organization-platform.js';
 import { recordPlatformAccessRequest } from '../services/platform-admin.js';
@@ -67,6 +68,7 @@ export const withOrganization = async (
     const requested =
       (req.header('X-Organization-Id') ?? (req.query.organization_id as string | undefined))?.trim() ||
       null;
+    if (requested && !isUuid(requested)) throw HttpError.badRequest('Invalid X-Organization-Id header');
 
     const { data, error } = await req.db
       .from('organization_members')

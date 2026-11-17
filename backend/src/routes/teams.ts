@@ -18,7 +18,7 @@ import {
 import { validateBody } from '../lib/validate.js';
 import { requireAdmin, requireCapability, requireManager, requireRosterEditor } from '../middleware/organization.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
-import { HttpError } from '../lib/errors.js';
+import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { loadScopeAccess, replaceScopeAccess } from '../services/access.js';
 import { NO_CONTACT, contactsFor, type MemberContact } from '../services/contacts.js';
 
@@ -131,11 +131,14 @@ teamsRouter.post('/', requireCapability('teams.manage'), validateBody(createTeam
   );
 
   if (positions?.length) {
-    await unwrap(
-      req.db.from('team_positions').insert(
-        positions.map((name, index) => ({ team_id: created.id, name, sort_order: index })),
-      ),
+    const { error } = await req.db.from('team_positions').insert(
+      positions.map((name, index) => ({ team_id: created.id, name, sort_order: index })),
     );
+    if (error) {
+      // Never leave a team without the positions it was created with (API-D6).
+      await unwrap(req.db.from('teams').delete().eq('id', created.id).eq('organization_id', req.orgId));
+      throw fromPostgrestError(error);
+    }
   }
 
   res.status(201).json(await loadTeam(req, created.id));

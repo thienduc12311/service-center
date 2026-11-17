@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { idempotencyKey, uuid } from './common.js';
+import { parseLocalDate } from '../lib/timezone.js';
 
-const localDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
+const localDate = z.string().refine((value) => parseLocalDate(value) !== null, 'Use a real YYYY-MM-DD date');
 
 export const proposalLockSchema = z.object({ plan_id: uuid, position_id: uuid, person_id: uuid });
 export const proposalExclusionSchema = z.object({ plan_id: uuid, position_id: uuid, person_id: uuid });

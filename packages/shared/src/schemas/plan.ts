@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { conflictOverrideReason, idempotencyKey, musicalKey, nonEmpty, paginationSchema, uuid } from './common.js';
+import { conflictOverrideReason, idempotencyKey, instantString, musicalKey, nonEmpty, paginationSchema, uuid } from './common.js';
 
 export const planStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const planTimeKindSchema = z.enum(['service', 'rehearsal', 'other']);
@@ -11,8 +11,8 @@ export const planTimeSchema = z
     id: uuid.optional(),
     kind: planTimeKindSchema.default('service'),
     name: z.string().trim().max(120).nullish(),
-    starts_at: z.string(),
-    ends_at: z.string(),
+    starts_at: instantString,
+    ends_at: instantString,
     sort_order: z.number().int().min(0).optional(),
   })
   .refine((v) => new Date(v.starts_at) < new Date(v.ends_at), {
@@ -23,7 +23,7 @@ export const planTimeSchema = z
 export const createPlanSchema = z.object({
   title: nonEmpty.max(200),
   service_type_id: uuid.nullish(),
-  service_date: z.string(),
+  service_date: instantString,
   location: z.string().trim().max(200).nullish(),
   status: planStatusSchema.default('draft'),
   notes: z.string().trim().max(8000).nullish(),
@@ -62,7 +62,7 @@ export const updatePlanSchema = createPlanSchema
 
 /** "Same as last week": a new draft plan copied from an existing one. */
 export const duplicatePlanSchema = z.object({
-  service_date: z.string(),
+  service_date: instantString,
   title: z.string().trim().min(1).max(200).optional(),
   copy_assignments: z.boolean().default(true),
   idempotency_key: idempotencyKey.optional(),
@@ -192,8 +192,8 @@ export const setPlanPositionNeedsSchema = z.object({
 export const listPlansQuerySchema = paginationSchema.extend({
   status: planStatusSchema.optional(),
   service_type_id: uuid.optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
+  from: instantString.optional(),
+  to: instantString.optional(),
   order: z.enum(['asc', 'desc']).default('asc'),
 });
 

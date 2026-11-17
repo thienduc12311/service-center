@@ -222,6 +222,6 @@ arrangementsRouter.delete('/:id', requireCapability('songs.manage'), async (req,
  * keeps the web and native renderers byte-for-byte identical.
  */
 arrangementsRouter.get('/:id/chart', validateQuery(chartQuerySchema), async (req, res) => {
-  const chart = await loadArrangementChart(req.db, param(req, 'id'), parsedQuery<ChartQuery>(res));
+  const chart = await loadArrangementChart(req.db, req.orgId, param(req, 'id'), parsedQuery<ChartQuery>(res));
   res.json(chart);
 });

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { param } from '../lib/params.js';
 import {
   createPlanItemSchema,
@@ -55,6 +55,20 @@ import { deliverEffectNow } from '../services/delivery-worker.js';
 
 export const plansRouter: Router = Router();
 
+/** The list filters that decide which plans are counted. */
+type PlanListFilters = Pick<ListPlansQuery, 'status' | 'service_type_id' | 'from' | 'to'>;
+
+const countPlans = async (req: Request, filters: PlanListFilters): Promise<number> => {
+  let query = raw(req.db).from('plans').select('id', { count: 'exact', head: true }).eq('organization_id', req.orgId);
+  if (filters.status) query = query.eq('status', filters.status);
+  if (filters.service_type_id) query = query.eq('service_type_id', filters.service_type_id);
+  if (filters.from) query = query.gte('service_date', filters.from);
+  if (filters.to) query = query.lte('service_date', filters.to);
+  const { count, error } = await query;
+  if (error) throw fromPostgrestError(error);
+  return count ?? 0;
+};
+
 plansRouter.get('/', validateQuery(listPlansQuerySchema), async (req, res) => {
   const { page, per_page, status, service_type_id, from, to, order } =
     parsedQuery<ListPlansQuery>(res);
@@ -76,7 +90,14 @@ plansRouter.get('/', validateQuery(listPlansQuerySchema), async (req, res) => {
     .order('id', { ascending: order === 'asc' })
     .range(offset, offset + per_page - 1);
 
-  if (error) throw new HttpError(500, error.message, error.code);
+  // A page past the end is an empty page, not an error (W2-PLANS-D2).
+  // PostgREST answers it with PGRST103 and no count, so count separately.
+  if (error?.code === 'PGRST103') {
+    const beyond: Paginated<PlanSummary> = { data: [], page, per_page, total: await countPlans(req, { status, service_type_id, from, to }) };
+    res.json(beyond);
+    return;
+  }
+  if (error) throw fromPostgrestError(error);
 
   const payload: Paginated<PlanSummary> = {
     data: (data ?? []).map((row) => shapePlanSummary(row as never)),

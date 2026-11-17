@@ -54,3 +54,26 @@ describe('fromPostgrestError: church join requests', () => {
     expect(fromPostgrestError({ code: 'PT409', message: 'refused', hint })).toMatchObject({ status: 409, code });
   });
 });
+
+/** QA wave 2 input/error hygiene. */
+describe('fromPostgrestError: caller input', () => {
+  it('answers malformed literals as 400 without the engine text', () => {
+    const error = fromPostgrestError({ code: '22P02', message: 'invalid input syntax for type uuid: "abc"' });
+    expect(error).toMatchObject({ status: 400, code: 'bad_request' });
+    expect(error.message).not.toContain('uuid');
+  });
+
+  it('answers invalid dates as 400', () => {
+    expect(fromPostgrestError({ code: '22008', message: 'date/time field value out of range' })).toMatchObject({ status: 400 });
+    expect(fromPostgrestError({ code: '22007', message: 'invalid input syntax for type timestamp' })).toMatchObject({ status: 400 });
+  });
+
+  it('keeps the self-approval message as a 403 (W2-RESP-D2)', () => {
+    const error = fromPostgrestError({ code: '42501', message: 'You cannot approve your own claim', hint: 'self_approval' });
+    expect(error).toMatchObject({ status: 403, code: 'self_approval', message: 'You cannot approve your own claim' });
+  });
+
+  it('answers a missing blockout as 404 (W2-AVAIL-D2)', () => {
+    expect(fromPostgrestError({ code: 'P0002', message: 'Blockout not found' })).toMatchObject({ status: 404, message: 'Blockout not found' });
+  });
+});
