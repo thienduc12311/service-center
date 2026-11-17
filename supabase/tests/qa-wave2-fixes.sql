@@ -4,6 +4,7 @@
 --   B. W2-STAFF-D1  prepared requests outside the viewer's scope still conflict (redacted)
 --   C. W2-RESP-D2   no self-approval of a claim, replacement offer or swap
 --   D. W2-STAFF-D2  inactive members are not schedulable candidates
+--   E. P0 follow-up  people_directory (and every public view) is read-only for API roles
 -- Run against a seeded local database. Everything rolls back.
 --   docker exec -i supabase_db_service-center psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/qa-wave2-fixes.sql
 begin;
@@ -245,6 +246,37 @@ do $$ begin
   end if;
 end $$;
 
+-- ============================================ E. read-only public views ===
 reset role;
-select 'qa wave 2: blockout scope, hidden conflicts, self-approval and schedulable people verified' as result;
+do $$ begin
+  if exists (
+    select 1 from pg_views v
+      join information_schema.role_table_grants g on g.table_schema = 'public' and g.table_name = v.viewname
+     where v.schemaname = 'public' and g.grantee in ('authenticated', 'anon', 'PUBLIC')
+       and g.privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'TRIGGER', 'REFERENCES')) then
+    raise exception 'A public view grants write privileges to an API role';
+  end if;
+end $$;
+set local role authenticated;
+set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
+select pg_temp.expect_error($$update public.people_directory set first_name = 'Hijacked' where id = pg_temp.fx('morgan')$$,
+  '42501', null, 'member updates another Person through people_directory');
+select pg_temp.expect_error($$delete from public.people_directory where id = pg_temp.fx('morgan')$$,
+  '42501', null, 'member deletes a Person through people_directory');
+select pg_temp.expect_error($$insert into public.people_directory (organization_id, first_name) values (pg_temp.fx('org'), 'Injected')$$,
+  '42501', null, 'member inserts a Person through people_directory');
+do $$ begin
+  if not exists (select 1 from public.people_directory where id = pg_temp.fx('morgan')) then
+    raise exception 'people_directory is no longer readable by members';
+  end if;
+end $$;
+reset role;
+do $$ begin
+  if (select first_name from public.people where id = pg_temp.fx('morgan')) = 'Hijacked' then
+    raise exception 'A Person was changed through people_directory';
+  end if;
+end $$;
+
+reset role;
+select 'qa wave 2: blockout scope, hidden conflicts, self-approval, schedulable people and read-only views verified' as result;
 rollback;
