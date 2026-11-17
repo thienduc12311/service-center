@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   ApiError,
+  isOwnApproval,
   type OpportunityClaimDetail,
   type OpportunityClaimRow,
   type SignupOpportunity,
@@ -13,6 +14,7 @@ import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { newIdempotencyKey } from '../../src/lib/idempotency';
 import { useAuth } from '../../src/providers/AuthProvider';
+import { useMyPersonId } from '../../src/lib/useReplacements';
 import { Button, Card, DateBadge, EmptyState, ErrorNotice, Label, ListRow, Loading, Screen, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
 import { MetaLine, StatusBanner, TimeSlotList } from '../../src/components/StaffingParts';
 import {
@@ -62,6 +64,7 @@ export default function OpeningScreen() {
   const format = useFormatters();
   const [reviewing, setReviewing] = useState(false);
   const [failure, setFailure] = useState<ClaimFailure | null>(null);
+  const myPersonId = useMyPersonId();
 
   const userId = queryScope?.userId ?? null;
   const organizationId = queryScope?.organizationId ?? null;
@@ -305,7 +308,10 @@ export default function OpeningScreen() {
                       : null}
                     <View style={styles.actions}>
                       <Button variant="secondary" title={t('opportunities.reject')} disabled={decide.isPending} onPress={() => confirmReject(item)} />
-                      <Button title={t('opportunities.approve')} disabled={decide.isPending} onPress={() => decide.mutate({ claim: item, action: 'approve' })} />
+                      {/* A leader never approves their own claim (W2-RESP-D2). */}
+                      {isOwnApproval({ beneficiaryPersonIds: [item.person_id] }, myPersonId) ? null : (
+                        <Button title={t('opportunities.approve')} disabled={decide.isPending} onPress={() => decide.mutate({ claim: item, action: 'approve' })} />
+                      )}
                     </View>
                   </ListRow>
                 ))}

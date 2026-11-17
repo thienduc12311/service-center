@@ -6,6 +6,7 @@
 import {
   ApiError,
   LocalizedError,
+  isValidTimeZone,
   ORGANIZATION_DISABLED,
   STORAGE_QUOTA_WARNING_FRACTION,
   storageQuotaState,
@@ -30,7 +31,9 @@ export const isChurchApplicationDraftComplete = (draft: ChurchApplicationDraft):
   CHURCH_APPLICATION_REQUIRED_FIELDS.every((field) => draft[field].trim().length > 0);
 
 /** The device's IANA zone, the application form's default. */
-export const deviceTimeZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+export const deviceTimeZone = (zone: string | undefined = Intl.DateTimeFormat().resolvedOptions().timeZone): string =>
+  // The API accepts IANA zones only (API-D4); anything else falls back to UTC.
+  zone && isValidTimeZone(zone) ? zone : 'UTC';
 
 /** The active church entered as a temporary owner by a Service Center admin. */
 export interface PlatformAccess {

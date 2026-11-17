@@ -2,6 +2,7 @@ import {
   ApiError,
   actOnReplacementOfferSchema,
   createReplacementRequestSchema,
+  mayApproveAsLeader,
   type ActOnReplacementOfferInput,
   type AttendanceConflict,
   type CheckAssignmentConflictsRequest,
@@ -72,9 +73,18 @@ export const myOffer = (
 export const canAnswerOffer = (offer: ReplacementOfferRow | null, personId: string | null): offer is ReplacementOfferRow =>
   Boolean(offer && personId && offer.candidate_person_id === personId && offer.status === 'pending');
 
-/** A leader may approve until both sides are in; approving twice is not offered. */
-export const canApproveOffer = (offer: ReplacementOfferRow, request: Pick<ReplacementRequestDetail, 'status'>, mayLead: boolean): boolean =>
-  mayLead && request.status === 'open' && offerIsLive(offer) && !offer.leader_approved_at;
+/**
+ * A leader may approve until both sides are in; approving twice is not
+ * offered, and never to the candidate themself (the server refuses it).
+ */
+export const canApproveOffer = (
+  offer: ReplacementOfferRow,
+  request: Pick<ReplacementRequestDetail, 'status'>,
+  mayLead: boolean,
+  actorPersonId: string | null,
+): boolean =>
+  mayApproveAsLeader({ beneficiaryPersonIds: [offer.candidate_person_id] }, actorPersonId, mayLead)
+  && request.status === 'open' && offerIsLive(offer) && !offer.leader_approved_at;
 
 export const canRejectOffer = (offer: ReplacementOfferRow, request: Pick<ReplacementRequestDetail, 'status'>, mayLead: boolean): boolean =>
   mayLead && request.status === 'open' && offerIsLive(offer);
