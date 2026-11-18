@@ -111,12 +111,16 @@ export const resolveAvailabilityTarget = async (
   const person = await unwrap(query.maybeSingle());
   if (!person) throw HttpError.notFound('Person not found');
   if (person.profile_id === ctx.userId) return { personId: person.id, profileId: person.profile_id, via: 'self' };
-  if (canAccessAnywhere(ctx.access, 'scheduling.manage')) {
+  // Scoped schedulers reach only People on a team they can schedule (W2-AVAIL-D3).
+  const scheduler = canAccessAnywhere(ctx.access, 'scheduling.manage');
+  if (scheduler && (await unwrap(raw(ctx.db).rpc('can_manage_availability', { p_organization_id: ctx.orgId, p_person_id: person.id }))) === true) {
     return { personId: person.id, profileId: person.profile_id, via: 'scheduler' };
   }
   if (await hasAvailabilityGrant(ctx, person.id)) {
     return { personId: person.id, profileId: person.profile_id, via: 'delegate' };
   }
+  // Out of a scheduler's scope reads as absent, as RLS would.
+  if (scheduler) throw HttpError.notFound('Person not found');
   throw HttpError.forbidden('Only schedulers or someone they asked to help can change another person’s availability');
 };
 

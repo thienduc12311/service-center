@@ -623,7 +623,8 @@
     },
     "matrix": {
       "copy_resets_answers": "Answers and delivery timestamps will be reset on the copied request.",
-      "team_unavailable": "The selected team is unavailable."
+      "team_unavailable": "The selected team is unavailable.",
+      "person_unavailable": "This person is archived or no longer an active member, so they cannot be scheduled."
     },
     "prepared": "prepared",
     "exclusion": {

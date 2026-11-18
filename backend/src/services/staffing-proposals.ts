@@ -146,7 +146,8 @@ export const captureSnapshot = async (req: Request, scope: SnapshotScope): Promi
   for (let start = 0; start < nameIds.length; start += 500) {
     const chunk = nameIds.slice(start, start + 500);
     people.push(...(((await unwrap(req.db.from('people_directory').select('id, first_name, last_name')
-      .eq('organization_id', req.orgId).is('archived_at', null).in('id', chunk))) ?? []) as SnapshotPersonRow[]));
+      // Schedulable only: inactive members are never proposed (W2-STAFF-D2).
+      .eq('organization_id', req.orgId).eq('schedulable', true).in('id', chunk))) ?? []) as SnapshotPersonRow[]));
   }
   const activeIds = new Set(people.map((person) => person.id));
   const eligibleIds = candidateIds.filter((personId) => activeIds.has(personId));

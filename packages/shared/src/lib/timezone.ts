@@ -98,6 +98,17 @@ export const parseLocalTime = (value: string): Pick<LocalDateTimeParts, 'hour' |
   return hour <= 23 && minute <= 59 ? { hour, minute } : null;
 };
 
+/**
+ * A local date/time/recurrence the caller supplied cannot be resolved. The
+ * message is written for people, so servers answer it as a 400.
+ */
+export class TimeInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TimeInputError';
+  }
+}
+
 const pad = (value: number): string => String(value).padStart(2, '0');
 
 export const formatLocalDate = (parts: LocalDateParts): string =>
@@ -105,7 +116,7 @@ export const formatLocalDate = (parts: LocalDateParts): string =>
 
 export const addLocalDays = (value: string, days: number): string => {
   const parts = parseLocalDate(value);
-  if (!parts) throw new Error('Enter a valid local date.');
+  if (!parts) throw new TimeInputError('Enter a valid local date.');
   const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days));
   return formatLocalDate({ year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() });
 };
@@ -113,7 +124,7 @@ export const addLocalDays = (value: string, days: number): string => {
 const localDayDifference = (start: string, end: string): number => {
   const a = parseLocalDate(start);
   const b = parseLocalDate(end);
-  if (!a || !b) throw new Error('Enter valid local dates.');
+  if (!a || !b) throw new TimeInputError('Enter valid local dates.');
   return Math.round((Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day)) / 86_400_000);
 };
 
@@ -133,7 +144,7 @@ const formattedParts = (instantMs: number, timeZone: string): LocalDateTimeParts
 /** The civil date (`YYYY-MM-DD`) of an instant in an IANA zone. */
 export const localDateAt = (instant: string | number, timeZone: string): string => {
   const ms = typeof instant === 'number' ? instant : new Date(instant).getTime();
-  if (Number.isNaN(ms)) throw new Error('Enter a valid instant.');
+  if (Number.isNaN(ms)) throw new TimeInputError('Enter a valid instant.');
   const parts = formattedParts(ms, timeZone);
   return formatLocalDate(parts);
 };
@@ -163,8 +174,8 @@ export const possibleInstantsForLocalDateTime = (
 ): ResolvedZonedDateTime[] => {
   const date = parseLocalDate(localDate);
   const time = parseLocalTime(localTime);
-  if (!date || !time) throw new Error('Enter a valid local date and time.');
-  if (!isValidTimeZone(timeZone)) throw new Error('Choose a valid IANA timezone.');
+  if (!date || !time) throw new TimeInputError('Enter a valid local date and time.');
+  if (!isValidTimeZone(timeZone)) throw new TimeInputError('Choose a valid IANA timezone.');
 
   const requested: LocalDateTimeParts = { ...date, ...time };
   const wallEpoch = Date.UTC(date.year, date.month - 1, date.day, time.hour, time.minute);
@@ -187,20 +198,20 @@ export const possibleInstantsForLocalDateTime = (
 export const resolveZonedLocalDateTime = (input: ZonedLocalDateTime): ResolvedZonedDateTime => {
   const matches = possibleInstantsForLocalDateTime(input.localDate, input.localTime, input.timeZone);
   if (matches.length === 0) {
-    throw new Error('That local time does not exist because the clock moves forward. Choose another time.');
+    throw new TimeInputError('That local time does not exist because the clock moves forward. Choose another time.');
   }
   if (matches.length === 1) return matches[0]!;
   if (input.utcOffsetMinutes == null) {
-    throw new Error('That local time occurs twice because the clock moves back. Choose the earlier or later offset.');
+    throw new TimeInputError('That local time occurs twice because the clock moves back. Choose the earlier or later offset.');
   }
   const selected = matches.find((match) => match.utcOffsetMinutes === input.utcOffsetMinutes);
-  if (!selected) throw new Error('Choose one of the available offsets for this ambiguous local time.');
+  if (!selected) throw new TimeInputError('Choose one of the available offsets for this ambiguous local time.');
   return selected;
 };
 
 const addMonthlyOccurrence = (anchor: string, months: number): string | null => {
   const parts = parseLocalDate(anchor);
-  if (!parts) throw new Error('Enter a valid local date.');
+  if (!parts) throw new TimeInputError('Enter a valid local date.');
   const monthIndex = parts.month - 1 + months;
   const year = parts.year + Math.floor(monthIndex / 12);
   const month = ((monthIndex % 12) + 12) % 12;
@@ -215,17 +226,17 @@ const resolveOccurrence = (
 ): BlockoutOccurrenceIntent => {
   const startTime = input.allDay ? '00:00' : input.localStartTime;
   const endTime = input.allDay ? '00:00' : input.localEndTime;
-  if (!startTime || !endTime) throw new Error('Timed blockouts need start and end times.');
+  if (!startTime || !endTime) throw new TimeInputError('Timed blockouts need start and end times.');
   const starts = possibleInstantsForLocalDateTime(localStartDate, startTime, input.timeZone);
   const ends = possibleInstantsForLocalDateTime(localEndDate, endTime, input.timeZone);
   if (starts.length === 0 || ends.length === 0) {
-    throw new Error(`An occurrence on ${localStartDate} uses a local time skipped by daylight saving. Choose another time.`);
+    throw new TimeInputError(`An occurrence on ${localStartDate} uses a local time skipped by daylight saving. Choose another time.`);
   }
   const choose = (values: ResolvedZonedDateTime[]): ResolvedZonedDateTime =>
     input.ambiguousTimePolicy === 'earlier' ? values[0]! : values.at(-1)!;
   const start = choose(starts);
   const end = choose(ends);
-  if (new Date(start.instant) >= new Date(end.instant)) throw new Error('End must be after start.');
+  if (new Date(start.instant) >= new Date(end.instant)) throw new TimeInputError('End must be after start.');
   return {
     occurrenceKey: `${localStartDate}T${startTime}`,
     localStartDate,
@@ -240,17 +251,17 @@ const resolveOccurrence = (
 
 export const expandBlockoutRecurrence = (input: ExpandBlockoutRecurrenceInput): BlockoutOccurrenceIntent[] => {
   if (!Number.isInteger(input.interval) || input.interval < 1 || input.interval > 12) {
-    throw new Error('Recurrence interval must be between 1 and 12.');
+    throw new TimeInputError('Recurrence interval must be between 1 and 12.');
   }
   const countLimit = input.end.type === 'count' ? input.end.count : 120;
   if (!Number.isInteger(countLimit) || countLimit < 1 || countLimit > 120) {
-    throw new Error('A recurring series must contain between 1 and 120 occurrences.');
+    throw new TimeInputError('A recurring series must contain between 1 and 120 occurrences.');
   }
   if (input.end.type === 'until' && !parseLocalDate(input.end.untilDate)) {
-    throw new Error('Choose a valid recurrence end date.');
+    throw new TimeInputError('Choose a valid recurrence end date.');
   }
   const daySpan = localDayDifference(input.localStartDate, input.localEndDate);
-  if (daySpan < 0 || daySpan > 366) throw new Error('Blockout ranges may span at most 366 local days.');
+  if (daySpan < 0 || daySpan > 366) throw new TimeInputError('Blockout ranges may span at most 366 local days.');
 
   const occurrences: BlockoutOccurrenceIntent[] = [];
   for (let step = 0; occurrences.length < countLimit && step < 240; step += 1) {
@@ -261,11 +272,11 @@ export const expandBlockoutRecurrence = (input: ExpandBlockoutRecurrenceInput): 
     if (input.end.type === 'until' && localStartDate > input.end.untilDate) break;
     occurrences.push(resolveOccurrence(input, localStartDate, addLocalDays(localStartDate, daySpan)));
   }
-  if (occurrences.length === 0) throw new Error('The recurrence rule does not produce any occurrences.');
+  if (occurrences.length === 0) throw new TimeInputError('The recurrence rule does not produce any occurrences.');
   if (input.end.type === 'until' && occurrences.length === 120) {
     const last = occurrences.at(-1)!;
     if (last.localStartDate < input.end.untilDate) {
-      throw new Error('The recurrence range is too long. Limit it to 120 occurrences.');
+      throw new TimeInputError('The recurrence range is too long. Limit it to 120 occurrences.');
     }
   }
   return occurrences;

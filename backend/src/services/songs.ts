@@ -175,14 +175,18 @@ export const loadSongSchedule = async (
  */
 export const loadArrangementChart = async (
   db: Db,
+  orgId: string,
   arrangementId: string,
   { to, semitones, notation }: ChartQuery,
 ): Promise<SongChart> => {
+  // Scoped to the active organization: a member of several organizations
+  // must not read another one's chart under this header (API-D3).
   const arrangement = await unwrap(
     db
       .from('arrangements')
-      .select('id, song_key, chord_chart')
+      .select('id, song_key, chord_chart, song:songs!arrangements_song_id_fkey!inner(organization_id)')
       .eq('id', arrangementId)
+      .eq('song.organization_id', orgId)
       .maybeSingle(),
   );
   if (!arrangement) throw HttpError.notFound('Arrangement not found');

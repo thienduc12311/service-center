@@ -11,6 +11,7 @@ import {
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { unwrap } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
+import { isUuid } from '../lib/params.js';
 import { combinedSchedule, copyAvailability } from '../services/availability.js';
 
 /**
@@ -51,5 +52,6 @@ meAvailabilityRouter.get('/combined-schedule', validateQuery(combinedScheduleQue
 meAvailabilityRouter.post('/availability/copy', validateBody(copyAvailabilitySchema), async (req, res) => {
   const sourceOrgId = req.header('x-organization-id');
   if (!sourceOrgId) throw HttpError.badRequest('Choose the organization to copy from');
+  if (!isUuid(sourceOrgId)) throw HttpError.badRequest('Invalid X-Organization-Id header');
   res.json(await copyAvailability({ db: req.db, userId: req.auth.userId }, sourceOrgId, req.body as CopyAvailabilityInput));
 });

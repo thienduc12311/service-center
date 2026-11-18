@@ -16,7 +16,7 @@ import {
   type TemplatePreviewNotice,
 } from '@service-center/shared';
 import { api } from '../lib/api';
-import { useInvalidateOrg, usePlans } from '../hooks/queries';
+import { useInvalidateOrg, usePlanPages } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters } from '../i18n';
 import { Button, EmptyState, ErrorNotice, PageHeader } from '../components/ui';
@@ -194,7 +194,16 @@ export const ReschedulePlansPage = () => {
   const { canAnywhere } = useAuth();
   const invalidate = useInvalidateOrg();
   const [openedAt] = useState(() => new Date().toISOString());
-  const plans = usePlans({ from: openedAt, order: 'asc', per_page: 50 });
+  // Every upcoming plan stays reachable: further pages load on demand (W2-PLANS-D10).
+  const plans = usePlanPages({ from: openedAt, order: 'asc', per_page: 50 });
+  const upcoming = plans.data?.pages.flatMap((page) => page.data) ?? [];
+  const showMore = plans.hasNextPage ? (
+    <div className="flex justify-center">
+      <Button variant="secondary" size="sm" loading={plans.isFetchingNextPage} onClick={() => void plans.fetchNextPage()}>
+        {t('common:actions.showMore')}
+      </Button>
+    </div>
+  ) : null;
   const [mode, setMode] = useState<Mode>('shift');
   const [dates, setDates] = useState<Record<string, string>>({});
   const [shiftDays, setShiftDays] = useState(7);
@@ -262,7 +271,7 @@ export const ReschedulePlansPage = () => {
           {done.plan_ids.map((id) => (
             <li key={id}>
               <Link className="text-brand-700 hover:underline" to={`/plans/${id}`}>
-                {plans.data?.data.find((plan) => plan.id === id)?.title ?? t('reschedule.openPlan')}
+                {upcoming.find((plan) => plan.id === id)?.title ?? t('reschedule.openPlan')}
               </Link>
             </li>
           ))}
@@ -272,7 +281,6 @@ export const ReschedulePlansPage = () => {
     );
   }
 
-  const upcoming = plans.data?.data ?? [];
   const selected = Object.keys(dates);
   const shiftPreview = preview?.mode === 'shift' ? (preview as ShiftReschedulePreview) : null;
   const orderPreview = preview?.mode === 'order_only' ? (preview as OrderOnlyReschedulePreview) : null;
@@ -351,6 +359,7 @@ export const ReschedulePlansPage = () => {
               ))}
             </ul>
           )}
+          {showMore}
           <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
             <input type="checkbox" className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600" checked={notify} onChange={(event) => { setNotify(event.target.checked); clearReview(); }} />
             {t('reschedule.notify')}
@@ -379,6 +388,7 @@ export const ReschedulePlansPage = () => {
               {upcoming.filter((plan) => plan.id !== sourceId).map((plan) => <option key={plan.id} value={plan.id}>{t('reschedule.planWithDate', { title: plan.title, date: fmt.dateTime(plan.service_date) })}</option>)}
             </select>
           </div>
+          {showMore && <div className="sm:col-span-2">{showMore}</div>}
           <fieldset className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-700 sm:col-span-2 dark:text-slate-200">
             <legend className="label">{t('reschedule.destinationOrder')}</legend>
             <label className="flex items-center gap-2"><input type="radio" className="accent-brand-600" name="items-mode" checked={itemsMode === 'append'} onChange={() => { setItemsMode('append'); clearReview(); }} /> {t('reschedule.keepAddAfter')}</label>

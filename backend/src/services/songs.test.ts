@@ -132,7 +132,7 @@ describe('loadArrangementChart', () => {
     fakeDb({ id: 'arr', song_key: 'G', chord_chart: '[G]Hello [D7]world', ...overrides });
 
   it('transposes to the requested key', async () => {
-    const chart = await loadArrangementChart(arrangement(), 'arr', {
+    const chart = await loadArrangementChart(arrangement(), 'org', 'arr', {
       to: 'A',
       notation: 'chords',
     });
@@ -143,7 +143,7 @@ describe('loadArrangementChart', () => {
   });
 
   it('converts to numbers without transposing', async () => {
-    const chart = await loadArrangementChart(arrangement(), 'arr', {
+    const chart = await loadArrangementChart(arrangement(), 'org', 'arr', {
       to: 'A',
       notation: 'numbers',
     });
@@ -153,7 +153,7 @@ describe('loadArrangementChart', () => {
   });
 
   it('answers with an empty chart when the arrangement has none', async () => {
-    const chart = await loadArrangementChart(arrangement({ chord_chart: null }), 'arr', {
+    const chart = await loadArrangementChart(arrangement({ chord_chart: null }), 'org', 'arr', {
       notation: 'chords',
     });
 
@@ -162,13 +162,13 @@ describe('loadArrangementChart', () => {
 
   it('refuses to transpose an arrangement with no key', async () => {
     await expect(
-      loadArrangementChart(arrangement({ song_key: null }), 'arr', { to: 'A', notation: 'chords' }),
+      loadArrangementChart(arrangement({ song_key: null }), 'org', 'arr', { to: 'A', notation: 'chords' }),
     ).rejects.toMatchObject({ status: 400 });
   });
 
   it('404s when the arrangement is missing or hidden by RLS', async () => {
     await expect(
-      loadArrangementChart(fakeDb(null), 'arr', { notation: 'chords' }),
+      loadArrangementChart(fakeDb(null), 'org', 'arr', { notation: 'chords' }),
     ).rejects.toMatchObject({ status: 404 });
   });
 });

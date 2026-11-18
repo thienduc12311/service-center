@@ -1061,7 +1061,10 @@ export type PeopleDirectoryRow = Pick<
   PersonRow,
     | 'id' | 'organization_id' | 'profile_id' | 'first_name' | 'last_name' | 'avatar_url' | 'campus' | 'person_type'
   | 'created_at' | 'updated_at' | 'archived_at'
->;
+> & {
+  /** Not archived and, with a login, an active member: may be offered for scheduling. */
+  schedulable: boolean;
+};
 
 /** A person's private record as API roles may select it (no medical note). */
 export type PersonSelectableRow = Omit<PersonRow, 'medical_note'>;
@@ -1304,6 +1307,12 @@ export type Database = {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
     };
     Functions: {
+      list_blockouts: {
+        Args: { p_organization_id: string; p_person_id?: string | null; p_from?: string | null; p_to?: string | null };
+        Returns: BlockoutRow[];
+      };
+      can_manage_availability: { Args: { p_organization_id: string; p_person_id: string }; Returns: boolean };
+      delete_blockout: { Args: { p_blockout_id: string; p_expected_revision?: number | null }; Returns: string | null };
       structured_import_context: { Args: { p_org: string; p_kind: string; p_rows: unknown }; Returns: unknown };
       save_structured_import: { Args: { p_org: string; p_source: unknown; p_source_hash: string; p_preview_hash: string; p_rows: unknown; p_key: string }; Returns: ImportJob };
       commit_structured_import: { Args: { p_org: string; p_job: string; p_revision: number }; Returns: ImportJob };

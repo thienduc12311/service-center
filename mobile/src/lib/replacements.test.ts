@@ -88,12 +88,19 @@ describe('who may act', () => {
   });
 
   it('offers approval once, and nothing on an ended offer or closed request', () => {
-    expect(canApproveOffer(offer(), request(), true)).toBe(true);
-    expect(canApproveOffer(offer({ leader_approved_at: 'x' }), request(), true)).toBe(false);
+    expect(canApproveOffer(offer(), request(), true, null)).toBe(true);
+    expect(canApproveOffer(offer({ leader_approved_at: 'x' }), request(), true, null)).toBe(false);
     expect(canRejectOffer(offer({ leader_approved_at: 'x' }), request(), true)).toBe(true);
-    expect(canApproveOffer(offer({ status: 'expired' }), request(), true)).toBe(false);
+    expect(canApproveOffer(offer({ status: 'expired' }), request(), true, null)).toBe(false);
     expect(canRejectOffer(offer(), request({ status: 'filled' }), true)).toBe(false);
-    expect(canApproveOffer(offer(), request(), false)).toBe(false);
+    expect(canApproveOffer(offer(), request(), false, null)).toBe(false);
+  });
+
+  it('never offers the candidate approval of their own offer (W2-RESP-D2)', () => {
+    expect(canApproveOffer(offer({ status: 'accepted_awaiting_approval' }), request(), true, RILEY)).toBe(false);
+    expect(canApproveOffer(offer({ status: 'accepted_awaiting_approval' }), request(), true, MORGAN)).toBe(true);
+    // Rejecting is still offered: a leader may always turn an offer down.
+    expect(canRejectOffer(offer(), request(), true)).toBe(true);
   });
 
   it('lets the requester or a leader cancel only an open request', () => {

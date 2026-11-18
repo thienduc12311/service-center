@@ -21,13 +21,20 @@ import {
   type CreateSignupOpportunityInput,
   type DecideSignupClaimInput,
   type IssueReplacementOfferInput,
+  type OpportunityClaimDetail,
   type ReplacementRequestDetail,
   type SignupOpportunity,
   type UpdateSignupOpportunityInput,
 } from '@service-center/shared';
-import { param } from '../lib/params.js';
+import { isUuid, param } from '../lib/params.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { validateBody } from '../lib/validate.js';
+
+/** A claim row with its opportunity embedded, before the claimant name is attached. */
+type ClaimWithOpportunity = Omit<OpportunityClaimDetail, 'person_name'>;
+
+/** The directory fields used to label a claimant. */
+interface ClaimantName { id: string; first_name: string; last_name: string | null }
 import { requireCapability } from '../middleware/organization.js';
 import { HttpError } from '../lib/errors.js';
 
@@ -92,16 +99,24 @@ opportunityClaimsRouter.post('/:id/decision', requireCapability('scheduling.mana
 
 opportunityClaimsRouter.get('/', requireCapability('scheduling.manage'), async (req, res) => {
   const planId = typeof req.query.plan_id === 'string' ? req.query.plan_id : null;
+  if (planId && !isUuid(planId)) throw HttpError.badRequest('Invalid plan_id');
   // Same lazy expiry as the other F07 lists, so a lapsed hold never reads as awaiting approval.
   await unwrap(req.db.rpc('expire_f07_allocations', { p_organization: req.orgId, p_limit: 200 }));
-  let query = raw(req.db).from('opportunity_claims').select('*, opportunity:signup_opportunities!inner(id,plan_id,team_id,position_id,approval_policy), person:people!inner(first_name,last_name)');
+  // Claims are filtered by their own RLS. Names come from the member directory:
+  // full People rows are owner-only, so embedding `people` would drop every
+  // claim but the caller's own (W2-RESP-D1).
+  let query = raw(req.db).from('opportunity_claims')
+    .select('*, opportunity:signup_opportunities!inner(id,plan_id,team_id,position_id,approval_policy)')
+    .eq('opportunity.organization_id', req.orgId);
   if (planId) query = query.eq('opportunity.plan_id', planId);
-  const rows = (await unwrap(query.order('created_at', { ascending: false }).limit(200))) ?? [];
-  res.json(rows.map((row: Record<string, unknown>) => {
-    const person = row.person as { first_name: string; last_name: string | null };
-    const { person: _person, ...rest } = row;
-    return { ...rest, person_name: [person.first_name, person.last_name].filter(Boolean).join(' ') };
-  }));
+  const claims = ((await unwrap(query.order('created_at', { ascending: false }).limit(200))) ?? []) as ClaimWithOpportunity[];
+  const personIds = [...new Set(claims.map((claim) => claim.person_id))];
+  const people = personIds.length
+    ? ((await unwrap(req.db.from('people_directory').select('id, first_name, last_name')
+      .eq('organization_id', req.orgId).in('id', personIds))) ?? []) as ClaimantName[]
+    : [];
+  const names = new Map(people.map((person) => [person.id, [person.first_name, person.last_name].filter(Boolean).join(' ')]));
+  res.json(claims.map((claim): OpportunityClaimDetail => ({ ...claim, person_name: names.get(claim.person_id) ?? '' })));
 });
 
 opportunityClaimsRouter.post('/:id/cancel', validateBody(cancelSignupClaimSchema), async (req, res) => {

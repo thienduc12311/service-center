@@ -1,4 +1,5 @@
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -10,6 +11,7 @@ import {
   LIVE_IDLE_POLL_MS,
   REHEARSAL_MANIFEST_TTL_SECONDS,
   type CalendarQueryRequest,
+  type ListPlansRequest,
   type FileOwnerKind,
   type ListDeliveriesRequest,
   type ListMediaRequest,
@@ -224,6 +226,22 @@ export const usePlans = (query: Record<string, string | number | undefined>, ena
     queryFn: () => api.listPlans(query),
     enabled: Boolean(org) && enabled,
     placeholderData: (previous) => previous,
+  });
+};
+
+/**
+ * Every page of a plan list, loaded on demand ("Show more"). Pages are
+ * fetched with the same query, so later pages extend earlier ones and plans
+ * beyond the first page stay reachable (W2-PLANS-D10).
+ */
+export const usePlanPages = (query: Omit<ListPlansRequest, 'page'>, enabled = true) => {
+  const org = useOrg();
+  return useInfiniteQuery({
+    queryKey: [...keys.plans(org, query), 'pages'] as const,
+    queryFn: ({ pageParam }) => api.listPlans({ ...query, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page * last.per_page < last.total ? last.page + 1 : undefined),
+    enabled: Boolean(org) && enabled,
   });
 };
 

@@ -1,8 +1,29 @@
 import { z } from 'zod';
+import { parseLocalDate } from '../lib/timezone.js';
 
 export const uuid = z.string().uuid();
 export const isoDateTime = z.string().datetime({ offset: true }).or(z.string().datetime());
 export const nonEmpty = z.string().trim().min(1);
+
+/** `YYYY-MM-DD`, optionally followed by a time and an offset (ISO 8601). */
+const INSTANT_PATTERN = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/i;
+
+/**
+ * Whether a string is an ISO 8601 date or date-time that exists on the
+ * calendar (no 2027-02-30, no 25:00). Zone handling is left to the caller.
+ */
+export const isInstantString = (value: string): boolean => {
+  const match = INSTANT_PATTERN.exec(value);
+  if (!match || !parseLocalDate(match[1]!)) return false;
+  const [hour, minute, second] = [match[2], match[3], match[4]].map((part) => (part === undefined ? 0 : Number(part)));
+  return hour! <= 23 && minute! <= 59 && second! <= 59 && !Number.isNaN(Date.parse(value.replace(' ', 'T')));
+};
+
+/**
+ * A plan date or time as clients send it (`2027-02-14T10:00:00Z`). Rejects
+ * strings that are not a real calendar instant before they reach Postgres.
+ */
+export const instantString = z.string().trim().refine(isInstantString, 'Enter a valid date and time');
 export const musicalKey = z.string().trim().max(8);
 /**
  * A client-generated key that makes a create/copy/notify request safe to

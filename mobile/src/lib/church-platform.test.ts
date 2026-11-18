@@ -7,6 +7,7 @@ import {
   type OrganizationStorageUsage,
 } from '@service-center/shared';
 import {
+  deviceTimeZone,
   explainDirectUploadError,
   isChurchApplicationDraftComplete,
   isOrganizationDisabledError,
@@ -95,5 +96,15 @@ describe('isOrganizationDisabledError', () => {
     expect(isOrganizationDisabledError(new ApiError(403, 'Disabled', 'organization_disabled'))).toBe(true);
     expect(isOrganizationDisabledError(new ApiError(403, 'Forbidden', 'forbidden'))).toBe(false);
     expect(isOrganizationDisabledError(new Error('organization_disabled'))).toBe(false);
+  });
+});
+
+describe('deviceTimeZone (API-D4)', () => {
+  it('keeps a valid IANA zone and falls back to UTC otherwise', () => {
+    expect(deviceTimeZone('America/Chicago')).toBe('America/Chicago');
+    expect(deviceTimeZone('UTC')).toBe('UTC');
+    expect(deviceTimeZone('Not/AZone')).toBe('UTC');
+    expect(deviceTimeZone('')).toBe('UTC');
+    expect(typeof deviceTimeZone()).toBe('string');
   });
 });

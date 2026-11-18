@@ -74,7 +74,7 @@ const conflictsFor = async (
     p_ends_at: endsAt,
     p_user_ids: userIds,
   });
-  if (error) throw new HttpError(500, error.message, error.code);
+  if (error) throw fromPostgrestError(error);
   return (data ?? []) as SchedulingConflict[];
 };
 

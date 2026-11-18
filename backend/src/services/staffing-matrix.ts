@@ -29,9 +29,13 @@ const matrixWarningEnglish = (warning: StaffingMatrixWarning): string => {
       return 'Answers and delivery timestamps will be reset on the copied request.';
     case 'team_unavailable':
       return 'The selected team is unavailable.';
+    case 'person_unavailable':
+      return 'This person is archived or no longer an active member, so they cannot be scheduled.';
   }
 };
 
+/** A Person named in a preview, with whether they can still be scheduled. */
+interface PreviewPersonRow { id: string; first_name: string; last_name: string | null; schedulable: boolean }
 interface MatrixTeamRow { id: string; name: string; service_type_id: string | null }
 interface MatrixNeedRow {
   needed: number;
@@ -125,7 +129,8 @@ const loadPeople = async (req: Request, input: StaffingMatrixQueryInput): Promis
   const eligibleIds = await rosterPersonIds(req, input.filters.team_ids);
   if (eligibleIds?.length === 0) return { rows: [], next: null };
   let query = req.db.from('people_directory').select('id, first_name, last_name, avatar_url, campus')
-    .eq('organization_id', req.orgId).is('archived_at', null).order('id').limit(input.page_size + 1);
+    // Only People who can actually be scheduled: not archived, active membership (W2-STAFF-D2).
+    .eq('organization_id', req.orgId).eq('schedulable', true).order('id').limit(input.page_size + 1);
   if (input.cursor) query = query.gt('id', input.cursor);
   if (eligibleIds) query = query.in('id', eligibleIds);
   if (input.filters.search) {
@@ -217,8 +222,9 @@ export const previewStaffingMatrix = async (req: Request, actions: readonly Staf
   const teams = ((await unwrap(req.db.from('teams').select('id, name').eq('organization_id', req.orgId))) ?? []) as Array<{ id: string; name: string }>;
   const teamName = new Map(teams.map((team) => [team.id, team.name]));
   const personIds = [...new Set(actions.map((action) => action.kind === 'assign' ? action.person_id : byAssignment.get(action.kind === 'copy' ? action.source_assignment_id : action.assignment_id)!.person_id))];
-  const people = ((await unwrap(req.db.from('people_directory').select('id, first_name, last_name').in('id', personIds))) ?? []) as Array<{ id: string; first_name: string; last_name: string | null }>;
+  const people = ((await unwrap(req.db.from('people_directory').select('id, first_name, last_name, schedulable').in('id', personIds))) ?? []) as PreviewPersonRow[];
   const personName = new Map(people.map((person) => [person.id, [person.first_name, person.last_name].filter(Boolean).join(' ')]));
+  const unschedulable = new Set(people.filter((person) => !person.schedulable).map((person) => person.id));
   if (people.length !== personIds.length) throw HttpError.badRequest('One of those people is no longer available');
 
   const candidates = actions.flatMap((action, index) => {
@@ -263,6 +269,7 @@ export const previewStaffingMatrix = async (req: Request, actions: readonly Staf
       .map((warning) => ({ kind: 'preference', warning }));
     if (action.kind === 'copy') warningDetails.push({ kind: 'copy_resets_answers' });
     if (action.kind === 'assign' && !teamName.has(action.team_id)) warningDetails.push({ kind: 'team_unavailable' });
+    if ((action.kind === 'assign' || action.kind === 'copy') && unschedulable.has(personId)) warningDetails.push({ kind: 'person_unavailable' });
     const warnings = warningDetails.map(matrixWarningEnglish);
     return { index, action, person_id: personId, person_name: personName.get(personId) ?? 'Person',
       plan_id: planId, plan_title: plans.find((plan) => plan.id === planId)?.title ?? 'Plan',
@@ -274,7 +281,9 @@ export const previewStaffingMatrix = async (req: Request, actions: readonly Staf
   const operationId = await unwrap(raw(req.db).rpc('staffing_matrix_operation_id', { p_actions: actions, p_base_revisions: base_revisions }));
   if (!operationId) throw new HttpError(500, 'Could not identify the staffing preview');
   return { operation_id: String(operationId), base_revisions, actions: [...actions], items,
-    has_blocking_conflicts: items.some((item) => item.conflicts.some((conflict) => conflict.severity === 'blocking')) };
+    // An archived or inactive Person cannot be committed either, so the review blocks.
+    has_blocking_conflicts: items.some((item) => item.conflicts.some((conflict) => conflict.severity === 'blocking')
+      || item.warning_details.some((warning) => warning.kind === 'person_unavailable')) };
 };
 
 export const sanitizeMatrixFilters = async (req: Request, filters: StaffingMatrixFilters): Promise<StaffingMatrixFilters> => {

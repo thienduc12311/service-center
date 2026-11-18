@@ -343,12 +343,12 @@ export default function ReplacementScreen() {
                     {stage === 'awaiting_leader' && offer.reservation_expires_at ? (
                       <MetaLine icon="clock" strong>{t('replacements.heldUntil', { time: format.dateTime(offer.reservation_expires_at) })}</MetaLine>
                     ) : null}
-                    {canApproveOffer(offer, request, mayLead) || canRejectOffer(offer, request, mayLead) ? (
+                    {canApproveOffer(offer, request, mayLead, myPersonId) || canRejectOffer(offer, request, mayLead) ? (
                       <View style={styles.actions}>
                         {canRejectOffer(offer, request, mayLead) ? (
                           <Button variant="secondary" title={t('replacements.leader.reject')} disabled={act.isPending} onPress={() => confirmReject(offer)} style={styles.flex} />
                         ) : null}
-                        {canApproveOffer(offer, request, mayLead) ? (
+                        {canApproveOffer(offer, request, mayLead, myPersonId) ? (
                           <Button title={t('replacements.leader.approve')} icon="check" disabled={act.isPending} onPress={() => act.mutate({ offer, action: 'approve' })} style={styles.flex} />
                         ) : null}
                       </View>

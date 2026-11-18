@@ -2,9 +2,9 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { PLAN_STATUS_LABELS, type PlanStatus } from '@service-center/shared';
+import { PLAN_STATUS_LABELS, type ListPlansRequest, type PlanStatus } from '@service-center/shared';
 import { api } from '../lib/api';
-import { usePlans, useServiceTypes, useInvalidateOrg } from '../hooks/queries';
+import { usePlanPages, useServiceTypes, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import {
   Button,
@@ -46,11 +46,15 @@ export const PlansPage = () => {
   const [creating, setCreating] = useState(false);
   const [openedAt] = useState(() => new Date().toISOString());
 
-  const plans = usePlans({
-    ...(status ? { status } : {}),
-    ...(showPast ? { order: 'desc' } : { from: openedAt, order: 'asc' }),
+  // Past is bounded to plans before the page was opened (W2-PLANS-D10).
+  const listQuery: Omit<ListPlansRequest, 'page'> = {
+    ...(status ? { status: status as PlanStatus } : {}),
+    ...(showPast ? { to: openedAt, order: 'desc' } : { from: openedAt, order: 'asc' }),
     per_page: 50,
-  });
+  };
+  const plans = usePlanPages(listQuery);
+  const loadedPlans = plans.data?.pages.flatMap((page) => page.data) ?? [];
+  const totalPlans = plans.data?.pages[0]?.total;
 
   const [title, setTitle] = useState('');
   const [serviceDate, setServiceDate] = useState(defaultServiceDate);
@@ -152,9 +156,9 @@ export const PlansPage = () => {
           ]}
         />
         <div className="flex items-center gap-3">
-          {plans.data && (
+          {totalPlans !== undefined && (
             <span className="text-sm text-slate-500 tabular-nums dark:text-slate-400">
-              {t('common:count.plans', { count: plans.data.total })}
+              {t('common:count.plans', { count: totalPlans })}
             </span>
           )}
           <select
@@ -177,14 +181,23 @@ export const PlansPage = () => {
 
       {plans.isLoading ? (
         <SkeletonList rows={4} />
-      ) : plans.data?.data.length ? (
-        <ul className="space-y-3">
-          {plans.data.data.map((plan) => (
-            <li key={plan.id}>
-              <PlanListCard plan={plan} showServiceType showDeclined />
-            </li>
-          ))}
-        </ul>
+      ) : loadedPlans.length ? (
+        <div className="space-y-3">
+          <ul className="space-y-3">
+            {loadedPlans.map((plan) => (
+              <li key={plan.id}>
+                <PlanListCard plan={plan} showServiceType showDeclined />
+              </li>
+            ))}
+          </ul>
+          {plans.hasNextPage && (
+            <div className="flex justify-center">
+              <Button variant="secondary" loading={plans.isFetchingNextPage} onClick={() => void plans.fetchNextPage()}>
+                {t('common:actions.showMore')}
+              </Button>
+            </div>
+          )}
+        </div>
       ) : (
         <EmptyState
           icon="plans"

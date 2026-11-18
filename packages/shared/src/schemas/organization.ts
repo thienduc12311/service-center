@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { nonEmpty } from './common.js';
 import { planRecurrenceSchema } from './service-type.js';
+import { isValidTimeZone } from '../lib/timezone.js';
 
 export const orgRoleSchema = z.enum(['owner', 'admin', 'scheduler', 'member']);
 
@@ -11,7 +12,7 @@ export const createOrganizationSchema = z.object({
     .trim()
     .toLowerCase()
     .regex(/^[a-z0-9-]{2,40}$/, 'Use 2–40 lowercase letters, numbers or dashes'),
-  timezone: z.string().default('America/Toronto'),
+  timezone: z.string().trim().max(100).refine(isValidTimeZone, 'Choose a valid IANA timezone').default('America/Toronto'),
   logo_url: z.string().url().nullish(),
   address_line1: z.string().trim().max(200).nullish(),
   address_line2: z.string().trim().max(200).nullish(),

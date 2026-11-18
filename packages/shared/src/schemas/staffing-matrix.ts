@@ -18,7 +18,8 @@ export const staffingMatrixFiltersSchema = z.object({
 
 export const staffingMatrixQuerySchema = z.object({
   filters: staffingMatrixFiltersSchema,
-  cursor: z.string().trim().min(1).max(300).optional(),
+  /** The last Person id of the previous page. */
+  cursor: uuid.optional(),
   page_size: z.number().int().min(1).max(50).default(25),
 });
 
