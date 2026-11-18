@@ -1,0 +1,77 @@
+{
+  "date": "2026-11-18",
+  "branch": "thienduc12311/qa-wave5-accessibility-fixes",
+  "base_commit": "c59002106e9d34e5a0cdaf40bbda14ce5ec5af61",
+  "original_report_commit": "4884653",
+  "original_failing_records": [
+    "W5-UX-05",
+    "W5-UX-07",
+    "W5-UX-08",
+    "W5-UX-10"
+  ],
+  "retest": {
+    "W5-UX-05": {
+      "status": "PASS",
+      "viewport": "390x844",
+      "initials_variant": true,
+      "english_accessible_name": "Account menu",
+      "vietnamese_accessible_name": "Trình đơn tài khoản"
+    },
+    "W5-UX-07": {
+      "status": "PASS",
+      "consumer": "/plans New Plan",
+      "locale": "vi",
+      "active_tag": "INPUT",
+      "active_id": "plan-title",
+      "inside_dialog": true,
+      "body_overflow": "hidden"
+    },
+    "W5-UX-08": {
+      "status": "PASS",
+      "forward_from_last": {
+        "active_name": "Đóng",
+        "inside_dialog": true
+      },
+      "reverse_from_first": {
+        "active_name": "Tạo chương trình",
+        "inside_dialog": true
+      }
+    },
+    "W5-UX-10": {
+      "status": "PASS",
+      "escape": {
+        "dialog_present": false,
+        "active_tag": "BUTTON",
+        "active_text": "Chương trình mới",
+        "body_overflow": ""
+      },
+      "close_button": {
+        "dialog_present": false,
+        "active_tag": "BUTTON",
+        "active_text": "Chương trình mới",
+        "body_overflow": ""
+      }
+    }
+  },
+  "automated": {
+    "command": "npm test -w @service-center/frontend",
+    "files_passed": 2,
+    "tests_passed": 10
+  },
+  "runtime": {
+    "database_reset": false,
+    "migration_applied": false,
+    "fixture_created": false,
+    "plan_mutated": false,
+    "real_transport_started": false,
+    "browser_session_signed_out": true,
+    "browser_tab_closed": true,
+    "owned_runtime_processes_stopped": true
+  },
+  "remaining_open": [
+    "W4-I18N-D1",
+    "native/provider/full-journey gates",
+    "comprehensive assistive-technology coverage",
+    "Live-control gate: missing migration 20261121000000"
+  ]
+}

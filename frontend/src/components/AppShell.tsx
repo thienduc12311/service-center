@@ -10,6 +10,7 @@ import { useTheme } from '../providers/ThemeProvider';
 import { LocaleSwitcher } from '../i18n';
 import { PlatformAccessBanner } from './church/PlatformAccessBanner';
 import { StorageWarningBanner } from './church/StorageUsage';
+import { AccountMenuButton } from './AccountMenuButton';
 
 type NavLabelKey = Extract<TranslationKey<'common'>, `nav.${string}`>;
 type NavGroupKey = Extract<TranslationKey<'common'>, `nav.groups.${string}`>;
@@ -266,18 +267,13 @@ export const AppShell = () => {
               <span className="mx-1.5 hidden h-6 w-px bg-app-border sm:block" aria-hidden="true" />
 
               <div className="relative">
-                <button
-                  onClick={() => setMenuOpen((open) => !open)}
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  className="flex items-center gap-2 rounded-full p-0.5 pr-1 transition hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-brand-500 sm:pr-2.5 dark:hover:bg-slate-800"
-                >
-                  <Avatar name={user?.profile.full_name ?? user?.profile.email} url={user?.profile.avatar_url} size="sm" />
-                  <span className="hidden max-w-36 truncate text-sm font-medium text-slate-700 sm:block dark:text-slate-200">
-                    {user?.profile.full_name ?? user?.profile.email}
-                  </span>
-                  <Icon name="chevronDown" className="hidden size-3.5 text-slate-400 sm:block" />
-                </button>
+                <AccountMenuButton
+                  label={t('shell.accountMenu')}
+                  name={user?.profile.full_name ?? user?.profile.email}
+                  avatarUrl={user?.profile.avatar_url}
+                  expanded={menuOpen}
+                  onToggle={() => setMenuOpen((open) => !open)}
+                />
 
                 {menuOpen && (
                   <>

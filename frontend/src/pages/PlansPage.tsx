@@ -223,6 +223,7 @@ export const PlansPage = () => {
             <input
               id="plan-title"
               className="input"
+              autoFocus
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('plansPage.titlePlaceholder')}

@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -526,6 +526,67 @@ const MODAL_WIDTHS: Record<ModalSize, string> = {
   side: 'sm:max-w-md',
 };
 
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'area[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'iframe',
+  'object',
+  'embed',
+  '[contenteditable="true"]',
+  '[tabindex]',
+].join(',');
+
+interface ModalStackEntry {
+  dialog: HTMLDivElement | null;
+  opener: HTMLElement | null;
+}
+
+const modalStack: ModalStackEntry[] = [];
+let modalBodyOverflow: string | undefined;
+
+const topModal = (): ModalStackEntry | undefined => modalStack.at(-1);
+
+const isAvailableForFocus = (element: HTMLElement): boolean => {
+  if (!element.isConnected || element.matches(':disabled') || element.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+  if (getComputedStyle(element).visibility !== 'visible') return false;
+  for (let ancestor: HTMLElement | null = element; ancestor; ancestor = ancestor.parentElement) {
+    if (getComputedStyle(ancestor).display === 'none') return false;
+  }
+  return true;
+};
+
+const tabOrder = (element: HTMLElement): number => element.tabIndex || Number.POSITIVE_INFINITY;
+
+const tabbableElements = (dialog: HTMLDivElement): HTMLElement[] => {
+  const candidates = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+    .filter((element) => element.tabIndex >= 0 && isAvailableForFocus(element));
+
+  return candidates.filter((element) => {
+    if (!(element instanceof HTMLInputElement) || element.type !== 'radio' || !element.name || element.checked) return true;
+    return !candidates.some((other) =>
+      other instanceof HTMLInputElement && other.type === 'radio' && other.checked
+      && other.name === element.name && other.form === element.form
+    );
+  }).sort((a, b) => tabOrder(a) - tabOrder(b));
+};
+
+const focusInside = (dialog: HTMLDivElement): void => {
+  (tabbableElements(dialog)[0] ?? dialog).focus({ preventScroll: true });
+};
+
+interface ModalProps {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+  size?: ModalSize;
+}
+
 export const Modal = ({
   open,
   title,
@@ -533,32 +594,118 @@ export const Modal = ({
   children,
   footer,
   size = 'default',
-}: {
-  open: boolean;
-  title: string;
-  onClose: () => void;
-  children: ReactNode;
-  footer?: ReactNode;
-  size?: ModalSize;
-}) => {
+}: ModalProps) => {
   const { t } = useTranslation();
   const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  const [activeEntry, setActiveEntry] = useState<ModalStackEntry | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+  useLayoutEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setActiveEntry(null);
+      return;
+    }
+
+    // Register before mounting the children so their autoFocus can run
+    // without the previous dialog pulling focus back.
+    const entry: ModalStackEntry = {
+      dialog: null,
+      opener: document.activeElement instanceof HTMLElement ? document.activeElement : null,
     };
+    modalStack.push(entry);
+
+    if (modalStack.length === 1) {
+      modalBodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+    }
+
+    setActiveEntry(entry);
+
+    const onKey = (event: KeyboardEvent) => {
+      const dialog = entry.dialog;
+      if (!dialog || topModal() !== entry || event.defaultPrevented || event.isComposing) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const elements = tabbableElements(dialog);
+      if (!elements.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = elements[0];
+      const last = elements.at(-1);
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || active === dialog || !dialog.contains(active))) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+
+    const onFocus = (event: FocusEvent) => {
+      const dialog = entry.dialog;
+      if (!dialog || topModal() !== entry || dialog.contains(event.target as Node)) return;
+      focusInside(dialog);
+    };
+
+    // Bubble like the previous Escape listener so an inner widget can consume
+    // Escape first (for example, to close its own popup).
     window.addEventListener('keydown', onKey);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    document.addEventListener('focusin', onFocus, true);
+
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open, onClose]);
+      document.removeEventListener('focusin', onFocus, true);
 
-  if (!open) return null;
+      const wasTopModal = topModal() === entry;
+      const entryIndex = modalStack.indexOf(entry);
+      if (entryIndex !== -1) modalStack.splice(entryIndex, 1);
+
+      // If a parent modal disappears before a child, preserve the parent's
+      // opener as the child's eventual restoration target.
+      for (const remainingEntry of modalStack) {
+        if (remainingEntry.opener && entry.dialog?.contains(remainingEntry.opener)) {
+          remainingEntry.opener = entry.opener;
+        }
+      }
+
+      if (!modalStack.length) {
+        document.body.style.overflow = modalBodyOverflow ?? '';
+        modalBodyOverflow = undefined;
+      }
+
+      if (!wasTopModal) return;
+      const nextModal = topModal();
+      const opener = entry.opener;
+      if (opener && isAvailableForFocus(opener) && (!nextModal || nextModal.dialog?.contains(opener))) {
+        opener.focus({ preventScroll: true });
+      }
+      if (nextModal?.dialog && !nextModal.dialog.contains(document.activeElement)) focusInside(nextModal.dialog);
+    };
+  }, [open]);
+
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!activeEntry || !dialog || !open) return;
+    activeEntry.dialog = dialog;
+    if (topModal() === activeEntry && !dialog.contains(document.activeElement)) focusInside(dialog);
+  }, [activeEntry, open]);
+
+  if (!open || !activeEntry) return null;
   return (
     <div
       className={`fixed inset-0 z-50 flex items-end p-0 ${
@@ -571,9 +718,11 @@ export const Modal = ({
         aria-hidden="true"
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        tabIndex={-1}
         className={`relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-app-border bg-app-surface
           shadow-2xl shadow-slate-950/20 ${
             size === 'side'
@@ -616,11 +765,19 @@ export const Menu = ({
 }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const close = () => setOpen(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    if (menuRef.current?.contains(document.activeElement)) {
+      triggerRef.current?.focus({ preventScroll: true });
+    }
+    setOpen(false);
+  };
 
   return (
-    <div className="relative">
+    <div ref={menuRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="menu"
