@@ -40,6 +40,12 @@ Every P1 below was checked against source by the coordinator.
 | W3-INT-D8 | Postgres `least(NULL, 86400)` = 86400, so retries without Retry-After wait ~24 h (`20261103000000_f17_developer_api.sql:875`) | `case when p_retry_after_seconds is null …` |
 | W3-INT-D10 | `redactTokenPath` redacts `scoped` instead of the token in `/calendar-feed/scoped/<token>.ics`; public slugs logged | Add scoped-feed and public-slug prefixes to `backend/src/lib/redact.ts` |
 
+Implementation progress (2026-11-18):
+
+- W3-REL-D1: merged in #107 (`00b632c`), including the outsider RPC regression suite.
+- W3-LIVE-D1: implemented on `fix/qa-wave3-live-control` in `20261121000000_w3_live_control_null_safe.sql`. Vacant/expired leases return `run_control_lost`; policy/release commands on ended or discarded runs return `run_state`. Regression coverage in `supabase/tests/qa-wave3-live-control.sql` verifies rejected commands leave state/history unchanged, control reacquisition, and command replay. The existing F12 lifecycle suite, four concurrency scenarios, and P0 regression suite pass locally. Pending merge/deployment.
+- Next remaining P1: W3-MSG-D3 (notification cursor offsets).
+
 ### Fix now — P2 (one hygiene pass)
 
 - Raw Postgres detail leaks: constraint error returns failing row incl. idempotency key (W3-LIVE-D2); NUL byte → 500 `22P05` (W3-FILE-D3); webhook URL "not a url" → 500 (W3-INT-D6).
