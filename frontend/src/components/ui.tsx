@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -541,7 +541,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 interface ModalStackEntry {
-  dialog: HTMLDivElement;
+  dialog: HTMLDivElement | null;
   opener: HTMLElement | null;
 }
 
@@ -551,20 +551,41 @@ let modalBodyOverflow: string | undefined;
 const topModal = (): ModalStackEntry | undefined => modalStack.at(-1);
 
 const isAvailableForFocus = (element: HTMLElement): boolean => {
-  if (element.tabIndex < 0 || element.matches(':disabled')) return false;
-  if (element.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
-  const style = window.getComputedStyle(element);
-  return style.display !== 'none' && style.visibility !== 'hidden';
+  if (!element.isConnected || element.matches(':disabled') || element.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+  if (getComputedStyle(element).visibility !== 'visible') return false;
+  for (let ancestor: HTMLElement | null = element; ancestor; ancestor = ancestor.parentElement) {
+    if (getComputedStyle(ancestor).display === 'none') return false;
+  }
+  return true;
 };
 
-const focusableElements = (dialog: HTMLDivElement): HTMLElement[] =>
-  Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(isAvailableForFocus);
+const tabOrder = (element: HTMLElement): number => element.tabIndex || Number.POSITIVE_INFINITY;
 
-const focusInside = (dialog: HTMLDivElement, fromEnd = false): void => {
-  const elements = focusableElements(dialog);
-  const preferred = fromEnd ? elements.at(-1) : dialog.querySelector<HTMLElement>('[autofocus]');
-  (preferred && isAvailableForFocus(preferred) ? preferred : elements[0] ?? dialog).focus();
+const tabbableElements = (dialog: HTMLDivElement): HTMLElement[] => {
+  const candidates = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+    .filter((element) => element.tabIndex >= 0 && isAvailableForFocus(element));
+
+  return candidates.filter((element) => {
+    if (!(element instanceof HTMLInputElement) || element.type !== 'radio' || !element.name || element.checked) return true;
+    return !candidates.some((other) =>
+      other instanceof HTMLInputElement && other.type === 'radio' && other.checked
+      && other.name === element.name && other.form === element.form
+    );
+  }).sort((a, b) => tabOrder(a) - tabOrder(b));
 };
+
+const focusInside = (dialog: HTMLDivElement): void => {
+  (tabbableElements(dialog)[0] ?? dialog).focus({ preventScroll: true });
+};
+
+interface ModalProps {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+  size?: ModalSize;
+}
 
 export const Modal = ({
   open,
@@ -573,40 +594,28 @@ export const Modal = ({
   children,
   footer,
   size = 'default',
-}: {
-  open: boolean;
-  title: string;
-  onClose: () => void;
-  children: ReactNode;
-  footer?: ReactNode;
-  size?: ModalSize;
-}) => {
+}: ModalProps) => {
   const { t } = useTranslation();
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
-  const openerRef = useRef<HTMLElement | null>(null);
-  const wasOpenRef = useRef(false);
+  const [activeEntry, setActiveEntry] = useState<ModalStackEntry | null>(null);
 
-  // Capture before React commits newly mounted descendants (and their
-  // `autoFocus`). Effects run too late to distinguish the opener from them.
-  if (open && !wasOpenRef.current) {
-    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  }
-  wasOpenRef.current = open;
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  useEffect(() => {
-    if (!open) return;
-    const dialog = dialogRef.current;
-    if (!dialog) return;
+  useLayoutEffect(() => {
+    if (!open) {
+      setActiveEntry(null);
+      return;
+    }
 
+    // Register before mounting the children so their autoFocus can run
+    // without the previous dialog pulling focus back.
     const entry: ModalStackEntry = {
-      dialog,
-      opener: openerRef.current,
+      dialog: null,
+      opener: document.activeElement instanceof HTMLElement ? document.activeElement : null,
     };
     modalStack.push(entry);
 
@@ -615,8 +624,11 @@ export const Modal = ({
       document.body.style.overflow = 'hidden';
     }
 
+    setActiveEntry(entry);
+
     const onKey = (event: KeyboardEvent) => {
-      if (topModal() !== entry) return;
+      const dialog = entry.dialog;
+      if (!dialog || topModal() !== entry || event.defaultPrevented || event.isComposing) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
@@ -625,7 +637,7 @@ export const Modal = ({
       }
       if (event.key !== 'Tab') return;
 
-      const elements = focusableElements(dialog);
+      const elements = tabbableElements(dialog);
       if (!elements.length) {
         event.preventDefault();
         dialog.focus();
@@ -635,7 +647,7 @@ export const Modal = ({
       const first = elements[0];
       const last = elements.at(-1);
       const active = document.activeElement;
-      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+      if (event.shiftKey && (active === first || active === dialog || !dialog.contains(active))) {
         event.preventDefault();
         last?.focus();
       } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
@@ -645,7 +657,8 @@ export const Modal = ({
     };
 
     const onFocus = (event: FocusEvent) => {
-      if (topModal() !== entry || dialog.contains(event.target as Node)) return;
+      const dialog = entry.dialog;
+      if (!dialog || topModal() !== entry || dialog.contains(event.target as Node)) return;
       focusInside(dialog);
     };
 
@@ -653,9 +666,6 @@ export const Modal = ({
     // Escape first (for example, to close its own popup).
     window.addEventListener('keydown', onKey);
     document.addEventListener('focusin', onFocus, true);
-    // React's `autoFocus` runs during commit. Keep that intentional target;
-    // otherwise choose the first usable control in document order.
-    if (!dialog.contains(document.activeElement)) focusInside(dialog);
 
     return () => {
       window.removeEventListener('keydown', onKey);
@@ -668,7 +678,7 @@ export const Modal = ({
       // If a parent modal disappears before a child, preserve the parent's
       // opener as the child's eventual restoration target.
       for (const remainingEntry of modalStack) {
-        if (remainingEntry.opener && dialog.contains(remainingEntry.opener)) {
+        if (remainingEntry.opener && entry.dialog?.contains(remainingEntry.opener)) {
           remainingEntry.opener = entry.opener;
         }
       }
@@ -680,15 +690,22 @@ export const Modal = ({
 
       if (!wasTopModal) return;
       const nextModal = topModal();
-      const openerIsUsable = entry.opener?.isConnected
-        && !entry.opener.matches(':disabled')
-        && (!nextModal || nextModal.dialog.contains(entry.opener));
-      if (openerIsUsable) entry.opener?.focus();
-      else if (nextModal) focusInside(nextModal.dialog);
+      const opener = entry.opener;
+      if (opener && isAvailableForFocus(opener) && (!nextModal || nextModal.dialog?.contains(opener))) {
+        opener.focus({ preventScroll: true });
+      }
+      if (nextModal?.dialog && !nextModal.dialog.contains(document.activeElement)) focusInside(nextModal.dialog);
     };
   }, [open]);
 
-  if (!open) return null;
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!activeEntry || !dialog || !open) return;
+    activeEntry.dialog = dialog;
+    if (topModal() === activeEntry && !dialog.contains(document.activeElement)) focusInside(dialog);
+  }, [activeEntry, open]);
+
+  if (!open || !activeEntry) return null;
   return (
     <div
       className={`fixed inset-0 z-50 flex items-end p-0 ${
@@ -748,11 +765,19 @@ export const Menu = ({
 }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const close = () => setOpen(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    if (menuRef.current?.contains(document.activeElement)) {
+      triggerRef.current?.focus({ preventScroll: true });
+    }
+    setOpen(false);
+  };
 
   return (
-    <div className="relative">
+    <div ref={menuRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="menu"

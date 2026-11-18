@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
-import enHome from '../../../packages/shared/src/i18n/locales/en/home.json';
-import viHome from '../../../packages/shared/src/i18n/locales/vi/home.json';
+import { translatorFor } from '@service-center/shared';
 import { AccountMenuButton } from './AccountMenuButton';
 
 vi.mock('react-i18next', () => ({
@@ -15,17 +14,17 @@ vi.mock('../i18n', () => ({
 afterEach(cleanup);
 
 describe('AccountMenuButton', () => {
-  it.each([
-    ['English initials', enHome.shell.accountMenu, null],
-    ['English photo', enHome.shell.accountMenu, 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='],
-    ['Vietnamese initials', viHome.shell.accountMenu, null],
-    ['Vietnamese photo', viHome.shell.accountMenu, 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='],
-  ])('has a stable localized name at a narrow viewport: %s', (_variant, label, avatarUrl) => {
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+  const photo = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 
+  it.each([
+    ['en', 'Account menu', null],
+    ['en', 'Account menu', photo],
+    ['vi', 'Trình đơn tài khoản', null],
+    ['vi', 'Trình đơn tài khoản', photo],
+  ] as const)('exposes the localized name in %s (%s) with avatar %s', (locale, expectedName, avatarUrl) => {
     render(
       <AccountMenuButton
-        label={label}
+        label={translatorFor(locale, 'home')('shell.accountMenu')}
         name="QA Wave5 Owner"
         avatarUrl={avatarUrl}
         expanded={false}
@@ -33,7 +32,7 @@ describe('AccountMenuButton', () => {
       />,
     );
 
-    const trigger = screen.getByRole('button', { name: label });
+    const trigger = screen.getByRole('button', { name: expectedName });
     expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
   });

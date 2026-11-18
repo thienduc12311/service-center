@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { StrictMode, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Modal } from './ui';
+import { Menu, MenuItem, Modal } from './ui';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -34,8 +35,13 @@ const ModalHarness = ({ empty = false }: ModalHarnessProps) => {
         {empty ? <button type="button" disabled>Unavailable</button> : (
           <>
             <label htmlFor="plan-title">Title</label>
-            <input id="plan-title" />
+            <input id="plan-title" onKeyDown={(event) => {
+              if (event.key === 'Escape') event.preventDefault();
+            }} />
             <button type="button" onClick={() => setOpen(false)}>Cancel</button>
+            <div style={{ display: 'none' }}>
+              <button type="button">Hidden action</button>
+            </div>
           </>
         )}
       </Modal>
@@ -65,10 +71,13 @@ const StackedModalHarness = () => {
       <button type="button" onClick={() => setParentOpen(true)}>Open parent</button>
       <Modal open={parentOpen} title="Parent dialog" onClose={() => setParentOpen(false)}>
         <button type="button" onClick={() => setChildOpen(true)}>Open child</button>
-        <Modal open={childOpen} title="Child dialog" onClose={() => setChildOpen(false)}>
-          <button type="button">Child action</button>
-        </Modal>
       </Modal>
+      {createPortal(
+        <Modal open={childOpen} title="Child dialog" onClose={() => setChildOpen(false)}>
+          <input aria-label="Search" autoFocus />
+        </Modal>,
+        document.body,
+      )}
     </>
   );
 };
@@ -128,6 +137,34 @@ describe('Modal focus behavior', () => {
     expect(document.activeElement).toBe(title);
   });
 
+  it('allows an inner control to consume Escape', async () => {
+    const user = userEvent.setup();
+    render(<ModalHarness />);
+
+    await user.click(screen.getByRole('button', { name: 'New plan' }));
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Title' }));
+    await user.keyboard('{Escape}');
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  it('wraps at the selected radio when the group ends the tab order', async () => {
+    const user = userEvent.setup();
+    render(
+      <Modal open title="Choose mode" onClose={vi.fn()}>
+        <label><input type="radio" name="mode" defaultChecked /> First</label>
+        <label><input type="radio" name="mode" /> Second</label>
+      </Modal>,
+    );
+
+    const close = screen.getByRole('button', { name: 'actions.close' });
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'First' }));
+    await user.tab();
+    expect(document.activeElement).toBe(close);
+  });
+
   it('preserves a consumer-provided autoFocus target', async () => {
     const user = userEvent.setup();
     render(
@@ -144,6 +181,7 @@ describe('Modal focus behavior', () => {
 
   it('restores the opener and body scrolling when an open modal unmounts', async () => {
     const user = userEvent.setup();
+    document.body.style.overflow = 'auto';
     render(<UnmountHarness />);
     const opener = screen.getByRole('button', { name: 'Open removable dialog' });
     await user.click(opener);
@@ -151,19 +189,20 @@ describe('Modal focus behavior', () => {
 
     await user.click(screen.getByRole('button', { name: 'Unmount dialog' }));
 
-    expect(document.body.style.overflow).toBe('');
+    expect(document.body.style.overflow).toBe('auto');
     expect(document.activeElement).toBe(opener);
   });
 
   it('only lets the top stacked dialog handle Escape and keeps scrolling locked', async () => {
     const user = userEvent.setup();
-    render(<StackedModalHarness />);
+    render(<StrictMode><StackedModalHarness /></StrictMode>);
     const parentOpener = screen.getByRole('button', { name: 'Open parent' });
     await user.click(parentOpener);
 
     const childOpener = screen.getByRole('button', { name: 'Open child' });
     await user.click(childOpener);
     expect(screen.getAllByRole('dialog')).toHaveLength(2);
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Search' }));
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog', { name: 'Child dialog' })).toBeNull();
@@ -175,6 +214,29 @@ describe('Modal focus behavior', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(parentOpener);
     expect(document.body.style.overflow).toBe('');
+  });
+
+  it('restores focus to the menu trigger when the invoking menu item was removed', async () => {
+    const user = userEvent.setup();
+    const MenuDialogHarness = () => {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <Menu label="More">
+            {(close) => <MenuItem onClick={() => { close(); setOpen(true); }}>Details</MenuItem>}
+          </Menu>
+          <Modal open={open} title="File details" onClose={() => setOpen(false)}>File information</Modal>
+        </>
+      );
+    };
+    render(<MenuDialogHarness />);
+    const trigger = screen.getByRole('button', { name: 'More' });
+    await user.click(trigger);
+    await user.click(screen.getByRole('menuitem', { name: 'Details' }));
+    expect(screen.queryByRole('menuitem')).toBeNull();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
   });
 });
 
