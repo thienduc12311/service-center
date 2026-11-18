@@ -33,8 +33,8 @@ result format in §12). Past runs: `docs/qa/runs/<date>-wave<N>/` — always rea
   `select max(version), count(*) from supabase_migrations.schema_migrations` vs
   `ls supabase/migrations | wc -l`. If behind, ask the user before `supabase migration up`.
   **Never `supabase db reset` without the user's OK** — it wipes earlier waves' fixtures.
-  (Supabase CLI ≥3 rejects `[inbucket]` in `supabase/config.toml`; if `supabase status` fails,
-  the containers may still be fine — check `docker ps`.)
+  (If `supabase status` fails after a CLI upgrade, it is usually a renamed config key — e.g.
+  CLI 3 renamed `[inbucket]` → `[local_smtp]`; the containers may still be fine — check `docker ps`.)
 - Servers via `preview_start` (never Bash): `api-simulated-delivery` (:4000, simulated email/push)
   and `web` (:5173); `admin` (:5174) / `mobile-metro` / `mobile-ios` only if a package needs them.
   Check `curl -s -o /dev/null -w '%{http_code}' localhost:4000/health`.
