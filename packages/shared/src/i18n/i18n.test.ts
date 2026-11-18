@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi as vitest } from 'vitest';
 import { createI18n, translateMessage, translatorFor } from './engine.js';
 import { formatCalendarDate, formatInstantDate, formatInstantDateTime, formatInstantTime, weekdayNames } from './format.js';
 import { createLocaleRegistry, localeRegistry, normalizeLocale, type LocaleDefinition } from './locales.js';
@@ -68,6 +68,41 @@ describe('runtime translation', () => {
     expect([0, 1, 5].map((count) => vi('count.people', { count }))).toEqual(['0 người', '1 người', '5 người']);
     expect(en('duration.inDays', { count: 0 })).toBe('today');
     expect(vi('duration.inDays', { count: 3 })).toBe('3 ngày nữa');
+  });
+
+  it.each(['other only', 'one and other'] as const)('uses the same Vietnamese catalog when Intl reports %s', (mode) => {
+    const NativePluralRules = Intl.PluralRules;
+    const mock = vitest.spyOn(Intl, 'PluralRules').mockImplementation(function (
+      locales?: Intl.LocalesArgument,
+      options?: Intl.PluralRulesOptions,
+    ) {
+      const rules = new NativePluralRules(locales, options);
+      if (locales !== 'vi' || options?.type === 'ordinal') return rules;
+      const hasOne = mode === 'one and other';
+      const resolved = rules.resolvedOptions();
+      rules.resolvedOptions = () => ({ ...resolved, pluralCategories: hasOne ? ['one', 'other'] : ['other'] });
+      rules.select = (count) => hasOne && (count === 0 || count === 1) ? 'one' : 'other';
+      return rules;
+    });
+    try {
+      const catalogs = {
+        en: englishResources,
+        vi: {
+          ...resources.vi,
+          common: {
+            ...resources.vi.common,
+            duration: { ...(resources.vi.common.duration as CatalogTree), inDays_zero: 'hôm nay' },
+          },
+        },
+      };
+      const instance = createI18n({ locale: 'vi', catalogs });
+      expect(validateCatalogs({ resources: catalogs, namespaces: NAMESPACES, reference: 'en' })).toEqual([]);
+      expect([0, 1, 2, 5].map((count) => instance.t('count.people', { count }))).toEqual(['0 người', '1 người', '2 người', '5 người']);
+      expect([0, 1, 2].map((count) => instance.t('duration.inDays', { count }))).toEqual(['hôm nay', '1 ngày nữa', '2 ngày nữa']);
+      expect([0, 1, 2].map((count) => instance.t('count.people', { count, lng: 'en' }))).toEqual(['0 people', '1 person', '2 people']);
+    } finally {
+      mock.mockRestore();
+    }
   });
 
   it('treats interpolated values as text (no escaping into entities, no nesting)', () => {

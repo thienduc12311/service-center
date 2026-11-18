@@ -5,6 +5,7 @@
  * Run by `npm run i18n:check -w @service-center/shared` and the shared tests.
  */
 
+import { VIETNAMESE_PLURAL_CATEGORY } from './plurals.js';
 import type { CatalogTree } from './resources.js';
 
 export type CatalogIssueKind =
@@ -83,10 +84,12 @@ const placeholderUnion = (forms: Iterable<string>): Set<string> => {
   return union;
 };
 
-/** Required plural categories for a language, from the runtime's CLDR data. */
-export const requiredPluralCategories = (locale: string): PluralCategory[] =>
-  new Intl.PluralRules(locale).resolvedOptions().pluralCategories.filter((category): category is PluralCategory =>
+/** Required catalog forms, with a stable Vietnamese contract across ICU versions. */
+export const requiredPluralCategories = (locale: string): PluralCategory[] => {
+  if (locale === 'vi') return [VIETNAMESE_PLURAL_CATEGORY];
+  return new Intl.PluralRules(locale).resolvedOptions().pluralCategories.filter((category): category is PluralCategory =>
     (PLURAL_CATEGORIES as readonly string[]).includes(category));
+};
 
 const sorted = (values: Iterable<string>): string => [...values].sort().join(', ');
 
@@ -96,7 +99,7 @@ export interface ValidateCatalogsInput {
   namespaces: readonly string[];
   /** The contract language (English). */
   reference: string;
-  /** Plural categories per language; defaults to `Intl.PluralRules`. */
+  /** Plural categories per language; defaults to `requiredPluralCategories`. */
   pluralCategories?: (locale: string) => readonly string[];
 }
 

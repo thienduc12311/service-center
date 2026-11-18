@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { localeRegistry, type SupportedLocale } from '@service-center/shared';
+import { usePopupMenu } from '../hooks/usePopupMenu';
 import { useLanguage } from './LanguageProvider';
 import { LocaleFlag } from './LocaleFlag';
 
@@ -11,41 +11,25 @@ import { LocaleFlag } from './LocaleFlag';
 export const LocaleSwitcher = () => {
   const { t } = useTranslation();
   const { state, locale, member, setDisplayOverride, setAnonymousChoice } = useLanguage();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const menuId = useId();
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
+  const menu = usePopupMenu();
 
   const choose = (code: SupportedLocale) => {
     if (!member) void setAnonymousChoice(code);
     // Picking the language the preference resolves to drops the override.
     else setDisplayOverride(code === state.resolution.locale ? null : code);
-    setOpen(false);
+    menu.close(true);
   };
 
   return (
-    <div ref={rootRef} className="relative">
+    <div {...menu.rootProps} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        ref={menu.triggerRef}
+        id={menu.triggerId}
+        onClick={menu.toggle}
         aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={menuId}
+        aria-expanded={menu.open}
+        aria-controls={menu.open ? menu.menuId : undefined}
         aria-label={`${t('language.toggleLabel')}: ${localeRegistry.definition(locale).nativeName}`}
         className="flex h-9 items-center gap-1.5 rounded-xl px-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-200 dark:hover:bg-slate-800"
       >
@@ -56,8 +40,8 @@ export const LocaleSwitcher = () => {
         </svg>
       </button>
 
-      {open && (
-        <div id={menuId} role="menu" className="card absolute right-0 z-50 mt-2 w-48 overflow-hidden py-1 text-sm">
+      {menu.open && (
+        <div {...menu.menuProps} role="menu" className="card absolute right-0 z-50 mt-2 w-48 overflow-hidden py-1 text-sm">
           {localeRegistry.options().map((option) => {
             const active = option.code === locale;
             return (
@@ -65,10 +49,11 @@ export const LocaleSwitcher = () => {
                 key={option.code}
                 type="button"
                 role="menuitemradio"
+                tabIndex={-1}
                 aria-checked={active}
                 lang={option.lang}
                 onClick={() => choose(option.code)}
-                className={`flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                className={`flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-slate-50 focus-visible:bg-slate-50 dark:focus-visible:bg-slate-800 dark:hover:bg-slate-800 ${
                   active ? 'font-semibold text-brand-700 dark:text-brand-200' : 'text-slate-700 dark:text-slate-200'
                 }`}
               >
