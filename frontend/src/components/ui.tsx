@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -526,6 +526,46 @@ const MODAL_WIDTHS: Record<ModalSize, string> = {
   side: 'sm:max-w-md',
 };
 
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'area[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  'iframe',
+  'object',
+  'embed',
+  '[contenteditable="true"]',
+  '[tabindex]',
+].join(',');
+
+interface ModalStackEntry {
+  dialog: HTMLDivElement;
+  opener: HTMLElement | null;
+}
+
+const modalStack: ModalStackEntry[] = [];
+let modalBodyOverflow: string | undefined;
+
+const topModal = (): ModalStackEntry | undefined => modalStack.at(-1);
+
+const isAvailableForFocus = (element: HTMLElement): boolean => {
+  if (element.tabIndex < 0 || element.matches(':disabled')) return false;
+  if (element.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none' && style.visibility !== 'hidden';
+};
+
+const focusableElements = (dialog: HTMLDivElement): HTMLElement[] =>
+  Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(isAvailableForFocus);
+
+const focusInside = (dialog: HTMLDivElement, fromEnd = false): void => {
+  const elements = focusableElements(dialog);
+  const preferred = fromEnd ? elements.at(-1) : dialog.querySelector<HTMLElement>('[autofocus]');
+  (preferred && isAvailableForFocus(preferred) ? preferred : elements[0] ?? dialog).focus();
+};
+
 export const Modal = ({
   open,
   title,
@@ -543,20 +583,110 @@ export const Modal = ({
 }) => {
   const { t } = useTranslation();
   const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
+
+  // Capture before React commits newly mounted descendants (and their
+  // `autoFocus`). Effects run too late to distinguish the opener from them.
+  if (open && !wasOpenRef.current) {
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+  wasOpenRef.current = open;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const entry: ModalStackEntry = {
+      dialog,
+      opener: openerRef.current,
     };
+    modalStack.push(entry);
+
+    if (modalStack.length === 1) {
+      modalBodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+    }
+
+    const onKey = (event: KeyboardEvent) => {
+      if (topModal() !== entry) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const elements = focusableElements(dialog);
+      if (!elements.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = elements[0];
+      const last = elements.at(-1);
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+
+    const onFocus = (event: FocusEvent) => {
+      if (topModal() !== entry || dialog.contains(event.target as Node)) return;
+      focusInside(dialog);
+    };
+
+    // Bubble like the previous Escape listener so an inner widget can consume
+    // Escape first (for example, to close its own popup).
     window.addEventListener('keydown', onKey);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    document.addEventListener('focusin', onFocus, true);
+    // React's `autoFocus` runs during commit. Keep that intentional target;
+    // otherwise choose the first usable control in document order.
+    if (!dialog.contains(document.activeElement)) focusInside(dialog);
+
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('focusin', onFocus, true);
+
+      const wasTopModal = topModal() === entry;
+      const entryIndex = modalStack.indexOf(entry);
+      if (entryIndex !== -1) modalStack.splice(entryIndex, 1);
+
+      // If a parent modal disappears before a child, preserve the parent's
+      // opener as the child's eventual restoration target.
+      for (const remainingEntry of modalStack) {
+        if (remainingEntry.opener && dialog.contains(remainingEntry.opener)) {
+          remainingEntry.opener = entry.opener;
+        }
+      }
+
+      if (!modalStack.length) {
+        document.body.style.overflow = modalBodyOverflow ?? '';
+        modalBodyOverflow = undefined;
+      }
+
+      if (!wasTopModal) return;
+      const nextModal = topModal();
+      const openerIsUsable = entry.opener?.isConnected
+        && !entry.opener.matches(':disabled')
+        && (!nextModal || nextModal.dialog.contains(entry.opener));
+      if (openerIsUsable) entry.opener?.focus();
+      else if (nextModal) focusInside(nextModal.dialog);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (
@@ -571,9 +701,11 @@ export const Modal = ({
         aria-hidden="true"
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        tabIndex={-1}
         className={`relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-app-border bg-app-surface
           shadow-2xl shadow-slate-950/20 ${
             size === 'side'
