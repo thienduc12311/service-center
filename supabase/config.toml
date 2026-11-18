@@ -16,7 +16,7 @@ major_version = 15
 enabled = true
 port = 54323
 
-[inbucket]
+[local_smtp]
 enabled = true
 port = 54324
 
@@ -42,6 +42,6 @@ enroll_enabled = true
 verify_enabled = true
 
 [auth.email]
-enable_signup = true
+enabled = true
 enable_confirmations = false
 double_confirm_changes = true

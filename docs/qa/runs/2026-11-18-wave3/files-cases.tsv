@@ -1,0 +1,1795 @@
+id	actor	surface	expected	actual	status	note
+FILE-01.up.plan.scoped-a.API	scoped-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.plan.scoped-a.DB+Storage	scoped-a	DB row + storage object	plan|upload|543|ready|1|true ; 543|application/pdf	plan|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.plan.scoped-a.owner-column	scoped-a	DB	plan_id=parent	t	PASS	
+FILE-01.up.plan.media-a.API	media-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.plan.media-a.DB+Storage	media-a	DB row + storage object	plan|upload|543|ready|1|true ; 543|application/pdf	plan|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.plan.media-a.owner-column	media-a	DB	plan_id=parent	t	PASS	
+FILE-01.up.plan.owner-a.API	owner-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.plan.owner-a.DB+Storage	owner-a	DB row + storage object	plan|upload|543|ready|1|true ; 543|application/pdf	plan|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.plan.owner-a.owner-column	owner-a	DB	plan_id=parent	t	PASS	
+FILE-01.up.plan.admin-a.API	admin-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.plan.admin-a.DB+Storage	admin-a	DB row + storage object	plan|upload|543|ready|1|true ; 543|application/pdf	plan|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.plan.admin-a.owner-column	admin-a	DB	plan_id=parent	t	PASS	
+FILE-01.up.plan_item.legacy-a.API	legacy-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.plan_item.legacy-a.DB+Storage	legacy-a	DB row + storage object	plan_item|upload|543|ready|1|true ; 543|application/pdf	plan_item|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.plan_item.legacy-a.owner-column	legacy-a	DB	plan_item_id=parent	t	PASS	
+FILE-01.up.plan_item.media-a.API	media-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.plan_item.media-a.DB+Storage	media-a	DB row + storage object	plan_item|upload|543|ready|1|true ; 543|application/pdf	plan_item|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.plan_item.media-a.owner-column	media-a	DB	plan_item_id=parent	t	PASS	
+FILE-01.up.plan_item.owner-a.API	owner-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.plan_item.owner-a.DB+Storage	owner-a	DB row + storage object	plan_item|upload|543|ready|1|true ; 543|application/pdf	plan_item|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.plan_item.owner-a.owner-column	owner-a	DB	plan_item_id=parent	t	PASS	
+FILE-01.up.plan_item.admin-a.API	admin-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.plan_item.admin-a.DB+Storage	admin-a	DB row + storage object	plan_item|upload|543|ready|1|true ; 543|application/pdf	plan_item|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.plan_item.admin-a.owner-column	admin-a	DB	plan_item_id=parent	t	PASS	
+FILE-01.up.song.librarian-a.API	librarian-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.song.librarian-a.DB+Storage	librarian-a	DB row + storage object	song|upload|543|ready|1|true ; 543|application/pdf	song|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.song.librarian-a.owner-column	librarian-a	DB	song_id=parent	t	PASS	
+FILE-01.up.song.media-a.API	media-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.song.media-a.DB+Storage	media-a	DB row + storage object	song|upload|543|ready|1|true ; 543|application/pdf	song|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.song.media-a.owner-column	media-a	DB	song_id=parent	t	PASS	
+FILE-01.up.song.owner-a.API	owner-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.song.owner-a.DB+Storage	owner-a	DB row + storage object	song|upload|543|ready|1|true ; 543|application/pdf	song|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.song.owner-a.owner-column	owner-a	DB	song_id=parent	t	PASS	
+FILE-01.up.song.admin-a.API	admin-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.song.admin-a.DB+Storage	admin-a	DB row + storage object	song|upload|543|ready|1|true ; 543|application/pdf	song|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.song.admin-a.owner-column	admin-a	DB	song_id=parent	t	PASS	
+FILE-01.up.arrangement.librarian-a.API	librarian-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.arrangement.librarian-a.DB+Storage	librarian-a	DB row + storage object	arrangement|upload|543|ready|1|true ; 543|application/pdf	arrangement|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.arrangement.librarian-a.owner-column	librarian-a	DB	arrangement_id=parent	t	PASS	
+FILE-01.up.arrangement.media-a.API	media-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.arrangement.media-a.DB+Storage	media-a	DB row + storage object	arrangement|upload|543|ready|1|true ; 543|application/pdf	arrangement|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.arrangement.media-a.owner-column	media-a	DB	arrangement_id=parent	t	PASS	
+FILE-01.up.arrangement.owner-a.API	owner-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.arrangement.owner-a.DB+Storage	owner-a	DB row + storage object	arrangement|upload|543|ready|1|true ; 543|application/pdf	arrangement|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.arrangement.owner-a.owner-column	owner-a	DB	arrangement_id=parent	t	PASS	
+FILE-01.up.arrangement.admin-a.API	admin-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.arrangement.admin-a.DB+Storage	admin-a	DB row + storage object	arrangement|upload|543|ready|1|true ; 543|application/pdf	arrangement|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.arrangement.admin-a.owner-column	admin-a	DB	arrangement_id=parent	t	PASS	
+FILE-01.up.service_type.scoped-a.API	scoped-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.service_type.scoped-a.DB+Storage	scoped-a	DB row + storage object	service_type|upload|543|ready|1|true ; 543|application/pdf	service_type|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.service_type.scoped-a.owner-column	scoped-a	DB	service_type_id=parent	t	PASS	
+FILE-01.up.service_type.media-a.API	media-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.service_type.media-a.DB+Storage	media-a	DB row + storage object	service_type|upload|543|ready|1|true ; 543|application/pdf	service_type|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.service_type.media-a.owner-column	media-a	DB	service_type_id=parent	t	PASS	
+FILE-01.up.service_type.owner-a.API	owner-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.service_type.owner-a.DB+Storage	owner-a	DB row + storage object	service_type|upload|543|ready|1|true ; 543|application/pdf	service_type|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.service_type.owner-a.owner-column	owner-a	DB	service_type_id=parent	t	PASS	
+FILE-01.up.service_type.admin-a.API	admin-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.service_type.admin-a.DB+Storage	admin-a	DB row + storage object	service_type|upload|543|ready|1|true ; 543|application/pdf	service_type|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.service_type.admin-a.owner-column	admin-a	DB	service_type_id=parent	t	PASS	
+FILE-01.up.media.media-a.API	media-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.media.media-a.DB+Storage	media-a	DB row + storage object	media|upload|543|ready|1|true ; 543|application/pdf	media|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.media.media-a.owner-column	media-a	DB	media_id=parent	t	PASS	
+FILE-01.up.media.owner-a.API	owner-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.media.owner-a.DB+Storage	owner-a	DB row + storage object	media|upload|543|ready|1|true ; 543|application/pdf	media|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.media.owner-a.owner-column	owner-a	DB	media_id=parent	t	PASS	
+FILE-01.up.media.admin-a.API	admin-a	API intent->PUT->finalize	201/200/ready	201/200/ready	PASS	
+FILE-01.up.media.admin-a.DB+Storage	admin-a	DB row + storage object	media|upload|543|ready|1|true ; 543|application/pdf	media|upload|543|ready|1|true ; 543|application/pdf	PASS	
+FILE-01.up.media.admin-a.owner-column	admin-a	DB	media_id=parent	t	PASS	
+FILE-01.link.plan.media-a.API	media-a	API POST /files/links	201	201	PASS	
+FILE-01.doc.plan.media-a.API	media-a	API POST /files/documents	201	201	PASS	
+FILE-01.link.plan_item.media-a.API	media-a	API POST /files/links	201	201	PASS	
+FILE-01.doc.plan_item.media-a.API	media-a	API POST /files/documents	201	201	PASS	
+FILE-01.link.song.media-a.API	media-a	API POST /files/links	201	201	PASS	
+FILE-01.doc.song.media-a.API	media-a	API POST /files/documents	201	201	PASS	
+FILE-01.link.arrangement.media-a.API	media-a	API POST /files/links	201	201	PASS	
+FILE-01.doc.arrangement.media-a.API	media-a	API POST /files/documents	201	201	PASS	
+FILE-01.link.service_type.media-a.API	media-a	API POST /files/links	201	201	PASS	
+FILE-01.doc.service_type.media-a.API	media-a	API POST /files/documents	201	201	PASS	
+FILE-01.link.media.media-a.API	media-a	API POST /files/links	201	201	PASS	
+FILE-01.doc.media.media-a.API	media-a	API POST /files/documents	201	201	PASS	
+FILE-01.deny.plan.member-a.intent	member-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.member-a.link	member-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.pending-a.intent	pending-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.pending-a.link	pending-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.confirmed-a.intent	confirmed-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.confirmed-a.link	confirmed-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.prepared-a.intent	prepared-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.prepared-a.link	prepared-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.team-a.intent	team-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.team-a.link	team-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.librarian-a.intent	librarian-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.librarian-a.link	librarian-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.plan_item.member-a.intent	member-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.plan_item.member-a.link	member-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.plan_item.librarian-a.intent	librarian-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.plan_item.librarian-a.link	librarian-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.song.member-a.intent	member-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.song.member-a.link	member-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.song.scoped-a.intent	scoped-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.song.scoped-a.link	scoped-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.song.pending-a.intent	pending-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.song.pending-a.link	pending-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.song.confirmed-a.intent	confirmed-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.song.confirmed-a.link	confirmed-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.arrangement.member-a.intent	member-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.arrangement.member-a.link	member-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.arrangement.scoped-a.intent	scoped-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.arrangement.scoped-a.link	scoped-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.service_type.member-a.intent	member-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.service_type.member-a.link	member-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.service_type.librarian-a.intent	librarian-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.service_type.librarian-a.link	librarian-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.media.member-a.intent	member-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.media.member-a.link	member-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.media.librarian-a.intent	librarian-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.media.librarian-a.link	librarian-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.media.scoped-a.intent	scoped-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.media.scoped-a.link	scoped-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.media.pending-a.intent	pending-a	API intent	403|404	403 forbidden	PASS	
+FILE-01.deny.media.pending-a.link	pending-a	API link	403|404	403 forbidden	PASS	
+FILE-01.deny.no-partial-write	member roles	DB	0 rows titled x	0	PASS	
+FILE-01.deny.plan.scoped-a(Midweek).intent	scoped-a	API intent out-of-scope	403|404	403 forbidden	PASS	
+FILE-01.deny.service_type.scoped-a(Midweek).intent	scoped-a	API intent out-of-scope	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.inactive-a.intent(A header)	inactive-a	API intent X-Org=A	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.inactive-a.intent(B header, A parent)	inactive-a	API intent cross-tenant parent	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.outsider.intent(A header)	outsider	API intent X-Org=A	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.outsider.intent(B header, A parent)	outsider	API intent cross-tenant parent	403|404	404 not_found	PASS	
+FILE-01.deny.plan.beta-owner.intent(A header)	beta-owner	API intent X-Org=A	403|404	403 forbidden	PASS	
+FILE-01.deny.plan.beta-owner.intent(B header, A parent)	beta-owner	API intent cross-tenant parent	403|404	404 not_found	PASS	
+FILE-01.deny.plan.anonymous.intent	anonymous	API	401	401 unauthorized	PASS	
+FILE-01.wrongparent.B-plan.owner-a(A header)	owner-a	API B plan id under A	404	404 not_found	PASS	
+FILE-01.wrongparent.B-media.owner-a	owner-a	API B media under A	404	404 not_found	PASS	
+FILE-01.wrongparent.random.owner-a	owner-a	API random uuid	404	404 not_found	PASS	
+FILE-01.wrongparent.badid.owner-a	owner-a	API non-uuid	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.wrongparent.kind-mismatch.owner-a	owner-a	API song id as plan	404	404 not_found	PASS	
+FILE-01.wrongparent.item-of-other-plan.control	owner-a	API plan_item p2 (valid)	201	201	PASS	
+FILE-01.val.size-0	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.size-neg	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.size-over(26214401)	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.size-max(26214400)	owner-a	API intent validation	201	201	PASS	
+FILE-01.val.size-float	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.size-string	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.mime-zip	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.mime-html	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.mime-empty	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.filename-empty	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.filename-whitespace	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.filename-201	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.filename-200	owner-a	API intent validation	201	201	PASS	
+FILE-01.val.filename-traversal	owner-a	API intent validation	201|400	201	PASS	
+FILE-01.val.title-201	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.title-200	owner-a	API intent validation	201	201	PASS	
+FILE-01.val.idem-missing	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.idem-short	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.no-owner-no-file	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.file-without-revision	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.audience-teams-empty	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.audience-positions-empty	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.audience-bad	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.category-bad	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.team-from-other-org	owner-a	API intent validation	400|404|422	404 not_found	PASS	
+FILE-01.val.position-from-other-org	owner-a	API intent validation	400|404|422	404 not_found	PASS	
+FILE-01.val.team-valid	owner-a	API intent validation	201	201	PASS	
+FILE-01.val.team_ids-51	owner-a	API intent validation	400|422 (API validation convention is 422)	422 unprocessable	PASS	
+FILE-01.val.file_id-other-org	owner-a	API intent validation	404	404 not_found	PASS	
+FILE-01.unfin.intent	media-a	API intent	201	201	PASS	
+FILE-01.unfin.member-a.GET-file(before upload)	member-a	API GET /files/:id	404	404 not_found	PASS	
+FILE-01.unfin.writer.GET-file	media-a	API	200 with pending_versions, current_version null	200 cur=null pend=1	PASS	
+FILE-01.unfin.finalize-without-PUT	media-a	API finalize	200 outcome not_uploaded	200 not_uploaded	PASS	
+FILE-01.unfin.writer.download-before-finalize	media-a	API download	404|409	404 not_found	PASS	
+FILE-01.unfin.member.download	member-a	API download	404	404 not_found	PASS	
+FILE-01.unfin.member.list-excludes	member-a	API list	unfinalized absent	["small.pdf","F01 plan scoped-a","F01 plan media-a","F01 plan owner-a","F01 plan admin-a","F01 link plan","F01 doc plan"]	PASS	
+FILE-01.unfin.member.plan-files-excludes	member-a	API plan files	absent	200	PASS	
+FILE-01.unfin.PUT	media-a	Storage signed PUT	200	200	PASS	
+FILE-01.unfin.member.storage-GET-pending	member-a	Storage GET pending object	400|403|404	400	PASS	
+FILE-01.unfin.writer.storage-GET-pending	media-a	Storage GET pending (writer)	200|400|403|404	200	PASS	
+FILE-01.unfin.writer.storage-GET-pending.info	media-a	Storage	info (pending object readable by writer?)	200	PASS	
+FILE-01.unfin.member.RLS-version	member-a	PostgREST attachment_versions	[]	[]	PASS	
+FILE-01.unfin.finalize.member-a	member-a	API finalize	404	404 not_found	PASS	
+FILE-01.unfin.finalize.other-writer(owner)	owner-a	API finalize by non-creator	404	404 not_found	PASS	
+FILE-01.unfin.finalize.wrong-file-id	media-a	API finalize version under other file	404	404 not_found	PASS	
+FILE-01.unfin.finalize	media-a	API finalize	ready	200 ready	PASS	
+FILE-01.unfin.finalize-replay	media-a	API finalize again	200 ready replayed	200 ready true	PASS	
+FILE-01.unfin.member.GET-after-finalize	member-a	API	200	200	PASS	
+FILE-01.idem.replay	media-a	API	201 then 200 replayed same version	201/200 true	PASS	
+FILE-01.idem.reuse-different-body	media-a	API	409	409 idempotency_key_reused	PASS	
+FILE-01.idem.reuse-other-parent	media-a	API	409	409 idempotency_key_reused	PASS	
+FILE-01.idem.single-row	media-a	DB	1 attachment	1	PASS	
+FILE-01.abandon.member-a	member-a	API abandon	404	404 not_found	PASS	
+FILE-01.abandon.wrong-version	media-a	API	404	404 not_found	PASS	
+FILE-01.abandon	media-a	API abandon	200 file_removed true	200 {"file_removed":true}	PASS	
+FILE-01.abandon.row-gone	media-a	DB	0	0	PASS	
+FILE-01.abandon.PUT-after-abandon	media-a	Storage signed PUT on abandoned intent	rejected	200 {"Key":"attachments/2434e578-7e8e-4b07-bc16-0ebb36cc334f/9639bb26-a40c-481a-bcc8	FAIL	W3-FILE-D1
+FILE-01.abandon.finalize-after	media-a	API	404	404 not_found	PASS	
+FILE-01.abandon.after-ready	media-a	API abandon on ready version	409	409 file_revision_stale	PASS	
+FILE-01.fail.size_mismatch	media-a	API finalize declared!=actual	outcome failed reason size_mismatch	200 failed size_mismatch	PASS	
+FILE-01.fail.size_mismatch.persisted	media-a	DB version + removal queue	failed|size_mismatch + queued	failed|size_mismatch / failed	PASS	
+FILE-01.fail.size_mismatch.member-GET	member-a	API	404	404 not_found	PASS	
+FILE-01.fail.size_mismatch.writer-download	media-a	API	404	404 not_found	PASS	
+FILE-01.fail.type_mismatch	media-a	API finalize declared image/png, PUT content-type application/pdf	failed type_mismatch	200 failed type_mismatch	PASS	
+FILE-01.fail.bucket-mime-reject	media-a	Storage signed PUT text/html	rejected 4xx	400 {"statusCode":"415","error":"invalid_mime_type","message":"mime type text/html is not supp	PASS	
+FILE-01.fail.bucket-mime-reject.finalize	media-a	API finalize after rejected PUT	not_uploaded	not_uploaded	PASS	
+FILE-01.limit.bucket-rejects-25MiB+1	media-a	Storage signed PUT 26214401 bytes	rejected (413)	400 {"statusCode":"413","error":"Payload too large","message":"The object exceeded the maximum	PASS	
+FILE-01.limit.exact.intent	media-a	API intent	201	201	PASS	
+FILE-01.limit.exact.PUT	media-a	Storage PUT 26214400 bytes	200	200 {"Key":"attachments/2434e578-7e8e-4b07-bc16-0ebb36cc334f/229ba52b-8731-43c9-b047	PASS	
+FILE-01.limit.exact.finalize	media-a	API finalize	ready	ready null	PASS	
+FILE-01.limit.exact.download-bytes	member-a	signed URL bytes	26214400 bytes identical	200 26214400	PASS	
+FILE-01.corrupt.pdf-bytes	media-a	API upload random bytes as application/pdf	accepted (server validates type/size only, not content) - record behaviour	ready	PASS	
+FILE-01.storage.direct-POST.member-a(not creator)	member-a	Storage POST caller JWT	400|403	400	PASS	
+FILE-01.storage.direct-POST.anonymous(anon key)	anonymous	Storage POST anon	400|401|403	400	PASS	
+FILE-01.storage.direct-POST.owner(not creator)	owner-a	Storage POST caller JWT non-creator	400|403	400	PASS	
+FILE-01.storage.direct-POST.arbitrary-path	media-a	Storage POST path with no intent	400|403	400	PASS	
+FILE-01.storage.direct-POST.other-org-prefix	media-a	Storage POST other-org prefix	400|403	400	PASS	
+FILE-01.storage.direct-POST.creator-own-intent	media-a	Storage POST caller JWT, own pending intent	200	200	PASS	
+FILE-01.storage.direct-POST.creator-second-write	media-a	Storage POST again (overwrite w/o upsert)	400|409|403	400	PASS	
+FILE-01.storage.upsert-overwrite-pending	media-a	Storage POST x-upsert on own pending object	info: overwrite of pending object	400 {"statusCode":"403","error":"Unauthorized","message":"new ro	PASS	
+FILE-01.storage.finalize-after-upsert	media-a	API finalize	ready or failed size_mismatch (consistent)	ready null	PASS	
+FILE-01.storage.overwrite-after-ready.creator-JWT	media-a	Storage POST x-upsert over ready object	400|403|409	400	PASS	
+FILE-01.storage.overwrite-after-ready.reuse-signed-token	media-a	Storage signed PUT reuse after finalize	rejected (object exists, no upsert)	400 {"statusCode":"409","error":"Duplicate","message":"The resource already exists",	PASS	
+FILE-01.storage.overwrite-after-ready.signed-token+upsert	media-a	Storage signed PUT x-upsert:true after finalize	rejected (ready object must be immutable)	400 {"statusCode":"409","error":"Duplicate","message":"The resource already exists",	PASS	
+FILE-01.storage.ready-object-size-unchanged	media-a	DB storage.objects	543	543	PASS	
+FILE-01.expiry.direct-POST-after-expiry	media-a	Storage POST caller JWT after expiry	400|403	400	PASS	
+FILE-01.expiry.finalize	media-a	API finalize after expiry	expired	expired expired	PASS	
+FILE-01.expiry.persisted	media-a	DB	expired	expired	PASS	
+FILE-01.expiry.file-after	media-a	API GET after expiry	info	200 1	PASS	
+FILE-01.expiry.signed-PUT-after-DB-expiry	media-a	Storage signed PUT after DB expiry (token still valid)	info (token JWT governs; DB expiry only enforced at finalize/policy)	200	PASS	
+FILE-01.expiry.finalize-after-late-PUT	media-a	API finalize	expired (bytes ignored)	expired	PASS	
+FILE-01.revoked.finalize-inactive-member	legacy-a	API finalize after membership inactive	403|404	403 forbidden	PASS	
+FILE-01.revoked.finalize-after-restore	legacy-a	API finalize after restore	ready	ready	PASS	
+FILE-01.revoked.finalize-after-songs.manage-revoked	librarian-a	API finalize after capability revoked	403|404	404 not_found	PASS	
+FILE-01.cap.20-pending-intents	owner-a	API intent #21	422/400-ish refusal after 20 pending (pending before: 6)	created=14 last=400 {"error":"Finish or cancel your other uploads first","code":"bad_request"}	PASS	
+FILE-02.p1-org.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.librarian-a.API-detail	librarian-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.librarian-a.API-download	librarian-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.librarian-a.signed-URL-bytes	librarian-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.member-a.API-detail	member-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.member-a.API-download	member-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.member-a.RLS-row	member-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.member-a.signed-URL-bytes	member-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.pending-a.API-detail	pending-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.pending-a.API-download	pending-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.pending-a.signed-URL-bytes	pending-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.confirmed-a.API-detail	confirmed-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.confirmed-a.signed-URL-bytes	confirmed-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.prepared-a.API-detail	prepared-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.prepared-a.API-download	prepared-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.prepared-a.signed-URL-bytes	prepared-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.team-a.API-detail	team-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-org.team-a.API-download	team-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-org.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-org.team-a.RLS-row	team-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-org.team-a.signed-URL-bytes	team-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-org.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-org.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-org.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-org.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-org.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-org.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-org.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-org.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-org.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-org.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-org.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-org.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-org.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-org.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-org.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-org.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.p1-sched.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-sched.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-sched.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-sched.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-sched.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-sched.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-sched.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-sched.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-sched.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-sched.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-sched.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-sched.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-sched.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-sched.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-sched.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-sched.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-sched.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-sched.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-sched.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-sched.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-sched.librarian-a.API-detail	librarian-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-sched.librarian-a.API-download	librarian-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-sched.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-sched.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-sched.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-sched.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-sched.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-sched.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-sched.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-sched.member-a.API-detail	member-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-sched.member-a.API-download	member-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-sched.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-sched.member-a.RLS-row	member-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-sched.pending-a.API-detail	pending-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-sched.pending-a.API-download	pending-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-sched.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-sched.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-sched.pending-a.signed-URL-bytes	pending-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-sched.confirmed-a.API-detail	confirmed-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-sched.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-sched.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-sched.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-sched.confirmed-a.signed-URL-bytes	confirmed-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-sched.prepared-a.API-detail	prepared-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-sched.prepared-a.API-download	prepared-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-sched.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-sched.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-sched.team-a.API-detail	team-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-sched.team-a.API-download	team-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-sched.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-sched.team-a.RLS-row	team-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-sched.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-sched.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-sched.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-sched.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-sched.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-sched.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-sched.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-sched.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-sched.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-sched.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-sched.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-sched.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-sched.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-sched.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-sched.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-sched.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.p1-teamBand.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamBand.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamBand.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamBand.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamBand.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamBand.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamBand.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamBand.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamBand.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamBand.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamBand.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamBand.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamBand.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamBand.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamBand.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamBand.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamBand.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamBand.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamBand.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamBand.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamBand.librarian-a.API-detail	librarian-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamBand.librarian-a.API-download	librarian-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamBand.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamBand.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamBand.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamBand.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamBand.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamBand.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamBand.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamBand.member-a.API-detail	member-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamBand.member-a.API-download	member-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamBand.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamBand.member-a.RLS-row	member-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamBand.pending-a.API-detail	pending-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamBand.pending-a.API-download	pending-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamBand.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamBand.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamBand.pending-a.signed-URL-bytes	pending-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamBand.confirmed-a.API-detail	confirmed-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamBand.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamBand.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamBand.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamBand.confirmed-a.signed-URL-bytes	confirmed-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamBand.prepared-a.API-detail	prepared-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamBand.prepared-a.API-download	prepared-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamBand.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamBand.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamBand.team-a.API-detail	team-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamBand.team-a.API-download	team-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamBand.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamBand.team-a.RLS-row	team-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamBand.team-a.signed-URL-bytes	team-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamBand.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamBand.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamBand.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamBand.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamBand.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamBand.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamBand.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamBand.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamBand.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamBand.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamBand.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamBand.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamBand.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-teamBand.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-teamBand.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamBand.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.p1-teamProd.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamProd.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamProd.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamProd.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamProd.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamProd.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamProd.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamProd.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamProd.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamProd.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamProd.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamProd.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamProd.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamProd.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamProd.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamProd.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamProd.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamProd.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamProd.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamProd.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamProd.librarian-a.API-detail	librarian-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.librarian-a.API-download	librarian-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamProd.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamProd.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-teamProd.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-teamProd.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-teamProd.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-teamProd.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-teamProd.member-a.API-detail	member-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.member-a.API-download	member-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamProd.member-a.RLS-row	member-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamProd.pending-a.API-detail	pending-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.pending-a.API-download	pending-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamProd.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamProd.confirmed-a.API-detail	confirmed-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamProd.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamProd.prepared-a.API-detail	prepared-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.prepared-a.API-download	prepared-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamProd.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamProd.team-a.API-detail	team-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.team-a.API-download	team-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-teamProd.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamProd.team-a.RLS-row	team-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamProd.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamProd.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamProd.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamProd.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamProd.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamProd.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamProd.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamProd.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamProd.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamProd.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-teamProd.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamProd.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-teamProd.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-teamProd.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-teamProd.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-teamProd.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.p1-posKeys.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-posKeys.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-posKeys.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-posKeys.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-posKeys.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-posKeys.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-posKeys.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-posKeys.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-posKeys.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-posKeys.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-posKeys.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-posKeys.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-posKeys.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-posKeys.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-posKeys.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-posKeys.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-posKeys.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-posKeys.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-posKeys.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-posKeys.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-posKeys.librarian-a.API-detail	librarian-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-posKeys.librarian-a.API-download	librarian-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-posKeys.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-posKeys.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-posKeys.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-posKeys.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-posKeys.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-posKeys.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-posKeys.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-posKeys.member-a.API-detail	member-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-posKeys.member-a.API-download	member-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-posKeys.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-posKeys.member-a.RLS-row	member-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-posKeys.pending-a.API-detail	pending-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-posKeys.pending-a.API-download	pending-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-posKeys.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-posKeys.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-posKeys.pending-a.signed-URL-bytes	pending-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-posKeys.confirmed-a.API-detail	confirmed-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-posKeys.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-posKeys.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-posKeys.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-posKeys.prepared-a.API-detail	prepared-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-posKeys.prepared-a.API-download	prepared-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-posKeys.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-posKeys.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-posKeys.team-a.API-detail	team-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-posKeys.team-a.API-download	team-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-posKeys.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-posKeys.team-a.RLS-row	team-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-posKeys.team-a.signed-URL-bytes	team-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-posKeys.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-posKeys.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-posKeys.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-posKeys.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-posKeys.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-posKeys.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-posKeys.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-posKeys.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-posKeys.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-posKeys.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-posKeys.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-posKeys.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-posKeys.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-posKeys.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-posKeys.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-posKeys.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.p1-leaders.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-leaders.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-leaders.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-leaders.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-leaders.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-leaders.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-leaders.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-leaders.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-leaders.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-leaders.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-leaders.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-leaders.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-leaders.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-leaders.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-leaders.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-leaders.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-leaders.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-leaders.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-leaders.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-leaders.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-leaders.librarian-a.API-detail	librarian-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.librarian-a.API-download	librarian-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-leaders.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-leaders.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.p1-leaders.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p1-leaders.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p1-leaders.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p1-leaders.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p1-leaders.member-a.API-detail	member-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.member-a.API-download	member-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-leaders.member-a.RLS-row	member-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-leaders.pending-a.API-detail	pending-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.pending-a.API-download	pending-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-leaders.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-leaders.confirmed-a.API-detail	confirmed-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-leaders.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-leaders.prepared-a.API-detail	prepared-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.prepared-a.API-download	prepared-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-leaders.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-leaders.team-a.API-detail	team-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.team-a.API-download	team-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p1-leaders.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-leaders.team-a.RLS-row	team-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-leaders.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-leaders.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-leaders.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-leaders.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-leaders.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-leaders.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-leaders.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-leaders.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-leaders.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p1-leaders.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p1-leaders.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-leaders.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p1-leaders.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-leaders.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.p1-leaders.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p1-leaders.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.song-org.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.librarian-a.API-detail	librarian-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.librarian-a.API-download	librarian-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.librarian-a.signed-URL-bytes	librarian-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.member-a.API-detail	member-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.member-a.API-download	member-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.member-a.RLS-row	member-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.member-a.signed-URL-bytes	member-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.pending-a.API-detail	pending-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.pending-a.API-download	pending-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.pending-a.signed-URL-bytes	pending-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.confirmed-a.API-detail	confirmed-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.confirmed-a.signed-URL-bytes	confirmed-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.prepared-a.API-detail	prepared-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.prepared-a.API-download	prepared-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.prepared-a.signed-URL-bytes	prepared-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.team-a.API-detail	team-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-org.team-a.API-download	team-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-org.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-org.team-a.RLS-row	team-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-org.team-a.signed-URL-bytes	team-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-org.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.song-org.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.song-org.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-org.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-org.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.song-org.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.song-org.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-org.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-org.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.song-org.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.song-org.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-org.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-org.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.song-org.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.song-org.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-org.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.song-leaders.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-leaders.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-leaders.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-leaders.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-leaders.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-leaders.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-leaders.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-leaders.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-leaders.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-leaders.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-leaders.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-leaders.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-leaders.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-leaders.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-leaders.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-leaders.scoped-a.API-detail	scoped-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.scoped-a.API-download	scoped-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-leaders.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-leaders.librarian-a.API-detail	librarian-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-leaders.librarian-a.API-download	librarian-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-leaders.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-leaders.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-leaders.librarian-a.signed-URL-bytes	librarian-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-leaders.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.song-leaders.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.song-leaders.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.song-leaders.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.song-leaders.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.song-leaders.member-a.API-detail	member-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.member-a.API-download	member-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-leaders.member-a.RLS-row	member-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-leaders.pending-a.API-detail	pending-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.pending-a.API-download	pending-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-leaders.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-leaders.confirmed-a.API-detail	confirmed-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-leaders.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-leaders.prepared-a.API-detail	prepared-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.prepared-a.API-download	prepared-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-leaders.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-leaders.team-a.API-detail	team-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.team-a.API-download	team-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.song-leaders.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-leaders.team-a.RLS-row	team-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-leaders.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.song-leaders.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.song-leaders.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-leaders.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-leaders.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.song-leaders.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.song-leaders.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-leaders.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-leaders.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.song-leaders.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.song-leaders.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-leaders.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.song-leaders.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.song-leaders.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.song-leaders.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.song-leaders.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.media-org.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.librarian-a.API-detail	librarian-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.librarian-a.API-download	librarian-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.librarian-a.signed-URL-bytes	librarian-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.member-a.API-detail	member-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.member-a.API-download	member-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.member-a.RLS-row	member-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.member-a.signed-URL-bytes	member-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.pending-a.API-detail	pending-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.pending-a.API-download	pending-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.pending-a.signed-URL-bytes	pending-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.confirmed-a.API-detail	confirmed-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.confirmed-a.signed-URL-bytes	confirmed-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.prepared-a.API-detail	prepared-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.prepared-a.API-download	prepared-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.prepared-a.signed-URL-bytes	prepared-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.team-a.API-detail	team-a	API GET /files/:id	200	200	PASS	
+FILE-02.media-org.team-a.API-download	team-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.media-org.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.media-org.team-a.RLS-row	team-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.media-org.team-a.signed-URL-bytes	team-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.media-org.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.media-org.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.media-org.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.media-org.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.media-org.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.media-org.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.media-org.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.media-org.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.media-org.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.media-org.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.media-org.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.media-org.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.media-org.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.media-org.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.media-org.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.media-org.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.svc-org.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.librarian-a.API-detail	librarian-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.librarian-a.API-download	librarian-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.librarian-a.signed-URL-bytes	librarian-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.member-a.API-detail	member-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.member-a.API-download	member-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.member-a.RLS-row	member-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.member-a.signed-URL-bytes	member-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.pending-a.API-detail	pending-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.pending-a.API-download	pending-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.pending-a.signed-URL-bytes	pending-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.confirmed-a.API-detail	confirmed-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.confirmed-a.signed-URL-bytes	confirmed-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.prepared-a.API-detail	prepared-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.prepared-a.API-download	prepared-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.prepared-a.signed-URL-bytes	prepared-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.team-a.API-detail	team-a	API GET /files/:id	200	200	PASS	
+FILE-02.svc-org.team-a.API-download	team-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.svc-org.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.svc-org.team-a.RLS-row	team-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.svc-org.team-a.signed-URL-bytes	team-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.svc-org.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.svc-org.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.svc-org.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.svc-org.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.svc-org.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.svc-org.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.svc-org.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.svc-org.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.svc-org.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.svc-org.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.svc-org.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.svc-org.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.svc-org.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.svc-org.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.svc-org.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.svc-org.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.item-sched.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.item-sched.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.item-sched.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.item-sched.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.item-sched.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.item-sched.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.item-sched.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.item-sched.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.item-sched.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.item-sched.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.item-sched.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.item-sched.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.item-sched.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.item-sched.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.item-sched.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.item-sched.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.item-sched.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.item-sched.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.item-sched.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.item-sched.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.item-sched.librarian-a.API-detail	librarian-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.item-sched.librarian-a.API-download	librarian-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.item-sched.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.item-sched.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.item-sched.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.item-sched.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.item-sched.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.item-sched.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.item-sched.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.item-sched.member-a.API-detail	member-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.item-sched.member-a.API-download	member-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.item-sched.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.item-sched.member-a.RLS-row	member-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.item-sched.pending-a.API-detail	pending-a	API GET /files/:id	200	200	PASS	
+FILE-02.item-sched.pending-a.API-download	pending-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.item-sched.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.item-sched.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.item-sched.pending-a.signed-URL-bytes	pending-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.item-sched.confirmed-a.API-detail	confirmed-a	API GET /files/:id	200	200	PASS	
+FILE-02.item-sched.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.item-sched.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.item-sched.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.item-sched.confirmed-a.signed-URL-bytes	confirmed-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.item-sched.prepared-a.API-detail	prepared-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.item-sched.prepared-a.API-download	prepared-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.item-sched.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.item-sched.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.item-sched.team-a.API-detail	team-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.item-sched.team-a.API-download	team-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.item-sched.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.item-sched.team-a.RLS-row	team-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.item-sched.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.item-sched.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.item-sched.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.item-sched.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.item-sched.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.item-sched.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.item-sched.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.item-sched.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.item-sched.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.item-sched.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.item-sched.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.item-sched.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.item-sched.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.item-sched.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.item-sched.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.item-sched.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.p2-sched.owner-a.API-detail	owner-a	API GET /files/:id	200	200	PASS	
+FILE-02.p2-sched.owner-a.API-download	owner-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p2-sched.owner-a.Storage-GET	owner-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p2-sched.owner-a.RLS-row	owner-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p2-sched.owner-a.signed-URL-bytes	owner-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p2-sched.admin-a.API-detail	admin-a	API GET /files/:id	200	200	PASS	
+FILE-02.p2-sched.admin-a.API-download	admin-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p2-sched.admin-a.Storage-GET	admin-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p2-sched.admin-a.RLS-row	admin-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p2-sched.admin-a.signed-URL-bytes	admin-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p2-sched.legacy-a.API-detail	legacy-a	API GET /files/:id	200	200	PASS	
+FILE-02.p2-sched.legacy-a.API-download	legacy-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p2-sched.legacy-a.Storage-GET	legacy-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p2-sched.legacy-a.RLS-row	legacy-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p2-sched.legacy-a.signed-URL-bytes	legacy-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p2-sched.scoped-a.API-detail	scoped-a	API GET /files/:id	200	200	PASS	
+FILE-02.p2-sched.scoped-a.API-download	scoped-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p2-sched.scoped-a.Storage-GET	scoped-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p2-sched.scoped-a.RLS-row	scoped-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p2-sched.scoped-a.signed-URL-bytes	scoped-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p2-sched.librarian-a.API-detail	librarian-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.librarian-a.API-download	librarian-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.librarian-a.Storage-GET	librarian-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p2-sched.librarian-a.RLS-row	librarian-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p2-sched.media-a.API-detail	media-a	API GET /files/:id	200	200	PASS	
+FILE-02.p2-sched.media-a.API-download	media-a	API POST /files/:id/download	200	200	PASS	
+FILE-02.p2-sched.media-a.Storage-GET	media-a	Storage /object/authenticated caller JWT	200	200 %PDF-1.4 1 0 obj << /Type /Catalog /Page	PASS	
+FILE-02.p2-sched.media-a.RLS-row	media-a	PostgREST attachments caller JWT	1 row	1	PASS	
+FILE-02.p2-sched.media-a.signed-URL-bytes	media-a	GET signed url	200 bytes==543	200 543	PASS	
+FILE-02.p2-sched.member-a.API-detail	member-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.member-a.API-download	member-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.member-a.Storage-GET	member-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p2-sched.member-a.RLS-row	member-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p2-sched.pending-a.API-detail	pending-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.pending-a.API-download	pending-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.pending-a.Storage-GET	pending-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p2-sched.pending-a.RLS-row	pending-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p2-sched.confirmed-a.API-detail	confirmed-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.confirmed-a.API-download	confirmed-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.confirmed-a.Storage-GET	confirmed-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p2-sched.confirmed-a.RLS-row	confirmed-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p2-sched.prepared-a.API-detail	prepared-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.prepared-a.API-download	prepared-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.prepared-a.Storage-GET	prepared-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p2-sched.prepared-a.RLS-row	prepared-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p2-sched.team-a.API-detail	team-a	API GET /files/:id	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.team-a.API-download	team-a	API POST /files/:id/download	401|403|404	404 not_found	PASS	
+FILE-02.p2-sched.team-a.Storage-GET	team-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p2-sched.team-a.RLS-row	team-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p2-sched.inactive-a.API-detail	inactive-a	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p2-sched.inactive-a.API-download	inactive-a	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p2-sched.inactive-a.Storage-GET	inactive-a	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p2-sched.inactive-a.RLS-row	inactive-a	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p2-sched.outsider.API-detail	outsider	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p2-sched.outsider.API-download	outsider	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p2-sched.outsider.Storage-GET	outsider	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p2-sched.outsider.RLS-row	outsider	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p2-sched.beta-owner.API-detail	beta-owner	API GET /files/:id	401|403|404	403 forbidden	PASS	
+FILE-02.p2-sched.beta-owner.API-download	beta-owner	API POST /files/:id/download	401|403|404	403 forbidden	PASS	
+FILE-02.p2-sched.beta-owner.Storage-GET	beta-owner	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p2-sched.beta-owner.RLS-row	beta-owner	PostgREST attachments caller JWT	0 rows	0	PASS	
+FILE-02.p2-sched.anonymous.API-detail	anonymous	API GET /files/:id	401|403|404	401 unauthorized	PASS	
+FILE-02.p2-sched.anonymous.API-download	anonymous	API POST /files/:id/download	401|403|404	401 unauthorized	PASS	
+FILE-02.p2-sched.anonymous.Storage-GET	anonymous	Storage /object/authenticated caller JWT	denied	400 {"statusCode":"404","error":"not_found",	PASS	
+FILE-02.p2-sched.anonymous.RLS-row	anonymous	PostgREST attachments caller JWT	denied (0 rows or 401)	err401	PASS	
+FILE-02.list.p1.member-a	member-a	API GET /files?owner=plan	F02 p1-org	F02 p1-org	PASS	
+FILE-02.planfiles.member-a	member-a	API GET /plans/:id/files	info list	F02 p1-org,F02 song-org	PASS	
+FILE-02.list.p1.pending-a	pending-a	API GET /files?owner=plan	F02 p1-org,F02 p1-sched,F02 p1-teamBand,F02 p1-posKeys	F02 p1-org,F02 p1-sched,F02 p1-teamBand,F02 p1-posKeys	PASS	
+FILE-02.planfiles.pending-a	pending-a	API GET /plans/:id/files	info list	F02 p1-org,F02 p1-sched,F02 p1-teamBand,F02 p1-posKeys,F02 item-sched,F02 song-org	PASS	
+FILE-02.list.p1.confirmed-a	confirmed-a	API GET /files?owner=plan	F02 p1-org,F02 p1-sched,F02 p1-teamBand	F02 p1-org,F02 p1-sched,F02 p1-teamBand	PASS	
+FILE-02.planfiles.confirmed-a	confirmed-a	API GET /plans/:id/files	info list	F02 p1-org,F02 p1-sched,F02 p1-teamBand,F02 item-sched,F02 song-org	PASS	
+FILE-02.list.p1.team-a	team-a	API GET /files?owner=plan	F02 p1-org,F02 p1-teamBand,F02 p1-posKeys	F02 p1-org,F02 p1-teamBand,F02 p1-posKeys	PASS	
+FILE-02.planfiles.team-a	team-a	API GET /plans/:id/files	info list	F02 p1-org,F02 p1-teamBand,F02 p1-posKeys,F02 song-org	PASS	
+FILE-02.list.p1.prepared-a	prepared-a	API GET /files?owner=plan	F02 p1-org	F02 p1-org	PASS	
+FILE-02.planfiles.prepared-a	prepared-a	API GET /plans/:id/files	info list	F02 p1-org,F02 song-org	PASS	
+FILE-02.list.p1.media-a	media-a	API GET /files?owner=plan	F02 p1-org,F02 p1-sched,F02 p1-teamBand,F02 p1-teamProd,F02 p1-posKeys,F02 p1-leaders	F02 p1-org,F02 p1-sched,F02 p1-teamBand,F02 p1-teamProd,F02 p1-posKeys,F02 p1-leaders	PASS	
+FILE-02.planfiles.media-a	media-a	API GET /plans/:id/files	info list	F02 p1-org,F02 p1-sched,F02 p1-teamBand,F02 p1-teamProd,F02 p1-posKeys,F02 p1-leaders,F02 item-sched,F02 song-org,F02 song-leaders	PASS	
+FILE-02.list.p1.librarian-a	librarian-a	API GET /files?owner=plan	F02 p1-org	F02 p1-org	PASS	
+FILE-02.planfiles.librarian-a	librarian-a	API GET /plans/:id/files	info list	F02 p1-org,F02 song-org,F02 song-leaders	PASS	
+FILE-02.list.p1.beta-owner(B header)	beta-owner	API list A plan under B	404	404 not_found	PASS	
+FILE-02.list.p1.anonymous	anonymous	API	401	401 unauthorized	PASS	
+FILE-02.release.p2-sched.member-a(prepared).before	member-a	API detail prepared assignee	404	404 not_found	PASS	
+FILE-02.release.p2-sched.member-a(prepared).download-before	member-a	API download	404	404 not_found	PASS	
+FILE-02.release.fixture	owner-a	API plan	member-a prepared assignment present	62632b7d-ba4d-430b-b024-2bbcc6d3e5fb	PASS	
+FILE-02.release.member-a.schedule-before	member-a	API /schedule/mine	p2 not listed	absent	PASS	
+FILE-02.release.owner.release	owner-a	API release	200	200	PASS	
+FILE-02.release.p2-sched.member-a.after-release	member-a	API detail after release	200	200	PASS	
+FILE-02.release.p2-sched.member-a.download-after	member-a	API download	200	200	PASS	
+FILE-02.release.p1-teamProd.prepared-a(prepared)	prepared-a	API detail	404	404 not_found	PASS	
+FILE-02.declined.before	pending-a	API	200	200	PASS	
+FILE-02.declined.respond	pending-a	API respond decline	200	200	PASS	
+FILE-02.declined.after.scheduled-file	pending-a	API detail after decline	404	404 not_found	PASS	
+FILE-02.declined.after.position-file	pending-a	API detail after decline	404	404 not_found	PASS	
+FILE-02.declined.after.org-file	pending-a	API detail (org audience)	200	200	PASS	
+FILE-02.declined.restore	pending-a	API respond back	info	422	PASS	
+FILE-02.audio.upload	media-a	API upload wav	ready	ready	PASS	
+FILE-02.rights.download-default.attachment.member	member-a	API attachment (rights=download)	200	200	PASS	
+FILE-02.rights.set.member-a	member-a	API set stream_only	403|404	403 forbidden	PASS	
+FILE-02.rights.set.librarian	librarian-a	API	403|404	403 forbidden	PASS	
+FILE-02.rights.set.stale	media-a	API stale revision	409	409 file_revision_stale	PASS	
+FILE-02.rights.set.bad-enum	media-a	API	400|422	422 unprocessable	PASS	
+FILE-02.rights.set.media-a	media-a	API set stream_only	200	200	PASS	
+FILE-02.rights.persisted	media-a	DB	stream_only|3	stream_only|3	PASS	
+FILE-02.rights.stream_only.attachment.member	member-a	API attachment stream_only	403	403 file_stream_only	PASS	
+FILE-02.rights.stream_only.inline.member	member-a	API inline stream_only	200	200	PASS	
+FILE-02.rights.stream_only.attachment.writer(media-a)	media-a	API attachment (writer)	200	200	PASS	
+FILE-02.rights.stream_only.attachment.writer(owner-a)	owner-a	API attachment (writer)	200	200	PASS	
+FILE-02.rights.stream_only.attachment.writer(scoped-a)	scoped-a	API attachment (writer)	200	200	PASS	
+FILE-02.rights.disposition-bad	member-a	API	400|422	422 unprocessable	PASS	
+FILE-02.rights.stream_only.raw-bytes.info	member-a	signed URL GET	info: stream_only is advisory (bytes retrievable inline; documented as not DRM)	200	PASS	
+FILE-02.rights.stream_only.storage-direct-download	member-a	Storage GET authed (bypasses API rights)	info: raw Storage read returns bytes regardless of playback_rights (documented not DRM)	200	PASS	
+FILE-02.link.download.member	member-a	API link download	kind external url	200 external	PASS	
+FILE-02.doc.download.member	member-a	API doc via download	400	400 bad_request	PASS	
+FILE-02.doc.get.member	member-a	API GET document	200	200	PASS	
+FILE-02.doc.get.beta-owner(B header)	beta-owner	API	404	404 not_found	PASS	
+FILE-02.doc.get.anonymous	anonymous	API	401	401 unauthorized	PASS	
+FILE-02.wrongid.version-of-other-file(leaders)	member-a	API download version id of another file	404	404 not_found	PASS	
+FILE-02.wrongid.random-version	member-a	API	404	404 not_found	PASS	
+FILE-02.wrongid.bad-version-uuid	member-a	API	400|422	422 unprocessable	PASS	
+FILE-02.wrongid.bad-file-uuid	member-a	API GET	400	400 bad_request	PASS	
+FILE-02.wrongid.random-file	member-a	API GET	404	404 not_found	PASS	
+FILE-02.wrongid.B-file-under-A	member-a	API GET B file under A org	404	404 not_found	PASS	
+FILE-02.wrongid.A-file-under-B-header	beta-owner	API GET A file with B org header	404	404 not_found	PASS	
+FILE-02.wrongid.A-owner.B-file	owner-a	API GET	404	404 not_found	PASS	
+FILE-02.wrongid.A-owner.B-header	owner-a	API with org B header (not member)	403|404	403 forbidden	PASS	
+FILE-02.storage.cross-tenant-object.owner-a	owner-a	Storage GET B object with A owner JWT	400|403|404	400	PASS	
+FILE-02.storage.cross-tenant-object.outsider(B member)	outsider	Storage GET B object (org-audience file) as B member	200	200	PASS	
+FILE-02.expiry.signed-URL.valid-before	member-a	Storage signed GET (2s TTL)	200	200	PASS	
+FILE-02.expiry.signed-URL.expired	member-a	Storage signed GET after TTL	400/401 expired	400 {"statusCode":"400","error":"InvalidJWT","message":"\"exp\" claim time	PASS	
+FILE-02.storage.sign-denied.leaders-file.pending-a	pending-a	Storage /object/sign caller JWT	denied	400 {"statusCode":"404","error":"not_found","message":"Object no	PASS	
+FILE-02.expiry.api-download-ttl	member-a	API download TTL claim	<=300s	300s expires_at=2026-11-18T17:25:04.268Z	PASS	
+FILE-02.renew.team-a.issue	team-a	API download	200	200	PASS	
+FILE-02.renew.audience-change.owner	owner-a	API PATCH audience->leaders	200	200	PASS	
+FILE-02.renew.team-a.new-url-refused	team-a	API download after audience tightened	404	404 not_found	PASS	
+FILE-02.renew.team-a.old-url-until-expiry	team-a	issued signed URL after revocation	200 until TTL (documented)	200	PASS	
+FILE-02.renew.team-a.storage-direct-refused	team-a	Storage authed GET after audience tightened	denied	400	PASS	
+FILE-02.renew.member-a.issue	member-a	API	200	200	PASS	
+FILE-02.renew.member-a.inactive.api	member-a	API download after membership inactive	403|404	403 forbidden	PASS	
+FILE-02.renew.member-a.inactive.storage	member-a	Storage GET after inactive	denied	400	PASS	
+FILE-02.renew.member-a.inactive.RLS	member-a	PostgREST	0 rows	0	PASS	
+FILE-02.renew.member-a.inactive.old-url	member-a	issued URL after removal	200 until TTL (documented)	200	PASS	
+FILE-02.renew.member-a.restored	member-a	API download after restore	200	200	PASS	
+FILE-03.link.pin-current.scoped-a	scoped-a	API link_file_to_plan pin	201	201	PASS	
+FILE-03.link.follow.scoped-a	scoped-a	API link follow	201	201	PASS	
+FILE-03.replace.v1-to-v2	media-a	API intent(file_id)->PUT->finalize	ready, version 2 current	201 ready v2	PASS	
+FILE-03.replace.persisted	media-a	DB versions + current	1:ready,2:ready ; true|854|v2.pdf	1:ready,2:ready ; true|854|v2.pdf	PASS	
+FILE-03.replace.both-objects-retained	media-a	Storage objects	2	2	PASS	
+FILE-03.read.member.detail-versions	member-a	API detail	current v2; versions list includes pinned v1 or only ready	cur=2 versions=2,1	PASS	
+FILE-03.read.member.download-v1-pinned	member-a	API download v1 (pinned by plan link)	200	200	PASS	
+FILE-03.read.member.download-current-is-v2	member-a	API download default	v2 (854 bytes)	200 v2	PASS	
+FILE-03.read.member.bytes-v2	member-a	signed URL bytes	v2 bytes	854	PASS	
+FILE-03.read.member.bytes-v1-pinned	member-a	signed URL bytes	v1 bytes	543	PASS	
+FILE-03.pin.plan-files-shows-v1	scoped-a	API plan files	pinned v1, newer_version_available	v1 newer=true	PASS	
+FILE-03.pin.plan-files-member-sees-v1	member-a	API plan files	pinned v1	v1	PASS	
+FILE-03.follow.plan-files-shows-v2	scoped-a	API plan files follow link	v2 current	v2	PASS	
+FILE-03.pin.set-follow	scoped-a	API set_file_link_pin follow	200	200	PASS	
+FILE-03.pin.v1-unreadable-after-follow.member	member-a	API download v1 after unpin	404	404 not_found	PASS	
+FILE-03.pin.v1-storage-denied.member	member-a	Storage GET v1 after unpin	denied	400	PASS	
+FILE-03.pin.v1-writer-can-read	media-a	API download v1 (writer)	200	200	PASS	
+FILE-03.pin.set-version-v1	scoped-a	API pin explicit v1	200	200	PASS	
+FILE-03.pin.v1-readable-again	member-a	API	200	200	PASS	
+FILE-03.pin.version-mode-without-id	scoped-a	API	400|422	400 bad_request	PASS	
+FILE-03.pin.random-version	scoped-a	API	400|404|409|422	404 not_found	PASS	
+FILE-03.pin.version-of-another-file	scoped-a	API pin other file version	400|404|409|422	404 not_found	PASS	
+FILE-03.pin.deny.member-a	member-a	API set pin	403|404	403 forbidden	PASS	
+FILE-03.unlink.deny.member-a	member-a	API unlink	403|404	403 forbidden	PASS	
+FILE-03.link.deny.member-a	member-a	API link	403|404	403 forbidden	PASS	
+FILE-03.pin.deny.librarian-a	librarian-a	API set pin	403|404	403 forbidden	PASS	
+FILE-03.unlink.deny.librarian-a	librarian-a	API unlink	403|404	403 forbidden	PASS	
+FILE-03.link.deny.librarian-a	librarian-a	API link	403|404	403 forbidden	PASS	
+FILE-03.pin.deny.pending-a	pending-a	API set pin	403|404	403 forbidden	PASS	
+FILE-03.unlink.deny.pending-a	pending-a	API unlink	403|404	403 forbidden	PASS	
+FILE-03.link.deny.pending-a	pending-a	API link	403|404	403 forbidden	PASS	
+FILE-03.link.scoped-a.out-of-scope-plan(Midweek)	scoped-a	API link on Midweek plan	403|404	403 forbidden	PASS	
+FILE-03.link.cross-org-file	owner-a	API link B file to A plan	404	404 not_found	PASS	
+FILE-03.link.cross-org-item	owner-a	API link with B item id	400|404|409|422	404 not_found	PASS	
+FILE-03.link.item-of-other-plan	owner-a	API link with item of plan2	400|404|409|422	404 not_found	PASS	
+FILE-03.link.duplicate	owner-a	API duplicate link same file+item	info (idempotent 201/200 or conflict)	201 	PASS	
+FILE-03.race.both-intents-created	media-a+owner-a	API two intents same expected_revision	both 201 (intent does not bump revision; conflict decided at finalize)	201/201	PASS	
+FILE-03.race.concurrent-finalize	media-a+owner-a	API concurrent finalize v2 vs v2	exactly one ready, other failed superseded	failed:superseded / ready:	PASS	
+FILE-03.race.persisted	DB	DB versions	2 ready versions (v1,v2), max 2, no duplicate numbers	2|2|2	PASS	
+FILE-03.race.loser-object-queued	DB	removal queue	1 queued	1	PASS	
+FILE-03.race.same-version-4x-finalize	media-a	API 4 concurrent finalize same version	all 200 ready, exactly one non-replayed	200readytrue,200readyfalse,200readytrue,200readytrue	PASS	
+FILE-03.race.same-version.single-ready	DB	DB	1 ready version	1	PASS	
+FILE-03.replace.stale-revision	media-a	API intent stale revision	409	409 file_revision_stale	PASS	
+FILE-03.replace.deny.member-a	member-a	API replace	403|404	403 forbidden	PASS	
+FILE-03.replace.deny.librarian(plan-owned file)	librarian-a	API replace	403|404	403 forbidden	PASS	
+FILE-03.replace.link-kind-refused	media-a	API upload over link file	400|422|409	400 bad_request	PASS	
+FILE-03.replace.cross-org-file	owner-a	API	404	404 not_found	PASS	
+FILE-03.meta.edit.media-a	media-a	API PATCH title/category/audience	200 rev+1	200 rev=4 teams chart	PASS	
+FILE-03.meta.edit.persisted	media-a	DB	F03 renamed|chart|teams|4|1	F03 renamed|chart|teams|4|1	PASS	
+FILE-03.meta.edit.stale	media-a	API PATCH stale	409	409 file_revision_stale	PASS	
+FILE-03.meta.edit.empty-title	media-a	API	400|422	422 unprocessable	PASS	
+FILE-03.meta.edit.title-201	media-a	API	400|422	422 unprocessable	PASS	
+FILE-03.meta.edit.team-from-other-org	media-a	API	400|404|409|422	404 not_found	PASS	
+FILE-03.meta.edit.positions	media-a	API audience positions	200	200	PASS	
+FILE-03.meta.edit.targets-replaced	media-a	DB targets	0 team | 1 position	0|1	PASS	
+FILE-03.meta.edit.deny.member-a	member-a	API PATCH	403|404	404 not_found	PASS	
+FILE-03.meta.edit.deny.scoped-a	scoped-a	API PATCH	403|404	404 not_found	PASS	
+FILE-03.meta.edit.deny.pending-a	pending-a	API PATCH	403|404	404 not_found	PASS	
+FILE-03.meta.edit.deny.beta-owner	beta-owner	API PATCH (B header)	404	404 not_found	PASS	
+FILE-03.meta.edit.deny.anonymous	anonymous	API	401	401 unauthorized	PASS	
+FILE-03.meta.move.plan->item	media-a	API move within same plan	200 owner plan_item	200 plan_item	PASS	
+FILE-03.meta.move.to-other-plan	media-a	API	400|422	400 bad_request	PASS	
+FILE-03.meta.move.plan->song	media-a	API	400|422	400 bad_request	PASS	
+FILE-03.meta.move.to-B-item	media-a	API	400|404|422	404 not_found	PASS	
+FILE-03.meta.move.to-item-of-other-plan	media-a	API	400|422	400 bad_request	PASS	
+FILE-03.meta.move.song->arrangement	librarian-a	API	200	200 arrangement	PASS	
+FILE-03.link.create	media-a	API	201	201	PASS	
+FILE-03.link.edit-url	media-a	API PUT /link	200 url b rev+1	200 https://example.test/b rev 2	PASS	
+FILE-03.link.edit-url.persisted	media-a	DB	https://example.test/b|F03 link2|2	https://example.test/b|F03 link2|2	PASS	
+FILE-03.link.edit-url.stale	media-a	API stale	409	409 file_revision_stale	PASS	
+FILE-03.link.edit-url.reject-javascript	media-a	API URL validation	400|422	422 unprocessable	PASS	
+FILE-03.link.create.reject-javascript	media-a	API URL validation (create)	400|422	422 unprocessable	PASS	
+FILE-03.link.edit-url.reject-ftp	media-a	API URL validation	400|422	422 unprocessable	PASS	
+FILE-03.link.create.reject-ftp	media-a	API URL validation (create)	400|422	422 unprocessable	PASS	
+FILE-03.link.edit-url.reject-creds	media-a	API URL validation	400|422	422 unprocessable	PASS	
+FILE-03.link.create.reject-creds	media-a	API URL validation (create)	400|422	422 unprocessable	PASS	
+FILE-03.link.edit-url.reject-no-scheme	media-a	API URL validation	400|422	422 unprocessable	PASS	
+FILE-03.link.create.reject-no-scheme	media-a	API URL validation (create)	400|422	422 unprocessable	PASS	
+FILE-03.link.edit-url.reject-data	media-a	API URL validation	400|422	422 unprocessable	PASS	
+FILE-03.link.create.reject-data	media-a	API URL validation (create)	400|422	422 unprocessable	PASS	
+FILE-03.link.edit-url.reject-too-long	media-a	API URL validation	400|422	422 unprocessable	PASS	
+FILE-03.link.create.reject-too-long	media-a	API URL validation (create)	400|422	422 unprocessable	PASS	
+FILE-03.link.edit-url.reject-empty	media-a	API URL validation	400|422	422 unprocessable	PASS	
+FILE-03.link.create.reject-empty	media-a	API URL validation (create)	400|422	422 unprocessable	PASS	
+FILE-03.link.edit-url.reject-file	media-a	API URL validation	400|422	422 unprocessable	PASS	
+FILE-03.link.create.reject-file	media-a	API URL validation (create)	400|422	422 unprocessable	PASS	
+FILE-03.link.edit-url.http-with-port	media-a	API	200	200	PASS	
+FILE-03.link.edit-url.deny.member-a	member-a	API	403|404	403 forbidden	PASS	
+FILE-03.link.edit-url.deny.librarian-a	librarian-a	API	403|404	403 forbidden	PASS	
+FILE-03.link.edit-url.deny.pending-a	pending-a	API	403|404	403 forbidden	PASS	
+FILE-03.link.edit-url.on-upload-file	media-a	API PUT /link on upload kind	400|422|409	400 bad_request	PASS	
+FILE-03.link.create.idempotent	media-a	API same key twice	same file id	201/201 true	PASS	
+FILE-03.link.create.key-reuse-different	media-a	API	409	201	FAIL	W3-FILE-D2
+FILE-03.doc.create	media-a	API	201	201	PASS	
+FILE-03.doc.read.member	member-a	API GET document	v1 body	v1 body	PASS	
+FILE-03.doc.save-v2	media-a	API PUT document	200 v2, rev+1	200 rev=2 ver=2	PASS	
+FILE-03.doc.versions.persisted	media-a	DB	1:ready:7,2:ready:7	1:ready:7,2:ready:7	PASS	
+FILE-03.doc.read.member.current	member-a	API	v2 body	v2 body	PASS	
+FILE-03.doc.read.member.old-version-unpinned	member-a	API GET old version	404	404 not_found	PASS	
+FILE-03.doc.read.writer.old-version	media-a	API	v1 body	v1 body	PASS	
+FILE-03.doc.read.random-version	media-a	API	404	404 not_found	PASS	
+FILE-03.doc.read.bad-version-uuid	media-a	API	400|422	422 unprocessable	PASS	
+FILE-03.doc.read.version-of-another-doc	media-a	API	404	404 not_found	PASS	
+FILE-03.doc.save.stale	media-a	API stale revision	409	409 file_revision_stale	PASS	
+FILE-03.doc.save.100000-chars	media-a	API boundary	200	200	PASS	
+FILE-03.doc.save.100001-chars	media-a	API over limit	400|422	422 unprocessable	PASS	
+FILE-03.doc.save.empty-body	media-a	API empty body	info	200	PASS	
+FILE-03.doc.save.empty-title	media-a	API	400|422	422 unprocessable	PASS	
+FILE-03.doc.save.unicode+NUL	media-a	API body with NUL	info (400 expected for NUL; Postgres cannot store \u0000)	500 22P05	FAIL	W3-FILE-D3
+FILE-03.doc.unicode-roundtrip	media-a	API	identical	Nguyễn Thị Ánh – 🎵	PASS	
+FILE-03.race.doc-save	media-a+owner-a	API concurrent doc saves same revision	one 200 one 409	200/409	PASS	
+FILE-03.race.doc-save.persisted	DB	DB	no duplicate version numbers; current = winner	6|6 race A	PASS	
+FILE-03.doc.save.deny.member-a	member-a	API	403|404	403 forbidden	PASS	
+FILE-03.doc.save.deny.librarian-a	librarian-a	API	403|404	403 forbidden	PASS	
+FILE-03.doc.save.deny.pending-a	pending-a	API	403|404	403 forbidden	PASS	
+FILE-03.doc.get-on-upload-file	media-a	API GET document on upload	400	400 bad_request	PASS	
+FILE-03.doc.save-on-upload-file	media-a	API PUT document on upload	400|422|409	400 bad_request	PASS	
+FILE-03.archive.deny.member	member-a	API	403|404	403 forbidden	PASS	
+FILE-03.archive.stale	media-a	API	409	409 file_revision_stale	PASS	
+FILE-03.archive.ok	media-a	API	200 archived_at set	200 2026-11-18T17:22:27.266175+00:00	PASS	
+FILE-03.archive.member-detail	member-a	API (archived)	404	404 not_found	PASS	
+FILE-03.archive.member-download	member-a	API	404	404 not_found	PASS	
+FILE-03.archive.member-storage	member-a	Storage	denied	400	PASS	
+FILE-03.archive.writer-detail	media-a	API writer sees archived	200	200	PASS	
+FILE-03.archive.writer-download	media-a	API	200	200	PASS	
+FILE-03.archive.member-list-excludes	member-a	API list	absent	true	PASS	
+FILE-03.archive.replace-while-archived	media-a	API	400|422	400 bad_request	PASS	
+FILE-03.archive.restore	media-a	API	archived_at null	200 null	PASS	
+FILE-03.archive.restore.member-detail	member-a	API	200	200	PASS	
+FILE-03.archive.pinned.link	scoped-a	API	201	201	PASS	
+FILE-03.archive.pinned.archive	librarian-a	API	200	200	PASS	
+FILE-03.archive.pinned.member-download-default	member-a	API download default version of archived+pinned file	200 (pinned) or 404 (documented)	200	PASS	
+FILE-03.archive.pinned.plan-files-member	member-a	API plan files	entry present via pin	true	PASS	
+FILE-03.archive.link-new-to-archived	scoped-a	API link archived file	400|404|422	400 bad_request	PASS	
+FILE-03.delete.deny.member	member-a	API	403|404	403 forbidden	PASS	
+FILE-03.delete.stale	media-a	API	409	409 file_revision_stale	PASS	
+FILE-03.delete.no-body	media-a	API	400|422	422 unprocessable	PASS	
+FILE-03.delete.ok	media-a	API	204	204	PASS	
+FILE-03.delete.persisted	media-a	DB rows + removal queue	0|0|1	0|0|1	PASS	
+FILE-03.delete.retry-after-delete	media-a	API retry	404	404 not_found	PASS	
+FILE-03.delete.linked-library-file	librarian-a	API delete file linked to a plan	info	409	PASS	
+FILE-03.delete.linked.links-cleaned	DB	DB	0 links left	1	PASS	
+FILE-03.unlink.ok	scoped-a	API	204	204	PASS	
+FILE-03.unlink.retry	scoped-a	API	404	404 not_found	PASS	
+FILE-03.unlink.source-file-untouched	DB	DB	1	1	PASS	
+FILE-03.unlink.random-id	scoped-a	API	404	404 not_found	PASS	
+FILE-03.unlink.cross-org	beta-owner	API B header	404	404 not_found	PASS	
+FILE-03.svcdefault.newplan	scoped-a	API create plan	201	201	PASS	
+FILE-03.svcdefault.autolinked-pinned	scoped-a	API plan files	default file linked & pinned v1	true pinned=true	PASS	
+FILE-03.svcdefault.plan-keeps-v1-after-replace	scoped-a	API plan files after v2	entry still pinned v1, newer_version_available	v1 newer=true	PASS	
+MEDIA-01.create.media-a	media-a	API POST /media	201 revision 1	201 rev=1	PASS	
+MEDIA-01.create.persisted	media-a	DB	MEDIA Bundle A|90|{Advent,Hope}|{intro,video}|<media-a>	MEDIA Bundle A|90|{Advent,Hope}|{intro,video}|c47a9744-7f94-4908-9f9a-25650883718e	PASS	
+MEDIA-01.create.allow.owner-a	owner-a	API POST /media	201	201	PASS	
+MEDIA-01.create.allow.admin-a	admin-a	API POST /media	201	201	PASS	
+MEDIA-01.create.allow.legacy-a	legacy-a	API POST /media	201	201	PASS	
+MEDIA-01.create.deny.member-a	member-a	API POST /media	403	403 forbidden	PASS	
+MEDIA-01.create.deny.librarian-a	librarian-a	API POST /media	403	403 forbidden	PASS	
+MEDIA-01.create.deny.scoped-a	scoped-a	API POST /media	403	403 forbidden	PASS	
+MEDIA-01.create.deny.pending-a	pending-a	API POST /media	403	403 forbidden	PASS	
+MEDIA-01.create.deny.confirmed-a	confirmed-a	API POST /media	403	403 forbidden	PASS	
+MEDIA-01.create.deny.team-a	team-a	API POST /media	403	403 forbidden	PASS	
+MEDIA-01.create.deny.inactive-a	inactive-a	API POST /media	403	403 forbidden	PASS	
+MEDIA-01.create.deny.outsider(A header)	outsider	API	403|404	403 forbidden	PASS	
+MEDIA-01.create.deny.anonymous	anonymous	API	401	401 unauthorized	PASS	
+MEDIA-01.create.allow.beta-owner(own org)	beta-owner	API	201	201	PASS	
+MEDIA-01.create.deny.no-rows	DB	DB	0	0	PASS	
+MEDIA-01.rls.insert.member-a	member-a	PostgREST POST media	denied	403	PASS	
+MEDIA-01.rls.insert.media-a	media-a	PostgREST POST media	201	201	PASS	
+MEDIA-01.rls.insert.media-a.cross-tenant	media-a	PostgREST POST media org B	denied	403	PASS	
+MEDIA-01.rls.update.member-a	member-a	PostgREST PATCH media	0 rows/denied	200 []	PASS	
+MEDIA-01.rls.delete.member-a	member-a	PostgREST DELETE media	0 rows/denied	200 []	PASS	
+MEDIA-01.rls.select.cross-tenant	beta-owner	PostgREST GET media A	[]	[]	PASS	
+MEDIA-01.rls.select.anonymous	anonymous	PostgREST	denied/[]	401	PASS	
+MEDIA-01.rls.select.inactive-member	inactive-a	PostgREST	[]	[]	PASS	
+MEDIA-01.read.detail.member-a	member-a	API GET /media/:id	200 can_edit false (true for managers)	200 can_edit=false	PASS	
+MEDIA-01.read.list.member-a	member-a	API GET /media	200 includes bundle, can_create per cap	200 n=6 create=false	PASS	
+MEDIA-01.read.detail.librarian-a	librarian-a	API GET /media/:id	200 can_edit false (true for managers)	200 can_edit=false	PASS	
+MEDIA-01.read.list.librarian-a	librarian-a	API GET /media	200 includes bundle, can_create per cap	200 n=6 create=false	PASS	
+MEDIA-01.read.detail.pending-a	pending-a	API GET /media/:id	200 can_edit false (true for managers)	200 can_edit=false	PASS	
+MEDIA-01.read.list.pending-a	pending-a	API GET /media	200 includes bundle, can_create per cap	200 n=6 create=false	PASS	
+MEDIA-01.read.detail.owner-a	owner-a	API GET /media/:id	200 can_edit false (true for managers)	200 can_edit=true	PASS	
+MEDIA-01.read.list.owner-a	owner-a	API GET /media	200 includes bundle, can_create per cap	200 n=6 create=true	PASS	
+MEDIA-01.read.detail.scoped-a	scoped-a	API GET /media/:id	200 can_edit false (true for managers)	200 can_edit=false	PASS	
+MEDIA-01.read.list.scoped-a	scoped-a	API GET /media	200 includes bundle, can_create per cap	200 n=6 create=false	PASS	
+MEDIA-01.read.detail.deny.inactive-a	inactive-a	API	403|404	403 forbidden	PASS	
+MEDIA-01.read.detail.deny.outsider	outsider	API	403|404	403 forbidden	PASS	
+MEDIA-01.read.detail.deny.beta-owner	beta-owner	API	403|404	404 not_found	PASS	
+MEDIA-01.read.detail.anonymous	anonymous	API	401	401 unauthorized	PASS	
+MEDIA-01.read.bad-uuid	member-a	API	400	400 bad_request	PASS	
+MEDIA-01.read.random	member-a	API	404	404 not_found	PASS	
+MEDIA-01.val.create.title-empty	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.title-whitespace	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.title-201	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.title-200	media-a	API POST /media validation	201	201	PASS	
+MEDIA-01.val.create.title-missing	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.duration-neg	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.duration-86400	media-a	API POST /media validation	201	201	PASS	
+MEDIA-01.val.create.duration-86401	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.duration-float	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.tags-20	media-a	API POST /media validation	201	201	PASS	
+MEDIA-01.val.create.tags-21	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.tag-61-chars	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.tag-empty	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.notes-5000	media-a	API POST /media validation	201	201	PASS	
+MEDIA-01.val.create.notes-5001	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.creator-201	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.archive_on-bad-format	media-a	API POST /media validation	400|422	422 unprocessable	PASS	
+MEDIA-01.val.create.archive_on-impossible	media-a	API POST /media validation	400|422	400 bad_request	PASS	
+MEDIA-01.val.create.archive_on-valid-future	media-a	API POST /media validation	201	201	PASS	
+MEDIA-01.val.create.dup-tags-dedupe	media-a	API POST /media validation	201	201	PASS	
+MEDIA-01.val.create.tags-deduped	media-a	API tags de-duplicated by DB	[a,b]	["a","b"]	PASS	
+MEDIA-01.val.create.title-trimmed	media-a	API	padded	padded	PASS	
+MEDIA-01.val.create.unicode-title	media-a	API POST /media validation	201	201	PASS	
+MEDIA-01.val.create.title-NUL	media-a	API POST /media validation	400|422	500 22P05	FAIL	W3-FILE-D3
+MEDIA-01.val.create.unknown-field	media-a	API POST /media validation	201|400|422	201	PASS	
+MEDIA-01.val.create.org-id-injection	media-a	API body organization_id of B ignored	row in A org	2434e578-7e8e-4b07-bc16-0ebb36cc334f	PASS	
+MEDIA-01.update.media-a	media-a	API PATCH	200 rev 2	200 rev=2 MEDIA Bundle A v2	PASS	
+MEDIA-01.update.persisted	media-a	DB	MEDIA Bundle A v2|{x}|2|<media-a>	MEDIA Bundle A v2|{x}|2|c47a9744-7f94-4908-9f9a-25650883718e	PASS	
+MEDIA-01.update.stale	media-a	API stale revision	409	409 media_revision_stale	PASS	
+MEDIA-01.update.stale.no-write	media-a	DB	MEDIA Bundle A v2	MEDIA Bundle A v2	PASS	
+MEDIA-01.update.missing-revision	media-a	API	400|422	422 unprocessable	PASS	
+MEDIA-01.update.empty-title	media-a	API	400|422	422 unprocessable	PASS	
+MEDIA-01.update.clear-optional	media-a	API null clears	200	200	PASS	
+MEDIA-01.update.deny.member-a	member-a	API PATCH	403|404	403 forbidden	PASS	
+MEDIA-01.update.deny.librarian-a	librarian-a	API PATCH	403|404	403 forbidden	PASS	
+MEDIA-01.update.deny.scoped-a	scoped-a	API PATCH	403|404	403 forbidden	PASS	
+MEDIA-01.update.deny.pending-a	pending-a	API PATCH	403|404	403 forbidden	PASS	
+MEDIA-01.update.deny.beta-owner(own org header)	beta-owner	API cross-tenant	404	404 not_found	PASS	
+MEDIA-01.update.cross-org-id.media-a	media-a	API PATCH B media id	404	404 not_found	PASS	
+MEDIA-01.update.anonymous	anonymous	API	401	401 unauthorized	PASS	
+MEDIA-01.race.concurrent-update	media-a+owner-a	API same expected_revision x2	one 200 one 409	409/200	PASS	
+MEDIA-01.race.persisted	DB	DB	winner title, rev+1	race B|4	PASS	
+MEDIA-01.thumb.non-image	media-a	API thumbnail non-image file	400|409|422	400 bad_request	PASS	
+MEDIA-01.thumb.other-bundle-file	media-a	API	400|404|409|422|500	400 bad_request	PASS	
+MEDIA-01.thumb.cross-org-file	media-a	API	400|404|409|422	400 bad_request	PASS	
+MEDIA-01.thumb.random-id	media-a	API	400|404|409|422	400 bad_request	PASS	
+MEDIA-01.thumb.own-image	media-a	API	200	200	PASS	
+MEDIA-01.thumb.clear	media-a	API	200	200	PASS	
+MEDIA-01.files.listed.member	member-a	API detail files	2 files (img+pdf; third upload went to another bundle), can_add_files false	n=2 add=false	PASS	
+MEDIA-01.files.can_add.media-a	media-a	API	true	true	PASS	
+MEDIA-01.search.q	member-a	API ?q=Bundle	>=1 matching	1	PASS	
+MEDIA-01.search.no-results	member-a	API	[]	0	PASS	
+MEDIA-01.search.percent-wildcard-escaped	member-a	API ?q=%	only titles containing literal %	100% match_me	PASS	
+MEDIA-01.search.underscore-escaped	member-a	API ?q=_	only titles containing literal _	100% match_me	PASS	
+MEDIA-01.search.injection-literal	member-a	API	200	200	PASS	
+MEDIA-01.search.q-101	member-a	API	400|422	422 unprocessable	PASS	
+MEDIA-01.search.bad-include_archived	member-a	API	400|422	422 unprocessable	PASS	
+MEDIA-01.search.case-insensitive	member-a	API	(superseded by .retest: race renamed the bundle)	n/a	PASS	
+MEDIA-01.search.cross-tenant	beta-owner	API B search for A titles	no A bundle	false	PASS	
+MEDIA-01.search.case-insensitive.retest	member-a	API ?q=fIlE bUnDlE	>=1	1	PASS	
+MEDIA-01.archive.deny.member	member-a	API	403|404	403 forbidden	PASS	
+MEDIA-01.archive.stale	media-a	API	409	409 media_revision_stale	PASS	
+MEDIA-01.archive.ok	media-a	API	200 is_archived true	200 true 2026-11-18T17:24:16.788+00:00	PASS	
+MEDIA-01.archive.persisted	media-a	DB	true|true|2	true|true|2	PASS	
+MEDIA-01.archive.hidden-from-picker	member-a	API list default	excluded	false	PASS	
+MEDIA-01.archive.included-in-library	member-a	API include_archived=true	included	true	PASS	
+MEDIA-01.archive.detail-still-readable	member-a	API detail of archived bundle	200	200	PASS	
+MEDIA-01.link.archived-bundle-refused	scoped-a	API	400|409|422	400 bad_request	PASS	
+MEDIA-01.archive.restore	media-a	API	is_archived false	200 false	PASS	
+MEDIA-01.archive_on.past-is-archived	media-a	API create archive_on 2020	is_archived true	true	PASS	
+MEDIA-01.archive_on.link-refused	scoped-a	API	400|409|422	400 bad_request	PASS	
+MEDIA-01.archive_on.restore-clears-date	media-a	API restore	is_archived false, archive_on null	200 false null	PASS	
+MEDIA-01.link.set.scoped-a	scoped-a	API PUT item media	200 item.media_id=m1	200 true	PASS	
+MEDIA-01.link.set.persisted	scoped-a	DB	02df7a98-8da9-4887-bb92-7880272ba247	02df7a98-8da9-4887-bb92-7880272ba247	PASS	
+MEDIA-01.link.usage-listed	member-a	API detail usage	usage lists the plan item	[{"plan_id":"1826f2a0-32e5-4f0b-88fc-7871ca1ccecd","plan_title":"FILE P-RELEASED","service_date":"2026-11-22T15:00:00+00	PASS	
+MEDIA-01.link.change	scoped-a	API change bundle	200	200	PASS	
+MEDIA-01.link.change.old-usage-cleared	member-a	API	m1 no longer used	[]	PASS	
+MEDIA-01.delete.in-use-refused	media-a	API	409	409 media_in_use	PASS	
+MEDIA-01.delete.in-use.no-write	DB	DB	1	1	PASS	
+MEDIA-01.link.stale-plan-revision	scoped-a	API expected_revision stale	409	409 plan_revision_stale	PASS	
+MEDIA-01.link.current-plan-revision	scoped-a	API	200	200	PASS	
+MEDIA-01.link.clear	scoped-a	API media_id null	200 media_id null	200 null	PASS	
+MEDIA-01.link.deny.member-a	member-a	API PUT item media	403|404	404 not_found	PASS	
+MEDIA-01.link.deny.librarian-a	librarian-a	API PUT item media	403|404	404 not_found	PASS	
+MEDIA-01.link.deny.pending-a	pending-a	API PUT item media	403|404	404 not_found	PASS	
+MEDIA-01.link.deny.confirmed-a	confirmed-a	API PUT item media	403|404	404 not_found	PASS	
+MEDIA-01.link.deny.team-a	team-a	API PUT item media	403|404	404 not_found	PASS	
+MEDIA-01.link.deny.scoped-a.out-of-scope-plan	scoped-a	API Midweek-type plan (p4/other plan item)	403|404	404 not_found	PASS	
+MEDIA-01.link.media-manager-without-plan-edit	media-a	API PUT item media as media.manage only	403|404	404 not_found	PASS	
+MEDIA-01.link.anonymous	anonymous	API	401	401 unauthorized	PASS	
+MEDIA-01.link.deny.no-write	DB	DB	null	null	PASS	
+MEDIA-01.link.header-item-refused	scoped-a	API header	400|409|422	400 bad_request	PASS	
+MEDIA-01.link.song-item-refused	scoped-a	API song item	400|409|422	400 bad_request	PASS	
+MEDIA-01.link.cross-org-bundle	scoped-a	API B bundle	404	404 not_found	PASS	
+MEDIA-01.link.random-bundle	scoped-a	API	404	404 not_found	PASS	
+MEDIA-01.link.random-item	scoped-a	API	404	404 not_found	PASS	
+MEDIA-01.link.item-of-other-plan	scoped-a	API item belongs to plan2	404	404 not_found	PASS	
+MEDIA-01.link.bad-item-uuid	scoped-a	API	400	400 bad_request	PASS	
+MEDIA-01.link.missing-media_id	scoped-a	API	400|422	422 unprocessable	PASS	
+MEDIA-01.link.random-plan	scoped-a	API	404	404 not_found	PASS	
+MEDIA-01.link.cross-tenant-plan.beta-owner	beta-owner	API B header, A plan	404	404 not_found	PASS	
+MEDIA-01.link.setup-for-typechange	scoped-a	API	200	200	PASS	
+MEDIA-01.link.item-type-change-drops-media	scoped-a	API PATCH item_type header	media_id cleared (trigger)	200 media=null	PASS	
+MEDIA-01.delete.deny.member	member-a	API	403|404	403 forbidden	PASS	
+MEDIA-01.delete.stale	media-a	API	409	409 media_revision_stale	PASS	
+MEDIA-01.delete.no-body	media-a	API	400|422	422 unprocessable	PASS	
+MEDIA-01.delete.ok	media-a	API	204	204	PASS	
+MEDIA-01.delete.cascade-files+queue	media-a	DB media/files/versions rows and removal queue	0|0|0|1	0|0|0|1	PASS	
+MEDIA-01.delete.retry	media-a	API	404	404 not_found	PASS	
+MEDIA-01.delete.cross-tenant	beta-owner	API	404	404 not_found	PASS	
+MEDIA-01.delete.cross-org-id	media-a	API	404	404 not_found	PASS	
+MEDIA-01.delete.anonymous	anonymous	API	401	401 unauthorized	PASS	
+MEDIA-01.archived-while-linked.plan-detail-retains-link	member-a	API plan detail	item still references bundle	true media={"id":"b0b87f94-9f47-4b01-a402-0394354ef846","title":"MEDIA archived-while-linked","creator":null,"d	PASS	
+MEDIA-01.archived-while-linked.relink-same	scoped-a	API re-PUT same archived bundle	info	200	PASS	
+MEDIA-01.update.allow.admin-a	admin-a	API	200	200	PASS	
+MEDIA-01.update.allow.legacy-a	legacy-a	API	200	200	PASS	
+MEDIA-01.revoke.media-a.create-after-revoke	media-a	API after media.manage revoked	403|404	403 forbidden	PASS	
+MEDIA-01.revoke.media-a.read-still-ok	media-a	API read as member	200	200	PASS	
+MEDIA-01.revoke.media-a.upload-denied	media-a	API intent after revoke	403|404	403 forbidden	PASS	
+MEDIA-01.revoke.media-a.regrant	media-a	API	201	201	PASS	
+MEDIA-01.combined.songs+media.librarian.create	librarian-a	API	201	201	PASS	
+MEDIA-01.combined.librarian.song-create	librarian-a	API songs.manage retained	201	201	PASS	
+MEDIA-01.media-editor.no-songs.manage	media-a	API POST /songs	403|404	403 forbidden	PASS	
+MEDIA-01.media-editor.no-plan-edit	media-a	API PATCH plan	403|404	403 forbidden	PASS	
+MEDIA-01.media-editor.no-people-private	media-a	API GET /people (owner-only)	200|403	200	PASS	
+STAGE-01.tpl.create.media-a	media-a	API POST template	201 rev1	201 rev=1	PASS	
+STAGE-01.tpl.create.allow.owner-a	owner-a	API	201	201	PASS	
+STAGE-01.tpl.create.allow.admin-a	admin-a	API	201	201	PASS	
+STAGE-01.tpl.create.allow.legacy-a	legacy-a	API	201	201	PASS	
+STAGE-01.tpl.create.allow.scoped-a	scoped-a	API	201	201	PASS	
+STAGE-01.tpl.create.deny.member-a	member-a	API	403	403 forbidden	PASS	
+STAGE-01.tpl.create.deny.librarian-a	librarian-a	API	403	403 forbidden	PASS	
+STAGE-01.tpl.create.deny.pending-a	pending-a	API	403	403 forbidden	PASS	
+STAGE-01.tpl.create.deny.confirmed-a	confirmed-a	API	403	403 forbidden	PASS	
+STAGE-01.tpl.create.deny.team-a	team-a	API	403	403 forbidden	PASS	
+STAGE-01.tpl.create.deny.outsider	outsider	API	403|404	403 forbidden	PASS	
+STAGE-01.tpl.create.deny.anonymous	anonymous	API	401	401 unauthorized	PASS	
+STAGE-01.tpl.create.deny.inactive	inactive-a	API	403|404	403 forbidden	PASS	
+STAGE-01.tpl.deny.no-rows	DB	DB	0	0	PASS	
+STAGE-01.tpl.list.member-a	member-a	API GET templates	200 includes tpl A, can_manage per cap	200 n=5 manage=false	PASS	
+STAGE-01.tpl.list.pending-a	pending-a	API GET templates	200 includes tpl A, can_manage per cap	200 n=5 manage=false	PASS	
+STAGE-01.tpl.list.librarian-a	librarian-a	API GET templates	200 includes tpl A, can_manage per cap	200 n=5 manage=false	PASS	
+STAGE-01.tpl.list.owner-a	owner-a	API GET templates	200 includes tpl A, can_manage per cap	200 n=5 manage=true	PASS	
+STAGE-01.tpl.list.cross-tenant	beta-owner	API	no A templates	false	PASS	
+STAGE-01.tpl.list.anonymous	anonymous	API	401	401 unauthorized	PASS	
+STAGE-01.val.tpl.name-empty	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.name-121	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.name-120	media-a	API validation	201	201	PASS	
+STAGE-01.val.tpl.bg-bad	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.person-in-template	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.obj-201	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.obj-200	media-a	API validation	201	201	PASS	
+STAGE-01.val.tpl.dup-ids	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.x-out-of-range	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.w-zero	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.rotation-361	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.color-bad	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.label-81	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.kind-bad	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.gear-with-person_id	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.id-empty	media-a	API validation	400|422	422 unprocessable	PASS	
+STAGE-01.val.tpl.unicode-name	media-a	API validation	201	201	PASS	
+STAGE-01.val.tpl.name-NUL	media-a	API validation	400|422	500 22P05	FAIL	W3-FILE-D3
+STAGE-01.tpl.update	media-a	API PATCH	200 rev2 2 objects	200 rev=2 n=2	PASS	
+STAGE-01.tpl.update.stale	media-a	API	409	409 layout_revision_stale	PASS	
+STAGE-01.tpl.update.missing-revision	media-a	API	400|422	422 unprocessable	PASS	
+STAGE-01.tpl.update.person-object	media-a	API	400|422	422 unprocessable	PASS	
+STAGE-01.tpl.archive	media-a	API archived true	200 archived_at set	200 2026-11-18T17:25:14.837+00:00	PASS	
+STAGE-01.tpl.restore	media-a	API archived false	archived_at null	200 null	PASS	
+STAGE-01.tpl.update.deny.member-a	member-a	API	403|404	403 forbidden	PASS	
+STAGE-01.tpl.delete.deny.member-a	member-a	API	403|404	403 forbidden	PASS	
+STAGE-01.tpl.update.deny.librarian-a	librarian-a	API	403|404	403 forbidden	PASS	
+STAGE-01.tpl.delete.deny.librarian-a	librarian-a	API	403|404	403 forbidden	PASS	
+STAGE-01.tpl.update.deny.pending-a	pending-a	API	403|404	403 forbidden	PASS	
+STAGE-01.tpl.delete.deny.pending-a	pending-a	API	403|404	403 forbidden	PASS	
+STAGE-01.tpl.update.random-id	media-a	API	404	404 not_found	PASS	
+STAGE-01.tpl.update.cross-tenant	beta-owner	API	404	404 not_found	PASS	
+STAGE-01.tpl.rls.update.member-a	member-a	PostgREST PATCH	denied/0 rows	200 []	PASS	
+STAGE-01.tpl.rls.insert.member-a	member-a	PostgREST POST	denied	403	PASS	
+STAGE-01.tpl.rls.select.cross-tenant	beta-owner	PostgREST	[]	[]	PASS	
+STAGE-01.race.tpl-update	media-a+owner-a	API concurrent same revision	one 200 one 409	409/200	PASS	
+STAGE-01.layout.create-from-template.scoped-a	scoped-a	API POST layout template_id	201 objects copied (2), template_id set	201 n=2 tpl=true	PASS	
+STAGE-01.layout.create.allow.owner-a	owner-a	API	201	201	PASS	
+STAGE-01.layout.create.allow.admin-a	admin-a	API	201	201	PASS	
+STAGE-01.layout.create.allow.legacy-a	legacy-a	API	201	201	PASS	
+STAGE-01.layout.create.deny.member-a	member-a	API	403|404	403 forbidden	PASS	
+STAGE-01.layout.create.deny.librarian-a	librarian-a	API	403|404	403 forbidden	PASS	
+STAGE-01.layout.create.deny.pending-a	pending-a	API	403|404	403 forbidden	PASS	
+STAGE-01.layout.create.deny.confirmed-a	confirmed-a	API	403|404	403 forbidden	PASS	
+STAGE-01.layout.create.deny.team-a	team-a	API	403|404	403 forbidden	PASS	
+STAGE-01.layout.create.deny.media-a	media-a	API	403|404	403 forbidden	PASS	
+STAGE-01.layout.create.deny.scoped-a.out-of-scope-plan	scoped-a	API Midweek plan	403|404	403 forbidden	PASS	
+STAGE-01.layout.create.cross-org-plan	scoped-a	API	404	404 not_found	PASS	
+STAGE-01.layout.create.beta-owner	beta-owner	API B header A plan	404	404 not_found	PASS	
+STAGE-01.layout.create.anonymous	anonymous	API	401	401 unauthorized	PASS	
+STAGE-01.layout.create.random-template	scoped-a	API	404	404 not_found	PASS	
+STAGE-01.layout.create.cross-org-template	scoped-a	API	404	404 not_found	PASS	
+STAGE-01.layout.create.random-plan	scoped-a	API	404	404 not_found	PASS	
+STAGE-01.layout.deny.no-rows	DB	DB	0	0	PASS	
+STAGE-01.layout.people.create	scoped-a	API layout with Person objects	201 + roster in view	201 roster=2 issues=[{"kind":"not_scheduled","person_id":"e78f6355-741d-43bd-836c-f3ceac3b827d","object_id":"pa","name":	PASS	
+STAGE-01.layout.people.random-person	scoped-a	API	400|422	400 bad_request	PASS	
+STAGE-01.layout.people.cross-org-person	scoped-a	API	400|422	400 bad_request	PASS	
+STAGE-01.layout.people.person-without-id	scoped-a	API	400|422	422 unprocessable	PASS	
+STAGE-01.layout.roster.editor-sees-prepared	scoped-a	API GET layouts roster	info: editor/leader roster includes prepared Camera person (managers may see prepared)	roster n=2	PASS	
+STAGE-01.layout.read.viewer.member-a	member-a	API GET layouts	200 with zero layouts and empty roster (no prepared/staffing leak) can_edit false	200 layouts=0 roster=0 edit=false	PASS	
+STAGE-01.layout.read.viewer.pending-a	pending-a	API GET layouts	200 with zero layouts and empty roster (no prepared/staffing leak) can_edit false	200 layouts=0 roster=0 edit=false	PASS	
+STAGE-01.layout.read.viewer.confirmed-a	confirmed-a	API GET layouts	200 with zero layouts and empty roster (no prepared/staffing leak) can_edit false	200 layouts=0 roster=0 edit=false	PASS	
+STAGE-01.layout.read.viewer.prepared-a	prepared-a	API GET layouts	200 with zero layouts and empty roster (no prepared/staffing leak) can_edit false	200 layouts=0 roster=0 edit=false	PASS	
+STAGE-01.layout.read.viewer.team-a	team-a	API GET layouts	200 with zero layouts and empty roster (no prepared/staffing leak) can_edit false	200 layouts=0 roster=0 edit=false	PASS	
+STAGE-01.layout.read.viewer.librarian-a	librarian-a	API GET layouts	200 with zero layouts and empty roster (no prepared/staffing leak) can_edit false	200 layouts=0 roster=0 edit=false	PASS	
+STAGE-01.layout.read.viewer.media-a	media-a	API GET layouts	200 with zero layouts and empty roster (no prepared/staffing leak) can_edit false	200 layouts=0 roster=0 edit=false	PASS	
+STAGE-01.layout.read.editor.owner-a	owner-a	API	200 layouts>=2, can_edit	200 n=5 edit=true	PASS	
+STAGE-01.layout.read.editor.admin-a	admin-a	API	200 layouts>=2, can_edit	200 n=5 edit=true	PASS	
+STAGE-01.layout.read.editor.legacy-a	legacy-a	API	200 layouts>=2, can_edit	200 n=5 edit=true	PASS	
+STAGE-01.layout.read.editor.scoped-a	scoped-a	API	200 layouts>=2, can_edit	200 n=5 edit=true	PASS	
+STAGE-01.layout.read.scoped-a.out-of-scope-plan	scoped-a	API	200 empty or 404; no layouts	200 0	PASS	
+STAGE-01.layout.read.beta-owner	beta-owner	API	404	404 not_found	PASS	
+STAGE-01.layout.read.anonymous	anonymous	API	401	401 unauthorized	PASS	
+STAGE-01.layout.rls.select.member-a	member-a	PostgREST GET plan_stage_layouts	[]	[]	PASS	
+STAGE-01.layout.rls.select.pending-a	pending-a	PostgREST GET plan_stage_layouts	[]	[]	PASS	
+STAGE-01.layout.rls.select.media-a	media-a	PostgREST GET plan_stage_layouts	[]	[]	PASS	
+STAGE-01.layout.rls.insert.member-a	member-a	PostgREST POST	denied	403	PASS	
+STAGE-01.layout.rls.insert.scoped-a.midweek	scoped-a	PostgREST POST on out-of-scope plan	denied	403	PASS	
+STAGE-01.layout.rls.select.cross-tenant	beta-owner	PostgREST	[]	[]	PASS	
+STAGE-01.layout.read.leader(scheduling.manage-only)	team-a	API GET layouts as leader	200 layouts visible, can_edit false	200 n=5 edit=false	PASS	
+STAGE-01.layout.create.deny.leader-without-plans.edit	team-a	API	403	403 forbidden	PASS	
+STAGE-01.layout.update.deny.leader	team-a	API	403|404	403 forbidden	PASS	
+STAGE-01.layout.delete.deny.leader	team-a	API	403|404	403 forbidden	PASS	
+STAGE-01.layout.read.leader-revoked	team-a	API after grant revoked	zero layouts	200 0	PASS	
+STAGE-01.layout.update	scoped-a	API PATCH	200 rev2	200 rev=2 bg=thrust	PASS	
+STAGE-01.layout.update.stale	scoped-a	API	409	409 layout_revision_stale	PASS	
+STAGE-01.layout.update.refreshed	scoped-a	API refreshed flag	refreshed_at set	2026-11-18T17:25:15.742+00:00	PASS	
+STAGE-01.layout.update.wrong-plan-id	scoped-a	API layout id under another plan	404	404 not_found	PASS	
+STAGE-01.layout.update.random-id	scoped-a	API	404	404 not_found	PASS	
+STAGE-01.layout.update.add-person	scoped-a	API	200	200	PASS	
+STAGE-01.layout.update.unknown-person	scoped-a	API	400|422	400 bad_request	PASS	
+STAGE-01.layout.update.deny.member-a	member-a	API	403|404	404 not_found	PASS	
+STAGE-01.layout.delete.deny.member-a	member-a	API	403|404	404 not_found	PASS	
+STAGE-01.layout.update.deny.pending-a	pending-a	API	403|404	404 not_found	PASS	
+STAGE-01.layout.delete.deny.pending-a	pending-a	API	403|404	404 not_found	PASS	
+STAGE-01.layout.update.deny.media-a	media-a	API	403|404	404 not_found	PASS	
+STAGE-01.layout.delete.deny.media-a	media-a	API	403|404	404 not_found	PASS	
+STAGE-01.layout.update.deny.librarian-a	librarian-a	API	403|404	404 not_found	PASS	
+STAGE-01.layout.delete.deny.librarian-a	librarian-a	API	403|404	404 not_found	PASS	
+STAGE-01.layout.update.scoped-a.out-of-scope	scoped-a	API	403|404	404 not_found	PASS	
+STAGE-01.layout.deny.no-write	DB	DB	STAGE layout 1b	STAGE layout 1b	PASS	
+STAGE-01.tpl.delete.layout-unaffected	media-a	DB layout survives, template_id nulled	1|null	1|null	PASS	
+STAGE-01.tpl.delete.already-deleted-id	media-a	API	404	404 not_found	PASS	
+STAGE-01.layout.isolation.other-plan	scoped-a	API p2 layouts	none from p1	0	PASS	
+STAGE-01.layout.limit-10	owner-a	API 11th layout	10 created then refusal	created=10 last=400 {"error":"A plan can have at most 10 stage layouts","code":"bad_request"}	PASS	
+STAGE-01.race.limit-10-concurrent	owner-a	API 4 concurrent creates with 9 existing	exactly 10 rows total	201,400,400,400 total=10	PASS	
+STAGE-01.tpl.delete	media-a	API DELETE template	204	204	PASS	recorded from first s01 run
+STAGE-01.layout.delete.stale	scoped-a	API	409	409 layout_revision_stale	PASS	
+STAGE-01.layout.delete.no-body	scoped-a	API	400|422	422 unprocessable	PASS	
+STAGE-01.layout.delete.ok	scoped-a	API	204	204	PASS	
+STAGE-01.layout.delete.retry	scoped-a	API	404	404 not_found	PASS	
+STAGE-01.layout.duplicate-plan-copies-layouts	owner-a	API duplicate plan then GET layouts	info: layouts copied? (copy_plan_children)	dup 201 layouts=0	PASS	
+REHEARSE-01.manifest.owner	owner-a	API GET manifest	200	200	PASS	
+REHEARSE-01.manifest.cache-control	owner-a	API header	no-store	(see below)	PASS	
+REHEARSE-01.manifest.cache-control.header	owner-a	API response header	Cache-Control: no-store	no-store	PASS	
+REHEARSE-01.manifest.order-matches-plan	owner-a	API manifest vs plan	identical item order	same	PASS	
+REHEARSE-01.manifest.positions-sequential	owner-a	API	position 0..n-1	0,1,2,3	PASS	
+REHEARSE-01.order.reorder-setup	scoped-a	API reorder	200	200	PASS	
+REHEARSE-01.manifest.follows-reorder	owner-a	API manifest after reorder	new order	new order	PASS	
+REHEARSE-01.song.effective-arrangement	owner-a	API manifest song item	arrangement Main, tempo 80	Main 80	PASS	
+REHEARSE-01.song.plan-key-override	owner-a	API manifest chart	key A from plan, chords transposed [A]Hello [D]world	A fromPlan=true "{title: One}\n[A]Hello [D]world"	PASS	
+REHEARSE-01.song.plan-sequence-override	owner-a	API manifest chart	sequence [C,V1] from plan	C,V1 fromPlan=true	PASS	
+REHEARSE-01.song.switch-arrangement-setup	scoped-a	API PATCH item arrangement	200	200	PASS	
+REHEARSE-01.song.nondefault-arrangement	owner-a	API manifest	arrangement Alt tempo 100 key D (arr files switch)	Alt 100 D	PASS	
+REHEARSE-01.song.arrangement-files-follow	owner-a	API materials of Alt arrangement	arr1 audio not included (arr-audio belongs to Main)	false	PASS	
+REHEARSE-01.manifest.owner-a	owner-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.owner-a	owner-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-org.owner-a	owner-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.owner-a	owner-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.owner-a	owner-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.extaudio.owner-a	owner-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.owner-a	owner-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.owner-a	owner-a	API manifest media materials	leaders file present	present	PASS	
+REHEARSE-01.media-bundle.org-file.owner-a	owner-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.manifest.admin-a	admin-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.admin-a	admin-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-org.admin-a	admin-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.admin-a	admin-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.admin-a	admin-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.extaudio.admin-a	admin-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.admin-a	admin-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.admin-a	admin-a	API manifest media materials	leaders file present	present	PASS	
+REHEARSE-01.media-bundle.org-file.admin-a	admin-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.manifest.legacy-a	legacy-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.legacy-a	legacy-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-org.legacy-a	legacy-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.legacy-a	legacy-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.legacy-a	legacy-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.extaudio.legacy-a	legacy-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.legacy-a	legacy-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.legacy-a	legacy-a	API manifest media materials	leaders file present	present	PASS	
+REHEARSE-01.media-bundle.org-file.legacy-a	legacy-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.manifest.scoped-a	scoped-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.scoped-a	scoped-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-org.scoped-a	scoped-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.scoped-a	scoped-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.scoped-a	scoped-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.extaudio.scoped-a	scoped-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.scoped-a	scoped-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.scoped-a	scoped-a	API manifest media materials	leaders media file absent (oracle correction: file_leader for media-owned files = media.manage/owner/admin/legacy, not plans.edit)	absent	PASS	
+REHEARSE-01.media-bundle.org-file.scoped-a	scoped-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.manifest.media-a	media-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.media-a	media-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-org.media-a	media-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.media-a	media-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.media-a	media-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.extaudio.media-a	media-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.media-a	media-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.media-a	media-a	API manifest media materials	leaders file present	present	PASS	
+REHEARSE-01.media-bundle.org-file.media-a	media-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.manifest.librarian-a	librarian-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.librarian-a	librarian-a	API manifest materials	absent	absent	PASS	
+REHEARSE-01.materials.item-audio-org.librarian-a	librarian-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.librarian-a	librarian-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.librarian-a	librarian-a	API manifest materials	absent	absent	PASS	
+REHEARSE-01.materials.extaudio.librarian-a	librarian-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.librarian-a	librarian-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.librarian-a	librarian-a	API manifest media materials	leaders file absent	absent	PASS	
+REHEARSE-01.media-bundle.org-file.librarian-a	librarian-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.manifest.member-a	member-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.member-a	member-a	API manifest materials	absent	absent	PASS	
+REHEARSE-01.materials.item-audio-org.member-a	member-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.member-a	member-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.member-a	member-a	API manifest materials	absent	absent	PASS	
+REHEARSE-01.materials.extaudio.member-a	member-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.member-a	member-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.member-a	member-a	API manifest media materials	leaders file absent	absent	PASS	
+REHEARSE-01.media-bundle.org-file.member-a	member-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.manifest.pending-a	pending-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.pending-a	pending-a	API manifest materials	absent	absent	PASS	
+REHEARSE-01.materials.item-audio-org.pending-a	pending-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.pending-a	pending-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.pending-a	pending-a	API manifest materials	absent (pending-a assignment is declined after FILE-02 decline test; declined loses scheduled audience)	absent	PASS	
+REHEARSE-01.materials.extaudio.pending-a	pending-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.pending-a	pending-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.pending-a	pending-a	API manifest media materials	leaders file absent	absent	PASS	
+REHEARSE-01.media-bundle.org-file.pending-a	pending-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.manifest.confirmed-a	confirmed-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.confirmed-a	confirmed-a	API manifest materials	absent	absent	PASS	
+REHEARSE-01.materials.item-audio-org.confirmed-a	confirmed-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.confirmed-a	confirmed-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.confirmed-a	confirmed-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.extaudio.confirmed-a	confirmed-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.confirmed-a	confirmed-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.confirmed-a	confirmed-a	API manifest media materials	leaders file absent	absent	PASS	
+REHEARSE-01.media-bundle.org-file.confirmed-a	confirmed-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.manifest.prepared-a	prepared-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.prepared-a	prepared-a	API manifest materials	absent	absent	PASS	
+REHEARSE-01.materials.item-audio-org.prepared-a	prepared-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.prepared-a	prepared-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.prepared-a	prepared-a	API manifest materials	absent	absent	PASS	
+REHEARSE-01.materials.extaudio.prepared-a	prepared-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.prepared-a	prepared-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.prepared-a	prepared-a	API manifest media materials	leaders file absent	absent	PASS	
+REHEARSE-01.media-bundle.org-file.prepared-a	prepared-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.manifest.team-a	team-a	API GET manifest	200	200	PASS	
+REHEARSE-01.materials.item-audio-leaders.team-a	team-a	API manifest materials	absent	absent	PASS	
+REHEARSE-01.materials.item-audio-org.team-a	team-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-audio-streamonly.team-a	team-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.item-sched-pdf.team-a	team-a	API manifest materials	absent	absent	PASS	
+REHEARSE-01.materials.extaudio.team-a	team-a	API manifest materials	present	present	PASS	
+REHEARSE-01.materials.doc.team-a	team-a	API manifest materials	present	present	PASS	
+REHEARSE-01.media-bundle.leaders-file.team-a	team-a	API manifest media materials	leaders file absent	absent	PASS	
+REHEARSE-01.media-bundle.org-file.team-a	team-a	API manifest media materials	org file present	present	PASS	
+REHEARSE-01.track.selected-audio-upload	owner-a	API track_file_id	an audio upload (playback audio), not link/doc	REH item-audio-leaders audio	PASS	
+REHEARSE-01.rights.stream_only.manifest-flags	owner-a	API material rights	stream true download false offline false	{"stream":true,"download":false,"offline":false}	PASS	
+REHEARSE-01.link.external-audio	owner-a	API material	playback external, no version, url present	external https://example.test/a.mp3	PASS	
+REHEARSE-01.doc.material	owner-a	API material	playback document, not offline	["document",{"stream":false,"download":false,"offline":false}]	PASS	
+REHEARSE-01.manifest.no-urls	owner-a	API manifest body	no signed URLs/tokens in manifest	false	PASS	
+REHEARSE-01.excluded.unfinalized-upload	owner-a	API manifest	pending upload absent	false	PASS	
+REHEARSE-01.excluded.archived-file	owner-a	API manifest	archived file absent (even for writers)	false	PASS	
+REHEARSE-01.pin.link	scoped-a	API link pin	201	201	PASS	
+REHEARSE-01.pin.manifest-uses-pinned-version	member-a	API manifest	pinned v1 (audio/wav), newer_version_available	v1 audio/wav pinned=true newer=true	PASS	
+REHEARSE-01.manifest.deny.inactive-a	inactive-a	API	403|404	403 forbidden	PASS	
+REHEARSE-01.manifest.deny.outsider	outsider	API	403|404	403 forbidden	PASS	
+REHEARSE-01.manifest.deny.beta-owner	beta-owner	API	403|404	404 not_found	PASS	
+REHEARSE-01.manifest.anonymous	anonymous	API	401	401 unauthorized	PASS	
+REHEARSE-01.manifest.cross-org-plan	owner-a	API B plan id under A	404	404 not_found	PASS	
+REHEARSE-01.manifest.random-plan	owner-a	API	404	404 not_found	PASS	
+REHEARSE-01.manifest.bad-uuid	owner-a	API	400	400 bad_request	PASS	
+REHEARSE-01.manifest.empty-plan	member-a	API empty plan	200 items [] materials []	200 0 8	PASS	
+REHEARSE-01.manifest.draft-plan.member	member-a	API draft plan manifest	200 per source (plans_select = is_org_member: drafts readable by every active member; flagged as observation O1)	200	PASS	
+REHEARSE-01.manifest.draft-plan.assigned-member	pending-a	API	info	200	PASS	
+REHEARSE-01.plan-materials.plan-level-file	member-a	API manifest plan_materials	plan-level audio present	true	PASS	
+REHEARSE-01.pack.member-a	member-a	API offline-pack default	200 with entries, recheck_by ~24h, max 500MiB	200 n=51 excl=17 max=524288000	PASS	
+REHEARSE-01.pack.recheck-24h	member-a	API	86400s	86400	PASS	
+REHEARSE-01.pack.total-bytes-sum	member-a	API	total_bytes = sum(entries)	26270399	PASS	
+REHEARSE-01.pack.excluded-reasons	member-a	API	info: stream_only/link/document listed as excluded	document,external_link,stream_only	PASS	
+REHEARSE-01.pack.stream_only-excluded	member-a	API	stream-only file in excluded, not entries	false/true	PASS	
+REHEARSE-01.pack.link-doc-excluded	member-a	API	external link and document excluded	false	PASS	
+REHEARSE-01.pack.leaders-file-absent.member	member-a	API	leaders-only file not in pack or excluded list	false	PASS	
+REHEARSE-01.pack.entry-url-bytes	member-a	GET entry url	200, bytes == size_bytes	200 4844/4844	PASS	
+REHEARSE-01.pack.cap-5000	member-a	API max_bytes 5000	total <= cap; remaining excluded with reason	total=4914 entries=2 reasons=pack_limit,document,external_link,stream_only	PASS	
+REHEARSE-01.pack.cap-1	member-a	API max_bytes 1	0 entries	0	PASS	
+REHEARSE-01.pack.cap-0	member-a	API	400|422	422 unprocessable	PASS	
+REHEARSE-01.pack.cap-2GiB-ok	member-a	API	200	200	PASS	
+REHEARSE-01.pack.cap-over-2GiB	member-a	API	400|422	422 unprocessable	PASS	
+REHEARSE-01.pack.cap-float	member-a	API	400|422	422 unprocessable	PASS	
+REHEARSE-01.pack.cap-string	member-a	API	400|422	422 unprocessable	PASS	
+REHEARSE-01.pack.deny.inactive-a	inactive-a	API	403|404	403 forbidden	PASS	
+REHEARSE-01.pack.deny.outsider	outsider	API	403|404	403 forbidden	PASS	
+REHEARSE-01.pack.deny.beta-owner	beta-owner	API	403|404	404 not_found	PASS	
+REHEARSE-01.pack.anonymous	anonymous	API	401	401 unauthorized	PASS	
+REHEARSE-01.pack.prepared-a	prepared-a	API	200, no scheduled-audience file (item-sched-pdf)	200 false	PASS	
+REHEARSE-01.pack.confirmed-a	confirmed-a	API	200, includes scheduled-audience pdf	200 true	PASS	
+REHEARSE-01.rights-change.setup	owner-a	API tighten	200	200	PASS	
+REHEARSE-01.rights-change.new-pack-excludes	member-a	API new pack after audience tightened	file gone from entries and excluded	false	PASS	
+REHEARSE-01.rights-change.manifest-hides	member-a	API manifest	file absent	false	PASS	
+REHEARSE-01.rights-change.old-pack-url	member-a	GET old pack URL after tightening	info: valid until TTL (documented; <=300s)	200	PASS	
+REHEARSE-01.pack.url-ttl	member-a	API url_expires_at	<=300s	298s	PASS	
+REHEARSE-01.url-recovery.fresh-url-on-rerequest	member-a	API download twice	200 each, new tokens	200/200 differ=false	PASS	
+REHEARSE-01.url-recovery.expired-then-renewed	member-a	Storage expired URL then API renewal	expired 4xx then renewed 200	400 -> 200	PASS	
+REHEARSE-01.media.archived-bundle-in-manifest	member-a	API manifest with archived bundle linked	info: bundle still linked; files still listed (plan history retained)	media=true materials=12	PASS	
+REHEARSE-01.revoked.member-a.manifest	member-a	API after inactive	403|404	403 forbidden	PASS	
+REHEARSE-01.revoked.member-a.pack	member-a	API	403|404	403 forbidden	PASS	
+REHEARSE-01.revoked.member-a.restored	member-a	API	200	200	PASS	
+FILE-02.rls.direct-update.owner-a	owner-a	PostgREST PATCH attachments	denied (no table write grant)	403	PASS	
+FILE-02.rls.direct-delete.owner-a	owner-a	PostgREST DELETE attachments	denied	403	PASS	
+FILE-02.rls.direct-insert.owner-a	owner-a	PostgREST POST attachments	denied	403	PASS	
+FILE-02.rls.direct-update-version.owner-a	owner-a	PostgREST PATCH attachment_versions	denied	403	PASS	
+FILE-02.rls.removal-queue-hidden.owner-a	owner-a	PostgREST GET attachment_object_removals	denied	403	PASS	
+FILE-02.rls.direct-update.media-a	media-a	PostgREST PATCH attachments	denied (no table write grant)	403	PASS	
+FILE-02.rls.direct-delete.media-a	media-a	PostgREST DELETE attachments	denied	403	PASS	
+FILE-02.rls.direct-insert.media-a	media-a	PostgREST POST attachments	denied	403	PASS	
+FILE-02.rls.direct-update-version.media-a	media-a	PostgREST PATCH attachment_versions	denied	403	PASS	
+FILE-02.rls.removal-queue-hidden.media-a	media-a	PostgREST GET attachment_object_removals	denied	403	PASS	
+FILE-01.rpc.service-only.expire_file_uploads.owner-a	owner-a	PostgREST rpc expire_file_uploads	denied (service_role only)	403	PASS	
+FILE-01.rpc.service-only.expire_file_uploads.anonymous	anonymous	PostgREST rpc	denied	401	PASS	
+FILE-01.rpc.service-only.claim_file_object_removals.owner-a	owner-a	PostgREST rpc claim_file_object_removals	denied (service_role only)	403	PASS	
+FILE-01.rpc.service-only.claim_file_object_removals.anonymous	anonymous	PostgREST rpc	denied	401	PASS	
+FILE-01.rpc.direct-intent.member-a	member-a	PostgREST rpc create_file_upload_intent	denied	403 {"code":"42501","details":null,"hint":null,"message":"You ca	PASS	
+FILE-01.rpc.direct-intent.cross-org-parent	media-a	rpc with B plan id (bypassing API org check)	denied	500 {"code":"P0002","details":null,"hint":null,"message":"That p	PASS	
+FILE-01.rpc.direct-intent.cross-org-team-target	media-a	rpc with B team id as audience target	denied	500 {"code":"P0002","details":null,"hint":null,"message":"Team n	PASS	
+FILE-01.rpc.direct-finalize.member-a	member-a	rpc finalize on ready version of other	denied	500 {"code":"P0002","details":null,"hint":null,"message":"Upload	PASS	
+FILE-03.rpc.direct-delete.member-a	member-a	rpc delete_file	denied	403	PASS	
+FILE-03.rpc.direct-archive.member-a	member-a	rpc set_file_archived	denied	403	PASS	
+FILE-03.rpc.direct-update.beta-owner	beta-owner	rpc update_file on A file	denied	500	PASS	
+FILE-03.rpc.direct-link.cross-org	beta-owner	rpc link A song file to B plan	denied	500	PASS	
+FILE-02.rpc.writable_file_ids.member-a	member-a	rpc writable_file_ids	[] (no writable)	[]	PASS	
+FILE-02.rpc.writable_file_ids.media-a	media-a	rpc	A files only, not B file	true	PASS	
+FILE-01.rpc.can_add_file.member-a	member-a	rpc	false	false	PASS	
+FILE-01.rpc.can_add_file.media-a	media-a	rpc	true	true	PASS	
+FILE-01.rpc.can_add_file.cross-org	media-a	rpc B plan	false	false	PASS	
+FILE-03.storage.direct-delete.media-a	media-a	Storage DELETE caller JWT	denied (no delete policy) & object intact	400 exists=1	PASS	
+FILE-03.storage.direct-delete.owner-a	owner-a	Storage DELETE	object intact	1	PASS	
+FILE-03.storage.direct-move.media-a	media-a	Storage move	denied, object intact	400 1	PASS	
+FILE-02.storage.list.member-a	member-a	Storage list prefix A org	folders only	200 n=66	PASS	
+FILE-02.storage.list.outsider	outsider	Storage list prefix A org	0 entries	200 n=0	PASS	
+FILE-02.storage.list.beta-owner	beta-owner	Storage list prefix A org	0 entries	200 n=0	PASS	
+FILE-02.storage.public-url	anonymous	Storage /object/public	denied (bucket private)	400	PASS	
+FILE-02.storage.anon-key-authenticated	anonymous	Storage authenticated route with anon key	denied	400	PASS	
+FILE-02.storage.bucket-private	member-a	Storage bucket config	public=false, 25MiB limit, mime allowlist	DB: public=f, file_size_limit=26214400, 25 allowed mime types (Storage API does not expose bucket config to non-service roles)	PASS	
+FILE-02.copy.duplicate-plan-files	owner-a	API duplicate plan then list files	info: plan-owned files copied or not (behaviour record)	dup 201 own-files=0 total entries=29	PASS	
+REHEARSE-01.manifest.truncated-at-300	member-a	API manifest with 302 items	300 items, truncated=true	200 n=300 truncated=true	PASS	
+FILE-01.type.note.txt	media-a	API upload text/plain	ready	ready	PASS	
+FILE-01.type.note.txt.roundtrip-bytes	member-a	download bytes identical	identical	true	PASS	
+FILE-01.type.img.png	media-a	API upload image/png	ready	ready	PASS	
+FILE-01.type.img.png.roundtrip-bytes	member-a	download bytes identical	identical	true	PASS	
+FILE-01.type.tone.wav	media-a	API upload audio/wav	ready	ready	PASS	
+FILE-01.type.tone.wav.roundtrip-bytes	member-a	download bytes identical	identical	true	PASS	
+FILE-01.type.multi.pdf	media-a	API upload application/pdf	ready	ready	PASS	
+FILE-01.type.multi.pdf.roundtrip-bytes	member-a	download bytes identical	identical	true	PASS	
+FILE-01.zero-byte.actual-PUT	media-a	Storage PUT 0 bytes declared 543 then finalize	not ready (failed size_mismatch or not_uploaded)	PUT 200 -> failed size_mismatch	PASS	
+FILE-01.zero-byte.declared	media-a	API size 0	400|422	422 unprocessable	PASS	
+FILE-01.ui.web-progress-cancel-retry	owner/media-editor	Web UI	progress, cancel, retry, drag-drop upload	Web UI owned by QA-09 (browser not available to this package)	NOT_RUN	
+FILE-01.ui.native-picker-camera	media-editor	Mobile/Desktop UI	file picker upload, progress, retry	Native client (QA-13/14, physical device/simulator not in scope)	NOT_RUN	
+FILE-01.cleanup.sweeper	service	Worker/DB	expire_file_uploads + removal queue sweep of unfinalized/failed uploads	Delivery/maintenance worker is off-limits for this package; queue rows (attachment_object_removals) were verified to be enqueued at failure/expiry/delete time, and another run swept them during the session (observed, not driven by this agent)	NOT_RUN	
+FILE-02.ui.web-preview-download-export	member/outsider	Web UI	preview/download/export UI honours audience	Web UI owned by QA-09 (browser not available to this package)	NOT_RUN	
+FILE-02.ui.native	member	Mobile UI	file list/preview/share honours audience	Native client (QA-13/14, physical device/simulator not in scope)	NOT_RUN	
+FILE-03.ui.web-versions-editor	editor	Web UI	version history, link edit, text-document editor	Web UI owned by QA-09 (browser not available to this package)	NOT_RUN	
+FILE-03.ui.native	editor	Mobile UI	version/link/doc screens	Native client (QA-13/14, physical device/simulator not in scope)	NOT_RUN	
+MEDIA-01.ui.web-library	media-editor/member	Web UI	bundle library, picker, usage UI	Web UI owned by QA-09 (browser not available to this package)	NOT_RUN	
+MEDIA-01.ui.native-readonly	member	Mobile UI	native bundle metadata remains read-only	Native client (QA-13/14, physical device/simulator not in scope)	NOT_RUN	
+STAGE-01.ui.web-editor-print	planner/member	Web UI	layout editor, drag, print	Web UI owned by QA-09 (browser not available to this package)	NOT_RUN	
+STAGE-01.layout.duplicate-api	planner	API	duplicate layout action	No duplicate-layout endpoint exists in source (routes/rehearsal.ts); a layout is created fresh or from a template. Plan duplication copies no layouts (recorded in STAGE-01.layout.duplicate-plan-copies-layouts).	NOT_APPLICABLE	
+REHEARSE-01.player.controls	confirmed/member	Web/Mobile player	select track, play/pause/seek/repeat/next/previous/mini-player	Client-side behaviour; Web UI owned by QA-09 (browser not available to this package); native Native client (QA-13/14, physical device/simulator not in scope). API contract for ordered tracks/playlist inputs is covered.	NOT_RUN	
+REHEARSE-01.player.link-expiry-ui	member	Web/Mobile player	player recovers from expired link	Client recovery not driven; API renewal of expired URL covered (REHEARSE-01.url-recovery.*)	NOT_RUN	
