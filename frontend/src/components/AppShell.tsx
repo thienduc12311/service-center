@@ -10,6 +10,7 @@ import { useTheme } from '../providers/ThemeProvider';
 import { LocaleSwitcher } from '../i18n';
 import { PlatformAccessBanner } from './church/PlatformAccessBanner';
 import { StorageWarningBanner } from './church/StorageUsage';
+import { usePopupMenu } from '../hooks/usePopupMenu';
 import { AccountMenuButton } from './AccountMenuButton';
 
 type NavLabelKey = Extract<TranslationKey<'common'>, `nav.${string}`>;
@@ -193,17 +194,18 @@ export const AppShell = () => {
   const { t } = useTranslation(['home', 'common']);
   const { user, organizationId, role, signOut, canAnywhere } = useAuth();
   const leader = canAnywhere('scheduling.manage') || canAnywhere('plans.edit') || canAnywhere('songs.manage');
-  const [menuOpen, setMenuOpen] = useState(false);
+  const accountMenu = usePopupMenu();
+  const closeAccountMenu = accountMenu.close;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { resolved, setMode } = useTheme();
   const location = useLocation();
   const organization = user?.memberships.find((m) => m.organization.id === organizationId)?.organization;
 
-  // A route change (including back/forward) always closes the small-screen drawer.
+  // Route changes, including back/forward, dismiss both navigation popups.
   useEffect(() => {
     setDrawerOpen(false);
-    setMenuOpen(false);
-  }, [location.pathname]);
+    closeAccountMenu();
+  }, [location.pathname, closeAccountMenu]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -266,61 +268,63 @@ export const AppShell = () => {
 
               <span className="mx-1.5 hidden h-6 w-px bg-app-border sm:block" aria-hidden="true" />
 
-              <div className="relative">
+              <div {...accountMenu.rootProps} className="relative">
                 <AccountMenuButton
                   label={t('shell.accountMenu')}
                   name={user?.profile.full_name ?? user?.profile.email}
                   avatarUrl={user?.profile.avatar_url}
-                  expanded={menuOpen}
-                  onToggle={() => setMenuOpen((open) => !open)}
+                  ref={accountMenu.triggerRef}
+                  id={accountMenu.triggerId}
+                  menuId={accountMenu.menuId}
+                  expanded={accountMenu.open}
+                  onToggle={accountMenu.toggle}
                 />
 
-                {menuOpen && (
-                  <>
+                {accountMenu.open && (
+                  <div
+                    {...accountMenu.menuProps}
+                    role="menu"
+                    className="card animate-pop-in absolute right-0 z-50 mt-2 w-64 overflow-hidden p-1 text-sm shadow-lg shadow-slate-900/10"
+                  >
+                    <div className="flex items-center gap-3 px-3 py-3">
+                      <Avatar name={user?.profile.full_name ?? user?.profile.email} url={user?.profile.avatar_url} />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-slate-900 dark:text-slate-100">
+                          {user?.profile.full_name ?? t('shell.signedIn')}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">{user?.profile.email}</p>
+                        {role && (
+                          <span className="mt-1 inline-block rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-200">
+                            {t(`common:roles.${role}`)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="my-1 h-px bg-app-border" />
+                    <NavLink
+                      to="/settings"
+                      role="menuitem"
+                      tabIndex={-1}
+                      onClick={() => closeAccountMenu(true)}
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 focus-visible:bg-slate-100 dark:focus-visible:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      <Icon name="settings" className="size-4 opacity-70" />
+                      {t('common:nav.settings')}
+                    </NavLink>
                     <button
                       type="button"
-                      aria-label={t('common:actions.closeMenu')}
-                      className="fixed inset-0 z-40 cursor-default"
-                      onClick={() => setMenuOpen(false)}
-                    />
-                    <div
-                      role="menu"
-                      className="card animate-pop-in absolute right-0 z-50 mt-2 w-64 overflow-hidden p-1 text-sm shadow-lg shadow-slate-900/10"
+                      role="menuitem"
+                      tabIndex={-1}
+                      onClick={() => {
+                        closeAccountMenu(true);
+                        void signOut();
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-rose-600 hover:bg-rose-50 focus-visible:bg-rose-50 dark:focus-visible:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/10"
                     >
-                      <div className="flex items-center gap-3 px-3 py-3">
-                        <Avatar name={user?.profile.full_name ?? user?.profile.email} url={user?.profile.avatar_url} />
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-slate-900 dark:text-slate-100">
-                            {user?.profile.full_name ?? t('shell.signedIn')}
-                          </p>
-                          <p className="truncate text-xs text-slate-500">{user?.profile.email}</p>
-                          {role && (
-                            <span className="mt-1 inline-block rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-200">
-                              {t(`common:roles.${role}`)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="my-1 h-px bg-app-border" />
-                      <NavLink
-                        to="/settings"
-                        role="menuitem"
-                        onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
-                      >
-                        <Icon name="settings" className="size-4 opacity-70" />
-                        {t('common:nav.settings')}
-                      </NavLink>
-                      <button
-                        role="menuitem"
-                        onClick={() => void signOut()}
-                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
-                      >
-                        <Icon name="signOut" className="size-4 opacity-80" />
-                        {t('common:actions.signOut')}
-                      </button>
-                    </div>
-                  </>
+                      <Icon name="signOut" className="size-4 opacity-80" />
+                      {t('common:actions.signOut')}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

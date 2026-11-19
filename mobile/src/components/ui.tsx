@@ -556,6 +556,7 @@ export const Field = forwardRef<TextInput, FieldProps>(
           onBlur?.(event);
         }}
         {...props}
+        accessibilityLabel={props.accessibilityLabel ?? label}
       />
     </View>
   );

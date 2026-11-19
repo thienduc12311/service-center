@@ -43,7 +43,8 @@ Namespaces: `common`, `auth`, `errors`, `settings`, `people`, `plans`,
    unescaped `{{- value}}` form; the validator rejects both. React/React Native
    escape text automatically; server templates escape per output format.
 5. Plurals: pass `count`, and give each language the forms **its own** plural
-   rules need. English needs `_one` and `_other`; Vietnamese only `_other`.
+   rules need. English needs `_one` and `_other`. Vietnamese catalogs use
+   `_other` for all counts, including when the runtime selects `_one`.
    An optional `_zero` is allowed in any language for natural "none" wording.
    ```json
    // en                                  // vi

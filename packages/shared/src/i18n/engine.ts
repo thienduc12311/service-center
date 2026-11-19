@@ -7,6 +7,7 @@
 import i18next, { type i18n, type TFunction } from 'i18next';
 import { FALLBACK_LOCALE, localeRegistry, type LocaleRegistry, type SupportedLocale } from './locales.js';
 import { DEFAULT_NAMESPACE, NAMESPACES, resources, type LocaleResources, type Namespace } from './resources.js';
+import { preparePluralResources } from './plurals.js';
 import type { TranslatableMessage, TranslationValues } from './types.js';
 
 /** Called for a key missing from every language, including English. */
@@ -38,7 +39,7 @@ export const createI18n = <Code extends string = SupportedLocale>(options: Creat
   const instance = i18next.createInstance();
   options.configure?.(instance);
   void instance.init({
-    resources: catalogs,
+    resources: preparePluralResources(catalogs),
     lng: options.locale ?? registry.fallback,
     fallbackLng: registry.fallback,
     supportedLngs: [...registry.codes],
