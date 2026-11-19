@@ -128,7 +128,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
 
         <fieldset>
           <legend className="label">{t('editItem.type')}</legend>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {(['song', 'item', 'header'] as const).map((value) => (
               <label key={value} className={`cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium ${draft.itemType === value ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                 <input type="radio" name="item-type" value={value} checked={draft.itemType === value} onChange={() => set('itemType', value)} className="sr-only" />

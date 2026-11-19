@@ -2,10 +2,14 @@ import { useRef, useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
+  LocalizedError,
+  PLAN_ITEM_TYPES,
   initialArrangementFor,
   keyedPlanItemRequest,
   newPlanItemRequest,
+  validateNewPlanItemDraft,
   type CreatePlanItemRequest,
+  type NewPlanItemDraft,
   type PlanItemType,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
@@ -29,6 +33,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
   const [title, setTitle] = useState('');
   const [length, setLength] = useState('');
   const [description, setDescription] = useState('');
+  const [formError, setFormError] = useState<LocalizedError | null>(null);
 
   const songs = useSongs({ q: songQuery || undefined, per_page: 20 });
   const selectedSong = songs.data?.data.find((song) => song.id === songId);
@@ -39,9 +44,9 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
 
   // The same body the native app sends (shared `newPlanItemRequest`).
   const create = useMutation({
-    mutationFn: () => {
+    mutationFn: (draft: NewPlanItemDraft) => {
       const body = keyedPlanItemRequest(
-        newPlanItemRequest({ itemType, title, song: selectedSong ?? null, keyOverride: mainKey, length, description }, t('itemKind.song')),
+        newPlanItemRequest(draft, t('itemKind.song')),
         pending.current,
         () => crypto.randomUUID(),
       );
@@ -62,18 +67,26 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    create.mutate();
+    if (create.isPending) return;
+    const draft: NewPlanItemDraft = { itemType, title, song: selectedSong ?? null, keyOverride: mainKey, length, description };
+    const problem = validateNewPlanItemDraft(draft);
+    setFormError(problem ? new LocalizedError({ key: `plans:editItem.errors.${problem}` }) : null);
+    if (!problem) create.mutate(draft);
   };
 
   return (
     <Modal open={open} title={t('addItem.title')} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
-        <div className="flex gap-2">
-          {(['song', 'item', 'header'] as const).map((value) => (
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t('editItem.type')}>
+          {PLAN_ITEM_TYPES.map((value) => (
             <button
               key={value}
               type="button"
-              onClick={() => setItemType(value)}
+              aria-pressed={itemType === value}
+              onClick={() => {
+                setItemType(value);
+                setFormError(null);
+              }}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                 itemType === value ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'
               }`}
@@ -150,6 +163,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={itemType === 'header' ? t('addItem.headerPlaceholder') : t('addItem.itemPlaceholder')}
+              maxLength={200}
               required
             />
           </div>
@@ -177,6 +191,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
                 id="item-notes"
                 className="input"
                 rows={2}
+                maxLength={4000}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -184,7 +199,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
           </>
         )}
 
-        <ErrorNotice error={create.error} />
+        <ErrorNotice error={formError ?? create.error} />
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>

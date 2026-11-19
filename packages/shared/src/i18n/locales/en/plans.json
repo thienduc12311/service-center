@@ -1,7 +1,7 @@
 {
   "itemKind": {
     "song": "Song",
-    "item": "Item",
+    "item": "Free-form item",
     "header": "Header"
   },
   "timeKind": {
