@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { canEditTeamRoster } from '@service-center/shared';
+import { canEditTeamRoster, type TeamWithPositions } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePeople, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
@@ -19,7 +19,8 @@ interface RemoveMemberVariables {
 
 export const TeamsPage = () => {
   const { t } = useTranslation(['teams', 'common']);
-  const { access, can } = useAuth();
+  const { access, can, role } = useAuth();
+  const canDeleteTeams = role === 'owner';
   /** A team can be managed organization-wide, per service type, or as its leader. */
   const canManageTeam = (team: { id: string; service_type_id: string | null }) =>
     can('teams.manage', { serviceTypeId: team.service_type_id, teamId: team.id });
@@ -33,6 +34,7 @@ export const TeamsPage = () => {
   const [creating, setCreating] = useState(false);
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [teamToDelete, setTeamToDelete] = useState<TeamWithPositions | null>(null);
   const [policyTeamId, setPolicyTeamId] = useState<string | null>(null);
   const [availabilityTeamId, setAvailabilityTeamId] = useState<string | null>(null);
   const canScheduleTeam = (team: { id: string; service_type_id: string | null }) =>
@@ -62,6 +64,20 @@ export const TeamsPage = () => {
       setPositions('');
     },
   });
+
+  const deleteTeam = useMutation({
+    mutationFn: (teamId: string) => api.deleteTeam(teamId),
+    onSuccess: async () => {
+      await invalidate();
+      setTeamToDelete(null);
+    },
+  });
+
+  const closeDeleteTeam = () => {
+    if (deleteTeam.isPending) return;
+    deleteTeam.reset();
+    setTeamToDelete(null);
+  };
 
   const addMember = useMutation({
     mutationFn: ({ teamId, personId, positionId }: { teamId: string; personId: string; positionId: string | null }) =>
@@ -129,7 +145,7 @@ export const TeamsPage = () => {
                   key={team.id}
                   id={`team-${team.id}`}
                   aria-labelledby={`team-title-${team.id}`}
-                  className={`card flex flex-col overflow-hidden ${focusedTeamId === team.id ? 'ring-2 ring-brand-500' : ''}`}
+                  className={`card flex flex-col ${focusedTeamId === team.id ? 'ring-2 ring-brand-500' : ''}`}
                 >
                   <div className="flex items-start gap-3 px-4 pt-4 pb-3 sm:px-5">
                     <span
@@ -143,7 +159,7 @@ export const TeamsPage = () => {
                       <h2 id={`team-title-${team.id}`} className="truncate font-semibold text-slate-900 dark:text-white">{team.name}</h2>
                       <p className="text-xs text-slate-500 dark:text-slate-400">{t('common:count.people', { count: team.members.length })}</p>
                     </div>
-                    {(manage || schedule || policy) && (
+                    {(manage || schedule || policy || canDeleteTeams) && (
                       <Menu label={<span className="sr-only">{t('common:actions.more')}</span>} icon="more">
                         {(close) => (
                           <>
@@ -160,6 +176,11 @@ export const TeamsPage = () => {
                             {policy && (
                               <MenuItem icon="settings" onClick={() => { setPolicyTeamId(team.id); close(); }}>
                                 {t('teamsPage.settings')}
+                              </MenuItem>
+                            )}
+                            {canDeleteTeams && (
+                              <MenuItem icon="trash" tone="danger" onClick={() => { setTeamToDelete(team); close(); }}>
+                                {t('teamsPage.delete.submit')}
                               </MenuItem>
                             )}
                           </>
@@ -220,7 +241,7 @@ export const TeamsPage = () => {
                   </ul>
 
                   {rosterEditable && (
-                    <div className="border-t border-app-border bg-slate-50/60 px-3 py-2 dark:bg-slate-900/40">
+                    <div className="rounded-b-[inherit] border-t border-app-border bg-slate-50/60 px-3 py-2 dark:bg-slate-900/40">
                       <Button variant="ghost" size="sm" onClick={() => setAddingTo(team.id)}>
                         {t('teamsPage.addPerson')}
                       </Button>
@@ -243,6 +264,23 @@ export const TeamsPage = () => {
       {editingTeam && <TeamEditor team={editingTeam} onClose={() => setEditingTeamId(null)} />}
       {policyTeam && <TeamPolicyModal team={policyTeam} onClose={() => setPolicyTeamId(null)} />}
       {availabilityTeam && <AvailabilityRequestsModal team={availabilityTeam} onClose={() => setAvailabilityTeamId(null)} />}
+
+      {canDeleteTeams && teamToDelete && (
+        <Modal open title={t('teamsPage.delete.title', { team: teamToDelete.name })} onClose={closeDeleteTeam}>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300">{t('teamsPage.delete.description')}</p>
+            <ErrorNotice error={deleteTeam.error} />
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" autoFocus disabled={deleteTeam.isPending} onClick={closeDeleteTeam}>
+                {t('common:actions.cancel')}
+              </Button>
+              <Button variant="danger" loading={deleteTeam.isPending} onClick={() => deleteTeam.mutate(teamToDelete.id)}>
+                {t('teamsPage.delete.submit')}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <Modal open={creating} title={t('teamsPage.create.title')} onClose={() => setCreating(false)}>
         <form onSubmit={submit} className="space-y-4">
