@@ -19,6 +19,11 @@
       "positionsHint": "Phân cách bằng dấu phẩy. Bạn có thể thêm sau.",
       "submit": "Tạo ban"
     },
+    "delete": {
+      "title": "Xóa ban {{team}}?",
+      "description": "Thao tác này sẽ xóa vĩnh viễn ban, các vị trí và các phân công của ban trong các chương trình. Thành viên của ban vẫn có tên trong danh sách thành viên của Hội thánh.",
+      "submit": "Xóa ban"
+    },
     "addMember": {
       "title": "Thêm vào {{team}}",
       "hint": "Bất kỳ ai trong danh sách thành viên đều có thể tham gia ban, dù có tài khoản hay không. Thành viên đã lưu trữ không hiển thị.",

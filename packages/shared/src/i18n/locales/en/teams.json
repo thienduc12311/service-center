@@ -19,6 +19,11 @@
       "positionsHint": "Comma separated. You can add more later.",
       "submit": "Create team"
     },
+    "delete": {
+      "title": "Delete {{team}}?",
+      "description": "This permanently deletes the team, its positions and its assignments from plans. The people on the team stay on your organization’s roster.",
+      "submit": "Delete team"
+    },
     "addMember": {
       "title": "Add to {{team}}",
       "hint": "Anyone on the roster can join a team, with or without a login. Archived people aren’t listed.",
