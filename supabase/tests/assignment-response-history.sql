@@ -176,4 +176,172 @@ begin
   end;
 end $$;
 
+-- ------------------------------ respond_as_self: one call decides it all -----
+reset role;
+update public.assignments set status = 'unconfirmed', responded_at = null
+where id = (select assignment_id from fixture);
+delete from public.assignment_responses where assignment_id = (select assignment_id from fixture);
+
+create temporary table self_fixture on commit drop as
+select a.id as assignment_id, p.organization_id
+from public.assignments a join public.plans p on p.id = a.plan_id
+where a.id = (select assignment_id from fixture);
+-- What each call returned, checked against the outbox afterwards.
+create temporary table self_effects (step text primary key, effect_id uuid) on commit drop;
+grant select on self_fixture to authenticated;
+grant select, insert on self_effects to authenticated;
+
+set local role authenticated;
+set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
+
+-- Stale: Sam thinks it is confirmed, but it is still unconfirmed. The current
+-- status travels with the error so the API can report it.
+do $$
+declare v_hint text; v_detail text;
+begin
+  begin
+    perform public.respond_as_self(
+      (select organization_id from self_fixture), (select assignment_id from self_fixture), 'declined', 'confirmed');
+    raise exception 'a stale expected status still changed the answer';
+  exception when sqlstate 'PT409' then
+    get stacked diagnostics v_hint = pg_exception_hint, v_detail = pg_exception_detail;
+  end;
+  if v_hint is distinct from 'assignment_response_stale' or v_detail is distinct from 'unconfirmed' then
+    raise exception 'stale answer was not reported as stale with the current status (hint %, detail %)', v_hint, v_detail;
+  end if;
+end $$;
+
+-- Confirm: the row, the transition and the effect come back together.
+do $$
+declare v_result record;
+begin
+  select * into v_result from public.respond_as_self(
+    (select organization_id from self_fixture), (select assignment_id from self_fixture), 'confirmed', 'unconfirmed');
+  if (v_result.assignment).status <> 'confirmed' or (v_result.assignment).id <> (select assignment_id from self_fixture)
+     or v_result.transition <> 'answer' or v_result.effect_id is null then
+    raise exception 'confirmation did not return the confirmed row, its transition and its effect';
+  end if;
+  insert into self_effects values ('confirm', v_result.effect_id);
+end $$;
+
+-- Unchanged: retrying an answer that committed is a success that writes
+-- nothing, even with the expected status the client still believed.
+do $$
+declare v_result record;
+begin
+  select * into v_result from public.respond_as_self(
+    (select organization_id from self_fixture), (select assignment_id from self_fixture), 'confirmed', 'unconfirmed');
+  if v_result.transition <> 'unchanged' or v_result.effect_id is not null
+     or (v_result.assignment).status <> 'confirmed' then
+    raise exception 'a retry of a committed answer was not reported as unchanged';
+  end if;
+  if (select count(*) from public.assignment_responses
+      where assignment_id = (select assignment_id from self_fixture)) <> 1 then
+    raise exception 'an unchanged retry wrote history';
+  end if;
+end $$;
+
+-- Decline with a reason: a withdrawal of the confirmation.
+do $$
+declare v_result record;
+begin
+  select * into v_result from public.respond_as_self(
+    (select organization_id from self_fixture), (select assignment_id from self_fixture),
+    'declined', 'confirmed', 'Travelling that weekend');
+  if v_result.transition <> 'withdrawal' or (v_result.assignment).status <> 'declined' or v_result.effect_id is null then
+    raise exception 'withdrawal did not return the declined row, its transition and its effect';
+  end if;
+  insert into self_effects values ('withdraw', v_result.effect_id);
+  if not exists (
+    select 1 from public.assignment_responses
+    where assignment_id = (select assignment_id from self_fixture)
+      and previous_status = 'confirmed' and status = 'declined'
+      and response_note = 'Travelling that weekend'
+      and actor_id = '33333333-3333-4333-8333-333333333333'
+  ) then
+    raise exception 'withdrawal was not recorded with its reason and actor';
+  end if;
+  if nullif(current_setting('app.assignment_response_note', true), '') is not null then
+    raise exception 'response note leaked into the rest of the transaction';
+  end if;
+end $$;
+
+-- Forbidden: a declined assignment is never re-accepted by its assignee, with
+-- or without an expected status.
+do $$
+declare v_hint text;
+begin
+  begin
+    perform public.respond_as_self(
+      (select organization_id from self_fixture), (select assignment_id from self_fixture), 'confirmed', 'declined');
+    raise exception 'assignee re-accepted a declined assignment through respond_as_self';
+  exception when sqlstate 'PT409' then
+    get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  if v_hint is distinct from 'assignment_response_forbidden' then
+    raise exception 're-accepting was not reported as forbidden (hint %)', v_hint;
+  end if;
+  begin
+    perform public.respond_as_self(
+      (select organization_id from self_fixture), (select assignment_id from self_fixture), 'confirmed');
+    raise exception 'assignee re-accepted a declined assignment without an expected status';
+  exception when sqlstate 'PT409' then null;
+  end;
+end $$;
+
+-- Another member cannot answer Sam's assignment, whether or not they can see it.
+set local request.jwt.claim.sub = '44444444-4444-4444-8444-444444444444';
+do $$
+begin
+  begin
+    perform public.respond_as_self(
+      (select organization_id from self_fixture), (select assignment_id from self_fixture), 'declined', null);
+    raise exception 'another member answered Sam''s assignment through respond_as_self';
+  exception when sqlstate '42501' or sqlstate 'P0002' then null;
+  end;
+end $$;
+
+-- The returned effects are exactly the outbox rows recorded with each answer.
+reset role;
+do $$
+begin
+  if (select status from public.assignments where id = (select assignment_id from self_fixture)) <> 'declined'
+     or (select count(*) from public.assignment_responses
+         where assignment_id = (select assignment_id from self_fixture)) <> 2 then
+    raise exception 'another member changed Sam''s assignment';
+  end if;
+  if not exists (
+    select 1 from self_effects e
+      join public.delivery_effects d on d.id = e.effect_id
+      join public.assignment_responses h
+        on h.assignment_id = (select assignment_id from self_fixture)
+       and h.previous_status = 'unconfirmed' and h.status = 'confirmed'
+     where e.step = 'confirm'
+       and d.template = 'scheduler_response'
+       and d.effect_key = 'assignment-response:' || h.id::text
+       and d.assignment_ids = array[(select assignment_id from self_fixture)]
+       and d.response_status = 'confirmed' and d.response_transition = 'response'
+       and d.responder_id = '33333333-3333-4333-8333-333333333333'
+  ) then
+    raise exception 'the confirmation''s effect is not the outbox row recorded with it';
+  end if;
+  if not exists (
+    select 1 from self_effects e
+      join public.delivery_effects d on d.id = e.effect_id
+      join public.assignment_responses h
+        on h.assignment_id = (select assignment_id from self_fixture)
+       and h.previous_status = 'confirmed' and h.status = 'declined'
+     where e.step = 'withdraw'
+       and d.template = 'scheduler_response'
+       and d.effect_key = 'assignment-response:' || h.id::text
+       and d.assignment_ids = array[(select assignment_id from self_fixture)]
+       and d.response_status = 'declined' and d.response_transition = 'withdrawal'
+  ) then
+    raise exception 'the withdrawal''s effect is not the outbox row recorded with it';
+  end if;
+  if (select count(distinct effect_id) from self_effects) <> 2 then
+    raise exception 'two answers shared one effect';
+  end if;
+end $$;
+
 rollback;
