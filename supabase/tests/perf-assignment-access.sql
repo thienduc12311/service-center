@@ -266,8 +266,15 @@ do $$
 declare
   changed uuid;
 begin
-  update public.assignments set status = 'confirmed' where id = pg_temp.id('assignee-release')
-  returning id into strict changed;
+  -- W7-RESP-D2: the row is reachable, but an answer must come through the
+  -- response path so the scheduler update is recorded with it.
+  begin
+    update public.assignments set status = 'confirmed' where id = pg_temp.id('assignee-release');
+    raise exception 'Assignee changed a status without the response path';
+  exception when insufficient_privilege then null;
+  end;
+  select (r.assignment).id into strict changed
+    from public.respond_as_self(pg_temp.id('main'), pg_temp.id('assignee-release'), 'confirmed', 'unconfirmed') r;
   update public.assignments set status = 'confirmed' where id = pg_temp.id('assignee-prepared');
   if found then raise exception 'Assignee updated a prepared assignment'; end if;
   begin
