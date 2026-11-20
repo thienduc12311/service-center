@@ -226,6 +226,7 @@ export interface ParticipationSummary {
   person_plans: number;
   present: number;
   absent: number;
+  unknown: number;
   teams: ParticipationTeamTotal[];
 }
 

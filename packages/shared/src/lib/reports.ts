@@ -403,6 +403,7 @@ export const buildParticipationReport = (input: {
     person_plans: rows.reduce((sum, row) => sum + row.person_plans, 0),
     present: rows.reduce((sum, row) => sum + row.present, 0),
     absent: rows.reduce((sum, row) => sum + row.absent, 0),
+    unknown: rows.reduce((sum, row) => sum + row.unknown, 0),
     teams: [...teamAcc.values()]
       .map(({ total, people: teamPeople, personPlans }) => ({ ...total, people: teamPeople.size, person_plans: personPlans.size }))
       .sort((a, b) => a.team_name.localeCompare(b.team_name)),
