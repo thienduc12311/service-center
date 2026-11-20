@@ -195,4 +195,12 @@ describe('GET /me', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ profile, memberships: [], disabled_organizations: [] });
   });
+
+  it('treats an upper-case X-Organization-Id as the same organization (W7-ACC-D10)', async () => {
+    context = { memberships: [member], disabled_organizations: [] };
+    const response = await request(app).get('/scoped').set('X-Organization-Id', orgId.toUpperCase());
+    expect(response.status).toBe(200);
+    expect(response.body.id).toBe(orgId);
+    expect(rpc).toHaveBeenCalledWith('my_org_context', { p_org: orgId });
+  });
 });

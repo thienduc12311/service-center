@@ -62,10 +62,12 @@ export const withOrganization = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const requested =
+    const requestedRaw =
       (req.header('X-Organization-Id') ?? (req.query.organization_id as string | undefined))?.trim() ||
       null;
-    if (requested && !isUuid(requested)) throw HttpError.badRequest('Invalid X-Organization-Id header');
+    if (requestedRaw && !isUuid(requestedRaw)) throw HttpError.badRequest('Invalid X-Organization-Id header');
+    // UUIDs are case-insensitive; ids are stored and compared lower-case (W7-ACC-D10).
+    const requested = requestedRaw?.toLowerCase() ?? null;
 
     const { memberships, disabledOrganizations } = await loadMyOrganizationContext(
       req.db, req.auth.userId, requested ? { p_org: requested } : {},
