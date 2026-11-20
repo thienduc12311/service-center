@@ -647,3 +647,9 @@ export interface UnreadNotificationCount {
    */
   account_unread: number;
 }
+
+/** `POST /api/v1/notifications/clear-read` — read notifications removed, with fresh badge counts. */
+export interface ClearReadNotificationsResult extends UnreadNotificationCount {
+  /** How many read notifications were deleted from the active organization. */
+  deleted: number;
+}

@@ -12,6 +12,7 @@ import { PlatformAccessBanner } from './church/PlatformAccessBanner';
 import { StorageWarningBanner } from './church/StorageUsage';
 import { usePopupMenu } from '../hooks/usePopupMenu';
 import { AccountMenuButton } from './AccountMenuButton';
+import { NotificationBell } from './NotificationBell';
 
 type NavLabelKey = Extract<TranslationKey<'common'>, `nav.${string}`>;
 type NavGroupKey = Extract<TranslationKey<'common'>, `nav.groups.${string}`>;
@@ -259,6 +260,7 @@ export const AppShell = () => {
 
             <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
               {organizationId && <GlobalSearch />}
+              {organizationId && <NotificationBell />}
               <IconButton
                 icon={resolved === 'dark' ? 'sun' : 'moon'}
                 label={resolved === 'dark' ? t('shell.switchToLight') : t('shell.switchToDark')}

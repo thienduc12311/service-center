@@ -242,7 +242,18 @@
     "unreadItem": "Unread: {{title}}",
     "bellLabel_zero": "Notifications",
     "bellLabel_one": "Notifications, {{count}} unread",
-    "bellLabel_other": "Notifications, {{count}} unread"
+    "bellLabel_other": "Notifications, {{count}} unread",
+    "deleteItem": "Delete notification: {{title}}",
+    "deleted": "Notification deleted",
+    "undo": "Undo",
+    "clearRead": "Clear all read",
+    "clearReadTitle": "Clear read notifications?",
+    "clearReadBody": "This permanently deletes every notification you've already read in this church. Unread notifications are kept.",
+    "clearReadConfirm": "Clear read",
+    "clearedRead_one": "Cleared {{count}} notification",
+    "clearedRead_other": "Cleared {{count}} notifications",
+    "swipeHint": "Swipe left on a notification to delete it.",
+    "loadMore": "Load more"
   },
   "mobileCalendar": {
     "layersNote": "Layers show only what you are allowed to see for this team, read again each time."

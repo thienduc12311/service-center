@@ -12,6 +12,7 @@
 import { configureTransports } from './lib/transports.js';
 import { runDeliveryWorker } from './services/delivery-worker.js';
 import { runFileMaintenanceSafely } from './services/file-maintenance.js';
+import { runNotificationRetentionSafely } from './services/notification-retention.js';
 import { runReportExportsSafely } from './services/report-exports.js';
 import { runWebhookDeliveriesSafely } from './services/webhook-dispatch.js';
 
@@ -38,6 +39,10 @@ const main = async (): Promise<void> => {
   const files = await runFileMaintenanceSafely();
   if (files) {
     console.info(`[worker] files: expired uploads ${files.expired}, removed objects ${files.removed}, removal failures ${files.failed}`);
+  }
+  const notifications = await runNotificationRetentionSafely();
+  if (notifications) {
+    console.info(`[worker] notifications: deleted old ${notifications.deleted}`);
   }
 };
 

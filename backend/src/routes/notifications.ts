@@ -4,6 +4,7 @@ import {
   markNotificationsReadSchema,
   registerDeviceSchema,
   revokeDeviceRegistrationSchema,
+  type ClearReadNotificationsResult,
   type ListNotificationsQuery,
   type MarkNotificationsReadInput,
   type NotificationFeed,
@@ -15,7 +16,7 @@ import {
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { adminDb, raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
-import { HttpError } from '../lib/errors.js';
+import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import {
   generateDeviceRegistration,
   hashDeviceRevocationSecret,
@@ -111,12 +112,36 @@ notificationsRouter.post('/read', validateBody(markNotificationsReadSchema), asy
   res.json(await unreadCounts(req.db, req.orgId, req.auth.userId));
 });
 
+/**
+ * Permanently deletes every read notification the caller has in the active
+ * organization. Unread ones are kept so a bulk clear never hides something
+ * the caller has not seen yet.
+ */
+notificationsRouter.post('/clear-read', async (req, res) => {
+  const { count, error } = await req.db
+    .from('notifications')
+    .delete({ count: 'exact' })
+    .eq('organization_id', req.orgId)
+    .eq('user_id', req.auth.userId)
+    .not('read_at', 'is', null);
+  if (error) throw fromPostgrestError(error);
+
+  const result: ClearReadNotificationsResult = {
+    deleted: count ?? 0,
+    ...(await unreadCounts(req.db, req.orgId, req.auth.userId)),
+  };
+  res.json(result);
+});
+
+/** Permanently deletes one notification. Idempotent: a missing row is still 204. */
 notificationsRouter.delete('/:id', async (req, res) => {
+  const id = param(req, 'id');
   await unwrap(
     req.db
       .from('notifications')
       .delete()
-      .eq('id', param(req, 'id'))
+      .eq('id', id)
+      .eq('organization_id', req.orgId)
       .eq('user_id', req.auth.userId),
   );
   res.status(204).end();

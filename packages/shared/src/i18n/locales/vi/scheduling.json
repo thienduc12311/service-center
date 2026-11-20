@@ -234,7 +234,17 @@
     "emptyDescription": "Khi bạn được phân công vào một chương trình, thông báo sẽ hiện ở đây, và trên điện thoại nếu bạn đã cho phép thông báo.",
     "unreadItem": "Chưa đọc: {{title}}",
     "bellLabel_zero": "Thông báo",
-    "bellLabel_other": "Thông báo, {{count}} chưa đọc"
+    "bellLabel_other": "Thông báo, {{count}} chưa đọc",
+    "deleteItem": "Xóa thông báo: {{title}}",
+    "deleted": "Đã xóa thông báo",
+    "undo": "Hoàn tác",
+    "clearRead": "Xóa tất cả đã đọc",
+    "clearReadTitle": "Xóa các thông báo đã đọc?",
+    "clearReadBody": "Thao tác này sẽ xóa vĩnh viễn mọi thông báo bạn đã đọc trong hội thánh này. Các thông báo chưa đọc vẫn được giữ lại.",
+    "clearReadConfirm": "Xóa đã đọc",
+    "clearedRead_other": "Đã xóa {{count}} thông báo",
+    "swipeHint": "Vuốt sang trái trên một thông báo để xóa.",
+    "loadMore": "Tải thêm"
   },
   "mobileCalendar": {
     "layersNote": "Các lớp chỉ hiện những gì bạn được phép xem cho ban này, và được kiểm tra lại mỗi lần tải."
