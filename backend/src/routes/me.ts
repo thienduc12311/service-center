@@ -6,18 +6,14 @@ import {
   updateLanguagePreferenceSchema,
   updateProfileSchema,
   type UpdateLanguagePreferenceInput,
-  type AccessMode,
   type CalendarFeedTokenResponse,
   type CurrentUser,
-  type OrgRole,
-  type OrganizationRow,
 } from '@service-center/shared';
 import { parseOrThrow, validateBody } from '../lib/validate.js';
-import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { generateCalendarFeedToken } from '../services/calendar-feed-tokens.js';
-import { loadMyAccess } from '../services/access.js';
-import { isExpiredPlatformAccess, listMyDisabledOrganizations } from '../services/organization-platform.js';
+import { loadMyOrganizationContext } from '../services/organization-context.js';
 import { config } from '../config.js';
 import { mapLanguagePreferenceRow } from '../model/language.model.js';
 import {
@@ -31,13 +27,6 @@ import {
 
 export const meRouter: Router = Router();
 
-interface MembershipWithOrganization {
-  role: OrgRole;
-  access_mode: AccessMode;
-  platform_access_expires_at: string | null;
-  organization: OrganizationRow | null;
-}
-
 /**
  * The signed-in profile plus every organization the user belongs to, each
  * with the caller's effective access there (F01), so clients can show the
@@ -45,30 +34,22 @@ interface MembershipWithOrganization {
  */
 meRouter.get('/', async (req, res) => {
   // Contact columns are not selectable from `profiles`; my_profile() returns your own.
-  const profile = await unwrapOne(req.db.rpc('my_profile'));
-
-  const memberships = (await unwrap(
-    raw(req.db)
-      .from('organization_members')
-      .select('role, access_mode, platform_access_expires_at, organization:organizations(*)')
-      .eq('user_id', req.auth.userId)
-      .eq('status', 'active'),
-  )) as unknown as MembershipWithOrganization[];
+  const [profile, context] = await Promise.all([
+    unwrapOne(req.db.rpc('my_profile')),
+    loadMyOrganizationContext(req.db, req.auth.userId, { p_all: true }),
+  ]);
 
   const payload: CurrentUser = {
     profile,
-    memberships: await Promise.all(
-      memberships
-        .filter((m): m is MembershipWithOrganization & { organization: OrganizationRow } =>
-          Boolean(m.organization) && !isExpiredPlatformAccess(m.platform_access_expires_at))
-        .map(async (m) => ({
-          organization: m.organization,
-          role: m.role,
-          access: await loadMyAccess(req.db, m.organization.id, req.auth.userId, m),
-          platform_access_expires_at: m.platform_access_expires_at,
-        })),
+    memberships: context.memberships.flatMap((membership) =>
+      membership.organization ? [{
+        organization: membership.organization,
+        role: membership.role,
+        access: membership.access,
+        platform_access_expires_at: membership.platformAccessExpiresAt,
+      }] : [],
     ),
-    disabled_organizations: await listMyDisabledOrganizations(req.db),
+    disabled_organizations: context.disabledOrganizations,
   };
 
   res.json(payload);
