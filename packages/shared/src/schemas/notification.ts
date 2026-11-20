@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { uuid } from './common.js';
+import { keysetCursorSchema, uuid } from './common.js';
 
 export const notificationTypeSchema = z.enum([
   'assignment_scheduled',
@@ -17,8 +17,8 @@ export const notificationTypeSchema = z.enum([
 
 export const listNotificationsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
-  /** Keyset cursor: the `created_at` of the last row already shown. */
-  before: z.string().datetime().optional(),
+  /** Keyset cursor: the `next_cursor` of the previous page, echoed verbatim. */
+  before: keysetCursorSchema.optional(),
   unread_only: z
     .union([z.boolean(), z.enum(['true', 'false'])])
     .transform((value) => value === true || value === 'true')

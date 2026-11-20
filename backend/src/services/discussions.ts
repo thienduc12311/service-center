@@ -20,6 +20,7 @@ import type {
   ResolveConversationReportInput,
 } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
+import { beforeFilter } from '../lib/keyset.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import {
   displayName,
@@ -99,7 +100,7 @@ export const listItemComments = async (
 ): Promise<PlanItemThread> => {
   const item = await loadItem(caller, itemId);
   let select = caller.db.from('plan_item_comments').select('*').eq('plan_item_id', item.id);
-  if (query.before) select = select.lt('created_at', query.before);
+  if (query.before) select = select.or(beforeFilter(query.before));
   const rows = (await unwrap(
     select.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(query.limit + 1),
   )) ?? [];
@@ -207,7 +208,7 @@ const loadConversationMessages = async (
   query: ConversationMessagesQuery,
 ): Promise<DiscussionPage<ConversationMessage>> => {
   let select = caller.db.from('conversation_messages').select('*').eq('conversation_id', conversationId);
-  if (query.before) select = select.lt('created_at', query.before);
+  if (query.before) select = select.or(beforeFilter(query.before));
   if (query.q) select = select.textSearch('search', query.q, { type: 'plain', config: 'simple' });
   const rows = (await unwrap(
     select.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(query.limit + 1),

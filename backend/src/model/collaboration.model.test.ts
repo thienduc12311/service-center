@@ -10,7 +10,7 @@ describe('collaboration model', () => {
     ];
     expect(pageOf(rows, 2)).toEqual({
       data: [{ id: 'b', created_at: '2026-10-02T00:00:00Z' }, { id: 'c', created_at: '2026-10-03T00:00:00Z' }],
-      next_before: '2026-10-02T00:00:00Z',
+      next_before: '2026-10-02T00:00:00Z~b',
     });
     expect(pageOf(rows, 3).next_before).toBeNull();
   });
