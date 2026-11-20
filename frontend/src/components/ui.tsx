@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { avatarColor, initials } from '../lib/format';
 import { useErrorText } from '../i18n';
+import { usePopupMenu } from '../hooks/usePopupMenu';
 import { Icon, type IconName } from './icons';
 
 /* -------------------------------------------------------------------------
@@ -747,67 +748,51 @@ export const Modal = ({
   );
 };
 
-/**
- * A small click-to-open menu. The invisible backdrop is what closes it, so a
- * click anywhere else dismisses the menu without every caller wiring up its
- * own document listener.
- */
-export const Menu = ({
-  label,
-  children,
-  align = 'right',
-  icon,
-}: {
+interface MenuProps {
   label: ReactNode;
   children: (close: () => void) => ReactNode;
   align?: 'left' | 'right';
   icon?: IconName;
-}) => {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const close = () => {
-    if (menuRef.current?.contains(document.activeElement)) {
-      triggerRef.current?.focus({ preventScroll: true });
-    }
-    setOpen(false);
-  };
+}
+
+/**
+ * A small click-to-open menu following the W3C APG menu-button pattern
+ * (see `usePopupMenu`): Enter/Space/arrows open it, arrows/Home/End move
+ * between items, Escape closes and refocuses the trigger, Tab closes it.
+ */
+export const Menu = ({ label, children, align = 'right', icon }: MenuProps) => {
+  const menu = usePopupMenu();
+  const close = () => menu.close(true);
 
   return (
-    <div ref={menuRef} className="relative">
+    <div {...menu.rootProps} className="relative">
       <button
-        ref={triggerRef}
+        ref={menu.triggerRef}
+        id={menu.triggerId}
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={menu.toggle}
         aria-haspopup="menu"
-        aria-expanded={open}
+        aria-expanded={menu.open}
+        aria-controls={menu.open ? menu.menuId : undefined}
         className="button inline-flex h-9 items-center gap-1.5 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm shadow-slate-900/5
           ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500
           dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800"
       >
         {icon && <Icon name={icon} className="size-4" />}
         {label}
-        <Icon name="chevronDown" className={`size-3.5 text-slate-400 transition ${open ? 'rotate-180' : ''}`} />
+        <Icon name="chevronDown" className={`size-3.5 text-slate-400 transition ${menu.open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
-        <>
-          <button
-            type="button"
-            aria-label={t('actions.closeMenu')}
-            className="fixed inset-0 z-40 cursor-default"
-            onClick={close}
-          />
-          <div
-            role="menu"
-            className={`card animate-pop-in absolute z-50 mt-1.5 w-60 overflow-hidden p-1 text-sm shadow-lg shadow-slate-900/10 ${
-              align === 'right' ? 'right-0' : 'left-0'
-            }`}
-          >
-            {children(close)}
-          </div>
-        </>
+      {menu.open && (
+        <div
+          {...menu.menuProps}
+          role="menu"
+          className={`card animate-pop-in absolute z-50 mt-1.5 w-60 overflow-hidden p-1 text-sm shadow-lg shadow-slate-900/10 ${
+            align === 'right' ? 'right-0' : 'left-0'
+          }`}
+        >
+          {children(close)}
+        </div>
       )}
     </div>
   );
@@ -829,6 +814,7 @@ export const MenuItem = ({
   <button
     type="button"
     role="menuitem"
+    tabIndex={-1}
     disabled={disabled}
     onClick={onClick}
     className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
