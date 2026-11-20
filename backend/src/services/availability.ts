@@ -12,7 +12,6 @@ import {
   type CopyAvailabilityTargetResult,
   type CreateAvailabilityRequestInput,
   type CreateAvailabilityRequestResult,
-  type DelegatedResponseResult,
   type DelegatedSchedule,
   type DelegationSummary,
   type EffectiveAccess,
@@ -337,43 +336,6 @@ export const delegatedSchedule = async (ctx: AvailabilityContext, id: string): P
   });
   if (error) throw fromPostgrestError(error);
   return { delegation, entries: ((data ?? []) as DelegatedScheduleRpcRow[]).map(toDelegatedEntry) };
-};
-
-export interface DelegatedRespondCommand {
-  delegationId: string;
-  assignmentId: string;
-  status: 'confirmed' | 'declined';
-  expectedStatus: 'unconfirmed' | 'confirmed' | 'declined';
-  reason: string | null;
-}
-
-export interface DelegatedRespondOutcome {
-  result: DelegatedResponseResult;
-  effectId: string | null;
-}
-
-export const respondAsDelegate = async (
-  ctx: AvailabilityContext,
-  command: DelegatedRespondCommand,
-): Promise<DelegatedRespondOutcome> => {
-  const delegation = await delegationSummary(ctx, command.delegationId);
-  if (delegation.direction !== 'received') throw HttpError.notFound('Request not found');
-  const { data, error } = await raw(ctx.db).rpc('respond_as_delegate', {
-    p_organization_id: ctx.orgId,
-    p_person_id: delegation.target_person_id,
-    p_assignment_id: command.assignmentId,
-    p_status: command.status,
-    p_expected_status: command.expectedStatus,
-    p_reason: command.reason,
-  });
-  if (error?.code === 'PT409') throw HttpError.conflict(error.message, { code: 'assignment_response_stale' });
-  if (error) throw fromPostgrestError(error);
-  const row = ((data ?? []) as Array<DelegatedResponseResult & { effect_id: string | null }>)[0];
-  if (!row) throw HttpError.notFound('Request not found');
-  return {
-    result: { assignment_id: row.assignment_id, status: row.status, transition: row.transition },
-    effectId: row.effect_id,
-  };
 };
 
 // ------------------------------------------------- across organizations --

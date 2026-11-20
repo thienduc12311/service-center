@@ -134,24 +134,6 @@ export const effectIdForKey = async (db: Db, orgId: string, effectKey: string): 
   return row?.id ?? null;
 };
 
-/**
- * The scheduler update the database recorded with an answer. Read with the
- * service role: the person answering cannot (and need not) see the outbox.
- */
-export const latestResponseEffectId = async (adminClient: Db, assignmentId: string): Promise<string | null> => {
-  const row = await unwrap(
-    adminClient
-      .from('delivery_effects')
-      .select('id')
-      .eq('template', 'scheduler_response')
-      .contains('assignment_ids', [assignmentId])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  );
-  return row?.id ?? null;
-};
-
 /** Administrator list, newest first, bounded and cursor-paginated. */
 export const listDeliveries = async (db: Db, orgId: string, query: ListDeliveriesQuery): Promise<DeliveryList> => {
   let request = raw(db)
