@@ -60,18 +60,10 @@ do $$ begin
   end;
 end $$;
 
--- BUG: private.plan_template_content_from_plan reads public.people as the caller
--- (security invoker). Since 20261109000000_owner_people_permissions the
--- restrictive policy people_owner_privacy hides every other Person from a
--- non-owner scheduler, so a scheduler saving a template "from a plan" with the
--- 'roster' component silently gets an empty roster pattern (reproduced:
--- jsonb_array_length(content->'roster') = 0 as Jordan). Not fixed here (product
--- code is out of scope). The roster-pattern assertions therefore run as the
--- OWNER (11111111-...), who can see the whole roster; the scheduler assertion is
--- left skipped (would fail today):
---   as 2222: save_plan_template(org,null,null,'plan',st,'x',null,null,source,
---   array['roster']) -> content->'roster' should hold Sam (1 entry), is [].
-set local request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+-- W7F-COPY: a non-owner scheduler (Jordan) saving a template from a plan keeps
+-- the roster pattern even though people_owner_privacy hides other Persons from
+-- them (private.plan_active_people returns ids only, no Person fields).
+set local request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222';
 
 -- ------------------------------------- save from a plan; independence ---
 do $$
@@ -92,6 +84,39 @@ begin
   end if;
   if content ->> 'notes' <> 'Bring water' or jsonb_array_length(content -> 'items') <> 2 or jsonb_array_length(content -> 'needs') <> 2 then
     raise exception 'components missing from snapshot: %', content;
+  end if;
+end $$;
+
+-- Only ids and team/position keys: no Person fields leak into the template.
+do $$
+declare content jsonb;
+begin
+  select r.content into content from public.plan_template_revisions r where r.template_id = pg_temp.fx('tpl') and r.revision = 1;
+  if (select array_agg(k order by k) from jsonb_object_keys(content -> 'roster' -> 0) k) <> array['person_id', 'position_id', 'team_id'] then
+    raise exception 'roster entry carries unexpected fields: %', content -> 'roster' -> 0;
+  end if;
+  if content::text ilike '%Riley%' or exists (select 1 from public.people p where p.first_name is not null and length(p.first_name) > 2 and content::text like '%' || p.first_name || '%') then
+    raise exception 'a Person name leaked into the template';
+  end if;
+end $$;
+
+-- plan_active_people: members without edit/schedule rights and outsiders get nothing.
+set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
+do $$ begin
+  if cardinality(private.plan_active_people(pg_temp.fx('source'))) <> 0 then
+    raise exception 'a plain member can enumerate Persons of a plan';
+  end if;
+end $$;
+set local request.jwt.claim.sub = '99999999-9999-4999-8999-999999999999';
+do $$ begin
+  if cardinality(private.plan_active_people(pg_temp.fx('source'))) <> 0 then
+    raise exception 'a non-member can enumerate Persons of a plan';
+  end if;
+end $$;
+set local request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+do $$ begin
+  if cardinality(private.plan_active_people(pg_temp.fx('source'))) < 2 then
+    raise exception 'owner sees the active Persons referenced by the plan';
   end if;
 end $$;
 
