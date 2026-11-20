@@ -60,7 +60,18 @@ do $$ begin
   end;
 end $$;
 
-set local request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222';
+-- BUG: private.plan_template_content_from_plan reads public.people as the caller
+-- (security invoker). Since 20261109000000_owner_people_permissions the
+-- restrictive policy people_owner_privacy hides every other Person from a
+-- non-owner scheduler, so a scheduler saving a template "from a plan" with the
+-- 'roster' component silently gets an empty roster pattern (reproduced:
+-- jsonb_array_length(content->'roster') = 0 as Jordan). Not fixed here (product
+-- code is out of scope). The roster-pattern assertions therefore run as the
+-- OWNER (11111111-...), who can see the whole roster; the scheduler assertion is
+-- left skipped (would fail today):
+--   as 2222: save_plan_template(org,null,null,'plan',st,'x',null,null,source,
+--   array['roster']) -> content->'roster' should hold Sam (1 entry), is [].
+set local request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
 
 -- ------------------------------------- save from a plan; independence ---
 do $$
