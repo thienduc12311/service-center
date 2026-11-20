@@ -6,6 +6,8 @@ Tickets here are a repository backlog (`PERF-xxx`), in the same style as the MOB
 
 ## Problem
 
+The request paths and trip estimates below describe the pre-change baseline.
+
 Chat and My Schedule feel slow because each screen waits on a long chain of round trips that run one after another. The database work itself is small: app queries average 0.4–42 ms in production. Each trip also pays the distance between the API and the database. Opening a chat thread additionally runs the whole organization's conversation list twice.
 
 ### Chat thread: `GET /conversations/:id`
@@ -39,14 +41,14 @@ Path: [`routes/assignments.ts`](../../backend/src/routes/assignments.ts) (`sched
 
 ### What it adds up to
 
-The backend is a Vercel function and [`backend/vercel.json`](../../backend/vercel.json) sets no region; Vercel's default is `iad1` (Washington, D.C.). The database is in AWS `us-west-2` (Oregon), about 60–70 ms away per trip. If the deployed region is the default:
+The previous backend config left function placement to the Vercel project setting, which defaults to `iad1` (Washington, D.C.) for new projects. The database remediation plan reports the production database in AWS `us-west-2` (Oregon). If the pre-change deployment runs in `iad1`, the estimated 60–70 ms per trip adds up as follows. [Vercel function region settings](https://vercel.com/docs/functions/configuring-functions/region)
 
 | Screen | Sequential trips | Latency before query time |
 | --- | --- | --- |
 | Chat thread | 8 | about 500–600 ms |
 | My Schedule | 7 | about 450–500 ms, plus about 50–80 ms of RLS work |
 
-Cold starts add roughly 1–3 s on top when the function has been idle, which is likely at today's traffic. Neither the region nor the cold-start rate has been confirmed yet (PERF-001).
+Cold starts can add latency. The deployed function region and cold-start contribution still need production measurements (PERF-001).
 
 ## Goal and acceptance
 
@@ -62,7 +64,20 @@ Cold starts add roughly 1–3 s on top when the function has been idle, which is
 3. **Phase C: Reduce per-row RLS on these paths** — PERF-007. Depends on Phase 1 of the [database remediation plan](db-performance-remediation.md#plan).
 4. **Phase D: Stop repeating the work** — PERF-008. Polling replaced by Realtime Broadcast pokes.
 
-Each ticket ships on its own `feature/perf-*` branch with tests. Measure server time before and after each phase with the same request.
+The rollout combines the backend region pin with PERF-003, PERF-004, PERF-006, PERF-007, and PERF-008. Apply the four Supabase migrations before releasing the API and clients that use them. The rollout is expected to bring fixed org-scoped requests from three calls to two (Auth plus organization context) and chat threads to at most four sequential route stages. The one-call middleware target is still open because PERF-005 retains the live Auth check. Compare server timing against the same requests before rollout. The broader database phases follow separately.
+
+## Baseline
+
+**2026-11-19.** The repository now configures `pdx1` (Portland, AWS `us-west-2`) for the API project and keeps the 60 s limit. The [deployment guide](../../README.md#3-api-project) identifies `backend` as the Vercel root, and the top-level `regions` setting overrides the project default for deployments built from this config. Production placement, Fluid compute, cold-start share and initialization duration, and route p50/p95 remain unverified. Authenticated aggregate production telemetry was unavailable in this worktree. [Vercel configuration](https://vercel.com/docs/project-configuration/vercel-json#regions) · [Vercel region map](https://vercel.com/docs/regions)
+
+- Before rollout, record the production deployment ID and check the configured region and Fluid compute status in **Settings → Functions**. Verify actual placement using the function's execution region. For the last full seven-day UTC window before rollout, capture invocation count, cold-start count and share, and cold-start initialization p50/p95 from existing aggregate telemetry where available. [Vercel Runtime Logs](https://vercel.com/docs/logs/runtime) · [Vercel execution region fields](https://vercel.com/docs/drains/reference/logs)
+- In **Observability → Functions** or an existing metrics backend, group successful invocations by incoming `GET` path for `/api/v1/conversations/:id` (one segment after `conversations`), `/api/v1/conversations`, and `/api/v1/schedule/mine`. All three reach `api/index.js`. Record each route's sample count and function-duration p50/p95, plus warm p95 where cold-start classification is available. Keep only aggregate results and mark gaps in retention or metric coverage. Repeat over a comparable seven-day window after rollout, verify `pdx1` execution, and compare each route's p50 against its own baseline. Record any Fluid compute change when interpreting the result. [Vercel Observability](https://vercel.com/docs/observability)
+
+### PostgREST schema cache (DB Phase 0.5)
+
+The DB inspection recorded 74 `pg_timezone_names` calls (452 ms mean, 4,050 ms max) without a stats window. This is a cache-load proxy that can include startup loads. The tracked migrations and app code have no explicit `NOTIFY pgrst`, `pg_notify` reload, or custom DDL event trigger. The documented `db:push` applies DDL that can trigger the Supabase-managed `pgrst_ddl_watch` and `pgrst_drop_watch`. Postgres coalesces identical notifications in a transaction, and PostgREST debounces bursts across transactions. [DB inspection](db-performance-remediation.md#production-inspection-results) · [Supabase Postgres trigger definitions](https://github.com/supabase/postgres/blob/17.6.1.166/migrations/schema-17.sql) · [PostgREST schema cache](https://docs.postgrest.org/en/v14/references/schema_cache.html)
+
+For the same UTC window, check which `pgrst_*` event triggers are enabled in `pg_event_trigger` and aggregate count and duration of schema cache loads in Supabase PostgREST logs. Correlate load timestamps with migration and dashboard DDL, API deploys, and PostgREST startup or reconnect events. Record counts by cause and leave unmatched loads unattributed. Remove repeat manual reloads only if the timeline shows them, and keep refreshes for API schema changes. [Supabase log sources](https://supabase.com/docs/guides/observability/log-field-reference)
 
 ## Tickets
 
@@ -120,13 +135,15 @@ Acceptance: thread load is at most 4 sequential trips after middleware (summary 
 
 ### PERF-005
 
-**Verify login tokens locally with `getClaims()`**
+**Local JWT verification deferred to preserve session revocation.** [`requireAuth`](../../backend/src/middleware/auth.ts) keeps `getUser(token)` on every protected route, including `/me`, admin, chat and My Schedule. The Auth round trip remains in the request budget.
 
-- Replace `adminDb.auth.getUser(token)` in [`middleware/auth.ts`](../../backend/src/middleware/auth.ts) with `getClaims(token)` (supported by the installed `@supabase/supabase-js` 2.109).
-- `getClaims` verifies locally only when the project uses asymmetric JWT signing keys; with the legacy shared secret it still calls the Auth server. Move the project to asymmetric signing keys first if needed.
-- Keep what `getUser` protected against: a signed-out or deleted user. Decide and document the accepted window (until token expiry, default 1 hour) or keep a server-side revocation check for sensitive routes.
+- The installed `@supabase/supabase-js` and `@supabase/auth-js` **2.109.0** call `GET /auth/v1/user` for `getUser(token)`. `getClaims(token)` parses the token, checks that `exp` is present and later than the current Unix second, and verifies an RS256 or ES256 signature with WebCrypto when it can find the project JWKS key. The local path has no expected `iss` or `aud` check and no strict runtime type check for `exp`. The SDK falls back to `getUser` for HS tokens, missing algorithm or key ID, unavailable WebCrypto, or a successful JWKS lookup without a matching key. That fallback still costs an Auth request and returns JWT claims. A failed JWKS fetch or signature check fails verification. [SDK implementation](https://github.com/supabase/supabase-js/blob/v2.109.0/packages/core/auth-js/src/GoTrueClient.ts#L6273) · [JWT helpers](https://github.com/supabase/supabase-js/blob/v2.109.0/packages/core/auth-js/src/lib/helpers.ts#L342) · [Supabase `getClaims` reference](https://supabase.com/docs/reference/javascript/auth-getclaims)
+- Auth looks up the current user and the session referenced by a session JWT. A removed user or session yields an Auth error, which the middleware returns as `401 unauthorized`. A successful Auth response with a future `banned_until` yields `401 account_blocked`. Auth versions that reject a ban themselves reach the generic `401` path. The platform block operation sets the ban and deletes sessions while the user's ordinary organization memberships remain active. Revoking an organization membership is a separate authorization decision checked by organization middleware and RLS. The admin session endpoint also uses the current email from Auth. [Supabase Auth user and session checks](https://github.com/supabase/auth/blob/v2.198.0/internal/api/auth.go) · [Platform account block](../../supabase/migrations/20261118000000_platform_user_management.sql) · [Middleware regression tests](../../backend/src/middleware/auth.test.ts)
+- Successful sign-out removes the sessions in scope. Web and admin use the JS default global scope, and mobile uses local scope. A locally verified JWT can still pass until its `exp` after sign-out, platform block, account deletion, or other session removal. The repository's local TTL is 3,600 seconds. Hosted signing keys, issuer, audience, and TTL were outside this review. [Supabase session revocation](https://supabase.com/docs/guides/auth/sessions#how-to-ensure-an-access-token-jwt-cannot-be-used-after-a-user-signs-out) · [Server-side Auth guide](https://supabase.com/docs/guides/auth/server-side/advanced-guide) · [Sign-out scopes](https://supabase.com/docs/guides/auth/signout)
 
-Acceptance: no Auth server call on a normal request (visible as about 3,500 fewer `auth.users` / `sessions` lookups per window in `pg_stat_statements`); auth tests cover expired, malformed and wrong-issuer tokens.
+To revisit the optimization, verify the deployed issuer and user-token audience for each supported Auth URL. Require those values on verified claims, validate a finite numeric `exp` and the expected user/session claim types, and preserve fail-closed verification and the legacy Auth fallback where needed. The upstream Auth parser verifies with the configured signing keys and leaves the `iss` string unpinned. The `/user` audience comparison uses the request audience, which can come from the token. Any local verifier needs explicit application expectations for both claims. [Auth JWT parser](https://github.com/supabase/auth/blob/v2.198.0/internal/api/auth.go#L109) · [Auth `/user` handler](https://github.com/supabase/auth/blob/v2.198.0/internal/api/user.go#L63) · [Auth audience resolution](https://github.com/supabase/auth/blob/v2.198.0/internal/api/helpers.go#L25) · [Supabase JWT claims](https://supabase.com/docs/guides/auth/jwts)
+
+Keep an uncached server-backed check on each migrated route unless an explicit policy approves a wider window for that route. A future implementation could combine the check with a required data request if it verifies current user and session ownership, ban state, and any needed current user fields before route work. Prove parity on org-scoped, no-org and privileged paths. In a disposable environment, test malformed and expired tokens, a correctly signed wrong-issuer or wrong-audience token, legacy fallback, key rotation/revocation, and replay after local/global sign-out, block, and deletion. Preserve the next-request membership-denial behavior. Measure warm request latency and confirm the Auth call is gone on any migrated route. [Supabase signing and JWKS cache behavior](https://supabase.com/docs/guides/auth/signing-keys#public-key-discovery-and-caching)
 
 ### PERF-006
 
@@ -148,6 +165,8 @@ Acceptance: middleware makes one DB call; behaviour for zero, one and several me
 
 Acceptance: EXPLAIN for My Schedule shows no per-row SubPlan for `can_see_released_assignment`; `assignment_attendance_for` mean drops below 10 ms; RLS regression tests cover owner, admin, scoped scheduler, team member, released assignee, other-org member and anonymous.
 
+The isolated regression fixture passed on the base and with the new policies. My Schedule used hashed access sets, and the local attendance RPC averaged 6.08–6.33 ms across three roles. Confirm the RPC mean and compare My Schedule and time-response timings on representative small and large production tenants after rollout.
+
 ### PERF-008
 
 **Realtime Broadcast pokes for chat and live runs**
@@ -155,10 +174,13 @@ Acceptance: EXPLAIN for My Schedule shows no per-row SubPlan for `can_see_releas
 - A trigger on `conversation_messages` (insert, edit, hide, delete) calls `realtime.send` to a private channel `conversation:<id>` with only the conversation id and an event name; never the message body.
 - A policy on `realtime.messages` lets a user join `conversation:<id>` only when `private.can_access_conversation` allows it.
 - Web and mobile subscribe while a thread or the list is open and refetch through the existing API on each poke. Keep a 60 s fallback poll.
-- Same pattern for `live_run:<id>`, replacing the 2 s poll.
+- The chat list subscribes to its 90 newest known conversations to leave room for a thread outside the list and for channels still closing. The fallback also discovers conversations that first become visible while the list is open. [Supabase Realtime limits](https://supabase.com/docs/guides/realtime/limits)
+- `live_run:<id>` replaces the 2 s poll. `live_plan:<id>` discovers new runs in the service-time picker. Plan revisions also refresh open runs so the snapshot warning follows order and service-time edits.
 - A removed member keeps receiving pokes only until the channel re-checks access; a poke carries no content and every fetch is still checked.
 
 Acceptance: a new message appears in an open thread in under 1 s; chat and live-run request volume drops by at least 80% during a service; revocation still ends access on the next fetch.
+
+Measure post-to-render latency on hosted web and native clients, including reconnect and foreground return. Compare chat thread, chat list, live picker, and live state request counts separately and together over comparable service windows.
 
 ## Out of scope
 

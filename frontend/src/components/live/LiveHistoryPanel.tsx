@@ -65,7 +65,7 @@ export const LiveHistoryPanel = ({ runId, revision }: LiveHistoryPanelProps) => 
   const { refetch } = history;
   // The run moved on (another client advanced or corrected it): reload the history.
   useEffect(() => {
-    if (heldRevision !== undefined && heldRevision !== revision) void refetch();
+    if (heldRevision !== undefined && heldRevision < revision) void refetch();
   }, [heldRevision, revision, refetch]);
   if (history.isLoading) return <Loading label={t('live.history.loading')} />;
   if (history.error) return <ErrorNotice error={history.error} />;

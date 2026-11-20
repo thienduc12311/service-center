@@ -7,13 +7,11 @@ import {
   isLeader,
   ORGANIZATION_DISABLED,
   type AccessCapability,
-  type AccessMode,
-  type OrgRole,
+  type DisabledOrganization,
 } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
 import { isUuid } from '../lib/params.js';
-import { loadMyAccess } from '../services/access.js';
-import { isExpiredPlatformAccess, listMyDisabledOrganizations } from '../services/organization-platform.js';
+import { loadMyOrganizationContext } from '../services/organization-context.js';
 import { recordPlatformAccessRequest } from '../services/platform-admin.js';
 
 /** Requests that only read are not audited. */
@@ -40,8 +38,7 @@ const auditPlatformAccess = (req: Request, res: Response): void => {
 };
 
 /** Not a member any more because a super admin disabled the church: say so. */
-const disabledChurchError = async (req: Request, requested: string | null): Promise<HttpError | null> => {
-  const disabled = await listMyDisabledOrganizations(req.db);
+const disabledChurchError = (disabled: DisabledOrganization[], requested: string | null): HttpError | null => {
   const match = requested ? disabled.find((org) => org.organization_id === requested) : disabled[0];
   if (!match) return null;
   return new HttpError(403, 'This church has been disabled', ORGANIZATION_DISABLED, {
@@ -70,44 +67,35 @@ export const withOrganization = async (
       null;
     if (requested && !isUuid(requested)) throw HttpError.badRequest('Invalid X-Organization-Id header');
 
-    const { data, error } = await req.db
-      .from('organization_members')
-      .select('organization_id, role, access_mode, platform_access_expires_at')
-      .eq('user_id', req.auth.userId)
-      .eq('status', 'active');
-
-    if (error) throw new HttpError(500, error.message);
-
-    const memberships = (data ?? []).filter((m) => !isExpiredPlatformAccess(m.platform_access_expires_at));
+    const { memberships, disabledOrganizations } = await loadMyOrganizationContext(
+      req.db, req.auth.userId, requested ? { p_org: requested } : {},
+    );
     if (memberships.length === 0) {
-      throw (await disabledChurchError(req, requested)) ?? HttpError.forbidden('You are not a member of any organization yet');
+      throw disabledChurchError(disabledOrganizations, requested) ?? HttpError.forbidden('You are not a member of any organization yet');
     }
 
     const membership = requested
-      ? memberships.find((m) => m.organization_id === requested)
+      ? memberships.find((m) => m.organizationId === requested)
       : memberships.length === 1
         ? memberships[0]
         : undefined;
 
     if (!membership) {
-      const disabled = requested ? await disabledChurchError(req, requested) : null;
+      const disabled = requested ? disabledChurchError(disabledOrganizations, requested) : null;
       if (disabled) throw disabled;
       throw requested
         ? HttpError.forbidden('You are not a member of that organization')
         : HttpError.badRequest(
             'Multiple organizations available — send an X-Organization-Id header',
-            { organization_ids: memberships.map((m) => m.organization_id) },
+            { organization_ids: memberships.map((m) => m.organizationId) },
           );
     }
 
-    req.orgId = membership.organization_id;
-    req.orgRole = membership.role as OrgRole;
-    req.access = await loadMyAccess(req.db, req.orgId, req.auth.userId, {
-      role: membership.role as OrgRole,
-      access_mode: membership.access_mode as AccessMode,
-    });
+    req.orgId = membership.organizationId;
+    req.orgRole = membership.role;
+    req.access = membership.access;
     // A super admin inside the church as a temporary owner.
-    if (membership.platform_access_expires_at) auditPlatformAccess(req, res);
+    if (membership.platformAccessExpiresAt) auditPlatformAccess(req, res);
     next();
   } catch (err) {
     next(err);

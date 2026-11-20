@@ -1,17 +1,14 @@
-import type { ChurchCreationPolicy, DisabledOrganization, OrganizationStorageUsage } from '@service-center/shared';
+import type { ChurchCreationPolicy, OrganizationStorageUsage } from '@service-center/shared';
 import { adminDb, raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import {
-  mapDisabledOrganization,
   mapOrganizationStorage,
-  type DisabledOrganizationRow,
   type OrganizationStorageRow,
 } from '../model/platform-admin.model.js';
 
 /**
  * What the platform controls mean for an ordinary member: whether churches
- * can be created without approval, the church's storage use, and which of
- * the caller's churches are disabled.
+ * can be created without approval and the church's storage use.
  */
 
 export const getChurchCreationPolicy = async (db: Db): Promise<ChurchCreationPolicy> => {
@@ -27,11 +24,6 @@ export const getOrganizationStorage = async (db: Db, organizationId: string): Pr
   const row = rows?.[0];
   if (!row) throw HttpError.notFound('Church not found');
   return mapOrganizationStorage(row);
-};
-
-export const listMyDisabledOrganizations = async (db: Db): Promise<DisabledOrganization[]> => {
-  const rows = (await unwrap(raw(db).rpc('my_disabled_organizations'))) as DisabledOrganizationRow[] | null;
-  return (rows ?? []).map(mapDisabledOrganization);
 };
 
 /** Service role: deliveries for a disabled church are not sent. */

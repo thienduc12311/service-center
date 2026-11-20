@@ -49,9 +49,9 @@ interface PostResultRow {
 const directoryNames = async (caller: CollaborationCaller, personIds: readonly string[]): Promise<Map<string, DirectoryName>> => {
   const ids = [...new Set(personIds)];
   if (ids.length === 0) return new Map();
-  const rows = (await unwrap(
-    raw(caller.db).from('people_directory').select('id, profile_id, first_name, last_name').in('id', ids),
-  )) as DirectoryName[] | null;
+  const rows = await unwrap(
+    caller.db.from('people_directory').select('id, profile_id, first_name, last_name').in('id', ids),
+  );
   return new Map((rows ?? []).map((row) => [row.id, row]));
 };
 
@@ -169,17 +169,13 @@ export const listConversations = async (caller: CollaborationCaller): Promise<Co
   ((await unwrap(raw(caller.db).rpc('my_conversations', { p_organization_id: caller.orgId }))) as ConversationSummary[] | null) ?? [];
 
 const conversationSummary = async (caller: CollaborationCaller, conversationId: string): Promise<ConversationSummary> => {
-  const summary = (await listConversations(caller)).find((row) => row.id === conversationId);
-  if (summary) return summary;
-  // Beyond the 100 most recent, or no access: decide by RLS on the row.
-  const row = await unwrap(
-    caller.db.from('conversations').select('*').eq('id', conversationId).eq('organization_id', caller.orgId).maybeSingle(),
-  );
-  if (!row) throw HttpError.notFound('Conversation not found');
-  return {
-    id: row.id, kind: row.kind, team_id: row.team_id, plan_id: row.plan_id, title: row.kind === 'team' ? 'Team' : 'Plan',
-    service_date: null, last_message_at: null, unread_count: 0, muted: false, can_moderate: false, open_reports: 0,
-  };
+  const rows = await unwrap(caller.db.rpc('my_conversation', {
+    p_organization_id: caller.orgId,
+    p_conversation_id: conversationId,
+  }));
+  const summary = rows?.[0];
+  if (!summary) throw HttpError.notFound('Conversation not found');
+  return summary;
 };
 
 export const openConversation = async (caller: CollaborationCaller, input: OpenConversationInput): Promise<ConversationSummary> => {
@@ -190,25 +186,26 @@ export const openConversation = async (caller: CollaborationCaller, input: OpenC
 
 const shapeMessages = async (caller: CollaborationCaller, rows: readonly ConversationMessageRow[]): Promise<ConversationMessage[]> => {
   if (rows.length === 0) return [];
-  const mentionRows = (await unwrap(
-    caller.db.from('conversation_message_mentions').select('message_id, person_id, resolution').in('message_id', rows.map((row) => row.id)),
-  )) ?? [];
-  const names = await directoryNames(caller, [
-    ...mentionRows.map((row) => row.person_id),
-    ...rows.map((row) => row.author_person_id).filter((id): id is string => Boolean(id)),
+  const authorIds = new Set(rows.flatMap((row) => row.author_person_id ? [row.author_person_id] : []));
+  const [mentionRows, names] = await Promise.all([
+    unwrap(caller.db.from('conversation_message_mentions').select('message_id, person_id, resolution')
+      .in('message_id', rows.map((row) => row.id))),
+    directoryNames(caller, [...authorIds]),
   ]);
-  const mentions = mentionsBy(mentionRows, 'message_id');
+  const mentionNames = await directoryNames(caller, (mentionRows ?? [])
+    .map((row) => row.person_id).filter((id) => !authorIds.has(id)));
+  for (const [id, name] of mentionNames) names.set(id, name);
+  const mentions = mentionsBy(mentionRows ?? [], 'message_id');
   return rows.map((row) =>
     toConversationMessage(row, mentions.get(row.id) ?? [], names,
       displayName(row.author_person_id ? names.get(row.author_person_id) : null), caller.userId));
 };
 
-export const listConversationMessages = async (
+const loadConversationMessages = async (
   caller: CollaborationCaller,
   conversationId: string,
   query: ConversationMessagesQuery,
 ): Promise<DiscussionPage<ConversationMessage>> => {
-  await conversationSummary(caller, conversationId);
   let select = caller.db.from('conversation_messages').select('*').eq('conversation_id', conversationId);
   if (query.before) select = select.lt('created_at', query.before);
   if (query.q) select = select.textSearch('search', query.q, { type: 'plain', config: 'simple' });
@@ -219,17 +216,25 @@ export const listConversationMessages = async (
   return { data: await shapeMessages(caller, page.data), next_before: page.next_before };
 };
 
+export const listConversationMessages = async (
+  caller: CollaborationCaller,
+  conversationId: string,
+  query: ConversationMessagesQuery,
+): Promise<DiscussionPage<ConversationMessage>> => {
+  const conversation = await conversationSummary(caller, conversationId);
+  return loadConversationMessages(caller, conversation.id, query);
+};
+
 const shapeReports = async (caller: CollaborationCaller, rows: readonly ConversationMessageReportRow[]): Promise<ConversationReport[]> => {
   if (rows.length === 0) return [];
-  const messages = (await unwrap(
-    caller.db.from('conversation_messages').select('*').in('id', [...new Set(rows.map((row) => row.message_id))]),
-  )) ?? [];
-  const reporters = (await unwrap(
-    caller.db.from('profiles').select('id, full_name').in('id', [...new Set(rows.map((row) => row.reporter_id))]),
-  )) ?? [];
+  const [messageRows, reporters] = await Promise.all([
+    unwrap(caller.db.from('conversation_messages').select('*').in('id', [...new Set(rows.map((row) => row.message_id))])),
+    unwrap(caller.db.from('profiles').select('id, full_name').in('id', [...new Set(rows.map((row) => row.reporter_id))])),
+  ]);
+  const messages = messageRows ?? [];
   const names = await directoryNames(caller, messages.map((m) => m.author_person_id).filter((id): id is string => Boolean(id)));
   const byId = new Map(messages.map((message) => [message.id, message]));
-  const reporterNames = new Map(reporters.map((r) => [r.id, r.full_name]));
+  const reporterNames = new Map((reporters ?? []).map((r) => [r.id, r.full_name]));
   return rows.map((row) => {
     const message = byId.get(row.message_id);
     return {
@@ -241,6 +246,12 @@ const shapeReports = async (caller: CollaborationCaller, rows: readonly Conversa
   });
 };
 
+const loadOpenReports = async (caller: CollaborationCaller, conversationId: string): Promise<ConversationReport[]> => {
+  const rows = await unwrap(caller.db.from('conversation_message_reports').select('*').eq('conversation_id', conversationId)
+    .eq('status', 'open').order('created_at', { ascending: true }).limit(50));
+  return shapeReports(caller, rows ?? []);
+};
+
 export const getConversation = async (
   caller: CollaborationCaller,
   conversationId: string,
@@ -248,13 +259,10 @@ export const getConversation = async (
 ): Promise<ConversationDetail> => {
   const conversation = await conversationSummary(caller, conversationId);
   const [messages, reports] = await Promise.all([
-    listConversationMessages(caller, conversationId, query),
-    conversation.can_moderate
-      ? unwrap(caller.db.from('conversation_message_reports').select('*').eq('conversation_id', conversationId)
-          .eq('status', 'open').order('created_at', { ascending: true }).limit(50))
-      : Promise.resolve([]),
+    loadConversationMessages(caller, conversation.id, query),
+    conversation.can_moderate ? loadOpenReports(caller, conversation.id) : [],
   ]);
-  return { conversation, messages, reports: await shapeReports(caller, reports ?? []) };
+  return { conversation, messages, reports };
 };
 
 const loadMessage = async (caller: CollaborationCaller, conversationId: string, messageId: string): Promise<ConversationMessage> => {

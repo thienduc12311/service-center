@@ -84,7 +84,8 @@ describe('MOB-020 notification settings (source contract)', () => {
     expect(screen).toContain('api.myReminderPreferences()');
     expect(screen).toContain('api.updateMyReminderPreferences(input)');
     expect(screen).toContain('api.muteConversation(id, muted)');
-    expect(screen).toContain('queryKeys.conversationList(queryScope)');
+    expect(screen).toContain('useConversations()');
+    expect(read('src', 'lib', 'useConversations.ts')).toContain('queryKeys.conversationList(queryScope)');
   });
 
   it('never prompts for permission when only the badge changes', () => {

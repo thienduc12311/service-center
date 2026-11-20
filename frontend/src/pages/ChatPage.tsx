@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ import {
   conversationMessageState,
   conversationReadMark,
   CONVERSATION_SEARCH_MIN,
+  CONVERSATION_THREAD_POLL_MS,
   type ConversationMessage,
   type ConversationReportReason,
   type ConversationSummary,
@@ -21,6 +22,15 @@ import { Badge, Button, EmptyState, ErrorNotice, Modal, Notice, PageHeader, Skel
 import { Icon } from '../components/icons';
 import { DiscussionComposer } from '../components/collaboration/DiscussionComposer';
 import { DiscussionEntry } from '../components/collaboration/DiscussionEntry';
+
+// Match the lg breakpoint used by the chat sidebar.
+const twoPanes = () => window.matchMedia('(min-width: 64rem)');
+const subscribeToPaneWidth = (notify: () => void) => {
+  const media = twoPanes();
+  media.addEventListener('change', notify);
+  return () => media.removeEventListener('change', notify);
+};
+const showBothPanes = () => twoPanes().matches;
 
 const REPORT_REASONS: readonly ConversationReportReason[] = ['spam', 'harassment', 'inappropriate', 'safety', 'other'];
 
@@ -90,9 +100,14 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   const results = useQuery({
     queryKey: [...keys.conversation(organizationId, conversationId), 'search', search],
     queryFn: () => api.conversationMessages(conversationId, { q: search, limit: 30 }),
-    enabled: search.trim().length >= CONVERSATION_SEARCH_MIN,
+    enabled: Boolean(detail.data && !detail.error) && search.trim().length >= CONVERSATION_SEARCH_MIN,
+    refetchInterval: CONVERSATION_THREAD_POLL_MS,
   });
-  const refresh = () => client.invalidateQueries({ queryKey: keys.conversations(organizationId) });
+  const refreshList = () => client.invalidateQueries({ queryKey: keys.conversations(organizationId) });
+  const refresh = () => Promise.all([
+    refreshList(),
+    client.invalidateQueries({ queryKey: keys.conversation(organizationId, conversationId) }),
+  ]);
 
   const newest = detail.data?.messages.data.at(-1)?.created_at;
   const scroller = useRef<HTMLDivElement>(null);
@@ -104,7 +119,7 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   useEffect(() => {
     // Reading the thread moves the read position forward (never back), up to the newest message shown.
     const mark = conversationReadMark(detail.data?.messages.data ?? [], detail.data?.conversation.unread_count ?? 0, null);
-    if (mark) void api.markConversationRead(conversationId, mark).then(refresh);
+    if (mark) void api.markConversationRead(conversationId, mark).then(refreshList);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, newest]);
 
@@ -300,7 +315,8 @@ export const ChatPage = () => {
   const navigate = useNavigate();
   const { user, can, organizationId } = useAuth();
   const client = useQueryClient();
-  const conversations = useConversations();
+  const wide = useSyncExternalStore(subscribeToPaneWidth, showBothPanes);
+  const conversations = useConversations(!conversationId || wide);
   const teams = useTeams();
   const myId = user?.profile.id;
   const startable = chatStartableTeams(teams.data ?? [], myId, (team) =>

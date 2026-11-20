@@ -69,16 +69,17 @@ describe('MOB-019 conversation screens (source contract)', () => {
     expect(thread).toContain("useRef<{ atBottom: boolean; shown: readonly ConversationMessage[] }>({ atBottom: false, shown: [] })");
     expect(thread).toContain('laidOut.current = rendered.current');
     expect(thread).not.toMatch(/markConversationRead\([^)]*new Date/);
+    expect(thread).toMatch(/api\.markConversationRead[^]+?invalidateQueries\(\{ queryKey: listKey, exact: true \}\)/);
   });
 
   it('polls only while visible and drops the thread when access is gone', () => {
     expect(thread).toContain('refetchInterval: visible ? CONVERSATION_THREAD_POLL_MS : false');
     expect(thread).toContain("access === 'unavailable' ? null");
-    expect(thread).toMatch(/if \(access !== 'unavailable'\) return;\s*setKnown\(\[\]\)/);
+    expect(thread).toContain('const known = conversation ? threadWindow.messages : []');
   });
 
   it('merges pages by message id and uses the shared action rules', () => {
-    expect(thread).toContain('mergeConversationPages(');
+    expect(thread).toContain('conversationWindow(first.messages, history.data');
     expect(thread).toContain('conversationMessageActions(message, conversation)');
     expect(thread).toContain('api.muteConversation(');
     expect(thread).toContain('api.resolveConversationReport(');
@@ -92,7 +93,9 @@ describe('MOB-019 conversation screens (source contract)', () => {
 
   it('opens team chats through the server and polls the list like the website', () => {
     expect(list).toContain("api.openConversation({ kind: 'team'");
-    expect(list).toContain('refetchInterval: CONVERSATION_LIST_POLL_MS');
+    expect(list).toContain('useConversations()');
+    const listQuery = readFileSync(join(__dirname, 'useConversations.ts'), 'utf8');
+    expect(listQuery).toContain('refetchInterval: visible ? CONVERSATION_LIST_POLL_MS : false');
     expect(list).toContain('chatStartableTeams(');
   });
 });

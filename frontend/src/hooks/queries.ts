@@ -6,9 +6,11 @@ import {
   type UseQueryOptions,
 } from '@tanstack/react-query';
 import {
+  conversationAccess,
   CONVERSATION_LIST_POLL_MS,
+  CONVERSATION_LIST_TOPIC_LIMIT,
   CONVERSATION_THREAD_POLL_MS,
-  LIVE_IDLE_POLL_MS,
+  LIVE_FALLBACK_POLL_MS,
   REHEARSAL_MANIFEST_TTL_SECONDS,
   type CalendarQueryRequest,
   type ListPlansRequest,
@@ -20,6 +22,7 @@ import {
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
+import { useBroadcastRefresh } from './useBroadcastRefresh';
 
 /**
  * Every key is namespaced by organization so switching orgs can never surface
@@ -647,26 +650,36 @@ export const useMessageTemplates = (enabled = true) => {
   return useQuery({ queryKey: keys.messageTemplates(org), queryFn: () => api.messageTemplates(), enabled: Boolean(org) && enabled });
 };
 
-/** Polled: the API rechecks participation on every read, so access ends when membership does. */
-export const useConversations = () => {
+/** Known conversations each have their own authorization; polling also discovers new ones. */
+export const useConversations = (visible: boolean) => {
   const org = useOrg();
-  return useQuery({
-    queryKey: keys.conversations(org),
+  const queryKey = keys.conversations(org);
+  const query = useQuery({
+    queryKey,
     queryFn: () => api.conversations(),
-    enabled: Boolean(org),
+    enabled: Boolean(org && visible),
+    staleTime: 0,
     refetchInterval: CONVERSATION_LIST_POLL_MS,
+    refetchOnWindowFocus: 'always',
   });
+  const data = conversationAccess(query.error) === 'unavailable' ? undefined : query.data;
+  useBroadcastRefresh('conversation', visible ? data?.slice(0, CONVERSATION_LIST_TOPIC_LIMIT).map((conversation) => conversation.id) ?? [] : [], { queryKey, exact: true });
+  return { ...query, data };
 };
 
 export const useConversation = (id: string | undefined) => {
   const org = useOrg();
-  return useQuery({
-    queryKey: keys.conversation(org, id ?? ''),
+  const queryKey = keys.conversation(org, id ?? '');
+  const query = useQuery({
+    queryKey,
     queryFn: () => api.getConversation(id!),
     enabled: Boolean(org && id),
     refetchInterval: CONVERSATION_THREAD_POLL_MS,
+    refetchOnWindowFocus: 'always',
     retry: false,
   });
+  useBroadcastRefresh('conversation', id && conversationAccess(query.error) !== 'unavailable' ? [id] : [], { queryKey });
+  return query;
 };
 
 /** F10: templates the caller may use; RLS narrows them to their plans.edit scope. */
@@ -699,14 +712,17 @@ export const useTemplateApplications = (planId: string | undefined, enabled = tr
 
 // ------------------------------------------------------------------ F12 --
 
-/** The plan's service times with their runs; polled slowly so another editor's new run appears. */
+/** A plan topic discovers runs created while the service-time picker is open. */
 export const useLivePlanRuns = (planId: string | undefined) => {
   const org = useOrg();
+  const queryKey = keys.liveRuns(org, planId ?? '');
+  useBroadcastRefresh('live_plan', planId ? [planId] : [], { queryKey, exact: true });
   return useQuery({
-    queryKey: keys.liveRuns(org, planId ?? ''),
+    queryKey,
     queryFn: () => api.liveRuns(planId!),
     enabled: Boolean(org && planId),
-    refetchInterval: LIVE_IDLE_POLL_MS,
+    refetchInterval: LIVE_FALLBACK_POLL_MS,
+    refetchOnWindowFocus: 'always',
   });
 };
 

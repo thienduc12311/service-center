@@ -15,25 +15,6 @@ import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { mapEffectiveAccess, mapScopeAccess, parseExplanation, type NamedGrant } from '../model/access.model.js';
 
-interface MembershipRow {
-  role: OrgRole;
-  access_mode: AccessMode;
-}
-
-/** The caller's effective access, resolved by the database (`my_effective_access`). */
-export const loadMyAccess = async (
-  db: Db,
-  orgId: string,
-  userId: string,
-  membership: MembershipRow,
-): Promise<EffectiveAccess> => {
-  const rows = await unwrap(db.rpc('my_effective_access', { p_org: orgId }));
-  return mapEffectiveAccess(
-    { organizationId: orgId, userId, role: membership.role, accessMode: membership.access_mode },
-    rows ?? [],
-  );
-};
-
 /** Another member's access (administrators; the database enforces it). */
 export const loadMemberAccess = async (db: Db, orgId: string, userId: string): Promise<EffectiveAccess> => {
   const membership = await unwrap(

@@ -320,6 +320,8 @@ set local request.jwt.claim.sub = '44444444-4444-4444-8444-444444444444';
 select pg_temp.check((select unread_count from public.my_conversations(pg_temp.fx('org')) where id = pg_temp.fx('band_chat')) = 1, 'Riley has one unread');
 select public.mark_conversation_read(pg_temp.fx('band_chat'), now());
 select pg_temp.check((select unread_count from public.my_conversations(pg_temp.fx('org')) where id = pg_temp.fx('band_chat')) = 0, 'read clears unread');
+select pg_temp.check((select unread_count from public.my_conversation(pg_temp.fx('org'), pg_temp.fx('band_chat'))) = 0,
+  'by-id summary honors the caller read marker');
 select pg_temp.check((select count(*) from public.conversation_messages where search @@ plainto_tsquery('simple', 'rehearsal')) = 1, 'participant search finds it');
 select public.set_conversation_muted(pg_temp.fx('band_chat'), true);
 insert into f09_fx values ('m2', gen_random_uuid());
@@ -383,6 +385,8 @@ set local role authenticated;
 set local request.jwt.claim.sub = '44444444-4444-4444-8444-444444444444';
 select pg_temp.check((select count(*) from public.conversation_messages where conversation_id = pg_temp.fx('band_chat')) = 0, 'removed member reads nothing');
 select pg_temp.check((select count(*) from public.conversations where id = pg_temp.fx('band_chat')) = 0, 'removed member cannot open the guessed id');
+select pg_temp.check(not exists (select 1 from public.my_conversation(pg_temp.fx('org'), pg_temp.fx('band_chat'))),
+  'removed member cannot read the conversation summary even with saved read and mute state');
 do $$ begin
   perform public.post_conversation_message(gen_random_uuid(), pg_temp.fx('band_chat'), 'still here?', null, null);
   raise exception 'a removed member posted';
@@ -466,6 +470,68 @@ update public.organizations set conversation_retention_days = 30 where id = pg_t
 update public.conversation_messages set created_at = now() - interval '40 days' where id = pg_temp.fx('m1');
 select pg_temp.check(public.purge_expired_conversation_messages(100) >= 1, 'purge removed an expired message');
 select pg_temp.check(not exists (select 1 from public.conversation_messages where id = pg_temp.fx('m1')), 'expired message gone');
+
+-- The by-id summary matches the list and preserves metadata even beyond its cap.
+insert into f09_fx values ('second_org', gen_random_uuid());
+insert into public.organizations (id, name, slug)
+values (pg_temp.fx('second_org'), 'Second church', 'f09-second-church');
+insert into public.organization_members (organization_id, user_id, role, status)
+values (pg_temp.fx('second_org'), pg_temp.fx('jordan'), 'member', 'active');
+
+update public.conversation_messages set created_at = now() + interval '4 hours' where id = pg_temp.fx('plan_msg');
+insert into public.conversation_messages (organization_id, conversation_id, author_id, body, created_at, hidden_at, deleted_at)
+values
+  (pg_temp.fx('org'), pg_temp.fx('plan_chat'), pg_temp.fx('jordan'), 'My own message', now() + interval '1 hour', null, null),
+  (pg_temp.fx('org'), pg_temp.fx('plan_chat'), pg_temp.fx('riley_u'), '', now() + interval '2 hours', now(), null),
+  (pg_temp.fx('org'), pg_temp.fx('plan_chat'), pg_temp.fx('riley_u'), '', now() + interval '3 hours', null, now());
+
+set local role authenticated;
+set local request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222';
+select public.set_conversation_muted(pg_temp.fx('plan_chat'), true);
+select public.report_conversation_message(pg_temp.fx('plan_msg'), 'spam', null);
+select pg_temp.check((
+  select to_jsonb(s) = (select to_jsonb(l) from public.my_conversations(pg_temp.fx('org')) l where l.id = s.id)
+  from public.my_conversation(pg_temp.fx('org'), pg_temp.fx('plan_chat')) s
+), 'by-id and list summaries agree');
+select pg_temp.check(not exists (select 1 from public.my_conversation(pg_temp.fx('org'), gen_random_uuid())),
+  'unknown conversation yields an empty result');
+select pg_temp.check(not exists (select 1 from public.my_conversation(pg_temp.fx('second_org'), pg_temp.fx('plan_chat'))),
+  'membership in both organizations does not allow a summary under the wrong organization');
+select pg_temp.check(not has_function_privilege('anon', 'public.my_conversation(uuid, uuid)', 'EXECUTE'),
+  'anonymous requests cannot execute the summary RPC');
+
+reset role;
+with newer_plans as (
+  insert into public.plans (organization_id, service_type_id, title, service_date, status, created_by)
+  select pg_temp.fx('org'), pg_temp.fx('sunday'), 'Newer chat ' || n, now() + interval '600 days' + n * interval '1 day',
+         'published', pg_temp.fx('jordan')
+    from generate_series(1, 100) n
+  returning id, organization_id
+), newer_conversations as (
+  insert into public.conversations (organization_id, kind, plan_id)
+  select organization_id, 'plan', id from newer_plans
+  returning id, organization_id
+)
+insert into public.conversation_messages (organization_id, conversation_id, author_id, body, created_at)
+select organization_id, id, pg_temp.fx('jordan'), 'Newer message', now() + interval '1 day'
+from newer_conversations;
+
+set local role authenticated;
+select pg_temp.check((select count(*) from public.my_conversations(pg_temp.fx('org'))) = 100
+  and not exists (select 1 from public.my_conversations(pg_temp.fx('org')) where id = pg_temp.fx('plan_chat')),
+  'list caps at 100 conversations newer than the plan chat');
+select pg_temp.check((
+  select kind = 'plan' and plan_id = pg_temp.fx('plan') and team_id is null and title = 'F09 plan'
+    and service_date = (select p.service_date from public.plans p where p.id = pg_temp.fx('plan'))
+    and last_message_at = now() + interval '4 hours'
+    and unread_count = 1 and muted and can_moderate and open_reports = 1
+  from public.my_conversation(pg_temp.fx('org'), pg_temp.fx('plan_chat'))
+), 'older conversation retains its full summary including unread count and moderation');
+select public.block_user(pg_temp.fx('sam_u'));
+select pg_temp.check((
+  select last_message_at = now() + interval '3 hours' and unread_count = 0 and open_reports = 1
+  from public.my_conversation(pg_temp.fx('org'), pg_temp.fx('plan_chat'))
+), 'blocked authors are excluded from activity and unread count while tombstones still count as activity');
 
 select 'f09 checks passed' as result;
 rollback;

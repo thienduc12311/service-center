@@ -54,6 +54,7 @@ import type {
   ConversationMessageReportRow,
   ConversationMessageRow,
   ConversationRow,
+  ConversationSummary,
   DiscussionAuditEventRow,
   MessageTemplateRow,
   NoteCategoryRow,
@@ -1307,6 +1308,10 @@ export type Database = {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
     };
     Functions: {
+      my_conversation: {
+        Args: { p_organization_id: string; p_conversation_id: string };
+        Returns: ConversationSummary[];
+      };
       list_blockouts: {
         Args: { p_organization_id: string; p_person_id?: string | null; p_from?: string | null; p_to?: string | null };
         Returns: BlockoutRow[];
@@ -1436,6 +1441,10 @@ export type Database = {
       user_can_schedule_assignment: {
         Args: { p_user: string; p_assignment: string };
         Returns: boolean;
+      };
+      my_org_context: {
+        Args: { p_org?: string; p_all?: boolean };
+        Returns: unknown;
       };
       my_effective_access: {
         Args: { p_org: string };

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
   ApiError,
-  LIVE_IDLE_POLL_MS,
+  LIVE_FALLBACK_POLL_MS,
   LIVE_STATUS_ACCENTS,
   effectiveTransitionTimes,
   formatLiveDuration,
@@ -23,6 +23,7 @@ import { api } from '../../../src/lib/api';
 import { queryKeys } from '../../../src/lib/query-keys';
 import { newIdempotencyKey } from '../../../src/lib/idempotency';
 import { liveClientId, liveControls, liveRefusalText, type LiveConnection } from '../../../src/lib/live-run';
+import { useBroadcastRefresh } from '../../../src/lib/useBroadcastRefresh';
 import { useLiveRun, type LiveRunHandle } from '../../../src/lib/useLiveRun';
 import { useScreenVisible } from '../../../src/lib/useScreenVisible';
 import { useAuth } from '../../../src/providers/AuthProvider';
@@ -136,18 +137,15 @@ export default function LiveScreen() {
     queryFn: () => api.getPlan(planId!),
     enabled: Boolean(queryScope && planId),
   });
+  const runsKey = queryKeys.liveRuns(queryScope, planId);
   const runs = useQuery({
-    queryKey: queryKeys.liveRuns(queryScope, planId),
+    queryKey: runsKey,
     queryFn: () => api.liveRuns(planId!),
-    enabled: Boolean(queryScope && planId),
-    refetchInterval: visible ? LIVE_IDLE_POLL_MS : false,
+    enabled: Boolean(queryScope && planId && visible),
+    staleTime: 0,
+    refetchInterval: visible ? LIVE_FALLBACK_POLL_MS : false,
   });
-
-  // A run's status changed (started, ended, discarded): the picker shows it too.
-  const runStatus = live.state?.run.status;
-  useEffect(() => {
-    if (runStatus) void queryClient.invalidateQueries({ queryKey: queryKeys.liveRuns(queryScope, planId) });
-  }, [runStatus, queryClient, queryScope, planId]);
+  useBroadcastRefresh('live_plan', planId ? [planId] : [], visible, { queryKey: runsKey, exact: true });
 
   const create = useMutation({
     mutationFn: ({ time, policy: countdown, key }: CreateRunVariables & { createGeneration: number }) =>
@@ -735,7 +733,7 @@ const HistoryCard = ({ runId, revision }: HistoryCardProps) => {
   const { refetch } = history;
   // The run moved on (another device advanced or corrected it): reload the history.
   useEffect(() => {
-    if (heldRevision !== undefined && heldRevision !== revision) void refetch();
+    if (heldRevision !== undefined && heldRevision < revision) void refetch();
   }, [heldRevision, revision, refetch]);
 
   if (history.isLoading) return <Loading label={t('live.history.loading')} />;
