@@ -55,6 +55,17 @@ describe('formatMessageText', () => {
     expect(view(formatMessageText('use snake_case_name here', []))).toEqual([['text', 'use snake_case_name here']]);
   });
 
+  it('keeps dunder names and doubled underscores literal', () => {
+    for (const text of ['a.__init__ then b.__init__', 'window.__xss', 'snake_case_words', '__init__', 'x __y__ z']) {
+      expect(view(formatMessageText(text, []))).toEqual([['text', text]]);
+    }
+  });
+
+  it('still italicises a standalone underscore pair and leaves asterisks unchanged', () => {
+    expect(view(formatMessageText('a _b_ c', []))).toEqual([['text', 'a '], ['text', 'b', 'italic'], ['text', ' c']]);
+    expect(view(formatMessageText('foo*bar*baz', []))).toEqual([['text', 'foo'], ['text', 'bar', 'italic'], ['text', 'baz']]);
+  });
+
   it('never carries formatting across a line break', () => {
     expect(view(formatMessageText('**one\ntwo**', []))).toEqual([['text', '**one\ntwo**']]);
     expect(view(formatMessageText('**one**\ntwo', []))).toEqual([['text', 'one', 'bold'], ['text', '\ntwo']]);
