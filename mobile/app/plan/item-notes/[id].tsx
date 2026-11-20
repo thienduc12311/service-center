@@ -16,11 +16,11 @@ import { queryKeys } from '../../../src/lib/query-keys';
 import { commentNeedsNewId, mergeCommentPages, threadAccess } from '../../../src/lib/plan-notes-edit';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { NoteList } from '../../../src/components/PlanNotes';
+import { MessageBody, MentionPicker, mentionsMe, useMentionInput } from '../../../src/components/mentions';
 import {
   Avatar,
   Button,
   Card,
-  Chip,
   EmptyState,
   ErrorNotice,
   Field,
@@ -268,7 +268,7 @@ function CommentEntry({ itemId, comment, canDelete, onDelete, onEdited }: Commen
     : format.dateTime(comment.created_at);
 
   return (
-    <View style={styles.entry}>
+    <View style={[styles.entry, !removed && mentionsMe(comment.mentions) && styles.entryForMe]}>
       <Avatar name={comment.author_name ?? t('common:fallback.someone')} size={32} />
       <View style={styles.entryBody}>
         <Text style={styles.entryTop}>
@@ -302,7 +302,7 @@ function CommentEntry({ itemId, comment, canDelete, onDelete, onEdited }: Commen
             </View>
           </View>
         ) : (
-          <Text selectable style={styles.body}>{comment.body}</Text>
+          <MessageBody text={comment.body} mentions={comment.mentions} style={styles.body} />
         )}
         {!removed && unnotified.length ? (
           <Text style={styles.hint}>
@@ -329,9 +329,10 @@ interface CommentComposerProps {
 }
 
 /**
- * Text box with explicit mentions, like the website composer. The draft keeps
- * one client id until the server confirms it, so sending again after no
- * answer cannot post a second copy; the text survives a failed send.
+ * Text box with `@` mentions, like the website composer: typing `@` (or the
+ * `@` button) opens a picker, and Return sends (or picks the top match). The
+ * draft keeps one client id until the server confirms it, so sending again
+ * after no answer cannot post a second copy; the text survives a failed send.
  */
 function CommentComposer({ itemId, candidates, onPosted }: CommentComposerProps) {
   const { t } = useTranslation(['messages', 'common']);
@@ -341,80 +342,66 @@ function CommentComposer({ itemId, candidates, onPosted }: CommentComposerProps)
   const styles = useThemedStyles(makeStyles);
   const draftId = useRef(newIdempotencyKey());
   const [body, setBody] = useState('');
-  const [mentionIds, setMentionIds] = useState<string[]>([]);
-  const [choosing, setChoosing] = useState(false);
+  const [pickedIds, setPickedIds] = useState<string[]>([]);
+  const mention = useMentionInput({
+    text: body,
+    onChangeText: setBody,
+    candidates,
+    pickedIds,
+    onPicked: (personId) => setPickedIds((current) => [...current, personId]),
+  });
 
   const post = useMutation({
-    mutationFn: () => api.postItemComment(itemId, { id: draftId.current, body: body.trim(), mention_person_ids: mentionIds }),
+    mutationFn: () => {
+      const text = body.trim();
+      return api.postItemComment(itemId, { id: draftId.current, body: text, mention_person_ids: mention.mentionIds(text) });
+    },
     onSuccess: async () => {
       if (!isCurrentGeneration(generation)) return;
       draftId.current = newIdempotencyKey();
       setBody('');
-      setMentionIds([]);
-      setChoosing(false);
+      setPickedIds([]);
       await onPosted();
     },
     onError: (error) => {
       if (commentNeedsNewId(error)) draftId.current = newIdempotencyKey();
     },
   });
-
-  const toggleMention = (candidate: MentionCandidate) => {
-    if (mentionIds.includes(candidate.person_id)) {
-      setMentionIds((current) => current.filter((id) => id !== candidate.person_id));
-      return;
-    }
-    setMentionIds((current) => [...current, candidate.person_id]);
-    setBody((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}@${candidate.name} `);
+  const send = () => {
+    if (body.trim() && !post.isPending) post.mutate();
   };
 
   return (
     <View style={styles.group}>
+      <MentionPicker picker={mention.picker} />
       <TextInput
+        {...mention.inputProps}
+        ref={mention.inputRef}
+        // NativeWind's interop drops this TextInput's ref; it is styled with StyleSheet anyway.
+        cssInterop={false}
         accessibilityLabel={t('itemDiscussion.placeholder')}
-        value={body}
-        onChangeText={setBody}
         placeholder={t('itemDiscussion.placeholder')}
         placeholderTextColor={theme.color.inkFaint}
         multiline
+        submitBehavior="submit"
+        returnKeyType="send"
+        onSubmitEditing={() => {
+          if (!mention.pickTopMatch()) send();
+        }}
         maxLength={4000}
         style={styles.composer}
       />
-      {mentionIds.length ? (
-        <Text style={styles.hint}>
-          {`${t('composer.mentionsLabel')}: ${mentionIds
-            .map((id) => `@${candidates.find((candidate) => candidate.person_id === id)?.name ?? t('common:fallback.someone')}`)
-            .join(', ')}`}
-        </Text>
-      ) : null}
-      {choosing ? (
-        <View accessibilityLabel={t('mobileNotes.mentionTitle')} style={styles.chips}>
-          {candidates.map((candidate) => (
-            <Chip
-              key={candidate.person_id}
-              label={candidate.name}
-              active={mentionIds.includes(candidate.person_id)}
-              onPress={() => toggleMention(candidate)}
-            />
-          ))}
-        </View>
-      ) : null}
       {post.error ? (
         <ErrorNotice error={new LocalizedError({ key: 'messages:composer.notSent', values: { reason: errorText(post.error) } })} />
       ) : null}
       <View style={styles.row}>
-        <Button
-          title={candidates.length ? t('composer.mentionPrompt') : t('composer.noOneToMention')}
-          variant="quiet"
-          disabled={candidates.length === 0}
-          onPress={() => setChoosing((open) => !open)}
-        />
+        <Button title="@" accessibilityLabel={t('composer.mentionLabel')} variant="quiet" onPress={mention.startMention} />
         <View style={styles.flex} />
         <Button
           title={post.error ? t('common:actions.retry') : t('itemDiscussion.submit')}
           loading={post.isPending}
           disabled={!body.trim()}
-          onPress={() => post.mutate()}
+          onPress={send}
         />
       </View>
     </View>
@@ -429,7 +416,6 @@ const makeStyles = (theme: Theme) =>
     group: { gap: theme.space.sm },
     flex: { flex: 1 },
     row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.sm },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.space.md },
     title: { ...theme.type.title, color: theme.color.ink },
     body: { ...theme.type.body, color: theme.color.ink },
@@ -438,6 +424,7 @@ const makeStyles = (theme: Theme) =>
     removed: { ...theme.type.body, color: theme.color.inkFaint, fontStyle: 'italic' },
     author: { ...theme.type.bodySmall, color: theme.color.ink, fontWeight: '600' },
     entry: { flexDirection: 'row', gap: theme.space.md, paddingVertical: theme.space.sm },
+    entryForMe: { borderLeftWidth: 4, borderLeftColor: theme.accent.yellow.fg, paddingLeft: theme.space.sm },
     entryBody: { flex: 1, gap: theme.space.xs },
     entryTop: { flexWrap: 'wrap' },
     multiline: { minHeight: 88, paddingTop: theme.space.sm, textAlignVertical: 'top' },

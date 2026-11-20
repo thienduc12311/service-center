@@ -4,6 +4,7 @@ import type { DiscussionMention } from '@service-center/shared';
 import { useErrorText, useFormatters } from '../../i18n';
 import { Avatar, Button } from '../ui';
 import { Icon, type IconName } from '../icons';
+import { MessageText, mentionsMe } from './MessageText';
 
 /** Mention outcomes worth telling the author about (everything but `notified`). */
 type UnnotifiedResolution = Exclude<DiscussionMention['resolution'], 'notified'>;
@@ -202,6 +203,7 @@ export const DiscussionEntry = ({
   const author = authorName ?? t('common:fallback.someone');
   const hasAuthorMenu = authorActions.length > 0;
   const ownBubble = bubble && mine;
+  const forMe = !removedLabel && mentionsMe(mentions);
   const timeLabel = editedAt && !removedLabel ? t('entry.edited', { time: format.dateTime(createdAt) }) : format.dateTime(createdAt);
 
   const editor = (
@@ -286,7 +288,7 @@ export const DiscussionEntry = ({
                   : ownBubble
                     ? 'rounded-br-md bg-brand-600 text-white'
                     : 'rounded-bl-md bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100'
-              }`}
+              } ${forMe ? 'border-l-4 border-amber-400 dark:border-amber-400/70' : ''}`}
             >
               {quote && (
                 <p
@@ -297,7 +299,9 @@ export const DiscussionEntry = ({
                   {quote}
                 </p>
               )}
-              <p className="whitespace-pre-wrap break-words">{removedLabel ?? body}</p>
+              <p className="whitespace-pre-wrap break-words">
+                {removedLabel ?? <MessageText text={body} mentions={mentions} tone={ownBubble ? 'inverse' : 'default'} />}
+              </p>
             </div>
           )}
           {mentionOutcomes}
@@ -309,7 +313,7 @@ export const DiscussionEntry = ({
   }
 
   return (
-    <li className="flex gap-3 py-3">
+    <li className={`flex gap-3 py-3 ${forMe ? '-ml-3 border-l-4 border-amber-400 pl-2 dark:border-amber-400/70' : ''}`}>
       <Avatar name={authorName} size="sm" />
       <div className="min-w-0 flex-1 text-sm">
         <p className="flex flex-wrap items-baseline gap-x-2">
@@ -322,7 +326,9 @@ export const DiscussionEntry = ({
         ) : editing ? (
           editor
         ) : (
-          <p className="whitespace-pre-wrap break-words text-slate-700 dark:text-slate-200">{body}</p>
+          <p className="whitespace-pre-wrap break-words text-slate-700 dark:text-slate-200">
+            <MessageText text={body} mentions={mentions} />
+          </p>
         )}
         {mentionOutcomes}
         {actionRow}

@@ -61,6 +61,7 @@ import {
   Tag,
 } from '../../src/components/ui';
 import { Icon } from '../../src/components/icons';
+import { MessageBody, MentionPicker, mentionsMe, useMentionInput } from '../../src/components/mentions';
 import { PressableScale } from '../../src/components/motion';
 import { useErrorText, useFormatters } from '../../src/i18n';
 import { type Theme } from '../../src/lib/theme';
@@ -389,8 +390,8 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
       ]);
     },
   });
-  const submitDraft = () => {
-    if (!send.submit(draft)) return false;
+  const submitDraft = (mentionIds: string[]) => {
+    if (!send.submit({ ...draft, mentionIds })) return false;
     follow.current = true;
     setSearch('');
     conversationDrafts.clear(queryScope, conversationId);
@@ -786,6 +787,7 @@ function MessageEntry({
               styles.bubble,
               mine ? styles.bubbleMine : styles.bubbleOther,
               state !== 'visible' && styles.bubbleRemoved,
+              state === 'visible' && !mine && mentionsMe(message.mentions) && styles.bubbleForMe,
             ]}
           >
             {quote && state === 'visible' ? (
@@ -796,7 +798,12 @@ function MessageEntry({
             ) : state === 'deleted' ? (
               <Text style={styles.removed}>{t('conversation.messageDeleted')}</Text>
             ) : (
-              <Text selectable style={[styles.body, mine && styles.bodyMine]}>{message.body}</Text>
+              <MessageBody
+                text={message.body}
+                mentions={message.mentions}
+                tone={mine ? 'inverse' : 'default'}
+                style={[styles.body, mine && styles.bodyMine]}
+              />
             )}
           </View>
         )}
@@ -938,7 +945,7 @@ function OutgoingMessageEntry({ sent, pending, error, parent, onRetry, onDismiss
       <View style={[styles.entryBody, styles.entryBodyMine]}>
         <View style={[styles.bubble, styles.bubbleMine]}>
           {quote ? <Text style={[styles.quote, styles.quoteMine]} numberOfLines={2}>{quote}</Text> : null}
-          <Text selectable style={[styles.body, styles.bodyMine]}>{sent.body}</Text>
+          <MessageBody text={sent.body} mentions={[]} tone="inverse" style={[styles.body, styles.bodyMine]} />
         </View>
         <Text style={[styles.time, styles.timeMine]}>{format.dateTime(sent.createdAt)}</Text>
         {pending ? (
@@ -963,26 +970,29 @@ interface ComposerProps {
   draft: ConversationDraft;
   setDraft: (update: (current: ConversationDraft) => ConversationDraft) => void;
   replyTo: ConversationMessage | null;
-  onSend: () => boolean;
+  /** Sends the draft with the mentions still intact in its text. */
+  onSend: (mentionIds: string[]) => boolean;
 }
 
-/** Text box with explicit mentions and an optional reply. */
+/**
+ * Text box with `@` mentions and an optional reply. Typing `@` (or the `@`
+ * button) opens a picker; Return sends, or picks the top match while the
+ * picker is open.
+ */
 function Composer({ conversation, candidates, draft, setDraft, replyTo, onSend }: ComposerProps) {
   const { t } = useTranslation(['messages', 'common']);
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const [choosing, setChoosing] = useState(false);
-
-  const toggleMention = (candidate: MentionCandidate) => {
-    setDraft((current) =>
-      current.mentionIds.includes(candidate.person_id)
-        ? { ...current, mentionIds: current.mentionIds.filter((id) => id !== candidate.person_id) }
-        : {
-            ...current,
-            mentionIds: [...current.mentionIds, candidate.person_id],
-            body: `${current.body}${current.body && !current.body.endsWith(' ') ? ' ' : ''}@${candidate.name} `,
-          });
+  const mention = useMentionInput({
+    text: draft.body,
+    onChangeText: (body) => setDraft((current) => ({ ...current, body })),
+    candidates,
+    pickedIds: draft.mentionIds,
+    onPicked: (personId) => setDraft((current) => ({ ...current, mentionIds: [...current.mentionIds, personId] })),
+  });
+  const send = () => {
+    if (draft.body.trim()) onSend(mention.mentionIds(draft.body));
   };
 
   return (
@@ -995,33 +1005,29 @@ function Composer({ conversation, candidates, draft, setDraft, replyTo, onSend }
           <TextAction label={t('common:actions.cancel')} onPress={() => setDraft((current) => ({ ...current, replyToId: null }))} />
         </View>
       ) : null}
-      {draft.mentionIds.length ? (
-        <Text style={styles.hint}>
-          {`${t('composer.mentionsLabel')}: ${draft.mentionIds
-            .map((id) => `@${candidates.find((candidate) => candidate.person_id === id)?.name ?? t('common:fallback.someone')}`)
-            .join(', ')}`}
-        </Text>
-      ) : null}
-      {choosing ? (
-        <View accessibilityLabel={t('composer.mentionLabel')} style={styles.chips}>
-          {candidates.map((candidate) => (
-            <Chip
-              key={candidate.person_id}
-              label={candidate.name}
-              active={draft.mentionIds.includes(candidate.person_id)}
-              onPress={() => toggleMention(candidate)}
-            />
-          ))}
-        </View>
-      ) : null}
+      <MentionPicker picker={mention.picker} />
       <View style={styles.composerRow}>
+        <Button
+          title="@"
+          accessibilityLabel={t('composer.mentionLabel')}
+          variant="quiet"
+          style={styles.mention}
+          onPress={mention.startMention}
+        />
         <TextInput
+          {...mention.inputProps}
+          ref={mention.inputRef}
+          // NativeWind's interop drops this TextInput's ref; it is styled with StyleSheet anyway.
+          cssInterop={false}
           accessibilityLabel={t('conversation.composerPlaceholder', { name: conversation.title })}
-          value={draft.body}
-          onChangeText={(body) => setDraft((current) => ({ ...current, body }))}
           placeholder={t('conversation.composerPlaceholder', { name: conversation.title })}
           placeholderTextColor={theme.color.inkFaint}
           multiline
+          submitBehavior="submit"
+          returnKeyType="send"
+          onSubmitEditing={() => {
+            if (!mention.pickTopMatch()) send();
+          }}
           maxLength={4000}
           style={styles.composer}
         />
@@ -1029,18 +1035,7 @@ function Composer({ conversation, candidates, draft, setDraft, replyTo, onSend }
           title={t('common:actions.send')}
           disabled={!draft.body.trim()}
           style={styles.send}
-          onPress={() => {
-            if (onSend()) setChoosing(false);
-          }}
-        />
-      </View>
-      <View style={styles.row}>
-        <Button
-          title={candidates.length ? t('composer.mentionPrompt') : t('composer.noOneToMention')}
-          variant="quiet"
-          disabled={candidates.length === 0}
-          style={styles.mention}
-          onPress={() => setChoosing((open) => !open)}
+          onPress={send}
         />
       </View>
     </View>
@@ -1105,6 +1100,7 @@ const makeStyles = (theme: Theme) =>
       backgroundColor: theme.color.brand,
       borderTopRightRadius: theme.radius.xs,
     },
+    bubbleForMe: { borderLeftWidth: 4, borderLeftColor: theme.accent.yellow.fg },
     bubbleRemoved: {
       backgroundColor: theme.color.surfaceInset,
       borderWidth: 1,
@@ -1155,5 +1151,5 @@ const makeStyles = (theme: Theme) =>
       paddingBottom: theme.space.md,
     },
     send: { borderRadius: theme.radius.lg + 4, paddingHorizontal: theme.space.lg },
-    mention: { minHeight: 40, paddingHorizontal: theme.space.xs },
+    mention: { minHeight: 48, minWidth: 40, paddingHorizontal: theme.space.xs },
   });

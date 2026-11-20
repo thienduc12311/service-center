@@ -152,12 +152,10 @@
     "submit": "Report"
   },
   "composer": {
-    "mentionsLabel": "Will be notified",
-    "removeMention": "Remove mention",
     "notSent": "Not sent: {{reason}} Your text is kept; sending again will not post twice.",
     "mentionLabel": "Mention someone",
-    "mentionPrompt": "@ Mention…",
-    "noOneToMention": "No one else to mention"
+    "noOneToMention": "No one else to mention",
+    "enterHint": "Enter to send · Shift+Enter for a new line"
   },
   "entry": {
     "edited": "{{time}} · edited",
@@ -296,7 +294,6 @@
     "categoryGone": "That category is no longer offered on this plan, so the note was not saved. It is now filed under General — check it and save again.",
     "discardConfirm": "Discard this note?",
     "by": "by {{name}}",
-    "mentionTitle": "Mention someone",
     "refreshFailed": "Could not refresh the notes. Showing the plan’s simple note only."
   },
   "mobileMessages": {

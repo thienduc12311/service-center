@@ -46,6 +46,8 @@ export * from './lib/plan-notes.js';
 export * from './lib/attendance-marking.js';
 export * from './lib/message-compose.js';
 export * from './lib/conversations.js';
+export * from './lib/mentions.js';
+export * from './lib/message-format.js';
 export * from './lib/plan-browser.js';
 export * from './lib/run-sheet.js';
 export * from './lib/live-run.js';

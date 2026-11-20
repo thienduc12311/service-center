@@ -54,7 +54,7 @@ describe('MOB-019 conversation screens (source contract)', () => {
   const send = readFileSync(join(__dirname, 'useConversationSend.ts'), 'utf8');
 
   it('hands the draft to a background send and renders its status in the thread', () => {
-    expect(thread).toContain('if (!send.submit(draft)) return false;');
+    expect(thread).toContain('if (!send.submit({ ...draft, mentionIds })) return false;');
     expect(thread).toContain('setDraft(emptyDraft());');
     expect(thread).toContain('send.outgoing.map');
     expect(thread).not.toContain('loading={post.isPending}');
