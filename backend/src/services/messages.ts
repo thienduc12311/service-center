@@ -14,6 +14,7 @@ import {
   type SendOperationalMessageResult,
 } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
+import { beforeFilter } from '../lib/keyset.js';
 import { raw, unwrap } from '../lib/supabase.js';
 import { groupMessageOutcomes, type CollaborationCaller, type MessageOutcomeRow } from '../model/collaboration.model.js';
 import { deliverEffectNow } from './delivery-worker.js';
@@ -102,7 +103,8 @@ export const listMessages = async (
   } else if (!(await isAdmin(caller))) {
     select = select.eq('created_by', caller.userId);
   }
-  const rows = (await unwrap(select.order('created_at', { ascending: false }).limit(query.limit))) ?? [];
+  if (query.before) select = select.or(beforeFilter(query.before));
+  const rows = (await unwrap(select.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(query.limit))) ?? [];
   const names = await senderNames(caller, rows.map((row) => row.created_by));
   return rows.map((row) => ({ ...row, sender_name: names.get(row.created_by) ?? null, sent_by_me: row.created_by === caller.userId }));
 };

@@ -65,3 +65,23 @@ describe('message templates', () => {
     expect(fetchDb).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('message history paging (W7-MSG-D9)', () => {
+  it('applies the before cursor as a keyset filter with an id tiebreak', async () => {
+    const urls: URL[] = [];
+    const fetchDb = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      urls.push(url);
+      if (url.pathname === '/rest/v1/rpc/is_org_admin') return Response.json(true);
+      if (url.pathname === '/rest/v1/operational_messages') return Response.json([]);
+      throw new Error(`Unexpected call ${url.pathname}`);
+    });
+    const cursor = `2026-11-20T10:00:00+00:00~${templateId}`;
+    await service.listMessages(callerWith(fetchDb), { box: 'sent', limit: 5, before: cursor });
+    const list = urls.find((url) => url.pathname === '/rest/v1/operational_messages');
+    expect(list?.searchParams.get('or')).toBe(
+      `(created_at.lt."2026-11-20T10:00:00+00:00",and(created_at.eq."2026-11-20T10:00:00+00:00",id.lt.${templateId}))`,
+    );
+    expect(list?.searchParams.get('order')).toBe('created_at.desc,id.desc');
+  });
+});

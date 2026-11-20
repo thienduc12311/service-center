@@ -110,6 +110,8 @@ export const listOperationalMessagesQuerySchema = z.object({
   /** `sent`: messages I sent (admins: everyone's). `received`: sent to me. */
   box: z.enum(['sent', 'received']).default('sent'),
   limit: z.coerce.number().int().min(1).max(100).default(30),
+  /** Keyset cursor for the next page: `encodeKeysetCursor` of the last message shown. */
+  before: keysetCursorSchema.optional(),
 });
 
 export const retryOperationalMessageSchema = z.object({
