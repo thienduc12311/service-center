@@ -1442,6 +1442,10 @@ export type Database = {
         Args: { p_user: string; p_assignment: string };
         Returns: boolean;
       };
+      my_org_context: {
+        Args: { p_org?: string; p_all?: boolean };
+        Returns: unknown;
+      };
       my_effective_access: {
         Args: { p_org: string };
         Returns: EffectiveAccessRow[];

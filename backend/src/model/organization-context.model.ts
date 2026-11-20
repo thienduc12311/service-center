@@ -1,5 +1,6 @@
 import type {
   AccessMode,
+  Database,
   DisabledOrganization,
   EffectiveAccess,
   EffectiveAccessRow,
@@ -9,10 +10,7 @@ import type {
 import { mapEffectiveAccess } from './access.model.js';
 import { mapDisabledOrganization, type DisabledOrganizationRow } from './platform-admin.model.js';
 
-export interface OrganizationContextArgs {
-  p_org?: string;
-  p_all?: boolean;
-}
+export type OrganizationContextArgs = Database['public']['Functions']['my_org_context']['Args'];
 
 interface OrganizationContextMembershipRow {
   organization_id: string;
