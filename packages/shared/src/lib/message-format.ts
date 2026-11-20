@@ -106,12 +106,14 @@ const scanPlain = <T extends MentionTarget>(line: string, start: number, end: nu
     text = '';
     const before = line[index - 1];
     const after = line[index + marker.length];
-    const intraword = marker === '_';
+    // Underscore emphasis is stricter than asterisk: it never opens or closes
+    // inside a word, and a run of two or more (`__init__`, `window.__xss`) is
+    // literal text, not emphasis.
     pieces.push({
       kind: 'delimiter',
       marker,
-      canOpen: !isSpace(after) && !(intraword && isWordChar(before)),
-      canClose: !isSpace(before) && !(intraword && isWordChar(after)),
+      canOpen: !isSpace(after) && !(marker === '_' && (before === '_' || after === '_' || isWordChar(before))),
+      canClose: !isSpace(before) && !(marker === '_' && (before === '_' || after === '_' || isWordChar(after))),
     });
     index += marker.length;
   }

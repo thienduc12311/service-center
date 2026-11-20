@@ -252,3 +252,72 @@ const ModalHarnessWithAutoFocus = () => {
     </>
   );
 };
+
+describe('Menu keyboard support (APG menu button)', () => {
+  const renderMenu = () =>
+    render(
+      <>
+        <Menu label="More">
+          {() => (
+            <>
+              <MenuItem onClick={() => undefined}>One</MenuItem>
+              <MenuItem onClick={() => undefined}>Two</MenuItem>
+              <MenuItem onClick={() => undefined}>Three</MenuItem>
+            </>
+          )}
+        </Menu>
+        <button type="button">After</button>
+      </>,
+    );
+  const item = (name: string) => screen.getByRole('menuitem', { name });
+
+  it.each(['{Enter}', ' ', '{ArrowDown}'])('opens with %j and focuses the first item', async (key) => {
+    const user = userEvent.setup();
+    renderMenu();
+    screen.getByRole('button', { name: 'More' }).focus();
+    await user.keyboard(key);
+    expect(document.activeElement).toBe(item('One'));
+  });
+
+  it('opens on ArrowUp with the last item focused', async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    screen.getByRole('button', { name: 'More' }).focus();
+    await user.keyboard('{ArrowUp}');
+    expect(document.activeElement).toBe(item('Three'));
+  });
+
+  it('moves with arrows, wraps, and supports Home and End', async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    screen.getByRole('button', { name: 'More' }).focus();
+    await user.keyboard('{Enter}{ArrowDown}');
+    expect(document.activeElement).toBe(item('Two'));
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    expect(document.activeElement).toBe(item('One'));
+    await user.keyboard('{ArrowUp}');
+    expect(document.activeElement).toBe(item('Three'));
+    await user.keyboard('{Home}');
+    expect(document.activeElement).toBe(item('One'));
+    await user.keyboard('{End}');
+    expect(document.activeElement).toBe(item('Three'));
+  });
+
+  it('closes on Escape and returns focus to the trigger', async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    const trigger = screen.getByRole('button', { name: 'More' });
+    trigger.focus();
+    await user.keyboard('{Enter}{Escape}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('closes on Tab', async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    screen.getByRole('button', { name: 'More' }).focus();
+    await user.keyboard('{Enter}{Tab}');
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+});
