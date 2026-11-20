@@ -1,6 +1,9 @@
+-- 'actor' is the seed OWNER: since 20261109000000_owner_people_permissions
+-- people.manage (required by private.can_import for kind 'people') is owner-only,
+-- so a scheduler (Jordan, 2222) can import songs but not people; asserted below.
 begin;
 create temporary table f15b_ids(k text primary key,id uuid) on commit drop;
-insert into f15b_ids values('org','aaaaaaaa-0000-4000-8000-000000000001'),('actor','22222222-2222-4222-8222-222222222222'),('member','33333333-3333-4333-8333-333333333333'),('other',gen_random_uuid()),('person',gen_random_uuid()),('foreign',gen_random_uuid()),('song',gen_random_uuid());
+insert into f15b_ids values('org','aaaaaaaa-0000-4000-8000-000000000001'),('actor','11111111-1111-4111-8111-111111111111'),('scheduler','22222222-2222-4222-8222-222222222222'),('member','33333333-3333-4333-8333-333333333333'),('other',gen_random_uuid()),('person',gen_random_uuid()),('foreign',gen_random_uuid()),('song',gen_random_uuid());
 grant select on f15b_ids to authenticated;
 create function pg_temp.id(k0 text) returns uuid language sql as $$select id from f15b_ids where k=k0$$;
 create function pg_temp.assert(ok boolean,msg text) returns void language plpgsql as $$begin if ok is not true then raise exception 'FAIL: %',msg; end if; end$$;
@@ -82,6 +85,15 @@ do $$begin
  begin perform public.structured_import_context(pg_temp.id('org'),'people','[]'); raise exception 'FAIL: member candidates'; exception when insufficient_privilege then null; end;
  begin perform pg_temp.save('songs','f15b-member-key','[]'); raise exception 'FAIL: member save'; exception when insufficient_privilege then null; end;
 end$$;
+-- A scheduler (no people.manage) cannot read or save people imports (20261109000000).
+select set_config('request.jwt.claim.sub',pg_temp.id('scheduler')::text,true);
+select set_config('request.jwt.claims',json_build_object('sub',pg_temp.id('scheduler'),'role','authenticated')::text,true);
+do $$begin
+ begin perform public.structured_import_context(pg_temp.id('org'),'people','[]'); raise exception 'FAIL: scheduler people context'; exception when insufficient_privilege then null; end;
+ begin perform pg_temp.save('people','f15b-sched-key','[]'); raise exception 'FAIL: scheduler people save'; exception when insufficient_privilege then null; end;
+end$$;
+select set_config('request.jwt.claim.sub',pg_temp.id('member')::text,true);
+select set_config('request.jwt.claims',json_build_object('sub',pg_temp.id('member'),'role','authenticated')::text,true);
 reset role;
 -- A capability granted for review is rechecked at commit and subsequent reads.
 insert into public.access_grants(organization_id,user_id,capability,scope_type)
