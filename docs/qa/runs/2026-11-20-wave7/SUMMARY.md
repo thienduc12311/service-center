@@ -80,3 +80,43 @@ Web-created (scheduler, web UI) → native read → native edits (time, header r
 - 15 future reminder jobs `scheduled` in `qa-20261120-jrn-a`. Delivery worker run 1 by QA-16 also processed 34 pending deliveries from other namespaces (incl. riverside) — simulated, none sent.
 - All QA-16 publications, set-list links, scoped feeds, API key and push token revoked; personal feed tokens revoked by SQL.
 - Simulator left booted, signed out, appearance/text size restored, Metro :8082 stopped. Web QA browser profile deleted.
+
+### Fixed
+
+Branch `feature/qa-wave7-fixes` (merges of `feature/qa-wave7-fixes-{ui,api,db}` + `422b5bb`). Migrations `20261125000000`–`20261125000004` applied with `supabase migration up` (no reset). Typecheck clean; workspace tests 599 + 393 + 49 + 395 + 72 PASS; `i18n:check` OK; new SQL suite `supabase/tests/qa-wave7-fixes.sql` and `qa-wave7-concurrent-respond.sh` PASS (7 older SQL suites — f08, f10, f11, f14, f15, i18n-preferred-language, member-avatars — fail identically without these changes: seed drift, not regressions). P0/P1 and the API-surface fixes were re-verified against the live API :4000 with each caller's own token (15/15 PASS); the remaining items are verified by their unit/SQL tests.
+
+| ID | Fix | Where |
+|---|---|---|
+| **W7-ACC-D1 (P0)** | Restrictive INSERT policy: only an owner may insert `organization_members` rows directly; invitations, church creation, join approval and platform access go through security-definer functions. Live: admin insert of owner/admin/member → 403 42501; owner insert → 201 | `20261125000000_w7_member_insert_owner_only.sql` |
+| W7-ACC-D3 / W7-WEB-D2 (P1) | Decision: API/RLS stay on `teams.manage`; web Delete shown to `teams.manage` holders for the team's service-type/org scope | `frontend/src/pages/TeamsPage.tsx` |
+| W7-MSG-D1 (P1) | Keyset cursor accepts offsets; compound `<created_at>~<id>` cursor (plain timestamp still accepted). Live: page 2 → 200 | `packages/shared/src/lib/keyset.ts`, `schemas/notification.ts` |
+| W7-MSG-D3 | Notifications, chat and item comments page on (created_at, id), no tie loss | `backend/src/services/*`, `keyset.ts` |
+| W7-ACC-D2 | Access-mode PATCH is owner-only (403); web shows the mode read-only for admins | `backend/src/routes/access.ts`, `MemberAccessPanel.tsx` |
+| W7-ACC-D5/D6/D9/D10, W7-RESP-D3, W7-MSG-D11 | Malformed JSON → 400, oversize → 413, NUL/lone surrogate → 422 (+ 22P05/22021/PGRST102 mapping), disallowed CORS origin → no CORS headers instead of 500, upper-case org header normalised | `backend/src/app.ts`, `lib/` error mapping |
+| W7-RESP-D1, W7-ACC-D4 | DELETE returns 404 when nothing was deleted (`unwrapDeleted`) across assignments, teams, positions, plans, service types, songs, arrangements, folders, people, tag groups, matrix views | `backend/src/routes/*` |
+| W7-RESP-D2 | Direct status updates by non-schedulers refused (hint `assignment_response_path`); respond_as_self / link / delegate / snapshot paths unchanged | `20261125000002_w7_assignment_response_paths.sql` |
+| W7-RESP-D4 (= W2-RESP-D3) | Identical concurrent answer succeeds with one history row | `20261125000002_w7_assignment_response_paths.sql` |
+| W7-RESP-D5 | `/schedule/mine` chunks id lists (100) | `backend/src/routes/assignments.ts` |
+| W7-MSG-D2 | Conversation writes check the thread belongs to the active org | `backend/src/services/discussions.ts` |
+| W7-MSG-D5 | Users may update only `read_at` on own notifications. Live: title PATCH → 403, read_at → 200 | `20261125000001_w7_notification_read_state_only.sql` |
+| W7-MSG-D7 / D8 | Unauthorized template edit → 404; archived template rejected on send (422) | `backend/src/services/messages.ts` |
+| W7-MSG-D9 | `GET /messages` accepts a keyset `before` | shared schema + route |
+| W7-MSG-D10 | Item-comment edit/delete checks the comment belongs to the item first | `backend/src/routes/*comments*` |
+| W7-ACC-D8 | Logo bucket raster-only (png/jpeg/webp/gif); web picker no longer offers SVG | `20261125000004_w7_logo_raster_only.sql`, `SettingsPage.tsx` |
+| W7-JRN-D1 (= W3-LIVE-D3) | Participation summary includes `unknown` | `packages/shared/src/lib/reports.ts` |
+| W7-JRN-D2 | Combined schedule includes released assignments on plans without times | `20261125000003_w7_combined_schedule_untimed.sql` |
+| W7-JRN-D4 | Transposed ChordPro rewrites `{key:}` / `{k:}` | `packages/shared/src/lib/chordpro.ts` |
+| W7-NAT-D2 / W7-WEB-D5 | PATCH with `times` sets `service_date` to the earliest time (**follow-up:** second write, not in the times RPC transaction) | `backend/src/routes/plans.ts` |
+| W7-WEB-D1 | Shared `Menu` uses `usePopupMenu` (APG keyboard pattern) | `frontend/src/components/ui.tsx` |
+| W7-WEB-D3 | Underscore emphasis never intraword or on `__` runs | `packages/shared/src/lib/message-format.ts` |
+| W7-WEB-D4 | `parseDuration` rejects `99:99`, `1:75`, `1:2:3:4`, `1:`, `1::2` | `packages/shared/src/lib/dates.ts` |
+| W7-NAT-D1 | Notifications header follows the listed rows; bell count refetched on feed change | `mobile/app/notifications.tsx`, `mobile/src/lib/notification-unread.ts` |
+
+### Still open after fixes
+
+- W7-MSG-D6 (recipients read sender audit columns): needs a recipient view/function plus `messages.ts` changes — RLS cannot hide columns.
+- W7-MSG-D4 (notification snippets outlive access/delete/moderation) — escalation candidate, not attempted.
+- W7-ACC-D7 (signed URLs live 300 s after revoke), W7-JRN-D3 (signed-out JWT valid at PostgREST until expiry) — token-lifetime design, not attempted.
+- W2-RESP-D4 (respond-link preview shows times the respond call rejects as stale).
+- Atomic `service_date` update (see W7-NAT-D2 row).
+- Fixture side effect of retest: owner insert/delete of `newcomer` in `qa-20261120-acc-a` may have left an auto-created Person row.
