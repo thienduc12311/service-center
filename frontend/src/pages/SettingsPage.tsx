@@ -539,7 +539,7 @@ const OrganizationSettings = ({
           <label className="button inline-flex h-9 cursor-pointer items-center gap-2 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm shadow-slate-900/5 ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800">
             <Icon name="upload" className="size-4" />
             {uploading ? t('organization.uploading') : t('organization.updateLogo')}
-            <input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={uploadLogo} disabled={uploading} />
+            <input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={uploadLogo} disabled={uploading} />
           </label>
         )}
         {canEdit && organization && (

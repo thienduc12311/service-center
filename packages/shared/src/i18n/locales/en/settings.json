@@ -783,6 +783,7 @@
       "legacy": "Can schedule for every service type and team in the church.",
       "scoped": "Can schedule only where they have a permission below."
     },
+    "modeOwnerOnly": "Only an owner can change scheduling reach.",
     "permissions": "Permissions",
     "noPermissions": "No permissions granted yet.",
     "addPermission": "Add a permission",
