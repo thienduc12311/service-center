@@ -1,10 +1,8 @@
 import type { ProtectedQueryScope } from './session-lifecycle';
 
 /**
- * MOB-019: an unsent conversation message. `id` is the message's stable
- * client id: it stays the same until the server confirms the post, so
- * sending again after a lost acknowledgement (even after leaving and
- * reopening the thread) replays the same message instead of posting twice.
+ * MOB-019: an unsent conversation message. `id` follows the draft into the
+ * send request so a retry after a lost acknowledgement can replay the post.
  */
 export interface ConversationDraft {
   id: string;
@@ -37,7 +35,7 @@ export class ConversationDraftStore {
     return this.drafts.get(this.keyFor(scope, conversationId)) ?? null;
   }
 
-  /** Keeps a draft while it has text or a pending id worth replaying. */
+  /** Keeps a draft while it has text, mentions, or a reply. */
   set(scope: ProtectedQueryScope | null, conversationId: string, draft: ConversationDraft): void {
     if (!scope) return;
     const key = this.keyFor(scope, conversationId);

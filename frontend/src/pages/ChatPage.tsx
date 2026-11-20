@@ -1,26 +1,30 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
   chatStartableTeams,
+  conversationAccess,
   conversationMessageActions,
   conversationMessageState,
   conversationReadMark,
   CONVERSATION_SEARCH_MIN,
   CONVERSATION_THREAD_POLL_MS,
+  mergeConversationPages,
+  type ConversationDetail,
   type ConversationMessage,
   type ConversationReportReason,
   type ConversationSummary,
 } from '@service-center/shared';
-import { api } from '../lib/api';
+import { api, getStoredOrganizationId } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { keys, useConversation, useConversations, useMentionCandidates, useTeams } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { useFormatters, type Formatters } from '../i18n';
+import { useErrorText, useFormatters, type Formatters } from '../i18n';
 import { Badge, Button, EmptyState, ErrorNotice, Modal, Notice, PageHeader, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
-import { DiscussionComposer } from '../components/collaboration/DiscussionComposer';
+import { DiscussionComposer, type DiscussionSubmission } from '../components/collaboration/DiscussionComposer';
 import { DiscussionEntry } from '../components/collaboration/DiscussionEntry';
 
 // Match the lg breakpoint used by the chat sidebar.
@@ -87,18 +91,27 @@ interface ConversationThreadProps {
   conversationId: string;
 }
 
+interface OutgoingMessage extends DiscussionSubmission {
+  replyToId: string | null;
+  createdAt: string;
+}
+
 const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   const { t } = useTranslation(['messages', 'common']);
   const format = useFormatters();
-  const { organizationId } = useAuth();
+  const errorText = useErrorText();
+  const { organizationId, session } = useAuth();
   const client = useQueryClient();
   const detail = useConversation(conversationId);
+  const threadKey = keys.conversation(organizationId, conversationId);
+  const accountId = session?.user.id;
+  const sendKey = ['conversation-send', organizationId, accountId, conversationId];
   const candidates = useMentionCandidates(detail.data ? { conversation_id: conversationId } : null);
   const [replyTo, setReplyTo] = useState<ConversationMessage | null>(null);
   const [reporting, setReporting] = useState<ConversationMessage | null>(null);
   const [search, setSearch] = useState('');
   const results = useQuery({
-    queryKey: [...keys.conversation(organizationId, conversationId), 'search', search],
+    queryKey: [...threadKey, 'search', search],
     queryFn: () => api.conversationMessages(conversationId, { q: search, limit: 30 }),
     enabled: Boolean(detail.data && !detail.error) && search.trim().length >= CONVERSATION_SEARCH_MIN,
     refetchInterval: CONVERSATION_THREAD_POLL_MS,
@@ -106,16 +119,47 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   const refreshList = () => client.invalidateQueries({ queryKey: keys.conversations(organizationId) });
   const refresh = () => Promise.all([
     refreshList(),
-    client.invalidateQueries({ queryKey: keys.conversation(organizationId, conversationId) }),
+    client.invalidateQueries({ queryKey: threadKey }),
   ]);
 
+  const send = useMutation({
+    mutationKey: sendKey,
+    networkMode: 'always',
+    mutationFn: (draft: OutgoingMessage) => api.postConversationMessage(conversationId, {
+      id: draft.id, body: draft.body, reply_to_id: draft.replyToId, mention_person_ids: draft.mentionIds,
+    }),
+    onSuccess: async ({ item }) => {
+      // A read that started before the save can still contain the old thread.
+      const { data } = await supabase.auth.getSession();
+      if (!accountId || data.session?.user.id !== accountId || getStoredOrganizationId() !== organizationId) return;
+      await client.cancelQueries({ queryKey: threadKey, exact: true });
+      client.setQueryData<ConversationDetail>(threadKey, (current) => {
+        if (!current || current.messages.data.some((message) => message.id === item.id)) return current;
+        return { ...current, messages: { ...current.messages, data: mergeConversationPages(current.messages.data, [item]) } };
+      });
+      void refresh();
+    },
+    onError: () => {
+      // A lost response may still have committed the message.
+      void refresh();
+    },
+  });
+  const sendAttempts = useMutationState({
+    filters: { mutationKey: sendKey, exact: true, predicate: (mutation) => mutation.state.variables !== undefined },
+    select: ({ state }) => ({ draft: state.variables as OutgoingMessage, status: state.status, error: state.error }),
+  });
+  const confirmedIds = new Set(detail.data?.messages.data.map((message) => message.id));
+  const latestAttempts = new Map(sendAttempts.map((attempt) => [attempt.draft.id, attempt]));
+  const outgoing = [...latestAttempts.values()].filter(({ draft, status }) =>
+    !confirmedIds.has(draft.id) && (status === 'pending' || status === 'error'));
+  const latestOutgoing = outgoing.at(-1)?.draft.id;
   const newest = detail.data?.messages.data.at(-1)?.created_at;
   const scroller = useRef<HTMLDivElement>(null);
   // The pane scrolls on its own, so keep the newest message in view.
   useEffect(() => {
     const element = scroller.current;
     if (element) element.scrollTop = element.scrollHeight;
-  }, [newest, detail.isLoading]);
+  }, [newest, latestOutgoing, detail.isLoading]);
   useEffect(() => {
     // Reading the thread moves the read position forward (never back), up to the newest message shown.
     const mark = conversationReadMark(detail.data?.messages.data ?? [], detail.data?.conversation.unread_count ?? 0, null);
@@ -144,7 +188,7 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   });
 
   if (detail.isLoading) return <div className="p-4"><SkeletonList rows={4} /></div>;
-  if (detail.error || !detail.data) {
+  if (!detail.data || conversationAccess(detail.error) === 'unavailable') {
     return (
       <div className="grid flex-1 place-items-center p-4">
         <EmptyState
@@ -158,7 +202,17 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   }
   const { conversation, messages, reports } = detail.data;
   const byId = new Map(messages.data.map((message) => [message.id, message]));
-  const shown = search.trim().length >= CONVERSATION_SEARCH_MIN ? results.data?.data ?? [] : messages.data;
+  const searching = search.trim().length >= CONVERSATION_SEARCH_MIN;
+  const shown = searching ? results.data?.data ?? [] : messages.data;
+  const shownOutgoing = searching ? [] : outgoing;
+  const quoteFor = (parentId: string | null) => {
+    if (!parentId) return null;
+    const parent = byId.get(parentId);
+    if (!parent) return null;
+    return parent.body
+      ? t('conversation.quote', { author: parent.author_name ?? t('common:fallback.someone'), body: parent.body })
+      : t('conversation.quoteRemoved', { author: parent.author_name ?? t('common:fallback.someone') });
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -226,10 +280,10 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
         )}
 
         <div className="mb-3 empty:hidden">
-          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? block.error} />
+          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? block.error ?? detail.error} />
         </div>
         {messages.next_before && !search && <p className="mb-3 text-center text-xs text-slate-400">{t('conversation.showingLatest', { count: messages.data.length })}</p>}
-        {shown.length === 0 ? (
+        {shown.length === 0 && shownOutgoing.length === 0 ? (
           <EmptyState compact icon={search ? 'search' : 'chat'} title={search ? t('conversation.noMatches') : t('conversation.noMessages')} />
         ) : (
           <ul className="space-y-1">
@@ -237,7 +291,6 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
               const state = conversationMessageState(message);
               const removed = state === 'hidden' ? t('conversation.hiddenByModerator') : state === 'deleted' ? t('conversation.messageDeleted') : null;
               const allowed = conversationMessageActions(message, conversation);
-              const parent = message.reply_to_id ? byId.get(message.reply_to_id) : null;
               return (
                 <DiscussionEntry
                   key={message.id}
@@ -250,11 +303,7 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
                   removedLabel={removed}
                   mentions={message.mentions}
                   showMentionOutcomes={message.is_mine}
-                  quote={parent
-                    ? parent.body
-                      ? t('conversation.quote', { author: parent.author_name ?? t('common:fallback.someone'), body: parent.body })
-                      : t('conversation.quoteRemoved', { author: parent.author_name ?? t('common:fallback.someone') })
-                    : null}
+                  quote={quoteFor(message.reply_to_id)}
                   canEdit={allowed.edit}
                   onSaveEdit={async (body) => {
                     await api.editConversationMessage(conversationId, message.id, { body });
@@ -277,6 +326,33 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
                 />
               );
             })}
+            {shownOutgoing.map(({ draft, status, error }) => (
+              <DiscussionEntry
+                key={draft.id}
+                variant="bubble"
+                mine
+                authorName={null}
+                body={draft.body}
+                createdAt={draft.createdAt}
+                editedAt={null}
+                removedLabel={null}
+                mentions={[]}
+                showMentionOutcomes={false}
+                quote={quoteFor(draft.replyToId)}
+                canEdit={false}
+                status={status === 'pending' ? (
+                  <span role="status" className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('delivery.status.sending')}</span>
+                ) : (
+                  <span role="status" className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+                    {t('composer.notSent', { reason: errorText(error) })}
+                  </span>
+                )}
+                actions={status === 'error' ? [{
+                  label: t('common:actions.retry'),
+                  onClick: () => send.mutate(draft),
+                }] : []}
+              />
+            ))}
           </ul>
         )}
       </div>
@@ -292,9 +368,9 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
               : t('conversation.replyingToUnknown')
             : null}
           onClearContext={() => setReplyTo(null)}
-          onSubmit={async ({ id, body, mentionIds }) => {
-            await api.postConversationMessage(conversationId, { id, body, reply_to_id: replyTo?.id ?? null, mention_person_ids: mentionIds });
-            await refresh();
+          onSubmit={(draft) => {
+            setSearch('');
+            send.mutate({ ...draft, replyToId: replyTo?.id ?? null, createdAt: new Date().toISOString() });
           }}
         />
         <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-400">

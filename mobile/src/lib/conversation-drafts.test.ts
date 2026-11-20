@@ -51,14 +51,16 @@ describe('MOB-019 conversation screens (source contract)', () => {
   const read = (...parts: string[]) => readFileSync(join(__dirname, '..', '..', 'app', ...parts), 'utf8');
   const thread = read('chat', '[id].tsx');
   const list = readFileSync(join(__dirname, '..', 'components', 'ChatList.tsx'), 'utf8');
+  const send = readFileSync(join(__dirname, 'useConversationSend.ts'), 'utf8');
 
-  it('posts once per draft id, replacing it only after confirmation or an id conflict', () => {
-    expect(thread.match(/api\.postConversationMessage\(/g)).toHaveLength(1);
-    expect(thread).toMatch(/id: sent\.id/);
-    // New ids come only from the confirmed/arrived path and the 409 message_id_conflict path.
-    expect(thread).toContain("outcome === 'newId'");
-    expect(thread).toContain('conversationPostOutcome(error)');
-    expect(thread).not.toMatch(/\.(map|forEach)\([^)]*postConversationMessage/s);
+  it('hands the draft to a background send and renders its status in the thread', () => {
+    expect(thread).toContain('if (!send.submit(draft)) return false;');
+    expect(thread).toContain('setDraft(emptyDraft());');
+    expect(thread).toContain('send.outgoing.map');
+    expect(thread).not.toContain('loading={post.isPending}');
+    expect(send.match(/api\.postConversationMessage\(/g)).toHaveLength(1);
+    expect(send).toContain('id: sent.id');
+    expect(send).toContain("id: outcome === 'newId' ? newIdempotencyKey() : sent.id");
   });
 
   it('marks read only with the newest message measured on screen, never the current time', () => {
