@@ -54,6 +54,7 @@ import type {
   ConversationMessageReportRow,
   ConversationMessageRow,
   ConversationRow,
+  ConversationSummary,
   DiscussionAuditEventRow,
   MessageTemplateRow,
   NoteCategoryRow,
@@ -1307,6 +1308,10 @@ export type Database = {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
     };
     Functions: {
+      my_conversation: {
+        Args: { p_organization_id: string; p_conversation_id: string };
+        Returns: ConversationSummary[];
+      };
       list_blockouts: {
         Args: { p_organization_id: string; p_person_id?: string | null; p_from?: string | null; p_to?: string | null };
         Returns: BlockoutRow[];

@@ -6,7 +6,6 @@ import type {
   ConversationMessagesQuery,
   ConversationReport,
   ConversationSummary,
-  Database,
   DiscussionPage,
   DiscussionPageQuery,
   MentionCandidate,
@@ -20,7 +19,6 @@ import type {
   ReportConversationMessageInput,
   ResolveConversationReportInput,
 } from '@service-center/shared';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { HttpError } from '../lib/errors.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import {
@@ -47,18 +45,6 @@ interface PostResultRow {
   replayed: boolean;
   effect_id: string | null;
 }
-
-// Local RPC typing until the new functions are added to the shared Database.
-type ConversationSummaryDb = SupabaseClient<Database & {
-  public: {
-    Functions: {
-      my_conversation: {
-        Args: { p_organization_id: string; p_conversation_id: string };
-        Returns: ConversationSummary[];
-      };
-    };
-  };
-}>;
 
 const directoryNames = async (caller: CollaborationCaller, personIds: readonly string[]): Promise<Map<string, DirectoryName>> => {
   const ids = [...new Set(personIds)];
@@ -183,8 +169,7 @@ export const listConversations = async (caller: CollaborationCaller): Promise<Co
   ((await unwrap(raw(caller.db).rpc('my_conversations', { p_organization_id: caller.orgId }))) as ConversationSummary[] | null) ?? [];
 
 const conversationSummary = async (caller: CollaborationCaller, conversationId: string): Promise<ConversationSummary> => {
-  const db = caller.db as ConversationSummaryDb;
-  const rows = await unwrap(db.rpc('my_conversation', {
+  const rows = await unwrap(caller.db.rpc('my_conversation', {
     p_organization_id: caller.orgId,
     p_conversation_id: conversationId,
   }));
