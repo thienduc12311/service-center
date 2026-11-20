@@ -40,7 +40,7 @@ export function MessageList({ header }: MessageListProps) {
 
   const meta = (message: OperationalMessageSummary): string =>
     t('messagesPage.listMeta', {
-      summary: message.sent_by_me
+      summary: message.sent_by_me && message.recipient_count !== undefined
         ? t('messagesPage.recipients', { count: message.recipient_count })
         : message.sender_name
           ? t('messagesPage.from', { name: message.sender_name })
