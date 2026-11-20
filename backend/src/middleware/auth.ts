@@ -32,7 +32,7 @@ export const requireAuth = async (req: Request, _res: Response, next: NextFuncti
     const token = bearer(req);
     if (!token) throw HttpError.unauthorized('Missing bearer token');
 
-    // getUser() validates the signature and expiry against the auth server.
+    // Keep the Auth server's live user and session checks on every request (PERF-005).
     const { data, error } = await adminDb.auth.getUser(token);
     if (error || !data.user) throw HttpError.unauthorized('Invalid or expired session');
     // A super admin blocked the account; its sessions were ended too, this covers the rest.

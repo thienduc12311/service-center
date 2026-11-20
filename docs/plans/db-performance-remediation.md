@@ -32,7 +32,7 @@ Phases run in order. Phase 0 set the baseline that every later phase is measured
 ### Phase 0.5: Latency and schema reloads (urgent)
 
 - Set the backend function region to match the database: `"regions": ["pdx1"]` in `backend/vercel.json` (or the Vercel project setting).
-- Move Phase 4's `getClaims()` change and the single memberships-plus-access RPC here, cutting 2 of the 3 fixed round trips per request.
+- Move the single memberships-plus-access RPC here. The Auth round trip remains pending the [PERF-005 revocation checks](request-latency-plan.md#perf-005).
 - Find what triggers PostgREST schema reloads (74 so far) and stop the avoidable ones.
 - Acceptance: API p95 for the plan page under 300 ms, measured from the browser.
 
@@ -61,7 +61,7 @@ Phases run in order. Phase 0 set the baseline that every later phase is measured
 
 ### Phase 4: Backend request overhead (fixes #4, #5)
 
-- Verify JWTs locally with `supabase.auth.getClaims()` (asymmetric signing keys) instead of `getUser()`.
+- Revisit local JWT verification once the [PERF-005 adoption criteria](request-latency-plan.md#perf-005) are met.
 - Load memberships and effective access in one RPC; cache per request.
 - Consider splitting `PLAN_DETAIL_SELECT` so rarely shown pieces (time responses, attendance) load on demand.
 - Batch `stillSchedulesAny` into one RPC that takes an id array.
