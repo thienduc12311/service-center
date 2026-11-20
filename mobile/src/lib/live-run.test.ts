@@ -258,8 +258,9 @@ describe('MOB-023 source contract', () => {
   });
 
   it('polls only while visible, re-reads on return, and renews the lease only in the foreground', () => {
-    expect(hook).toMatch(/if \(!visible \|\| isLiveAccessLoss/);
-    expect(hook).toMatch(/if \(visible && runId\) void refetch\(\)/);
+    expect(hook).toContain('visible && !isLiveAccessLoss(q.state.error) ? LIVE_FALLBACK_POLL_MS : false');
+    expect(hook).toContain('enabled: Boolean(queryScope && runId && visible)');
+    expect(hook).toContain('staleTime: 0');
     expect(hook).toMatch(/if \(!heldByMe \|\| !runId \|\| !appActive\) return/);
   });
 

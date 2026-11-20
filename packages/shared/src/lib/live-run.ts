@@ -1,5 +1,6 @@
+import { POKE_FALLBACK_MS } from './realtime-pokes.js';
 /**
- * F12: Live timing derived from server timestamps. Clients poll the run's
+ * F12: Live timing derived from server timestamps. Clients refresh the run's
  * authoritative state and compute every countdown, overrun and finish
  * estimate here, using the server clock (via `estimateClockOffset`) rather
  * than their own. Nothing is persisted per tick.
@@ -22,6 +23,7 @@ import type {
   LiveControlStatus,
   LiveItemActual,
   LiveRun,
+  LiveRunState,
   LiveRunActuals,
   LiveRunCorrectionRow,
   LiveRunSnapshotItem,
@@ -34,12 +36,28 @@ import type {
 export const LIVE_LEASE_SECONDS = 90;
 /** How often the controlling client renews its lease. */
 export const LIVE_RENEW_INTERVAL_MS = 30_000;
-/** Poll interval while a run is live or paused. */
-export const LIVE_ACTIVE_POLL_MS = 2_000;
-/** Poll interval for a ready/ended run or the run list. */
-export const LIVE_IDLE_POLL_MS = 15_000;
-/** A viewer whose last successful read is older than this shows itself as stale. */
-export const LIVE_STALE_AFTER_MS = 10_000;
+/** The API is re-read on a broadcast and at this interval as a fallback. */
+export const LIVE_FALLBACK_POLL_MS = POKE_FALLBACK_MS;
+/** Allow the quiet fallback interval plus time for a response. */
+export const LIVE_STALE_AFTER_MS = LIVE_FALLBACK_POLL_MS + 10_000;
+
+/** A state read with the clock offset measured on that request. */
+export interface LiveStateReading {
+  state: LiveRunState;
+  /** Add to Date.now() to get the database clock. */
+  offsetMs: number;
+  /** Local time the response arrived. */
+  receivedAt: number;
+}
+
+/** An action response and a broadcast-triggered read can arrive out of order. */
+export const latestLiveReading = (previous: LiveStateReading | undefined, next: LiveStateReading): LiveStateReading => {
+  if (!previous) return next;
+  const revision = next.state.run.revision - previous.state.run.revision;
+  return revision < 0 || (revision === 0 && Date.parse(next.state.server_now) < Date.parse(previous.state.server_now))
+    ? previous
+    : next;
+};
 
 export const LIVE_TIMING_ACTIONS: readonly LiveTimingAction[] = ['start', 'advance', 'jump', 'pause', 'resume', 'end'];
 

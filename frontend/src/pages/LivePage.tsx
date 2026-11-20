@@ -36,7 +36,7 @@ interface CreateRunVariables {
 
 /**
  * F12 Live: pick a service time, then follow (or control) its run. State is
- * polled from the API (the authority); every timer is derived from server
+ * refreshed through the API; every timer is derived from server
  * timestamps, so viewers converge after any reconnect.
  */
 export const LivePage = () => {

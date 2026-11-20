@@ -74,3 +74,4 @@ export * from './i18n/index.js';
 export * from './types/platform-users.js';
 export * from './schemas/platform-users.js';
 export * from './lib/platform-users.js';
+export * from './lib/realtime-pokes.js';

@@ -149,7 +149,7 @@ export const queryKeys = {
   conversation: (scope: ProtectedQueryScope | null, conversationId: string | null | undefined) =>
     [...privateRoot(scope), 'conversations', 'detail', conversationId ?? null] as const,
   conversationSearch: (scope: ProtectedQueryScope | null, conversationId: string, query: string) =>
-    [...privateRoot(scope), 'conversations', 'search', conversationId, query] as const,
+    [...privateRoot(scope), 'conversations', 'detail', conversationId, 'search', query] as const,
   /** MOB-019: current participants of one conversation, the only people worth mentioning. */
   conversationMentionCandidates: (scope: ProtectedQueryScope | null, conversationId: string | null | undefined) =>
     [...privateRoot(scope), 'conversations', 'mention-candidates', conversationId ?? null] as const,

@@ -74,7 +74,7 @@ describe('MOB-019 conversation screens (source contract)', () => {
   it('polls only while visible and drops the thread when access is gone', () => {
     expect(thread).toContain('refetchInterval: visible ? CONVERSATION_THREAD_POLL_MS : false');
     expect(thread).toContain("access === 'unavailable' ? null");
-    expect(thread).toMatch(/if \(access !== 'unavailable'\) return;\s*setKnown\(\[\]\)/);
+    expect(thread).toContain('const known = useMemo(() => conversation');
   });
 
   it('merges pages by message id and uses the shared action rules', () => {
@@ -92,7 +92,9 @@ describe('MOB-019 conversation screens (source contract)', () => {
 
   it('opens team chats through the server and polls the list like the website', () => {
     expect(list).toContain("api.openConversation({ kind: 'team'");
-    expect(list).toContain('refetchInterval: CONVERSATION_LIST_POLL_MS');
+    expect(list).toContain('useConversations()');
+    const listQuery = readFileSync(join(__dirname, 'useConversations.ts'), 'utf8');
+    expect(listQuery).toContain('refetchInterval: visible ? CONVERSATION_LIST_POLL_MS : false');
     expect(list).toContain('chatStartableTeams(');
   });
 });

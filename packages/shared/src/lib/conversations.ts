@@ -1,3 +1,4 @@
+import { POKE_FALLBACK_MS } from './realtime-pokes.js';
 import { ApiError } from './api-client.js';
 import type { NotificationRow, NotificationType } from '../types/database.js';
 import type { ConversationMessage, ConversationSummary } from '../types/collaboration.js';
@@ -10,9 +11,9 @@ import type { ConversationMessage, ConversationSummary } from '../types/collabor
  * these helpers only interpret its answers the same way on both clients.
  */
 
-/** Both clients poll the authenticated API; there is no realtime subscription. */
-export const CONVERSATION_THREAD_POLL_MS = 10_000;
-export const CONVERSATION_LIST_POLL_MS = 30_000;
+/** Authoritative fallback reads when a broadcast is missed or unavailable. */
+export const CONVERSATION_THREAD_POLL_MS = POKE_FALLBACK_MS;
+export const CONVERSATION_LIST_POLL_MS = POKE_FALLBACK_MS;
 /** Messages per page (the server allows 1–100). */
 export const CONVERSATION_PAGE_SIZE = 30;
 /** Same minimum as `conversationMessagesQuerySchema.q`. */

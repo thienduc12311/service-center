@@ -3,11 +3,9 @@ import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import {
-  chatStartableTeams,
-  CONVERSATION_LIST_POLL_MS,
-} from '@service-center/shared';
+import { chatStartableTeams } from '@service-center/shared';
 import { api } from '../lib/api';
+import { useConversations } from '../lib/useConversations';
 import { queryKeys } from '../lib/query-keys';
 import { useAuth } from '../providers/AuthProvider';
 import { Card, Chip, EmptyState, ErrorNotice, IconWell, ListRow, Loading, SectionHeader, Tag, screenPadding } from './ui';
@@ -23,8 +21,8 @@ export interface ChatListProps {
 
 /**
  * MOB-019: the website's Chat list — team and plan conversations the server
- * says this person currently belongs to (`conversations`, polled like the
- * website), with unread counts, mute and open reports. Opening a team chat
+ * says this person currently belongs to, with unread counts, mute and open
+ * reports. Opening a team chat
  * uses `openConversation`; the server decides who may.
  */
 export function ChatList({ header }: ChatListProps) {
@@ -39,12 +37,8 @@ export function ChatList({ header }: ChatListProps) {
   // Only a pull shows the spinner; background polls refresh silently.
   const [pulling, setPulling] = useState(false);
 
-  const conversations = useQuery({
-    queryKey: queryKeys.conversationList(queryScope),
-    queryFn: () => api.conversations(),
-    enabled: Boolean(queryScope),
-    refetchInterval: CONVERSATION_LIST_POLL_MS,
-  });
+  const conversations = useConversations();
+  const list = conversations.data ?? [];
   const teams = useQuery({
     queryKey: queryKeys.teams(queryScope),
     queryFn: () => api.listTeams(),
@@ -70,7 +64,7 @@ export function ChatList({ header }: ChatListProps) {
 
   return (
     <FlatList
-      data={conversations.data ?? []}
+      data={list}
       keyExtractor={(conversation) => conversation.id}
       contentContainerStyle={[screenPadding(theme), styles.list]}
       refreshControl={
@@ -112,8 +106,8 @@ export function ChatList({ header }: ChatListProps) {
             ) : null}
           </Card>
           <ErrorNotice error={open.error ?? conversations.error} />
-          {conversations.data?.length ? (
-            <SectionHeader title={t('common:nav.chat')} count={conversations.data.length} />
+          {list.length ? (
+            <SectionHeader title={t('common:nav.chat')} count={list.length} />
           ) : null}
         </View>
       }
@@ -126,7 +120,7 @@ export function ChatList({ header }: ChatListProps) {
       }
       renderItem={({ item, index }) => {
         const unread = item.unread_count > 0;
-        const last = index === (conversations.data?.length ?? 0) - 1;
+        const last = index === list.length - 1;
         return (
           <View style={[styles.groupRow, index === 0 && styles.groupFirst, last && styles.groupLast]}>
             <ListRow

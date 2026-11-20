@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  LIVE_ACTIVE_POLL_MS,
-  LIVE_IDLE_POLL_MS,
+  LIVE_FALLBACK_POLL_MS,
   LIVE_RENEW_INTERVAL_MS,
   deriveLiveView,
   estimateClockOffset,
   liveControlStatus,
+  latestLiveReading,
+  type LiveStateReading,
   type LiveControlStatus,
   type LiveRunActionInput,
   type LiveRunState,
@@ -16,6 +17,7 @@ import {
 import { api } from './api';
 import { newIdempotencyKey } from './idempotency';
 import { queryKeys } from './query-keys';
+import { useBroadcastRefresh } from './useBroadcastRefresh';
 import { useScreenVisible } from './useScreenVisible';
 import {
   buildLiveAction,
@@ -31,15 +33,6 @@ import { useAuth } from '../providers/AuthProvider';
 
 /** How often the displayed timers are recomputed from the last state (memory only). */
 const TICK_MS = 250;
-
-/** A state read with the clock offset measured on that request (the website's `LiveStateReading`). */
-export interface LiveStateReading {
-  state: LiveRunState;
-  /** Add to `Date.now()` to get the database clock. */
-  offsetMs: number;
-  /** Local time the response arrived. */
-  receivedAt: number;
-}
 
 export interface LiveRunHandle {
   /** The last authoritative state; null before the first read or once access is lost. */
@@ -73,9 +66,8 @@ const useAppActive = (): boolean => {
 
 /**
  * MOB-023: follow (and, with the lease, control) one F12 run — the native
- * counterpart of the website's `useLiveRun`. Polls `liveRunState` (2 s while
- * live/paused, 15 s otherwise) only while the screen is visible, re-reads at
- * once on return to the foreground, adopts the state every command returns,
+ * counterpart of the website's `useLiveRun`. Reads after a broadcast or
+ * every minute while visible, adopts the state every command returns,
  * and renews the lease every 30 s while it holds control and the app is
  * active. Timers are derived from server timestamps with the measured clock
  * offset; nothing is stored per second.
@@ -92,7 +84,7 @@ export const useLiveRun = (runId: string | null): LiveRunHandle => {
   const [localNow, setLocalNow] = useState(() => Date.now());
   const [pending, setPending] = useState<LiveCommand | null>(null);
   const [commandError, setCommandError] = useState<unknown>(null);
-  const [revokedByCommand, setRevokedByCommand] = useState(false);
+  const [revokedRunId, setRevokedRunId] = useState<string | null>(null);
   const unanswered = useRef<{ input: LiveRunActionInput; command: LiveCommand } | null>(null);
   const [canRetry, setCanRetry] = useState(false);
 
@@ -105,32 +97,25 @@ export const useLiveRun = (runId: string | null): LiveRunHandle => {
 
   const query = useQuery({
     queryKey,
-    enabled: Boolean(queryScope && runId),
+    enabled: Boolean(queryScope && runId && visible),
+    staleTime: 0,
     queryFn: async (): Promise<LiveStateReading> => {
       const requestStartedAt = Date.now();
       const state = await api.liveRunState(runId!);
       const receivedAt = Date.now();
-      return {
+      return latestLiveReading(queryClient.getQueryData(queryKey), {
         state,
         offsetMs: estimateClockOffset({ serverNow: state.server_now, requestStartedAt, responseReceivedAt: receivedAt }),
         receivedAt,
-      };
+      });
     },
-    refetchInterval: (q) => {
-      if (!visible || isLiveAccessLoss(q.state.error)) return false;
-      const status = q.state.data?.state.run.status;
-      return status === 'live' || status === 'paused' ? LIVE_ACTIVE_POLL_MS : LIVE_IDLE_POLL_MS;
-    },
+    refetchInterval: (q) => visible && !isLiveAccessLoss(q.state.error) ? LIVE_FALLBACK_POLL_MS : false,
     retry: (count, error) => !isLiveAccessLoss(error) && count < 2,
   });
 
-  // Back from the background, another screen or a lost connection: read the authority at once.
   const { refetch } = query;
-  useEffect(() => {
-    if (visible && runId) void refetch();
-  }, [visible, runId, refetch]);
-
-  const revoked = isLiveAccessLoss(query.error) || revokedByCommand;
+  const revoked = isLiveAccessLoss(query.error) || (runId !== null && revokedRunId === runId);
+  useBroadcastRefresh('live_run', runId && !revoked ? [runId] : [], visible, { queryKey, exact: true });
   // Losing access drops the cached run at once: nothing private stays on screen.
   useEffect(() => {
     if (revoked) queryClient.removeQueries({ queryKey, exact: true });
@@ -146,14 +131,16 @@ export const useLiveRun = (runId: string | null): LiveRunHandle => {
   const accept = useCallback(
     (next: LiveRunState, requestStartedAt: number, commandGeneration: number) => {
       if (!isCurrentGeneration(commandGeneration)) return;
+      if (next.run.id !== runId || next.run.organization_id !== queryScope?.organizationId ||
+        isLiveAccessLoss(queryClient.getQueryState(queryKey)?.error)) return;
       const receivedAt = Date.now();
-      queryClient.setQueryData<LiveStateReading>(queryKey, {
+      queryClient.setQueryData<LiveStateReading>(queryKey, (previous) => latestLiveReading(previous, {
         state: next,
         offsetMs: estimateClockOffset({ serverNow: next.server_now, requestStartedAt, responseReceivedAt: receivedAt }),
         receivedAt,
-      });
+      }));
     },
-    [queryClient, queryKey, isCurrentGeneration],
+    [isCurrentGeneration, queryClient, queryKey, queryScope?.organizationId, runId],
   );
 
   const commandMutation = useMutation({
@@ -175,7 +162,7 @@ export const useLiveRun = (runId: string | null): LiveRunHandle => {
       unanswered.current = uncertain ? { input: variables.input, command: variables.command } : null;
       setCanRetry(uncertain);
       setCommandError(error);
-      if (isLiveAccessLoss(error)) setRevokedByCommand(true);
+      if (isLiveAccessLoss(error)) setRevokedRunId(runId);
       void queryClient.invalidateQueries({ queryKey, exact: true });
     },
     onSettled: () => setPending(null),

@@ -5,6 +5,8 @@ import {
   estimateClockOffset,
   formatLiveDuration,
   liveControlStatus,
+  latestLiveReading,
+  type LiveStateReading,
   nextRunnableIndex,
   previousRunnableIndex,
 } from './live-run.js';
@@ -42,6 +44,22 @@ const baseRun = (overrides: Partial<LiveRun> = {}): LiveRun => ({
 
 const live = (index: number, startedSeconds: number, overrides: Partial<LiveRun> = {}): LiveRun =>
   baseRun({ status: 'live', current_index: index, current_started_at: at(startedSeconds), started_at: at(-300), ...overrides });
+
+describe('latestLiveReading', () => {
+  const reading = (revision: number, seconds: number): LiveStateReading => ({
+    state: { run: baseRun({ revision }), server_now: at(seconds), plan_content_revision: 4, warnings: [], can_control: true },
+    offsetMs: 0,
+    receivedAt: 0,
+  });
+
+  it('keeps a newer run revision and orders lease updates by server time', () => {
+    const current = reading(2, 10);
+    expect(latestLiveReading(current, reading(1, 11))).toBe(current);
+    expect(latestLiveReading(current, reading(2, 9))).toBe(current);
+    const renewed = reading(2, 11);
+    expect(latestLiveReading(current, renewed)).toBe(renewed);
+  });
+});
 
 describe('runnable navigation', () => {
   it('skips headers both ways', () => {

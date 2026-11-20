@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
-  LIVE_ACTIVE_POLL_MS,
-  LIVE_IDLE_POLL_MS,
+  LIVE_FALLBACK_POLL_MS,
   LIVE_RENEW_INTERVAL_MS,
   LIVE_STALE_AFTER_MS,
   deriveLiveView,
   estimateClockOffset,
   liveControlStatus,
+  latestLiveReading,
+  type LiveStateReading,
   type LiveControlStatus,
   type LiveRunActionInput,
   type LiveRunState,
@@ -17,6 +18,7 @@ import {
 } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { keys } from '../../hooks/queries';
+import { useBroadcastRefresh } from '../../hooks/useBroadcastRefresh';
 import { useAuth } from '../../providers/AuthProvider';
 import { useErrorText } from '../../i18n';
 
@@ -43,15 +45,6 @@ export const liveClientId = (() => {
     return cached;
   };
 })();
-
-/** A state read with the clock offset measured on that request. */
-export interface LiveStateReading {
-  state: LiveRunState;
-  /** Add to `Date.now()` to get the database clock. */
-  offsetMs: number;
-  /** Local time the response arrived. */
-  receivedAt: number;
-}
 
 /** A command without the fields the hook fills in (client, action id, revision). */
 export type LiveCommand =
@@ -148,13 +141,11 @@ export const useLiveRun = (runId: string | null): LiveRunHandle => {
       const requestStartedAt = Date.now();
       const state = await api.liveRunState(runId!);
       const receivedAt = Date.now();
-      return { state, offsetMs: estimateClockOffset({ serverNow: state.server_now, requestStartedAt, responseReceivedAt: receivedAt }), receivedAt };
+      return latestLiveReading(queryClient.getQueryData(queryKey), {
+        state, offsetMs: estimateClockOffset({ serverNow: state.server_now, requestStartedAt, responseReceivedAt: receivedAt }), receivedAt,
+      });
     },
-    refetchInterval: (q) => {
-      const status = q.state.data?.state.run.status;
-      if (isAccessLoss(q.state.error)) return false;
-      return status === 'live' || status === 'paused' ? LIVE_ACTIVE_POLL_MS : LIVE_IDLE_POLL_MS;
-    },
+    refetchInterval: (q) => isAccessLoss(q.state.error) ? false : LIVE_FALLBACK_POLL_MS,
     refetchOnWindowFocus: 'always',
     refetchOnReconnect: 'always',
     retry: (count, error) => !isAccessLoss(error) && count < 2,
@@ -162,6 +153,7 @@ export const useLiveRun = (runId: string | null): LiveRunHandle => {
 
   // Losing access drops the cached run at once: nothing private stays on screen.
   const revoked = isAccessLoss(query.error);
+  useBroadcastRefresh('live_run', runId && !revoked ? [runId] : [], { queryKey, exact: true });
   useEffect(() => {
     if (revoked) queryClient.removeQueries({ queryKey, exact: true });
   }, [revoked, queryClient, queryKey]);
@@ -174,14 +166,16 @@ export const useLiveRun = (runId: string | null): LiveRunHandle => {
 
   const accept = useCallback(
     (next: LiveRunState, requestStartedAt: number) => {
+      if (next.run.id !== runId || next.run.organization_id !== organizationId ||
+        isAccessLoss(queryClient.getQueryState(queryKey)?.error)) return;
       const receivedAt = Date.now();
-      queryClient.setQueryData<LiveStateReading>(queryKey, {
+      queryClient.setQueryData<LiveStateReading>(queryKey, (previous) => latestLiveReading(previous, {
         state: next,
         offsetMs: estimateClockOffset({ serverNow: next.server_now, requestStartedAt, responseReceivedAt: receivedAt }),
         receivedAt,
-      });
+      }));
     },
-    [queryClient, queryKey],
+    [organizationId, queryClient, queryKey, runId],
   );
 
   const command = useMutation({

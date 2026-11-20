@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ConversationSummary, DeliveryChannel, ReminderPreferences, UpdateReminderPreferencesInput } from '@service-center/shared';
 import { api } from '../src/lib/api';
 import { queryKeys } from '../src/lib/query-keys';
+import { useConversations } from '../src/lib/useConversations';
 import { conversationTitle } from '../src/lib/conversation-labels';
 import {
   BADGE_PREFERENCES,
@@ -202,11 +203,7 @@ const ChatSection = () => {
   const { queryScope, generation, isCurrentGeneration } = useAuth();
 
   // The chat list's own query: a mute here reads back in Chat and vice versa.
-  const conversations = useQuery({
-    queryKey: queryKeys.conversationList(queryScope),
-    queryFn: () => api.conversations(),
-    enabled: Boolean(queryScope),
-  });
+  const conversations = useConversations();
   const mute = useMutation({
     mutationFn: ({ id, muted }: MuteRequest) => api.muteConversation(id, muted),
     onSettled: async () => {
