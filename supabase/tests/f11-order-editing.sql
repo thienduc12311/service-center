@@ -196,15 +196,10 @@ end $$;
 
 reset role;
 -- Copy carries the F11 fields and repairs a legacy mismatched arrangement.
--- BUG: copy_plan_children keeps leader_person_id only if the Person is visible
--- to the caller. Since 20261109000000_owner_people_permissions
--- (people_owner_privacy) a non-owner scheduler sees only their own Person row,
--- so a scheduler duplicating a plan silently loses every item leader (reproduced
--- as Jordan 2222: leader_person_id comes back null). Product code is out of scope;
--- the copy therefore runs as the OWNER (11111111-...), who sees the whole roster.
--- Skipped assertion (fails today): the same copy as 2222 must keep the leader.
+-- W7F-COPY: runs as the non-owner scheduler Jordan; item leaders survive even
+-- though people_owner_privacy hides other Persons from them.
 do $$ begin
-  perform set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
+  perform set_config('request.jwt.claim.sub', '22222222-2222-4222-8222-222222222222', true);
   set local role authenticated;
   perform private.copy_plan_children(pg_temp.fx('a'), pg_temp.fx('b'), true, false, false, null);
   perform private.copy_plan_children(pg_temp.fx('b'), pg_temp.fx('a'), true, false, false, null);
