@@ -3,6 +3,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { AccessCapability, AccessTarget } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
 import { LanguageProvider } from '../i18n/LanguageProvider';
@@ -19,14 +20,17 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
-const renderTeams = (role: 'owner' | 'admin') => {
+type TestRole = 'owner' | 'admin' | 'scheduler' | 'member';
+type CanFn = (capability: AccessCapability, target?: AccessTarget) => boolean;
+
+const renderTeams = (role: TestRole, can: CanFn = () => true, serviceTypeId: string | null = null) => {
   vi.mocked(useAuth).mockReturnValue({
     role,
     organizationId: 'org-1',
     session: null,
     user: null,
     access: null,
-    can: () => true,
+    can,
     canAnywhere: () => true,
     canManage: true,
     isAdmin: true,
@@ -38,7 +42,7 @@ const renderTeams = (role: 'owner' | 'admin') => {
   vi.mocked(api.listTeams).mockResolvedValue([{
     id: 'team-1',
     organization_id: 'org-1',
-    service_type_id: null,
+    service_type_id: serviceTypeId,
     name: 'Production',
     description: null,
     color: '#6366f1',
@@ -90,10 +94,37 @@ describe('team deletion', () => {
     expect(api.deleteTeam).toHaveBeenCalledExactlyOnceWith('team-1');
   });
 
-  it('hides deletion from non-owners who can manage the team', async () => {
-    const user = renderTeams('admin');
+  it.each<[string, TestRole]>([['admin', 'admin'], ['legacy scheduler', 'scheduler']])(
+    'shows deletion to an org-wide %s',
+    async (_label, role) => {
+      const user = renderTeams(role);
+      await user.click(await screen.findByRole('button', { name: 'More' }));
+      expect(screen.getByRole('menuitem', { name: 'Delete team' })).toBeTruthy();
+    },
+  );
+
+  it('shows deletion to a teams.manage grantee scoped to the team service type', async () => {
+    const user = renderTeams('member', (cap, target) => cap === 'teams.manage' && target?.serviceTypeId === 'st-1', 'st-1');
+    await user.click(await screen.findByRole('button', { name: 'More' }));
+    expect(screen.getByRole('menuitem', { name: 'Delete team' })).toBeTruthy();
+  });
+
+  it('hides deletion for a grantee scoped to a different service type', async () => {
+    renderTeams('member', (cap, target) => cap === 'teams.manage' && target?.serviceTypeId === 'st-other', 'st-1');
+    await screen.findByText('Production');
+    expect(screen.queryByRole('button', { name: 'More' })).toBeNull();
+  });
+
+  it('hides deletion from a team leader whose grant is only team-scoped', async () => {
+    const user = renderTeams('member', (cap, target) => cap === 'teams.manage' && target?.teamId === 'team-1' && target.serviceTypeId == null);
     await user.click(await screen.findByRole('button', { name: 'More' }));
     expect(screen.getByRole('menuitem', { name: 'Edit' })).toBeTruthy();
     expect(screen.queryByRole('menuitem', { name: 'Delete team' })).toBeNull();
+  });
+
+  it('shows no actions to a plain member', async () => {
+    renderTeams('member', () => false);
+    await screen.findByText('Production');
+    expect(screen.queryByRole('button', { name: 'More' })).toBeNull();
   });
 });

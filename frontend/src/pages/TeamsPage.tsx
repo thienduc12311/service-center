@@ -19,8 +19,10 @@ interface RemoveMemberVariables {
 
 export const TeamsPage = () => {
   const { t } = useTranslation(['teams', 'common']);
-  const { access, can, role } = useAuth();
-  const canDeleteTeams = role === 'owner';
+  const { access, can } = useAuth();
+  /** Mirrors the `teams_delete` RLS policy: org or service-type scope only; a team-scoped grant does not count. */
+  const canDeleteTeam = (team: { service_type_id: string | null }) =>
+    can('teams.manage', { serviceTypeId: team.service_type_id });
   /** A team can be managed organization-wide, per service type, or as its leader. */
   const canManageTeam = (team: { id: string; service_type_id: string | null }) =>
     can('teams.manage', { serviceTypeId: team.service_type_id, teamId: team.id });
@@ -137,6 +139,7 @@ export const TeamsPage = () => {
           <div className="grid gap-4 lg:grid-cols-2">
             {teams.data.map((team) => {
               const manage = canManageTeam(team);
+              const deletable = canDeleteTeam(team);
               const schedule = canScheduleTeam(team);
               const policy = manage || access?.can_administer_access;
               const rosterEditable = canEditRoster(team);
@@ -159,7 +162,7 @@ export const TeamsPage = () => {
                       <h2 id={`team-title-${team.id}`} className="truncate font-semibold text-slate-900 dark:text-white">{team.name}</h2>
                       <p className="text-xs text-slate-500 dark:text-slate-400">{t('common:count.people', { count: team.members.length })}</p>
                     </div>
-                    {(manage || schedule || policy || canDeleteTeams) && (
+                    {(manage || schedule || policy || deletable) && (
                       <Menu label={<span className="sr-only">{t('common:actions.more')}</span>} icon="more">
                         {(close) => (
                           <>
@@ -178,7 +181,7 @@ export const TeamsPage = () => {
                                 {t('teamsPage.settings')}
                               </MenuItem>
                             )}
-                            {canDeleteTeams && (
+                            {deletable && (
                               <MenuItem icon="trash" tone="danger" onClick={() => { setTeamToDelete(team); close(); }}>
                                 {t('teamsPage.delete.submit')}
                               </MenuItem>
@@ -265,7 +268,7 @@ export const TeamsPage = () => {
       {policyTeam && <TeamPolicyModal team={policyTeam} onClose={() => setPolicyTeamId(null)} />}
       {availabilityTeam && <AvailabilityRequestsModal team={availabilityTeam} onClose={() => setAvailabilityTeamId(null)} />}
 
-      {canDeleteTeams && teamToDelete && (
+      {teamToDelete && canDeleteTeam(teamToDelete) && (
         <Modal open title={t('teamsPage.delete.title', { team: teamToDelete.name })} onClose={closeDeleteTeam}>
           <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-300">{t('teamsPage.delete.description')}</p>
