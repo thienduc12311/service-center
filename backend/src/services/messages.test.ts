@@ -85,3 +85,52 @@ describe('message history paging (W7-MSG-D9)', () => {
     expect(list?.searchParams.get('order')).toBe('created_at.desc,id.desc');
   });
 });
+
+describe('recipient-safe read path (W7-MSG-D6)', () => {
+  const safeRow = {
+    id: templateId, organization_id: orgId, plan_id: null, subject: 'Hi', body: 'Body',
+    variables: {}, created_by: 'dddddddd-0000-4000-8000-000000000001', created_at: '2026-11-20T10:00:00+00:00',
+  };
+
+  it('lists the received box through my_received_messages, never the base table', async () => {
+    const paths: string[] = [];
+    const fetchDb = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      paths.push(url.pathname);
+      if (url.pathname === '/rest/v1/rpc/my_received_messages') return Response.json([safeRow]);
+      if (url.pathname === '/rest/v1/profiles') return Response.json([{ id: safeRow.created_by, full_name: 'Sender' }]);
+      throw new Error(`Unexpected call ${url.pathname}`);
+    });
+    const rows = await service.listMessages(callerWith(fetchDb), { box: 'received', limit: 5 });
+    expect(paths).not.toContain('/rest/v1/operational_messages');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ sender_name: 'Sender', sent_by_me: false });
+    expect(rows[0]).not.toHaveProperty('audience');
+    expect(rows[0]).not.toHaveProperty('idempotency_key');
+  });
+
+  it('serves a recipient the safe view when the base row is hidden by RLS', async () => {
+    const fetchDb = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/rest/v1/operational_messages') return Response.json(null);
+      if (url.pathname === '/rest/v1/rpc/my_received_messages') return Response.json(safeRow);
+      if (url.pathname === '/rest/v1/profiles') return Response.json([]);
+      if (url.pathname === '/rest/v1/operational_message_recipients') return Response.json(null);
+      throw new Error(`Unexpected call ${url.pathname}`);
+    });
+    const detail = await service.getMessage(callerWith(fetchDb), templateId);
+    expect(detail.can_retry).toBe(false);
+    expect(detail.outcomes).toBeUndefined();
+    expect(detail.message).not.toHaveProperty('audience_hash');
+  });
+
+  it('answers 404 when the caller neither sent nor received the message', async () => {
+    const fetchDb = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/rest/v1/operational_messages') return Response.json(null);
+      if (url.pathname === '/rest/v1/rpc/my_received_messages') return Response.json(null);
+      throw new Error(`Unexpected call ${url.pathname}`);
+    });
+    await expect(service.getMessage(callerWith(fetchDb), templateId)).rejects.toMatchObject({ status: 404 });
+  });
+});

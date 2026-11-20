@@ -60,6 +60,7 @@ import type {
   NoteCategoryRow,
   OperationalMessageRecipientRow,
   OperationalMessageRow,
+  OperationalMessageView,
   PlanItemCommentMentionRow,
   PlanItemCommentRow,
   PlanNoteRow,
@@ -1308,6 +1309,10 @@ export type Database = {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
     };
     Functions: {
+      my_received_messages: {
+        Args: { p_organization_id: string };
+        Returns: OperationalMessageView[];
+      };
       my_conversation: {
         Args: { p_organization_id: string; p_conversation_id: string };
         Returns: ConversationSummary[];
