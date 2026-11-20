@@ -25,6 +25,7 @@ import { PeoplePage } from './pages/PeoplePage';
 import { PersonPage } from './pages/PersonPage';
 import { MySchedulePage } from './pages/MySchedulePage';
 import { MessageDetailPage, MessagesPage } from './pages/MessagesPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { ChatPage } from './pages/ChatPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { BlockoutSeriesPage } from './pages/BlockoutSeriesPage';
@@ -117,6 +118,7 @@ export const router = createBrowserRouter([
           { path: '/messages/:messageId', element: <MessageDetailPage /> },
           { path: '/chat', element: <ChatPage /> },
           { path: '/chat/:conversationId', element: <ChatPage /> },
+          { path: '/notifications', element: <NotificationsPage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/blockouts/:seriesId', element: <BlockoutSeriesPage /> },
           { path: '/help/:delegationId', element: <HelpPage /> },

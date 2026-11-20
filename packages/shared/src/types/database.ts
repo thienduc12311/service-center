@@ -2053,6 +2053,10 @@ export type Database = {
         };
         Returns: string;
       };
+      prune_notifications: {
+        Args: { p_read_days?: number; p_unread_days?: number; p_limit?: number };
+        Returns: number;
+      };
       prune_webhook_history: { Args: { p_limit?: number }; Returns: number };
       set_public_set_list_link: {
         Args: { p_service_type: string; p_kind: string; p_action: string };

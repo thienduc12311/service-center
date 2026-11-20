@@ -204,6 +204,7 @@ import type {
   AssignmentRespondPreview,
   AssignmentRespondResult,
   CalendarFeedTokenResponse,
+  ClearReadNotificationsResult,
   CurrentUser,
   DeliveryList,
   DeliveryListItem,
@@ -1509,6 +1510,12 @@ export class ServiceCenterApi {
   /** Omit `ids` to mark everything in the active organization as read. */
   markNotificationsRead = (body: MarkNotificationsReadInput = {}) =>
     this.request<UnreadNotificationCount>('POST', '/api/v1/notifications/read', body);
+  /** Permanently deletes one of the caller's notifications in the active organization. */
+  deleteNotification = (id: string) =>
+    this.request<void>('DELETE', `/api/v1/notifications/${id}`);
+  /** Permanently deletes every read notification the caller has in the active organization. */
+  clearReadNotifications = () =>
+    this.request<ClearReadNotificationsResult>('POST', '/api/v1/notifications/clear-read');
 
   /** Registers this device for push. Not organization-scoped. */
   registerDevice = (body: RegisterDeviceInput) =>

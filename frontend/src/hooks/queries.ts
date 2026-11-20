@@ -19,6 +19,7 @@ import {
   type ListMediaRequest,
   type ListPlanTemplatesRequest,
   type StaffingMatrixQueryInput,
+  type UnreadNotificationCount,
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useAuth } from '../providers/AuthProvider';
@@ -113,6 +114,9 @@ export const keys = {
     [...keys.all(org), 'plan-templates', 'detail', id, revision] as const,
   templateApplications: (org: string | null, planId: string) => [...keys.plan(org, planId), 'template-applications'] as const,
   conversations: (org: string | null) => [...keys.all(org), 'conversations'] as const,
+  notifications: (org: string | null) => [...keys.all(org), 'notifications'] as const,
+  notificationFeed: (org: string | null) => [...keys.notifications(org), 'feed'] as const,
+  notificationUnread: (org: string | null) => [...keys.notifications(org), 'unread'] as const,
   conversation: (org: string | null, id: string) => [...keys.conversations(org), id] as const,
   // F16 attendance, reports, calendar extension and publication.
   attendance: (org: string | null, planId: string, timeId: string | null) =>
@@ -877,5 +881,71 @@ export const useOrganizationStorage = (enabled: boolean) => {
     queryFn: () => api.organizationStorage(),
     enabled: Boolean(org) && enabled,
     staleTime: 5 * 60_000,
+  });
+};
+
+/* ------------------------------------------------------------ notifications */
+
+/** How often the bell re-checks the unread count; matches the mobile app. */
+export const NOTIFICATION_POLL_MS = 60_000;
+const NOTIFICATION_PAGE_SIZE = 30;
+
+/** The bell's unread count: polled, and refreshed whenever the tab regains focus. */
+export const useUnreadNotificationCount = () => {
+  const org = useOrg();
+  return useQuery({
+    queryKey: keys.notificationUnread(org),
+    queryFn: () => api.unreadNotificationCount(),
+    enabled: Boolean(org),
+    refetchInterval: NOTIFICATION_POLL_MS,
+    refetchOnWindowFocus: 'always',
+  });
+};
+
+/** The notification feed, newest first, paged backwards in time. */
+export const useNotificationFeed = () => {
+  const org = useOrg();
+  return useInfiniteQuery({
+    queryKey: keys.notificationFeed(org),
+    queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
+      api.listNotifications({ limit: NOTIFICATION_PAGE_SIZE, before: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    enabled: Boolean(org),
+  });
+};
+
+/** Writes fresh counts straight into the bell, then refetches the feed. */
+const useSettleNotifications = () => {
+  const org = useOrg();
+  const queryClient = useQueryClient();
+  return async (counts?: UnreadNotificationCount): Promise<void> => {
+    if (counts) queryClient.setQueryData(keys.notificationUnread(org), counts);
+    await queryClient.invalidateQueries({ queryKey: keys.notifications(org) });
+  };
+};
+
+/** Omit `ids` to mark the whole feed read. */
+export const useMarkNotificationsRead = () => {
+  const settle = useSettleNotifications();
+  return useMutation({
+    mutationFn: (ids?: string[]) => api.markNotificationsRead(ids ? { ids } : {}),
+    onSuccess: (counts) => settle(counts),
+  });
+};
+
+export const useDeleteNotification = () => {
+  const settle = useSettleNotifications();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteNotification(id),
+    onSettled: () => settle(),
+  });
+};
+
+export const useClearReadNotifications = () => {
+  const settle = useSettleNotifications();
+  return useMutation({
+    mutationFn: () => api.clearReadNotifications(),
+    onSuccess: ({ unread, account_unread }) => settle({ unread, account_unread }),
   });
 };

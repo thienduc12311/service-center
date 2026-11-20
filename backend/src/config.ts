@@ -63,6 +63,10 @@ const envSchema = z.object({
    * development and tests only; refused in production.
    */
   WEBHOOK_ALLOW_PRIVATE_DESTINATIONS: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  /** Read notifications older than this many days are deleted by the scheduled worker. */
+  NOTIFICATION_READ_RETENTION_DAYS: z.coerce.number().int().min(1).default(90),
+  /** Unread notifications older than this many days are deleted by the scheduled worker. */
+  NOTIFICATION_UNREAD_RETENTION_DAYS: z.coerce.number().int().min(1).default(180),
   MAIL_FROM_ADDRESS: z.string().email().default('notifications@example.com'),
   MAIL_FROM_NAME: z.string().default('Service Center'),
 });

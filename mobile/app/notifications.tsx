@@ -1,11 +1,16 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { conversationNotificationTarget, type NotificationFeedItem } from '@service-center/shared';
+import {
+  conversationNotificationTarget,
+  type NotificationFeedItem,
+  type UnreadNotificationCount,
+} from '@service-center/shared';
 import { api } from '../src/lib/api';
 import { notificationKeys } from '../src/lib/notification-keys';
+import { useUndoableNotificationDelete } from '../src/lib/useUndoableNotificationDelete';
 import { useAuth } from '../src/providers/AuthProvider';
 import { useNotifications } from '../src/providers/NotificationsProvider';
 import {
@@ -21,6 +26,8 @@ import {
 } from '../src/components/ui';
 import { Icon, type IconName } from '../src/components/icons';
 import { PressableScale, Reveal } from '../src/components/motion';
+import { SwipeToDelete } from '../src/components/SwipeToDelete';
+import { UndoToast } from '../src/components/UndoToast';
 import type { Theme } from '../src/lib/theme';
 import { useTheme, useThemedStyles } from '../src/lib/useTheme';
 import { useFormatters } from '../src/i18n';
@@ -57,10 +64,30 @@ export default function NotificationsScreen() {
     onSuccess: invalidate,
   });
 
+  const clearRead = useMutation({
+    mutationFn: () => api.clearReadNotifications(),
+    onSuccess: async ({ unread: unreadCount, account_unread }) => {
+      if (!isCurrentGeneration(generation)) return;
+      const counts: UnreadNotificationCount = { unread: unreadCount, account_unread };
+      queryClient.setQueryData(notificationKeys.unread(queryScope), counts);
+      await invalidate();
+    },
+  });
+
+  const removal = useUndoableNotificationDelete();
+
   const items = useMemo<NotificationFeedItem[]>(
-    () => (feed.data?.pages ?? []).flatMap((page) => page.items),
-    [feed.data],
+    () => (feed.data?.pages ?? []).flatMap((page) => page.items).filter((item) => item.id !== removal.pending?.id),
+    [feed.data, removal.pending],
   );
+  const hasRead = items.some((item) => item.read_at);
+
+  const confirmClearRead = (): void => {
+    Alert.alert(t('notifications.clearReadTitle'), t('notifications.clearReadBody'), [
+      { text: t('common:actions.cancel'), style: 'cancel' },
+      { text: t('notifications.clearReadConfirm'), style: 'destructive', onPress: () => clearRead.mutate() },
+    ]);
+  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -102,13 +129,26 @@ export default function NotificationsScreen() {
               title={t('common:nav.notifications')}
               description={t('notifications.description')}
               action={
-                unread ? (
-                  <Button
-                    title={t('notifications.markAllRead')}
-                    variant="secondary"
-                    onPress={() => markRead.mutate(undefined)}
-                    loading={markRead.isPending}
-                  />
+                unread || hasRead ? (
+                  <View style={styles.headerActions}>
+                    {unread ? (
+                      <Button
+                        title={t('notifications.markAllRead')}
+                        variant="secondary"
+                        onPress={() => markRead.mutate(undefined)}
+                        loading={markRead.isPending}
+                      />
+                    ) : null}
+                    {hasRead ? (
+                      <Button
+                        title={t('notifications.clearRead')}
+                        variant="secondary"
+                        icon="trash"
+                        onPress={confirmClearRead}
+                        loading={clearRead.isPending}
+                      />
+                    ) : null}
+                  </View>
                 ) : undefined
               }
             />
@@ -127,8 +167,9 @@ export default function NotificationsScreen() {
                 />
               </View>
             ) : null}
-            <ErrorNotice error={feed.error ?? markRead.error} />
+            <ErrorNotice error={feed.error ?? markRead.error ?? clearRead.error ?? removal.error} />
             {items.length ? <SectionHeader title={t('common:nav.notifications')} /> : null}
+            {items.length ? <Text style={styles.swipeHint}>{t('notifications.swipeHint')}</Text> : null}
           </View>
         }
         ListEmptyComponent={
@@ -149,10 +190,14 @@ export default function NotificationsScreen() {
               first={index === 0}
               last={index === items.length - 1}
               onPress={() => open(item)}
+              onDelete={() => removal.remove(item)}
             />
           </Reveal>
         )}
       />
+      {removal.pending ? (
+        <UndoToast message={t('notifications.deleted')} actionTitle={t('notifications.undo')} onUndo={removal.undo} />
+      ) : null}
     </Screen>
   );
 }
@@ -163,6 +208,7 @@ interface NotificationRowProps {
   first: boolean;
   last: boolean;
   onPress: () => void;
+  onDelete: () => void;
 }
 
 /** The glyph for where a notification leads. */
@@ -173,32 +219,39 @@ const notificationIcon = (item: NotificationFeedItem): IconName => {
   return 'bell';
 };
 
-const NotificationRow = ({ item, first, last, onPress }: NotificationRowProps) => {
+const NotificationRow = ({ item, first, last, onPress, onDelete }: NotificationRowProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const unread = !item.read_at;
-  const { t } = useTranslation('scheduling');
+  const { t } = useTranslation(['scheduling', 'common']);
   const f = useFormatters();
 
   return (
-    <PressableScale
-      // Title and body are stored server-side in the recipient's language; shown as-is.
-      accessibilityLabel={unread ? t('notifications.unreadItem', { title: item.title }) : item.title}
-      onPress={onPress}
-      pressedOpacity={0.6}
+    <SwipeToDelete
+      actionTitle={t('common:actions.delete')}
+      actionAccessibilityLabel={t('notifications.deleteItem', { title: item.title })}
+      onDelete={onDelete}
       style={[styles.groupRow, first && styles.groupFirst, last && styles.groupLast]}
     >
-      <View style={[styles.row, !first && styles.rowDivided]}>
-        <IconWell name={notificationIcon(item)} accent={unread ? theme.accent.blue : theme.accent.neutral} size={36} />
-        <View style={styles.body}>
-          <Text style={[styles.title, unread ? styles.titleUnread : null]}>{item.title}</Text>
-          {item.body ? <Text style={styles.detail}>{item.body}</Text> : null}
-          <Text style={[styles.time, unread ? styles.timeUnread : null]}>{f.dateTime(item.created_at)}</Text>
+      <PressableScale
+        // Title and body are stored server-side in the recipient's language; shown as-is.
+        accessibilityLabel={unread ? t('notifications.unreadItem', { title: item.title }) : item.title}
+        onPress={onPress}
+        pressedOpacity={0.6}
+        style={styles.rowPress}
+      >
+        <View style={[styles.row, !first && styles.rowDivided]}>
+          <IconWell name={notificationIcon(item)} accent={unread ? theme.accent.blue : theme.accent.neutral} size={36} />
+          <View style={styles.body}>
+            <Text style={[styles.title, unread ? styles.titleUnread : null]}>{item.title}</Text>
+            {item.body ? <Text style={styles.detail}>{item.body}</Text> : null}
+            <Text style={[styles.time, unread ? styles.timeUnread : null]}>{f.dateTime(item.created_at)}</Text>
+          </View>
+          {/* Unread marker: a brand dot at the trailing edge. */}
+          <View style={[styles.dot, unread ? styles.dotUnread : null]} />
         </View>
-        {/* Unread marker: a brand dot at the trailing edge. */}
-        <View style={[styles.dot, unread ? styles.dotUnread : null]} />
-      </View>
-    </PressableScale>
+      </PressableScale>
+    </SwipeToDelete>
   );
 };
 
@@ -214,13 +267,14 @@ const makeStyles = (theme: Theme) =>
     },
     pushHintRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.sm },
     pushHintText: { ...theme.type.bodySmall, color: theme.accent.yellow.fg, flex: 1 },
+    headerActions: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
+    swipeHint: { ...theme.type.label, fontSize: 12, color: theme.color.inkFaint, marginTop: -theme.space.sm },
     groupRow: {
-      backgroundColor: theme.color.surface,
       borderLeftWidth: 1,
       borderRightWidth: 1,
       borderColor: theme.color.border,
-      paddingHorizontal: theme.space.md,
     },
+    rowPress: { backgroundColor: theme.color.surface, paddingHorizontal: theme.space.md },
     groupFirst: {
       borderTopWidth: 1,
       borderTopLeftRadius: theme.radius.lg + 2,

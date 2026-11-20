@@ -15,6 +15,7 @@ import { deliveryTransportStatus, listDeliveries, retryDelivery } from '../servi
 import { runDeliveryWorker } from '../services/delivery-worker.js';
 import { runReportExportsSafely } from '../services/report-exports.js';
 import { runFileMaintenanceSafely } from '../services/file-maintenance.js';
+import { runNotificationRetentionSafely } from '../services/notification-retention.js';
 import { runWebhookDeliveriesSafely } from '../services/webhook-dispatch.js';
 
 /** Administrator view of delivery outcomes, and manual retry. */
@@ -57,10 +58,12 @@ deliveryWorkerRouter.all('/run', validateQuery(runDeliveryWorkerSchema), async (
   // F13: the same scheduled run settles expired uploads and removes discarded bytes.
   // F16: the same run builds queued report exports and deletes expired ones.
   // F17: and sends due webhook deliveries (short budget: the run shares 60 s).
+  // And deletes notifications past their retention period.
   res.json({
     ...deliveries,
     files: await runFileMaintenanceSafely(),
     report_exports: await runReportExportsSafely(),
     webhooks: await runWebhookDeliveriesSafely(),
+    notifications: await runNotificationRetentionSafely(),
   });
 });
