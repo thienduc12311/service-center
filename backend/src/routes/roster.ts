@@ -27,7 +27,7 @@ import {
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireAdmin, requireCapability } from '../middleware/organization.js';
-import { unwrap, unwrapOne } from '../lib/supabase.js';
+import { unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { guestRosterPerson, summarizeBulkPreview } from '../model/roster.model.js';
 import {
@@ -96,8 +96,9 @@ rosterRouter.patch('/tag-groups/:groupId', requireCapability('people.manage'), v
 
 /** Its tags become ungrouped; nobody loses a tag. */
 rosterRouter.delete('/tag-groups/:groupId', requireCapability('people.manage'), async (req, res) => {
-  await unwrap(
-    req.db.from('person_tag_groups').delete().eq('id', param(req, 'groupId')).eq('organization_id', req.orgId),
+  await unwrapDeleted(
+    req.db.from('person_tag_groups').delete().eq('id', param(req, 'groupId')).eq('organization_id', req.orgId).select('id'),
+    'Tag group not found',
   );
   res.status(204).end();
 });

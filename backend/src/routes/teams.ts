@@ -17,7 +17,7 @@ import {
 } from '@service-center/shared';
 import { validateBody } from '../lib/validate.js';
 import { requireAdmin, requireCapability, requireManager, requireRosterEditor } from '../middleware/organization.js';
-import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { raw, unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { loadScopeAccess, replaceScopeAccess } from '../services/access.js';
 import { NO_CONTACT, contactsFor, type MemberContact } from '../services/contacts.js';
@@ -159,7 +159,10 @@ teamsRouter.patch('/:id', requireCapability('teams.manage'), validateBody(update
 });
 
 teamsRouter.delete('/:id', requireCapability('teams.manage'), async (req, res) => {
-  await unwrap(req.db.from('teams').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId));
+  await unwrapDeleted(
+    req.db.from('teams').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId).select('id'),
+    'Team not found',
+  );
   res.status(204).end();
 });
 
@@ -195,12 +198,14 @@ teamsRouter.patch(
 );
 
 teamsRouter.delete('/:id/positions/:positionId', requireCapability('teams.manage'), async (req, res) => {
-  await unwrap(
+  await unwrapDeleted(
     req.db
       .from('team_positions')
       .delete()
       .eq('id', param(req, 'positionId'))
-      .eq('team_id', param(req, 'id')),
+      .eq('team_id', param(req, 'id'))
+      .select('id'),
+    'Position not found',
   );
   res.status(204).end();
 });

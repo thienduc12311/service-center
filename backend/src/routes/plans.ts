@@ -37,7 +37,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireCapability, requireManager } from '../middleware/organization.js';
-import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { raw, unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import {
   PLAN_SUMMARY_SELECT,
@@ -208,7 +208,10 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
 });
 
 plansRouter.delete('/:id', requireCapability('plans.edit'), async (req, res) => {
-  await unwrap(req.db.from('plans').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId));
+  await unwrapDeleted(
+    req.db.from('plans').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId).select('id'),
+    'Plan not found',
+  );
   res.status(204).end();
 });
 

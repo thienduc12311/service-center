@@ -378,11 +378,12 @@ assignmentsRouter.patch('/:id', requireCapability('scheduling.manage'), validate
  * on to the row reads as a conflict rather than a bad request.
  */
 assignmentsRouter.delete('/:id', requireCapability('scheduling.manage'), async (req, res) => {
-  const { error } = await req.db.from('assignments').delete().eq('id', param(req, 'id'));
+  const { data, error } = await req.db.from('assignments').delete().eq('id', param(req, 'id')).select('id');
   if (error?.code === '23503') {
     throw HttpError.conflict('This assignment is still in use and cannot be removed yet');
   }
   if (error) throw fromPostgrestError(error);
+  if (!data || data.length === 0) throw HttpError.notFound('Assignment not found');
   res.status(204).end();
 });
 

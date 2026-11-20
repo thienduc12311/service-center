@@ -242,11 +242,12 @@ peopleRouter.patch('/:personId', requireCapability('people.manage'), validateBod
  * membership. A Person with staffing history cannot be deleted; archive them.
  */
 peopleRouter.delete('/:personId', requireAdmin, async (req, res) => {
-  const { error } = await req.db.from('people').delete().eq('id', param(req, 'personId')).eq('organization_id', req.orgId);
+  const { data, error } = await req.db.from('people').delete().eq('id', param(req, 'personId')).eq('organization_id', req.orgId).select('id');
   if (error?.code === '23503') {
     throw new HttpError(409, 'This person has service history. Archive them instead.', 'person_has_history');
   }
   if (error) throw fromPostgrestError(error);
+  if (!data || data.length === 0) throw HttpError.notFound('Person not found');
   res.status(204).end();
 });
 
