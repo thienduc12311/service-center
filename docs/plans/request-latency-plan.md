@@ -6,6 +6,8 @@ Tickets here are a repository backlog (`PERF-xxx`), in the same style as the MOB
 
 ## Problem
 
+The request paths and trip estimates below describe the pre-change baseline.
+
 Chat and My Schedule feel slow because each screen waits on a long chain of round trips that run one after another. The database work itself is small: app queries average 0.4–42 ms in production. Each trip also pays the distance between the API and the database. Opening a chat thread additionally runs the whole organization's conversation list twice.
 
 ### Chat thread: `GET /conversations/:id`
@@ -62,7 +64,9 @@ Cold starts can add latency. The deployed function region and cold-start contrib
 3. **Phase C: Reduce per-row RLS on these paths** — PERF-007. Depends on Phase 1 of the [database remediation plan](db-performance-remediation.md#plan).
 4. **Phase D: Stop repeating the work** — PERF-008. Polling replaced by Realtime Broadcast pokes.
 
-Each ticket ships on its own `feature/perf-*` branch with tests. Measure server time before and after each phase with the same request.
+Initial rollout combines the backend region pin with PERF-003, PERF-004, and PERF-006. Apply the two additive Supabase migrations before deploying the API that calls the new functions. The rollout is expected to bring fixed org-scoped requests from three calls to two (Auth plus organization context) and chat threads to at most four sequential route stages. The one-call middleware target is still open because PERF-005 retains the live Auth check. Measure server time before and after rollout with the same requests.
+
+PERF-007, PERF-008, and the broader database phases follow separately. Their acceptance depends on measuring the new baseline and verifying access and live-update behavior.
 
 ## Baseline
 
