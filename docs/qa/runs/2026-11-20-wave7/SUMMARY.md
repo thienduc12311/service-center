@@ -27,14 +27,14 @@ No other P0: no cross-tenant read, no prepared-assignment exposure, no lost writ
 | ID | Summary | Decision |
 |---|---|---|
 | W7-ACC-D1 (P0) | Admin → owner escalation via `organization_members` INSERT | Accepted, confirmed. Add a restrictive INSERT policy: only owners may insert `owner`/`admin` rows (or only owners may insert at all, matching update/delete), with a DB test |
-| W7-ACC-D3 = W7-WEB-D2 | Team deletion is owner-only in the UI, but `DELETE /teams/:id` + `teams_delete` RLS allow anyone with `teams.manage` (admin, legacy scheduler, grantees). Cascades to every assignment of the team incl. released/confirmed, no audit row | Accepted, confirmed against `teams_delete` policy and `TeamsPage.tsx:23`. **Needs a product decision:** make API/RLS owner-only, or widen the UI and keep `teams.manage` |
+| W7-ACC-D3 = W7-WEB-D2 | Team deletion is owner-only in the UI, but `DELETE /teams/:id` + `teams_delete` RLS allow anyone with `teams.manage` (admin, legacy scheduler, grantees). Cascades to every assignment of the team incl. released/confirmed, no audit row | Accepted, confirmed against `teams_delete` policy and `TeamsPage.tsx:23`. **Decided (2026-11-20):** keep API/RLS (`teams.manage`); open the web UI to `teams.manage` holders |
 | W7-MSG-D1 (was W3-MSG-D3) | Notification `next_cursor` carries `+00:00`; `before` uses `z.string().datetime()` without `offset: true`, so page 2 of the feed is always 422 | Accepted, confirmed (`packages/shared/src/schemas/notification.ts:21`; schema rejects `…+00:00`, accepts `…Z`) |
 
 ## Fix now — P2
 
 - **500s on hostile input:** W7-ACC-D5 / W7-MSG-D11 (NUL byte / lone surrogate → 500 with raw Postgres code), W7-ACC-D6 / W7-RESP-D3 (malformed or primitive JSON → 500 with parser message, incl. public respond link), W7-ACC-D9 (disallowed CORS origin → 500). One error-mapping fix covers most.
 - **Silent 204 deletes:** W7-RESP-D1 (`DELETE /assignments/:id`), W7-ACC-D4 (`DELETE /teams/:id`, positions) return 204 for cross-org, missing and RLS-denied ids.
-- **Responses:** W7-RESP-D2 (member's direct PostgREST status PATCH writes history but queues no scheduler effect), W7-RESP-D4 (identical concurrent retry → 409, carries W2-RESP-D3), W7-RESP-D5 (`/schedule/mine` 500 "URI too long" at ~200 assignments), W7-RESP-D6 (confirmed answer survives a time change — product decision), W2-RESP-D4 still open (preview shows times the respond call rejects as stale).
+- **Responses:** W7-RESP-D2 (member's direct PostgREST status PATCH writes history but queues no scheduler effect), W7-RESP-D4 (identical concurrent retry → 409, carries W2-RESP-D3), W7-RESP-D5 (`/schedule/mine` 500 "URI too long" at ~200 assignments), ~~W7-RESP-D6~~ (confirmed answer survives a time change — **decided: confirmation stands, not a defect**), W2-RESP-D4 still open (preview shows times the respond call rejects as stale).
 - **Messaging (wave 3 carry-overs, all still open):** W7-MSG-D2 conversation writes ignore `X-Organization-Id`; D3 keyset ties drop rows; **D4 notification snippets outlive access loss / delete / moderation (escalation candidate)**; D5 own notification title/body/type writable via PostgREST; D6 recipients read sender audit columns; D7 unauthorized template edit → 409; D8 archived template usable; D9 `/messages` has no cursor; D10 wrong-item comment edit mutates then 404s.
 - **Access/security:** W7-ACC-D2 admin `PATCH /access/members` → misleading 404 (route `requireAdmin` vs owner-only RLS); D7 Storage signed URLs live 300 s after revoke/delete; D8 org-logo SVG with script served without CSP/nosniff; D10 upper-case `X-Organization-Id` → 403.
 - **Journeys:** W7-JRN-D1 participation report missing `unknown` total (= W3-LIVE-D3); D2 combined schedule omits released assignment on a plan with no times; D3 globally signed-out JWT still reads PostgREST until `jwt_expiry` (3600 s) — API rejects it; D4 transposed ChordPro keeps old `{key:}` directive.
@@ -61,7 +61,7 @@ Web-created (scheduler, web UI) → native read → native edits (time, header r
 
 ## Deferred
 
-- W7-RESP-D6 and W7-ACC-D3 wait on product decisions.
+- W7-RESP-D6 closed by decision (a confirmation stands after a time change). W7-ACC-D3 decided: UI opens to `teams.manage`.
 - Source vs plan: a respond-only delegation also lets the delegate view the person's schedule (plan oracle says permissions are independent); `can_signup` delegation has no consumer (N/A). Record or change the oracle.
 - Replacement offer/consent/approval sends no notifications (documented F08 gap).
 
