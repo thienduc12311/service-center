@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idempotencyKey, isoDateTime, uuid } from './common.js';
+import { idempotencyKey, isoDateTime, keysetCursorSchema, uuid } from './common.js';
 import { unknownMessageVariables } from '../lib/message-templates.js';
 
 export const noteAudienceSchema = z.enum(['organization', 'scheduled', 'teams', 'leaders']);
@@ -39,8 +39,8 @@ export const updateNoteCategorySchema = z.object({
 const discussionBody = z.string().trim().min(1, 'Write something first').max(4000);
 
 export const discussionPageQuerySchema = z.object({
-  /** Keyset cursor: `created_at` of the oldest row already shown. */
-  before: isoDateTime.optional(),
+  /** Keyset cursor: the `next_before` of the previous page, echoed verbatim. */
+  before: keysetCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
 });
 
@@ -110,6 +110,8 @@ export const listOperationalMessagesQuerySchema = z.object({
   /** `sent`: messages I sent (admins: everyone's). `received`: sent to me. */
   box: z.enum(['sent', 'received']).default('sent'),
   limit: z.coerce.number().int().min(1).max(100).default(30),
+  /** Keyset cursor for the next page: `encodeKeysetCursor` of the last message shown. */
+  before: keysetCursorSchema.optional(),
 });
 
 export const retryOperationalMessageSchema = z.object({

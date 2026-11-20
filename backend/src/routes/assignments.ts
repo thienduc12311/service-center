@@ -40,7 +40,8 @@ import { isUntimed, timesForAttendance } from '../model/attendance.model.js';
 import { z } from 'zod';
 import { validateBody, validateQuery, parsedQuery } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
-import { adminDb, raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { adminDb, raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
+import { chunk } from '../lib/chunk.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { createResponses, latestDeclineReasons } from '../services/assignment-responses.js';
 import { effectIdForKey, notifyPlanAssignments } from '../services/deliveries.js';
@@ -378,11 +379,12 @@ assignmentsRouter.patch('/:id', requireCapability('scheduling.manage'), validate
  * on to the row reads as a conflict rather than a bad request.
  */
 assignmentsRouter.delete('/:id', requireCapability('scheduling.manage'), async (req, res) => {
-  const { error } = await req.db.from('assignments').delete().eq('id', param(req, 'id'));
+  const { data, error } = await req.db.from('assignments').delete().eq('id', param(req, 'id')).select('id');
   if (error?.code === '23503') {
     throw HttpError.conflict('This assignment is still in use and cannot be removed yet');
   }
   if (error) throw fromPostgrestError(error);
+  if (!data || data.length === 0) throw HttpError.notFound('Assignment not found');
   res.status(204).end();
 });
 
@@ -416,6 +418,14 @@ const myScheduleQuerySchema = z.object({
     .default(false),
 });
 
+/** Time responses for many assignments, in URL-safe batches (W7-RESP-D5). */
+const timeResponsesFor = async (db: Db, assignmentIds: readonly string[]) => {
+  const batches = await Promise.all(
+    chunk(assignmentIds).map((ids) => unwrap(db.from('assignment_time_responses').select('*').in('assignment_id', ids))),
+  );
+  return batches.flatMap((rows) => rows ?? []);
+};
+
 scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, res) => {
   const { from, to, status, include_past } = parsedQuery<z.infer<typeof myScheduleQuerySchema>>(res);
 
@@ -447,7 +457,7 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
   const [attendance, timeResponses] = assignmentIds.length
     ? await Promise.all([
         attendanceFor(req.db, assignmentIds),
-        unwrap(req.db.from('assignment_time_responses').select('*').in('assignment_id', assignmentIds)),
+        timeResponsesFor(req.db, assignmentIds),
       ])
     : [new Map<string, AttendanceInterval[]>(), []];
 

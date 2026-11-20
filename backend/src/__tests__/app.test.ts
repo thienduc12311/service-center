@@ -80,7 +80,7 @@ describe('CORS', () => {
     const app = await buildApp('false');
     const res = await request(app).get('/health').set('Origin', 'https://attacker.example');
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
-    expect(res.status).toBe(500);
+    expect(res.status).toBeLessThan(500); // W7-ACC-D9: no CORS headers, no server error
   });
 
   it('rejects a vercel preview origin unless previews are enabled', async () => {

@@ -11,6 +11,7 @@ import {
   type PlanTimeRow,
   type RespondToAssignmentSnapshotsInput,
 } from '@service-center/shared';
+import { chunk } from '../lib/chunk.js';
 import { raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import type {
@@ -397,14 +398,20 @@ export const latestDeclineReasons = async (
 ): Promise<Map<string, string>> => {
   const reasons = new Map<string, string>();
   if (assignmentIds.length === 0) return reasons;
-  const rows = await unwrap(
-    db
-      .from('assignment_responses')
-      .select('assignment_id, response_note, created_at')
-      .in('assignment_id', [...assignmentIds])
-      .eq('status', 'declined')
-      .order('created_at', { ascending: false }),
+  const batches = await Promise.all(
+    chunk(assignmentIds).map((ids) =>
+      unwrap(
+        db
+          .from('assignment_responses')
+          .select('assignment_id, response_note, created_at')
+          .in('assignment_id', ids)
+          .eq('status', 'declined')
+          .order('created_at', { ascending: false }),
+      ),
+    ),
   );
+  // Each batch is newest first; assignments never span batches, so merging keeps that per assignment.
+  const rows = batches.flatMap((batch) => batch ?? []);
   const seen = new Set<string>();
   for (const row of rows ?? []) {
     // Newest first: only the latest decline counts, even when it had no reason.

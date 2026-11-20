@@ -1,9 +1,18 @@
 import { z } from 'zod';
+import { parseKeysetCursor } from '../lib/keyset.js';
 import { parseLocalDate } from '../lib/timezone.js';
 
 export const uuid = z.string().uuid();
 export const isoDateTime = z.string().datetime({ offset: true }).or(z.string().datetime());
-export const nonEmpty = z.string().trim().min(1);
+/**
+ * A keyset `before` cursor as the API issues it: a timestamp with any offset
+ * (PostgREST returns `+00:00`), optionally followed by `~<row id>`.
+ */
+export const keysetCursorSchema = z
+  .string()
+  .max(100)
+  .refine((value) => parseKeysetCursor(value) !== null, 'Invalid cursor');
+export const nonEmpty =z.string().trim().min(1);
 
 /** `YYYY-MM-DD`, optionally followed by a time and an offset (ISO 8601). */
 const INSTANT_PATTERN = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/i;

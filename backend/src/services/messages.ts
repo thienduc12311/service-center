@@ -14,6 +14,7 @@ import {
   type SendOperationalMessageResult,
 } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
+import { beforeFilter } from '../lib/keyset.js';
 import { raw, unwrap } from '../lib/supabase.js';
 import { groupMessageOutcomes, type CollaborationCaller, type MessageOutcomeRow } from '../model/collaboration.model.js';
 import { deliverEffectNow } from './delivery-worker.js';
@@ -53,6 +54,13 @@ const loadMessage = async (caller: CollaborationCaller, id: string): Promise<Ope
 };
 
 export const sendMessage = async (caller: CollaborationCaller, input: SendOperationalMessageInput): Promise<SendOperationalMessageResult> => {
+  if (input.template_id) {
+    // An archived template can no longer be chosen (W7-MSG-D8); an unreadable one is left to the database's 404.
+    const template = await unwrap(
+      caller.db.from('message_templates').select('archived_at').eq('id', input.template_id).eq('organization_id', caller.orgId).maybeSingle(),
+    );
+    if (template?.archived_at) throw HttpError.unprocessable('That template has been archived');
+  }
   const rows = (await unwrap(raw(caller.db).rpc('send_operational_message', {
     p_organization_id: caller.orgId,
     p_audience: audiencePayload(input.audience),
@@ -95,7 +103,8 @@ export const listMessages = async (
   } else if (!(await isAdmin(caller))) {
     select = select.eq('created_by', caller.userId);
   }
-  const rows = (await unwrap(select.order('created_at', { ascending: false }).limit(query.limit))) ?? [];
+  if (query.before) select = select.or(beforeFilter(query.before));
+  const rows = (await unwrap(select.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(query.limit))) ?? [];
   const names = await senderNames(caller, rows.map((row) => row.created_by));
   return rows.map((row) => ({ ...row, sender_name: names.get(row.created_by) ?? null, sent_by_me: row.created_by === caller.userId }));
 };
@@ -183,8 +192,12 @@ export const updateTemplate = async (
   if (input.expected_revision !== undefined) update = update.eq('revision', input.expected_revision);
   const row = await unwrap(update.select('*').maybeSingle());
   if (row) return row;
-  const current = await unwrap(caller.db.from('message_templates').select('id').eq('id', id).maybeSingle());
-  if (current && input.expected_revision !== undefined) {
+  const current = await unwrap(
+    caller.db.from('message_templates').select('id, revision').eq('id', id).eq('organization_id', caller.orgId).is('archived_at', null).maybeSingle(),
+  );
+  // Stale only when the revision really moved; a visible template the caller may not
+  // edit is a 404, like any other row RLS hides from writes (W7-MSG-D7).
+  if (current && input.expected_revision !== undefined && current.revision !== input.expected_revision) {
     throw new HttpError(409, 'This template changed since you opened it', 'template_stale');
   }
   throw HttpError.notFound('Template not found');

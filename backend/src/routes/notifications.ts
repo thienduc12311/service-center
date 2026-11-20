@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  encodeKeysetCursor,
   listNotificationsQuerySchema,
   markNotificationsReadSchema,
   registerDeviceSchema,
@@ -13,6 +14,7 @@ import {
   type RevokeDeviceRegistrationInput,
   type UnreadNotificationCount,
 } from '@service-center/shared';
+import { beforeFilter } from '../lib/keyset.js';
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { adminDb, raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
@@ -61,17 +63,19 @@ notificationsRouter.get('/', validateQuery(listNotificationsQuerySchema), async 
     .eq('organization_id', req.orgId)
     .eq('user_id', req.auth.userId)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit);
 
   // Keyset rather than offset: the feed only ever pages backwards in time.
-  if (before) query = query.lt('created_at', before);
+  if (before) query = query.or(beforeFilter(before));
   if (unread_only) query = query.is('read_at', null);
 
   const items = ((await unwrap(query)) ?? []) as unknown as NotificationFeedItem[];
+  const lastItem = items[items.length - 1];
   const feed: NotificationFeed = {
     items,
     unread: await unreadCountFor(req.db, req.orgId, req.auth.userId),
-    next_cursor: items.length === limit ? (items[items.length - 1]?.created_at ?? null) : null,
+    next_cursor: items.length === limit && lastItem ? encodeKeysetCursor(lastItem) : null,
   };
   res.json(feed);
 });

@@ -638,6 +638,16 @@ describe('latestDeclineReasons', () => {
     expect(calls[0]!.params.get('status')).toBe('eq.declined');
   });
 
+  it('splits a long id list so the request URL stays short (W7-RESP-D5)', async () => {
+    const { db, calls } = fakeDatabase(() => ({ rows: [] }));
+    const ids = Array.from({ length: 250 }, (_, index) => `a${index}`);
+    await latestDeclineReasons(db, ids);
+    expect(calls).toHaveLength(3);
+    for (const call of calls) {
+      expect((call.params.get('assignment_id') ?? '').split(',').length).toBeLessThanOrEqual(100);
+    }
+  });
+
   it('does not query for an empty list', async () => {
     const { db, calls } = fakeDatabase(unexpected);
     expect((await latestDeclineReasons(db, [])).size).toBe(0);

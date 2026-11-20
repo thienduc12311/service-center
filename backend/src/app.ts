@@ -11,6 +11,7 @@ import { requireAuth } from './middleware/auth.js';
 import { withOrganization } from './middleware/organization.js';
 import { HttpError } from './lib/errors.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
+import { rejectUnsupportedText } from './middleware/sanitize-input.js';
 
 import { meRouter } from './routes/me.js';
 import { organizationsRouter } from './routes/organizations.js';
@@ -103,7 +104,8 @@ export const createApp = (): Express => {
         if (config.CORS_ALLOW_VERCEL_PREVIEWS && VERCEL_PREVIEW_ORIGIN.test(origin)) {
           return callback(null, true);
         }
-        callback(new Error(`Origin ${origin} is not allowed`));
+        // Not allowed: answer without CORS headers (the browser blocks it) rather than erroring.
+        callback(null, false);
       },
       credentials: true,
     }),
@@ -117,6 +119,7 @@ export const createApp = (): Express => {
   };
   app.use('/api/v1/imports', express.json({ limit: '2mb' }), importBodyError);
   app.use(express.json());
+  app.use(rejectUnsupportedText);
   if (!config.isTest) {
     // Bearer-token paths (response links, invitations, feeds) are logged by shape only.
     morgan.token<express.Request>('url', (req) => redactTokenPath(req.originalUrl ?? req.url ?? ''));
