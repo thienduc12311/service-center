@@ -89,6 +89,7 @@ _Avoid_: Reply, RSVP
 The frozen set of released requests a person reviews and answers. A Response
 is checked against it, so an answer can't land on a request that changed since
 it was shown.
+_Avoid_: Frozen request, review copy
 
 **Respond Link**:
 The single-use link in a notification that lets a person confirm or decline one
