@@ -64,9 +64,7 @@ Cold starts can add latency. The deployed function region and cold-start contrib
 3. **Phase C: Reduce per-row RLS on these paths** — PERF-007. Depends on Phase 1 of the [database remediation plan](db-performance-remediation.md#plan).
 4. **Phase D: Stop repeating the work** — PERF-008. Polling replaced by Realtime Broadcast pokes.
 
-Initial rollout combines the backend region pin with PERF-003, PERF-004, and PERF-006. Apply the two additive Supabase migrations before deploying the API that calls the new functions. The rollout is expected to bring fixed org-scoped requests from three calls to two (Auth plus organization context) and chat threads to at most four sequential route stages. The one-call middleware target is still open because PERF-005 retains the live Auth check. Measure server time before and after rollout with the same requests.
-
-PERF-007, PERF-008, and the broader database phases follow separately. Their acceptance depends on measuring the new baseline and verifying access and live-update behavior.
+The rollout combines the backend region pin with PERF-003, PERF-004, PERF-006, PERF-007, and PERF-008. Apply the four Supabase migrations before releasing the API and clients that use them. The rollout is expected to bring fixed org-scoped requests from three calls to two (Auth plus organization context) and chat threads to at most four sequential route stages. The one-call middleware target is still open because PERF-005 retains the live Auth check. Compare server timing against the same requests before rollout. The broader database phases follow separately.
 
 ## Baseline
 
@@ -167,6 +165,8 @@ Acceptance: middleware makes one DB call; behaviour for zero, one and several me
 
 Acceptance: EXPLAIN for My Schedule shows no per-row SubPlan for `can_see_released_assignment`; `assignment_attendance_for` mean drops below 10 ms; RLS regression tests cover owner, admin, scoped scheduler, team member, released assignee, other-org member and anonymous.
 
+The isolated regression fixture passed on the base and with the new policies. My Schedule used hashed access sets, and the local attendance RPC averaged 6.08–6.33 ms across three roles. Confirm the RPC mean and compare My Schedule and time-response timings on representative small and large production tenants after rollout.
+
 ### PERF-008
 
 **Realtime Broadcast pokes for chat and live runs**
@@ -174,10 +174,13 @@ Acceptance: EXPLAIN for My Schedule shows no per-row SubPlan for `can_see_releas
 - A trigger on `conversation_messages` (insert, edit, hide, delete) calls `realtime.send` to a private channel `conversation:<id>` with only the conversation id and an event name; never the message body.
 - A policy on `realtime.messages` lets a user join `conversation:<id>` only when `private.can_access_conversation` allows it.
 - Web and mobile subscribe while a thread or the list is open and refetch through the existing API on each poke. Keep a 60 s fallback poll.
-- Same pattern for `live_run:<id>`, replacing the 2 s poll.
+- The chat list subscribes to its 90 newest known conversations to leave room for a thread outside the list and for channels still closing. The fallback also discovers conversations that first become visible while the list is open. [Supabase Realtime limits](https://supabase.com/docs/guides/realtime/limits)
+- `live_run:<id>` replaces the 2 s poll. `live_plan:<id>` discovers new runs in the service-time picker. Plan revisions also refresh open runs so the snapshot warning follows order and service-time edits.
 - A removed member keeps receiving pokes only until the channel re-checks access; a poke carries no content and every fetch is still checked.
 
 Acceptance: a new message appears in an open thread in under 1 s; chat and live-run request volume drops by at least 80% during a service; revocation still ends access on the next fetch.
+
+Measure post-to-render latency on hosted web and native clients, including reconnect and foreground return. Compare chat thread, chat list, live picker, and live state request counts separately and together over comparable service windows.
 
 ## Out of scope
 
