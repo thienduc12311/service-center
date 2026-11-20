@@ -347,6 +347,11 @@ export const createResponses = ({ serviceDb, deliver }: ResponseDependencies): R
         unwrap(serviceDb.from('assignment_request_snapshots').select('*').eq('id', notification.snapshot_id).maybeSingle()),
       ]);
       if (!snapshot || snapshot.superseded_at || snapshot.consumed_at) throw ANSWER_ERRORS.requestStale();
+      // W2-RESP-D4: apply the same currency test the answer applies, so the
+      // person is never shown (and asked to answer) a request it will refuse.
+      const state = await unwrap(serviceDb.rpc('assignment_snapshot_state', { p_snapshot: snapshot.id }));
+      if (state === 'expired') throw ANSWER_ERRORS.linkExpired();
+      if (state !== 'current') throw ANSWER_ERRORS.requestStale();
       // The token was verified above, so this snapshot is the holder's to read.
       const review = await loadReview(serviceDb, snapshot);
       const serviceTime =
