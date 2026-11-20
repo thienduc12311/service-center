@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPokeSubscriptions, pokeTopics } from './realtime-pokes.js';
+import { createPokeSubscriptions, createRealtimePokeSubscriptions, pokeTopics } from './realtime-pokes.js';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const secondId = '22222222-2222-4222-8222-222222222222';
@@ -22,11 +22,13 @@ describe('private poke subscriptions', () => {
       callbacks.set(key, notify);
       return () => remove(key);
     });
-    const subscribe = createPokeSubscriptions(open);
+    const observe = createPokeSubscriptions(open);
     const readList = vi.fn(async () => undefined);
     const readThread = vi.fn(async () => undefined);
-    const disposeList = subscribe([topic, `conversation:${secondId}`], readList);
-    const disposeThread = subscribe([topic], readThread);
+    const list = observe(readList);
+    const thread = observe(readThread);
+    list.setTopics([topic, `conversation:${secondId}`]);
+    thread.setTopics([topic]);
 
     for (const notify of callbacks.values()) notify();
     callbacks.get(topic)?.();
@@ -35,25 +37,39 @@ describe('private poke subscriptions', () => {
     expect(readList).toHaveBeenCalledTimes(1);
     expect(readThread).toHaveBeenCalledTimes(1);
 
-    disposeThread();
+    thread.dispose();
     expect(remove).not.toHaveBeenCalled();
     callbacks.get(topic)?.();
-    disposeList();
+    list.dispose();
     await vi.advanceTimersByTimeAsync(50);
     expect(readList).toHaveBeenCalledTimes(1);
     expect(readThread).toHaveBeenCalledTimes(1);
     expect(remove).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps unchanged topics joined as the list changes', async () => {
+    const leave = vi.fn(async () => undefined);
+    const open = vi.fn((key: string) => () => leave(key));
+    const list = createPokeSubscriptions(open)(async () => undefined);
+    const nextTopic = `conversation:${secondId}`;
+    list.setTopics([topic]);
+    list.setTopics([topic, nextTopic]);
+    list.setTopics([nextTopic]);
+    expect(open.mock.calls).toEqual([[topic, expect.any(Function)], [nextTopic, expect.any(Function)]]);
+    expect(leave.mock.calls).toEqual([[topic]]);
+    list.dispose();
+  });
+
   it('performs a trailing read when a poke arrives during a request', async () => {
     let notify = () => {};
     let finish = () => {};
-    const subscribe = createPokeSubscriptions((_topic, signal) => {
+    const observe = createPokeSubscriptions((_topic, signal) => {
       notify = signal;
       return async () => undefined;
     });
     const refresh = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
-    const dispose = subscribe([topic], refresh);
+    const observer = observe(refresh);
+    observer.setTopics([topic]);
     notify();
     await vi.advanceTimersByTimeAsync(50);
     notify();
@@ -62,22 +78,48 @@ describe('private poke subscriptions', () => {
     finish();
     await vi.advanceTimersByTimeAsync(50);
     expect(refresh).toHaveBeenCalledTimes(2);
-    dispose();
+    observer.dispose();
     finish();
   });
 
   it('waits for a previous leave before rejoining the same topic', async () => {
     let left = () => {};
     const open = vi.fn((_topic: string, _notify: () => void) => () => new Promise<void>((resolve) => { left = resolve; }));
-    const subscribe = createPokeSubscriptions(open);
+    const observe = createPokeSubscriptions(open);
     const refresh = async () => undefined;
-    subscribe([topic], refresh)();
-    const dispose = subscribe([topic], refresh);
+    const first = observe(refresh);
+    first.setTopics([topic]);
+    first.dispose();
+    const second = observe(refresh);
+    second.setTopics([topic]);
     expect(open).toHaveBeenCalledTimes(1);
     left();
     await vi.advanceTimersByTimeAsync(0);
     expect(open).toHaveBeenCalledTimes(2);
-    dispose();
+    second.dispose();
     left();
+  });
+
+  it('checks API access once after a failed join and refreshes again on reconnect', async () => {
+    let updateStatus = (_status: string) => {};
+    const channel = { subscribe: (onStatus: (status: string) => void) => { updateStatus = onStatus; } };
+    const observe = createRealtimePokeSubscriptions({
+      authorize: async () => undefined,
+      open: () => channel,
+      remove: async () => undefined,
+    });
+    const refresh = vi.fn(async () => undefined);
+    const observer = observe(refresh);
+    observer.setTopics([topic]);
+    await vi.advanceTimersByTimeAsync(0);
+    updateStatus('CHANNEL_ERROR');
+    await vi.advanceTimersByTimeAsync(50);
+    updateStatus('TIMED_OUT');
+    await vi.advanceTimersByTimeAsync(50);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    updateStatus('SUBSCRIBED');
+    await vi.advanceTimersByTimeAsync(50);
+    expect(refresh).toHaveBeenCalledTimes(2);
+    observer.dispose();
   });
 });

@@ -8,6 +8,7 @@ import {
 import {
   conversationAccess,
   CONVERSATION_LIST_POLL_MS,
+  CONVERSATION_LIST_TOPIC_LIMIT,
   CONVERSATION_THREAD_POLL_MS,
   LIVE_FALLBACK_POLL_MS,
   REHEARSAL_MANIFEST_TTL_SECONDS,
@@ -662,7 +663,7 @@ export const useConversations = (visible: boolean) => {
     refetchOnWindowFocus: 'always',
   });
   const data = conversationAccess(query.error) === 'unavailable' ? undefined : query.data;
-  useBroadcastRefresh('conversation', visible ? data?.map((conversation) => conversation.id) ?? [] : [], { queryKey, exact: true });
+  useBroadcastRefresh('conversation', visible ? data?.slice(0, CONVERSATION_LIST_TOPIC_LIMIT).map((conversation) => conversation.id) ?? [] : [], { queryKey, exact: true });
   return { ...query, data };
 };
 

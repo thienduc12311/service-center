@@ -9,7 +9,7 @@ insert into poke_fixture values
   ('sam', '33333333-3333-4333-8333-333333333333'),
   ('other_org', gen_random_uuid()), ('other_team', gen_random_uuid()),
   ('chat', gen_random_uuid()), ('other_chat', gen_random_uuid()), ('message', gen_random_uuid()),
-  ('plan', gen_random_uuid()), ('other_plan', gen_random_uuid()),
+  ('plan', gen_random_uuid()), ('other_plan', gen_random_uuid()), ('time', gen_random_uuid()),
   ('run', gen_random_uuid()), ('other_run', gen_random_uuid());
 
 create function pg_temp.id_for(p_name text) returns uuid language sql stable as $$
@@ -46,9 +46,11 @@ delete from public.conversation_messages where id = pg_temp.id_for('message');
 insert into public.plans (id, organization_id, title, service_date, status)
   values (pg_temp.id_for('plan'), pg_temp.id_for('org'), 'Local plan', now(), 'published'),
          (pg_temp.id_for('other_plan'), pg_temp.id_for('other_org'), 'Other plan', now(), 'published');
-insert into public.live_runs (id, organization_id, plan_id, time_starts_at, time_ends_at, snapshot, snapshot_revision, idempotency_key)
-  values (pg_temp.id_for('run'), pg_temp.id_for('org'), pg_temp.id_for('plan'), now(), now(), '[]', 1, 'run'),
-         (pg_temp.id_for('other_run'), pg_temp.id_for('other_org'), pg_temp.id_for('other_plan'), now(), now(), '[]', 1, 'run');
+insert into public.plan_times (id, plan_id, kind, starts_at, ends_at)
+  values (pg_temp.id_for('time'), pg_temp.id_for('plan'), 'service', now(), now() + interval '1 hour');
+insert into public.live_runs (id, organization_id, plan_id, plan_time_id, time_starts_at, time_ends_at, snapshot, snapshot_revision, idempotency_key)
+  values (pg_temp.id_for('run'), pg_temp.id_for('org'), pg_temp.id_for('plan'), pg_temp.id_for('time'), now(), now() + interval '1 hour', '[]', 1, 'run'),
+         (pg_temp.id_for('other_run'), pg_temp.id_for('other_org'), pg_temp.id_for('other_plan'), null, now(), now(), '[]', 1, 'run');
 update public.live_runs set status = 'live', current_index = 0, current_started_at = now(), started_at = now(),
    revision = revision + 1 where id = pg_temp.id_for('run');
 update public.live_runs set revision = revision + 1 where id = pg_temp.id_for('run');
@@ -57,8 +59,15 @@ select pg_temp.check((select count(*) = 5 from realtime.messages where topic = '
   'create, edit, hide, soft delete and hard delete each notify');
 select pg_temp.check((select count(*) = 3 from realtime.messages where topic = 'live_run:' || pg_temp.id_for('run')),
   'creation and state revisions notify the run');
-select pg_temp.check((select count(*) = 2 from realtime.messages where topic = 'live_plan:' || pg_temp.id_for('plan')),
-  'creation and status changes notify discovery; other revisions do not');
+select pg_temp.check((select count(*) = 3 from realtime.messages where topic = 'live_plan:' || pg_temp.id_for('plan')),
+  'service time creation, run creation and status changes notify discovery; other run revisions do not');
+
+update public.plans set content_revision = content_revision + 1 where id = pg_temp.id_for('plan');
+update public.plan_times set ends_at = ends_at + interval '10 minutes' where id = pg_temp.id_for('time');
+select pg_temp.check((select count(*) = 5 from realtime.messages where topic = 'live_run:' || pg_temp.id_for('run')),
+  'a plan revision and an actual time change notify the open run');
+select pg_temp.check((select count(*) = 5 from realtime.messages where topic = 'live_plan:' || pg_temp.id_for('plan')),
+  'a plan revision and an actual time change notify discovery');
 select pg_temp.check(not exists (
   select 1 from realtime.messages
   where topic in ('conversation:' || pg_temp.id_for('chat'), 'live_plan:' || pg_temp.id_for('plan'), 'live_run:' || pg_temp.id_for('run'))

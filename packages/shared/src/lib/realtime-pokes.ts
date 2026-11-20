@@ -2,6 +2,8 @@
 export type PokeResource = 'conversation' | 'live_run' | 'live_plan';
 export const POKE_FALLBACK_MS = 60_000;
 export const POKE_EVENT = 'changed';
+// Leave room for a thread outside the list and for channels still leaving.
+export const CONVERSATION_LIST_TOPIC_LIMIT = 90;
 
 type PokeListener = () => void;
 type CloseChannel = () => Promise<unknown>;
@@ -11,6 +13,21 @@ interface TopicSubscription {
   listeners: Set<PokeListener>;
   close: CloseChannel;
   closing: boolean;
+}
+
+export interface PokeObserver {
+  setTopics: (topics: readonly string[]) => void;
+  dispose: () => void;
+}
+
+interface PokeChannel {
+  subscribe: (onStatus: (status: string) => void) => unknown;
+}
+
+interface PokeTransport<Channel extends PokeChannel> {
+  authorize: () => Promise<void>;
+  open: (topic: string, notify: PokeListener) => Channel;
+  remove: (channel: Channel) => Promise<unknown>;
 }
 
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
@@ -32,8 +49,9 @@ export const createPokeSubscriptions = (open: OpenChannel) => {
     byTopic.set(topic, { listeners, close, closing: false });
   };
 
-  return (topics: readonly string[], refresh: () => Promise<unknown>): (() => void) => {
+  return (refresh: () => Promise<unknown>): PokeObserver => {
     let active = true;
+    let topics = new Set<string>();
     let dirty = false;
     let refreshing = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -55,31 +73,78 @@ export const createPokeSubscriptions = (open: OpenChannel) => {
       }, 50);
     };
 
-    for (const topic of topics) {
+    const leave = (topic: string) => {
       const subscription = byTopic.get(topic);
-      if (subscription) {
-        subscription.listeners.add(notify);
-        if (!subscription.closing) notify();
-      } else {
-        connect(topic, new Set([notify]));
-      }
-    }
+      if (!subscription) return;
+      subscription.listeners.delete(notify);
+      if (subscription.listeners.size || subscription.closing) return;
+      subscription.closing = true;
+      const closed = () => {
+        if (subscription.listeners.size) connect(topic, subscription.listeners);
+        else byTopic.delete(topic);
+      };
+      void subscription.close().then(closed, closed);
+    };
 
-    return () => {
-      active = false;
-      clearTimeout(timer);
-      for (const topic of topics) {
-        const subscription = byTopic.get(topic);
-        if (!subscription) continue;
-        subscription.listeners.delete(notify);
-        if (subscription.listeners.size || subscription.closing) continue;
-        subscription.closing = true;
-        const closed = () => {
-          if (subscription.listeners.size) connect(topic, subscription.listeners);
-          else byTopic.delete(topic);
-        };
-        void subscription.close().then(closed, closed);
-      }
+    return {
+      setTopics: (nextTopics) => {
+        if (!active) return;
+        const next = new Set(nextTopics);
+        for (const topic of topics) {
+          if (!next.has(topic)) leave(topic);
+        }
+        for (const topic of next) {
+          if (topics.has(topic)) continue;
+          const subscription = byTopic.get(topic);
+          if (subscription) {
+            subscription.listeners.add(notify);
+            if (!subscription.closing) notify();
+          } else {
+            connect(topic, new Set([notify]));
+          }
+        }
+        topics = next;
+      },
+      dispose: () => {
+        active = false;
+        clearTimeout(timer);
+        for (const topic of topics) leave(topic);
+        topics.clear();
+      },
     };
   };
+};
+
+export const createRealtimePokeSubscriptions = <Channel extends PokeChannel>(transport: PokeTransport<Channel>) => {
+  let authorizing: Promise<void> | undefined;
+  const authorize = () => authorizing ??= transport.authorize().finally(() => {
+    authorizing = undefined;
+  });
+
+  return createPokeSubscriptions((topic, notify) => {
+    let closed = false;
+    let joinFailed = false;
+    const channel = transport.open(topic, notify);
+    const join = () => {
+      if (closed) return;
+      channel.subscribe((status) => {
+        if (closed) return;
+        if (status === 'SUBSCRIBED') {
+          joinFailed = false;
+          // Refresh after every join, including an SDK reconnect.
+          notify();
+        } else if (!joinFailed && (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')) {
+          joinFailed = true;
+          // Check access through the API once while the SDK retries the join.
+          notify();
+        }
+      });
+    };
+    // The SDK can retry its own token acquisition if the explicit refresh fails.
+    void authorize().then(join, join);
+    return () => {
+      closed = true;
+      return transport.remove(channel);
+    };
+  });
 };

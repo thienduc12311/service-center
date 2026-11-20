@@ -99,3 +99,25 @@ revoke all on function private.broadcast_live_run_change() from public, anon, au
 create trigger live_runs_broadcast
   after insert or update or delete on public.live_runs
   for each row execute function private.broadcast_live_run_change();
+
+create function private.broadcast_live_plan_revision()
+returns trigger
+language plpgsql security definer
+set search_path = ''
+as $$
+begin
+  perform private.send_resource_poke('live_plan', new.id);
+  -- The run-state API compares the current plan revision with its snapshot.
+  -- Plan-time edits also bump the revision, so they use the same signal.
+  perform private.send_resource_poke('live_run', r.id)
+    from public.live_runs r
+   where r.plan_id = new.id and r.status in ('ready', 'live', 'paused');
+  return null;
+end;
+$$;
+revoke all on function private.broadcast_live_plan_revision() from public, anon, authenticated;
+
+create trigger live_plan_revision_broadcast
+  after update of content_revision on public.plans
+  for each row when (old.content_revision is distinct from new.content_revision)
+  execute function private.broadcast_live_plan_revision();
