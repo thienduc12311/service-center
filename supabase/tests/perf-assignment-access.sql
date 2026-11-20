@@ -93,6 +93,9 @@ insert into perf007_requests values
   ('untimed-release', 'untimed', 'band', 'owner', 'released', 'all', '{fallback}'),
   ('empty-selected', 'timed', 'band', 'legacy', 'released', 'selected', '{}'),
   ('foreign-release', 'foreign-plan', 'foreign-team', 'outsider', 'released', 'all', '{foreign-time}'),
+  -- Privileged setup models historical rows with mismatched plan and team tenants.
+  ('cross-plan-prepared', 'timed', 'foreign-team', 'admin', 'prepared', 'all', '{rehearsal,service}'),
+  ('cross-team-prepared', 'foreign-plan', 'band', 'outsider', 'prepared', 'all', '{foreign-time}'),
   ('disabled-own', 'disabled-plan', 'disabled-team', 'disabled-owner', 'released', 'selected', '{disabled-time}'),
   ('disabled-prepared', 'disabled-plan', 'disabled-other', 'disabled-owner', 'prepared', 'all', '{disabled-time}');
 
@@ -228,6 +231,13 @@ begin
   update public.assignment_attendance_times set created_at = now() where assignment_id = added
   returning assignment_id into strict changed;
   delete from public.assignment_attendance_times where assignment_id = added returning assignment_id into strict changed;
+  update public.assignments set plan_id = pg_temp.id('other-plan') where id = added
+  returning id into strict changed;
+  begin
+    update public.assignments set team_id = pg_temp.id('foreign-team') where id = added returning id into changed;
+    raise exception 'Scheduler moved an assignment to a team in another organization';
+  exception when insufficient_privilege then null;
+  end;
   delete from public.assignments where id = added returning id into strict changed;
 
   begin

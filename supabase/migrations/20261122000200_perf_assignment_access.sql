@@ -39,33 +39,40 @@ language sql stable security definer set search_path = '' as $$
   join public.plans p on p.organization_id = o.id;
 $$;
 
-create function private.my_assignment_scheduling_targets()
-returns table (plan_id uuid, team_id uuid)
+create function private.my_assignment_scheduling_ids(p_plan_ids boolean)
+returns setof uuid
 language sql stable security definer set search_path = '' as $$
   -- The effective access resolver expands inherited folder grants into
   -- service-type rows and preserves owner/admin and legacy scheduler access.
   with scheduling_scopes as materialized (
-    select m.organization_id, a.scope_type, a.scope_id
+    select distinct m.organization_id, a.scope_type, a.scope_id
       from public.organization_members m
       cross join lateral private.effective_access_rows(m.user_id, m.organization_id) a
      where m.user_id = (select auth.uid()) and m.status = 'active'
        and a.capability = 'scheduling.manage'
-       and a.scope_type in ('organization', 'service_type', 'team')
+       and case when p_plan_ids then a.scope_type in ('organization', 'service_type')
+                else a.scope_type = 'team' end
   )
-  select distinct p.id, t.id
+  select p.id
     from scheduling_scopes s
     join public.plans p on p.organization_id = s.organization_id
-      and (s.scope_type <> 'service_type' or s.scope_id = p.service_type_id)
-    join public.teams t on t.organization_id = s.organization_id
-      and (s.scope_type <> 'team' or s.scope_id = t.id);
+   where s.scope_type = 'organization'
+  union
+  select p.id
+    from scheduling_scopes s
+    join public.plans p on p.organization_id = s.organization_id and p.service_type_id = s.scope_id
+   where s.scope_type = 'service_type'
+  union
+  -- Team grants already have a same-organization foreign key to teams.
+  select s.scope_id from scheduling_scopes s where s.scope_type = 'team';
 $$;
 
 revoke all on function private.my_assignment_person_ids(),
   private.my_assignment_related_team_ids(), private.my_released_assignment_plan_ids(boolean),
-  private.my_assignment_scheduling_targets() from public, anon, service_role;
+  private.my_assignment_scheduling_ids(boolean) from public, anon, service_role;
 grant execute on function private.my_assignment_person_ids(),
   private.my_assignment_related_team_ids(), private.my_released_assignment_plan_ids(boolean),
-  private.my_assignment_scheduling_targets() to authenticated;
+  private.my_assignment_scheduling_ids(boolean) to authenticated;
 
 alter policy assignments_select on public.assignments using (
   (visibility = 'released' and (
@@ -76,7 +83,12 @@ alter policy assignments_select on public.assignments using (
       and (user_id = (select auth.uid()) or team_id in (select private.my_assignment_related_team_ids()))
     )
   ))
-  or (plan_id, team_id) in (select s.plan_id, s.team_id from private.my_assignment_scheduling_targets() s)
+  -- Keep the hashed plan and team sets independent. The indexed tenant check
+  -- runs only on candidates and also rejects historical cross-organization pairs.
+  or case when plan_id in (select private.my_assignment_scheduling_ids(true))
+            or team_id in (select private.my_assignment_scheduling_ids(false))
+          then public.org_of_plan(plan_id) = public.org_of_team(team_id)
+          else false end
 );
 
 -- Uncorrelated lookup keeps assignments RLS as the source of child access.
