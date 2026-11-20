@@ -1,5 +1,6 @@
 import { Router, type Request } from 'express';
 import { param } from '../lib/params.js';
+import { earliestServiceStart } from '../model/plan-time.model.js';
 import {
   createPlanItemSchema,
   createPlanPositionSchema,
@@ -164,7 +165,7 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
     ...plan
   } = req.body as UpdatePlanInput;
   const planId = param(req, 'id');
-  const existingPlan = await unwrapOne(req.db.from('plans').select('id, location, organization_id, content_revision').eq('id', planId).eq('organization_id', req.orgId).single());
+  const existingPlan = await unwrapOne(req.db.from('plans').select('id, location, organization_id, content_revision, service_date').eq('id', planId).eq('organization_id', req.orgId).single());
 
   // F04: one transaction locks the plan, checks its revision and the previewed
   // impact, keeps time ids across reorder, resolves requests left without a
@@ -185,11 +186,18 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
 
   // Do this after the versioned time replacement so a stale time editor cannot
   // partially apply unrelated plan fields before receiving its 409.
-  if (Object.keys(plan).length > 0) {
+  // The plan's own date follows its earliest service time, so lists, the
+  // dashboard and headers agree with the Times row (W7-NAT-D2, W7-WEB-D5).
+  const syncedDate = times && plan.service_date === undefined ? earliestServiceStart(times) : null;
+  const planFields: typeof plan =
+    syncedDate && Date.parse(syncedDate) !== Date.parse(existingPlan.service_date)
+      ? { ...plan, service_date: syncedDate }
+      : plan;
+  if (Object.keys(planFields).length > 0) {
     const updated = await unwrap(
       req.db
         .from('plans')
-        .update(plan)
+        .update(planFields)
         .eq('id', planId)
         .eq('organization_id', req.orgId)
         .select('id')
