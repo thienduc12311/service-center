@@ -78,6 +78,19 @@ Telling an assigned person they are expected, and asking them to confirm or
 decline. Distinct from inviting, which is about joining the organization.
 _Avoid_: Inviting, requesting
 
+**Response**:
+A person's confirm or decline, settling one or more Assignments. It may come
+from the person signed in, from a respond link, from a delegate acting for
+them, or as a Request Snapshot commit; each records the scheduler's update in
+the same change.
+_Avoid_: Reply, RSVP
+
+**Request Snapshot**:
+The frozen set of released requests a person reviews and answers. A Response
+is checked against it, so an answer can't land on a request that changed since
+it was shown.
+_Avoid_: Frozen request, review copy
+
 **Respond Link**:
 The single-use link in a notification that lets a person confirm or decline one
 assignment.

@@ -21,8 +21,6 @@ import {
   type RespondToAssignmentInput,
   type PreviewAssignmentResponsesInput,
   type RespondToAssignmentSnapshotsInput,
-  type AssignmentRequestSnapshotRow,
-  type AssignmentResponseCommitResult,
   updateAssignmentSchema,
   type MyScheduleEntry,
   type SchedulingConflict,
@@ -44,15 +42,10 @@ import { validateBody, validateQuery, parsedQuery } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
 import { adminDb, raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
-import { latestDeclineReasons, respondToOwnAssignment } from '../services/assignment-responses.js';
-import {
-  effectIdForKey,
-  latestResponseEffectId,
-  notifyPlanAssignments,
-} from '../services/deliveries.js';
+import { createResponses, latestDeclineReasons } from '../services/assignment-responses.js';
+import { effectIdForKey, notifyPlanAssignments } from '../services/deliveries.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
 import { releasePlanAssignments } from '../services/releases.js';
-import { loadAssignmentResponseReview } from '../services/assignment-snapshots.js';
 
 export const planAssignmentsRouter: Router = Router({ mergeParams: true });
 export const planNotifyRouter: Router = Router({ mergeParams: true });
@@ -61,6 +54,8 @@ export const assignmentsRouter: Router = Router();
 export const scheduleRouter: Router = Router();
 export const schedulingRouter: Router = Router();
 export const planAssignmentTimesRouter: Router = Router({ mergeParams: true });
+
+const responses = createResponses({ serviceDb: adminDb, deliver: deliverEffectNow });
 
 const conflictsFor = async (
   req: { db: import('../lib/supabase.js').Db; orgId: string },
@@ -355,13 +350,7 @@ assignmentsRouter.post(
   validateBody(previewAssignmentResponsesSchema),
   async (req, res) => {
     const { assignment_ids } = req.body as PreviewAssignmentResponsesInput;
-    const snapshots = (await unwrap(
-      req.db.rpc('preview_assignment_responses', {
-        p_organization_id: req.orgId,
-        p_assignment_ids: assignment_ids,
-      }),
-    )) as AssignmentRequestSnapshotRow[];
-    res.json(await Promise.all(snapshots.map(loadAssignmentResponseReview)));
+    res.json(await responses.previewSnapshots({ db: req.db, orgId: req.orgId }, assignment_ids));
   },
 );
 
@@ -371,15 +360,7 @@ assignmentsRouter.post(
   validateBody(respondToAssignmentSnapshotsSchema),
   async (req, res) => {
     const body = req.body as RespondToAssignmentSnapshotsInput;
-    const result = (await unwrap(
-      req.db.rpc('respond_to_assignment_snapshots', {
-        p_organization_id: req.orgId,
-        p_responses: body.responses,
-        p_idempotency_key: body.idempotency_key,
-      }),
-    )) as AssignmentResponseCommitResult;
-    await Promise.all(result.effect_ids.map(deliverEffectNow));
-    res.json(result);
+    res.json(await responses.commitSnapshotResponses({ db: req.db, orgId: req.orgId }, body));
   },
 );
 
@@ -406,27 +387,22 @@ assignmentsRouter.delete('/:id', requireCapability('scheduling.manage'), async (
 });
 
 /**
- * Accept, decline or withdraw a confirmation. RLS lets a person update only
- * their own assignment, and a database trigger holds them to the permitted
- * transitions, so this endpoint is safe for every role.
+ * Accept, decline or withdraw a confirmation. The database checks and writes
+ * the answer as the caller (RLS: only their own assignment), so this endpoint
+ * is safe for every role.
  */
 assignmentsRouter.post('/:id/respond', validateBody(respondToAssignmentSchema), async (req, res) => {
   const body = req.body as RespondToAssignmentInput;
-  const outcome = await respondToOwnAssignment({
-    db: req.db,
-    orgId: req.orgId,
-    userId: req.auth.userId,
-    assignmentId: param(req, 'id'),
-    status: body.status,
-    reason: body.reason,
-    expectedStatus: body.expected_status,
-  });
-  // The scheduler update was recorded with the answer; deliver it now. A
-  // delivery problem never turns a committed answer into an error.
-  if (outcome.transition !== 'unchanged') {
-    await deliverEffectNow(await latestResponseEffectId(adminDb, outcome.assignment.id));
-  }
-  res.json(outcome.assignment);
+  res.json(
+    await responses.respondAsSelf({
+      db: req.db,
+      orgId: req.orgId,
+      assignmentId: param(req, 'id'),
+      status: body.status,
+      reason: body.reason,
+      expectedStatus: body.expected_status,
+    }),
+  );
 });
 
 // -------------------------------------------------------- my schedule ------

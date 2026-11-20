@@ -1362,6 +1362,20 @@ export type Database = {
         };
         Returns: AssignmentRow[];
       };
+      respond_as_self: {
+        Args: {
+          p_organization_id: string;
+          p_assignment_id: string;
+          p_status: AssignmentStatus;
+          p_expected_status?: AssignmentStatus | null;
+          p_reason?: string | null;
+        };
+        Returns: Array<{
+          assignment: AssignmentRow;
+          transition: 'answer' | 'withdrawal' | 'unchanged';
+          effect_id: string | null;
+        }>;
+      };
       preview_assignment_responses: {
         Args: { p_organization_id: string; p_assignment_ids: string[] };
         Returns: AssignmentRequestSnapshotRow[];

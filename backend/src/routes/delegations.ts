@@ -8,14 +8,14 @@ import {
 } from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { validateBody } from '../lib/validate.js';
-import { raw } from '../lib/supabase.js';
+import { adminDb, raw } from '../lib/supabase.js';
 import { fromPostgrestError } from '../lib/errors.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
+import { createResponses } from '../services/assignment-responses.js';
 import {
   delegatedSchedule,
   delegationSummary,
   listDelegations,
-  respondAsDelegate,
   type AvailabilityContext,
 } from '../services/availability.js';
 
@@ -25,6 +25,8 @@ import {
  * re-checked by the database against the live grant.
  */
 export const delegationsRouter: Router = Router();
+
+const responses = createResponses({ serviceDb: adminDb, deliver: deliverEffectNow });
 
 const context = (req: Request): AvailabilityContext => ({
   db: req.db, orgId: req.orgId, userId: req.auth.userId, access: req.access,
@@ -61,14 +63,13 @@ delegationsRouter.get('/:id/schedule', async (req, res) => {
 
 delegationsRouter.post('/:id/assignments/:assignmentId/respond', validateBody(delegatedRespondSchema), async (req, res) => {
   const input = req.body as DelegatedRespondInput;
-  const outcome = await respondAsDelegate(context(req), {
-    delegationId: param(req, 'id'),
-    assignmentId: param(req, 'assignmentId'),
-    status: input.status,
-    expectedStatus: input.expected_status,
-    reason: input.status === 'declined' ? input.reason?.trim() || null : null,
-  });
-  // The scheduler update was enqueued with the answer; deliver it after commit.
-  if (outcome.result.transition !== 'unchanged') await deliverEffectNow(outcome.effectId);
-  res.json(outcome.result);
+  res.json(
+    await responses.respondAsDelegate(context(req), {
+      delegationId: param(req, 'id'),
+      assignmentId: param(req, 'assignmentId'),
+      status: input.status,
+      expectedStatus: input.expected_status,
+      reason: input.reason ?? null,
+    }),
+  );
 });
