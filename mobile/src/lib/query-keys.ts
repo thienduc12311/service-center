@@ -150,6 +150,8 @@ export const queryKeys = {
     [...privateRoot(scope), 'conversations', 'detail', conversationId ?? null] as const,
   conversationHistory: (scope: ProtectedQueryScope | null, conversationId: string) =>
     [...privateRoot(scope), 'conversations', 'detail', conversationId, 'history'] as const,
+  conversationSend: (scope: ProtectedQueryScope | null, conversationId: string) =>
+    [...privateRoot(scope), 'conversations', 'send', conversationId] as const,
   conversationSearch: (scope: ProtectedQueryScope | null, conversationId: string, query: string) =>
     [...privateRoot(scope), 'conversations', 'detail', conversationId, 'search', query] as const,
   /** MOB-019: current participants of one conversation, the only people worth mentioning. */

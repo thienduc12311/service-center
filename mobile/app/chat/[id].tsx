@@ -44,6 +44,7 @@ import { conversationDrafts, type ConversationDraft } from '../../src/lib/conver
 import { conversationWindow, readConversationHistory, type ConversationHistory } from '../../src/lib/conversation-thread';
 import { conversationTitle } from '../../src/lib/conversation-labels';
 import { useBroadcastRefresh } from '../../src/lib/useBroadcastRefresh';
+import { useConversationSend, type SubmittedMessage } from '../../src/lib/useConversationSend';
 import { useScreenVisible } from '../../src/lib/useScreenVisible';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
@@ -74,9 +75,6 @@ const BOTTOM_SLOP = 48;
 interface UnnotifiedMention extends DiscussionMention {
   resolution: Exclude<MentionResolution, 'notified'>;
 }
-
-/** What the composer tells the person after a send attempt. */
-type SendNotice = 'uncertain' | 'rateLimited' | 'gone' | 'replyGone' | 'alreadySent';
 
 const emptyDraft = (): ConversationDraft => ({ id: newIdempotencyKey(), body: '', mentionIds: [], replyToId: null });
 
@@ -371,6 +369,34 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
   const [draft, setDraft] = useState<ConversationDraft>(() => conversationDrafts.get(queryScope, conversationId) ?? emptyDraft());
   useEffect(() => conversationDrafts.set(queryScope, conversationId, draft), [conversationId, draft, queryScope]);
   const replyTo = draft.replyToId ? byId.get(draft.replyToId) ?? null : null;
+  const send = useConversationSend({
+    conversationId,
+    known,
+    canSend: () => !deniedRead.current,
+    onConfirmed: async (message) => {
+      // A read that started before the post may still return the old thread.
+      await queryClient.cancelQueries({ queryKey, exact: true });
+      const newest = queryClient.getQueryData<ConversationDetail>(queryKey)?.messages.data;
+      const older = queryClient.getQueryData<ConversationHistory>(historyKey)?.data;
+      if (!newest?.some(({ id }) => id === message.id) && !older?.some(({ id }) => id === message.id)) {
+        mergeOne(message, true);
+      }
+    },
+    refresh: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey, exact: true }),
+        queryClient.invalidateQueries({ queryKey: listKey, exact: true }),
+      ]);
+    },
+  });
+  const submitDraft = () => {
+    if (!send.submit(draft)) return false;
+    follow.current = true;
+    setSearch('');
+    conversationDrafts.clear(queryScope, conversationId);
+    setDraft(emptyDraft());
+    return true;
+  };
 
   if (detail.isLoading && access !== 'unavailable') {
     return (
@@ -533,7 +559,7 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
             <Text style={[styles.hint, styles.centerHint]}>{t('mobileChat.allLoaded')}</Text>
           ) : null}
 
-          {!searching && known.length === 0 ? (
+          {!searching && known.length === 0 && send.outgoing.length === 0 ? (
             <EmptyState icon="chat" title={t('conversation.noMessages')} />
           ) : null}
 
@@ -555,23 +581,26 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
               onBlockAfterReport={() => confirmBlock(message)}
             />
           ))}
+          {!searching && send.outgoing.map(({ sent, status, error }) => (
+            <OutgoingMessageEntry
+              key={sent.id}
+              sent={sent}
+              pending={status === 'pending'}
+              error={error}
+              parent={sent.replyToId ? byId.get(sent.replyToId) ?? null : null}
+              onRetry={() => send.retry(sent, error)}
+              onDismiss={() => send.dismiss(sent.id)}
+            />
+          ))}
         </ScrollView>
 
         <Composer
-          conversationId={conversationId}
           conversation={conversation}
           candidates={candidates.data ?? []}
-          known={known}
           draft={draft}
           setDraft={setDraft}
           replyTo={replyTo}
-          onPosted={(message) => {
-            mergeOne(message, true);
-            follow.current = true;
-            setSearch('');
-            void refresh();
-          }}
-          onFailed={() => void refresh()}
+          onSend={submitDraft}
         />
       </KeyboardAvoidingView>
     </Screen>
@@ -882,89 +911,68 @@ function ReportPanel({ conversationId, message, onClose, onBlock }: ReportPanelP
   );
 }
 
+interface OutgoingMessageEntryProps {
+  sent: SubmittedMessage;
+  pending: boolean;
+  error: unknown;
+  parent: ConversationMessage | null;
+  onRetry: () => void;
+  onDismiss: () => void;
+}
+
+function OutgoingMessageEntry({ sent, pending, error, parent, onRetry, onDismiss }: OutgoingMessageEntryProps) {
+  const { t } = useTranslation(['messages', 'common']);
+  const format = useFormatters();
+  const errorText = useErrorText();
+  const styles = useThemedStyles(makeStyles);
+  const outcome = pending ? null : conversationPostOutcome(error);
+  const quote = parent && (parent.body
+    ? t('conversation.quote', { author: parent.author_name ?? t('common:fallback.someone'), body: parent.body })
+    : t('conversation.quoteRemoved', { author: parent.author_name ?? t('common:fallback.someone') }));
+  const failure = !outcome ? null : outcome === 'gone' || outcome === 'rateLimited' || outcome === 'uncertain'
+    ? new LocalizedError({ key: `messages:mobileChat.${outcome === 'gone' && sent.replyToId ? 'replyGone' : outcome}` })
+    : new LocalizedError({ key: 'messages:composer.notSent', values: { reason: errorText(error) } });
+
+  return (
+    <View style={[styles.entry, styles.entryMine]}>
+      <View style={[styles.entryBody, styles.entryBodyMine]}>
+        <View style={[styles.bubble, styles.bubbleMine]}>
+          {quote ? <Text style={[styles.quote, styles.quoteMine]} numberOfLines={2}>{quote}</Text> : null}
+          <Text selectable style={[styles.body, styles.bodyMine]}>{sent.body}</Text>
+        </View>
+        <Text style={[styles.time, styles.timeMine]}>{format.dateTime(sent.createdAt)}</Text>
+        {pending ? (
+          <Text accessibilityLiveRegion="polite" style={styles.hint}>{t('delivery.status.sending')}</Text>
+        ) : (
+          <>
+            <ErrorNotice error={failure} />
+            <View style={[styles.actions, styles.actionsMine]}>
+              {outcome === 'gone' && !sent.replyToId ? null : <TextAction label={t('common:actions.retry')} onPress={onRetry} />}
+              <TextAction label={t('common:actions.remove')} onPress={onDismiss} />
+            </View>
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
 interface ComposerProps {
-  conversationId: string;
   conversation: ConversationSummary;
   candidates: readonly MentionCandidate[];
-  known: readonly ConversationMessage[];
   draft: ConversationDraft;
   setDraft: (update: (current: ConversationDraft) => ConversationDraft) => void;
   replyTo: ConversationMessage | null;
-  onPosted: (message: ConversationMessage) => void;
-  onFailed: () => void;
+  onSend: () => boolean;
 }
 
-/**
- * Text box with explicit mentions and an optional reply, like the website
- * composer. The draft keeps one client message id until the server confirms
- * it — across failures and leaving the screen — so sending again after no
- * answer replays the same message instead of posting it twice.
- */
-function Composer({
-  conversationId,
-  conversation,
-  candidates,
-  known,
-  draft,
-  setDraft,
-  replyTo,
-  onPosted,
-  onFailed,
-}: ComposerProps) {
+/** Text box with explicit mentions and an optional reply. */
+function Composer({ conversation, candidates, draft, setDraft, replyTo, onSend }: ComposerProps) {
   const { t } = useTranslation(['messages', 'common']);
-  const { generation, isCurrentGeneration } = useAuth();
-  const errorText = useErrorText();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [choosing, setChoosing] = useState(false);
-  const [notice, setNotice] = useState<SendNotice | null>(null);
-
-  /** The server has (or replayed) this draft's id: keep only text that differs from what arrived. */
-  const settleArrived = (sent: ConversationDraft, arrived: ConversationMessage) => {
-    setDraft((current) =>
-      current.id !== sent.id ? current : current.body.trim() === arrived.body ? emptyDraft() : { ...current, id: newIdempotencyKey() });
-  };
-
-  const post = useMutation({
-    mutationFn: (sent: ConversationDraft) =>
-      api.postConversationMessage(conversationId, {
-        id: sent.id,
-        body: sent.body.trim(),
-        reply_to_id: sent.replyToId,
-        mention_person_ids: sent.mentionIds,
-      }),
-    onSuccess: (result, sent) => {
-      if (!isCurrentGeneration(generation)) return;
-      settleArrived(sent, result.item);
-      setChoosing(false);
-      setNotice(result.replayed ? 'alreadySent' : null);
-      onPosted(result.item);
-    },
-    onError: (error, sent) => {
-      if (!isCurrentGeneration(generation)) return;
-      const outcome = conversationPostOutcome(error);
-      if (outcome === 'newId') setDraft((current) => (current.id === sent.id ? { ...current, id: newIdempotencyKey() } : current));
-      if (outcome === 'gone' && sent.replyToId) {
-        setDraft((current) => ({ ...current, replyToId: null }));
-        setNotice('replyGone');
-      } else {
-        setNotice(outcome === 'uncertain' || outcome === 'rateLimited' || outcome === 'gone' ? outcome : null);
-      }
-      // Re-read: a lost acknowledgement shows up as this person's message; a removal as "not available".
-      onFailed();
-    },
-  });
-
-  // After no answer, the re-read thread may already hold the message.
-  const arrived = notice === 'uncertain' ? known.find((message) => message.id === draft.id && message.is_mine) ?? null : null;
-  useEffect(() => {
-    if (!arrived) return;
-    settleArrived(draft, arrived);
-    setNotice('alreadySent');
-    post.reset();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arrived]);
 
   const toggleMention = (candidate: MentionCandidate) => {
     setDraft((current) =>
@@ -976,12 +984,6 @@ function Composer({
             body: `${current.body}${current.body && !current.body.endsWith(' ') ? ' ' : ''}@${candidate.name} `,
           });
   };
-
-  const failure = post.error && notice === null
-    ? new LocalizedError({ key: 'messages:composer.notSent', values: { reason: errorText(post.error) } })
-    : notice && notice !== 'alreadySent'
-      ? new LocalizedError({ key: `messages:mobileChat.${notice}` })
-      : null;
 
   return (
     <View style={[styles.composerBar, { paddingBottom: Math.max(insets.bottom, theme.space.md) }]}>
@@ -1012,8 +1014,6 @@ function Composer({
           ))}
         </View>
       ) : null}
-      {failure ? <ErrorNotice error={failure} /> : null}
-      {notice === 'alreadySent' ? <Text style={styles.hint}>{t('mobileChat.alreadySent')}</Text> : null}
       <View style={styles.composerRow}>
         <TextInput
           accessibilityLabel={t('conversation.composerPlaceholder', { name: conversation.title })}
@@ -1026,13 +1026,11 @@ function Composer({
           style={styles.composer}
         />
         <Button
-          title={post.error ? t('common:actions.retry') : t('common:actions.send')}
-          loading={post.isPending}
+          title={t('common:actions.send')}
           disabled={!draft.body.trim()}
           style={styles.send}
           onPress={() => {
-            setNotice(null);
-            post.mutate(draft);
+            if (onSend()) setChoosing(false);
           }}
         />
       </View>

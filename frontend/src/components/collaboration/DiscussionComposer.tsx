@@ -16,16 +16,15 @@ export interface DiscussionComposerProps {
   candidates: MentionCandidate[];
   placeholder: string;
   submitLabel: string;
-  onSubmit: (submission: DiscussionSubmission) => Promise<unknown>;
+  onSubmit: (submission: DiscussionSubmission) => void | Promise<void>;
   /** Shown above the box, e.g. "Replying to Sam". */
   context?: string | null;
   onClearContext?: () => void;
 }
 
 /**
- * Text box with explicit mentions. The draft keeps one client id until the
- * server confirms it, so pressing Send again after a timeout cannot post a
- * second copy. The draft survives a failed send.
+ * Text box with explicit mentions. The draft keeps one client id until its
+ * submission succeeds or the caller takes ownership of it.
  */
 export const DiscussionComposer = ({
   candidates,
@@ -38,6 +37,7 @@ export const DiscussionComposer = ({
   const { t } = useTranslation(['messages', 'common']);
   const errorText = useErrorText();
   const draftId = useRef<string>(crypto.randomUUID());
+  const textarea = useRef<HTMLTextAreaElement>(null);
   const [body, setBody] = useState('');
   const [mentionIds, setMentionIds] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
@@ -55,11 +55,13 @@ export const DiscussionComposer = ({
     setSending(true);
     setError(null);
     try {
-      await onSubmit({ id: draftId.current, body: body.trim(), mentionIds });
+      const result = onSubmit({ id: draftId.current, body: body.trim(), mentionIds });
+      if (result) await result;
       draftId.current = crypto.randomUUID();
       setBody('');
       setMentionIds([]);
       onClearContext?.();
+      if (!result) textarea.current?.focus();
     } catch (failure) {
       setError(failure);
     } finally {
@@ -88,6 +90,7 @@ export const DiscussionComposer = ({
         style={{ borderColor: 'var(--app-border-strong)' }}
       >
         <textarea
+          ref={textarea}
           className="block w-full resize-none border-0 bg-transparent px-3.5 pt-3 pb-1 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100"
           rows={2}
           maxLength={4000}

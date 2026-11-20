@@ -40,6 +40,8 @@ export interface DiscussionEntryProps {
   variant?: 'list' | 'bubble';
   /** The signed-in person wrote this entry; only changes how a bubble is drawn. */
   mine?: boolean;
+  /** Delivery status below a chat bubble. */
+  status?: ReactNode;
   /**
    * Actions about the author (report, block). They sit behind the author's
    * picture and name rather than in the action row, so a stray click on a
@@ -184,6 +186,7 @@ export const DiscussionEntry = ({
   actions = [],
   variant = 'list',
   mine = false,
+  status,
   authorActions = [],
   authorMenuHint,
 }: DiscussionEntryProps) => {
@@ -298,6 +301,7 @@ export const DiscussionEntry = ({
             </div>
           )}
           {mentionOutcomes}
+          {status}
           {actionRow}
         </div>
       </li>

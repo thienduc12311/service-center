@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { waitUntil } from '@vercel/functions';
 import { adminDb, unwrap } from '../lib/supabase.js';
 import {
   mapDeliveryRowToJob,
@@ -136,4 +137,15 @@ export const deliverEffectNow = async (effectId: string | null): Promise<void> =
   } catch (error) {
     console.warn(`[deliveries] immediate delivery of ${effectId} deferred to the worker (${error instanceof Error ? error.name : 'error'})`);
   }
+};
+
+/**
+ * Starts an action's deliveries without holding up the response. On Vercel,
+ * waitUntil keeps the function alive until delivery finishes; on a long-lived
+ * Node server the promise simply runs on. Whatever does not finish stays
+ * queued for the next worker run, as with deliverEffectNow.
+ */
+export const deliverEffectInBackground = (effectId: string | null): void => {
+  if (!effectId) return;
+  waitUntil(deliverEffectNow(effectId));
 };

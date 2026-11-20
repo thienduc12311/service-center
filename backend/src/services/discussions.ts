@@ -30,7 +30,7 @@ import {
   type DirectoryName,
   type MentionRecord,
 } from '../model/collaboration.model.js';
-import { deliverEffectNow } from './delivery-worker.js';
+import { deliverEffectInBackground, deliverEffectNow } from './delivery-worker.js';
 
 /**
  * F09 item discussion and team/plan conversations. Reads use the caller's
@@ -288,7 +288,8 @@ export const postConversationMessage = async (
   }))) as PostResultRow[] | null;
   const result = rows?.[0];
   if (!result) throw new HttpError(500, 'The message was not stored');
-  if (!result.replayed) await deliverEffectNow(result.effect_id);
+  // Notifications go out after the response so the sender never waits on them.
+  if (!result.replayed) deliverEffectInBackground(result.effect_id);
   return { item: await loadMessage(caller, conversationId, input.id), replayed: result.replayed };
 };
 
