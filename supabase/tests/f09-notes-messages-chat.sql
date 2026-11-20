@@ -263,7 +263,8 @@ select pg_temp.check(public.operational_message_recipient_current((select messag
 set local role authenticated;
 
 set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
-select pg_temp.check((select count(*) from public.operational_messages where id = (select message_id from f09_sent)) = 1, 'recipient reads the message');
+select pg_temp.check((select count(*) from public.operational_messages where id = (select message_id from f09_sent)) = 0, 'recipient cannot read the sender-side row (W7-MSG-D6)');
+select pg_temp.check((select count(*) from public.my_received_messages(pg_temp.fx('org')) where id = (select message_id from f09_sent)) = 1, 'recipient reads the message through the recipient-safe function');
 select pg_temp.check((select count(*) from public.operational_message_recipients where message_id = (select message_id from f09_sent)) = 1,
   'recipient sees only their own snapshot row');
 do $$ begin
