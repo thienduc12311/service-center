@@ -1,6 +1,13 @@
 -- Run after the member_avatars_and_team_rosters migration against the seeded database.
 -- Owner 1111, legacy scheduler 2222, member 3333 (made a Production team leader below).
 begin;
+-- Self-contained fixtures: a Person (not a hardcoded seed row, which can be
+-- deleted) and one Band roster entry, so the "cannot remove" checks below really
+-- have a row to protect.
+insert into public.people (id, organization_id, first_name)
+values ('f0a7a0a7-0000-4000-8000-0000000000a1', 'aaaaaaaa-0000-4000-8000-000000000001', 'Roster fixture');
+insert into public.team_memberships (team_id, person_id)
+values ('cccccccc-0000-4000-8000-000000000001', 'f0a7a0a7-0000-4000-8000-0000000000a1');
 insert into public.access_grants (organization_id, user_id, capability, scope_type, team_id, created_by)
 values ('aaaaaaaa-0000-4000-8000-000000000001', '33333333-3333-4333-8333-333333333333',
  'teams.manage', 'team', 'cccccccc-0000-4000-8000-000000000002', '11111111-1111-4111-8111-111111111111');
@@ -47,7 +54,7 @@ begin
   if n <> 0 then raise exception 'Scheduler removed a team member'; end if;
   begin
     insert into public.team_memberships (team_id, person_id)
-    values ('cccccccc-0000-4000-8000-000000000003', '4da49417-cce0-4dd3-b227-75f0d52e8254');
+    values ('cccccccc-0000-4000-8000-000000000003', 'f0a7a0a7-0000-4000-8000-0000000000a1');
     raise exception 'Scheduler added a team member';
   exception when insufficient_privilege then null;
   end;
@@ -62,7 +69,7 @@ do $$
 declare n integer; added uuid;
 begin
   insert into public.team_memberships (team_id, person_id)
-  values ('cccccccc-0000-4000-8000-000000000002', '4da49417-cce0-4dd3-b227-75f0d52e8254')
+  values ('cccccccc-0000-4000-8000-000000000002', 'f0a7a0a7-0000-4000-8000-0000000000a1')
   returning id into added;
   delete from public.team_memberships where id = added;
   get diagnostics n = row_count;
