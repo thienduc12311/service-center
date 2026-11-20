@@ -57,11 +57,13 @@ export const toPlanNote = (row: PlanNoteRow, teamIds: readonly string[], authorN
 const toMentions = (
   records: readonly MentionRecord[],
   names: ReadonlyMap<string, DirectoryName>,
+  userId: string,
 ): DiscussionMention[] =>
   records.map((record) => ({
     person_id: record.person_id,
     name: displayName(names.get(record.person_id)) ?? 'Someone',
     resolution: record.resolution,
+    is_me: names.get(record.person_id)?.profile_id === userId,
   }));
 
 export const toItemComment = (
@@ -73,7 +75,7 @@ export const toItemComment = (
 ): PlanItemComment => ({
   ...row,
   author_name: authorName,
-  mentions: toMentions(mentions, names),
+  mentions: toMentions(mentions, names, userId),
   is_mine: row.author_id === userId,
 });
 
@@ -86,7 +88,7 @@ export const toConversationMessage = (
 ): ConversationMessage => ({
   ...row,
   author_name: authorName,
-  mentions: toMentions(mentions, names),
+  mentions: toMentions(mentions, names, userId),
   is_mine: row.author_id === userId,
 });
 

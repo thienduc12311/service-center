@@ -120,8 +120,8 @@ describe('Conversation reads', () => {
           author_name: 'Pat Jones',
           is_mine: true,
           mentions: [
-            { person_id: otherPersonId, name: 'Alex', resolution: 'no_login' },
-            { person_id: authorId, name: 'Pat Jones', resolution: 'notified' },
+            { person_id: otherPersonId, name: 'Alex', resolution: 'no_login', is_me: false },
+            { person_id: authorId, name: 'Pat Jones', resolution: 'notified', is_me: true },
           ],
         }],
         next_before: null,

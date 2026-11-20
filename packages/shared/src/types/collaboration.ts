@@ -89,6 +89,8 @@ export interface DiscussionMention {
   person_id: string;
   name: string;
   resolution: MentionResolution;
+  /** The mentioned person is the caller (highlighted for them). */
+  is_me: boolean;
 }
 
 /** Someone the caller can usefully mention (a current participant). */

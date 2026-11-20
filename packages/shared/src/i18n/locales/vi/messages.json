@@ -146,12 +146,10 @@
     "submit": "Báo cáo"
   },
   "composer": {
-    "mentionsLabel": "Sẽ được thông báo",
-    "removeMention": "Bỏ nhắc tên",
     "notSent": "Chưa gửi được: {{reason}} Nội dung của bạn vẫn được giữ; gửi lại sẽ không bị đăng hai lần.",
     "mentionLabel": "Nhắc tên ai đó",
-    "mentionPrompt": "@ Nhắc tên…",
-    "noOneToMention": "Không còn ai để nhắc tên"
+    "noOneToMention": "Không còn ai để nhắc tên",
+    "enterHint": "Enter để gửi · Shift+Enter để xuống dòng"
   },
   "entry": {
     "edited": "{{time}} · đã chỉnh sửa",
@@ -284,7 +282,6 @@
     "categoryGone": "Danh mục đó không còn được dùng cho chương trình này, nên ghi chú chưa được lưu. Ghi chú hiện được xếp vào mục Chung — hãy kiểm tra và lưu lại.",
     "discardConfirm": "Bỏ ghi chú này?",
     "by": "bởi {{name}}",
-    "mentionTitle": "Nhắc tên ai đó",
     "refreshFailed": "Không tải được ghi chú. Chỉ hiển thị ghi chú đơn giản của chương trình."
   },
   "mobileMessages": {
