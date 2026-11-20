@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import {
   explainCapabilityQuerySchema,
   replaceScopeGrantsSchema,
@@ -25,10 +25,24 @@ import {
 
 /**
  * F01 access review and administration. Reading your own access is open to
- * every member; everything else is owner/admin only, and the database
+ * every member; everything else is owner/admin only (changing a member’s
+ * access mode is owner only), and the database
  * functions enforce the same rule independently.
  */
 export const accessRouter: Router = Router();
+
+/**
+ * Membership rows are owner-only in the database (`members_owner_update`), so
+ * an admin's update would match nothing and read as a 404. Refuse it up front
+ * with the same rule instead.
+ */
+const requireOwner = (req: Request, _res: Response, next: NextFunction): void => {
+  if (req.orgRole !== 'owner') {
+    next(HttpError.forbidden('Only the organization owner can change how someone’s access works'));
+    return;
+  }
+  next();
+};
 
 accessRouter.get('/me', (req, res) => {
   res.json(req.access);
@@ -42,8 +56,8 @@ accessRouter.get('/members/:userId', requireAdmin, async (req, res) => {
   res.json(await loadMemberAccess(req.db, req.orgId, param(req, 'userId')));
 });
 
-/** Opt a scheduler into scoped access (or back to legacy organization-wide). */
-accessRouter.patch('/members/:userId', requireAdmin, validateBody(updateMemberAccessSchema), async (req, res) => {
+/** Opt a scheduler into scoped access (or back to legacy organization-wide). Owner only. */
+accessRouter.patch('/members/:userId', requireOwner, validateBody(updateMemberAccessSchema), async (req, res) => {
   const { access_mode } = req.body as UpdateMemberAccessInput;
   res.json(await setAccessMode({ db: req.db, orgId: req.orgId, userId: param(req, 'userId'), accessMode: access_mode }));
 });
