@@ -1549,6 +1549,10 @@ export type Database = {
         Args: { p_token_hash: string; p_status: AssignmentStatus };
         Returns: Array<{ outcome: 'ok' | 'not_found' | 'used' | 'expired' | 'stale'; assignments_updated: number; effect_id: string | null }>;
       };
+      assignment_snapshot_state: {
+        Args: { p_snapshot: string };
+        Returns: 'current' | 'stale' | 'expired';
+      };
       replace_plan_times: {
         Args: { p_plan_id: string; p_times: unknown; p_expected_revision?: number | null };
         Returns: PlanTimeRow[];
