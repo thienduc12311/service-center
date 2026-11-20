@@ -39,14 +39,14 @@ Path: [`routes/assignments.ts`](../../backend/src/routes/assignments.ts) (`sched
 
 ### What it adds up to
 
-The backend is a Vercel function and [`backend/vercel.json`](../../backend/vercel.json) sets no region; Vercel's default is `iad1` (Washington, D.C.). The database is in AWS `us-west-2` (Oregon), about 60–70 ms away per trip. If the deployed region is the default:
+The previous backend config left function placement to the Vercel project setting, which defaults to `iad1` (Washington, D.C.) for new projects. The database remediation plan reports the production database in AWS `us-west-2` (Oregon). If the pre-change deployment runs in `iad1`, the estimated 60–70 ms per trip adds up as follows. [Vercel function region settings](https://vercel.com/docs/functions/configuring-functions/region)
 
 | Screen | Sequential trips | Latency before query time |
 | --- | --- | --- |
 | Chat thread | 8 | about 500–600 ms |
 | My Schedule | 7 | about 450–500 ms, plus about 50–80 ms of RLS work |
 
-Cold starts add roughly 1–3 s on top when the function has been idle, which is likely at today's traffic. Neither the region nor the cold-start rate has been confirmed yet (PERF-001).
+Cold starts can add latency. The deployed function region and cold-start contribution still need production measurements (PERF-001).
 
 ## Goal and acceptance
 
@@ -63,6 +63,19 @@ Cold starts add roughly 1–3 s on top when the function has been idle, which is
 4. **Phase D: Stop repeating the work** — PERF-008. Polling replaced by Realtime Broadcast pokes.
 
 Each ticket ships on its own `feature/perf-*` branch with tests. Measure server time before and after each phase with the same request.
+
+## Baseline
+
+**2026-11-19.** The repository now configures `pdx1` (Portland, AWS `us-west-2`) for the API project and keeps the 60 s limit. The [deployment guide](../../README.md#3-api-project) identifies `backend` as the Vercel root, and the top-level `regions` setting overrides the project default for deployments built from this config. Production placement, Fluid compute, cold-start share and initialization duration, and route p50/p95 remain unverified. Authenticated aggregate production telemetry was unavailable in this worktree. [Vercel configuration](https://vercel.com/docs/project-configuration/vercel-json#regions) · [Vercel region map](https://vercel.com/docs/regions)
+
+- Before rollout, record the production deployment ID and check the configured region and Fluid compute status in **Settings → Functions**. Verify actual placement using the function's execution region. For the last full seven-day UTC window before rollout, capture invocation count, cold-start count and share, and cold-start initialization p50/p95 from existing aggregate telemetry where available. [Vercel Runtime Logs](https://vercel.com/docs/logs/runtime) · [Vercel execution region fields](https://vercel.com/docs/drains/reference/logs)
+- In **Observability → Functions** or an existing metrics backend, group successful invocations by incoming `GET` path for `/api/v1/conversations/:id` (one segment after `conversations`), `/api/v1/conversations`, and `/api/v1/schedule/mine`. All three reach `api/index.js`. Record each route's sample count and function-duration p50/p95, plus warm p95 where cold-start classification is available. Keep only aggregate results and mark gaps in retention or metric coverage. Repeat over a comparable seven-day window after rollout, verify `pdx1` execution, and compare each route's p50 against its own baseline. Record any Fluid compute change when interpreting the result. [Vercel Observability](https://vercel.com/docs/observability)
+
+### PostgREST schema cache (DB Phase 0.5)
+
+The DB inspection recorded 74 `pg_timezone_names` calls (452 ms mean, 4,050 ms max) without a stats window. This is a cache-load proxy that can include startup loads. The tracked migrations and app code have no explicit `NOTIFY pgrst`, `pg_notify` reload, or custom DDL event trigger. The documented `db:push` applies DDL that can trigger the Supabase-managed `pgrst_ddl_watch` and `pgrst_drop_watch`. Postgres coalesces identical notifications in a transaction, and PostgREST debounces bursts across transactions. [DB inspection](db-performance-remediation.md#production-inspection-results) · [Supabase Postgres trigger definitions](https://github.com/supabase/postgres/blob/17.6.1.166/migrations/schema-17.sql) · [PostgREST schema cache](https://docs.postgrest.org/en/v14/references/schema_cache.html)
+
+For the same UTC window, check which `pgrst_*` event triggers are enabled in `pg_event_trigger` and aggregate count and duration of schema cache loads in Supabase PostgREST logs. Correlate load timestamps with migration and dashboard DDL, API deploys, and PostgREST startup or reconnect events. Record counts by cause and leave unmatched loads unattributed. Remove repeat manual reloads only if the timeline shows them, and keep refreshes for API schema changes. [Supabase log sources](https://supabase.com/docs/guides/observability/log-field-reference)
 
 ## Tickets
 
