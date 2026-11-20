@@ -138,6 +138,7 @@ export const postItemComment = async (
 
 export const editItemComment = async (caller: CollaborationCaller, itemId: string, commentId: string, body: string): Promise<PlanItemComment> => {
   await loadItem(caller, itemId);
+  await loadComment(caller, itemId, commentId); // 404 before mutating when the comment is on another item
   await unwrap(raw(caller.db).rpc('edit_item_comment', { p_comment_id: commentId, p_body: body }));
   return loadComment(caller, itemId, commentId);
 };
@@ -149,6 +150,7 @@ export const deleteItemComment = async (
   reason: string | undefined,
 ): Promise<PlanItemComment> => {
   await loadItem(caller, itemId);
+  await loadComment(caller, itemId, commentId); // 404 before mutating when the comment is on another item
   await unwrap(raw(caller.db).rpc('delete_item_comment', { p_comment_id: commentId, p_reason: reason ?? null }));
   return loadComment(caller, itemId, commentId);
 };
@@ -280,6 +282,7 @@ export const postConversationMessage = async (
   conversationId: string,
   input: PostConversationMessageInput,
 ): Promise<PostDiscussionResult<ConversationMessage>> => {
+  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
   const rows = (await unwrap(raw(caller.db).rpc('post_conversation_message', {
     p_message_id: input.id,
     p_conversation: conversationId,
@@ -297,6 +300,7 @@ export const postConversationMessage = async (
 export const editConversationMessage = async (
   caller: CollaborationCaller, conversationId: string, messageId: string, body: string,
 ): Promise<ConversationMessage> => {
+  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
   await loadMessage(caller, conversationId, messageId);
   await unwrap(raw(caller.db).rpc('edit_conversation_message', { p_message_id: messageId, p_body: body }));
   return loadMessage(caller, conversationId, messageId);
@@ -305,6 +309,7 @@ export const editConversationMessage = async (
 export const deleteConversationMessage = async (
   caller: CollaborationCaller, conversationId: string, messageId: string,
 ): Promise<ConversationMessage> => {
+  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
   await loadMessage(caller, conversationId, messageId);
   await unwrap(raw(caller.db).rpc('delete_conversation_message', { p_message_id: messageId }));
   return loadMessage(caller, conversationId, messageId);
@@ -313,6 +318,7 @@ export const deleteConversationMessage = async (
 export const restoreConversationMessage = async (
   caller: CollaborationCaller, conversationId: string, messageId: string,
 ): Promise<ConversationMessage> => {
+  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
   await loadMessage(caller, conversationId, messageId);
   await unwrap(raw(caller.db).rpc('restore_conversation_message', { p_message_id: messageId }));
   return loadMessage(caller, conversationId, messageId);
@@ -321,6 +327,7 @@ export const restoreConversationMessage = async (
 export const markConversationRead = async (
   caller: CollaborationCaller, conversationId: string, readAt: string,
 ): Promise<{ last_read_at: string | null }> => {
+  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
   const row = (await unwrap(raw(caller.db).rpc('mark_conversation_read', { p_conversation: conversationId, p_read_at: readAt }))) as { last_read_at: string | null } | null;
   return { last_read_at: row?.last_read_at ?? null };
 };
@@ -328,6 +335,7 @@ export const markConversationRead = async (
 export const muteConversation = async (
   caller: CollaborationCaller, conversationId: string, muted: boolean,
 ): Promise<{ muted: boolean }> => {
+  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
   const row = (await unwrap(raw(caller.db).rpc('set_conversation_muted', { p_conversation: conversationId, p_muted: muted }))) as { muted: boolean } | null;
   return { muted: row?.muted ?? muted };
 };
@@ -335,6 +343,7 @@ export const muteConversation = async (
 export const reportConversationMessage = async (
   caller: CollaborationCaller, conversationId: string, messageId: string, input: ReportConversationMessageInput,
 ): Promise<ConversationReport> => {
+  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
   await loadMessage(caller, conversationId, messageId);
   const row = (await unwrap(raw(caller.db).rpc('report_conversation_message', {
     p_message_id: messageId, p_reason: input.reason, p_details: input.details ?? null,
@@ -347,6 +356,7 @@ export const reportConversationMessage = async (
 export const resolveConversationReport = async (
   caller: CollaborationCaller, conversationId: string, reportId: string, input: ResolveConversationReportInput,
 ): Promise<ConversationReport> => {
+  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
   const existing = await unwrap(
     caller.db.from('conversation_message_reports').select('id').eq('id', reportId).eq('conversation_id', conversationId).maybeSingle(),
   );
