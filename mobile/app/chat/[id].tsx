@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   CONVERSATION_PAGE_SIZE,
@@ -30,7 +30,6 @@ import {
   mergeConversationPages,
   type ConversationDetail,
   type ConversationMessage,
-  type DiscussionPage,
   type ConversationReport,
   type ConversationReportReason,
   type ConversationSummary,
@@ -42,6 +41,7 @@ import { api } from '../../src/lib/api';
 import { newIdempotencyKey } from '../../src/lib/idempotency';
 import { queryKeys } from '../../src/lib/query-keys';
 import { conversationDrafts, type ConversationDraft } from '../../src/lib/conversation-drafts';
+import { conversationWindow, readConversationHistory, type ConversationHistory } from '../../src/lib/conversation-thread';
 import { conversationTitle } from '../../src/lib/conversation-labels';
 import { useBroadcastRefresh } from '../../src/lib/useBroadcastRefresh';
 import { useScreenVisible } from '../../src/lib/useScreenVisible';
@@ -101,11 +101,6 @@ export default function ConversationScreen() {
   return <ConversationThread key={`${identity}:${id}`} conversationId={id} />;
 }
 
-interface ConversationThreadPage {
-  messages: DiscussionPage<ConversationMessage>;
-  detail?: ConversationDetail;
-}
-
 interface ConversationThreadProps {
   conversationId: string;
 }
@@ -123,60 +118,109 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
   const scrollRef = useRef<ScrollView>(null);
 
   const queryKey = queryKeys.conversation(queryScope, conversationId);
-  // Refetch from the newest page through every loaded cursor. A retained
-  // copy cannot reflect a hard delete (or an edit/hide outside the first page).
-  const detail = useInfiniteQuery({
-    queryKey,
-    initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }): Promise<ConversationThreadPage> => {
-      if (pageParam) {
-        const messages = await api.conversationMessages(conversationId, { before: pageParam, limit: CONVERSATION_PAGE_SIZE });
-        return { messages };
+  const historyKey = queryKeys.conversationHistory(queryScope, conversationId);
+  const listKey = queryKeys.conversationList(queryScope);
+  const [denied, setDenied] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(() => queryClient.getQueryData(historyKey) !== undefined);
+  const deniedRead = useRef(false);
+  const read = async <T,>(request: Promise<T>): Promise<T> => {
+    try {
+      return await request;
+    } catch (error) {
+      if (conversationAccess(error) === 'unavailable' && isCurrentGeneration(generation)) {
+        deniedRead.current = true;
+        setDenied(true);
       }
-      const first = await api.getConversation(conversationId);
-      return { messages: first.messages, detail: first };
-    },
-    getNextPageParam: (page) => page.messages.next_before,
-    enabled: Boolean(queryScope && visible),
+      throw error;
+    }
+  };
+
+  // Keep the newest response independent of history and search, including in
+  // the broadcast hook's in-flight request filter.
+  const detail = useQuery({
+    queryKey,
+    queryFn: () => read(api.getConversation(conversationId)),
+    enabled: Boolean(queryScope && visible && !denied),
     staleTime: 0,
     retry: false,
     refetchInterval: visible ? CONVERSATION_THREAD_POLL_MS : false,
   });
-  const access = conversationAccess(detail.error);
-  const first = detail.data?.pages[0]?.detail;
+  const first = detail.data;
+  const access = denied ? 'unavailable' : conversationAccess(detail.error);
   const conversation = access === 'unavailable' ? null : first?.conversation ?? null;
-  useBroadcastRefresh('conversation', access === 'unavailable' ? [] : [conversationId], visible, { queryKey });
+  useBroadcastRefresh('conversation', access === 'unavailable' ? [] : [conversationId], visible, { queryKey, exact: true });
 
-  const candidates = useQuery({
-    queryKey: queryKeys.conversationMentionCandidates(queryScope, conversationId),
-    queryFn: () => api.mentionCandidates({ conversation_id: conversationId }),
-    enabled: Boolean(queryScope && conversation && visible),
+  const expandHistory = useRef(false);
+  const history = useQuery({
+    queryKey: historyKey,
+    queryFn: ({ signal }) => {
+      const expand = expandHistory.current;
+      expandHistory.current = false;
+      return read(readConversationHistory({
+        before: queryClient.getQueryData<ConversationDetail>(queryKey)?.messages.next_before ?? null,
+        previous: queryClient.getQueryData<ConversationHistory>(historyKey),
+        expand,
+        loadPage: (before) => {
+          if (signal.aborted) return Promise.reject(new Error('Conversation history read canceled'));
+          return api.conversationMessages(conversationId, { before, limit: CONVERSATION_PAGE_SIZE });
+        },
+      }));
+    },
+    enabled: false,
     retry: false,
   });
-
-  const known = useMemo(() => conversation
-    ? mergeConversationPages([], detail.data?.pages.flatMap((page) => page.messages.data) ?? [])
-    : [], [conversation, detail.data]);
+  const { refetch: refetchHistory, isFetching: historyFetching } = history;
+  const lastHistoryRefresh = useRef(0);
   useEffect(() => {
-    if (access !== 'unavailable') return;
-    // The list drops it too, without waiting for its next poll.
-    if (isCurrentGeneration(generation)) void queryClient.invalidateQueries({ queryKey: queryKeys.conversationList(queryScope) });
+    if (!historyOpen || !visible || !conversation || historyFetching || lastHistoryRefresh.current === detail.dataUpdatedAt) return;
+    lastHistoryRefresh.current = detail.dataUpdatedAt;
+    void refetchHistory({ cancelRefetch: false });
+  }, [conversation, detail.dataUpdatedAt, historyFetching, historyOpen, refetchHistory, visible]);
+
+  // Retain the part of the previous window pushed out of the newest page,
+  // until the background read has reconciled that range with the server.
+  const [threadWindow, setThreadWindow] = useState(() => ({
+    newest: first?.messages,
+    history: history.data,
+    messages: first ? conversationWindow(first.messages, history.data, []) : [],
+  }));
+  if (threadWindow.newest !== first?.messages || threadWindow.history !== history.data) {
+    setThreadWindow({
+      newest: first?.messages,
+      history: history.data,
+      messages: first ? conversationWindow(first.messages, history.data, historyOpen ? threadWindow.messages : []) : [],
+    });
+  }
+  const known = conversation ? threadWindow.messages : [];
+  const byId = useMemo(() => new Map(known.map((message) => [message.id, message])), [known]);
+
+  useEffect(() => {
+    if (access !== 'unavailable' || !isCurrentGeneration(generation)) return;
+    deniedRead.current = true;
+    setDenied(true);
+    // A denied history or search read also invalidates the cached newest page.
+    queryClient.removeQueries({ queryKey });
+    void queryClient.invalidateQueries({ queryKey: listKey, exact: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [access]);
-  const byId = useMemo(() => new Map(known.map((message) => [message.id, message])), [known]);
-  const mergeOne = (message: ConversationMessage) => {
-    if (!isCurrentGeneration(generation) || conversationAccess(queryClient.getQueryState(queryKey)?.error) === 'unavailable') return;
-    queryClient.setQueryData<InfiniteData<ConversationThreadPage>>(queryKey, (current) => {
-      if (!current) return current;
-      const index = current.pages.findIndex((page) => page.messages.data.some((row) => row.id === message.id));
-      return {
-        ...current,
-        pages: current.pages.map((page, pageIndex) => pageIndex === Math.max(0, index)
-          ? { ...page, messages: { ...page.messages, data: mergeConversationPages(page.messages.data, [message]) } }
-          : page),
-      };
-    });
+
+  const patchMessages = (
+    update: (messages: ConversationMessage[]) => ConversationMessage[],
+    addToNewest?: ConversationMessage,
+  ) => {
+    if (!isCurrentGeneration(generation) || deniedRead.current) return;
+    queryClient.setQueryData<ConversationDetail>(queryKey, (current) => current && ({
+      ...current,
+      messages: {
+        ...current.messages,
+        data: addToNewest ? mergeConversationPages(update(current.messages.data), [addToNewest]) : update(current.messages.data),
+      },
+    }));
+    queryClient.setQueryData<ConversationHistory>(historyKey, (current) => current && ({ ...current, data: update(current.data) }));
+    setThreadWindow((current) => ({ ...current, messages: update(current.messages) }));
   };
+  const mergeOne = (message: ConversationMessage, append = false) =>
+    patchMessages((messages) => messages.map((row) => row.id === message.id ? message : row), append ? message : undefined);
 
   const refresh = () =>
     isCurrentGeneration(generation)
@@ -189,9 +233,23 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
   const searching = term.length >= CONVERSATION_SEARCH_MIN;
   const results = useQuery({
     queryKey: queryKeys.conversationSearch(queryScope, conversationId, term),
-    queryFn: () => api.conversationMessages(conversationId, { q: term, limit: CONVERSATION_PAGE_SIZE }),
+    queryFn: () => read(api.conversationMessages(conversationId, { q: term, limit: CONVERSATION_PAGE_SIZE })),
     enabled: Boolean(queryScope && conversation && searching && visible),
     refetchInterval: visible ? CONVERSATION_THREAD_POLL_MS : false,
+    retry: false,
+  });
+  const { refetch: refetchSearch, isFetching: searchingInFlight } = results;
+  const lastSearchRefresh = useRef(detail.dataUpdatedAt);
+  useEffect(() => {
+    if (searchingInFlight || lastSearchRefresh.current === detail.dataUpdatedAt) return;
+    lastSearchRefresh.current = detail.dataUpdatedAt;
+    if (visible && conversation && searching) void refetchSearch({ cancelRefetch: false });
+  }, [conversation, detail.dataUpdatedAt, refetchSearch, searching, searchingInFlight, visible]);
+
+  const candidates = useQuery({
+    queryKey: queryKeys.conversationMentionCandidates(queryScope, conversationId),
+    queryFn: () => read(api.mentionCandidates({ conversation_id: conversationId })),
+    enabled: Boolean(queryScope && conversation && visible),
     retry: false,
   });
 
@@ -203,7 +261,9 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
   const lastMarked = useRef<string | null>(null);
   const markRead = useMutation({
     mutationFn: (readAt: string) => api.markConversationRead(conversationId, readAt),
-    onSuccess: () => void refresh(),
+    onSuccess: () => {
+      if (isCurrentGeneration(generation)) void queryClient.invalidateQueries({ queryKey: listKey, exact: true });
+    },
     onError: () => {
       lastMarked.current = null;
     },
@@ -283,15 +343,7 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
     onSuccess: (row) => {
       if (!isCurrentGeneration(generation)) return;
       // The server stops returning them; drop what is already on screen too.
-      if (conversationAccess(queryClient.getQueryState(queryKey)?.error) !== 'unavailable') {
-        queryClient.setQueryData<InfiniteData<ConversationThreadPage>>(queryKey, (current) => current && ({
-          ...current,
-          pages: current.pages.map((page) => ({
-            ...page,
-            messages: { ...page.messages, data: page.messages.data.filter((message) => message.author_id !== row.blocked_id) },
-          })),
-        }));
-      }
+      patchMessages((messages) => messages.filter((message) => message.author_id !== row.blocked_id));
       setReportingId(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.blockedUsers(queryScope?.userId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.privateRoot(queryScope) });
@@ -320,7 +372,7 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
   useEffect(() => conversationDrafts.set(queryScope, conversationId, draft), [conversationId, draft, queryScope]);
   const replyTo = draft.replyToId ? byId.get(draft.replyToId) ?? null : null;
 
-  if (detail.isLoading) {
+  if (detail.isLoading && access !== 'unavailable') {
     return (
       <Screen>
         <Loading />
@@ -350,6 +402,9 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
   }
 
   const reports = first?.reports ?? [];
+  const hasOlder = history.data?.before === first?.messages.next_before
+    ? Boolean(history.data?.next_before)
+    : Boolean(first?.messages.next_before);
   const shown = searching ? results.data?.data ?? [] : known;
   const title = conversationTitle(conversation, t, format);
 
@@ -448,7 +503,7 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
             </Card>
           ) : null}
 
-          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? block.error ?? results.error} />
+          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? block.error ?? results.error ?? history.error} />
 
           {searching ? (
             results.isLoading ? (
@@ -458,14 +513,20 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
                 {shown.length ? t('mobileChat.searchResults', { count: shown.length }) : t('conversation.noMatches')}
               </Text>
             )
-          ) : detail.hasNextPage ? (
+          ) : hasOlder ? (
             <Button
               title={t('mobileChat.showOlder')}
               variant="quiet"
-              loading={detail.isFetchingNextPage}
+              loading={historyFetching}
               onPress={() => {
                 follow.current = false;
-                if (!detail.isFetching) void detail.fetchNextPage();
+                if (historyFetching) return;
+                if (!historyOpen) {
+                  setHistoryOpen(true);
+                } else {
+                  expandHistory.current = true;
+                  void refetchHistory({ cancelRefetch: false });
+                }
               }}
             />
           ) : known.length ? (
@@ -505,7 +566,7 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
           setDraft={setDraft}
           replyTo={replyTo}
           onPosted={(message) => {
-            mergeOne(message);
+            mergeOne(message, true);
             follow.current = true;
             setSearch('');
             void refresh();

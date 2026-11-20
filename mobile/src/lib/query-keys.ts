@@ -140,7 +140,7 @@ export const queryKeys = {
   /** Whether this login may still create a church directly instead of applying. */
   churchCreationPolicy: (userId: string | null | undefined) =>
     ['account', userId ?? null, 'church-creation-policy'] as const,
-  /** MOB-019: prefix for every F09 team/plan conversation read; invalidate this after a post, read, mute or moderation. */
+  /** MOB-019: prefix for every F09 team/plan conversation read; invalidate this after a post, mute or moderation. */
   conversationsAll: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'conversations'] as const,
   conversationList: (scope: ProtectedQueryScope | null) =>
@@ -148,6 +148,8 @@ export const queryKeys = {
   /** MOB-019: one conversation's summary, newest page and open reports (moderators). */
   conversation: (scope: ProtectedQueryScope | null, conversationId: string | null | undefined) =>
     [...privateRoot(scope), 'conversations', 'detail', conversationId ?? null] as const,
+  conversationHistory: (scope: ProtectedQueryScope | null, conversationId: string) =>
+    [...privateRoot(scope), 'conversations', 'detail', conversationId, 'history'] as const,
   conversationSearch: (scope: ProtectedQueryScope | null, conversationId: string, query: string) =>
     [...privateRoot(scope), 'conversations', 'detail', conversationId, 'search', query] as const,
   /** MOB-019: current participants of one conversation, the only people worth mentioning. */
