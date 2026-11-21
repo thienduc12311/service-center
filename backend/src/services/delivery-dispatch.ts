@@ -6,6 +6,7 @@ import {
   type MessageVariableSnapshot,
   type EmailTransportMode,
   type NotificationType,
+  type PlanStatus,
   type PushTransportMode,
 } from '@service-center/shared';
 import { adminDb, raw, unwrap } from '../lib/supabase.js';
@@ -48,7 +49,17 @@ interface DispatchPlan {
   title: string;
   service_date: string;
   location: string | null;
+  status: PlanStatus;
 }
+
+/** Templates that ask or remind assigned people; never sent for a plan that isn't published (ADR-0006). */
+const PLAN_STATUS_GATED_TEMPLATES: ReadonlySet<DeliveryEffect['template']> = new Set([
+  'assignment_request',
+  'assignment_reminder',
+  'service_reminder',
+]);
+
+const isPublished = (plan: DispatchPlan): boolean => plan.status === 'published';
 
 interface RecipientAssignment {
   id: string;
@@ -143,14 +154,14 @@ const loadEffect = async (effectId: string): Promise<DeliveryEffect | null> => {
 const loadPlan = async (planId: string | null): Promise<DispatchPlan | null> => {
   if (!planId) return null;
   return unwrap(
-    adminDb.from('plans').select('id, organization_id, title, service_date, location').eq('id', planId).maybeSingle(),
+    adminDb.from('plans').select('id, organization_id, title, service_date, location, status').eq('id', planId).maybeSingle(),
   );
 };
 
 const loadPlans = async (planIds: readonly string[]): Promise<Map<string, DispatchPlan>> => {
   if (planIds.length === 0) return new Map();
   const rows = await unwrap(
-    adminDb.from('plans').select('id, organization_id, title, service_date, location').in('id', [...planIds]),
+    adminDb.from('plans').select('id, organization_id, title, service_date, location, status').in('id', [...planIds]),
   );
   return new Map((rows ?? []).map((row) => [row.id, row]));
 };
@@ -856,6 +867,12 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
   if (effect.template === 'item_comment') return dispatchItemComment(effect, job, begin);
   if (effect.template === 'operational_message') return dispatchOperationalMessage(effect, job, begin);
   if (effect.template === 'conversation_message') return dispatchConversationMessage(effect, job, begin);
+  // ADR-0006: a plan moved back to draft (or archived) after this was queued
+  // stops it. Checked before the reminder check so the reason is precise.
+  if (PLAN_STATUS_GATED_TEMPLATES.has(effect.template) && effect.planId) {
+    const plan = await loadPlan(effect.planId);
+    if (plan && !isPublished(plan)) return finished('cancelled', 'plan_not_published');
+  }
   // F08: a reminder whose intent changed after it was enqueued (answer,
   // removal, archive, time/policy change, membership) is not sent.
   if (effect.reminderJobId && !(await reminderStillCurrent(effect.reminderJobId))) {
@@ -880,10 +897,14 @@ export const dispatchDelivery = async (job: DeliveryJob, begin: BeginProviderCal
   }
 
   if (!member) return finished('cancelled', 'recipient_not_eligible');
-  const rows = await eligibleAssignments(effect, job.recipientPersonId);
-  if (rows.length === 0) return finished('cancelled', 'recipient_not_eligible');
-  const plans = await loadPlans([...new Set(rows.map((row) => row.plan_id))]);
-  if (plans.size === 0) return finished('cancelled', 'plan_missing');
+  const eligible = await eligibleAssignments(effect, job.recipientPersonId);
+  if (eligible.length === 0) return finished('cancelled', 'recipient_not_eligible');
+  const loaded = await loadPlans([...new Set(eligible.map((row) => row.plan_id))]);
+  if (loaded.size === 0) return finished('cancelled', 'plan_missing');
+  // A multi-plan release keeps only the plans still published at send time.
+  const plans = new Map([...loaded].filter(([, plan]) => isPublished(plan)));
+  if (plans.size === 0) return finished('cancelled', 'plan_not_published');
+  const rows = eligible.filter((row) => plans.has(row.plan_id));
 
   if (job.channel === 'email') {
     return effect.template === 'service_reminder'

@@ -304,7 +304,8 @@
       "content_removed": "Bình luận hoặc tin nhắn đã bị gỡ trước khi gửi",
       "conversation_muted": "Người nhận đã tắt thông báo cuộc trò chuyện này",
       "channel_not_used": "Không gửi qua kênh này",
-      "already_read": "Đã đọc trong ứng dụng"
+      "already_read": "Đã đọc trong ứng dụng",
+      "plan_not_published": "Kế hoạch chưa được công bố khi đến lúc gửi"
     }
   },
   "folders": {

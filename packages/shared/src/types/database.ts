@@ -1595,6 +1595,15 @@ export type Database = {
         Args: { p_team: string };
         Returns: Array<{ user_id: string; eligible: boolean; status: EligibilityStatus | null; expires_at: string | null }>;
       };
+      /** ADR-0006: publish a plan and ask everyone released and never notified. */
+      publish_plan_notify: {
+        Args: { p_plan: string; p_notify: boolean; p_effect_key: string };
+        Returns: Array<{ plan: PlanRow; effect_id: string | null }>;
+      };
+      publish_plan_notify_preview: {
+        Args: { p_plan: string };
+        Returns: Array<{ will_notify: number; no_email: string[] }>;
+      };
       enqueue_plan_notifications: {
         Args: {
           p_plan_id: string;

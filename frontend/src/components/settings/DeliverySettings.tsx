@@ -41,6 +41,7 @@ const KNOWN_DELIVERY_ERRORS = [
   'conversation_muted',
   'channel_not_used',
   'already_read',
+  'plan_not_published',
 ] as const;
 type KnownDeliveryError = (typeof KNOWN_DELIVERY_ERRORS)[number];
 

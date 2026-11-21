@@ -37,7 +37,8 @@ import type {
   TeamRow,
 } from './database.js';
 import type { ChartNotation } from '../lib/chordpro.js';
-import type { AttendanceInterval } from './attendance.js';
+import type { AttendanceConflict, AttendanceInterval } from './attendance.js';
+import type { PreferenceWarning } from './availability.js';
 import type { PlanItemLeaderPerson } from './plan-order.js';
 import type { RehearsalMediaRef } from './rehearsal.js';
 import type { DisabledOrganization } from './platform-admin.js';
@@ -367,6 +368,19 @@ export interface AssignmentNotificationSendResult {
   email_mode: EmailTransportMode;
   outcomes: DeliveryOutcome[];
   summary: DeliveryOutcomeSummary;
+  /**
+   * ADR-0006: the plan is a draft, so nothing was sent. Everyone released is
+   * asked when the plan is published.
+   */
+  held_until_publish?: boolean;
+}
+
+/** `GET /plans/:id/publish-preview`: who publishing would email right now (ADR-0006). */
+export interface PlanPublishPreview {
+  /** People with an email address who would be asked. 0 for a past or already published plan. */
+  will_notify: number;
+  /** Names of people who would be asked but have no email address. */
+  no_email: string[];
 }
 
 /** Result of importing another plan's contents into a plan. */
@@ -533,6 +547,21 @@ export interface PlanDetail extends PlanSummary {
    * are not conversation participants, so plan chat is hidden from them.
    */
   viewer_is_adult_person?: boolean;
+}
+
+/** `PATCH /plans/:id`: the saved plan, and who publishing it asked (ADR-0006). */
+export interface UpdatePlanResult extends PlanDetail {
+  /** Present when this request published the plan; null when nobody was asked. */
+  publish_notification?: AssignmentNotificationSendResult | null;
+}
+
+/** `POST /plans/:id/assignments`. */
+export interface CreateAssignmentsResult {
+  created: AssignmentRow[];
+  conflicts: AttendanceConflict[];
+  warnings?: PreferenceWarning[];
+  /** ADR-0006: the plan is a draft, so nobody was notified yet. */
+  held_until_publish?: boolean;
 }
 
 /** One of the ready-made teams the "add teams you lead" step offers. */

@@ -359,6 +359,12 @@ export default function SchedulePeopleScreen() {
           </View>
         </Card>
 
+        {visibility === 'released' && plan.data && plan.data.status !== 'published' ? (
+          <Card>
+            <Text accessibilityRole="text" style={styles.muted}>{t('schedulePeople.heldUntilPublish')}</Text>
+          </Card>
+        ) : null}
+
         {visibility === 'released' && unreachable.length > 0 ? (
           <Card>
             <Text style={styles.warnTitle}>{t('schedulePeople.unreachableTitle')}</Text>

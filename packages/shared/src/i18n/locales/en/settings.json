@@ -309,7 +309,8 @@
       "content_removed": "The comment or message was removed before it was sent",
       "conversation_muted": "The recipient muted this conversation",
       "channel_not_used": "Not sent on this channel",
-      "already_read": "Already read in the app"
+      "already_read": "Already read in the app",
+      "plan_not_published": "The plan was not published when it was due to be sent"
     }
   },
   "folders": {

@@ -100,7 +100,8 @@
     "songBookFrameTitle": "Service song book print preview",
     "errors": {
       "planChatRestricted": "Plan chat is open to plan leaders and the people scheduled on this plan."
-    }
+    },
+    "draftBanner": "Draft — people you schedule won't be notified until you publish."
   },
   "header": {
     "exportSongBook": "Export song book",
@@ -622,5 +623,17 @@
     "remindersHint": "Reminders are scheduled and sent by Service Center's server, not by this phone.",
     "policyStale": "Someone changed this reminder setting first. The latest setting is shown — make your change again.",
     "delivery": "Reminders and delivery"
+  },
+  "publishConfirm": {
+    "title": "Publish this plan?",
+    "loading": "Checking who will be notified…",
+    "willEmail_one": "Publishing will email {{count}} person.",
+    "willEmail_other": "Publishing will email {{count}} people.",
+    "nobody": "Nobody is waiting to be asked, so publishing won't email anyone.",
+    "noEmail_one": "No email address on file, so not emailed: {{names}}.",
+    "noEmail_other": "No email address on file for {{count}} people, so not emailed: {{names}}.",
+    "notify": "Notify people",
+    "notifyHint": "Everyone scheduled on this plan who hasn't been asked yet gets one request. Prepared requests stay private, and people already asked aren't asked again.",
+    "confirm": "Publish"
   }
 }

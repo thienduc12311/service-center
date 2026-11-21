@@ -241,7 +241,8 @@ export const updatePlanWithTimes = async (
   if (!input.times || !result) return null;
   return {
     invalidated_requests: result.invalidated_requests,
-    notified_assignment_ids: result.notified_assignment_ids ?? [],
+    // ADR-0006: a draft plan records no effect, so nobody was re-asked.
+    notified_assignment_ids: result.effect_id ? result.notified_assignment_ids ?? [] : [],
     effect_id: result.effect_id ?? null,
   };
 };
