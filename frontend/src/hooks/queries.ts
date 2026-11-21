@@ -254,6 +254,8 @@ export const usePlanPages = (query: Omit<ListPlansRequest, 'page'>, enabled = tr
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.per_page < last.total ? last.page + 1 : undefined),
     enabled: Boolean(org) && enabled,
+    // A new search keeps the last results on screen until its first page arrives.
+    placeholderData: (previous) => previous,
   });
 };
 

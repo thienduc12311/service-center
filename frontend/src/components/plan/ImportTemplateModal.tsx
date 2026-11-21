@@ -9,7 +9,7 @@ import { useFormatters } from '../../i18n';
 import { Button, ErrorNotice, Modal, Spinner } from '../ui';
 import { Icon } from '../icons';
 import { ListFooter } from '../ListFooter';
-import { matchesSearch } from '../../lib/search';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { ConflictList } from './attendance';
 
 export interface ImportTemplateModalProps {
@@ -42,12 +42,17 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
   const people = usePeople();
 
   const [search, setSearch] = useState('');
+  const query = useDebouncedValue(search.trim());
   const [sameType, setSameType] = useState(true);
   const filterByType = sameType && Boolean(plan.service_type_id);
+  /** The chosen plan, kept so it stays listed while a search no longer matches it. */
+  const [chosen, setChosen] = useState<PlanSummary | null>(null);
 
+  // The server searches every past plan (accent-insensitive title words), not just the pages loaded.
   const candidates = usePlanPages(
     {
       ...(filterByType && plan.service_type_id ? { service_type_id: plan.service_type_id } : {}),
+      ...(query ? { q: query } : {}),
       order: 'desc',
       per_page: SOURCE_PAGE_SIZE,
     },
@@ -60,13 +65,9 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
   const loadedSources = loaded.filter((candidate) => candidate.id !== plan.id);
   const lastPage = candidates.data?.pages.at(-1);
   const total = lastPage ? lastPage.total - (loaded.length > loadedSources.length ? 1 : 0) : null;
-  const searching = search.trim().length > 0;
-  // Search covers the plans loaded so far; the chosen plan stays visible while the search changes.
-  const sources = loadedSources.filter(
-    (source) =>
-      source.id === sourceId ||
-      matchesSearch(search, [source.title, source.service_date.slice(0, 10), fmt.date(source.service_date), source.service_type?.name]),
-  );
+  // The chosen plan stays visible (first) while the search changes.
+  const pinned = chosen && chosen.id === sourceId && !loadedSources.some((source) => source.id === chosen.id) ? [chosen] : [];
+  const sources = [...pinned, ...loadedSources];
 
   // One key per import attempt: a retry after a timeout is answered with the
   // first result rather than copying the order twice.
@@ -84,6 +85,7 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
     onSuccess: async () => {
       await invalidate();
       setSourceId('');
+      setChosen(null);
       setConflictReason('');
       setAttemptKey(crypto.randomUUID());
       onClose();
@@ -133,6 +135,7 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
                 onChange={(event) => {
                   setSameType(event.target.checked);
                   setSourceId('');
+                  setChosen(null);
                   setAttemptKey(crypto.randomUUID());
                 }}
               />
@@ -147,7 +150,7 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
           </div>
         ) : candidates.error ? (
           <ErrorNotice error={candidates.error} />
-        ) : loadedSources.length === 0 && !candidates.hasNextPage ? (
+        ) : loadedSources.length === 0 && !candidates.hasNextPage && !query ? (
           <p className="surface-inset px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
             {t('import.none')}
           </p>
@@ -166,6 +169,7 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
                     aria-pressed={sourceId === source.id}
                     onClick={() => {
                       setSourceId(source.id);
+                      setChosen(source);
                       setAttemptKey(crypto.randomUUID());
                     }}
                     className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm ${
@@ -191,14 +195,9 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
                 ))}
               </div>
             )}
-            {searching && candidates.hasNextPage && (
-              <p className="pt-2 text-center text-xs text-slate-500 dark:text-slate-400">
-                {t('import.searchingLoaded', { count: loadedSources.length })}
-              </p>
-            )}
             <ListFooter
-              shown={searching ? sources.length : loadedSources.length}
-              total={searching ? null : total}
+              shown={loadedSources.length}
+              total={total}
               onShowMore={candidates.hasNextPage ? () => void candidates.fetchNextPage() : undefined}
               loading={candidates.isFetchingNextPage}
             />
