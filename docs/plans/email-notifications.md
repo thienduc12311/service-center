@@ -1,6 +1,6 @@
 # Feature plan: email when you're asked, when a plan is published, and when you're @mentioned
 
-**Branch**: `feature/email-notifications` (follow-up: `feature/invitation-outbox`)
+**Branch**: `feature/email-notifications` (follow-ups: `feature/delivery-worker-cron`, `feature/invitation-outbox`)
 
 ## What this feature is
 
@@ -48,9 +48,12 @@ place, 280-char excerpt, sign-in link; no email for `no_login`. Opt-out
 `person_reminder_preferences.mention_email` (default true); UI section renamed "Notification
 preferences". Without a configured worker the delay is 0, not the email.
 
-Operations: `CRON_SECRET` empty or shorter than 16 characters is treated as unset with a startup
-warning; the API never fails to boot over it. The worker runs from Supabase `pg_cron` + `pg_net`
-every minute. Settings lists what is paused when the worker is not configured. All new strings in
+Operations: an optional secret can never stop the API from starting — `CRON_SECRET`,
+`DELIVERY_LINK_SECRET` and `INTEGRATION_SECRET_KEY` that are empty or invalid count as unset,
+with a startup warning that never contains the value. The scheduled worker (Supabase `pg_cron` +
+`pg_net`, every minute) is **deferred** to `feature/delivery-worker-cron`: until then production
+runs without `CRON_SECRET`, so mention emails go out immediately (ADR-0007) and reminders,
+scheduled releases and retries stay paused. Settings lists what is paused. All new strings in
 English and Vietnamese.
 
 ---
@@ -61,34 +64,17 @@ Three commits on one branch, each deployable on its own. Read
 `.agents/skills/supabase-postgres-best-practices/` before any migration (CLAUDE.md rule 11);
 regenerate `packages/shared/src/types/database.ts` after each schema change (rule 17).
 
-## Commit 1 — Config hardening, Supabase cron, Settings warning
+## Commit 1 — Optional secrets never stop the API; Settings warning
 
-### Config (`backend/src/config.ts`)
+### Config (`backend/src/config.ts`, `backend/src/lib/optional-secret.ts`) — done
 
-- Preprocess `CRON_SECRET`: `""` → `undefined`. A non-empty value under 16 characters → log
-  `[config] CRON_SECRET ignored: shorter than 16 characters` (never the value) and treat as
-  unset. Keep the field typed `string | undefined`; everything downstream already handles unset
-  (`routes/deliveries.ts:45,52` answers 404, `deliveryTransportStatus` reports
-  `worker_configured: false`).
-- Export `config.deliveryWorkerConfigured` (boolean) so callers don't re-derive it.
-- Test: boot config with `CRON_SECRET` unset, `""`, `"short"` and a valid value — no throw,
-  correct `deliveryWorkerConfigured`; the internal route is 404 in the first three.
-
-### Migration `…_delivery_worker_cron.sql`
-
-- `create extension if not exists pg_cron; create extension if not exists pg_net;`
-- `private.run_delivery_worker()` (security definer, `search_path = ''`): reads
-  `delivery_worker_url` and `delivery_worker_secret` from `vault.decrypted_secrets`; **returns
-  without doing anything if either is missing** (local, preview, CI); otherwise
-  `net.http_post(url, headers => {"Authorization": "Bearer <secret>"}, timeout_milliseconds =>
-  55000)`. Revoke execute from `public, anon, authenticated`.
-- `cron.schedule('delivery-worker', '* * * * *', 'select private.run_delivery_worker()')`,
-  guarded so re-applying is idempotent (`cron.unschedule` if it exists).
-- README **Email delivery** gains the production steps: set `CRON_SECRET` on the backend,
-  `select vault.create_secret('<api url>/api/v1/internal/deliveries/run', 'delivery_worker_url')`
-  and `select vault.create_secret('<secret>', 'delivery_worker_secret')`, then check
-  `cron.job_run_details` / `net._http_response`. If the API has no `CRON_SECRET`, the call is a
-  harmless 404.
+- `optionalSecret(rule, warn)`: empty → unset; a value that breaks its rule → unset plus
+  `[config] <NAME> ignored: must be <requirement>. Features that need it stay off.` Applied to
+  `CRON_SECRET` (≥ 16 chars), `DELIVERY_LINK_SECRET` (≥ 32 chars) and `INTEGRATION_SECRET_KEY`
+  (base64 of 32 bytes), which each already had a defined "unset" behavior. Previously an empty
+  value in any of them (e.g. `CRON_SECRET=` from `.env.example`) threw at import and took down
+  the whole API. Required settings (`SUPABASE_*`) still fail fast.
+- Unit tests in `lib/optional-secret.test.ts`.
 
 ### Settings (`frontend/src/components/settings/DeliverySettings.tsx`, mobile equivalent)
 
@@ -176,7 +162,7 @@ Administrators only, as today. en + vi strings.
 ### Backend
 
 - `backend/src/services/messages.ts` / discussions: pass
-  `p_mention_email_delay_seconds: config.deliveryWorkerConfigured ? 600 : 0`.
+  `p_mention_email_delay_seconds: config.CRON_SECRET ? 600 : 0` (the same test `deliveryTransportStatus` uses for `worker_configured`).
 - `notifications.ts`: `MentionEmailNotification` (`to`, `locale`, `personName`, `organizationName`,
   `authorName`, `place`, `excerpt`, `moreCount`, `threadUrl`) and `isMentionEmail`.
 - `delivery-dispatch.ts`: in `dispatchConversationMessage` / `dispatchItemComment`, handle
@@ -197,6 +183,22 @@ Administrators only, as today. en + vi strings.
 
 - Settings → "Notification preferences": add "Email me when I'm @mentioned".
 
+## Follow-up branch — `feature/delivery-worker-cron`
+
+Deferred so a migration can't block a deploy: `pg_cron`/`pg_net` must be enabled on the project
+and the Vault secrets created by hand, and a failing `db push` would hold up everything else.
+
+- Migration `…_delivery_worker_cron.sql`: `create extension if not exists pg_cron` / `pg_net`;
+  `private.run_delivery_worker()` (security definer, `search_path = ''`, revoked from `public,
+  anon, authenticated`) reads `delivery_worker_url` and `delivery_worker_secret` from
+  `vault.decrypted_secrets` and **returns without doing anything if either is missing**;
+  otherwise `net.http_post` with `Authorization: Bearer <secret>`. Schedule
+  `cron.schedule('delivery-worker', '* * * * *', …)` idempotently.
+- README **Email delivery**: set `CRON_SECRET` on the backend, `vault.create_secret` the URL
+  (`<api>/api/v1/internal/deliveries/run`) and the secret, then check `cron.job_run_details` /
+  `net._http_response`. With no `CRON_SECRET` on the API the call is a harmless 404.
+- Once it runs, mention emails switch to the 10-minute delay automatically, since the delay follows `config.CRON_SECRET`.
+
 ## Follow-up branch — `feature/invitation-outbox`
 
 Move `issuePersonInvitation`'s email into the outbox (a `person_invitation` effect + `email`
@@ -205,8 +207,10 @@ response for manual sharing.
 
 ## Rollout
 
-1. Deploy commit 1, set `CRON_SECRET`, create the two Vault secrets, confirm
-   `cron.job_run_details` shows successful runs and Settings no longer warns.
+1. Deploy commit 1. No environment change needed; check the logs for `[config] … ignored`
+   warnings.
 2. Deploy commit 2 with release notes: "Draft plans no longer email people. Publish a plan to
    notify everyone on it." Schedulers see the draft banner on existing drafts.
-3. Deploy commit 3.
+3. Deploy commit 3. Mention emails go out immediately until the worker cron lands.
+4. Later, `feature/delivery-worker-cron`: set `CRON_SECRET`, create the Vault secrets, confirm
+   runs and that Settings no longer warns.

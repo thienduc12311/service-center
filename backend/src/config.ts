@@ -1,6 +1,13 @@
 import 'dotenv/config';
 import { z } from 'zod';
 import { parseTrustProxy } from './lib/trust-proxy.js';
+import { optionalSecret } from './lib/optional-secret.js';
+
+/** Problems with optional settings: reported, never fatal (see optionalSecret). */
+const configWarnings: string[] = [];
+const warn = (message: string): void => {
+  configWarnings.push(message);
+};
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -58,8 +65,12 @@ const envSchema = z.object({
    * (`/api/v1/internal/deliveries/run`). Vercel Cron sends it automatically
    * when set under this name. Unset: the entry point answers 404 and only
    * deliveries kicked by API requests (and `npm run worker`) are processed.
+   * Empty or shorter than 16 characters counts as unset (with a warning).
    */
-  CRON_SECRET: z.string().min(16).optional(),
+  CRON_SECRET: optionalSecret(
+    { name: 'CRON_SECRET', isValid: (value) => value.length >= 16, requirement: 'at least 16 characters' },
+    warn,
+  ),
   /**
    * F08: HMAC key for emailed response-link tokens. Set: a delivery's link
    * token is the same on every attempt, so retries carry an identical
@@ -67,19 +78,27 @@ const envSchema = z.object({
    * (Resend keeps keys for 24 hours). Unset: a fresh random token per attempt
    * and no provider idempotency key. Keep it secret and stable; rotating it
    * only changes tokens minted afterwards (issued links stay valid by hash).
+   * Empty or shorter than 32 characters counts as unset (with a warning).
    */
-  DELIVERY_LINK_SECRET: z.string().min(32).optional(),
+  DELIVERY_LINK_SECRET: optionalSecret(
+    { name: 'DELIVERY_LINK_SECRET', isValid: (value) => value.length >= 32, requirement: 'at least 32 characters' },
+    warn,
+  ),
   /**
    * F17: base64 encoding of 32 random bytes; encrypts webhook signing secrets
    * at rest (AES-256-GCM). Unset: webhooks cannot be registered or sent (the
    * read-only developer API still works). Rotating it makes stored secrets
    * unreadable — affected endpoints fail with `secret_unavailable` and must be
-   * registered again.
+   * registered again. Empty or malformed counts as unset (with a warning).
    */
-  INTEGRATION_SECRET_KEY: z
-    .string()
-    .refine((value) => Buffer.from(value, 'base64').length === 32, 'must be base64 of exactly 32 bytes')
-    .optional(),
+  INTEGRATION_SECRET_KEY: optionalSecret(
+    {
+      name: 'INTEGRATION_SECRET_KEY',
+      isValid: (value) => Buffer.from(value, 'base64').length === 32,
+      requirement: 'base64 of exactly 32 bytes',
+    },
+    warn,
+  ),
   /**
    * F17: allow webhook destinations on loopback/private networks. For local
    * development and tests only; refused in production.
@@ -101,6 +120,8 @@ if (!parsed.success) {
 }
 
 const env = parsed.data;
+
+for (const message of configWarnings) console.warn(message);
 
 if (env.NODE_ENV === 'production' && env.WEBHOOK_ALLOW_PRIVATE_DESTINATIONS) {
   throw new Error('WEBHOOK_ALLOW_PRIVATE_DESTINATIONS must not be enabled in production.');
