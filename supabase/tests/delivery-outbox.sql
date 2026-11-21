@@ -13,9 +13,10 @@ create temporary table fixture on commit drop as
 select gen_random_uuid() as plan_id;
 grant select on fixture to authenticated, service_role;
 
-insert into public.plans (id, organization_id, title, service_date, created_by)
+-- Published: a draft plan sends no assignment email (ADR-0006).
+insert into public.plans (id, organization_id, title, service_date, created_by, status)
 select plan_id, 'aaaaaaaa-0000-4000-8000-000000000001', 'Outbox test', now() + interval '7 days',
-       '22222222-2222-4222-8222-222222222222'
+       '22222222-2222-4222-8222-222222222222', 'published'
   from fixture;
 
 -- A second organization the scheduler is not part of.

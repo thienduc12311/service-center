@@ -86,6 +86,14 @@
       "lead": "Bạn đã được mời tham gia {{organization}}.",
       "linkText": "Tham gia hội thánh: {{url}}",
       "link": "Tham gia hội thánh"
+    },
+    "mention": {
+      "subject": "{{author}} đã nhắc đến bạn trong {{place}}",
+      "lead": "{{author}} đã nhắc đến bạn trong {{place}}:",
+      "more_other": "và {{count}} lần nhắc khác",
+      "openText": "Mở trong Service Center: {{url}}",
+      "openLink": "Mở trong Service Center",
+      "footer": "Bạn nhận được email này vì có người đã @nhắc đến bạn tại {{organization}}. Tắt trong Cài đặt → Tùy chọn thông báo."
     }
   },
   "calendar": {

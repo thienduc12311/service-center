@@ -23,6 +23,9 @@ import {
   type PlanSummary,
   type SetPlanPositionNeedsInput,
   type UpdatePlanInput,
+  type UpdatePlanResult,
+  type AssignmentNotificationSendResult,
+  type PlanPublishPreview,
   previewPlanTimesSchema,
   type PreviewPlanTimesInput,
   type PlanTimeChangeResult,
@@ -53,8 +56,11 @@ import {
 } from '../services/plans.js';
 import { addPlanItem, deletePlanItem, planScheduleFor, reorderPlanItems, updatePlanItem } from '../services/plan-items.js';
 import { notifyConfirmedAssignmentsForPlan } from './assignments.js';
-import { identifyPlanTimes, previewPlanTimes, updatePlanWithTimes } from '../services/attendance.js';
+import { identifyPlanTimes, previewPlanTimes, updatePlanWithTimes, type PlanFieldsPatch } from '../services/attendance.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
+import { notificationSendResult } from '../services/deliveries.js';
+import { planPublishPreview, publishPlan } from '../services/plan-publish.js';
+import { publishEffectKey } from '../model/plan-publish.model.js';
 
 export const plansRouter: Router = Router();
 
@@ -172,10 +178,17 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
     time_impact_hash,
     orphan_resolutions,
     notify_time_changes,
-    ...plan
+    notify,
+    idempotency_key,
+    ...fields
   } = req.body as UpdatePlanInput;
   const planId = param(req, 'id');
   const existingPlan = await unwrapOne(req.db.from('plans').select('id, location, organization_id, content_revision').eq('id', planId).eq('organization_id', req.orgId).single());
+  // ADR-0006: publishing goes through publish_plan_notify, after the other
+  // fields are saved, so the request describes the saved plan.
+  const { status, ...otherFields } = fields;
+  const publishing = status === 'published';
+  const plan: PlanFieldsPatch = publishing ? otherFields : fields;
 
   // F04 + W8-RES-D4: one transaction locks the plan, checks its revision and the
   // previewed impact, replaces the times (keeping time ids across reorder,
@@ -204,7 +217,28 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
     await notifyConfirmedAssignmentsForPlan({ db: req.db, orgId: req.orgId, planId: existingPlan.id });
   }
 
-  res.json(await fetchPlanDetail(req.db, req.orgId, planId));
+  let publishNotification: AssignmentNotificationSendResult | null | undefined;
+  if (publishing) {
+    const published = await publishPlan(req.db, {
+      planId,
+      notify,
+      effectKey: publishEffectKey(planId, idempotency_key ?? randomUUID()),
+    });
+    await deliverEffectNow(published.effectId);
+    publishNotification = published.effectId ? await notificationSendResult(req.db, published.effectId) : null;
+  }
+
+  const detail = await fetchPlanDetail(req.db, req.orgId, planId);
+  const payload: UpdatePlanResult = publishing ? { ...detail, publish_notification: publishNotification } : detail;
+  res.json(payload);
+});
+
+/** ADR-0006: who publishing this plan would email, and who has no address. */
+plansRouter.get('/:id/publish-preview', requireCapability('plans.edit'), async (req, res) => {
+  const planId = param(req, 'id');
+  await unwrapOne(req.db.from('plans').select('id').eq('id', planId).eq('organization_id', req.orgId).single());
+  const preview: PlanPublishPreview = await planPublishPreview(req.db, planId);
+  res.json(preview);
 });
 
 plansRouter.delete('/:id', requireCapability('plans.edit'), async (req, res) => {

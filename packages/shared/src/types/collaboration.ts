@@ -347,6 +347,21 @@ export type ConversationMessageMentionRow = {
   resolution: MentionResolution;
 }
 
+/**
+ * ADR-0007: `mention_email_batch(p_delivery)` — the recipient's mentions in
+ * the delivery's conversation / plan item still worth emailing at send time
+ * (since their last mention email there, not seen, not removed). A count of
+ * 0 means everything was seen; the latest mention supplies the excerpt.
+ */
+export type MentionEmailBatchRow = {
+  mention_count: number;
+  latest_id: string | null;
+  latest_body: string | null;
+  latest_author_id: string | null;
+  latest_author_person_id: string | null;
+  latest_created_at: string | null;
+}
+
 export interface ConversationMessage extends ConversationMessageRow {
   author_name: string | null;
   mentions: DiscussionMention[];

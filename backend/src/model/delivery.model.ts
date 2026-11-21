@@ -42,7 +42,11 @@ export type DeliveryErrorCode =
   | 'conversation_muted'
   /** F09: a channel this kind of announcement never uses. */
   | 'channel_not_used'
-  | 'internal_error';
+  /** ADR-0006: the plan is a draft or archived at send time; publishing asks again. */
+  | 'plan_not_published'
+  | 'internal_error'
+  /** ADR-0007: the mention was seen in the app before its email was due. */
+  | 'already_read';
 
 export class DeliveryError extends Error {
   constructor(

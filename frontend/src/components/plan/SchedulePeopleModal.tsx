@@ -464,6 +464,12 @@ export const SchedulePeopleModal = ({
           </span>
         </label>
 
+        {visibility === 'released' && plan.data && plan.data.status !== 'published' && (
+          <p role="status" className="surface-inset px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
+            {t('schedulePeople.heldUntilPublish')}
+          </p>
+        )}
+
         {visibility === 'released' && unreachable.length > 0 && (
           <div role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-600/20">
             <p className="font-medium">{t('schedulePeople.unreachableTitle')}</p>

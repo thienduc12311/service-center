@@ -151,6 +151,14 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
       router.push({ pathname: '/chat/[id]', params: { id: conversation.id } });
     },
   });
+  // ADR-0006: unpublishing is immediate; publishing goes through its confirmation.
+  const unpublish = useMutation({
+    mutationFn: () => api.updatePlan(id!, { status: 'draft' }),
+    onSettled: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.plan(queryScope, id) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans(queryScope) }),
+    ]),
+  });
   const setNeed = useMutation({
     mutationFn: ({ positionId, needed }: { positionId: string; needed: number }) =>
       api.setPlanPositionNeeds(id, { needs: [{ position_id: positionId, needed }] }),
@@ -407,6 +415,18 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
             ) : null}
             {canEditPlan ? (
               <QuickAction
+                icon={detail.status === 'published' ? 'close' : 'check'}
+                accent={detail.status === 'published' ? theme.accent.neutral : theme.accent.green}
+                title={detail.status === 'published' ? t('header.unpublish') : t('header.publish')}
+                loading={unpublish.isPending}
+                onPress={() => {
+                  if (detail.status === 'published') unpublish.mutate();
+                  else router.push({ pathname: '/plan/publish/[id]', params: { id: detail.id } });
+                }}
+              />
+            ) : null}
+            {canEditPlan ? (
+              <QuickAction
                 icon="schedule"
                 accent={theme.accent.yellow}
                 title={t('mobileTimes.editTimes')}
@@ -449,6 +469,10 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
           </ScrollView>
           {openChat.error ? (
             <ErrorNotice error={openChat.error instanceof ApiError && openChat.error.status === 404 ? PLAN_CHAT_RESTRICTED : openChat.error} />
+          ) : null}
+          <ErrorNotice error={unpublish.error} />
+          {detail.status === 'draft' && (canEditPlan || canTakeAttendance) ? (
+            <Notice text={t('planDetail.draftBanner')} />
           ) : null}
         </View>
 

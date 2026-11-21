@@ -36,6 +36,18 @@ import {
   type MentionRecord,
 } from '../model/collaboration.model.js';
 import { deliverEffectInBackground, deliverEffectNow } from './delivery-worker.js';
+import { config } from '../config.js';
+
+/** ADR-0007: how long a mention email waits for the person to read the mention in the app. */
+export const MENTION_EMAIL_DELAY_SECONDS = 600;
+
+/**
+ * The delay needs the scheduled worker to run later; without it (no
+ * `CRON_SECRET`, the same test `deliveryTransportStatus` uses) the email goes
+ * out with the push instead of not at all.
+ */
+export const mentionEmailDelaySeconds = (workerConfigured: boolean = Boolean(config.CRON_SECRET)): number =>
+  workerConfigured ? MENTION_EMAIL_DELAY_SECONDS : 0;
 
 /**
  * F09 item discussion and team/plan conversations. Reads use the caller's
@@ -133,6 +145,7 @@ export const postItemComment = async (
     p_plan_item: itemId,
     p_body: input.body,
     p_mentions: input.mention_person_ids,
+    p_mention_email_delay_seconds: mentionEmailDelaySeconds(),
   }))) as PostResultRow[] | null;
   const result = rows?.[0];
   if (!result) throw new HttpError(500, 'The comment was not stored');
@@ -336,6 +349,7 @@ export const postConversationMessage = async (
     p_body: input.body,
     p_reply_to: input.reply_to_id,
     p_mentions: input.mention_person_ids,
+    p_mention_email_delay_seconds: mentionEmailDelaySeconds(),
   }))) as PostResultRow[] | null;
   const result = rows?.[0];
   if (!result) throw new HttpError(500, 'The message was not stored');

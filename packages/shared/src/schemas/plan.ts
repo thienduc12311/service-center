@@ -64,6 +64,13 @@ export const updatePlanSchema = createPlanSchema
     orphan_resolutions: z.array(orphanResolutionSchema).max(200).default([]),
     /** Re-send affected released requests after a time change (default). */
     notify_time_changes: z.boolean().default(true),
+    /**
+     * ADR-0006: with `status: 'published'` on a plan that is not published yet,
+     * ask everyone released and never notified (default). Ignored otherwise.
+     */
+    notify: z.boolean().default(true),
+    /** Reused on a retried publish so it never asks twice. */
+    idempotency_key: idempotencyKey.optional(),
   });
 
 /** "Same as last week": a new draft plan copied from an existing one. */

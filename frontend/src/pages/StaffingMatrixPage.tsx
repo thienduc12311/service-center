@@ -58,7 +58,7 @@ export const StaffingMatrixPage = () => {
   const [teamId, setTeamId] = useState('');
   const [positionId, setPositionId] = useState('');
   const [visibility, setVisibility] = useState<'prepared' | 'released'>('prepared');
-  const [notify, setNotify] = useState(false);
+  const [notify, setNotify] = useState(true);
   const gridRef = useRef<HTMLTableElement>(null);
   const matrixFilters = useMemo<StaffingMatrixFilters>(() => ({
     ...filters,

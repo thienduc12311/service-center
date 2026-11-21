@@ -200,6 +200,9 @@ import type {
   TeamPolicySettings,
   CalendarEvent,
   AssignmentNotificationSendResult,
+  CreateAssignmentsResult,
+  PlanPublishPreview,
+  UpdatePlanResult,
   AssignmentResponseCommitResult,
   AssignmentResponseReview,
   AssignmentReleasePreview,
@@ -940,8 +943,12 @@ export class ServiceCenterApi {
   getPlan = (id: string) => this.request<PlanDetail>('GET', `/api/v1/plans/${id}`);
   createPlan = (body: Record<string, unknown>) =>
     this.request<PlanDetail>('POST', '/api/v1/plans', body);
+  /** With `status: 'published'` it also asks everyone released and never notified (ADR-0006). */
   updatePlan = (id: string, body: UpdatePlanRequest) =>
-    this.request<PlanRow>('PATCH', `/api/v1/plans/${id}`, body);
+    this.request<UpdatePlanResult>('PATCH', `/api/v1/plans/${id}`, body);
+  /** Who publishing this plan would email, and who has no address (ADR-0006). */
+  planPublishPreview = (id: string) =>
+    this.request<PlanPublishPreview>('GET', `/api/v1/plans/${id}/publish-preview`);
   deletePlan = (id: string) => this.request<void>('DELETE', `/api/v1/plans/${id}`);
   duplicatePlan = (id: string, body: DuplicatePlanRequest) =>
     this.request<PlanDetail>('POST', `/api/v1/plans/${id}/duplicate`, body);
@@ -1202,7 +1209,7 @@ export class ServiceCenterApi {
 
   // --------------------------------------------------------- scheduling --
   createAssignments = (planId: string, body: Record<string, unknown>) =>
-    this.request<{ created: AssignmentRow[]; conflicts: AttendanceConflict[]; warnings?: PreferenceWarning[] }>(
+    this.request<CreateAssignmentsResult>(
       'POST',
       `/api/v1/plans/${planId}/assignments`,
       body,

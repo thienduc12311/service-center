@@ -62,6 +62,8 @@ export type PersonReminderPreferencesRow = {
   email: boolean;
   push: boolean;
   in_app: boolean;
+  /** ADR-0007: email me when I'm @mentioned (chat and item discussions). */
+  mention_email: boolean;
   updated_at: string;
 }
 
@@ -120,6 +122,8 @@ export interface ReminderPreferences {
   email: boolean;
   push: boolean;
   in_app: boolean;
+  /** ADR-0007: email me when I'm @mentioned. Not a reminder channel. */
+  mention_email: boolean;
 }
 
 /** One request in a multi-plan release review. */

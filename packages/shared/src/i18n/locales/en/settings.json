@@ -253,7 +253,13 @@
     "pushSimulated": "Simulated — not sent (push disabled)",
     "pending": "Waiting to send",
     "needsAttention": "Need attention",
-    "noWorker": "No scheduled delivery worker is configured, so retries and anything interrupted wait until someone acts again or an operator runs the worker.",
+    "noWorker": "No scheduled delivery worker is configured. Until one is, these are paused:",
+    "noWorkerPaused": {
+      "reminders": "Reminders",
+      "scheduledReleases": "Scheduled releases",
+      "retries": "Retries of failed sends"
+    },
+    "noWorkerMentions": "@mention emails go out immediately instead of after about 10 minutes.",
     "recent": "Recent deliveries",
     "problems": "Failed or uncertain",
     "showProblems": "Show only problems",
@@ -263,6 +269,16 @@
     "recipientChannel": "{{name}} · {{channel}}",
     "unknownPerson": "Unknown person",
     "deletedPlan": "Deleted plan",
+    "noPlanContext": {
+      "assignment_request": "Scheduling request",
+      "assignment_reminder": "Response reminder",
+      "scheduler_response": "Response update",
+      "availability_request": "Availability request",
+      "service_reminder": "Service reminder",
+      "item_comment": "Item discussion",
+      "operational_message": "Message",
+      "conversation_message": "Team chat"
+    },
     "details_one": "{{plan}} · {{date}} · {{count}} attempt",
     "details_other": "{{plan}} · {{date}} · {{count}} attempts",
     "retry": "Retry",
@@ -302,7 +318,9 @@
       "provider_duplicate_key": "Provider already has an earlier attempt of this message; it may have been sent",
       "content_removed": "The comment or message was removed before it was sent",
       "conversation_muted": "The recipient muted this conversation",
-      "channel_not_used": "Not sent on this channel"
+      "channel_not_used": "Not sent on this channel",
+      "already_read": "Already read in the app",
+      "plan_not_published": "The plan was not published when it was due to be sent"
     }
   },
   "folders": {
@@ -483,10 +501,12 @@
     "readOnly": "You can see this setting but not change it."
   },
   "myReminders": {
-    "title": "My reminders",
+    "title": "Notification preferences",
     "description": "Choose how automatic reminders reach you. New requests and changes are still sent.",
     "channels": "Reminder channels",
-    "none": "You will not receive automatic reminders."
+    "none": "You will not receive automatic reminders.",
+    "mentionEmail": "Email me when I'm @mentioned",
+    "mentionEmailHint": "For mentions in a chat or an item discussion that you haven't read in the app yet."
   },
   "help": {
     "title": "Help with my schedule",

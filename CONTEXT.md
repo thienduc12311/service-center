@@ -33,6 +33,15 @@ One entry in a plan's running order — a song, a section header, or a free-form
 item.
 _Avoid_: Element, row
 
+**Publish**:
+Marking a plan ready, which is the moment the people released onto it are
+notified. While a plan is a draft nobody is emailed about it; a published
+plan notifies new assignments straight away. Unpublishing never un-asks
+anyone, and publishing again only notifies people never notified before.
+Distinct from public sharing (a plan's public link), which requires a
+published plan but is set up separately.
+_Avoid_: Release (that is the prepared → released step for one request), go live
+
 ### People
 
 **Person**:
@@ -100,3 +109,11 @@ _Avoid_: Accept link, RSVP link
 A per-person subscribable calendar covering all of that person's assignments,
 which their own calendar application keeps up to date.
 _Avoid_: Calendar export, sync
+
+**Mention Email**:
+The email a person gets when someone @mentions them in a team or plan chat, or
+in a plan item's discussion. It is sent only if they still haven't read that
+thread a short while later, and repeated mentions in one thread collapse into
+one email. Every other chat message reaches people in the app and by push
+only.
+_Avoid_: Chat email, message digest

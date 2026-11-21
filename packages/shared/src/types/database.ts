@@ -52,6 +52,7 @@ import type {
   ConversationMemberStateRow,
   ConversationMessageMentionRow,
   ConversationMessageReportRow,
+  MentionEmailBatchRow,
   ConversationMessageRow,
   ConversationRow,
   ConversationSummary,
@@ -1615,6 +1616,15 @@ export type Database = {
         Args: { p_team: string };
         Returns: Array<{ user_id: string; eligible: boolean; status: EligibilityStatus | null; expires_at: string | null }>;
       };
+      /** ADR-0006: publish a plan and ask everyone released and never notified. */
+      publish_plan_notify: {
+        Args: { p_plan: string; p_notify: boolean; p_effect_key: string };
+        Returns: Array<{ plan: PlanRow; effect_id: string | null }>;
+      };
+      publish_plan_notify_preview: {
+        Args: { p_plan: string };
+        Returns: Array<{ will_notify: number; no_email: string[] }>;
+      };
       enqueue_plan_notifications: {
         Args: {
           p_plan_id: string;
@@ -1871,6 +1881,10 @@ export type Database = {
       user_can_access_conversation: {
         Args: { p_user: string; p_conversation: string };
         Returns: boolean;
+      };
+      mention_email_batch: {
+        Args: { p_delivery: string };
+        Returns: MentionEmailBatchRow[];
       };
       purge_expired_conversation_messages: {
         Args: { p_limit?: number };

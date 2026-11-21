@@ -51,6 +51,7 @@ import { ImportTemplateModal } from '../components/plan/ImportTemplateModal';
 import { ApplyTemplateModal } from '../components/templates/ApplyTemplateModal';
 import { SaveTemplateModal } from '../components/templates/SaveTemplateModal';
 import { DeliveryOutcomeNotice } from '../components/plan/DeliveryOutcomeNotice';
+import { PublishPlanModal } from '../components/plan/PublishPlanModal';
 import { OpportunityPanel, type SignupSetupOption } from '../components/plan/OpportunityPanel';
 import { PLAN_TABS, buildPlanTeams, type PlanTab } from '../components/plan/types';
 import { useFormatters } from '../i18n';
@@ -64,7 +65,7 @@ const SONG_BROWSER_ROOM = 'xl:pr-[max(0px,calc(25rem_-_max(0px,calc((100vw_-_96r
 const PLAN_CHAT_RESTRICTED = new LocalizedError({ key: 'plans:planDetail.errors.planChatRestricted' });
 
 /** Which dialog, if any, is on top of the workspace. */
-type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'import-template' | 'apply-template' | 'save-template' | 'print-order';
+type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'import-template' | 'apply-template' | 'save-template' | 'print-order' | 'publish';
 
 export const PlanDetailPage = () => {
   const { planId } = useParams<{ planId: string }>();
@@ -127,9 +128,22 @@ export const PlanDetailPage = () => {
     [after.data, before.data, planId],
   );
 
+  // ADR-0006: publishing asks everyone released and never notified. The key
+  // travels with the request so a retry never asks twice.
   const publish = useMutation({
-    mutationFn: (status: 'draft' | 'published') => api.updatePlan(planId!, { status }),
-    onSuccess: invalidate,
+    mutationFn: (notify: boolean) =>
+      api.updatePlan(planId!, { status: 'published', notify, idempotency_key: crypto.randomUUID() }),
+    onSuccess: async () => {
+      setDialog(null);
+      await invalidate();
+    },
+  });
+  const unpublish = useMutation({
+    mutationFn: () => api.updatePlan(planId!, { status: 'draft' }),
+    onSuccess: async () => {
+      publish.reset();
+      await invalidate();
+    },
   });
 
   // The key travels with the request, so a retried request is answered with
@@ -349,9 +363,10 @@ export const PlanDetailPage = () => {
         creatingNextPlan={addNextPlan.isPending}
         onCreateNextPlan={() => addNextPlan.mutate()}
         onExportSongBook={exportSongBook}
-        onTogglePublished={() =>
-          publish.mutate(detail.status === 'published' ? 'draft' : 'published')
-        }
+        onTogglePublished={() => {
+          if (detail.status === 'published') unpublish.mutate();
+          else setDialog('publish');
+        }}
         onNotify={() => notify.mutate(crypto.randomUUID())}
         deleting={removePlan.isPending}
         onDelete={() => {
@@ -365,7 +380,7 @@ export const PlanDetailPage = () => {
       <div className="mt-5 space-y-3">
         <ErrorNotice
           error={
-            publish.error ??
+            unpublish.error ??
             notify.error ??
             (orderStale ? null : orderError) ??
             respond.error ??
@@ -375,7 +390,13 @@ export const PlanDetailPage = () => {
             removePlan.error
           }
         />
+        {detail.status === 'draft' && (canSchedule || canEditPlan) && (
+          <Notice tone="info">{t('planDetail.draftBanner')}</Notice>
+        )}
         {notify.isSuccess && <DeliveryOutcomeNotice result={notify.data} canRetry={isAdmin(role)} />}
+        {publish.data?.publish_notification && (
+          <DeliveryOutcomeNotice result={publish.data.publish_notification} canRetry={isAdmin(role)} />
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <Button icon="play" onClick={() => navigate(`/plans/${planId}/live`)}>
             {t('planDetail.live')}
@@ -560,6 +581,17 @@ export const PlanDetailPage = () => {
           if (songBrowserOpen) setSongInsertPoint(advanceInsertPoint(otherInsertPoint, itemId));
         }}
         onClose={() => setDialog(null)}
+      />
+      <PublishPlanModal
+        open={dialog === 'publish'}
+        planId={detail.id}
+        publishing={publish.isPending}
+        error={publish.error}
+        onClose={() => {
+          setDialog(null);
+          publish.reset();
+        }}
+        onPublish={(notifyPeople) => publish.mutate(notifyPeople)}
       />
       <SchedulePeopleModal
         open={dialog === 'schedule-people'}

@@ -40,6 +40,8 @@ const KNOWN_DELIVERY_ERRORS = [
   'content_removed',
   'conversation_muted',
   'channel_not_used',
+  'already_read',
+  'plan_not_published',
 ] as const;
 type KnownDeliveryError = (typeof KNOWN_DELIVERY_ERRORS)[number];
 
@@ -68,7 +70,10 @@ const DeliveryRowView = ({ delivery }: { delivery: DeliveryListItem }) => {
         </p>
         <p className="text-slate-500">
           {t('delivery.details', {
-            plan: current.plan_title ?? t('delivery.deletedPlan'),
+            // Chats, availability requests and church-wide messages have no plan.
+            plan: current.plan_id
+              ? current.plan_title ?? t('delivery.deletedPlan')
+              : t(`delivery.noPlanContext.${current.template}`),
             date: date(current.created_at),
             count: current.attempts,
           })}
@@ -85,6 +90,26 @@ const DeliveryRowView = ({ delivery }: { delivery: DeliveryListItem }) => {
         )}
       </div>
     </li>
+  );
+};
+
+type PausedWork = 'reminders' | 'scheduledReleases' | 'retries';
+
+const PAUSED_WITHOUT_WORKER: readonly PausedWork[] = ['reminders', 'scheduledReleases', 'retries'];
+
+/** What stops (and what changes) while no scheduled delivery worker runs. */
+const NoWorkerWarning = () => {
+  const { t } = useTranslation('settings');
+  return (
+    <div role="status" className="sm:col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+      <p>{t('delivery.noWorker')}</p>
+      <ul className="my-1 list-disc pl-5">
+        {PAUSED_WITHOUT_WORKER.map((item) => (
+          <li key={item}>{t(`delivery.noWorkerPaused.${item}`)}</li>
+        ))}
+      </ul>
+      <p>{t('delivery.noWorkerMentions')}</p>
+    </div>
   );
 };
 
@@ -121,9 +146,7 @@ export const DeliverySettings = () => {
             <dt className="text-slate-500">{t('delivery.needsAttention')}</dt>
             <dd>{status.data.needs_attention}</dd>
           </div>
-          {!status.data.worker_configured && (
-            <div className="sm:col-span-2 text-amber-700">{t('delivery.noWorker')}</div>
-          )}
+          {!status.data.worker_configured && <NoWorkerWarning />}
         </dl>
       )}
 

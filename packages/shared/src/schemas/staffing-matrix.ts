@@ -40,7 +40,7 @@ export const saveStaffingMatrixViewSchema = z.object({
 const assignAction = z.object({
   kind: z.literal('assign'), plan_id: uuid, person_id: uuid, team_id: uuid,
   position_id: uuid.nullable(), visibility, attendance_mode: attendanceModeSchema,
-  time_ids: z.array(uuid).max(20).default([]), notify: z.boolean().default(false),
+  time_ids: z.array(uuid).max(20).default([]), notify: z.boolean().default(true),
 }).refine((value) => value.attendance_mode === 'all' || value.time_ids.length > 0, {
   message: 'Choose at least one attendance time', path: ['time_ids'],
 });
@@ -55,7 +55,7 @@ const copyAction = z.object({
   expected_source_revision: z.number().int().min(0), destination_plan_id: uuid,
   destination_attendance_mode: attendanceModeSchema,
   destination_time_ids: z.array(uuid).max(20).default([]), visibility,
-  notify: z.boolean().default(false),
+  notify: z.boolean().default(true),
 }).refine((value) => value.destination_attendance_mode === 'all' || value.destination_time_ids.length > 0, {
   message: 'Choose at least one destination time', path: ['destination_time_ids'],
 });

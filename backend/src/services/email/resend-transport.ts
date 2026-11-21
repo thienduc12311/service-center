@@ -1,12 +1,14 @@
 import { Resend, type ErrorResponse } from 'resend';
 import {
   isAvailabilityRequest,
+  isMentionEmail,
   isSchedulerResponse,
   isOperationalMessage,
   isServiceReminder,
   type AvailabilityRequestNotification,
   type EmailSendOptions,
   type EmailSendReceipt,
+  type MentionEmailNotification,
   type NotificationTransport,
   type OperationalMessageNotification,
   type PersonInvitationNotification,
@@ -23,6 +25,7 @@ import { invitationEmail } from './templates/invitation.js';
 import { scheduleEmail } from './templates/schedule.js';
 import { serviceReminderEmail } from './templates/service-reminder.js';
 import { operationalMessageEmail } from './templates/operational-message.js';
+import { mentionEmail } from './templates/mention.js';
 
 /** How long to wait for Resend before treating the outcome as unknown. */
 const SEND_TIMEOUT_MS = 15_000;
@@ -76,6 +79,7 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
 
   async send(
     notification:
+      | MentionEmailNotification
       | ScheduleNotification
       | AvailabilityRequestNotification
       | ServiceReminderNotification
@@ -84,6 +88,15 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
       | PersonInvitationNotification,
     options: EmailSendOptions = {},
   ): Promise<EmailSendReceipt> {
+    // First: its `threadUrl` is unique to it, and nothing below may claim it.
+    // ADR-0007: from the organization, no reply-to (replies belong in the app).
+    if (isMentionEmail(notification)) {
+      const content = mentionEmail(notification);
+      return this.deliver({
+        from: `${notification.organizationName} <${config.MAIL_FROM_ADDRESS}>`,
+        to: notification.to, subject: content.subject, html: content.html, text: content.text,
+      }, options);
+    }
     if (isSchedulerResponse(notification)) {
       const content = schedulerResponseEmail(notification);
       return this.deliver({

@@ -147,7 +147,10 @@ select pg_temp.check((select resolution from public.plan_item_comment_mentions w
 select pg_temp.check((select resolution from public.plan_item_comment_mentions where comment_id = pg_temp.fx('comment') and person_id = pg_temp.fx('morgan')) = 'no_access', 'mention does not grant Morgan access');
 select pg_temp.check((select resolution from public.plan_item_comment_mentions where comment_id = pg_temp.fx('comment') and person_id = pg_temp.fx('guest')) = 'no_login', 'guest mention recorded as no login');
 select pg_temp.check((select count(*) from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
-  where e.comment_id = pg_temp.fx('comment')) = 2, 'only Riley gets deliveries (feed + push)');
+  where e.comment_id = pg_temp.fx('comment') and d.channel <> 'email') = 2, 'only Riley gets deliveries (feed + push)');
+select pg_temp.check((select count(*) from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
+  where e.comment_id = pg_temp.fx('comment') and d.channel = 'email' and d.recipient_person_id = pg_temp.fx('riley')) = 1,
+  'ADR-0007: the notified mention also queues one email');
 select pg_temp.check(not exists (select 1 from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
   where e.comment_id = pg_temp.fx('comment') and d.recipient_person_id = pg_temp.fx('morgan')), 'nothing is sent to Morgan');
 select pg_temp.check((select count(*) from public.delivery_effects where comment_id = pg_temp.fx('comment')) = 1, 'one effect for the comment');
@@ -342,8 +345,8 @@ set local role authenticated;
 -- reply authors receive push too, and mentions never create a second job.
 reset role;
 select pg_temp.check((select count(*) from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
-  where e.conversation_message_id = pg_temp.fx('m1') and d.recipient_person_id = pg_temp.fx('riley')) = 2,
-  'mention plus ordinary membership produces exactly one job per channel after retry');
+  where e.conversation_message_id = pg_temp.fx('m1') and d.recipient_person_id = pg_temp.fx('riley')) = 3,
+  'mention plus ordinary membership produces exactly one job per channel (feed, push, mention email) after retry');
 select pg_temp.check(exists (select 1 from public.deliveries d join public.delivery_effects e on e.id = d.effect_id
   where e.conversation_message_id = pg_temp.fx('m2') and d.recipient_person_id = pg_temp.fx('sam') and d.channel = 'push'),
   'a reply creates a push as well as the feed job');
