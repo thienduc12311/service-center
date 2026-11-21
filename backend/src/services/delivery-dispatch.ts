@@ -646,11 +646,58 @@ const authorName = async (orgId: string, personId: string | null, profileId: str
   return [person?.first_name, person?.last_name].filter(Boolean).join(' ') || profile?.full_name || someone;
 };
 
+/** Where a mention happened and where its email links, per thread kind. */
+interface MentionThread {
+  organizationId: string;
+  /** Already phrased for the recipient: "Band chat", "“Welcome”". */
+  place: string;
+  threadUrl: string;
+}
+
+/** ADR-0007: the excerpt of a mention email. */
+const MENTION_EXCERPT_LENGTH = 280;
+
+/**
+ * ADR-0007 mention email, after the caller rechecked the message and the
+ * recipient's access. Sent only for what is still unread in this thread since
+ * the person's last mention email (read position, or the mention's feed row
+ * marked read): the latest mention is the excerpt, the others `moreCount`.
+ * Nothing unread means the app already did the job.
+ */
+const sendMentionEmail = async (job: DeliveryJob, thread: MentionThread, begin: BeginProviderCall): Promise<DispatchResult | null> => {
+  const [batch] = (await unwrap(adminDb.rpc('mention_email_batch', { p_delivery: job.id }))) ?? [];
+  if (!batch || batch.mention_count === 0 || batch.latest_body === null) return finished('cancelled', 'already_read');
+  // The opt-out is honored at send time too, for a change made while queued.
+  const preference = await unwrap(
+    adminDb.from('person_reminder_preferences').select('mention_email').eq('person_id', job.recipientPersonId).maybeSingle(),
+  );
+  if (preference && !preference.mention_email) return finished('skipped', 'channel_not_used');
+  const { email, name } = await recipientEmail(thread.organizationId, job.recipientPersonId, job.recipientId);
+  if (!email) return finished('skipped', 'no_email_address');
+  const { t } = recipientLanguage(job.locale);
+  const [organization, author] = await Promise.all([
+    unwrap(adminDb.from('organizations').select('name').eq('id', thread.organizationId).maybeSingle()),
+    authorName(thread.organizationId, batch.latest_author_person_id, batch.latest_author_id, t('feed.someone')),
+  ]);
+  return sendEmail({
+    to: email,
+    locale: job.locale,
+    personName: name,
+    organizationName: organization?.name ?? 'Service Center',
+    authorName: author,
+    place: thread.place,
+    excerpt: excerpt(batch.latest_body, MENTION_EXCERPT_LENGTH),
+    moreCount: Math.max(batch.mention_count - 1, 0),
+    threadUrl: thread.threadUrl,
+  }, begin, { idempotencyKey: `delivery-${job.id}` });
+};
+
 /**
  * F09 item discussion. Rechecked at send time: the comment still exists and
  * is not deleted, and the recipient can still read the plan's thread (a
  * mention never granted access). The feed row carries a short excerpt; the
- * push stays generic like every other push.
+ * push stays generic like every other push. A mention's email (ADR-0007) is
+ * sent only if the mention is still unread.
  */
 const dispatchItemComment = async (effect: DeliveryEffect, job: DeliveryJob, begin: BeginProviderCall): Promise<DispatchResult | null> => {
   if (!effect.commentId) return finished('cancelled', 'content_removed');
@@ -668,6 +715,14 @@ const dispatchItemComment = async (effect: DeliveryEffect, job: DeliveryJob, beg
     authorName(comment.organization_id, comment.author_person_id, comment.author_id, t('feed.someone')),
   ]);
   const itemTitle = item?.title ?? t('feed.anItem');
+  if (job.channel === 'email') {
+    if (!mention) return finished('skipped', 'channel_not_used');
+    return sendMentionEmail(job, {
+      organizationId: comment.organization_id,
+      place: item?.title ? `“${item.title}”` : itemTitle,
+      threadUrl: `${config.APP_URL}/plans/${comment.plan_id}`,
+    }, begin);
+  }
   return deliverFeedOrPush(job, [{
     organizationId: comment.organization_id,
     userId: job.recipientId,
@@ -736,7 +791,8 @@ const dispatchOperationalMessage = async (effect: DeliveryEffect, job: DeliveryJ
 /**
  * F09 conversation messages, mentions and replies. Rechecked at send time: the message is
  * still visible, the recipient is still a participant (team/plan state,
- * youth gate) and has not muted the conversation since.
+ * youth gate) and has not muted the conversation since. A mention's email
+ * (ADR-0007) is sent only if the mention is still unread.
  */
 const dispatchConversationMessage = async (effect: DeliveryEffect, job: DeliveryJob, begin: BeginProviderCall): Promise<DispatchResult | null> => {
   if (!effect.conversationMessageId) return finished('cancelled', 'content_removed');
@@ -765,6 +821,14 @@ const dispatchConversationMessage = async (effect: DeliveryEffect, job: Delivery
       ? (await unwrap(adminDb.from('plans').select('title').eq('id', conversation.plan_id).maybeSingle()))?.title
       : null;
   const where = place ? t('feed.placeChat', { place }) : t('feed.aConversation');
+  if (job.channel === 'email') {
+    if (!mention) return finished('skipped', 'channel_not_used');
+    return sendMentionEmail(job, {
+      organizationId: message.organization_id,
+      place: where,
+      threadUrl: `${config.APP_URL}/chat/${message.conversation_id}`,
+    }, begin);
+  }
   return deliverFeedOrPush(job, [{
     organizationId: message.organization_id,
     userId: job.recipientId,

@@ -52,6 +52,7 @@ import type {
   ConversationMemberStateRow,
   ConversationMessageMentionRow,
   ConversationMessageReportRow,
+  MentionEmailBatchRow,
   ConversationMessageRow,
   ConversationRow,
   ConversationSummary,
@@ -1850,6 +1851,10 @@ export type Database = {
       user_can_access_conversation: {
         Args: { p_user: string; p_conversation: string };
         Returns: boolean;
+      };
+      mention_email_batch: {
+        Args: { p_delivery: string };
+        Returns: MentionEmailBatchRow[];
       };
       purge_expired_conversation_messages: {
         Args: { p_limit?: number };

@@ -303,7 +303,8 @@
       "provider_duplicate_key": "Nhà cung cấp đã có một lần gửi trước của tin này; có thể đã gửi đi",
       "content_removed": "Bình luận hoặc tin nhắn đã bị gỡ trước khi gửi",
       "conversation_muted": "Người nhận đã tắt thông báo cuộc trò chuyện này",
-      "channel_not_used": "Không gửi qua kênh này"
+      "channel_not_used": "Không gửi qua kênh này",
+      "already_read": "Đã đọc trong ứng dụng"
     }
   },
   "folders": {
@@ -479,10 +480,12 @@
     "readOnly": "Bạn có thể xem cài đặt này nhưng không thể thay đổi."
   },
   "myReminders": {
-    "title": "Lời nhắc của tôi",
+    "title": "Tùy chọn thông báo",
     "description": "Chọn cách bạn nhận lời nhắc tự động. Các yêu cầu mới và thay đổi vẫn được gửi.",
     "channels": "Kênh nhận lời nhắc",
-    "none": "Bạn sẽ không nhận được lời nhắc tự động."
+    "none": "Bạn sẽ không nhận được lời nhắc tự động.",
+    "mentionEmail": "Gửi email cho tôi khi có người @nhắc đến tôi",
+    "mentionEmailHint": "Áp dụng cho lần nhắc trong cuộc trò chuyện hoặc thảo luận mục mà bạn chưa đọc trong ứng dụng."
   },
   "help": {
     "title": "Người giúp quản lý lịch của tôi",

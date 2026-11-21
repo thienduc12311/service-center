@@ -83,6 +83,8 @@ export const updateReminderPreferencesSchema = z.object({
   email: z.boolean(),
   push: z.boolean(),
   in_app: z.boolean(),
+  /** ADR-0007. Optional so older clients that send only the channels keep the stored value. */
+  mention_email: z.boolean().optional(),
 });
 
 export type ReleaseBatchPreviewInput = z.infer<typeof releaseBatchPreviewSchema>;

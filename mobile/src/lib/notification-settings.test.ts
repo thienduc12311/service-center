@@ -9,12 +9,13 @@ import {
   parseBadgePreference,
   pushRemindersMissThisDevice,
   pushStatus,
+  mentionEmailInput,
   reminderPreferencesInput,
   type PushPermissionSnapshot,
 } from './notification-settings';
 
 const device: PushPermissionSnapshot = { isDevice: true, pushConfigured: true, status: 'granted', canAskAgain: true };
-const preferences: ReminderPreferences = { person_id: 'person', email: true, push: true, in_app: true };
+const preferences: ReminderPreferences = { person_id: 'person', email: true, push: true, in_app: true, mention_email: true };
 
 describe('MOB-020 badge', () => {
   it('shows the account-wide count the push dispatcher sends, not the active organization', () => {
@@ -62,7 +63,13 @@ describe('MOB-020 OS permission', () => {
 describe('MOB-020 reminder channels (F08)', () => {
   it('sends the full body the website sends, valid for the shared schema', () => {
     const input = reminderPreferencesInput(preferences, 'push', false);
-    expect(input).toEqual({ email: true, push: false, in_app: true });
+    expect(input).toEqual({ email: true, push: false, in_app: true, mention_email: true });
+    expect(updateReminderPreferencesSchema.parse(input)).toEqual(input);
+  });
+
+  it('turns mention emails off without touching the reminder channels (ADR-0007)', () => {
+    const input = mentionEmailInput(preferences, false);
+    expect(input).toEqual({ email: true, push: true, in_app: true, mention_email: false });
     expect(updateReminderPreferencesSchema.parse(input)).toEqual(input);
   });
 
