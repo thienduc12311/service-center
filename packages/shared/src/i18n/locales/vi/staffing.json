@@ -65,7 +65,8 @@
     "prepare": "Chuẩn bị",
     "schedule": "Phân công",
     "prepareCount_other": "Chuẩn bị {{count}}",
-    "scheduleCount_other": "Phân công {{count}}"
+    "scheduleCount_other": "Phân công {{count}}",
+    "heldUntilPublish": "Mọi người sẽ được thông báo khi chương trình này được công bố."
   },
   "preferenceWarning": {
     "frequency": "Phục vụ thường xuyên hơn mong muốn",
@@ -99,7 +100,8 @@
     "cannotOverride": "Bạn không thể phân công khi bị trùng lịch ở đây. Hãy chọn giờ khác.",
     "stale": "Phân công này đã thay đổi từ lúc bạn mở. Hãy đóng và mở lại để xem giờ mới nhất.",
     "saveAnyway": "Vẫn lưu",
-    "save": "Lưu giờ"
+    "save": "Lưu giờ",
+    "heldUntilPublish": "Mọi người sẽ được thông báo khi chương trình này được công bố."
   },
   "deliveryOutcome": {
     "nothingSent": "Không ai đang chờ trả lời, nên chưa có gì được gửi.",

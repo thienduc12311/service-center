@@ -71,7 +71,8 @@
     "prepareCount_one": "Prepare {{count}}",
     "prepareCount_other": "Prepare {{count}}",
     "scheduleCount_one": "Schedule {{count}}",
-    "scheduleCount_other": "Schedule {{count}}"
+    "scheduleCount_other": "Schedule {{count}}",
+    "heldUntilPublish": "People will be notified when this plan is published."
   },
   "preferenceWarning": {
     "frequency": "Serving more often than preferred",
@@ -105,7 +106,8 @@
     "cannotOverride": "You can’t schedule over a conflict here. Choose other times.",
     "stale": "This request changed since you opened it. Close and open it again to see the latest times.",
     "saveAnyway": "Save anyway",
-    "save": "Save times"
+    "save": "Save times",
+    "heldUntilPublish": "People will be notified when this plan is published."
   },
   "deliveryOutcome": {
     "nothingSent": "Nobody is waiting for a reply, so nothing was sent.",

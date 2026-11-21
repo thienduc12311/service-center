@@ -98,6 +98,9 @@ export const queryKeys = {
   /** MOB-015: F08 scheduled reminders and per-Person/channel delivery history for one plan. */
   planDeliveries: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
     [...privateRoot(scope), 'plan-deliveries', planId ?? null] as const,
+  /** ADR-0006: who publishing this plan would email right now. */
+  planPublishPreview: (scope: ProtectedQueryScope | null, planId: string | null | undefined) =>
+    [...privateRoot(scope), 'plan-publish-preview', planId ?? null] as const,
   /** MOB-015: F08 effective/explicit reminder policies at one scope (organization when both are null). */
   reminderPolicies: (scope: ProtectedQueryScope | null, serviceTypeId: string | null, teamId: string | null) =>
     [...privateRoot(scope), 'reminder-policies', serviceTypeId, teamId] as const,

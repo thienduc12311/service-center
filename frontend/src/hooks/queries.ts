@@ -101,6 +101,8 @@ export const keys = {
   // F04 attendance and conflicts.
   conflictCheck: (org: string | null, query: unknown) => [...keys.all(org), 'conflict-check', query] as const,
   conflictOverrides: (org: string | null, planId: string) => [...keys.plan(org, planId), 'conflict-overrides'] as const,
+  /** ADR-0006: who publishing this plan would email. */
+  planPublishPreview: (org: string | null, planId: string) => [...keys.plan(org, planId), 'publish-preview'] as const,
   staffingMatrix: (org: string | null, input: unknown) => [...keys.all(org), 'staffing-matrix', input] as const,
   staffingMatrixViews: (org: string | null) => [...keys.all(org), 'staffing-matrix-views'] as const,
   staffingProposals: (org: string | null) => [...keys.all(org), 'staffing-proposals'] as const,

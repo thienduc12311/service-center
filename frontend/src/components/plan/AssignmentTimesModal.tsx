@@ -117,7 +117,9 @@ export const AssignmentTimesModal = ({ plan, assignment, onClose }: AssignmentTi
               : assignment.team?.name ?? t('common:fallback.team')}
           </p>
           {assignment.visibility === 'released' && assignment.status !== 'declined' && (
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('assignmentTimes.resendHint')}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {plan.status === 'published' ? t('assignmentTimes.resendHint') : t('assignmentTimes.heldUntilPublish')}
+            </p>
           )}
           <TimeScopePicker
             idPrefix={`assignment-${assignment.id}`}

@@ -99,7 +99,8 @@
     "songBookFrameTitle": "Xem trước bản in sách bài hát buổi nhóm",
     "errors": {
       "planChatRestricted": "Trò chuyện chương trình chỉ dành cho người phụ trách chương trình và những người được phân công trong chương trình này."
-    }
+    },
+    "draftBanner": "Bản nháp — những người bạn phân công sẽ không được thông báo cho đến khi bạn công bố."
   },
   "header": {
     "exportSongBook": "Xuất sách bài hát",
@@ -608,5 +609,15 @@
     "remindersHint": "Lời nhắc được máy chủ Service Center lên lịch và gửi, không phải điện thoại này.",
     "policyStale": "Có người đã thay đổi cài đặt lời nhắc này trước. Cài đặt mới nhất đang được hiển thị — hãy thực hiện lại thay đổi của bạn.",
     "delivery": "Lời nhắc và gửi thông báo"
+  },
+  "publishConfirm": {
+    "title": "Công bố chương trình này?",
+    "loading": "Đang kiểm tra ai sẽ được thông báo…",
+    "willEmail_other": "Công bố sẽ gửi email cho {{count}} người.",
+    "nobody": "Không có ai đang chờ được mời, nên công bố sẽ không gửi email cho ai.",
+    "noEmail_other": "Chưa có địa chỉ email cho {{count}} người, nên không gửi email: {{names}}.",
+    "notify": "Thông báo cho mọi người",
+    "notifyHint": "Mỗi người đã được phân công vào chương trình này mà chưa được mời sẽ nhận một yêu cầu. Yêu cầu đang chuẩn bị vẫn được giữ riêng, và người đã được mời sẽ không bị mời lại.",
+    "confirm": "Công bố"
   }
 }
