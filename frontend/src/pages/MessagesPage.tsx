@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import type { DeliveryStatus, MessageRecipientOutcome } from '@service-center/shared';
+import type { DeliveryStatus, MessageRecipientOutcome, OperationalMessageSummary } from '@service-center/shared';
 import { api } from '../lib/api';
-import { useInvalidateOrg, useMessage, useMessages, useTeams } from '../hooks/queries';
+import { useInvalidateOrg, useMessage, useMessagePages, useTeams } from '../hooks/queries';
+import { matchesSearch } from '../lib/search';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters } from '../i18n';
 import { Avatar, Badge, Button, EmptyState, ErrorNotice, ListErrorNotice, listFailed, Notice, PageHeader, SectionHeader, SkeletonList, Tabs } from '../components/ui';
@@ -59,12 +60,16 @@ export const MessagesPage = () => {
   const isSender = canAnywhere('scheduling.manage') || canAnywhere('teams.manage');
   const [box, setBox] = useState<MessageBox>(isSender ? 'sent' : 'received');
   const [composing, setComposing] = useState(false);
-  const messages = useMessages({ box });
+  const [search, setSearch] = useState('');
+  const messages = useMessagePages({ box });
   const teams = useTeams();
   const myTeams = (teams.data ?? []).filter((team) =>
     can('scheduling.manage', { teamId: team.id, serviceTypeId: team.service_type_id }) || can('teams.manage', { teamId: team.id, serviceTypeId: team.service_type_id }));
 
-  const list = messages.data ?? [];
+  const loaded = useMemo<OperationalMessageSummary[]>(() => (messages.data?.pages ?? []).flat(), [messages.data]);
+  // The server has no text search for messages: this filters what is loaded, and says so.
+  const searching = search.trim().length > 0;
+  const list = searching ? loaded.filter((message) => matchesSearch(search, [message.subject, message.sender_name])) : loaded;
 
   return (
     <div>
@@ -82,10 +87,34 @@ export const MessagesPage = () => {
           items={(['sent', 'received'] as const).map((value) => ({ value, label: t(`messagesPage.tabs.${value}`) }))}
         />
       )}
+      {loaded.length > 0 && (
+        <div className="mb-4 space-y-1.5">
+          <div className="relative max-w-md">
+            <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              className="input pl-9"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t('messagesPage.searchPlaceholder')}
+              aria-label={t('messagesPage.searchLabel')}
+            />
+          </div>
+          {searching && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {messages.hasNextPage
+                ? t('messagesPage.searchScopePartial', { count: loaded.length })
+                : t('messagesPage.searchScope', { count: loaded.length })}
+            </p>
+          )}
+        </div>
+      )}
       {messages.isLoading ? (
         <SkeletonList rows={5} />
       ) : listFailed(messages) ? (
         <ListErrorNotice query={messages} />
+      ) : searching && list.length === 0 ? (
+        <EmptyState compact icon="search" title={t('messagesPage.noMatches')} />
       ) : list.length === 0 ? (
         <EmptyState icon="mail" title={box === 'sent' ? t('messagesPage.empty.sentTitle') : t('messagesPage.empty.receivedTitle')} description={box === 'sent' ? t('messagesPage.empty.sentDescription') : undefined} />
       ) : (
@@ -119,6 +148,16 @@ export const MessagesPage = () => {
           ))}
         </ul>
       )}
+      {messages.hasNextPage && (
+        <div className="mt-4 flex justify-center">
+          <Button variant="secondary" loading={messages.isFetchingNextPage} onClick={() => void messages.fetchNextPage()}>
+            {t('messagesPage.loadOlder')}
+          </Button>
+        </div>
+      )}
+      <div className="mt-3 empty:hidden">
+        <ErrorNotice error={messages.isFetchNextPageError ? messages.error : null} />
+      </div>
       {composing && <MessageComposerModal plan={null} teams={myTeams} onClose={() => setComposing(false)} />}
     </div>
   );

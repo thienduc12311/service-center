@@ -7,6 +7,8 @@ import {
   reportExportErrorKey,
   reportExportStatusAt,
   reportExportsInProgress,
+  REPORT_PLAN_LIMIT,
+  REPORT_ROW_LIMIT,
   type AnyReport,
   type ReportExportSummary,
   type ReportFiltersRequest,
@@ -15,7 +17,7 @@ import {
 import { api } from '../lib/api';
 import { keys, useServiceTypes, useTeams } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Badge, Button, EmptyState, ErrorNotice, Loading, PageHeader, SectionHeader, Tabs } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, Loading, Notice, PageHeader, SectionHeader, Tabs } from '../components/ui';
 import { Icon } from '../components/icons';
 import { printDocument } from '../lib/print-document';
 import {
@@ -27,10 +29,16 @@ import {
   reportTitle,
   type ReportLocalization,
 } from '../lib/report-print';
+import { nextReportSort, sortedRowOrder, type ReportSort } from '../lib/report-sort';
 import { useFormatters, useLanguage } from '../i18n';
 
 const KINDS: readonly ReportKind[] = ['staffing', 'participation', 'schedule', 'song_usage', 'run_times'];
 const PLAN_STATUSES = ['published', 'draft', 'archived'] as const;
+/** The server keeps an export list this long (`listReportExports`): a full list is a cap, not a count. */
+const EXPORT_LIST_LIMIT = 50;
+/** Follow-ups shown before "Show all". */
+const FOLLOW_UP_PREVIEW = 50;
+
 const RESPONSES = [
   ['confirmed', 'responses.confirmed'],
   ['unconfirmed', 'responses.pending'],
@@ -98,6 +106,8 @@ export const ReportsPage = () => {
   // The same starting filters as the native report screen (MOB-022).
   const [draft, setDraft] = useState<ReportFiltersRequest>(() => defaultReportFilters(Date.now(), timezone));
   const [filters, setFilters] = useState<ReportFiltersRequest | null>(null);
+  // Client-side, over the rows the report returned; cleared whenever another report runs.
+  const [sort, setSort] = useState<ReportSort | null>(null);
   const serviceTypes = useServiceTypes();
   const teams = useTeams();
   const queryClient = useQueryClient();
@@ -108,6 +118,7 @@ export const ReportsPage = () => {
     enabled: Boolean(filters),
   });
   const table = useMemo(() => (report.data ? localizedReportTable(report.data, localization) : null), [report.data, localization]);
+  const rowOrder = useMemo(() => (table ? sortedRowOrder(table.raw, sort, localization.locale) : []), [table, sort, localization.locale]);
 
   const csv = useMutation({
     mutationFn: async () => downloadText(await api.reportCsv(kind, filters!), `${kind.replace('_', '-')}-${filters!.from}-to-${filters!.to}.csv`),
@@ -136,7 +147,7 @@ export const ReportsPage = () => {
       <Tabs<ReportKind>
         label={t('page.tabsLabel')}
         value={kind}
-        onChange={setKind}
+        onChange={(next) => { setKind(next); setSort(null); }}
         items={available.map((value) => ({ value, label: reportTitle(value, t) }))}
       />
 
@@ -144,6 +155,7 @@ export const ReportsPage = () => {
         className="card grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4"
         onSubmit={(event) => {
           event.preventDefault();
+          setSort(null);
           setFilters({ ...draft });
         }}
       >
@@ -255,7 +267,6 @@ export const ReportsPage = () => {
                   timezone: report.data.filters.timezone,
                 }),
                 reportScopeNote(report.data, t),
-                report.data.truncated ? t('results.truncated') : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}
@@ -273,6 +284,9 @@ export const ReportsPage = () => {
             </div>
           </div>
           <ErrorNotice error={csv.error ?? queueExport.error} />
+          {report.data.truncated && (
+            <Notice tone="warning">{t('results.truncatedBanner', { rows: formatters.number(REPORT_ROW_LIMIT), plans: formatters.number(REPORT_PLAN_LIMIT) })}</Notice>
+          )}
           <ReportSummary report={report.data} />
           {table.rows.length === 0 ? (
             <EmptyState icon="search" title={t('results.noMatches')} />
@@ -281,11 +295,36 @@ export const ReportsPage = () => {
               <div className="scrollbar-thin overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="border-b border-app-border bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900/60 dark:text-slate-400">
-                  <tr>{table.columns.map((column) => <th key={column} scope="col" className="whitespace-nowrap px-4 py-2.5 font-semibold">{column}</th>)}</tr>
+                  <tr>
+                    {table.columns.map((column, index) => {
+                      const direction = sort?.column === index ? sort.direction : null;
+                      return (
+                        <th
+                          key={column}
+                          scope="col"
+                          aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
+                          className="whitespace-nowrap px-2 py-1.5 font-semibold"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setSort(nextReportSort(sort, index))}
+                            title={t('results.sortBy', { column })}
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 uppercase tracking-wide transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-brand-500 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                          >
+                            {column}
+                            <Icon
+                              name="chevronDown"
+                              className={`size-3 transition ${direction ? 'text-brand-600 dark:text-brand-300' : 'opacity-0'} ${direction === 'asc' ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                        </th>
+                      );
+                    })}
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {table.rows.map((row, index) => (
-                    <tr key={index} className="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">{row.map((value, i) => <td key={i} className="whitespace-nowrap px-4 py-2 text-slate-700 dark:text-slate-200">{value}</td>)}</tr>
+                  {rowOrder.map((rowIndex) => (
+                    <tr key={rowIndex} className="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">{table.rows[rowIndex]!.map((value, i) => <td key={i} className="whitespace-nowrap px-4 py-2 text-slate-700 dark:text-slate-200">{value}</td>)}</tr>
                   ))}
                 </tbody>
               </table>
@@ -308,7 +347,12 @@ export const ReportsPage = () => {
 
       <section aria-labelledby="exports-heading" className="space-y-3 pt-2">
         <div>
-          <SectionHeader id="exports-heading" className="!mb-1" title={t('exports.title')} meta={exports.data?.length} />
+          <SectionHeader
+            id="exports-heading"
+            className="!mb-1"
+            title={t('exports.title')}
+            meta={exports.data && (exports.data.length >= EXPORT_LIST_LIMIT ? t('exports.latest', { count: EXPORT_LIST_LIMIT }) : exports.data.length)}
+          />
           <p className="text-xs text-slate-500 dark:text-slate-400">{t('exports.help')}</p>
         </div>
         {exports.error && <ErrorNotice error={exports.error} />}
@@ -348,6 +392,7 @@ interface ReportSummaryProps {
 const ReportSummary = ({ report }: ReportSummaryProps) => {
   const { t } = useTranslation(['reports', 'common']);
   const formatters = useFormatters();
+  const [allFollowUps, setAllFollowUps] = useState(false);
   const entries: Array<[SummaryKey, number]> =
     report.kind === 'staffing'
       ? [['plans', report.summary.plans], ['needed', report.summary.needed], ['confirmed', report.summary.confirmed], ['pending', report.summary.pending], ['declined', report.summary.declined], ['vacancies', report.summary.vacancies]]
@@ -372,7 +417,7 @@ const ReportSummary = ({ report }: ReportSummaryProps) => {
         <div className="card p-5">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white"><Icon name="alert" className="size-4 text-amber-500" />{t('followUp.title', { total: formatters.number(report.summary.follow_ups.length) })}</h3>
           <ul className="space-y-1 text-sm text-slate-700 dark:text-slate-300">
-            {report.summary.follow_ups.slice(0, 50).map((row, index) => (
+            {(allFollowUps ? report.summary.follow_ups : report.summary.follow_ups.slice(0, FOLLOW_UP_PREVIEW)).map((row, index) => (
               <li key={index}>
                 {t('followUp.line', {
                   person: row.person_name,
@@ -384,6 +429,19 @@ const ReportSummary = ({ report }: ReportSummaryProps) => {
               </li>
             ))}
           </ul>
+          {!allFollowUps && report.summary.follow_ups.length > FOLLOW_UP_PREVIEW && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <span>
+                {t('common:list.showingOf', {
+                  shown: formatters.number(FOLLOW_UP_PREVIEW),
+                  total: formatters.number(report.summary.follow_ups.length),
+                })}
+              </span>
+              <Button variant="secondary" size="sm" onClick={() => setAllFollowUps(true)}>
+                {t('followUp.showAll', { total: formatters.number(report.summary.follow_ups.length) })}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -25,6 +25,7 @@ import {
   type UnreadNotificationCount,
 } from '@service-center/shared';
 import { api } from '../lib/api';
+import { MESSAGES_PAGE_SIZE, nextMessagesCursor } from '../lib/message-paging';
 import { useAuth } from '../providers/AuthProvider';
 import { useBroadcastRefresh } from './useBroadcastRefresh';
 
@@ -521,12 +522,18 @@ export const useDeliveryReadiness = (personIds: readonly string[]) => {
   });
 };
 
-export const useRosterAudit = (personId: string | null, enabled = true) => {
+/** Roster events per request by default, and the most the endpoint returns (it has no cursor). */
+export const ROSTER_AUDIT_PAGE = 50;
+export const ROSTER_AUDIT_MAX = 200;
+
+export const useRosterAudit = (personId: string | null, enabled = true, limit: number = ROSTER_AUDIT_PAGE) => {
   const org = useOrg();
   return useQuery({
-    queryKey: keys.rosterAudit(org, personId),
-    queryFn: () => api.rosterAudit({ ...(personId ? { person_id: personId } : {}), limit: 50 }),
+    queryKey: [...keys.rosterAudit(org, personId), limit] as const,
+    queryFn: () => api.rosterAudit({ ...(personId ? { person_id: personId } : {}), limit }),
     enabled: Boolean(org) && enabled,
+    // Raising the limit keeps the shorter list on screen until the longer one arrives.
+    placeholderData: (previous) => previous,
   });
 };
 
@@ -659,9 +666,26 @@ export const useMentionCandidates = (target: { plan_id: string } | { conversatio
   });
 };
 
-export const useMessages = (query: { box: 'sent' | 'received'; plan_id?: string }) => {
+/** Which operational messages a list shows. */
+export interface MessageListFilters {
+  box: 'sent' | 'received';
+  plan_id?: string;
+}
+
+/**
+ * Operational messages, newest first, `MESSAGES_PAGE_SIZE` at a time.
+ * `fetchNextPage` reads the page before the oldest loaded message.
+ */
+export const useMessagePages = (query: MessageListFilters) => {
   const org = useOrg();
-  return useQuery({ queryKey: keys.messages(org, query), queryFn: () => api.listMessages(query), enabled: Boolean(org) });
+  return useInfiniteQuery({
+    queryKey: [...keys.messages(org, query), 'pages'] as const,
+    queryFn: ({ pageParam }) =>
+      api.listMessages({ ...query, limit: MESSAGES_PAGE_SIZE, ...(pageParam ? { before: pageParam } : {}) }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => nextMessagesCursor(last),
+    enabled: Boolean(org),
+  });
 };
 
 export const useMessage = (id: string | undefined) => {
@@ -934,13 +958,13 @@ export const useUnreadNotificationCount = () => {
   });
 };
 
-/** The notification feed, newest first, paged backwards in time. */
-export const useNotificationFeed = () => {
+/** The notification feed, newest first, paged backwards in time. `unreadOnly` asks the server for unread rows only. */
+export const useNotificationFeed = (unreadOnly = false) => {
   const org = useOrg();
   return useInfiniteQuery({
-    queryKey: keys.notificationFeed(org),
+    queryKey: unreadOnly ? [...keys.notificationFeed(org), 'unread-only'] : keys.notificationFeed(org),
     queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
-      api.listNotifications({ limit: NOTIFICATION_PAGE_SIZE, before: pageParam }),
+      api.listNotifications({ limit: NOTIFICATION_PAGE_SIZE, before: pageParam, ...(unreadOnly ? { unread_only: true } : {}) }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     enabled: Boolean(org),

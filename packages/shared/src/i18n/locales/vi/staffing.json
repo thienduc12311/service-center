@@ -387,7 +387,13 @@
     "itemWillNotify": "{{action}} · sẽ thông báo sau khi áp dụng",
     "itemNoDelivery": "{{action}} · không gửi thông báo",
     "resolveBlocking": "Hãy giải quyết các trùng lịch chặn trước khi áp dụng đợt này. Các ô bạn đã chọn vẫn được giữ.",
-    "commitAll": "Áp dụng tất cả thay đổi"
+    "commitAll": "Áp dụng tất cả thay đổi",
+    "planLimit_other": "Khoảng ngày này có hơn {{count}} chương trình, mà bảng chỉ hiển thị tối đa {{count}} chương trình mỗi lần.",
+    "planLimitAction_other": "Xem {{count}} chương trình kế tiếp",
+    "planWindow_other": "Mỗi lần hiển thị {{count}} chương trình. Khoảng ngày bạn chọn kéo dài đến {{end}}.",
+    "laterPlans_other": "{{count}} chương trình tiếp theo",
+    "previousPeople": "Những người trước đó",
+    "peoplePage": "Trang thành viên {{page}}"
   },
   "proposalReview": {
     "exclusionCount": {

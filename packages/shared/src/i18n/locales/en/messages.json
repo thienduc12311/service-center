@@ -16,7 +16,15 @@
     "recipients_other": "{{count}} recipients",
     "from": "From {{name}}",
     "fromUnknown": "From a leader",
-    "listMeta": "{{summary}} · {{date}}"
+    "listMeta": "{{summary}} · {{date}}",
+    "searchLabel": "Search loaded messages",
+    "searchPlaceholder": "Search subject or sender…",
+    "searchScope_one": "Searched the subject and sender of all {{count}} message.",
+    "searchScope_other": "Searched the subject and sender of all {{count}} messages.",
+    "searchScopePartial_one": "Searched the subject and sender of the {{count}} newest message loaded. Load older messages to search further back.",
+    "searchScopePartial_other": "Searched the subject and sender of the {{count}} newest messages loaded. Load older messages to search further back.",
+    "noMatches": "No loaded messages match your search.",
+    "loadOlder": "Load older messages"
   },
   "messageDetail": {
     "notAvailableTitle": "Message not available",
@@ -101,7 +109,14 @@
     "unread_one": "{{count}} unread",
     "unread_other": "{{count}} unread",
     "choose": "Choose a conversation.",
-    "planConversation": "{{title}} · {{date}}"
+    "planConversation": "{{title}} · {{date}}",
+    "searchLabel": "Search conversations",
+    "searchPlaceholder": "Search conversations…",
+    "unreadOnly": "Unread",
+    "filterScope_one": "Filtering the {{count}} conversation loaded. Load more to include older ones.",
+    "filterScope_other": "Filtering the {{count}} conversations loaded. Load more to include older ones.",
+    "noMatches": "No conversations match.",
+    "noUnread": "No unread conversations."
   },
   "conversation": {
     "notAvailableTitle": "Conversation not available",
@@ -136,7 +151,11 @@
     "composerPlaceholder": "Message {{name}}…",
     "replyingTo": "Replying to {{name}}",
     "replyingToUnknown": "Replying to someone",
-    "privacyNote": "Only current team or plan members can read this. Muting stops notifications. Direct messages and attachments are not available yet."
+    "privacyNote": "Only current team or plan members can read this. Muting stops notifications. Direct messages and attachments are not available yet.",
+    "loadOlder": "Load older messages",
+    "searching": "Searching…",
+    "searchNewestMatches_one": "Showing the {{count}} newest match. Refine your search to find older ones.",
+    "searchNewestMatches_other": "Showing the {{count}} newest matches. Refine your search to find older ones."
   },
   "reportModal": {
     "title": "Report message",

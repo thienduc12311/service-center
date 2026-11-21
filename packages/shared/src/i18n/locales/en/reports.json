@@ -35,6 +35,8 @@
     "building": "Building report…",
     "generated": "Generated {{time}} · {{timezone}}",
     "truncated": "Truncated: narrow the filters, or queue an export.",
+    "truncatedBanner": "This report is incomplete: the table stops at {{rows}} rows, and a report reads at most {{plans}} plans (past that, the totals leave plans out too). Narrow the dates or filters to see everything.",
+    "sortBy": "Sort by {{column}}",
     "downloadCsv": "Download CSV",
     "queueExport": "Queue export",
     "noMatches": "Nothing matches these filters",
@@ -63,7 +65,8 @@
   },
   "followUp": {
     "title": "Follow up ({{total}})",
-    "line": "{{person}} — {{team}} · {{position}} on {{plan}}: {{response}}"
+    "line": "{{person}} — {{team}} · {{position}} on {{plan}}: {{response}}",
+    "showAll": "Show all {{total}}"
   },
   "exports": {
     "title": "My exports",
@@ -72,6 +75,8 @@
     "range": "{{kind}} · {{from}} to {{to}}",
     "until": "until {{time}}",
     "buildAgain": "Build again",
+    "latest_one": "Latest {{count}}",
+    "latest_other": "Latest {{count}}",
     "status": {
       "queued": "Queued",
       "running": "Building",

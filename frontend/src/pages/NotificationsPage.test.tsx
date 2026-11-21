@@ -146,3 +146,39 @@ describe('notification clean-up on web', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });
+
+describe('notification views on web', () => {
+  it('asks the server for unread notifications only when Unread is chosen', async () => {
+    renderPage();
+    const user = userEvent.setup();
+    expect(await screen.findByText('Read one')).toBeTruthy();
+    expect(api.listNotifications).toHaveBeenLastCalledWith({ limit: 30, before: undefined });
+
+    vi.mocked(api.listNotifications).mockResolvedValue({ items: [notification('n-1', 'Unread one', null)], unread: 1, next_cursor: null });
+    await user.click(screen.getByRole('radio', { name: /Unread/ }));
+    await waitFor(() => expect(api.listNotifications).toHaveBeenLastCalledWith({ limit: 30, before: undefined, unread_only: true }));
+    await waitFor(() => expect(screen.queryByText('Read one')).toBeNull());
+    expect(screen.getByText('Unread one')).toBeTruthy();
+  });
+
+  it('puts notifications under a heading for their day', async () => {
+    renderPage();
+    expect(await screen.findByText('Read one')).toBeTruthy();
+    const day = screen.getByRole('region', { name: /November 1, 2026/ });
+    expect(within(day).getByText('Unread one')).toBeTruthy();
+    expect(within(day).getByText('Read one')).toBeTruthy();
+  });
+
+  it('offers Clear read when no read notification is loaded, and reports what the server cleared', async () => {
+    renderPage();
+    vi.mocked(api.listNotifications).mockResolvedValue({ items: [notification('n-1', 'Unread one', null)], unread: 1, next_cursor: null });
+    vi.mocked(api.clearReadNotifications).mockResolvedValue({ deleted: 4, unread: 1, account_unread: 1 });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('radio', { name: /Unread/ }));
+    await waitFor(() => expect(screen.queryByText('Read one')).toBeNull());
+
+    await user.click(screen.getByRole('button', { name: 'Clear all read' }));
+    await user.click(screen.getByRole('button', { name: 'Clear read' }));
+    expect(await screen.findByText('Cleared 4 notifications')).toBeTruthy();
+  });
+});
