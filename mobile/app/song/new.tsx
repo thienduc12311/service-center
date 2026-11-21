@@ -138,6 +138,13 @@ const NewSongForm = () => {
         <Card>
           <Field label={t('addSong.fields.title')} value={form.title} onChangeText={(value) => set('title', value)} maxLength={200} />
           <Field
+            label={t('songInfo.fields.ccli')}
+            value={form.ccliNumber}
+            onChangeText={(value) => set('ccliNumber', value)}
+            keyboardType="number-pad"
+            maxLength={40}
+          />
+          <Field
             label={t('arrangement.fields.name')}
             value={form.arrangementName}
             onChangeText={(value) => set('arrangementName', value)}

@@ -68,16 +68,29 @@ export const AddSongModal = ({ open, onClose, onCreated }: AddSongModalProps) =>
   return (
     <Modal open={open} title={t('addSong.title')} onClose={close}>
       <form onSubmit={submit} className="space-y-4">
-        <div>
-          <label className="label" htmlFor="song-title">{t('addSong.fields.title')}</label>
-          <input
-            id="song-title"
-            className="input"
-            value={form.title}
-            onChange={(event) => update('title', event.target.value)}
-            required
-            autoFocus
-          />
+        <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+          <div>
+            <label className="label" htmlFor="song-title">{t('addSong.fields.title')}</label>
+            <input
+              id="song-title"
+              className="input"
+              value={form.title}
+              onChange={(event) => update('title', event.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="song-ccli">{t('songInfo.fields.ccli')}</label>
+            <input
+              id="song-ccli"
+              className="input"
+              value={form.ccliNumber}
+              onChange={(event) => update('ccliNumber', event.target.value)}
+              inputMode="numeric"
+              maxLength={40}
+            />
+          </div>
         </div>
 
         <div>

@@ -9,10 +9,10 @@ grant select on f15_ids to authenticated;
 create function pg_temp.id(k0 text) returns uuid language sql as $$select id from f15_ids where k=k0$$;
 create function pg_temp.assert(ok boolean,msg text) returns void language plpgsql as $$begin if ok is not true then raise exception 'FAIL: %',msg; end if; end$$;
 insert into public.organizations(id,name,slug) values(pg_temp.id('foreign'),'F15 foreign','f15-foreign');
-insert into public.songs(id,organization_id,title,default_key,default_bpm,themes,song_types,style,author) values
- (pg_temp.id('song'),pg_temp.id('org'),'F15 target','C',100,array['Hope'],array['Worship'],'Hymn','Test author'),
- (pg_temp.id('song2'),pg_temp.id('org'),'F15 target2','C',100,array['Hope'],array['Worship'],'Hymn','Test author'),
- (pg_temp.id('foreignsong'),pg_temp.id('foreign'),'F15 foreign','C',100,array['Hope'],array['Worship'],'Hymn','Test author');
+insert into public.songs(id,organization_id,title,default_key,default_bpm,themes,song_types,style,author,ccli_number) values
+ (pg_temp.id('song'),pg_temp.id('org'),'F15 target','C',100,array['Hope'],array['Worship'],'Hymn','Test author','00987654321'),
+ (pg_temp.id('song2'),pg_temp.id('org'),'F15 target2','C',100,array['Hope'],array['Worship'],'Hymn','Test author',null),
+ (pg_temp.id('foreignsong'),pg_temp.id('foreign'),'F15 foreign','C',100,array['Hope'],array['Worship'],'Hymn','Test author','00987654321');
 insert into public.songs(organization_id,title,default_key,default_bpm,themes,song_types,style,author)
  select pg_temp.id('org'),'F15 page '||lpad(n::text,3,'0'),'C',100,array['Hope'],array['Worship'],'Hymn','Test author' from generate_series(1,105) n;
 insert into public.arrangements(id,song_id,name,song_key,bpm,is_default,chord_chart) values
@@ -29,6 +29,10 @@ do $$declare r jsonb; p public.song_bulk_previews; p2 public.song_bulk_previews;
  r:=public.list_curated_songs(pg_temp.id('org'),'{"q":"F15","theme":"Hope","song_type":"Worship","style":"Hymn","author":"Test","key":"C","bpm_min":90,"bpm_max":110,"per_page":50,"page":3}');
  perform pg_temp.assert((r->>'total')::int=107 and jsonb_array_length(r->'data')=7,'combined filters + page beyond 100');
  perform pg_temp.assert(r=public.list_curated_songs(pg_temp.id('org'),'{"q":"F15","theme":"Hope","song_type":"Worship","style":"Hymn","author":"Test","key":"C","bpm_min":90,"bpm_max":110,"per_page":50,"page":3}'),'stable pagination');
+ r:=public.list_curated_songs(pg_temp.id('org'),'{"q":"00987654321"}');
+ perform pg_temp.assert((r->>'total')::int=1 and (r->'data'->0->>'id')::uuid=pg_temp.id('song'),'full CCLI search returns the local song');
+ r:=public.list_curated_songs(pg_temp.id('org'),'{"q":"87654321","theme":"Hope","per_page":1}');
+ perform pg_temp.assert((r->>'total')::int=1 and (r->'data'->0->>'id')::uuid=pg_temp.id('song'),'partial CCLI search combines with filters before pagination');
  r:=public.list_curated_songs(pg_temp.id('org'),'{"q":"F15","key":"D","bpm_min":110}');
  perform pg_temp.assert((r->>'total')::int=0,'key/BPM must match same source');
  r:=public.list_curated_songs(pg_temp.id('org'),'{"q":"F15","key":"D","bpm_max":90,"scheduled_from":"2027-08-01T00:00:00Z","scheduled_to":"2027-08-02T00:00:00Z"}');
@@ -63,6 +67,8 @@ do $$declare r jsonb; p public.song_bulk_previews; p2 public.song_bulk_previews;
  perform pg_temp.assert((r->>'total')::int=1,'archived song absent picker');
  r:=public.list_curated_songs(pg_temp.id('org'),'{"q":"F15 target","archive":"archived"}');
  perform pg_temp.assert((r->>'total')::int=1,'archive browser');
+ r:=public.list_curated_songs(pg_temp.id('org'),'{"q":"00987654321"}');
+ perform pg_temp.assert((r->>'total')::int=0,'CCLI search respects active scope');
  begin delete from public.songs where id=pg_temp.id('song'); raise exception 'FAIL: deleted historical song'; exception when foreign_key_violation then null; end;
  begin delete from public.arrangements where id=pg_temp.id('arr'); raise exception 'FAIL: deleted historical arrangement'; exception when foreign_key_violation then null; end;
  begin update public.songs set archived_at=null where id=pg_temp.id('song'); raise exception 'FAIL: bypassed archive RPC'; exception when insufficient_privilege then null; end;
@@ -86,6 +92,14 @@ do $$declare r jsonb; p public.song_bulk_previews; p2 public.song_bulk_previews;
  begin perform public.preview_song_bulk(pg_temp.id('org'),jsonb_build_array(jsonb_build_object('id',pg_temp.id('foreignsong'),'expected_revision',1)), '{"themes":[]}'); raise exception 'FAIL: foreign id'; exception when no_data_found then null; end;
  begin perform public.preview_song_bulk(pg_temp.id('org'),'[]','{"title":"forbidden"}'); raise exception 'FAIL: arbitrary patch'; exception when invalid_parameter_value then null; end;
  begin update public.song_bulk_previews set patch='{}' where id=p.id; raise exception 'FAIL: preview tampered'; exception when insufficient_privilege then null; end;
+ update public.songs set ccli_number='00123456789' where id=pg_temp.id('song');
+ r:=public.list_curated_songs(pg_temp.id('org'),'{"q":"00123456789"}');
+ perform pg_temp.assert((r->>'total')::int=1 and (r->'data'->0->>'id')::uuid=pg_temp.id('song'),'updated CCLI is searchable');
+ r:=public.list_curated_songs(pg_temp.id('org'),'{"q":"00987654321"}');
+ perform pg_temp.assert((r->>'total')::int=0,'old CCLI stops matching after an edit');
+ update public.songs set ccli_number=null where id=pg_temp.id('song');
+ r:=public.list_curated_songs(pg_temp.id('org'),'{"q":"00123456789"}');
+ perform pg_temp.assert((r->>'total')::int=0,'cleared CCLI stops matching');
 end$$;
 -- Member usage matches existing source RLS (org members can read plan order);
 -- tracking/audit rows and curation writes remain restricted.
