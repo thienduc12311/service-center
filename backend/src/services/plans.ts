@@ -14,12 +14,14 @@ import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { NO_CONTACT, contactsFor } from './contacts.js';
 import { attendanceFor } from './attendance.js';
 import { defaultArrangementsFor } from './plan-items.js';
+import { timeResponseNotesFor } from './time-response-notes.js';
 import {
   PLAN_ITEM_MEDIA_COLUMNS,
   organizationToday,
   toRehearsalMediaRef,
   type PlanItemMediaEmbed,
 } from '../model/media.model.js';
+import { TIME_RESPONSE_COLUMNS, withResponseNote } from '../model/time-response.model.js';
 
 /**
  * `person:profiles!assignments_user_id_fkey` is spelled out because
@@ -48,7 +50,7 @@ export const PLAN_DETAIL_SELECT = `
     person:profiles!assignments_user_id_fkey(id, full_name, avatar_url),
     response_owner:profiles!assignments_response_owner_id_fkey(id, full_name),
     attendance_times:assignment_attendance_times(plan_time_id),
-    time_responses:assignment_time_responses(*)
+    time_responses:assignment_time_responses(${TIME_RESPONSE_COLUMNS})
   ),
   position_needs:plan_position_needs(
     needed,
@@ -165,16 +167,19 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
   );
   // F14: archive dates are the organization's local dates.
   const withMedia = detail.items.some((item) => Boolean(item.media));
-  const [contacts, directory, attendance, defaults, organization] = await Promise.all([
+  const assignmentIds = detail.assignments.map((assignment) => assignment.id);
+  const [contacts, directory, attendance, defaults, organization, notes] = await Promise.all([
     contactsFor(db, orgId, userIds),
     personIds.length
       ? unwrap(db.from('people_directory').select('*').in('id', personIds))
       : Promise.resolve([]),
-    attendanceFor(db, detail.assignments.map((assignment) => assignment.id)),
+    attendanceFor(db, assignmentIds),
     defaultArrangementsFor(db, inheriting),
     withMedia
       ? unwrap(db.from('organizations').select('timezone').eq('id', orgId).maybeSingle())
       : Promise.resolve(null),
+    // W9-JRN-D1: decline reasons only for the assignee, response owner and schedulers.
+    timeResponseNotesFor(db, assignmentIds),
   ]);
   const today = organizationToday(organization?.timezone);
   const people = new Map((directory ?? []).map((person) => [person.id, person]));
@@ -193,6 +198,7 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
     assignments: detail.assignments.map((assignment) => ({
       ...assignment,
       attendance: attendance.get(assignment.id) ?? [],
+      time_responses: (assignment.time_responses ?? []).map((response) => withResponseNote(response, notes)),
       person: people.has(assignment.person_id)
         ? {
             id: assignment.person_id,
