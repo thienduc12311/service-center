@@ -9,17 +9,16 @@ import {
   teamTagRulesSchema,
   updatePositionSchema,
   updateTeamSchema,
-  type OrgRole,
   type RelatedTeamsInput,
   type ReplaceScopeGrantsInput,
   type TeamPolicySettings,
-  type TeamRosterPerson,
-  type TeamRosterPersonRow,
   type TeamTagRulesInput,
   type TeamWithPositions,
 } from '@service-center/shared';
 import { validateBody } from '../lib/validate.js';
 import { requireAdmin, requireCapability, requireManager, requireRosterEditor } from '../middleware/organization.js';
+import { fetchAllPages, inChunks } from '../lib/paging.js';
+import { mapRosterPerson, rosterKey, toRosterPeople, type RoleByUser, type RosterPeople } from '../model/team-roster.model.js';
 import { raw, unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { loadScopeAccess, replaceScopeAccess } from '../services/access.js';
@@ -44,17 +43,8 @@ type RawTeam = Record<string, unknown> & {
   }>;
 };
 
-/** Roster rows keyed by `teamId:personId`. */
-type RosterPeople = Map<string, TeamRosterPersonRow>;
-
-const rosterKey = (teamId: string, personId: string): string => `${teamId}:${personId}`;
-
 /** Roles live on organization_members, so they are stitched in separately. */
-export const shapeTeam = (
-  team: RawTeam,
-  roles: Map<string, string>,
-  people: RosterPeople,
-): TeamWithPositions => {
+export const shapeTeam = (team: RawTeam, roles: RoleByUser, people: RosterPeople): TeamWithPositions => {
   // A team's normal list only; plan-only positions (F02) live on their plan.
   const positions = (team.positions ?? [])
     .filter((position) => position.plan_id === null || position.plan_id === undefined)
@@ -67,54 +57,68 @@ export const shapeTeam = (
       user_id: m.user_id,
       position_id: m.position_id,
       membership_id: m.id,
-      profile: person ? mapRosterPerson(person, m.user_id ? roles.get(m.user_id) ?? 'member' : 'member') : null,
+      profile: person ? mapRosterPerson(person, (m.user_id ? roles.get(m.user_id) : undefined) ?? 'member') : null,
     };
   });
   const { memberships: _ignored, ...rest } = team;
   return { ...rest, positions, members } as unknown as TeamWithPositions;
 };
 
-export const mapRosterPerson = (row: TeamRosterPersonRow, role: string): TeamRosterPerson => ({
-  id: row.person_id,
-  full_name: [row.first_name, row.last_name].filter(Boolean).join(' '),
-  avatar_url: row.avatar_url,
-  email: row.email,
-  phone: row.phone,
-  date_of_birth: row.birthdate,
-  role: role as OrgRole,
-});
-
-/** Org roles live on organization_members, so fetch them once per request. */
-const roleMap = async (req: Request): Promise<Map<string, string>> => {
-  const rows = await unwrap(
-    req.db.from('organization_members').select('user_id, role').eq('organization_id', req.orgId),
+/** Every member's org role, for the whole-organization team list. */
+const orgRoleMap = async (req: Request): Promise<RoleByUser> => {
+  const rows = await fetchAllPages(async (from, to) =>
+    unwrap(
+      req.db.from('organization_members').select('user_id, role').eq('organization_id', req.orgId).order('user_id').range(from, to),
+    ),
   );
-  return new Map((rows ?? []).map((r) => [r.user_id, r.role as string]));
+  return new Map(rows.map((r) => [r.user_id, r.role]));
+};
+
+/** Org roles of just these users (one team's members). */
+const roleMapFor = async (req: Request, userIds: readonly string[]): Promise<RoleByUser> => {
+  const rows = await inChunks([...new Set(userIds)], (chunk) =>
+    unwrap(req.db.from('organization_members').select('user_id, role').eq('organization_id', req.orgId).in('user_id', chunk)),
+  );
+  return new Map(rows.map((r) => [r.user_id, r.role]));
+};
+
+/**
+ * `team_roster_people` returns one row per (team, person); PostgREST caps a
+ * function result at 1000 rows like any select, so it is paged on that key.
+ * `teamId` narrows it to one team (a filter on the function's output).
+ */
+const rosterPeople = async (req: Request, teamId?: string): Promise<RosterPeople> => {
+  const rows = await fetchAllPages(async (from, to) => {
+    const query = req.db.rpc('team_roster_people', { p_org: req.orgId });
+    const scoped = teamId ? query.eq('team_id', teamId) : query;
+    return unwrap(scoped.order('team_id').order('person_id').range(from, to));
+  });
+  return toRosterPeople(rows);
 };
 
 const shapeTeams = async (req: Request, teams: RawTeam[]): Promise<TeamWithPositions[]> => {
-  const [roles, rows] = await Promise.all([
-    roleMap(req),
-    unwrap(req.db.rpc('team_roster_people', { p_org: req.orgId })),
-  ]);
-  const people: RosterPeople = new Map((rows ?? []).map((row) => [rosterKey(row.team_id, row.person_id), row]));
+  const [roles, people] = await Promise.all([orgRoleMap(req), rosterPeople(req)]);
   return teams.map((team) => shapeTeam(team, roles, people));
 };
 
+/** One team: only its members' roles and roster rows, never the whole organization's. */
 const loadTeam = async (req: Request, id: string): Promise<TeamWithPositions> => {
   const team = (await unwrap(
     raw(req.db).from('teams').select(TEAM_SELECT).eq('id', id).eq('organization_id', req.orgId).maybeSingle(),
   )) as RawTeam | null;
   if (!team) throw HttpError.notFound('Team not found');
-  const [shaped] = await shapeTeams(req, [team]);
-  if (!shaped) throw HttpError.notFound('Team not found');
-  return shaped;
+  const userIds = (team.memberships ?? []).flatMap((m) => (m.user_id ? [m.user_id] : []));
+  const [roles, people] = await Promise.all([roleMapFor(req, userIds), rosterPeople(req, id)]);
+  return shapeTeam(team, roles, people);
 };
 
 teamsRouter.get('/', async (req, res) => {
-  const teams = (await unwrap(
-    raw(req.db).from('teams').select(TEAM_SELECT).eq('organization_id', req.orgId).order('sort_order'),
-  )) as RawTeam[];
+  const teams = await fetchAllPages(
+    async (from, to) =>
+      (await unwrap(
+        raw(req.db).from('teams').select(TEAM_SELECT).eq('organization_id', req.orgId).order('sort_order').order('id').range(from, to),
+      )) as RawTeam[] | null,
+  );
   res.json(await shapeTeams(req, teams));
 });
 

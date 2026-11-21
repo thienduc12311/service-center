@@ -78,11 +78,34 @@ Validation on the merged branch:
 - Live API on :4000 (org B with 1,100 temporary people, removed afterwards): `GET /people` 1,101/1,101; `GET /people/page` 45 pages of 25, no loss or duplicates, search past page 1; `GET /conversations` 110/110 over 3 pages; schedule report 1,138/1,138 rows; expired and malformed JWT → 401 `unauthorized`.
 - Not verified live: Auth outage → 503 and upstream 5xx/timeout mapping (unit tests only; stopping shared Auth/PostgREST was out of bounds); iOS accessibility and plan-chat visibility (unit tests only, no simulator run).
 
-Open follow-ups:
-- Team roster visibility: **decided 2026-11-21 — keep as implemented**: any active member sees teammates' name, email, phone and date of birth for every team in the org.
-- Plan-chat entry point does not model the DB's child-participant rule (a child sees the entry and gets 404).
-- Unpaged selects that may exceed 1,000 rows, not fixed: `folders.ts:36`, `teams.ts:88`, `teams.ts:113`, `songbooks.ts:64`.
-- Realtime: key rotation is org-wide; team/assignment removal does not rotate; old clients fall back to 60 s polling until updated.
+Open follow-ups (all addressed on `feature/qa-wave8-followups`, 2026-11-21):
+- Team roster visibility: **decided — keep as implemented**: any active member sees teammates' name, email, phone and date of birth for every team in the org.
+- Plan chat for child participants: `canOpenPlanChat` now mirrors `private.is_adult_person` (`20261026000200_f09_conversations.sql:61-82`) via a new `viewer_is_adult_person` on `GET /plans/:id`; applied on the plan page and the live page, web and mobile.
+- Unpaged lists: team members, teams, service-type folders, service types, songbooks (list and `.in()` checks, chunked), access members/grants now page past 1,000 (`lists-paging.test.ts`, 1,101 rows each). The `folders.ts:36` item was a `maybeSingle`, not a list.
+- Realtime per-resource revocation (`20261127000700_w8_realtime_resource_revocation`): conversation topics carry a per-conversation key rotated on team removal, assignment deleted/declined/un-released/moved, person archived/unlinked/child, scope moves and team-scoped grant removal; org-wide grant and scope changes rotate the org key. `live_plan`/`live_run` stay on the org key because every active member can read plans (RLS `is_org_member`). Deploy the API before clients: older clients get no conversation pokes and fall back to 60 s refresh.
+
+Follow-up validation: typecheck clean; `npm run test` 1,655 passed; `run-all.sh` 58/58; both Realtime e2e scripts pass against live Realtime and the API on :4000.
+
+Known local test flake (environment, not code): supertest binds an ephemeral port on `::`; when another local app already listens on `127.0.0.1` with the same port (here OpenCode on :52139 answers 407), the request reaches that app and a random backend test fails with 401/404/407. Binding test servers to 127.0.0.1 would remove it.
+
+## Review round (2026-11-21) — branch `feature/qa-wave8-review-fixes`
+
+PR #122 was merged into `feature/qa-wave8-fixes` after #121 had already merged, so the follow-ups never reached `main`; this branch carries them. Three fresh reviewers (database, backend/shared, web/mobile) reviewed #121 + #122; every finding was re-verified against the code before fixing.
+
+Fixed (migrations `20261127000800_w8_review_fixes`, `20261127000900_w8_people_contact_search`):
+- P1 Realtime: archiving, unlinking, marking a child or deleting a linked person left chats reached as plan leader / scheduler / manager on the old key — now every conversation the person loses is rekeyed; team membership moves (UPDATE) rekey the old team's chat.
+- P1 team rosters: `team_roster_people` read unpaged (cut at 1,000 memberships → "Unknown" again); now paged and per-team for single-team reads.
+- Roster privacy: archived people hidden; children show name and avatar only (**coordinator default, product may revisit**).
+- Reports: attendance times paged (were cut at 1,000 result rows).
+- Supabase timeout no longer retried by postgrest-js (~67 s → 15 s); Auth 408/429 → 503 instead of sign-out; error logs and 23505/23503/23514 responses carry no Postgres `details` (row values); 57014 → 504.
+- `GET /conversations` without `cursor`/`limit` returns the legacy array again (installed app builds); new clients call `conversationsPage`.
+- People list: compact base64url cursor (long non-Latin names broke "Load more"); owner search matches the login email/phone shown on each row; search symbols match literally; invitations paged.
+- Song CHECKs count length like JavaScript (emoji) and cover themes, song types and default key; `claim_plan_copy_key` ACL restored; `update_plan_with_times` writes only sent columns.
+- Clients: a failed Realtime join refetches topics with backoff; rekey refetch jittered 0–2 s; key request pinned to its church; role-appropriate search placeholder; misleading chat count removed; Plan chat not offered before the plan loads.
+
+Validation: typecheck clean; `npm run test` all green; `run-all.sh` 60/60; both Realtime e2e scripts pass; live API: People 1,101/1,101 over 45 pages (161-char Thai name included), literal `*` search, legacy and paged conversations 110/110, owner search by login email, schedule report 1,138 rows all with times.
+
+Follow-ups not done: other client delete methods (teams, positions, plans, service types, songs, arrangements, folders, tag groups, matrix views) still surface a 404 on double-submit (behaviour since wave 7).
 
 ## Deferred
 

@@ -11,7 +11,7 @@ import { ChatPage } from './ChatPage';
 vi.mock('../lib/api', () => ({
   getStoredOrganizationId: () => 'org-1',
   api: {
-    conversations: vi.fn(),
+    conversationsPage: vi.fn(),
     getConversation: vi.fn(),
     listTeams: vi.fn(),
     mentionCandidates: vi.fn(),
@@ -51,11 +51,15 @@ const deferred = <T,>() => {
   return { promise, resolve, reject };
 };
 
-const renderChat = () => {
+type ConversationsPage = Awaited<ReturnType<typeof api.conversationsPage>>;
+
+const renderChat = (listPage: (cursor: string | undefined) => ConversationsPage = () => (
+  { items: [thread.conversation], next_cursor: null, has_more: false }
+)) => {
   vi.stubGlobal('matchMedia', () => ({
     matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }));
-  vi.mocked(api.conversations).mockResolvedValue({ items: [thread.conversation], next_cursor: null, has_more: false });
+  vi.mocked(api.conversationsPage).mockImplementation(async (query) => listPage(query?.cursor));
   vi.mocked(api.getConversation).mockResolvedValue(thread);
   vi.mocked(api.listTeams).mockResolvedValue([]);
   vi.mocked(api.mentionCandidates).mockResolvedValue([]);
@@ -139,5 +143,21 @@ describe('web chat sending', () => {
     expect(api.postConversationMessage).toHaveBeenCalledTimes(2);
     expect(vi.mocked(api.postConversationMessage).mock.calls[1]).toEqual(vi.mocked(api.postConversationMessage).mock.calls[0]);
     expect(screen.getAllByText('Retry this message')).toHaveLength(1);
+  });
+});
+
+describe('web chat list paging', () => {
+  it('loads the next page of conversations with the previous cursor', async () => {
+    const second = { ...thread.conversation, id: 'thread-2', title: 'Worship band' };
+    const user = renderChat((cursor) => (cursor
+      ? { items: [second], next_cursor: null, has_more: false }
+      : { items: [thread.conversation], next_cursor: 'cursor-1', has_more: true }));
+    const more = await screen.findByRole('button', { name: 'Load more conversations' });
+    expect(screen.queryByText('Worship band')).toBeNull();
+
+    await user.click(more);
+    expect(await screen.findByText('Worship band')).toBeTruthy();
+    expect(vi.mocked(api.conversationsPage).mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ cursor: 'cursor-1' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Load more conversations' })).toBeNull());
   });
 });

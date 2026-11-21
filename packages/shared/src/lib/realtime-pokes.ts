@@ -1,13 +1,46 @@
-import { keyedPokeTopics } from './realtime-keys.js';
+import type { RealtimeResource } from '../schemas/realtime.js';
 
 /** Realtime only signals that a caller should re-read the authenticated API. */
-export type PokeResource = 'conversation' | 'live_run' | 'live_plan';
+export type PokeResource = RealtimeResource;
 export const POKE_FALLBACK_MS = 60_000;
 export const POKE_EVENT = 'changed';
 // Leave room for a thread outside the list and for channels still leaving.
 export const CONVERSATION_LIST_TOPIC_LIMIT = 90;
 
-type PokeListener = () => void;
+/**
+ * `rekey`: the topic this socket is on has been retired because access changed. Anyone who still
+ * has access must ask the API for the current topic; a poke carries no other data.
+ */
+export type PokeSignal = 'rekey' | 'join-failed' | 'joined';
+
+/** Spread of the refetch after a rekey poke, so a whole organization does not ask at once. */
+export const REKEY_JITTER_MS = 2_000;
+export const JOIN_RETRY_BASE_MS = 2_000;
+export const JOIN_RETRY_MAX_MS = 60_000;
+
+/** Exponential delay for the nth failed join: half fixed, half random, capped. Never zero. */
+export const joinRetryDelay = (failures: number, random: () => number): number => {
+  const ceiling = Math.min(JOIN_RETRY_MAX_MS, JOIN_RETRY_BASE_MS * 2 ** failures);
+  return ceiling / 2 + random() * (ceiling / 2);
+};
+
+export interface PokeTiming {
+  random: () => number;
+}
+export type PokeListener = (signal?: PokeSignal) => void;
+
+/** A broadcast message as the Realtime client hands it over; only `payload.event` is read. */
+export interface PokeMessage {
+  [key: string]: unknown;
+  payload?: unknown;
+}
+
+/** The signal a received poke carries, if any. */
+export const pokeSignalOf = (message: PokeMessage | undefined): PokeSignal | undefined => {
+  const payload = message?.payload;
+  if (typeof payload !== 'object' || payload === null) return undefined;
+  return (payload as { event?: unknown }).event === 'rekey' ? 'rekey' : undefined;
+};
 type CloseChannel = () => Promise<unknown>;
 type OpenChannel = (topic: string, notify: PokeListener) => CloseChannel;
 
@@ -32,33 +65,51 @@ interface PokeTransport<Channel extends PokeChannel> {
   remove: (channel: Channel) => Promise<unknown>;
 }
 
-/** Comma-joined topics (`<resource>:<id>:<org key>`); empty until the organization key is known. */
-export const pokeTopics = (resource: PokeResource, ids: readonly string[], key: string | null): string =>
-  keyedPokeTopics(resource, ids, key).join(',');
+/**
+ * Creates an observer. `onRekey` runs (after a random delay) when a retired topic announces a
+ * rekey and when joining a topic keeps failing (a client that was offline during a rotation
+ * never hears the poke), the latter with capped exponential backoff.
+ */
+export type PokeObserverFactory = (refresh: () => Promise<unknown>, onRekey?: () => void) => PokeObserver;
 
 /**
  * Supabase returns the same channel object for repeated calls with a topic.
  * Share it between observers, and wait for leave before reusing a topic.
  */
-export const createPokeSubscriptions = (open: OpenChannel) => {
+export const createPokeSubscriptions = (open: OpenChannel, timing: PokeTiming = { random: Math.random }): PokeObserverFactory => {
   const byTopic = new Map<string, TopicSubscription>();
 
   const connect = (topic: string, listeners: Set<PokeListener>) => {
-    const close = open(topic, () => {
-      for (const notify of listeners) notify();
+    const close = open(topic, (signal) => {
+      for (const notify of listeners) notify(signal);
     });
     byTopic.set(topic, { listeners, close, closing: false });
   };
 
-  return (refresh: () => Promise<unknown>): PokeObserver => {
+  return (refresh, onRekey): PokeObserver => {
     let active = true;
     let topics = new Set<string>();
     let dirty = false;
     let refreshing = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let rekeyTimer: ReturnType<typeof setTimeout> | undefined;
+    let joinFailures = 0;
 
-    const notify = () => {
+    const later = (delay: () => number) => {
+      if (rekeyTimer !== undefined) return;
+      rekeyTimer = setTimeout(() => {
+        rekeyTimer = undefined;
+        if (!active) return;
+        onRekey?.();
+        notify();
+      }, delay());
+    };
+
+    const notify: PokeListener = (signal) => {
       if (!active) return;
+      if (signal === 'rekey') return later(() => timing.random() * REKEY_JITTER_MS);
+      if (signal === 'join-failed') return later(() => joinRetryDelay(joinFailures++, timing.random));
+      if (signal === 'joined') joinFailures = 0;
       dirty = true;
       if (refreshing || timer !== undefined) return;
       // One read for a burst of changes or simultaneous joins on a list.
@@ -109,6 +160,7 @@ export const createPokeSubscriptions = (open: OpenChannel) => {
       dispose: () => {
         active = false;
         clearTimeout(timer);
+        clearTimeout(rekeyTimer);
         for (const topic of topics) leave(topic);
         topics.clear();
       },
@@ -116,7 +168,7 @@ export const createPokeSubscriptions = (open: OpenChannel) => {
   };
 };
 
-export const createRealtimePokeSubscriptions = <Channel extends PokeChannel>(transport: PokeTransport<Channel>) => {
+export const createRealtimePokeSubscriptions = <Channel extends PokeChannel>(transport: PokeTransport<Channel>, timing?: PokeTiming) => {
   let authorizing: Promise<void> | undefined;
   const authorize = () => authorizing ??= transport.authorize().finally(() => {
     authorizing = undefined;
@@ -124,20 +176,17 @@ export const createRealtimePokeSubscriptions = <Channel extends PokeChannel>(tra
 
   return createPokeSubscriptions((topic, notify) => {
     let closed = false;
-    let joinFailed = false;
     const channel = transport.open(topic, notify);
     const join = () => {
       if (closed) return;
       channel.subscribe((status) => {
         if (closed) return;
         if (status === 'SUBSCRIBED') {
-          joinFailed = false;
           // Refresh after every join, including an SDK reconnect.
-          notify();
-        } else if (!joinFailed && (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')) {
-          joinFailed = true;
-          // Check access through the API once while the SDK retries the join.
-          notify();
+          notify('joined');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          // The topic may be dead (rotated while offline): the observer re-asks the API with backoff.
+          notify('join-failed');
         }
       });
     };
@@ -147,5 +196,5 @@ export const createRealtimePokeSubscriptions = <Channel extends PokeChannel>(tra
       closed = true;
       return transport.remove(channel);
     };
-  });
+  }, timing);
 };

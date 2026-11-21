@@ -191,6 +191,7 @@ import type {
   AccessMoveChange,
   CapabilityExplanation,
   EffectiveAccess,
+  RealtimeResourceTopics,
   RealtimeTopicKey,
   FolderTree,
   ScopeAccess,
@@ -250,6 +251,7 @@ import type { CreatePlanItemRequest, UpdatePlanItemRequest, UpdatePlanRequest } 
 import type { PlanScheduleResponse } from '../types/plan-order.js';
 import type { LivePlanRuns, LiveRunHistory, LiveRunState } from '../types/live.js';
 import type { CorrectLiveRunTimeInput, CreateLiveRunRequest, LiveRunActionInput } from '../schemas/live.js';
+import type { RealtimeResourceTopicsInput } from '../schemas/realtime.js';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
 import type {
   IdentityReconciliation,
@@ -268,6 +270,7 @@ import type {
   ResolveReconciliationInput,
   ApplyRosterBulkRequest,
   CreateTagGroupRequest,
+  ListPeoplePageRequest,
   PreviewRosterBulkRequest,
   SetTagGroupInput,
 } from '../schemas/roster.js';
@@ -368,7 +371,7 @@ import type {
   ConversationMessagesQuery,
   CreateNoteCategoryInput,
   DiscussionPageQuery,
-  ListConversationsQuery,
+  ListConversationsRequest,
   ListOperationalMessagesQuery,
   OpenConversationInput,
   PostConversationMessageInput,
@@ -382,6 +385,7 @@ import type {
   SendOperationalMessageInput,
   UpdateNoteCategoryInput,
 } from '../schemas/collaboration.js';
+import { CONVERSATIONS_PAGE_SIZE } from '../schemas/collaboration.js';
 import type {
   CreateReleaseBatchRequest,
   ListPreparedRequestsQuery,
@@ -771,7 +775,7 @@ export class ServiceCenterApi {
   listPeople = (query?: { include_archived?: boolean }) =>
     this.request<RosterPerson[]>('GET', '/api/v1/people', undefined, query as Query);
   /** One keyset page of the People list for the list screens; pickers keep using `listPeople`. */
-  listPeoplePage = (query?: { limit?: number; cursor?: string; q?: string; include_archived?: boolean }) =>
+  listPeoplePage = (query?: ListPeoplePageRequest) =>
     this.request<RosterPersonPage>('GET', '/api/v1/people/page', undefined, query as Query);
   getPerson = (personId: string) => this.request<PersonDetail>('GET', `/api/v1/people/${personId}`);
   createPerson = (body: CreatePersonInput) => this.request<PersonDetail>('POST', '/api/v1/people', body);
@@ -826,7 +830,9 @@ export class ServiceCenterApi {
 
   updateMember = (userId: string, body: { role?: string; status?: string }) =>
     this.request<OrganizationMemberRow>('PATCH', `/api/v1/people/members/${userId}`, body);
-  removeMember = (userId: string) => this.request<void>('DELETE', `/api/v1/people/members/${userId}`);
+  /** Already removed (a double submit) counts as done. */
+  removeMember = (userId: string) =>
+    settleIfGone(this.request<void>('DELETE', `/api/v1/people/members/${encodeURIComponent(userId)}`));
 
   // -------------------------------------------------- invitation acceptance
   previewInvitation = (token: string) =>
@@ -1303,7 +1309,12 @@ export class ServiceCenterApi {
 
   // ------------------------------------------------------------- access --
   /** The caller's effective access in the active organization. */
-  realtimeKey = () => this.request<RealtimeTopicKey>('GET', '/api/v1/realtime/key');
+  /** The organization's Realtime topic key; `scope` pins the church so a switch mid-request can't swap keys. */
+  realtimeKey = (scope?: RequestScope) =>
+    this.request<RealtimeTopicKey>('GET', '/api/v1/realtime/key', undefined, undefined, scope);
+  /** Topic names for the resources the caller may currently subscribe to (absent = no access). */
+  realtimeTopics = (body: RealtimeResourceTopicsInput) =>
+    this.request<RealtimeResourceTopics>('POST', '/api/v1/realtime/topics', body);
   myAccess = () => this.request<EffectiveAccess>('GET', '/api/v1/access/me');
   /** Administrators: every member's role, access mode and explicit grants. */
   listAccessMembers = () => this.request<AccessMember[]>('GET', '/api/v1/access/members');
@@ -1602,8 +1613,18 @@ export class ServiceCenterApi {
     this.request<void>('DELETE', `/api/v1/message-templates/${id}`);
 
   // --------------------------------------------------- F09 conversations --
-  conversations = (query?: Partial<ListConversationsQuery>) =>
-    this.request<ConversationListPage>('GET', '/api/v1/conversations', undefined, query as Query);
+  /**
+   * One keyset page of the caller's conversations. Always sends `limit`: a
+   * request with neither `limit` nor `cursor` gets the pre-paging plain array
+   * (kept for app builds already installed).
+   */
+  conversationsPage = (query: ListConversationsRequest = {}) =>
+    this.request<ConversationListPage>('GET', '/api/v1/conversations', undefined, {
+      cursor: query.cursor,
+      limit: query.limit ?? CONVERSATIONS_PAGE_SIZE,
+    });
+  /** @deprecated Use `conversationsPage`; same request and answer. */
+  conversations = (query: ListConversationsRequest = {}) => this.conversationsPage(query);
   /** Opens (creating on first use) the conversation for a team or plan. */
   openConversation = (body: OpenConversationInput) =>
     this.request<ConversationSummary>('POST', '/api/v1/conversations/open', body);

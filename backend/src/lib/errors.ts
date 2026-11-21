@@ -6,6 +6,7 @@ import {
   JOIN_REQUEST_PENDING,
   STORAGE_QUOTA_EXCEEDED,
 } from '@service-center/shared';
+import { config } from '../config.js';
 import { parseConflictDetail } from '../model/attendance.model.js';
 
 /** An error that carries an HTTP status through to the response. */
@@ -115,9 +116,45 @@ const NETWORK_PATTERN = /fetch failed|network|ECONNREFUSED|ECONNRESET|ENOTFOUND|
 const JWT_PATTERN = /\bJWT\b.*(expired|invalid|malformed|signature)|invalid jwt/i;
 const JWT_CODES = new Set(['PGRST301', 'PGRST302', 'PGRST303']);
 
-const logUpstream = (detail: Record<string, unknown>): void => {
-  if (process.env.NODE_ENV === 'test') return;
-  console.error('[upstream-error]', detail);
+/** A PostgREST/Postgres error as supabase-js reports it. */
+export interface PostgrestErrorLike {
+  code?: string;
+  message: string;
+  details?: string | null;
+  hint?: string | null;
+}
+
+/** What the server log keeps of an upstream error. */
+export interface UpstreamLogEntry {
+  code: string | null;
+  message: string;
+  hint: string | null;
+}
+
+/** `Key (email)=(ada@example.test)` and `Failing row contains (…)` carry row values. */
+const ROW_VALUE_PATTERNS: ReadonlyArray<[RegExp, string]> = [
+  [/\)=\((?:[^()]|\([^()]*\))*\)/g, ')=([redacted])'],
+  [/Failing row contains \(.*\)/gs, 'Failing row contains ([redacted])'],
+];
+/** Class 22 (data exception) messages quote the offending value: `invalid input syntax for type uuid: "…"`. */
+const QUOTED_VALUE = /"(?:[^"\\]|\\.)*"/g;
+
+/**
+ * The loggable part of an upstream error. Postgres puts row values (names,
+ * emails, phone numbers) in `details` for class 23 errors (e.g. 23502
+ * "Failing row contains (…)", 23505 "Key (email)=(…)"), so `details` is never
+ * logged, and value fragments are cut from the message.
+ */
+export const upstreamLogEntry = (error: PostgrestErrorLike): UpstreamLogEntry => {
+  let message = error.message;
+  for (const [pattern, replacement] of ROW_VALUE_PATTERNS) message = message.replace(pattern, replacement);
+  if (error.code?.startsWith('22')) message = message.replace(QUOTED_VALUE, '"[redacted]"');
+  return { code: error.code || null, message, hint: error.hint ?? null };
+};
+
+const logUpstream = (error: PostgrestErrorLike): void => {
+  if (config.isTest) return;
+  console.error('[upstream-error]', upstreamLogEntry(error));
 };
 
 /**
@@ -126,7 +163,7 @@ const logUpstream = (detail: Record<string, unknown>): void => {
  * a stable code; the detail goes to the server log.
  */
 export const fromUpstreamFailure = (message: string, code?: string): HttpError => {
-  logUpstream({ code: code ?? null, message });
+  logUpstream({ code, message });
   if (TIMEOUT_PATTERN.test(message)) return HttpError.upstreamTimeout();
   if (NETWORK_PATTERN.test(message) || code === 'PGRST000' || code === 'PGRST001' || code === 'PGRST002') {
     return HttpError.upstreamUnavailable();
@@ -134,12 +171,7 @@ export const fromUpstreamFailure = (message: string, code?: string): HttpError =
   return HttpError.upstreamError();
 };
 
-export const fromPostgrestError = (error: {
-  code?: string;
-  message: string;
-  details?: string | null;
-  hint?: string | null;
-}): HttpError => {
+export const fromPostgrestError = (error: PostgrestErrorLike): HttpError => {
   // The caller's access token was rejected by PostgREST: same 401 the auth
   // middleware sends, so clients refresh their session.
   if ((error.code && JWT_CODES.has(error.code)) || JWT_PATTERN.test(error.message)) {
@@ -163,12 +195,14 @@ export const fromPostgrestError = (error: {
     case '55P03':
     case '40P01':
       return HttpError.conflict('Library is busy; retry the same reviewed request');
+    // Postgres puts row and key values in `details` for class 23 ("Key (email)=(…)",
+    // "Failing row contains (…)"), including columns the caller never sent: keep it server-side.
     case '23505':
-      return HttpError.conflict('That record already exists', error.details);
+      return HttpError.conflict('That record already exists');
     case '23503':
-      return HttpError.badRequest('Referenced record does not exist', error.details);
+      return HttpError.badRequest('Referenced record does not exist');
     case '23514':
-      return HttpError.badRequest('A value failed a database constraint', error.details);
+      return HttpError.badRequest('A value failed a database constraint');
     // Malformed uuid/number/date literals that slipped past request
     // validation: the caller's input, never the engine's message.
     case '22P02':
@@ -209,6 +243,10 @@ export const fromPostgrestError = (error: {
     // The church is out of media storage.
     case 'PT413':
       return new HttpError(413, error.message, STORAGE_QUOTA_EXCEEDED);
+    // statement_timeout: the database gave up on the query.
+    case '57014':
+      logUpstream(error);
+      return HttpError.upstreamTimeout();
     case 'PT410':
       return new HttpError(410, error.message, 'assignment_request_expired');
     default:
@@ -216,7 +254,7 @@ export const fromPostgrestError = (error: {
       // gateway, not from the database.
       if (!error.code) return fromUpstreamFailure(error.message);
       if (/^PGRST00[012]$/.test(error.code)) return fromUpstreamFailure(error.message, error.code);
-      logUpstream({ code: error.code, message: error.message, details: error.details ?? null, hint: error.hint ?? null });
+      logUpstream(error);
       return new HttpError(500, 'Internal server error', 'internal_error');
   }
 };

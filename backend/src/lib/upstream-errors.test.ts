@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fromPostgrestError } from './errors.js';
+import { fromPostgrestError, upstreamLogEntry } from './errors.js';
 
 describe('fromPostgrestError: upstream failures (W8-RES-D1)', () => {
   it.each([
@@ -29,6 +29,62 @@ describe('fromPostgrestError: upstream failures (W8-RES-D1)', () => {
   it('hides the detail of an unmapped database error', () => {
     const mapped = fromPostgrestError({ code: 'XX000', message: 'secret internal detail', details: 'row data', hint: 'h' });
     expect(mapped).toMatchObject({ status: 500, code: 'internal_error', message: 'Internal server error' });
+    expect(mapped.details).toBeUndefined();
+  });
+
+  it('maps a statement timeout (57014) to 504 upstream_timeout', () => {
+    expect(fromPostgrestError({ code: '57014', message: 'canceling statement due to statement timeout' }))
+      .toMatchObject({ status: 504, code: 'upstream_timeout' });
+  });
+});
+
+describe('upstreamLogEntry: no personal data in the server log', () => {
+  it('never keeps `details` (23502 failing row)', () => {
+    const entry = upstreamLogEntry({
+      code: '23502',
+      message: 'null value in column "first_name" of relation "people" violates not-null constraint',
+      details: 'Failing row contains (Ada, ada@example.test, +1 555 0100).',
+      hint: null,
+    });
+    expect(entry).toEqual({
+      code: '23502',
+      message: 'null value in column "first_name" of relation "people" violates not-null constraint',
+      hint: null,
+    });
+    expect(JSON.stringify(entry)).not.toMatch(/ada@example|555 0100/);
+  });
+
+  it('cuts key values from a 23505 message and keeps the hint', () => {
+    const entry = upstreamLogEntry({
+      code: '23505',
+      message: 'duplicate key value violates unique constraint "people_email_key": Key (lower(email))=(ada@example.test) already exists.',
+      details: 'Key (lower(email))=(ada@example.test) already exists.',
+      hint: 'use another email',
+    });
+    expect(entry.message).toBe('duplicate key value violates unique constraint "people_email_key": Key (lower(email))=([redacted]) already exists.');
+    expect(entry.hint).toBe('use another email');
+    expect(JSON.stringify(entry)).not.toContain('ada@example.test');
+  });
+
+  it('cuts the quoted value from a class 22 message', () => {
+    const entry = upstreamLogEntry({ code: '22003', message: 'value "0123456789012" is out of range for type integer' });
+    expect(entry.message).toBe('value "[redacted]" is out of range for type integer');
+  });
+
+  it('cuts a failing row from the message too', () => {
+    const entry = upstreamLogEntry({ code: '23514', message: 'Failing row contains (Ada, ada@example.test).' });
+    expect(entry.message).toBe('Failing row contains ([redacted]).');
+  });
+});
+
+describe('fromPostgrestError: constraint errors keep row values server-side', () => {
+  it.each([
+    ['23505', 409, 'Key (email)=(ada@example.test) already exists.'],
+    ['23503', 400, 'Key (person_id)=(11111111-1111-4111-8111-111111111111) is not present in table "people".'],
+    ['23514', 400, 'Failing row contains (Ada, ada@example.test, +1 555 0100, 1990-01-01).'],
+  ])('%s answers %i without details', (code, status, details) => {
+    const mapped = fromPostgrestError({ code, message: 'constraint', details });
+    expect(mapped).toMatchObject({ status });
     expect(mapped.details).toBeUndefined();
   });
 });

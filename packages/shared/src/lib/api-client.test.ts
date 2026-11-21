@@ -54,3 +54,34 @@ describe('ServiceCenterApi request context', () => {
     expect(onUnauthorized).toHaveBeenCalledWith(context);
   });
 });
+
+describe('ServiceCenterApi wave 8 compatibility', () => {
+  const clientWith = (fetchImpl: typeof fetch) =>
+    new ServiceCenterApi({ baseUrl: 'https://api.example.test', getAccessToken: () => 'token', fetchImpl });
+
+  it('always asks GET /conversations for a page (sends limit), so it never gets the legacy array', async () => {
+    const urls: string[] = [];
+    const client = clientWith(async (input) => {
+      urls.push(String(input));
+      return jsonResponse(200, { items: [], next_cursor: null, has_more: false });
+    });
+    await client.conversationsPage();
+    await client.conversationsPage({ cursor: 'abc', limit: 20 });
+    await client.conversations({ cursor: 'abc' });
+    expect(urls.map((url) => Object.fromEntries(new URL(url).searchParams))).toEqual([
+      { limit: '50' },
+      { cursor: 'abc', limit: '20' },
+      { cursor: 'abc', limit: '50' },
+    ]);
+  });
+
+  it('treats removing an already-removed member as done (double submit)', async () => {
+    const client = clientWith(async () => jsonResponse(404, { error: 'That person is not a member of this organization', code: 'not_found' }));
+    await expect(client.removeMember('user-1')).resolves.toBeUndefined();
+  });
+
+  it('still surfaces other failures when removing a member', async () => {
+    const client = clientWith(async () => jsonResponse(403, { error: 'Forbidden', code: 'forbidden' }));
+    await expect(client.removeMember('user-1')).rejects.toMatchObject({ status: 403 });
+  });
+});

@@ -8,6 +8,7 @@ import {
   ApiError,
   LIVE_FALLBACK_POLL_MS,
   LIVE_STATUS_ACCENTS,
+  canOfferPlanChat,
   effectiveTransitionTimes,
   formatLiveDuration,
   liveRunSchedule,
@@ -124,7 +125,7 @@ export default function LiveScreen() {
   const styles = useThemedStyles(makeStyles);
   const f = useFormatters();
   const timeOfDay = useTimeOfDay();
-  const { queryScope, generation, isCurrentGeneration } = useAuth();
+  const { queryScope, generation, isCurrentGeneration, can, user } = useAuth();
   const queryClient = useQueryClient();
   const visible = useScreenVisible();
   const live = useLiveRun(runId);
@@ -137,6 +138,13 @@ export default function LiveScreen() {
     queryFn: () => api.getPlan(planId!),
     enabled: Boolean(queryScope && planId),
   });
+  // Same rule as the plan screen: only offer the chat to people the server will let in.
+  const planTarget = { serviceTypeId: plan.data?.service_type_id };
+  const canChat = canOfferPlanChat(
+    plan.data,
+    can('plans.edit', planTarget) || can('scheduling.manage', planTarget),
+    user?.profile.id,
+  );
   const runsKey = queryKeys.liveRuns(queryScope, planId);
   const runs = useQuery({
     queryKey: runsKey,
@@ -276,15 +284,17 @@ export default function LiveScreen() {
           ) : null}
 
           {/* F09 plan chat is the run's chat (MOB-019); a dedicated run chat is not a contract yet. */}
-          <Button
-            title={t('live.page.planChat')}
-            icon="chat"
-            variant="secondary"
-            style={styles.sectionGap}
-            loading={openChat.isPending}
-            onPress={() => openChat.mutate()}
-          />
-          {openChat.error ? (
+          {canChat ? (
+            <Button
+              title={t('live.page.planChat')}
+              icon="chat"
+              variant="secondary"
+              style={styles.sectionGap}
+              loading={openChat.isPending}
+              onPress={() => openChat.mutate()}
+            />
+          ) : null}
+          {canChat && openChat.error ? (
             <Meta>{t('live.page.planChatDenied')}</Meta>
           ) : null}
           <Meta>{t('live.mobile.stageOnWebsite')}</Meta>

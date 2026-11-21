@@ -388,3 +388,14 @@ export const setPlanPositionNeeds = async (
   // `raw()` is untyped, so PostgREST's to-one embed is inferred as an array.
   return shapePositionNeeds((rows ?? []) as unknown as RawPositionNeed[]);
 };
+
+/**
+ * Mirrors `private.is_adult_person`: the caller has a non-archived roster
+ * person in this organization that is not a `child`.
+ */
+export const fetchViewerIsAdultPerson = async (db: Db, orgId: string, userId: string): Promise<boolean> => {
+  const rows = await unwrap(
+    db.from('people_directory').select('person_type').eq('organization_id', orgId).eq('profile_id', userId).is('archived_at', null),
+  );
+  return (rows ?? []).some((row) => row.person_type !== 'child');
+};

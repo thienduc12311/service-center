@@ -171,6 +171,7 @@
     "joinTeams": "Add me to any teams selected."
   },
   "mobileTeams": {
+    "openLinkFailed": "Could not open that link.",
     "entry": "Teams",
     "entryDescription": "Who serves where, and in which position.",
     "youManage": "You can change this roster",

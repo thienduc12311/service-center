@@ -22,6 +22,7 @@
     "empty": "Chưa có ai ở đây",
     "searchLabel": "Tìm người",
     "searchPlaceholder": "Tìm theo tên, email, số điện thoại hoặc cơ sở",
+    "searchPlaceholderMember": "Tìm theo tên hoặc cơ sở",
     "noMatch": "Không có ai khớp với tìm kiếm này.",
     "loadMore": "Tải thêm người"
   },
@@ -204,7 +205,7 @@
     "noTeams": "Chưa thuộc ban nào.",
     "noTags": "Chưa có thẻ.",
     "editTags": "Sửa thẻ",
-    "ownerOnlyNote": "Chỉ chủ hội thánh mới mở được thông tin cá nhân của người khác. Bạn có thể đổi tên và số điện thoại của mình trong Cài đặt."
+    "ownerOnlyNote": "Chỉ chủ hội thánh mới mở được hồ sơ đầy đủ của người khác. Trong danh sách đội, bạn thấy tên, email, số điện thoại và ngày sinh của đồng đội (trẻ em chỉ hiện tên). Bạn có thể đổi tên và số điện thoại của mình trong Cài đặt."
   },
   "joinRequests": {
     "title": "Yêu cầu tham gia",

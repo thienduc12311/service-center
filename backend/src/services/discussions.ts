@@ -22,7 +22,7 @@ import type {
   ReportConversationMessageInput,
   ResolveConversationReportInput,
 } from '@service-center/shared';
-import { decodeConversationCursor, toConversationListPage } from '@service-center/shared';
+import { CONVERSATIONS_PAGE_MAX, decodeConversationCursor, toConversationListPage } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
 import { beforeFilter } from '../lib/keyset.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
@@ -188,6 +188,22 @@ export const listConversations = async (caller: CollaborationCaller, query: List
     p_after_id: after?.id ?? null,
   }))) as ConversationListRow[] | null;
   return toConversationListPage(rows ?? [], query.limit);
+};
+
+/**
+ * Every conversation as one plain array: the `GET /conversations` answer for
+ * app builds from before paging (they send neither `cursor` nor `limit`).
+ * Walks the keyset pages, so it is not capped like the old list was.
+ */
+export const listAllConversations = async (caller: CollaborationCaller): Promise<ConversationSummary[]> => {
+  const all: ConversationSummary[] = [];
+  let cursor: string | undefined;
+  for (;;) {
+    const page = await listConversations(caller, { cursor, limit: CONVERSATIONS_PAGE_MAX });
+    all.push(...page.items);
+    if (!page.has_more || !page.next_cursor) return all;
+    cursor = page.next_cursor;
+  }
 };
 
 const conversationSummary = async (caller: CollaborationCaller, conversationId: string): Promise<ConversationSummary> => {

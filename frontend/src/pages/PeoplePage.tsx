@@ -140,7 +140,7 @@ export const PeoplePage = () => {
             className="input pl-9"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder={t('list.searchPlaceholder')}
+            placeholder={t(owner ? 'list.searchPlaceholder' : 'list.searchPlaceholderMember')}
             aria-label={t('list.searchLabel')}
           />
         </div>
