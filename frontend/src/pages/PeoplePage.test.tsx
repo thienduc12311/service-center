@@ -63,7 +63,7 @@ describe('web People list', () => {
     expect(search.getAttribute('placeholder')).toBe('Search by name or campus');
     await user.type(search, 'Mai');
     await waitFor(() => expect(screen.queryByText('An Nguyen')).toBeNull());
-    expect(screen.getByText('Mai Tran')).toBeTruthy();
+    expect(await screen.findByText('Mai Tran')).toBeTruthy();
     expect(api.listPeoplePage).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'Mai' }));
   });
 
