@@ -43,6 +43,8 @@ export interface SongSearchListProps {
   placeholder: string;
   text: string;
   onTextChange: (text: string) => void;
+  /** The search the rows answer (the debounced text); Enter waits until it catches up with `text`. */
+  settledText: string;
   songs: SongListSource;
   /** Adds (or chooses) the song; `arrangement` is the one picked in the expanded row, if any. */
   onPick: (song: SongListItem, arrangement: BrowserArrangement | null) => void;
@@ -95,6 +97,7 @@ export const SongSearchList = ({
   placeholder,
   text,
   onTextChange,
+  settledText,
   songs,
   onPick,
   pickLabel,
@@ -143,9 +146,10 @@ export const SongSearchList = ({
       event.preventDefault();
       setHighlight(Math.max(active - 1, 0));
     } else if (event.key === 'Enter') {
-      // Never submit a surrounding form from the search box.
+      // Never submit a surrounding form from the search box, and never pick from rows a newer search is replacing.
       event.preventDefault();
-      if (activeSong && !(rowState?.(activeSong) ?? NO_STATE).adding) pick(activeSong);
+      const current = settledText === text.trim() && !songs.refreshing;
+      if (current && activeSong && !(rowState?.(activeSong) ?? NO_STATE).adding) pick(activeSong);
     }
   };
 

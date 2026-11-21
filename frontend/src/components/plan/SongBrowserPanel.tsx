@@ -298,6 +298,7 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
           placeholder={t('songBrowser.searchPlaceholder')}
           text={text}
           onTextChange={setText}
+          settledText={q.trim()}
           songs={songListSource(songs)}
           onPick={addSong}
           pickLabel={(song, state) => t(state.inPlan ? 'songBrowser.addAgain' : 'songBrowser.add', { title: song.title })}

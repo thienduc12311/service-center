@@ -188,6 +188,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
                 placeholder={t('editItem.searchPlaceholder')}
                 text={songQuery}
                 onTextChange={setSongQuery}
+                settledText={settledSongQuery}
                 songs={songListSource(songs)}
                 onPick={(candidate) => {
                   setDraft((current) => withSong(current, candidate));
