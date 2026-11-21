@@ -2,6 +2,7 @@ import { createClient, type RealtimeClientOptions, type SupabaseClient } from '@
 import type { Database } from '@service-center/shared';
 import { config } from '../config.js';
 import { HttpError, fromPostgrestError } from './errors.js';
+import { createTimeoutFetch } from './fetch-timeout.js';
 
 export type Db = SupabaseClient<Database>;
 
@@ -19,6 +20,12 @@ const realtime: RealtimeClientOptions = {
   } as unknown as RealtimeClientOptions['transport'],
 };
 
+/** Bounds every upstream call; a slow Supabase surfaces as 504 instead of hanging. */
+const timeoutFetch = createTimeoutFetch({
+  requestMs: config.SUPABASE_REQUEST_TIMEOUT_MS ?? 15_000,
+  storageMs: config.SUPABASE_STORAGE_TIMEOUT_MS ?? 60_000,
+});
+
 /**
  * Service-role client. Bypasses RLS entirely — only use it for work the user
  * genuinely cannot do themselves (inviting people, sending notifications,
@@ -27,7 +34,7 @@ const realtime: RealtimeClientOptions = {
 export const adminDb: Db = createClient<Database, 'public'>(
   config.SUPABASE_URL,
   config.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { autoRefreshToken: false, persistSession: false }, realtime },
+  { auth: { autoRefreshToken: false, persistSession: false }, global: { fetch: timeoutFetch }, realtime },
 );
 
 /**
@@ -37,7 +44,7 @@ export const adminDb: Db = createClient<Database, 'public'>(
 export const userDb = (accessToken: string): Db =>
   createClient<Database, 'public'>(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    global: { headers: { Authorization: `Bearer ${accessToken}` }, fetch: timeoutFetch },
     realtime,
   });
 
