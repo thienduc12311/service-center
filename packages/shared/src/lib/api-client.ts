@@ -191,6 +191,7 @@ import type {
   AccessMoveChange,
   CapabilityExplanation,
   EffectiveAccess,
+  RealtimeTopicKey,
   FolderTree,
   ScopeAccess,
   TeamCandidate,
@@ -1281,6 +1282,7 @@ export class ServiceCenterApi {
 
   // ------------------------------------------------------------- access --
   /** The caller's effective access in the active organization. */
+  realtimeKey = () => this.request<RealtimeTopicKey>('GET', '/api/v1/realtime/key');
   myAccess = () => this.request<EffectiveAccess>('GET', '/api/v1/access/me');
   /** Administrators: every member's role, access mode and explicit grants. */
   listAccessMembers = () => this.request<AccessMember[]>('GET', '/api/v1/access/members');

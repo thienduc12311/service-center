@@ -1,3 +1,5 @@
+import { keyedPokeTopics } from './realtime-keys.js';
+
 /** Realtime only signals that a caller should re-read the authenticated API. */
 export type PokeResource = 'conversation' | 'live_run' | 'live_plan';
 export const POKE_FALLBACK_MS = 60_000;
@@ -30,10 +32,9 @@ interface PokeTransport<Channel extends PokeChannel> {
   remove: (channel: Channel) => Promise<unknown>;
 }
 
-const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/;
-
-export const pokeTopics = (resource: PokeResource, ids: readonly string[]): string =>
-  [...new Set(ids.filter((id) => UUID.test(id)))].sort().map((id) => `${resource}:${id}`).join(',');
+/** Comma-joined topics (`<resource>:<id>:<org key>`); empty until the organization key is known. */
+export const pokeTopics = (resource: PokeResource, ids: readonly string[], key: string | null): string =>
+  keyedPokeTopics(resource, ids, key).join(',');
 
 /**
  * Supabase returns the same channel object for repeated calls with a topic.

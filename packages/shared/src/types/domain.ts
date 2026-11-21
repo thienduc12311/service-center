@@ -653,3 +653,12 @@ export interface ClearReadNotificationsResult extends UnreadNotificationCount {
   /** How many read notifications were deleted from the active organization. */
   deleted: number;
 }
+
+/**
+ * `GET /api/v1/realtime/key` — the secret that Realtime topic names carry (see
+ * `realtimeTopic` in `lib/realtime-pokes.ts`). Served only to an active member; it rotates when a
+ * member is removed, so clients refetch it on a `rekey` poke.
+ */
+export interface RealtimeTopicKey {
+  key: string;
+}
