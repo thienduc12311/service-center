@@ -45,6 +45,12 @@ export const orphanResolutionSchema = z.object({
 
 export const impactHashSchema = z.string().regex(/^[0-9a-f]{32}$/, 'Preview the change again');
 
+/**
+ * `PATCH /plans/:id`. Fields and `times` are saved in one transaction. When
+ * `service_date` and a `times` list containing a service time are both sent,
+ * the times win: the plan date always follows the earliest service time. A time
+ * list with only rehearsals leaves the date alone, so `service_date` applies.
+ */
 export const updatePlanSchema = createPlanSchema
   .partial()
   .omit({ copy_from_plan_id: true, copy_assignments: true, idempotency_key: true, conflict_override_reason: true })

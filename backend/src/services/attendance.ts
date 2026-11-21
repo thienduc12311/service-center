@@ -9,6 +9,7 @@ import type {
   PlanTimeImpact,
   PlanTimeImpactAssignment,
   PlanTimeRow,
+  UpdatePlanInput,
 } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
@@ -203,6 +204,48 @@ export const applyPlanTimes = async (
       p_effect_key: input.effectKey,
     }),
   )) as PlanTimeChangeResult & { impact: RawImpact };
+  return {
+    invalidated_requests: result.invalidated_requests,
+    notified_assignment_ids: result.notified_assignment_ids ?? [],
+    effect_id: result.effect_id ?? null,
+  };
+};
+
+/** The plan columns a PATCH may change next to (or without) a time list. */
+export type PlanFieldsPatch = Pick<
+  UpdatePlanInput,
+  'title' | 'service_type_id' | 'service_date' | 'location' | 'status' | 'notes'
+>;
+
+export interface UpdatePlanWithTimesInput extends Omit<ApplyPlanTimesInput, 'times'> {
+  /** The full time list, or null to leave the times alone. */
+  times: readonly IdentifiedPlanTime[] | null;
+  fields: PlanFieldsPatch;
+}
+
+/**
+ * Plan fields and (optionally) the time list in ONE transaction
+ * (`update_plan_with_times`): a failure of either rolls back both. When both a
+ * `service_date` and a time list with a service time are sent, the times win
+ * (the plan date follows the earliest service time).
+ */
+export const updatePlanWithTimes = async (
+  ctx: PlanTimesContext,
+  input: UpdatePlanWithTimesInput,
+): Promise<PlanTimeChangeResult | null> => {
+  const result = (await unwrap(
+    raw(ctx.db).rpc('update_plan_with_times', {
+      p_plan_id: ctx.planId,
+      p_fields: input.fields,
+      p_times: input.times ? toTimePayload(input.times) : null,
+      p_expected_revision: input.expectedRevision,
+      p_impact_hash: input.impactHash,
+      p_orphan_resolutions: [...input.orphanResolutions],
+      p_notify: input.notify,
+      p_effect_key: input.effectKey,
+    }),
+  )) as (PlanTimeChangeResult & { impact?: RawImpact }) | null;
+  if (!input.times || !result) return null;
   return {
     invalidated_requests: result.invalidated_requests,
     notified_assignment_ids: result.notified_assignment_ids ?? [],
