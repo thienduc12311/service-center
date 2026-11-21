@@ -1,6 +1,7 @@
 import { encodeKeysetCursor } from '@service-center/shared';
 import type {
   ConversationMessage,
+  KeysetRow,
   ConversationMessageRow,
   DeliveryChannel,
   DeliveryStatus,
@@ -98,7 +99,7 @@ export const toConversationMessage = (
  * are older rows, and the cursor is the oldest shown `created_at~id`.
  * Returned oldest first, the order a thread is read in.
  */
-export const pageOf = <T extends { id: string; created_at: string }>(rows: readonly T[], limit: number): DiscussionPage<T> => {
+export const pageOf = <T extends KeysetRow>(rows: readonly T[], limit: number): DiscussionPage<T> => {
   const shown = rows.slice(0, limit);
   return {
     data: [...shown].reverse(),

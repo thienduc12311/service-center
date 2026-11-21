@@ -15,7 +15,13 @@ const KEYSET_SEPARATOR = '~';
 const CURSOR_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/i;
 const CURSOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const encodeKeysetCursor = (row: { created_at: string; id: string }): string =>
+/** The columns a keyset cursor is built from and compared against. */
+export interface KeysetRow {
+  created_at: string;
+  id: string;
+}
+
+export const encodeKeysetCursor = (row: KeysetRow): string =>
   `${row.created_at}${KEYSET_SEPARATOR}${row.id}`;
 
 /** Returns null when the text is not a valid cursor. */
@@ -24,6 +30,17 @@ export const parseKeysetCursor = (cursor: string): KeysetCursor | null => {
   if (rest.length > 0 || !CURSOR_TIMESTAMP.test(created_at) || Number.isNaN(Date.parse(created_at))) return null;
   if (id === undefined) return { created_at, id: null };
   return CURSOR_ID.test(id) ? { created_at, id: id.toLowerCase() } : null;
+};
+
+/**
+ * True when the row sorts strictly after the cursor in `created_at desc, id desc`
+ * order, i.e. a page read `before` this cursor includes it. Text that is not a
+ * valid cursor is compared as a bare timestamp.
+ */
+export const isBeforeKeysetCursor = (row: KeysetRow, cursor: string): boolean => {
+  const key = parseKeysetCursor(cursor) ?? { created_at: cursor, id: null };
+  if (row.created_at !== key.created_at) return row.created_at < key.created_at;
+  return key.id !== null && row.id.toLowerCase() < key.id;
 };
 
 /**

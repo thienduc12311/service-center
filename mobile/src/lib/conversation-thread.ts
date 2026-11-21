@@ -1,4 +1,5 @@
 import {
+  isBeforeKeysetCursor,
   mergeConversationPages,
   type ConversationMessage,
   type DiscussionPage,
@@ -45,8 +46,9 @@ export function conversationWindow(
   const before = newest.next_before;
   if (!before) return newest.data;
   const historyStart = history?.before;
+  // Cursors are `<created_at>~<id>`: compare on both, never as text against created_at.
   const adjacent = previous.filter((message) =>
-    message.created_at < before && (!historyStart || message.created_at >= historyStart));
-  const older = history?.data.filter((message) => message.created_at < before) ?? [];
+    isBeforeKeysetCursor(message, before) && (!historyStart || !isBeforeKeysetCursor(message, historyStart)));
+  const older = history?.data.filter((message) => isBeforeKeysetCursor(message, before)) ?? [];
   return mergeConversationPages(mergeConversationPages(older, adjacent), newest.data);
 }
