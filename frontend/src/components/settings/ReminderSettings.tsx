@@ -42,13 +42,19 @@ export const ReminderPolicySettings = () => {
   );
 };
 
-/** Everyone: which channels reminders may use for me. Requests themselves are not affected. */
+/**
+ * Everyone: "Notification preferences" — which channels reminders may use for
+ * me (requests themselves are not affected), and whether an @mention emails me
+ * (ADR-0007).
+ */
 export const MyReminderSettings = () => {
   const { t } = useTranslation('settings');
   const preferences = useMyReminderPreferences();
   const invalidate = useInvalidateOrg();
   const save = useMutation({
-    mutationFn: (next: ReminderPreferences) => api.updateMyReminderPreferences({ email: next.email, push: next.push, in_app: next.in_app }),
+    mutationFn: (next: ReminderPreferences) => api.updateMyReminderPreferences({
+      email: next.email, push: next.push, in_app: next.in_app, mention_email: next.mention_email,
+    }),
     onSuccess: invalidate,
   });
 
@@ -74,11 +80,25 @@ export const MyReminderSettings = () => {
           {save.isSuccess && <span className="text-emerald-600">{t('settingsPage.saved')}</span>}
         </div>
       ) : null}
-      <ErrorNotice error={preferences.error ?? save.error} />
       {preferences.data && !preferences.data.email && !preferences.data.push && !preferences.data.in_app && (
         <p className="mt-2 text-sm text-amber-700">{t('myReminders.none')}</p>
-
       )}
+      {preferences.data && (
+        <label className="mt-4 flex items-start gap-2 border-t border-slate-200 pt-4 text-sm dark:border-slate-700">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={preferences.data.mention_email}
+            disabled={save.isPending}
+            onChange={(e) => save.mutate({ ...preferences.data!, mention_email: e.target.checked })}
+          />
+          <span>
+            <span className="block text-slate-900 dark:text-white">{t('myReminders.mentionEmail')}</span>
+            <span className="block text-slate-500">{t('myReminders.mentionEmailHint')}</span>
+          </span>
+        </label>
+      )}
+      <ErrorNotice error={preferences.error ?? save.error} />
     </section>
   );
 };

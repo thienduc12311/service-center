@@ -82,7 +82,8 @@
       "provider_duplicate_key": "Nhà cung cấp đã có một lần gửi trước của tin nhắn này; có thể tin đã được gửi",
       "content_removed": "Bình luận hoặc tin nhắn đã bị xóa trước khi gửi",
       "conversation_muted": "Người nhận đã tắt thông báo cuộc trò chuyện này",
-      "channel_not_used": "Không gửi qua kênh này"
+      "channel_not_used": "Không gửi qua kênh này",
+      "already_read": "Đã đọc trong ứng dụng"
     }
   },
   "chatPage": {

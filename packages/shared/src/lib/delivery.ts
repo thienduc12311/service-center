@@ -56,6 +56,7 @@ const DELIVERY_ERROR_LABELS: Readonly<Record<string, string>> = {
   content_removed: 'The comment or message was removed before it was sent',
   conversation_muted: 'The recipient muted this conversation',
   channel_not_used: 'Not sent on this channel',
+  already_read: 'Already read in the app',
 };
 
 export const deliveryErrorLabel = (code: string | null): string | null =>
@@ -94,6 +95,7 @@ export const DELIVERY_ERROR_CODES = [
   'content_removed',
   'conversation_muted',
   'channel_not_used',
+  'already_read',
 ] as const;
 export type DeliveryErrorCode = (typeof DELIVERY_ERROR_CODES)[number];
 

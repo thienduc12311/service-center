@@ -82,7 +82,16 @@ export const reminderPreferencesInput = (
   email: current.email,
   push: current.push,
   in_app: current.in_app,
+  mention_email: current.mention_email,
   [channel]: enabled,
+});
+
+/** The full body `updateMyReminderPreferences` takes, with "Email me when I'm @mentioned" changed (ADR-0007). */
+export const mentionEmailInput = (current: ReminderPreferences, enabled: boolean): UpdateReminderPreferencesInput => ({
+  email: current.email,
+  push: current.push,
+  in_app: current.in_app,
+  mention_email: enabled,
 });
 
 export const noReminderChannels = (preferences: ReminderPreferences): boolean =>

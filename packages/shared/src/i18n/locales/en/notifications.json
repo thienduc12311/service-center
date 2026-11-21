@@ -90,6 +90,15 @@
       "lead": "You have been invited to join {{organization}}.",
       "linkText": "Join the organization: {{url}}",
       "link": "Join the organization"
+    },
+    "mention": {
+      "subject": "{{author}} mentioned you in {{place}}",
+      "lead": "{{author}} mentioned you in {{place}}:",
+      "more_one": "and {{count}} more mention",
+      "more_other": "and {{count}} more mentions",
+      "openText": "Open it in Service Center: {{url}}",
+      "openLink": "Open in Service Center",
+      "footer": "You get this email because someone @mentioned you at {{organization}}. Turn it off in Settings → Notification preferences."
     }
   },
   "calendar": {

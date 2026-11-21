@@ -131,7 +131,13 @@ export const myReminderPreferences = async (caller: ReminderCaller): Promise<Rem
   const row = await unwrap(
     caller.db.from('person_reminder_preferences').select('*').eq('person_id', personId).maybeSingle(),
   );
-  return { person_id: personId, email: row?.email ?? true, push: row?.push ?? true, in_app: row?.in_app ?? true };
+  return {
+    person_id: personId,
+    email: row?.email ?? true,
+    push: row?.push ?? true,
+    in_app: row?.in_app ?? true,
+    mention_email: row?.mention_email ?? true,
+  };
 };
 
 export const updateMyReminderPreferences = async (
@@ -144,7 +150,7 @@ export const updateMyReminderPreferences = async (
       .upsert({ person_id: personId, organization_id: caller.orgId, ...input }, { onConflict: 'person_id' })
       .select('*').single(),
   );
-  return { person_id: personId, email: row.email, push: row.push, in_app: row.in_app };
+  return { person_id: personId, email: row.email, push: row.push, in_app: row.in_app, mention_email: row.mention_email };
 };
 
 type HistoryRow = DeliveryRow & {

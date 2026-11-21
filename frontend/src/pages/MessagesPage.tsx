@@ -44,6 +44,7 @@ const DELIVERY_ERROR_CODES = [
   'content_removed',
   'conversation_muted',
   'channel_not_used',
+  'already_read',
 ] as const;
 
 type DeliveryErrorCode = (typeof DELIVERY_ERROR_CODES)[number];

@@ -11,6 +11,7 @@ import {
   BADGE_PREFERENCES,
   REMINDER_CHANNELS,
   badgeSync,
+  mentionEmailInput,
   noReminderChannels,
   pushRemindersMissThisDevice,
   reminderPreferencesInput,
@@ -28,7 +29,8 @@ import { useTheme, useThemedStyles } from '../src/lib/useTheme';
  * MOB-020: notification settings. Four separate choices, each read back from
  * where it is enforced: OS permission (the device), the app-icon badge (this
  * device's push registration), reminder channels (F08 `myReminderPreferences`,
- * the website's "My reminders") and chat mute (F09 `muteConversation`, the
+ * the website's "Notification preferences", which also holds the ADR-0007
+ * "Email me when I'm @mentioned" switch) and chat mute (F09 `muteConversation`, the
  * website's Mute button). Per-event-type and Live subscriptions have no shared
  * contract, so they are described, not offered. Mounted under the
  * session-generation Stack key, so switching organization remounts it.
@@ -181,6 +183,18 @@ const ReminderSection = () => {
               />
             </View>
           ))}
+          <View style={[styles.switchRow, styles.switchRowDivided]}>
+            <View style={styles.switchLabel}>
+              <Text style={styles.body}>{t('myReminders.mentionEmail')}</Text>
+              <Meta>{t('myReminders.mentionEmailHint')}</Meta>
+            </View>
+            <Switch
+              accessibilityLabel={t('myReminders.mentionEmail')}
+              value={shown.mention_email}
+              disabled={save.isPending}
+              onValueChange={(on) => save.mutate(mentionEmailInput(shown, on))}
+            />
+          </View>
           {save.isPending ? <Meta>{t('mobileNotifications.reminders.saving')}</Meta> : null}
           {save.isSuccess ? <Meta>{t('settingsPage.saved')}</Meta> : null}
           {noReminderChannels(shown) ? <Text style={styles.warning}>{t('myReminders.none')}</Text> : null}

@@ -100,7 +100,34 @@ export interface SchedulerResponseNotification {
   planUrl: string;
 }
 
+/**
+ * ADR-0007: someone @mentioned the recipient in a chat or an item discussion
+ * and they had not read it in the app by the time the email was due. One
+ * email per person per thread while queued: the latest excerpt, plus how many
+ * other unread mentions it covers. Property names are deliberately distinct
+ * from every other notification (`threadUrl`), because
+ * the guards below discriminate by property.
+ */
+export interface MentionEmailNotification {
+  to: string;
+  /** Recipient language (captured on the delivery). */
+  locale: SupportedLocale;
+  personName: string | null;
+  organizationName: string;
+  /** The author of the latest mention, as authored (or a translated "Someone"). */
+  authorName: string;
+  /** Where it happened, already phrased: "Band chat", "“Welcome”". */
+  place: string;
+  /** The latest mention, at most 280 characters, plain text. */
+  excerpt: string;
+  /** Other unread mentions in the same thread this email also covers. */
+  moreCount: number;
+  /** Sign-in link to the conversation or plan. */
+  threadUrl: string;
+}
+
 export type EmailNotification =
+  | MentionEmailNotification
   | ScheduleNotification
   | SchedulerResponseNotification
   | AvailabilityRequestNotification
@@ -115,6 +142,9 @@ export interface EmailSendOptions {
    */
   idempotencyKey?: string;
 }
+
+export const isMentionEmail = (notification: object): notification is MentionEmailNotification =>
+  'threadUrl' in notification;
 
 export const isServiceReminder = (notification: object): notification is ServiceReminderNotification =>
   'planUrl' in notification;
@@ -149,7 +179,9 @@ const consoleTransport: NotificationTransport = {
   mode: 'simulated',
   async send(notification) {
     if (!config.isTest) {
-      console.info(isSchedulerResponse(notification)
+      console.info(isMentionEmail(notification)
+        ? '[notify] simulated mention email'
+        : isSchedulerResponse(notification)
         ? '[notify] simulated response update email'
         : isOperationalMessage(notification)
         ? '[notify] simulated operational message email'
