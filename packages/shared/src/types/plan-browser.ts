@@ -16,6 +16,8 @@ export interface PlanBrowserFilters {
   serviceTypeId: string | null;
   /** null = every status the caller can see. */
   status: PlanStatus | null;
+  /** Title search (accent-insensitive, every word); blank or absent = no search. */
+  q?: string;
   /**
    * ISO instant the browser was opened. Fixed for the browser's lifetime so
    * pages don't shift between loads as the clock moves.
@@ -29,6 +31,7 @@ export interface PlanBrowserFilters {
  */
 export type ListPlansRequest = {
   page?: number;
+  q?: string;
   per_page?: number;
   status?: PlanStatus;
   service_type_id?: string;
