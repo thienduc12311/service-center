@@ -72,6 +72,12 @@ describe('requireAuth', () => {
     ['a network failure', () => Promise.reject(new TypeError('fetch failed'))],
     ['an Auth 502', () => Promise.resolve(Response.json({ msg: 'bad gateway' }, { status: 502 }))],
     ['an Auth 500', () => Promise.resolve(Response.json({ msg: 'boom' }, { status: 500 }))],
+    ['an Auth 408', () => Promise.resolve(Response.json({ msg: 'request timeout' }, { status: 408 }))],
+    ['an Auth 429', () => Promise.resolve(Response.json({ code: 'over_request_rate_limit', msg: 'too many requests' }, { status: 429 }))],
+    ['our own request timeout', async () => {
+      const { UpstreamTimeoutError } = await import('../lib/fetch-timeout.js');
+      throw new UpstreamTimeoutError(15_000);
+    }],
   ])('answers 503 auth_unavailable, not 401, on %s (W8-RES-D2)', async (_name, respond) => {
     fetchAuth.mockImplementationOnce(respond);
     const response = await getProtectedRoute();
