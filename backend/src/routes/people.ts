@@ -24,7 +24,7 @@ import {
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireAdmin, requireCapability } from '../middleware/organization.js';
-import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { raw, unwrap, unwrapDeleted, unwrapOne } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { issuePersonInvitation } from '../services/person-invitations.js';
 import {
@@ -342,12 +342,14 @@ peopleRouter.delete('/members/:userId', requireAdmin, async (req, res) => {
   if (param(req, 'userId') === req.auth.userId) {
     throw HttpError.badRequest('You cannot remove yourself from the organization');
   }
-  await unwrap(
+  await unwrapDeleted(
     req.db
       .from('organization_members')
       .delete()
       .eq('organization_id', req.orgId)
-      .eq('user_id', param(req, 'userId')),
+      .eq('user_id', param(req, 'userId'))
+      .select('user_id'),
+    'That person is not a member of this organization',
   );
   res.status(204).end();
 });

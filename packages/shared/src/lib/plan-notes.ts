@@ -85,6 +85,29 @@ export const planNoteRequest = (
   ...(note && baseRevision !== null ? { expected_revision: baseRevision } : {}),
 });
 
+/** The key a create attempt carries, with the request it was made for. */
+export interface NoteCreateAttempt {
+  fingerprint: string;
+  key: string;
+}
+
+/**
+ * The create request with its idempotency key. A retry of the same request
+ * (a lost reply, a double tap) reuses the previous key so the server replays
+ * the first note instead of adding a second; once the person edits the draft
+ * the request differs and gets a fresh key, so it is never refused as
+ * `idempotency_key_reused`. Keep the returned `attempt` for the next call.
+ */
+export const keyedNoteCreate = (
+  previous: NoteCreateAttempt | null,
+  request: SavePlanNoteInput,
+  newKey: () => string,
+): { request: SavePlanNoteInput; attempt: NoteCreateAttempt } => {
+  const fingerprint = JSON.stringify(request);
+  const attempt = previous?.fingerprint === fingerprint ? previous : { fingerprint, key: newKey() };
+  return { request: { ...request, idempotency_key: attempt.key }, attempt };
+};
+
 const sameTeams = (a: readonly string[], b: readonly string[]): boolean =>
   a.length === b.length && a.every((id) => b.includes(id));
 

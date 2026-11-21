@@ -80,9 +80,9 @@ select public.save_plan_note(pg_temp.fx('plan'), pg_temp.fx('legacy'), null, nul
 select pg_temp.check((select notes from public.plans where id = pg_temp.fx('plan')) = 'Doors open at 8.',
   'legacy note edit mirrored into plans.notes');
 
-insert into f09_fx select 'note_scheduled', (public.save_plan_note(pg_temp.fx('plan'), null, null, null, 'scheduled', null, 'SCHEDULED-ONLY parking code 4471', null)).id;
-insert into f09_fx select 'note_teams', (public.save_plan_note(pg_temp.fx('plan'), null, null, null, 'teams', array[pg_temp.fx('production')], 'PRODUCTION-ONLY stream key', null)).id;
-insert into f09_fx select 'note_leaders', (public.save_plan_note(pg_temp.fx('plan'), null, pg_temp.fx('item'), null, 'leaders', null, 'LEADERS-ONLY pastoral care detail', null)).id;
+insert into f09_fx select 'note_scheduled', (public.save_plan_note(pg_temp.fx('plan'), null, null, null, 'scheduled', null, 'SCHEDULED-ONLY parking code 4471', null) -> 'note' ->> 'id')::uuid;
+insert into f09_fx select 'note_teams', (public.save_plan_note(pg_temp.fx('plan'), null, null, null, 'teams', array[pg_temp.fx('production')], 'PRODUCTION-ONLY stream key', null) -> 'note' ->> 'id')::uuid;
+insert into f09_fx select 'note_leaders', (public.save_plan_note(pg_temp.fx('plan'), null, pg_temp.fx('item'), null, 'leaders', null, 'LEADERS-ONLY pastoral care detail', null) -> 'note' ->> 'id')::uuid;
 
 -- Stale revision, empty team audience, foreign category and foreign item.
 do $$ begin

@@ -3,6 +3,7 @@ import { savePlanNoteSchema } from '../schemas/collaboration.js';
 import type { NoteCategoryRow, PlanNote } from '../types/collaboration.js';
 import {
   itemNoteCounts,
+  keyedNoteCreate,
   noteCategoryLabel,
   noteTeamNames,
   planNoteDraftChanged,
@@ -138,5 +139,26 @@ describe('plan note display', () => {
     expect(planNotesFor(notes, null).map((n) => n.id)).toEqual(['note-1']);
     expect(planNotesFor(notes, ITEM).map((n) => n.id)).toEqual(['n2', 'n3']);
     expect([...itemNoteCounts(notes)]).toEqual([[ITEM, 2], ['other', 1]]);
+  });
+});
+
+describe('keyedNoteCreate', () => {
+  const request = { audience: 'organization' as const, team_ids: [], body: 'Doors at 8' };
+
+  it('reuses the key when the same request is retried', () => {
+    let n = 0;
+    const newKey = () => `generated-key-${++n}`;
+    const first = keyedNoteCreate(null, request, newKey);
+    const retry = keyedNoteCreate(first.attempt, { ...request }, newKey);
+    expect(retry.request.idempotency_key).toBe(first.request.idempotency_key);
+    expect(n).toBe(1);
+  });
+
+  it('takes a fresh key once the draft changed', () => {
+    let n = 0;
+    const newKey = () => `generated-key-${++n}`;
+    const first = keyedNoteCreate(null, request, newKey);
+    const edited = keyedNoteCreate(first.attempt, { ...request, body: 'Doors at 9' }, newKey);
+    expect(edited.request.idempotency_key).not.toBe(first.request.idempotency_key);
   });
 });

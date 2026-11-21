@@ -17,7 +17,7 @@ import {
 import { beforeFilter } from '../lib/keyset.js';
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
-import { adminDb, raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
+import { adminDb, raw, unwrap, unwrapDeleted, unwrapOne, type Db } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import {
   generateDeviceRegistration,
@@ -137,16 +137,18 @@ notificationsRouter.post('/clear-read', async (req, res) => {
   res.json(result);
 });
 
-/** Permanently deletes one notification. Idempotent: a missing row is still 204. */
+/** Permanently deletes one notification. 404 when it is gone or not the caller's. */
 notificationsRouter.delete('/:id', async (req, res) => {
   const id = param(req, 'id');
-  await unwrap(
+  await unwrapDeleted(
     req.db
       .from('notifications')
       .delete()
       .eq('id', id)
       .eq('organization_id', req.orgId)
-      .eq('user_id', req.auth.userId),
+      .eq('user_id', req.auth.userId)
+      .select('id'),
+    'Notification not found',
   );
   res.status(204).end();
 });
@@ -209,8 +211,9 @@ deviceRevocationsRouter.post(
 );
 
 devicesRouter.delete('/:token', async (req, res) => {
-  await unwrap(
-    req.db.from('device_push_tokens').delete().eq('token', param(req, 'token')),
+  await unwrapDeleted(
+    req.db.from('device_push_tokens').delete().eq('token', param(req, 'token')).select('token'),
+    'Device not found',
   );
   res.status(204).end();
 });
