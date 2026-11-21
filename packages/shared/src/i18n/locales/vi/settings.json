@@ -749,8 +749,7 @@
   "memberPicker": {
     "placeholder": "Tìm theo tên hoặc email…",
     "noMatches": "Không có thành viên nào phù hợp.",
-    "clear": "Bỏ chọn {{name}}",
-    "more": "Đang hiển thị {{shown}} / {{total}} — gõ thêm để thu hẹp."
+    "clear": "Bỏ chọn {{name}}"
   },
   "memberAccess": {
     "open": "Mở quyền truy cập của {{name}}",

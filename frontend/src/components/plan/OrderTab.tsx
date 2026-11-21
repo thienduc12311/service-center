@@ -11,11 +11,12 @@ import {
   type PlanSchedule,
   type PlannedItemTime,
 } from '@service-center/shared';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Badge, Button } from '../ui';
 import { Icon } from '../icons';
 import { LinkMediaModal } from '../media/LinkMediaModal';
 import { useFormatters } from '../../i18n';
+import { INSERT_AT_END, type OrderInsertPoint } from './insertPoint';
 
 export interface OrderTabProps {
   plan: PlanDetail;
@@ -32,7 +33,12 @@ export interface OrderTabProps {
   positionNames: ReadonlyMap<string, string>;
   /** True while an order change is saving or the plan is refreshing. */
   busy: boolean;
-  onAddItem: () => void;
+  /** Opens the song browser adding at `point` (the header button appends). */
+  onAddSongs: (point: OrderInsertPoint) => void;
+  /** Opens the header / free-form item form adding at `point`. */
+  onAddOther: (point: OrderInsertPoint) => void;
+  /** Where the open song browser is adding; null when it is closed. */
+  insertPoint: OrderInsertPoint | null;
   onEditItem: (item: PlanItemDetail) => void;
   onMoveItem: (index: number, direction: -1 | 1) => void;
   onRemoveItem: (item: PlanItemDetail) => void;
@@ -78,7 +84,9 @@ export const OrderTab = ({
   onSelectTime,
   positionNames,
   busy,
-  onAddItem,
+  onAddSongs,
+  onAddOther,
+  insertPoint,
   onEditItem,
   onMoveItem,
   onRemoveItem,
@@ -134,9 +142,14 @@ export const OrderTab = ({
           )}
           <Button variant="secondary" icon="document" onClick={onPrint}>{t('orderTab.printOrder')}</Button>
           {canManage && (
-            <Button icon="plus" onClick={onAddItem}>
-              {t('orderTab.addItem')}
-            </Button>
+            <>
+              <Button variant="secondary" icon="plus" onClick={() => onAddOther(INSERT_AT_END)}>
+                {t('orderTab.addOther')}
+              </Button>
+              <Button icon="music" onClick={() => onAddSongs(INSERT_AT_END)}>
+                {t('orderTab.addSongs')}
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -174,16 +187,22 @@ export const OrderTab = ({
               {canManage ? t('orderTab.emptyCanManage') : t('orderTab.empty')}
             </p>
             {canManage && (
-              <Button size="sm" icon="plus" className="mt-1" onClick={onAddItem}>
-                {t('orderTab.addItem')}
-              </Button>
+              <div className="mt-1 flex flex-wrap justify-center gap-2">
+                <Button size="sm" icon="music" onClick={() => onAddSongs(INSERT_AT_END)}>
+                  {t('orderTab.addSongs')}
+                </Button>
+                <Button size="sm" variant="secondary" icon="plus" onClick={() => onAddOther(INSERT_AT_END)}>
+                  {t('orderTab.addOther')}
+                </Button>
+              </div>
             )}
           </div>
         ) : (
           <ol className={`row-list transition-opacity ${busy ? 'opacity-70' : ''}`} aria-busy={busy}>
+            {insertPoint?.kind === 'after' && insertPoint.itemId === null && <InsertMarker />}
             {plan.items.map((item, index) => (
+              <Fragment key={item.id}>
               <OrderRow
-                key={item.id}
                 item={item}
                 index={index}
                 slot={slots.get(item.id) ?? null}
@@ -200,8 +219,13 @@ export const OrderTab = ({
                 onDiscuss={() => onDiscussItem(item)}
                 onMedia={() => setMediaItem(item)}
                 noteCount={itemNoteCounts.get(item.id) ?? 0}
+                onInsertAfter={() => onAddSongs({ kind: 'after', itemId: item.id })}
+                onInsertBefore={index === 0 ? () => onAddSongs({ kind: 'after', itemId: null }) : undefined}
               />
+              {insertPoint?.kind === 'after' && insertPoint.itemId === item.id && <InsertMarker />}
+              </Fragment>
             ))}
+            {insertPoint?.kind === 'end' && <InsertMarker />}
           </ol>
         )}
         {mediaItem && <LinkMediaModal plan={plan} item={mediaItem} onClose={() => setMediaItem(null)} />}
@@ -227,7 +251,52 @@ interface OrderRowProps {
   onDiscuss: () => void;
   onMedia: () => void;
   noteCount: number;
+  /** Opens the song browser adding right after this item. */
+  onInsertAfter: () => void;
+  /** First row only: opens the song browser adding before it. */
+  onInsertBefore?: () => void;
 }
+
+/** The dashed "new songs go here" line while the song browser is open. */
+const InsertMarker = () => {
+  const { t } = useTranslation('plans');
+  return (
+    <li className="flex items-center gap-2 px-4 py-1.5 text-[11px] font-semibold tracking-wide text-brand-600 uppercase dark:text-brand-300">
+      <span className="h-px flex-1 border-t border-dashed border-brand-400" />
+      {t('orderTab.insertingHere')}
+      <span className="h-px flex-1 border-t border-dashed border-brand-400" />
+    </li>
+  );
+};
+
+interface InsertButtonProps {
+  /** `inside-*` sits within the row, for the list's first and last edges (the card clips overflow). */
+  edge: 'top' | 'bottom' | 'inside-top' | 'inside-bottom';
+  label: string;
+  onClick: () => void;
+}
+
+const INSERT_EDGE_CLASS: Record<InsertButtonProps['edge'], string> = {
+  top: '-top-3',
+  bottom: '-bottom-3',
+  'inside-top': 'top-0.5',
+  'inside-bottom': 'bottom-0.5',
+};
+
+/** A small "+" on a row's edge: opens the song browser adding at that spot. Shown on hover or focus (always on touch). */
+const InsertButton = ({ edge, label, onClick }: InsertButtonProps) => (
+  <button
+    type="button"
+    aria-label={label}
+    title={label}
+    onClick={onClick}
+    className={`absolute left-1/2 z-10 inline-grid size-6 -translate-x-1/2 place-items-center rounded-full bg-app-surface text-brand-600 opacity-0 shadow-sm ring-1 ring-brand-300 transition group-hover:opacity-100 hover:bg-brand-600 hover:text-white focus-visible:opacity-100 pointer-coarse:opacity-100 dark:text-brand-300 dark:ring-brand-500/40 ${
+      INSERT_EDGE_CLASS[edge]
+    }`}
+  >
+    <Icon name="plus" className="size-3.5" />
+  </button>
+);
 
 /**
  * Start · length · title · controls on sm+. On a phone the length column folds
@@ -239,8 +308,14 @@ const ROW_GRID =
 const controlClass =
   'inline-grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200';
 
-const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy, isFirst, isLast, onMove, onEdit, onRemove, onDiscuss, onMedia, noteCount }: OrderRowProps) => {
+const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy, isFirst, isLast, onMove, onEdit, onRemove, onDiscuss, onMedia, noteCount, onInsertAfter, onInsertBefore }: OrderRowProps) => {
   const { t } = useTranslation(['plans', 'common']);
+  const insertButtons = canManage && (
+    <>
+      {onInsertBefore && <InsertButton edge="inside-top" label={t('orderTab.insertAtStart')} onClick={onInsertBefore} />}
+      <InsertButton edge={isLast ? 'inside-bottom' : 'bottom'} label={t('orderTab.insertAfter', { title: item.title })} onClick={onInsertAfter} />
+    </>
+  );
   const discuss = (
     <button
       type="button"
@@ -282,7 +357,8 @@ const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy
 
   if (item.item_type === 'header') {
     return (
-      <li className={`${ROW_GRID} items-center bg-slate-50 px-4 py-2 dark:bg-slate-900/50`}>
+      <li className={`${ROW_GRID} group relative items-center bg-slate-50 px-4 py-2 dark:bg-slate-900/50`}>
+        {insertButtons}
         <span />
         <span className="hidden sm:block" />
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
@@ -297,7 +373,8 @@ const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy
   const segment = item.service_segment ?? 'service';
 
   return (
-    <li className={`${ROW_GRID} items-start px-4 py-3 transition hover:bg-slate-50/60 dark:hover:bg-slate-900/40`}>
+    <li className={`${ROW_GRID} group relative items-start px-4 py-3 transition hover:bg-slate-50/60 dark:hover:bg-slate-900/40`}>
+      {insertButtons}
       <span className="pt-0.5 text-sm font-medium tabular-nums text-slate-700 dark:text-slate-200">
         {slot ? clock(slot.starts_at) : '—'}
         <span className="block text-xs font-normal text-slate-400 sm:hidden">{formatDuration(item.length_seconds)}</span>

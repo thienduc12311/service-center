@@ -32,7 +32,10 @@
     "alt": "Thumbnail for {{title}}",
     "none": "No thumbnail.",
     "selectLabel": "Thumbnail image",
-    "uploadHint": "Upload an image under Files to use it here."
+    "uploadHint": "Upload an image under Files to use it here.",
+    "searchPlaceholder": "Search images by title",
+    "searchLabel": "Search images",
+    "noMatch": "No image matches that search."
   },
   "form": {
     "title": "Title",
@@ -218,7 +221,10 @@
     "noItemFilesDescription": "Song and item files you are allowed to see appear here.",
     "noFiles": "No files.",
     "allDefaultsLinked": "Every default file of this service type is already on the plan.",
-    "defaultPinHint": "The plan keeps the version you add now, even if the default is replaced later."
+    "defaultPinHint": "The plan keeps the version you add now, even if the default is replaced later.",
+    "onlyWithFiles_one": "Only items with files ({{count}} of {{total}})",
+    "onlyWithFiles_other": "Only items with files ({{count}} of {{total}})",
+    "noItemFilesYet": "No item has files yet."
   },
   "rehearsal": {
     "unavailable": "This recording is no longer available to you. Other items are still playable.",
@@ -575,7 +581,10 @@
     "webOnly": "Title, audience, play-only and deleting a file are changed on the website.",
     "songFiles": "Song files",
     "arrangementFiles": "{{name}} files",
-    "replaceHint": "Upload a new version. The current one stays until it finishes; plans pinned to an earlier version keep it."
+    "replaceHint": "Upload a new version. The current one stays until it finishes; plans pinned to an earlier version keep it.",
+    "searchDefaults_one": "Search {{count}} default file",
+    "searchDefaults_other": "Search {{count}} default files",
+    "noDefaultMatch": "No default file matches that search."
   },
   "mobileMedia": {
     "authoringOnWeb": "Media is added, edited and archived on the website. Here you can open it, add files to it and link it to plan items.",
@@ -590,7 +599,9 @@
     "stale": "Someone else changed this plan, so nothing was saved. The latest order is loaded — choose again.",
     "uncertain": "No answer from the server: the link may or may not have been saved. Check the plan before trying again.",
     "linkGone": "This item or media is no longer available, so nothing was saved.",
-    "noneFound": "No media found. Media is added on the website."
+    "noneFound": "No media found. Media is added on the website.",
+    "refineSearch_one": "Showing the first {{count}} match by title. Search for something more specific to see others.",
+    "refineSearch_other": "Showing the first {{count}} matches by title. Search for something more specific to see others."
   },
   "mobileScan": {
     "scanPages": "Scan pages",

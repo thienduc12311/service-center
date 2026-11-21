@@ -77,10 +77,22 @@ export const updateSongSchema = songFieldsSchema.partial().extend({
   expected_revision: expectedLibraryRevision,
 });
 
+/**
+ * How the songs list is ordered. `last_used`: most recently scheduled first
+ * (never-scheduled songs last), then title. `most_used`: highest `usage_count`
+ * first, then title.
+ */
+export const songListSortSchema = z.enum(['title', 'recent', 'recently_added', 'last_used', 'most_used']);
+export type SongListSort = z.infer<typeof songListSortSchema>;
+
+/** The window `usage_count` covers: plans in the 12 weeks before now. */
+export const SONG_USAGE_WINDOW_WEEKS = 12;
+
 export const listSongsQuerySchema = paginationSchema.extend({
+  /** Accent-insensitive; every word must match the title, author or CCLI number. */
   q: z.string().trim().max(100).optional(),
   theme: z.string().trim().max(40).optional(),
-  sort: z.enum(['title', 'recent']).default('title'),
+  sort: songListSortSchema.default('title'),
   archive: z.enum(['active', 'archived', 'all']).default('active'),
   key: musicalKey.optional(),
   bpm_min: z.coerce.number().int().min(20).max(300).optional(),
@@ -91,6 +103,16 @@ export const listSongsQuerySchema = paginationSchema.extend({
   author: z.string().trim().max(200).optional(),
   scheduled_from: z.string().datetime({ offset: true }).optional(),
   scheduled_to: z.string().datetime({ offset: true }).optional(),
+  /**
+   * Scopes `usage_count`, the `most_used` and `last_used` sorts, and the
+   * `scheduled_from`/`scheduled_to` filters to one service type. Does not
+   * filter rows by itself; `last_scheduled_at` stays organization-wide.
+   */
+  service_type_id: uuid.optional(),
+  /** Only songs with no plan on or after this instant (never-scheduled songs included). */
+  not_scheduled_since: z.string().datetime({ offset: true }).optional(),
+  /** Marks rows already in this plan (`in_plan: true`); does not filter. */
+  plan_id: uuid.optional(),
 }).refine((v) => v.bpm_min === undefined || v.bpm_max === undefined || v.bpm_min <= v.bpm_max,
   { message: 'Minimum BPM exceeds maximum', path: ['bpm_max'] })
   .refine((v) => !v.scheduled_from || !v.scheduled_to || Date.parse(v.scheduled_from) < Date.parse(v.scheduled_to),
@@ -159,6 +181,13 @@ export const songBulkResultSchema = z.object({
 });
 
 export const curatedSongPageSchema = z.object({
-  data: z.array(curatedSongRowSchema.extend({ arrangements: z.array(curatedArrangementRowSchema), last_scheduled_at: z.string().nullable() })),
+  data: z.array(curatedSongRowSchema.extend({
+    arrangements: z.array(curatedArrangementRowSchema),
+    last_scheduled_at: z.string().nullable(),
+    /** Distinct plans in the last `SONG_USAGE_WINDOW_WEEKS` weeks containing the song (scoped by `service_type_id`). */
+    usage_count: z.number().int().nonnegative(),
+    /** True when the `plan_id` the query named already contains the song. */
+    in_plan: z.boolean(),
+  })),
   page: z.number().int().positive(), per_page: z.number().int().positive(), total: z.number().int().nonnegative(),
 });

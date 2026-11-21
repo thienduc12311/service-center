@@ -64,6 +64,19 @@ export const directoryBadges = (row: Pick<RosterPerson, 'archived' | 'has_login'
   ...(!row.has_login ? [row.invite_pending ? ('inviteSent' as const) : ('noLogin' as const)] : []),
 ];
 
+/**
+ * The same badges for an opened record, read from the record itself (no
+ * directory download): archived, then no login (invite sent or not).
+ */
+export const personDetailBadges = (
+  person: Pick<PersonDetail, 'archived_at' | 'profile_id' | 'pending_invitation'>,
+): DirectoryBadge[] =>
+  directoryBadges({
+    archived: Boolean(person.archived_at),
+    has_login: Boolean(person.profile_id),
+    invite_pending: Boolean(person.pending_invitation),
+  });
+
 /** The record fields this screen edits; the full form (address, dates, medical note) stays on the website. */
 export interface PersonEditDraft {
   first_name: string;

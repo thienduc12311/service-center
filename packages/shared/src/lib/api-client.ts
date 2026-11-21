@@ -777,7 +777,10 @@ export class ServiceCenterApi {
   /** Archived people are left out unless asked for. */
   listPeople = (query?: { include_archived?: boolean }) =>
     this.request<RosterPerson[]>('GET', '/api/v1/people', undefined, query as Query);
-  /** One keyset page of the People list for the list screens; pickers keep using `listPeople`. */
+  /**
+   * One keyset page of the People list, with `total`. Accent-insensitive
+   * multi-word `q` and `team_id` make it the source for people pickers too.
+   */
   listPeoplePage = (query?: ListPeoplePageRequest) =>
     this.request<RosterPersonPage>('GET', '/api/v1/people/page', undefined, query as Query);
   getPerson = (personId: string) => this.request<PersonDetail>('GET', `/api/v1/people/${personId}`);

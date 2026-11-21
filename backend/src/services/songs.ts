@@ -59,6 +59,9 @@ export const createSongWithArrangement = async (
   return { ...song, arrangements: [created] };
 };
 
+/** A song with the service date of the latest plan it appears in. */
+export type SongWithLastScheduled = SongWithArrangements & Pick<SongListItem, 'last_scheduled_at'>;
+
 /** One `plan_items` row, joined to the service date of the plan it sits in. */
 interface ScheduledSongRow {
   song_id: string | null;
@@ -76,7 +79,7 @@ interface ScheduledSongRow {
 export const attachLastScheduled = async (
   db: Db,
   songs: SongWithArrangements[],
-): Promise<SongListItem[]> => {
+): Promise<SongWithLastScheduled[]> => {
   if (songs.length === 0) return [];
 
   const rows = (await unwrap(

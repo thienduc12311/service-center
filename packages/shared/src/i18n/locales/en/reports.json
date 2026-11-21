@@ -35,6 +35,8 @@
     "building": "Building report…",
     "generated": "Generated {{time}} · {{timezone}}",
     "truncated": "Truncated: narrow the filters, or queue an export.",
+    "truncatedBanner": "This report is incomplete: the table stops at {{rows}} rows, and a report reads at most {{plans}} plans (past that, the totals leave plans out too). Narrow the dates or filters to see everything.",
+    "sortBy": "Sort by {{column}}",
     "downloadCsv": "Download CSV",
     "queueExport": "Queue export",
     "noMatches": "Nothing matches these filters",
@@ -63,7 +65,8 @@
   },
   "followUp": {
     "title": "Follow up ({{total}})",
-    "line": "{{person}} — {{team}} · {{position}} on {{plan}}: {{response}}"
+    "line": "{{person}} — {{team}} · {{position}} on {{plan}}: {{response}}",
+    "showAll": "Show all {{total}}"
   },
   "exports": {
     "title": "My exports",
@@ -72,6 +75,8 @@
     "range": "{{kind}} · {{from}} to {{to}}",
     "until": "until {{time}}",
     "buildAgain": "Build again",
+    "latest_one": "Latest {{count}}",
+    "latest_other": "Latest {{count}}",
     "status": {
       "queued": "Queued",
       "running": "Building",
@@ -198,6 +203,13 @@
     "nobody": "Nobody with a released request is scheduled at this time.",
     "nobodyOnYourTeams": "Nobody with a released request is scheduled at this time on the teams you schedule.",
     "markEveryone": "Mark everyone I can:",
+    "searchLabel": "Search people at this time",
+    "searchPlaceholder": "Search by name or position",
+    "noMatch": "Nobody matches that search and filter.",
+    "filter": {
+      "label": "Show",
+      "all": "Everyone"
+    },
     "discardChanges": "Discard changes",
     "hiddenPeople_one": "{{count}} more person is scheduled on teams you do not schedule.",
     "hiddenPeople_other": "{{count}} more people are scheduled on teams you do not schedule.",
@@ -261,7 +273,12 @@
     "markLabel": "Mark {{name}} {{status}}",
     "hideHistory": "Hide history",
     "role": "{{team}} · {{position}}",
-    "orphanedTitle": "Kept from earlier (no longer scheduled at this time)"
+    "orphanedTitle": "Kept from earlier (no longer scheduled at this time)",
+    "searchNames": "Filter by name",
+    "noNameMatch": "No one on this sheet matches that name.",
+    "teamGroup_one": "{{team}} · {{count}} person",
+    "teamGroup_other": "{{team}} · {{count}} people",
+    "otherTeam": "Other"
   },
   "mobileReport": {
     "screenTitle": "Schedule report",

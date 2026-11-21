@@ -1,16 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
-import { ORG_ROLES } from '@service-center/shared';
+import { ORG_ROLES, type RosterPerson } from '@service-center/shared';
 import { api } from '../lib/api';
-import { usePeoplePage, useInvalidateOrg } from '../hooks/queries';
+import { usePeoplePage, useInvalidateOrg, useTeams } from '../hooks/queries';
+import { useUrlBoolean, useUrlSearch, useUrlString } from '../hooks/useUrlState';
 import { useAuth } from '../providers/AuthProvider';
 import { Avatar, Badge, Button, EmptyState, ErrorNotice, IconButton, ListErrorNotice, Menu, MenuItem, Notice, PageHeader, SectionHeader, SkeletonList, listFailed } from '../components/ui';
 import { Icon } from '../components/icons';
 import { BulkRosterPanel } from '../components/people/BulkRosterPanel';
 import { TagGroupsModal } from '../components/people/TagGroupsModal';
 import { JoinRequestsSection } from '../components/people/JoinRequestsSection';
+import { SearchableSelect } from '../components/SearchableSelect';
+
+/** A selected Person, kept with enough to show them after a new search hides their row. */
+interface SelectedPerson {
+  personId: string;
+  name: string;
+  avatarUrl: string | null;
+}
 
 /** Result of the most recently sent invitation — surfaced so an owner can share it manually. */
 interface SentInvite {
@@ -24,22 +33,45 @@ export const PeoplePage = () => {
   const navigate = useNavigate();
   const owner = role === 'owner';
   const invalidate = useInvalidateOrg();
-  const [showArchived, setShowArchived] = useState(false);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
-    return () => clearTimeout(timer);
-  }, [search]);
-  const people = usePeoplePage({ q: debouncedSearch, includeArchived: showArchived });
+  const [showArchived, setShowArchived] = useUrlBoolean('archived');
+  const search = useUrlSearch('q');
+  const [teamFilter, setTeamFilter] = useUrlString('team', '', { replace: false });
+  const teams = useTeams();
+  const teamOptions = (teams.data ?? []).map((team) => ({ id: team.id, label: team.name }));
+  const people = usePeoplePage({ q: search.query, includeArchived: showArchived, teamId: teamFilter });
   const [sentInvite, setSentInvite] = useState<SentInvite | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
+  // Selections survive a new search or filter; the tray keeps every one of them in view.
+  const [selected, setSelected] = useState<readonly SelectedPerson[]>([]);
   const [tagsOpen, setTagsOpen] = useState(false);
   const canManagePeople = owner;
   // People bulk actions are reserved to the owner.
   const canBulk = owner;
-  const toggleSelected = (personId: string) =>
-    setSelected((current) => (current.includes(personId) ? current.filter((id) => id !== personId) : [...current, personId]));
+  const displayName = (person: RosterPerson): string => person.full_name ?? person.email ?? t('list.personFallback');
+  const selectedIds = new Set(selected.map((entry) => entry.personId));
+  const toSelected = (person: RosterPerson & { person_id: string }): SelectedPerson => ({
+    personId: person.person_id,
+    name: displayName(person),
+    avatarUrl: person.avatar_url,
+  });
+  const toggleSelected = (person: RosterPerson & { person_id: string }) =>
+    setSelected((current) =>
+      current.some((entry) => entry.personId === person.person_id)
+        ? current.filter((entry) => entry.personId !== person.person_id)
+        : [...current, toSelected(person)],
+    );
+  const selectable = (people.data ?? []).filter((person): person is RosterPerson & { person_id: string } => Boolean(person.person_id));
+  const loadedSelected = selectable.filter((person) => selectedIds.has(person.person_id)).length;
+  const allLoadedSelected = selectable.length > 0 && loadedSelected === selectable.length;
+  const toggleAllLoaded = () =>
+    setSelected((current) => {
+      if (allLoadedSelected) {
+        const loadedIds = new Set(selectable.map((person) => person.person_id));
+        return current.filter((entry) => !loadedIds.has(entry.personId));
+      }
+      const have = new Set(current.map((entry) => entry.personId));
+      return [...current, ...selectable.filter((person) => !have.has(person.person_id)).map(toSelected)];
+    });
+  const hiddenSelected = selected.length - loadedSelected;
 
   const changeRole = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: string }) =>
@@ -92,7 +124,34 @@ export const PeoplePage = () => {
       <TagGroupsModal open={tagsOpen} onClose={() => setTagsOpen(false)} />
 
       <div className="space-y-4">
-        {selected.length > 0 && <BulkRosterPanel personIds={selected} onDone={() => setSelected([])} />}
+        {selected.length > 0 && (
+          <section className="surface-inset space-y-2 px-4 py-3" aria-label={t('list.selection.label')}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-slate-700 dark:text-slate-200">
+                <span className="font-medium">{t('common:count.selected', { count: selected.length })}</span>
+                {hiddenSelected > 0 && (
+                  <span className="ml-2 text-slate-500 dark:text-slate-400">{t('list.selection.hidden', { count: hiddenSelected })}</span>
+                )}
+              </p>
+              <Button size="sm" variant="ghost" onClick={() => setSelected([])}>{t('list.selection.clear')}</Button>
+            </div>
+            <ul className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+              {selected.map((entry) => (
+                <li key={entry.personId} className="inline-flex items-center gap-1.5 rounded-full bg-white py-0.5 pr-1 pl-0.5 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700">
+                  <Avatar name={entry.name} url={entry.avatarUrl} size="sm" />
+                  <span className="max-w-40 truncate">{entry.name}</span>
+                  <IconButton
+                    icon="close"
+                    size="sm"
+                    label={t('list.selection.remove', { name: entry.name })}
+                    onClick={() => setSelected((current) => current.filter((other) => other.personId !== entry.personId))}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {selected.length > 0 && <BulkRosterPanel personIds={selected.map((entry) => entry.personId)} onDone={() => setSelected([])} />}
 
         {sentInvite && (
           <Notice tone="success">
@@ -133,16 +192,48 @@ export const PeoplePage = () => {
           }
         />
 
-        <div className="relative min-w-0 sm:max-w-md">
-          <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="search"
-            className="input pl-9"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t(owner ? 'list.searchPlaceholder' : 'list.searchPlaceholderMember')}
-            aria-label={t('list.searchLabel')}
-          />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1 sm:max-w-md">
+            <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              className="input pl-9"
+              value={search.text}
+              onChange={(event) => search.setText(event.target.value)}
+              placeholder={t(owner ? 'list.searchPlaceholder' : 'list.searchPlaceholderMember')}
+              aria-label={t('list.searchLabel')}
+            />
+          </div>
+          {(teamOptions.length > 0 || teamFilter) && (
+            <div className="min-w-0 sm:w-60">
+              <SearchableSelect
+                label={t('list.teamFilter')}
+                hideLabel
+                value={teamFilter}
+                onChange={(id) => setTeamFilter(id)}
+                options={teamOptions}
+                placeholder={t('list.allTeams')}
+                noMatchesText={t('list.noTeamMatches')}
+              />
+            </div>
+          )}
+          {people.total !== null && (
+            <span className="text-sm text-slate-500 tabular-nums sm:ml-auto dark:text-slate-400">
+              {t('common:count.people', { count: people.total })}
+            </span>
+          )}
+          {canBulk && selectable.length > 0 && (
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+              <input
+                ref={(input) => { if (input) input.indeterminate = loadedSelected > 0 && !allLoadedSelected; }}
+                type="checkbox"
+                className="size-4 rounded border-slate-300 accent-brand-600"
+                checked={allLoadedSelected}
+                onChange={toggleAllLoaded}
+              />
+              {t('list.selection.selectLoaded', { count: selectable.length })}
+            </label>
+          )}
         </div>
 
         {people.isLoading ? (
@@ -152,7 +243,7 @@ export const PeoplePage = () => {
         ) : people.data?.length ? (
           <ul className="card row-list overflow-hidden">
             {people.data.map((person) => {
-              const isSelected = person.person_id ? selected.includes(person.person_id) : false;
+              const isSelected = person.person_id ? selectedIds.has(person.person_id) : false;
               return (
                 <li
                   key={person.id}
@@ -166,7 +257,7 @@ export const PeoplePage = () => {
                       aria-label={t('list.selectPerson', { name: person.full_name ?? person.email ?? t('list.personFallback') })}
                       className="size-4 shrink-0 rounded border-slate-300 accent-brand-600"
                       checked={isSelected}
-                      onChange={() => toggleSelected(person.person_id as string)}
+                      onChange={() => person.person_id && toggleSelected({ ...person, person_id: person.person_id })}
                     />
                   )}
                   <button
@@ -250,7 +341,7 @@ export const PeoplePage = () => {
             })}
           </ul>
         ) : (
-          <EmptyState icon="people" title={debouncedSearch ? t('list.noMatch') : t('list.empty')} />
+          <EmptyState icon="people" title={search.query || teamFilter ? t('list.noMatch') : t('list.empty')} />
         )}
 
         {people.hasNextPage && (

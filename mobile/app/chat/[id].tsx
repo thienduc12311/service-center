@@ -34,6 +34,7 @@ import {
   type ConversationReportReason,
   type ConversationSummary,
   type DiscussionMention,
+  type DiscussionPage,
   type MentionCandidate,
   type MentionResolution,
 } from '@service-center/shared';
@@ -62,6 +63,7 @@ import {
 } from '../../src/components/ui';
 import { Icon } from '../../src/components/icons';
 import { MessageBody, MentionPicker, mentionsMe, useMentionInput } from '../../src/components/mentions';
+import { recentAuthorIds } from '../../src/lib/mention-suggestions';
 import { PressableScale } from '../../src/components/motion';
 import { useErrorText, useFormatters } from '../../src/i18n';
 import { type Theme } from '../../src/lib/theme';
@@ -339,10 +341,21 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
   });
   const block = useMutation({
     mutationFn: (message: ConversationMessage) => api.blockUser(message.author_id),
-    onSuccess: (row) => {
+    onSuccess: async ({ blocked_id }, message) => {
       if (!isCurrentGeneration(generation)) return;
-      // The server stops returning them; drop what is already on screen too.
-      patchMessages((messages) => messages.filter((message) => message.author_id !== row.blocked_id));
+      // Discard reads started before the server recorded the block.
+      await queryClient.cancelQueries({ queryKey });
+      if (!isCurrentGeneration(generation)) return;
+      const withoutBlocked = (messages: ConversationMessage[]): ConversationMessage[] =>
+        messages.filter((entry) => entry.author_id !== blocked_id);
+      patchMessages(withoutBlocked);
+      queryClient.setQueriesData<DiscussionPage<ConversationMessage>>(
+        { queryKey: queryKeys.conversationSearches(queryScope, conversationId) },
+        (page) => page && ({ ...page, data: withoutBlocked(page.data) }),
+      );
+      setDraft((current) => current.replyToId && (
+        current.replyToId === message.id || byId.get(current.replyToId)?.author_id === blocked_id
+      ) ? { ...current, replyToId: null } : current);
       setReportingId(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.blockedUsers(queryScope?.userId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.privateRoot(queryScope) });
@@ -598,6 +611,7 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
         <Composer
           conversation={conversation}
           candidates={candidates.data ?? []}
+          recentAuthorIds={recentAuthorIds(known)}
           draft={draft}
           setDraft={setDraft}
           replyTo={replyTo}
@@ -967,6 +981,8 @@ function OutgoingMessageEntry({ sent, pending, error, parent, onRetry, onDismiss
 interface ComposerProps {
   conversation: ConversationSummary;
   candidates: readonly MentionCandidate[];
+  /** Who spoke most recently, offered first for an empty `@`. */
+  recentAuthorIds: readonly string[];
   draft: ConversationDraft;
   setDraft: (update: (current: ConversationDraft) => ConversationDraft) => void;
   replyTo: ConversationMessage | null;
@@ -979,7 +995,7 @@ interface ComposerProps {
  * button) opens a picker; Return sends, or picks the top match while the
  * picker is open.
  */
-function Composer({ conversation, candidates, draft, setDraft, replyTo, onSend }: ComposerProps) {
+function Composer({ conversation, candidates, recentAuthorIds: recentIds, draft, setDraft, replyTo, onSend }: ComposerProps) {
   const { t } = useTranslation(['messages', 'common']);
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -988,6 +1004,8 @@ function Composer({ conversation, candidates, draft, setDraft, replyTo, onSend }
     text: draft.body,
     onChangeText: (body) => setDraft((current) => ({ ...current, body })),
     candidates,
+    // The person being replied to first, then whoever spoke last.
+    priorityIds: replyTo?.author_person_id ? [replyTo.author_person_id, ...recentIds] : recentIds,
     pickedIds: draft.mentionIds,
     onPicked: (personId) => setDraft((current) => ({ ...current, mentionIds: [...current.mentionIds, personId] })),
   });

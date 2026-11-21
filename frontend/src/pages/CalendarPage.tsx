@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
-  DEFAULT_CALENDAR_FILTERS,
   addMonths,
   calendarLayerEventDays,
   calendarLayersRequestFor,
@@ -15,6 +14,7 @@ import {
   withCalendarTeam,
   type CalendarEvent,
   type CalendarFilters,
+  type CalendarLayer,
   type CalendarLayerEvent,
 } from '@service-center/shared';
 import { useCalendar, useTeams } from '../hooks/queries';
@@ -26,6 +26,7 @@ import {
   ErrorNotice,
   IconButton,
   Loading,
+  Modal,
   PageHeader,
   Segmented,
   SkeletonList,
@@ -34,6 +35,8 @@ import {
 import { Icon } from '../components/icons';
 import { assignmentTone } from '../lib/format';
 import { useFormatters } from '../i18n';
+import { CALENDAR_MONTH_PARAM, CALENDAR_TEAM_PARAM, formatMonthParam, parseMonthParam } from '../lib/calendar-params';
+import { dayLabelKind, groupByDay } from '../lib/day-groups';
 import {
   LayerToggles,
   ScopedFeedsPanel,
@@ -59,13 +62,36 @@ const kindDots: Record<CalendarEvent['kind'], string> = {
   other: 'bg-slate-400',
 };
 
+/** How many layer events and plan events a month cell shows before "+N more". */
+const CELL_LAYER_LIMIT = 2;
+const CELL_EVENT_LIMIT = 3;
+
+
 export const CalendarPage = () => {
-  const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
+  // The month and team live in the URL, so a view can be linked and survives a reload.
+  const [params, setParams] = useSearchParams();
+  const monthParam = params.get(CALENDAR_MONTH_PARAM);
+  const cursor = useMemo(() => parseMonthParam(monthParam) ?? startOfMonth(new Date()), [monthParam]);
+  const teamId = params.get(CALENDAR_TEAM_PARAM) ?? '';
   const [view, setView] = useState<View>('month');
+  const [mine, setMine] = useState(false);
+  const [layers, setLayers] = useState<readonly CalendarLayer[]>([]);
+  // The month-grid day opened in full from its "+N more".
+  const [openDay, setOpenDay] = useState<Date | null>(null);
   // Same filters and requests as the native calendar (MOB-022). F16 layers
   // apply to the chosen team; the server applies current access.
-  const [filters, setFilters] = useState<CalendarFilters>(DEFAULT_CALENDAR_FILTERS);
-  const teamId = filters.teamId ?? '';
+  const filters: CalendarFilters = { mine, teamId: teamId || null, layers: teamId ? layers : [] };
+  const setParam = (name: string, value: string | null) => setParams((current) => {
+    const next = new URLSearchParams(current);
+    if (value) next.set(name, value);
+    else next.delete(name);
+    return next;
+  }, { replace: true });
+  const setCursor = (month: Date) => setParam(CALENDAR_MONTH_PARAM, formatMonthParam(month));
+  const setTeam = (id: string | null) => {
+    setLayers(withCalendarTeam(filters, id).layers);
+    setParam(CALENDAR_TEAM_PARAM, id);
+  };
 
   const teams = useTeams();
   const { t } = useTranslation(['scheduling', 'common']);
@@ -108,6 +134,14 @@ export const CalendarPage = () => {
 
   const days = useMemo(() => monthGrid(cursor), [cursor]);
   const today = new Date();
+  const agendaDays = useMemo(
+    () => groupByDay([...(calendar.data ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at)), (event) => event.starts_at),
+    [calendar.data],
+  );
+  const dayLabel = (day: string): string => {
+    const kind = dayLabelKind(day);
+    return kind === 'date' ? f.calendarDate(day, 'long') : t(`common:states.${kind}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -158,8 +192,8 @@ export const CalendarPage = () => {
             <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800">
               <input
                 type="checkbox"
-                checked={filters.mine}
-                onChange={(e) => setFilters({ ...filters, mine: e.target.checked })}
+                checked={mine}
+                onChange={(e) => setMine(e.target.checked)}
                 className="size-4 rounded border-slate-300 accent-brand-600 dark:border-slate-600"
               />
               {t('calendar.onlyMine')}
@@ -168,7 +202,7 @@ export const CalendarPage = () => {
               aria-label={t('calendar.filterByTeam')}
               className="input min-w-0 flex-1 sm:w-44 sm:flex-none"
               value={teamId}
-              onChange={(e) => setFilters(withCalendarTeam(filters, e.target.value || null))}
+              onChange={(e) => setTeam(e.target.value || null)}
             >
               <option value="">{t('calendar.allTeams')}</option>
               {(teams.data ?? []).map((team) => (
@@ -180,7 +214,7 @@ export const CalendarPage = () => {
           </div>
         </div>
         <div className="border-t border-app-border pt-3">
-          <LayerToggles teamId={teamId} layers={filters.layers} onChange={(layers) => setFilters({ ...filters, layers })} />
+          <LayerToggles teamId={teamId} layers={filters.layers} onChange={setLayers} />
         </div>
       </div>
 
@@ -201,6 +235,8 @@ export const CalendarPage = () => {
             <div className="grid grid-cols-7">
               {days.map((day, index) => {
                 const events = eventsByDay.get(toISODate(day)) ?? [];
+                const dayLayers = layersByDay.get(toISODate(day)) ?? [];
+                const hidden = Math.max(0, dayLayers.length - CELL_LAYER_LIMIT) + Math.max(0, events.length - CELL_EVENT_LIMIT);
                 const inMonth = day.getMonth() === cursor.getMonth();
                 const isToday = isSameDay(day, today);
                 return (
@@ -228,7 +264,7 @@ export const CalendarPage = () => {
                       </span>
                     </div>
                     <div className="space-y-1">
-                      {(layersByDay.get(toISODate(day)) ?? []).slice(0, 2).map((event) => (
+                      {dayLayers.slice(0, CELL_LAYER_LIMIT).map((event) => (
                         <p
                           key={event.id}
                           title={layerLabel(event, t)}
@@ -237,7 +273,7 @@ export const CalendarPage = () => {
                           {layerLabel(event, t)}
                         </p>
                       ))}
-                      {events.slice(0, 3).map((event) => (
+                      {events.slice(0, CELL_EVENT_LIMIT).map((event) => (
                         <Link
                           key={event.id}
                           to={`/plans/${event.plan_id}`}
@@ -250,10 +286,15 @@ export const CalendarPage = () => {
                           </span>
                         </Link>
                       ))}
-                      {events.length > 3 && (
-                        <p className="px-1.5 text-xs font-medium text-slate-400 dark:text-slate-500">
-                          {t('calendar.moreEvents', { count: events.length - 3 })}
-                        </p>
+                      {hidden > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setOpenDay(day)}
+                          aria-label={t('calendar.moreEventsLabel', { count: hidden, date: f.date(day, 'long') })}
+                          className="rounded-md px-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50 hover:underline focus-visible:outline-2 focus-visible:outline-brand-500 dark:text-brand-200 dark:hover:bg-brand-500/10"
+                        >
+                          {t('calendar.moreEvents', { count: hidden })}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -265,46 +306,113 @@ export const CalendarPage = () => {
       ) : (calendar.data ?? []).length === 0 ? (
         <EmptyState icon="calendar" title={t('calendar.emptyMonth')} />
       ) : (
-        <ul className="space-y-3">
-          {(calendar.data ?? []).map((event) => {
-            const past = new Date(event.ends_at) < today;
-            return (
+        <div className="space-y-6">
+          {agendaDays.map((group) => (
+            <section key={group.day} aria-label={dayLabel(group.day)}>
+              <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {dayLabel(group.day)}
+              </h2>
+              <ul className="space-y-3">
+                {group.items.map((event) => {
+                  const past = new Date(event.ends_at) < today;
+                  return (
+                    <li key={event.id}>
+                      <Link
+                        to={`/plans/${event.plan_id}`}
+                        className="card card-interactive flex items-center gap-4 p-3 sm:p-4"
+                      >
+                        <DateTile value={event.starts_at} muted={past} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-slate-900 dark:text-white">{event.title}</span>
+                            <Badge tone={kindStyles[event.kind]}>{t(`eventKind.${event.kind}`)}</Badge>
+                          </div>
+                          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-slate-500 dark:text-slate-400">
+                            <span className="inline-flex items-center gap-1">
+                              <Icon name="clock" className="size-3.5" />
+                              {t('common:format.dateRange', { start: f.time(event.starts_at), end: f.time(event.ends_at) })}
+                            </span>
+                            {event.location && (
+                              <span className="inline-flex min-w-0 items-center gap-1">
+                                <Icon name="mapPin" className="size-3.5" />
+                                <span className="truncate">{event.location}</span>
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        {event.my_assignment_status && (
+                          <Badge tone={assignmentTone[event.my_assignment_status]}>
+                            {t(`common:assignmentStatus.${event.my_assignment_status}`)}
+                          </Badge>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+      <ScopedFeedsPanel />
+      {openDay && (
+        <CalendarDayModal
+          day={openDay}
+          events={eventsByDay.get(toISODate(openDay)) ?? []}
+          layerEvents={layersByDay.get(toISODate(openDay)) ?? []}
+          onClose={() => setOpenDay(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+interface CalendarDayModalProps {
+  day: Date;
+  events: readonly CalendarEvent[];
+  layerEvents: readonly CalendarLayerEvent[];
+  onClose: () => void;
+}
+
+/** Everything on one day of the month grid, for days with more than a cell can hold. */
+const CalendarDayModal = ({ day, events, layerEvents, onClose }: CalendarDayModalProps) => {
+  const { t } = useTranslation(['scheduling', 'common']);
+  const f = useFormatters();
+  return (
+    <Modal open title={f.date(day, 'long')} onClose={onClose}>
+      <div className="space-y-4">
+        {events.length > 0 && (
+          <ul className="space-y-1.5">
+            {events.map((event) => (
               <li key={event.id}>
                 <Link
                   to={`/plans/${event.plan_id}`}
-                  className="card card-interactive flex items-center gap-4 p-3 sm:p-4"
+                  className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium ring-1 ring-inset transition ${kindStyles[event.kind]}`}
                 >
-                  <DateTile value={event.starts_at} muted={past} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-slate-900 dark:text-white">{event.title}</span>
-                      <Badge tone={kindStyles[event.kind]}>{t(`eventKind.${event.kind}`)}</Badge>
-                    </div>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-slate-500 dark:text-slate-400">
-                      <span className="inline-flex items-center gap-1">
-                        <Icon name="clock" className="size-3.5" />
-                        {t('common:format.dateRange', { start: f.time(event.starts_at), end: f.time(event.ends_at) })}
-                      </span>
-                      {event.location && (
-                        <span className="inline-flex min-w-0 items-center gap-1">
-                          <Icon name="mapPin" className="size-3.5" />
-                          <span className="truncate">{event.location}</span>
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  {event.my_assignment_status && (
-                    <Badge tone={assignmentTone[event.my_assignment_status]}>
-                      {t(`common:assignmentStatus.${event.my_assignment_status}`)}
-                    </Badge>
-                  )}
+                  <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${kindDots[event.kind]}`} />
+                  <span className="shrink-0 tabular-nums opacity-75">
+                    {t('common:format.dateRange', { start: f.time(event.starts_at), end: f.time(event.ends_at) })}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{event.title}</span>
+                  <span className="shrink-0 text-xs font-normal opacity-75">{t(`eventKind.${event.kind}`)}</span>
                 </Link>
               </li>
-            );
-          })}
-        </ul>
-      )}
-      <ScopedFeedsPanel />
-    </div>
+            ))}
+          </ul>
+        )}
+        {layerEvents.length > 0 && (
+          <ul className="space-y-1.5">
+            {layerEvents.map((event) => (
+              <li
+                key={event.id}
+                className="rounded-lg border border-dashed border-slate-300 px-2.5 py-1.5 text-sm text-slate-600 dark:border-slate-600 dark:text-slate-300"
+              >
+                {layerLabel(event, t)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Modal>
   );
 };

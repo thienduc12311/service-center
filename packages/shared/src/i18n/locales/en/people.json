@@ -24,7 +24,19 @@
     "searchPlaceholder": "Search by name, email, phone or campus",
     "searchPlaceholderMember": "Search by name or campus",
     "noMatch": "Nobody matches that search.",
-    "loadMore": "Load more people"
+    "loadMore": "Load more people",
+    "selection": {
+      "label": "Selected people",
+      "hidden_one": "({{count}} not in these results)",
+      "hidden_other": "({{count}} not in these results)",
+      "clear": "Clear selection",
+      "remove": "Unselect {{name}}",
+      "selectLoaded_one": "Select the {{count}} shown",
+      "selectLoaded_other": "Select all {{count}} shown"
+    },
+    "teamFilter": "Filter by team",
+    "allTeams": "All teams",
+    "noTeamMatches": "No teams match."
   },
   "person": {
     "addTitle": "Add person",
@@ -138,7 +150,10 @@
       "team_added": "Added to {{team}}",
       "team_removed": "Removed from {{team}}"
     },
-    "byActor": "by {{name}}"
+    "byActor": "by {{name}}",
+    "showingLatest_one": "Showing the latest {{count}} change.",
+    "showingLatest_other": "Showing the latest {{count}} changes.",
+    "showOlder": "Show older changes"
   },
   "tagGroups": {
     "title": "Tags and groups",
@@ -226,6 +241,10 @@
       "approved": "Approved",
       "declined": "Declined",
       "withdrawn": "Withdrawn"
-    }
+    },
+    "recentLatest_one": "Recently decided · latest {{count}}",
+    "recentLatest_other": "Recently decided · latest {{count}}",
+    "recentCount_one": "Recently decided ({{count}})",
+    "recentCount_other": "Recently decided ({{count}})"
   }
 }

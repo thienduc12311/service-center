@@ -22,9 +22,11 @@ import {
 import { api } from '../../lib/api';
 import { keys } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
-import { Badge, Button, ErrorNotice, Loading, Modal } from '../ui';
+import { Badge, Button, ErrorNotice, Loading, Modal, Segmented, type TabItem } from '../ui';
 import { Icon } from '../icons';
 import { assignmentTone } from '../../lib/format';
+import { groupBy } from '../../lib/grouping';
+import { matchesSearch } from '../../lib/search';
 import { useFormatters } from '../../i18n';
 import { timeKindLabel } from './attendance';
 
@@ -42,6 +44,32 @@ const RESPONSE_KEYS = {
   unconfirmed: 'responses.pending',
   declined: 'responses.declined',
 } as const;
+
+/** The status filter: a recorded (or drafted) status, not yet marked, or everyone. */
+type AttendanceFilter = 'all' | AttendanceStatus | 'unmarked';
+const ATTENDANCE_FILTERS: readonly AttendanceFilter[] = ['all', ...ATTENDANCE_STATUSES, 'unmarked'];
+
+/** The status a row shows now: the unsaved choice, else the saved record, else none. */
+const shownStatus = (row: AttendanceSheetRow, draft: AttendanceDraft): AttendanceStatus | null =>
+  draft[row.person_id]?.status ?? row.record?.status ?? null;
+
+const matchesFilter = (filter: AttendanceFilter, status: AttendanceStatus | null): boolean =>
+  filter === 'all' || (filter === 'unmarked' ? status === null : status === filter);
+
+interface AttendanceTeam {
+  id: string;
+  name: string;
+}
+
+/**
+ * The team a row is listed under: the team it is marked through, else its
+ * first role. A person on two teams appears once, so there is one set of
+ * buttons per person.
+ */
+const rowTeam = (row: AttendanceSheetRow): AttendanceTeam => {
+  const role = row.roles.find((candidate) => candidate.team_id === row.mark_team_id) ?? row.roles[0];
+  return role ? { id: role.team_id, name: role.team_name } : { id: '', name: '' };
+};
 
 /** The idempotency key of the batch being saved, and the content it was minted for. */
 interface BatchKey {
@@ -70,6 +98,8 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
   // Choices dropped after a stale refusal because someone else changed those records.
   const [superseded, setSuperseded] = useState<SupersededAttendanceMark[] | null>(null);
   const [saved, setSaved] = useState<AttendanceBatchResult | null>(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<AttendanceFilter>('all');
 
   const sheet = useQuery({
     queryKey: keys.attendance(organizationId, plan.id, timeId),
@@ -83,6 +113,25 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
   }, [data?.time.id]);
 
   const changes = useMemo(() => (data ? attendanceChanges(data, draft) : []), [data, draft]);
+  const filterCounts = useMemo(() => {
+    const counts = new Map<AttendanceFilter, number>(ATTENDANCE_FILTERS.map((value) => [value, 0]));
+    for (const row of data?.rows ?? []) {
+      const status = shownStatus(row, draft);
+      for (const value of ATTENDANCE_FILTERS) if (matchesFilter(value, status)) counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+    return counts;
+  }, [data, draft]);
+  const teamGroups = useMemo(() => {
+    const rows = (data?.rows ?? []).filter(
+      (row) =>
+        matchesFilter(filter, shownStatus(row, draft)) &&
+        matchesSearch(search, [row.person_name, ...row.roles.map((role) => role.position_name)]),
+    );
+    return groupBy(rows, (row) => rowTeam(row).id)
+      .map((group) => ({ ...group, name: group.items[0] ? rowTeam(group.items[0]).name : '' }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [data, draft, filter, search]);
+  const shownRows = teamGroups.reduce((sum, group) => sum + group.items.length, 0);
 
   const save = useMutation({
     mutationFn: () => {
@@ -126,6 +175,11 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
   if (!data) return null;
 
   const setAll = (status: AttendanceStatus) => setDraft((current) => markEveryoneAttendance(data, current, status));
+  const filterItems: TabItem<AttendanceFilter>[] = ATTENDANCE_FILTERS.map((value) => ({
+    value,
+    label: value === 'all' ? t('attendance.filter.all') : value === 'unmarked' ? t('attendance.counts.notMarked') : t(`attendance.status.${value}`),
+    count: filterCounts.get(value) ?? 0,
+  }));
 
   return (
     <section aria-labelledby="attendance-heading" className="space-y-4">
@@ -172,20 +226,50 @@ export const AttendanceTab = ({ plan }: AttendanceTabProps) => {
               )}
             </div>
           )}
-          <ul className="card row-list overflow-hidden">
-            {data.rows.map((row) => (
-              <AttendanceRowView
-                key={row.person_id}
-                row={row}
-                draft={draft[row.person_id]?.status}
-                onChange={(status) => {
-                  setSaved(null);
-                  setDraft((current) => setAttendanceMark(current, row, status));
-                }}
-                onHistory={() => setHistoryFor(row)}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative min-w-0 flex-1 lg:max-w-sm">
+              <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                className="input !pl-9"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t('attendance.searchPlaceholder')}
+                aria-label={t('attendance.searchLabel')}
               />
-            ))}
-          </ul>
+            </div>
+            <div className="scrollbar-none -mx-1 overflow-x-auto px-1">
+              <Segmented label={t('attendance.filter.label')} items={filterItems} value={filter} onChange={setFilter} />
+            </div>
+          </div>
+          {shownRows === 0 ? (
+            <p className="card border-dashed px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">{t('attendance.noMatch')}</p>
+          ) : (
+            teamGroups.map((group) => (
+              <section key={group.key} aria-label={group.name} className="card overflow-hidden">
+                <h3 className="flex items-center justify-between border-b border-app-border bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-800 dark:bg-slate-900/50 dark:text-slate-100">
+                  {group.name}
+                  <span className="text-xs font-normal text-slate-500 tabular-nums dark:text-slate-400">
+                    {t('common:count.people', { count: group.items.length })}
+                  </span>
+                </h3>
+                <ul className="row-list">
+                  {group.items.map((row) => (
+                    <AttendanceRowView
+                      key={row.person_id}
+                      row={row}
+                      draft={draft[row.person_id]?.status}
+                      onChange={(status) => {
+                        setSaved(null);
+                        setDraft((current) => setAttendanceMark(current, row, status));
+                      }}
+                      onHistory={() => setHistoryFor(row)}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))
+          )}
         </>
       )}
 

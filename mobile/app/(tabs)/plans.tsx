@@ -15,7 +15,7 @@ import {
   type PlanSummary,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
-import { queryKeys } from '../../src/lib/query-keys';
+import { keepScopedData, queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Button,
@@ -34,6 +34,8 @@ import {
   type SegmentOption,
 } from '../../src/components/ui';
 import { NotificationBell } from '../../src/components/NotificationBell';
+import { SearchField } from '../../src/components/SearchField';
+import { useDebouncedValue } from '../../src/hooks/useDebouncedValue';
 import { Icon, type IconName } from '../../src/components/icons';
 import { PressableScale, Reveal } from '../../src/components/motion';
 import { statusAccent, type Theme } from '../../src/lib/theme';
@@ -59,13 +61,15 @@ export default function PlansScreen() {
   const [planWindow, setPlanWindow] = useState<PlanBrowserWindow>('upcoming');
   const [serviceTypeId, setServiceTypeId] = useState<string | null>(null);
   const [status, setStatus] = useState<PlanStatus | null>(null);
+  const [search, setSearch] = useState('');
+  const q = useDebouncedValue(search.trim());
   // Fixed until a pull to refresh, so pages don't shift as the clock moves.
   const [openedAt, setOpenedAt] = useState(() => new Date().toISOString());
   const [refreshing, setRefreshing] = useState(false);
 
   const filters = useMemo<PlanBrowserFilters>(
-    () => ({ window: planWindow, serviceTypeId, status, openedAt }),
-    [openedAt, planWindow, serviceTypeId, status],
+    () => ({ window: planWindow, serviceTypeId, status, openedAt, ...(q ? { q } : {}) }),
+    [openedAt, planWindow, q, serviceTypeId, status],
   );
 
   const serviceTypes = useQuery({
@@ -80,6 +84,8 @@ export default function PlansScreen() {
     initialPageParam: 1,
     getNextPageParam: (lastPage) => nextPlanPage(lastPage),
     enabled: Boolean(queryScope),
+    // A new search keeps the last results on screen until its first page arrives.
+    placeholderData: keepScopedData(queryScope),
   });
 
   // Answers, releases and edits made from a plan change its counts; read the
@@ -95,6 +101,7 @@ export default function PlansScreen() {
 
   const items = useMemo(() => mergePlanPages(plans.data?.pages ?? []), [plans.data]);
   const filtered = Boolean(serviceTypeId || status);
+  const searching = Boolean(q);
 
   const windowOptions = useMemo<readonly SegmentOption<PlanBrowserWindow>[]>(
     () => WINDOWS.map((value) => ({ value, label: t(`mobilePlans.window.${value}`) })),
@@ -117,6 +124,8 @@ export default function PlansScreen() {
         data={items}
         keyExtractor={(plan) => plan.id}
         contentContainerStyle={[screenPadding(theme), styles.list]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.color.inkFaint} />
         }
@@ -151,6 +160,11 @@ export default function PlansScreen() {
               </View>
             ) : null}
             <View style={styles.filters}>
+              <SearchField
+                value={search}
+                onChangeText={setSearch}
+                placeholder={t('mobilePlans.searchPlaceholder')}
+              />
               <SegmentedControl options={windowOptions} value={planWindow} onChange={setPlanWindow} />
               {serviceTypes.data?.length ? (
                 <ScrollView
@@ -204,9 +218,13 @@ export default function PlansScreen() {
             <Loading label={t('mobilePlans.loading')} />
           ) : firstPageFailed ? null : (
             <EmptyState
-              icon={filtered ? 'search' : 'plans'}
+              icon={filtered || searching ? 'search' : 'plans'}
               title={t(planWindow === 'history' ? 'mobilePlans.emptyHistoryTitle' : 'mobilePlans.emptyUpcomingTitle')}
-              description={t(filtered ? 'mobilePlans.emptyFilteredDescription' : 'mobilePlans.emptyDescription')}
+              description={t(
+                searching
+                  ? 'mobilePlans.emptySearchDescription'
+                  : filtered ? 'mobilePlans.emptyFilteredDescription' : 'mobilePlans.emptyDescription',
+              )}
             />
           )
         }

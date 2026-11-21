@@ -67,7 +67,9 @@
       "mine": "Only me"
     },
     "openMonthTitle": "An open month",
-    "openMonthDescription": "Nothing is on the calendar for {{month}}."
+    "openMonthDescription": "Nothing is on the calendar for {{month}}.",
+    "moreEventsLabel_one": "Show all of {{date}} ({{count}} more)",
+    "moreEventsLabel_other": "Show all of {{date}} ({{count}} more)"
   },
   "layers": {
     "legend": "Layers",
@@ -253,7 +255,15 @@
     "clearedRead_one": "Cleared {{count}} notification",
     "clearedRead_other": "Cleared {{count}} notifications",
     "swipeHint": "Swipe left on a notification to delete it.",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "viewLabel": "Show",
+    "views": {
+      "all": "All",
+      "unread": "Unread"
+    },
+    "emptyUnreadTitle": "No unread notifications",
+    "emptyUnreadDescription": "You're all caught up. Switch to All to see earlier notifications.",
+    "clearedNone": "There were no read notifications to clear."
   },
   "mobileCalendar": {
     "layersNote": "Layers show only what you are allowed to see for this team, read again each time."

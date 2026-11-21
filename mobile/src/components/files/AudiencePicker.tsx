@@ -7,6 +7,8 @@ import { api } from '../../lib/api';
 import { queryKeys } from '../../lib/query-keys';
 import { useAuth } from '../../providers/AuthProvider';
 import { Chip, ErrorNotice, Label, Loading } from '../ui';
+import { SearchableOptionPicker } from '../SearchableOptionSheet';
+import { OPTION_CHIP_LIMIT, type SearchableOption } from '../../lib/option-groups';
 import type { Theme } from '../../lib/theme';
 import { useThemedStyles } from '../../lib/useTheme';
 
@@ -34,6 +36,17 @@ export const AudiencePicker = ({ ownerKind, value, onChange, planId }: AudienceP
     queryFn: () => api.listTeams(),
     enabled: Boolean(queryScope && needsTeams),
   });
+  // Plan-only positions of this plan may be chosen too; grouped by team.
+  const positionOptions: SearchableOption[] = (teams.data ?? []).flatMap((team) =>
+    team.positions
+      .filter((position) => position.plan_id === null || position.plan_id === planId)
+      .map((position) => ({
+        value: position.id,
+        label: `${team.name} · ${position.name}`,
+        groupedLabel: position.name,
+        groupKey: team.id,
+        groupLabel: team.name,
+      })));
 
   return (
     <View style={styles.wrap}>
@@ -58,23 +71,28 @@ export const AudiencePicker = ({ ownerKind, value, onChange, planId }: AudienceP
       ) : null}
       <ErrorNotice error={needsTeams ? teams.error : null} />
 
-      {value.audience === 'teams' ? (
-        <View style={styles.chips}>
-          {(teams.data ?? []).map((team) => (
-            <Chip
-              key={team.id}
-              toggle
-              label={team.name}
-              active={value.teamIds.includes(team.id)}
-              onPress={() => onChange({ ...value, teamIds: toggle(value.teamIds, team.id) })}
-            />
-          ))}
-        </View>
+      {value.audience === 'teams' && teams.data ? (
+        <SearchableOptionPicker
+          title={t('audience.legend')}
+          options={teams.data.map((team) => ({ value: team.id, label: team.name }))}
+          selected={value.teamIds}
+          mode="multi"
+          onChange={(teamIds) => onChange({ ...value, teamIds })}
+        />
       ) : null}
 
-      {value.audience === 'positions'
-        ? (teams.data ?? []).map((team) => {
-            const positions = team.positions.filter((position) => position.plan_id === null || position.plan_id === planId);
+      {value.audience === 'positions' && teams.data ? (
+        positionOptions.length > OPTION_CHIP_LIMIT ? (
+          <SearchableOptionPicker
+            title={t('audience.legend')}
+            options={positionOptions}
+            selected={value.positionIds}
+            mode="multi"
+            onChange={(positionIds) => onChange({ ...value, positionIds })}
+          />
+        ) : (
+          teams.data.map((team) => {
+            const positions = positionOptions.filter((option) => option.groupKey === team.id);
             if (!positions.length) return null;
             return (
               <View key={team.id} style={styles.group}>
@@ -82,18 +100,19 @@ export const AudiencePicker = ({ ownerKind, value, onChange, planId }: AudienceP
                 <View style={styles.chips}>
                   {positions.map((position) => (
                     <Chip
-                      key={position.id}
+                      key={position.value}
                       toggle
-                      label={position.name}
-                      active={value.positionIds.includes(position.id)}
-                      onPress={() => onChange({ ...value, positionIds: toggle(value.positionIds, position.id) })}
+                      label={position.groupedLabel ?? position.label}
+                      active={value.positionIds.includes(position.value)}
+                      onPress={() => onChange({ ...value, positionIds: toggle(value.positionIds, position.value) })}
                     />
                   ))}
                 </View>
               </View>
             );
           })
-        : null}
+        )
+      ) : null}
     </View>
   );
 };

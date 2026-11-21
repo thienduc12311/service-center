@@ -33,7 +33,15 @@
     "reviewAndRelease_one": "Review and release {{count}}",
     "reviewAndRelease_other": "Review and release {{count}}",
     "willBeNotified": "These people will be notified:",
-    "release": "Release"
+    "release": "Release",
+    "onlyGaps_one": "Only gaps ({{count}} team)",
+    "onlyGaps_other": "Only gaps ({{count}} teams)",
+    "noGapsTitle": "No gaps",
+    "noGapsDescription": "Every needed position is filled and every request has an answer.",
+    "summary": "{{confirmed}}/{{places}} confirmed",
+    "summaryNobody": "Nobody scheduled yet",
+    "openPlaces_one": "{{count}} open place",
+    "openPlaces_other": "{{count}} open places"
   },
   "schedulePeople": {
     "title": "Schedule people",
@@ -72,7 +80,27 @@
     "prepareCount_other": "Prepare {{count}}",
     "scheduleCount_one": "Schedule {{count}}",
     "scheduleCount_other": "Schedule {{count}}",
-    "heldUntilPublish": "People will be notified when this plan is published."
+    "heldUntilPublish": "People will be notified when this plan is published.",
+    "scopeLabel": "Whose names to list",
+    "scopeTeam": "Team members",
+    "scopeEveryone": "Everyone",
+    "scopeTeamPlain": "Team members",
+    "scopeEveryonePlain": "Everyone",
+    "onPlan": "already on this plan",
+    "removeSelected": "Remove {{name}}",
+    "noMatches": "Nobody matches that search.",
+    "noTeamMembers": "Nobody is on this team yet. Switch to Everyone to find people.",
+    "searchTeams": "Search teams",
+    "searchPositions": "Search positions",
+    "loadingMore": "Loading more people…",
+    "loadMoreFailed": "More people could not be loaded.",
+    "planPositionShort": "{{position}} (this plan)",
+    "newPlanPositionChip": "+ New for this plan",
+    "selectedLabel": "People you picked",
+    "unselect": "Remove {{name}}",
+    "noPeople": "No people to schedule yet.",
+    "scopeTeamCount": "Team members ({{count}})",
+    "scopeEveryoneCount": "Everyone ({{count}})"
   },
   "preferenceWarning": {
     "frequency": "Serving more often than preferred",
@@ -278,6 +306,10 @@
     "offerCount_other": "{{count}} offers",
     "cancelRequest": "Cancel request",
     "chooseCandidate": "Choose candidate…",
+    "candidateLabel": "Replacement candidate",
+    "teamMembers": "{{team}} members",
+    "everyone": "Everyone",
+    "onThisPlan": "On this plan",
     "unnamedPerson": "Unnamed person",
     "sendOffer": "Send offer",
     "offerStatus": {
@@ -409,7 +441,17 @@
     "itemWillNotify": "{{action}} · will notify after commit",
     "itemNoDelivery": "{{action}} · no delivery",
     "resolveBlocking": "Resolve blocking conflicts before committing this batch. Your selected cells will remain selected.",
-    "commitAll": "Commit all changes"
+    "commitAll": "Commit all changes",
+    "planLimit_one": "This date range has more than {{count}} plan, and the matrix shows up to {{count}} at a time.",
+    "planLimit_other": "This date range has more than {{count}} plans, and the matrix shows up to {{count}} at a time.",
+    "planLimitAction_one": "Show the next {{count}} plan",
+    "planLimitAction_other": "Show the next {{count}} plans",
+    "planWindow_one": "Showing {{count}} plan at a time. Your range runs to {{end}}.",
+    "planWindow_other": "Showing {{count}} plans at a time. Your range runs to {{end}}.",
+    "laterPlans_one": "Next {{count}} plan",
+    "laterPlans_other": "Next {{count}} plans",
+    "previousPeople": "Previous people",
+    "peoplePage": "People page {{page}}"
   },
   "proposalReview": {
     "exclusionCount": {

@@ -17,6 +17,7 @@ export type IconName =
   | 'chevronLeft'
   | 'chevronUp'
   | 'chevronDown'
+  | 'move'
   | 'pencil'
   | 'plus'
   | 'minus'
@@ -91,6 +92,13 @@ const paths: Record<IconName, (stroke: number) => ReactElement> = {
   chevronLeft: (w) => <Polyline points="14.5,4.5 7,12 14.5,19.5" strokeWidth={w} />,
   chevronUp: (w) => <Polyline points="4.5,14.5 12,7 19.5,14.5" strokeWidth={w} />,
   chevronDown: (w) => <Polyline points="4.5,9.5 12,17 19.5,9.5" strokeWidth={w} />,
+  move: (w) => (
+    <>
+      <Line x1={12} y1={3.5} x2={12} y2={20.5} strokeWidth={w} />
+      <Polyline points="8,7.5 12,3.5 16,7.5" strokeWidth={w} />
+      <Polyline points="8,16.5 12,20.5 16,16.5" strokeWidth={w} />
+    </>
+  ),
   pencil: (w) => (
     <>
       <Path d="M15.5 4.5l4 4L8.5 19.5 3.5 20.5l1-5z" strokeWidth={w} />

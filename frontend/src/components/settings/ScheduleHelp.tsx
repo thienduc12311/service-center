@@ -1,14 +1,15 @@
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { type DelegationSummary, type GrantDelegationRequest } from '@service-center/shared';
+import { type DelegationSummary, type GrantDelegationRequest, type RosterPerson } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { useDelegations, useInvalidateOrg, usePeople } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Loading } from '../ui';
 import { useFormatters } from '../../i18n';
+import { MemberCombobox, type MemberOption } from './MemberCombobox';
 
 /** The rights a delegation carries, each as a translated phrase. */
 const rightsOf = (t: TFunction<'settings'>, delegation: DelegationSummary): string[] =>
@@ -33,8 +34,10 @@ export const ScheduleHelp = () => {
   const delegations = useDelegations();
   const people = usePeople();
   const myPersonId = people.data?.find((person) => person.profile_id === user?.profile.id)?.person_id ?? null;
-  const helpers = (people.data ?? []).filter((person) =>
-    person.person_id && person.has_login && person.status === 'active' && !person.archived && person.person_id !== myPersonId);
+  const helpers = useMemo<MemberOption[]>(() => (people.data ?? [])
+    .filter((person): person is RosterPerson & { person_id: string } =>
+      Boolean(person.person_id) && person.has_login && person.status === 'active' && !person.archived && person.person_id !== myPersonId)
+    .map((person) => ({ id: person.person_id, name: person.full_name, avatarUrl: person.avatar_url, detail: person.email })), [people.data, myPersonId]);
 
   const [delegateId, setDelegateId] = useState('');
   const [canRespond, setCanRespond] = useState(true);
@@ -91,13 +94,13 @@ export const ScheduleHelp = () => {
           )}
 
           <form className="space-y-3" onSubmit={(event: FormEvent) => { event.preventDefault(); grant.mutate(); }}>
-            <label className="label">
-              {t('help.who')}
-              <select className="input mt-1" value={delegateId} onChange={(e) => setDelegateId(e.target.value)} required>
-                <option value="">{t('help.chooseSomeone')}</option>
-                {helpers.map((person) => <option key={person.person_id} value={person.person_id!}>{person.full_name ?? t('common:fallback.unnamed')}</option>)}
-              </select>
-            </label>
+            <MemberCombobox
+              label={t('help.who')}
+              options={helpers}
+              value={delegateId}
+              onChange={setDelegateId}
+              placeholder={t('help.chooseSomeone')}
+            />
             <fieldset className="space-y-1 text-sm">
               <legend className="label">{t('help.theyCanLegend')}</legend>
               <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={canRespond} onChange={(e) => setCanRespond(e.target.checked)} />{t('help.allowRespond')}</label>

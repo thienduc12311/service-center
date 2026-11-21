@@ -11,6 +11,7 @@ import {
   type PreviewTemplateApplyRequest,
   type TemplateApplyMode,
 } from '@service-center/shared';
+import type { SearchableOption } from './option-groups';
 
 /**
  * MOB-013 Pass B: native use of F10 templates on the website's contracts —
@@ -120,3 +121,29 @@ export const canCreateGenerated = (preview: PlanGenerationPreview): boolean =>
 
 export const clampPlanCount = (value: number, max: number): number =>
   Number.isFinite(value) ? Math.min(max, Math.max(1, Math.trunc(value))) : 1;
+
+/** The group of templates that apply to every service type. */
+export const ALL_SERVICE_TYPES_GROUP = 'all-service-types';
+
+/** How a template is named in a picker, in the displayed language. */
+export interface TemplateOptionWords {
+  /** The full label (chips, and search). */
+  label: (template: PlanTemplateSummary) => string;
+  /** The label inside its service type's group. */
+  groupedLabel: (template: PlanTemplateSummary) => string;
+  /** The group title for templates with no service type. */
+  allServiceTypes: string;
+}
+
+/** Templates as picker options, grouped by service type (templates for every type in their own group). */
+export const templateOptions = (
+  templates: readonly PlanTemplateSummary[],
+  words: TemplateOptionWords,
+): SearchableOption[] =>
+  templates.map((template) => ({
+    value: template.id,
+    label: words.label(template),
+    groupedLabel: words.groupedLabel(template),
+    groupKey: template.service_type?.id ?? ALL_SERVICE_TYPES_GROUP,
+    groupLabel: template.service_type?.name ?? words.allServiceTypes,
+  }));

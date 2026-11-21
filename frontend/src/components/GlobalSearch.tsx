@@ -4,18 +4,9 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import type { GlobalSearchKind } from '@service-center/shared';
 import { useGlobalSearch } from '../hooks/queries';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { ErrorNotice, Modal, Spinner } from './ui';
 import { Icon } from './icons';
-
-/** Waits for typing to pause before searching. */
-const useDebounced = (value: string, delayMs: number): string => {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delayMs);
-    return () => clearTimeout(timer);
-  }, [value, delayMs]);
-  return debounced;
-};
 
 /**
  * Searches people, teams, positions, plans, songs and files. Results come
@@ -27,7 +18,7 @@ export const GlobalSearch = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const debounced = useDebounced(query, 250);
+  const debounced = useDebouncedValue(query);
   const results = useGlobalSearch(open ? debounced : '');
 
   useEffect(() => {

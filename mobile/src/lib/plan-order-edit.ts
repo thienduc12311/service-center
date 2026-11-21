@@ -1,6 +1,7 @@
 import {
   ApiError,
   keyedPlanItemRequest,
+  type AssignmentDetail,
   type CreatePlanItemRequest,
   type ItemLeader,
   type LabeledKey,
@@ -8,6 +9,8 @@ import {
   type RosterPerson,
   type TeamWithPositions,
 } from '@service-center/shared';
+import { matchesSearch } from './list-search';
+import type { SearchableOption } from './option-groups';
 
 /**
  * MOB-014: native order editing on the F11 contracts (`addPlanItem`,
@@ -85,22 +88,127 @@ export const positionNamesFor = (
 /** Upper bound on people listed at once; search narrows the rest. */
 export const PERSON_CHOICE_LIMIT = 30;
 
-/**
- * People who may lead an item: active roster Persons (F02 — archived people
- * are offered in no picker), filtered by name, the chosen one first.
- */
-export const leaderPersonChoices = (
-  people: readonly RosterPerson[],
-  query: string,
-  selectedPersonId: string,
+/** A person who may lead an item, and whether they serve on this plan. */
+export interface LeaderPersonChoice extends PickerChoice {
+  onPlan: boolean;
+}
+
+/** The people on this plan (any answer but declined), once each, in plan order. */
+export const planPeopleChoices = (
+  assignments: readonly Pick<AssignmentDetail, 'person_id' | 'status' | 'person'>[],
   unnamed: string,
 ): PickerChoice[] => {
-  const needle = query.trim().toLocaleLowerCase();
-  const eligible = people.flatMap((person) =>
-    person.person_id && !person.archived ? [{ id: person.person_id, label: person.full_name ?? unnamed }] : []);
-  const matching = eligible.filter((choice) => choice.id === selectedPersonId || !needle || choice.label.toLocaleLowerCase().includes(needle));
-  matching.sort((a, b) => Number(b.id === selectedPersonId) - Number(a.id === selectedPersonId));
-  return matching.slice(0, PERSON_CHOICE_LIMIT);
+  const seen = new Set<string>();
+  const choices: PickerChoice[] = [];
+  for (const assignment of assignments) {
+    if (assignment.status === 'declined' || seen.has(assignment.person_id)) continue;
+    seen.add(assignment.person_id);
+    choices.push({ id: assignment.person_id, label: assignment.person?.full_name ?? unnamed });
+  }
+  return choices;
+};
+
+export interface LeaderPersonInput {
+  /** People on this plan (`planPeopleChoices`). */
+  planPeople: readonly PickerChoice[];
+  /** One server page of People for the current search (or the first page when blank). */
+  results: readonly RosterPerson[];
+  query: string;
+  selectedPersonId: string;
+  /** The server has more People for this search than the page holds. */
+  hasMore: boolean;
+  unnamed: string;
+  limit?: number;
+}
+
+export interface LeaderPersonSuggestions {
+  choices: LeaderPersonChoice[];
+  /** Some matches are not listed: say so and ask for a narrower search. */
+  truncated: boolean;
+}
+
+/**
+ * People who may lead an item: those on this plan first (filtered by the
+ * search on the device), then the server's matches — active roster Persons
+ * only (F02: archived people are offered in no picker) — the chosen one at
+ * the top, at most `limit`, and honest about what was left out.
+ */
+export const leaderPersonSuggestions = ({
+  planPeople,
+  results,
+  query,
+  selectedPersonId,
+  hasMore,
+  unnamed,
+  limit = PERSON_CHOICE_LIMIT,
+}: LeaderPersonInput): LeaderPersonSuggestions => {
+  const onPlan = new Set(planPeople.map((choice) => choice.id));
+  const fromPlan = planPeople
+    .filter((choice) => matchesSearch(query, [choice.label]))
+    .map((choice) => ({ ...choice, onPlan: true }));
+  const fromServer = results.flatMap((person) =>
+    person.person_id && !person.archived && !onPlan.has(person.person_id)
+      ? [{ id: person.person_id, label: person.full_name ?? unnamed, onPlan: false }]
+      : []);
+  const all = [...fromPlan, ...fromServer];
+  all.sort((a, b) => Number(b.id === selectedPersonId) - Number(a.id === selectedPersonId));
+  return { choices: all.slice(0, limit), truncated: hasMore || all.length > limit };
+};
+
+/** Labels the grouped position list is worded with, in the displayed language. */
+export interface PositionOptionWords extends PositionChoiceWords {
+  /** A plan-only position inside its team's group: "Extra keys (this plan)". */
+  planPositionShort: (position: string) => string;
+}
+
+/**
+ * The same positions as `leaderPositionChoices`, grouped by team for a
+ * searchable list; the caller lists teams serving on this plan first
+ * (`leadingGroupKeys` from `staffedTeamIds`).
+ */
+export const leaderPositionOptions = (
+  teams: readonly TeamWithPositions[],
+  planPositions: readonly Pick<TeamPositionRow, 'id' | 'team_id' | 'name'>[],
+  words: PositionOptionWords,
+): SearchableOption[] => {
+  const options: SearchableOption[] = teams.flatMap((team) =>
+    team.positions
+      .filter((position) => !position.plan_id)
+      .map((position) => ({
+        value: position.id,
+        label: words.teamPosition(team.name, position.name),
+        groupedLabel: position.name,
+        groupKey: team.id,
+        groupLabel: team.name,
+      })));
+  for (const position of planPositions) {
+    const team = teams.find((candidate) => candidate.id === position.team_id);
+    const teamName = team?.name ?? words.unknownTeam;
+    options.push({
+      value: position.id,
+      label: words.planPosition(teamName, position.name),
+      groupedLabel: words.planPositionShort(position.name),
+      groupKey: position.team_id,
+      groupLabel: teamName,
+    });
+  }
+  return options;
+};
+
+/** Teams with someone (not declined) on this plan: their positions are the likely leaders. */
+export const staffedTeamIds = (assignments: readonly Pick<AssignmentDetail, 'team_id' | 'status'>[]): string[] =>
+  [...new Set(assignments.filter((assignment) => assignment.status !== 'declined').map((assignment) => assignment.team_id))];
+
+/**
+ * The whole order after moving the item at `from` to position `to` (the
+ * others shift), for one `reorderPlanItems` request; null when nothing moves.
+ */
+export const itemIdsMovedTo = (ids: readonly string[], from: number, to: number): string[] | null => {
+  if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) return null;
+  const next = [...ids];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved!);
+  return next;
 };
 
 /** Labels an item leader is described with, in the displayed language. */

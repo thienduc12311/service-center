@@ -547,6 +547,11 @@ export type TeamMembershipRow = {
 }
 
 export type SongRow = {
+  /**
+   * Generated, read-only: the folded (unaccented, lowercased) text searches
+   * match. Optional because list projections leave it out.
+   */
+  search_text?: string;
   merged_into_song_id?: string | null;
   merged_default_arrangement_id?: string | null;
   archived_at: string | null;
@@ -605,6 +610,11 @@ export type ArrangementRow = {
 }
 
 export type PlanRow = {
+  /**
+   * Generated, read-only: the folded (unaccented, lowercased) text searches
+   * match. Optional because list projections leave it out.
+   */
+  search_text?: string;
   id: string;
   organization_id: string;
   service_type_id: string | null;
@@ -1081,6 +1091,12 @@ export type PeopleDirectoryRow = Pick<
 > & {
   /** Not archived and, with a login, an active member: may be offered for scheduling. */
   schedulable: boolean;
+  /** Lower-cased "first last": the People list's keyset order. */
+  sort_name: string;
+  /** Folded name and campus: what a search matches (no private contact). */
+  search_text: string;
+  /** Shown on the People list: no login, or a login whose membership is not inactive. */
+  listed: boolean;
 };
 
 /**
@@ -1094,6 +1110,10 @@ export type PeopleOwnerSearchRow = Pick<
   sort_name: string;
   contact_email: string | null;
   contact_phone: string | null;
+  /** Folded name, campus, contact email and phone: what an owner's search matches. */
+  search_text: string;
+  /** Shown on the People list: no login, or a login whose membership is not inactive. */
+  listed: boolean;
 };
 
 /** A person's private record as API roles may select it (no medical note). */
@@ -1368,6 +1388,7 @@ export type Database = {
       save_structured_import: { Args: { p_org: string; p_source: unknown; p_source_hash: string; p_preview_hash: string; p_rows: unknown; p_key: string }; Returns: ImportJob };
       commit_structured_import: { Args: { p_org: string; p_job: string; p_revision: number }; Returns: ImportJob };
       list_curated_songs: { Args: { p_org: string; p_query?: unknown }; Returns: unknown };
+      list_media: { Args: { p_org: string; p_query?: unknown }; Returns: unknown };
       preview_song_bulk: { Args: { p_org: string; p_rows: unknown; p_patch: unknown }; Returns: SongBulkPreview };
       commit_song_bulk: { Args: { p_org: string; p_preview: string }; Returns: SongBulkPreview };
       archive_library_record: { Args: { p_org: string; p_kind: string; p_id: string; p_revision: number; p_archived: boolean }; Returns: unknown };

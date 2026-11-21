@@ -16,7 +16,15 @@
     "recipients_other": "{{count}} recipients",
     "from": "From {{name}}",
     "fromUnknown": "From a leader",
-    "listMeta": "{{summary}} · {{date}}"
+    "listMeta": "{{summary}} · {{date}}",
+    "searchLabel": "Search loaded messages",
+    "searchPlaceholder": "Search subject or sender…",
+    "searchScope_one": "Searched the subject and sender of all {{count}} message.",
+    "searchScope_other": "Searched the subject and sender of all {{count}} messages.",
+    "searchScopePartial_one": "Searched the subject and sender of the {{count}} newest message loaded. Load older messages to search further back.",
+    "searchScopePartial_other": "Searched the subject and sender of the {{count}} newest messages loaded. Load older messages to search further back.",
+    "noMatches": "No loaded messages match your search.",
+    "loadOlder": "Load older messages"
   },
   "messageDetail": {
     "notAvailableTitle": "Message not available",
@@ -103,7 +111,14 @@
     "unread_one": "{{count}} unread",
     "unread_other": "{{count}} unread",
     "choose": "Choose a conversation.",
-    "planConversation": "{{title}} · {{date}}"
+    "planConversation": "{{title}} · {{date}}",
+    "searchLabel": "Search conversations",
+    "searchPlaceholder": "Search conversations…",
+    "unreadOnly": "Unread",
+    "filterScope_one": "Filtering the {{count}} conversation loaded. Load more to include older ones.",
+    "filterScope_other": "Filtering the {{count}} conversations loaded. Load more to include older ones.",
+    "noMatches": "No conversations match.",
+    "noUnread": "No unread conversations."
   },
   "conversation": {
     "notAvailableTitle": "Conversation not available",
@@ -138,7 +153,11 @@
     "composerPlaceholder": "Message {{name}}…",
     "replyingTo": "Replying to {{name}}",
     "replyingToUnknown": "Replying to someone",
-    "privacyNote": "Only current team or plan members can read this. Muting stops notifications. Direct messages and attachments are not available yet."
+    "privacyNote": "Only current team or plan members can read this. Muting stops notifications. Direct messages and attachments are not available yet.",
+    "loadOlder": "Load older messages",
+    "searching": "Searching…",
+    "searchNewestMatches_one": "Showing the {{count}} newest match. Refine your search to find older ones.",
+    "searchNewestMatches_other": "Showing the {{count}} newest matches. Refine your search to find older ones."
   },
   "reportModal": {
     "title": "Report message",
@@ -333,7 +352,30 @@
     "textPreview": "Text to hand off",
     "detailTitle": "Message",
     "retryUncertain": "The server did not answer the retry. Pull down to refresh the outcomes before retrying again.",
-    "received": "Received"
+    "received": "Received",
+    "loadOlder": "Load older messages",
+    "allLoaded": "That’s every message.",
+    "reviewRecipients_one": "Review {{count}} recipient",
+    "reviewRecipients_other": "Review {{count}} recipients",
+    "reviewTitle": "Recipients",
+    "namesAndMore_one": "{{names}} and {{count}} more",
+    "namesAndMore_other": "{{names}} and {{count}} more",
+    "unreachableCount_one": "{{count}} person can’t be reached (no sign-in or email).",
+    "unreachableCount_other": "{{count}} people can’t be reached (no sign-in or email).",
+    "searchRecipients": "Search by name",
+    "includeAll": "Include everyone",
+    "excludeAll": "Leave everyone out",
+    "includeShown": "Include those shown",
+    "excludeShown": "Leave out those shown",
+    "noRecipientMatch": "No one matches that search.",
+    "textChoosePeople": "Choose people to text",
+    "textChangePeople": "Change who to text",
+    "textChosen_one": "Texting {{count}}: {{names}}",
+    "textChosen_other": "Texting {{count}}: {{names}}",
+    "selectAll": "Select everyone",
+    "clearAll": "Clear selection",
+    "selectShown": "Select those shown",
+    "clearShown": "Unselect those shown"
   },
   "mobileChat": {
     "entry": "Chat",
@@ -363,7 +405,8 @@
     "blockTitle": "Block {{name}}?",
     "blockMessage": "You won't see messages or comments from {{name}}, and they won't notify you. {{name}} isn't told. You can unblock them in Settings → Blocked people.",
     "blockConfirm": "Block",
-    "blockAfterReport": "You can also block {{name}} so you no longer see anything they write."
+    "blockAfterReport": "You can also block {{name}} so you no longer see anything they write.",
+    "chooseTeam": "Choose a team…"
   },
   "mobileInbox": {
     "description": "Team and plan chat, and messages from your leaders."

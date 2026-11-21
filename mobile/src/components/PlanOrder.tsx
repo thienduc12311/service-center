@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   formatDuration,
@@ -15,7 +15,8 @@ import type { Theme } from '../lib/theme';
 import { useTheme, useThemedStyles } from '../lib/useTheme';
 import { useFormatters } from '../i18n';
 import { PressableScale } from './motion';
-import { Chip, IconWell, KeyCap, Label, Tag } from './ui';
+import { Button, Chip, IconWell, KeyCap, Label, Tag } from './ui';
+import { BottomSheet } from './BottomSheet';
 import { Icon, type IconName } from './icons';
 
 /** A service time the order can be timed against. */
@@ -42,6 +43,10 @@ export interface PlanOrderProps {
   busy: boolean;
   onEdit: (item: PlanItemDetail) => void;
   onMove: (index: number, direction: -1 | 1) => void;
+  /** Moves the item at `from` straight to position `to` (one reorder request). */
+  onMoveTo: (from: number, to: number) => void;
+  /** Opens the song browser with new songs going right after this item. */
+  onAddAfter: (item: PlanItemDetail) => void;
   onRemove: (item: PlanItemDetail) => void;
   onOpenSong: (item: PlanItemDetail) => void;
   /** MOB-030: link or clear an F14 media bundle on a regular item (editors). */
@@ -72,6 +77,8 @@ export const PlanOrder = ({
   busy,
   onEdit,
   onMove,
+  onMoveTo,
+  onAddAfter,
   onRemove,
   onOpenSong,
   onMedia,
@@ -83,6 +90,7 @@ export const PlanOrder = ({
   const format = useFormatters();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const [movingIndex, setMovingIndex] = useState<number | null>(null);
   const clock = (instant: string): string => format.time(instant, { timeZone });
   const slots = new Map(schedule.items.map((slot) => [slot.item_id, slot]));
   const overrun = schedule.warnings.find((warning) => warning.code === 'runs_over');
@@ -184,6 +192,7 @@ export const PlanOrder = ({
                 onEdit={() => onEdit(item)}
                 onMoveUp={() => onMove(index, -1)}
                 onMoveDown={() => onMove(index, 1)}
+                onMoveTo={() => setMovingIndex(index)}
                 onRemove={() => onRemove(item)}
                 onOpenSong={() => onOpenSong(item)}
                 onMedia={() => onMedia(item)}
@@ -196,9 +205,105 @@ export const PlanOrder = ({
           ))}
         </View>
       )}
+      {canEdit ? (
+        <MoveToSheet
+          items={plan.items}
+          ordinals={ordinals}
+          fromIndex={movingIndex}
+          onPick={(to) => {
+            if (movingIndex !== null) onMoveTo(movingIndex, to);
+            setMovingIndex(null);
+          }}
+          onAddAfter={(item) => {
+            setMovingIndex(null);
+            onAddAfter(item);
+          }}
+          onClose={() => setMovingIndex(null)}
+        />
+      ) : null}
     </View>
   );
 };
+
+interface MoveToSheetProps {
+  items: readonly PlanItemDetail[];
+  ordinals: ReadonlyMap<string, number>;
+  /** The item being moved; null keeps the sheet closed. */
+  fromIndex: number | null;
+  onPick: (toIndex: number) => void;
+  /** "Add songs after this": the item's other way to shape the order. */
+  onAddAfter: (item: PlanItemDetail) => void;
+  onClose: () => void;
+}
+
+/**
+ * "Move to…": the order as it is, tap the place the item should take; the
+ * others shift. It also offers adding songs right after the item, so a set
+ * is built in place instead of appended and moved.
+ */
+const MoveToSheet = ({ items, ordinals, fromIndex, onPick, onAddAfter, onClose }: MoveToSheetProps) => {
+  const { t } = useTranslation(['plans', 'common']);
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const moving = fromIndex !== null ? items[fromIndex] : undefined;
+  return (
+    <BottomSheet
+      visible={Boolean(moving)}
+      title={moving ? t('mobileOrder.moveToTitle', { title: moving.title }) : ''}
+      onClose={onClose}
+    >
+      {moving ? (
+        <Button
+          title={t('mobileOrder.addSongsAfter')}
+          icon="plus"
+          variant="secondary"
+          onPress={() => onAddAfter(moving)}
+          style={styles.addAfter}
+        />
+      ) : null}
+      <Text style={styles.moveHint}>{t('mobileOrder.moveToHint')}</Text>
+      <FlatList
+        style={styles.flex}
+        data={items}
+        keyExtractor={(item) => item.id}
+        initialScrollIndex={fromIndex !== null && fromIndex > 3 ? fromIndex - 3 : undefined}
+        getItemLayout={(_data, index) => ({ length: MOVE_ROW_HEIGHT, offset: MOVE_ROW_HEIGHT * index, index })}
+        renderItem={({ item, index }) => {
+          const current = index === fromIndex;
+          const ordinal = ordinals.get(item.id);
+          return (
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel={t('mobileOrder.moveToPosition', { position: index + 1, title: item.title })}
+              disabled={current}
+              onPress={() => onPick(index)}
+              pressedOpacity={0.6}
+              style={[styles.moveRow, current && styles.moveRowCurrent]}
+            >
+              <Text style={styles.moveOrdinal}>{index + 1}</Text>
+              <View style={styles.flex}>
+                <Text style={[styles.moveTitle, item.item_type === 'header' && styles.moveHeader]} numberOfLines={1}>
+                  {item.title}
+                </Text>
+                <Text style={styles.moveHint} numberOfLines={1}>
+                  {current
+                    ? t('mobileOrder.moveToCurrent')
+                    : item.item_type === 'header'
+                      ? t('itemKind.header')
+                      : ordinal ? t('mobileOrder.moveToItemNumber', { number: ordinal }) : ''}
+                </Text>
+              </View>
+              {current ? <Icon name="move" size={16} color={theme.color.inkFaint} /> : null}
+            </PressableScale>
+          );
+        }}
+      />
+    </BottomSheet>
+  );
+};
+
+/** Fixed row height of the Move to… list (so it can open scrolled to the item). */
+const MOVE_ROW_HEIGHT = 56;
 
 interface OrderRowProps {
   item: PlanItemDetail;
@@ -214,6 +319,7 @@ interface OrderRowProps {
   onEdit: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onMoveTo: () => void;
   onRemove: () => void;
   onOpenSong: () => void;
   onMedia: () => void;
@@ -237,6 +343,7 @@ const OrderRow = ({
   onEdit,
   onMoveUp,
   onMoveDown,
+  onMoveTo,
   onRemove,
   onOpenSong,
   onMedia,
@@ -269,7 +376,7 @@ const OrderRow = ({
       {discuss}
       {canEdit ? (
         <View style={styles.editControls}>
-          <EditControls item={item} busy={busy} isFirst={isFirst} isLast={isLast} onEdit={onEdit} onMedia={onMedia} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onRemove={onRemove} />
+          <EditControls item={item} busy={busy} isFirst={isFirst} isLast={isLast} onEdit={onEdit} onMedia={onMedia} onMoveUp={onMoveUp} onMoveDown={onMoveDown} onMoveTo={onMoveTo} onRemove={onRemove} />
         </View>
       ) : null}
     </View>
@@ -287,11 +394,13 @@ interface EditControlsProps {
   onMedia: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  /** Opens "Move to…" (pick the target position). */
+  onMoveTo: () => void;
   onRemove: () => void;
 }
 
-/** Edit / Media / Move up / Move down / Remove, for plan editors. */
-const EditControls = ({ item, busy, isFirst, isLast, onEdit, onMedia, onMoveUp, onMoveDown, onRemove }: EditControlsProps) => {
+/** Edit / Media / Move up / Move down / Move to… / Remove, for plan editors. */
+const EditControls = ({ item, busy, isFirst, isLast, onEdit, onMedia, onMoveUp, onMoveDown, onMoveTo, onRemove }: EditControlsProps) => {
   const { t } = useTranslation(['plans', 'common']);
   return (
     <>
@@ -301,6 +410,7 @@ const EditControls = ({ item, busy, isFirst, isLast, onEdit, onMedia, onMoveUp, 
       ) : null}
       <RowAction name="chevronUp" accessibilityLabel={t('orderTab.moveUp', { title: item.title })} disabled={isFirst || busy} onPress={onMoveUp} />
       <RowAction name="chevronDown" accessibilityLabel={t('orderTab.moveDown', { title: item.title })} disabled={isLast || busy} onPress={onMoveDown} />
+      <RowAction name="move" accessibilityLabel={t('mobileOrder.moveToLabel', { title: item.title })} disabled={(isFirst && isLast) || busy} onPress={onMoveTo} />
       <RowAction name="trash" danger accessibilityLabel={t('orderTab.removeItem', { title: item.title })} disabled={busy} onPress={onRemove} />
     </>
   );
@@ -439,6 +549,20 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     wrap: { gap: theme.space.md },
     flex: { flex: 1 },
+    moveRow: {
+      height: MOVE_ROW_HEIGHT,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.space.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.color.border,
+    },
+    moveRowCurrent: { opacity: 0.55 },
+    addAfter: { marginBottom: theme.space.md },
+    moveOrdinal: { ...theme.type.numeric, width: 28, textAlign: 'right', color: theme.color.inkMuted },
+    moveTitle: { ...theme.type.body, color: theme.color.ink },
+    moveHeader: { fontWeight: '600' },
+    moveHint: { ...theme.type.bodySmall, color: theme.color.inkFaint },
     group: { gap: theme.space.sm },
     chips: { flexDirection: 'row', gap: theme.space.sm },
 

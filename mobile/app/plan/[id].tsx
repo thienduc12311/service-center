@@ -56,7 +56,7 @@ import { PlanTeams } from '../../src/components/PlanTeams';
 import { buildPlanTeams } from '../../src/lib/plan-teams';
 import { PlanOrder } from '../../src/components/PlanOrder';
 import { PlanDeliveryCard, PlanReminderPolicyCard } from '../../src/components/PlanReminders';
-import { orderWriteOutcome, positionNamesFor } from '../../src/lib/plan-order-edit';
+import { itemIdsMovedTo, orderWriteOutcome, positionNamesFor } from '../../src/lib/plan-order-edit';
 import { PlanNotesSection } from '../../src/components/PlanNotes';
 import { PlanFiles } from '../../src/components/files/PlanFiles';
 
@@ -248,6 +248,15 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
   const moveItem = (index: number, direction: -1 | 1) => {
     if (!detail || orderBusy) return;
     const ids = movedItemIds(detail.items.map((item) => item.id), index, direction);
+    if (!ids) return;
+    removeItem.reset();
+    reorder.mutate({ itemIds: ids, revision: detail.content_revision });
+  };
+
+  // "Move to…": one request with the whole new order, instead of a step per tap.
+  const moveItemTo = (from: number, to: number) => {
+    if (!detail || orderBusy) return;
+    const ids = itemIdsMovedTo(detail.items.map((item) => item.id), from, to);
     if (!ids) return;
     removeItem.reset();
     reorder.mutate({ itemIds: ids, revision: detail.content_revision });
@@ -595,6 +604,8 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
                   busy={orderBusy}
                   onEdit={(item) => router.push({ pathname: '/plan/edit-item/[id]', params: { id: detail.id, itemId: item.id } })}
                   onMove={moveItem}
+                  onMoveTo={moveItemTo}
+                  onAddAfter={(item) => router.push({ pathname: '/plan/add-item/[id]', params: { id: detail.id, after: item.id } })}
                   onRemove={confirmRemove}
                   onMedia={(item) => router.push({ pathname: '/plan/media/[id]', params: { id: detail.id, itemId: item.id } })}
                   onOpenMedia={(mediaId) => router.push({ pathname: '/media/[id]', params: { id: mediaId } })}

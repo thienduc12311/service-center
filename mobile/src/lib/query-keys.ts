@@ -19,6 +19,19 @@ const privateRoot = (scope: ProtectedQueryScope | null) =>
     scope?.generation ?? null,
   ] as const;
 
+interface PreviousQuery {
+  queryKey: readonly unknown[];
+}
+
+type ScopedPlaceholder = <T>(previous: T | undefined, previousQuery: PreviousQuery | undefined) => T | undefined;
+
+/** Retain debounced results only within the active account, church, and session generation. */
+export const keepScopedData = (scope: ProtectedQueryScope | null): ScopedPlaceholder => {
+  const prefix = privateRoot(scope);
+  return (previous, previousQuery) =>
+    scope && prefix.every((part, index) => part === previousQuery?.queryKey[index]) ? previous : undefined;
+};
+
 export const queryKeys = {
   privateRoot,
   organization: (scope: ProtectedQueryScope | null) =>
@@ -119,8 +132,9 @@ export const queryKeys = {
   /** MOB-018: prefix for every F09 targeted-message list and detail; invalidate this after a send or retry. */
   messagesAll: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'messages'] as const,
+  /** Keyset pages (`before` cursor) of one box, newest first. */
   messageList: (scope: ProtectedQueryScope | null, box: 'sent' | 'received') =>
-    [...privateRoot(scope), 'messages', 'list', box] as const,
+    [...privateRoot(scope), 'messages', 'pages', box] as const,
   /** MOB-018: one message — the sender's per-channel outcomes, or a recipient's own copy. */
   message: (scope: ProtectedQueryScope | null, messageId: string | null | undefined) =>
     [...privateRoot(scope), 'messages', 'detail', messageId ?? null] as const,
@@ -155,8 +169,10 @@ export const queryKeys = {
     [...privateRoot(scope), 'conversations', 'detail', conversationId, 'history'] as const,
   conversationSend: (scope: ProtectedQueryScope | null, conversationId: string) =>
     [...privateRoot(scope), 'conversations', 'send', conversationId] as const,
+  conversationSearches: (scope: ProtectedQueryScope | null, conversationId: string) =>
+    [...queryKeys.conversation(scope, conversationId), 'search'] as const,
   conversationSearch: (scope: ProtectedQueryScope | null, conversationId: string, query: string) =>
-    [...privateRoot(scope), 'conversations', 'detail', conversationId, 'search', query] as const,
+    [...queryKeys.conversationSearches(scope, conversationId), query] as const,
   /** MOB-019: current participants of one conversation, the only people worth mentioning. */
   conversationMentionCandidates: (scope: ProtectedQueryScope | null, conversationId: string | null | undefined) =>
     [...privateRoot(scope), 'conversations', 'mention-candidates', conversationId ?? null] as const,
@@ -228,6 +244,15 @@ export const queryKeys = {
   /** W8 paging: the People list screen's keyset pages (search and archive are server-side); under `people`, so roster writes refresh it. */
   directoryPage: (scope: ProtectedQueryScope | null, includeArchived: boolean, q: string) =>
     [...privateRoot(scope), 'people', 'directory-page', includeArchived, q] as const,
+  /** Server-searched People pages for a picker (team add, item leader); under `people`, so roster writes refresh it. */
+  peoplePicker: (scope: ProtectedQueryScope | null, q: string) =>
+    [...privateRoot(scope), 'people', 'picker-page', q] as const,
+  /** Schedule people: keyset pages for one scope (a team's members or everyone) and search; under `people`. */
+  peopleSchedulePage: (scope: ProtectedQueryScope | null, teamId: string | null, q: string) =>
+    [...privateRoot(scope), 'people', 'schedule-page', teamId, q] as const,
+  /** How many people a scope holds (a team's members, or everyone when null); under `people`. */
+  peopleCount: (scope: ProtectedQueryScope | null, teamId: string | null) =>
+    [...privateRoot(scope), 'people', 'count', teamId] as const,
   /** MOB-031: the directory with or without archived people; invalidate `people` after any roster write. */
   directory: (scope: ProtectedQueryScope | null, includeArchived: boolean) =>
     [...privateRoot(scope), 'people', 'directory', includeArchived] as const,

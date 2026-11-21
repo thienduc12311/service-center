@@ -1,24 +1,28 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { RosterPerson, RosterPersonPage } from '@service-center/shared';
+import type { OrgRole, RosterPerson, RosterPersonPage, TeamWithPositions } from '@service-center/shared';
+import type { PropsWithChildren } from 'react';
+import { usePeoplePage, useRosterAudit } from '../hooks/queries';
 import { api } from '../lib/api';
 import { LanguageProvider } from '../i18n/LanguageProvider';
 import { PeoplePage } from './PeoplePage';
 
 vi.mock('../lib/api', () => ({
-  api: { listPeoplePage: vi.fn() },
+  api: { listPeoplePage: vi.fn(), listTeams: vi.fn(async () => []), rosterAudit: vi.fn() },
 }));
+const auth = vi.hoisted(() => ({ role: 'member' as OrgRole, organizationId: 'org-1', accountId: 'account-1' }));
 vi.mock('../providers/AuthProvider', () => ({
-  useAuth: () => ({ role: 'member', organizationId: 'org-1', user: null, session: null }),
+  useAuth: () => ({ ...auth, user: null, session: { user: { id: auth.accountId } } }),
 }));
 vi.mock('../lib/supabase', () => ({ supabase: {} }));
 
 afterEach(() => {
   cleanup();
   vi.resetAllMocks();
+  Object.assign(auth, { role: 'member', organizationId: 'org-1', accountId: 'account-1' });
 });
 
 const person = (id: string, name: string): RosterPerson => ({
@@ -37,6 +41,24 @@ const person = (id: string, name: string): RosterPerson => ({
   archived: false,
 });
 
+const team = (id: string, name: string): TeamWithPositions => ({
+  id,
+  organization_id: 'org-1',
+  service_type_id: null,
+  name,
+  description: null,
+  color: '#6366f1',
+  sort_order: 0,
+  default_visibility: 'released',
+  default_response_owner_id: null,
+  requires_eligibility: false,
+  eligibility_kind: null,
+  created_at: '2026-11-01T00:00:00Z',
+  updated_at: '2026-11-01T00:00:00Z',
+  positions: [],
+  members: [],
+});
+
 const renderPeople = () => {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -51,6 +73,34 @@ const renderPeople = () => {
 };
 
 describe('web People list', () => {
+  it.each([
+    { name: 'church', authChange: { organizationId: 'org-2' } },
+    { name: 'account', authChange: { accountId: 'account-2' } },
+    { name: 'role', authChange: { role: 'member' } },
+  ])('retains search results only before a $name change', async ({ authChange }) => {
+    auth.role = 'owner';
+    const privatePerson = { ...person('p-1', 'An Nguyen'), email: 'private@example.test' };
+    vi.mocked(api.listPeoplePage)
+      .mockResolvedValueOnce({ items: [privatePerson], next_cursor: null })
+      .mockReturnValue(new Promise(() => {}));
+    const client = new QueryClient();
+    const wrapper = ({ children }: PropsWithChildren) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result, rerender } = renderHook(
+      (q: string) => usePeoplePage({ q, includeArchived: false }),
+      { initialProps: '', wrapper },
+    );
+    await waitFor(() => expect(result.current.data).toEqual([privatePerson]));
+
+    rerender('Nguyen');
+    expect(result.current.isPlaceholderData).toBe(true);
+    expect(result.current.data).toEqual([privatePerson]);
+
+    Object.assign(auth, authChange);
+    rerender('Nguyen');
+    expect(result.current.isPlaceholderData).toBe(false);
+    expect(result.current.data).toBeUndefined();
+  });
+
   it('searches on the server with the typed text and shows a member-appropriate placeholder', async () => {
     vi.mocked(api.listPeoplePage).mockImplementation(async (query): Promise<RosterPersonPage> => ({
       items: query?.q ? [person('p-2', 'Mai Tran')] : [person('p-1', 'An Nguyen'), person('p-2', 'Mai Tran')],
@@ -65,6 +115,23 @@ describe('web People list', () => {
     await waitFor(() => expect(screen.queryByText('An Nguyen')).toBeNull());
     expect(await screen.findByText('Mai Tran')).toBeTruthy();
     expect(api.listPeoplePage).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'Mai' }));
+  });
+
+  it('shows the server total and filters by team on the server', async () => {
+    vi.mocked(api.listTeams).mockResolvedValue([team('t-band', 'Band'), team('t-tech', 'Tech')]);
+    vi.mocked(api.listPeoplePage).mockImplementation(async (query): Promise<RosterPersonPage> =>
+      query?.team_id === 't-band'
+        ? { items: [person('p-2', 'Mai Tran')], next_cursor: null, total: 1 }
+        : { items: [person('p-1', 'An Nguyen'), person('p-2', 'Mai Tran')], next_cursor: 'c-1', total: 340 },
+    );
+    const user = renderPeople();
+    expect(await screen.findByText('340 people')).toBeTruthy();
+
+    await user.click(await screen.findByRole('combobox', { name: 'Filter by team' }));
+    await user.click(await screen.findByRole('option', { name: 'Band' }));
+    expect(await screen.findByText('1 person')).toBeTruthy();
+    expect(screen.queryByText('An Nguyen')).toBeNull();
+    expect(api.listPeoplePage).toHaveBeenLastCalledWith(expect.objectContaining({ team_id: 't-band' }));
   });
 
   it('loads the next page with the cursor from the previous one', async () => {
@@ -99,4 +166,27 @@ describe('web People list', () => {
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
     expect(api.listPeoplePage).toHaveBeenCalledTimes(2);
   });
+});
+
+interface RosterHistoryFilters {
+  personId: string;
+  limit: number;
+}
+
+it('retains roster history when raising the limit for the same person', async () => {
+  vi.mocked(api.rosterAudit).mockResolvedValueOnce([]).mockReturnValue(new Promise(() => {}));
+  const client = new QueryClient();
+  const wrapper = ({ children }: PropsWithChildren) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const { result, rerender } = renderHook(
+    ({ personId, limit }: RosterHistoryFilters) => useRosterAudit(personId, true, limit),
+    { initialProps: { personId: 'person-a', limit: 50 }, wrapper },
+  );
+  await waitFor(() => expect(result.current.data).toEqual([]));
+
+  rerender({ personId: 'person-a', limit: 100 });
+  expect(result.current.isPlaceholderData).toBe(true);
+
+  rerender({ personId: 'person-b', limit: 100 });
+  expect(result.current.isPlaceholderData).toBe(false);
+  expect(result.current.data).toBeUndefined();
 });

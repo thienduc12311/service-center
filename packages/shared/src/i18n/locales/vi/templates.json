@@ -69,7 +69,14 @@
     "revisionLabel": "Phiên bản",
     "revisionOption": "Phiên bản {{revision}} · {{date}}",
     "revisionOptionFromPlan": "Phiên bản {{revision}} · {{date}} · từ một chương trình",
-    "viewingOld": "Bạn đang xem một phiên bản cũ. Không thể chỉnh sửa phiên bản này; các chương trình tạo từ nó vẫn giữ nội dung của mình."
+    "viewingOld": "Bạn đang xem một phiên bản cũ. Không thể chỉnh sửa phiên bản này; các chương trình tạo từ nó vẫn giữ nội dung của mình.",
+    "filterPlaceholder": "Lọc theo tên hoặc loại buổi nhóm",
+    "filterLabel": "Lọc mẫu",
+    "noMatch": "Không có mẫu nào khớp bộ lọc.",
+    "kindGroup": {
+      "plan": "Mẫu chương trình",
+      "section": "Phần dùng lại"
+    }
   },
   "editor": {
     "name": "Tên",
@@ -282,6 +289,10 @@
     "intro": "Sao chép trình tự buổi nhóm và những người được phân công từ một chương trình trước. Nội dung đã có trong chương trình này không bị xóa.",
     "introWithType": "Sao chép trình tự buổi nhóm và những người được phân công từ một chương trình {{serviceType}} trước. Nội dung đã có trong chương trình này không bị xóa.",
     "none": "Chưa có chương trình nào khác để sao chép.",
+    "searchLabel": "Tìm chương trình trước",
+    "searchPlaceholder": "Tìm theo tiêu đề…",
+    "sameTypeOnly": "Chỉ chương trình {{serviceType}}",
+    "noMatches": "Không có chương trình nào phù hợp.",
     "sourceMeta": "{{date}} · {{items}} · {{scheduled}}",
     "scheduled_other": "{{count}} người được phân công",
     "order": "Trình tự buổi nhóm",
@@ -306,5 +317,8 @@
     "no_dates": "Chuỗi lịch này không tạo ra ngày nào.",
     "service_time_skipped": "Giờ nhóm không tồn tại vào {{date}} theo múi giờ {{timeZone}} (đồng hồ được chỉnh nhanh lên).",
     "moved_time_skipped": "{{time}} không tồn tại sau khi dời sang {{date}} theo múi giờ {{timeZone}}."
+  },
+  "picker": {
+    "allServiceTypes": "Mọi loại buổi nhóm"
   }
 }

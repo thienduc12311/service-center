@@ -80,7 +80,14 @@
     "revisionLabel": "Revision",
     "revisionOption": "Revision {{revision}} · {{date}}",
     "revisionOptionFromPlan": "Revision {{revision}} · {{date}} · from a plan",
-    "viewingOld": "You are viewing an older revision. It cannot be edited; plans made from it keep their content."
+    "viewingOld": "You are viewing an older revision. It cannot be edited; plans made from it keep their content.",
+    "filterPlaceholder": "Filter by name or service type",
+    "filterLabel": "Filter templates",
+    "noMatch": "No templates match that filter.",
+    "kindGroup": {
+      "plan": "Plan templates",
+      "section": "Reusable sections"
+    }
   },
   "editor": {
     "name": "Name",
@@ -312,6 +319,10 @@
     "intro": "Copy the order of service and the scheduled team from a previous plan. Nothing already on this plan is removed.",
     "introWithType": "Copy the order of service and the scheduled team from a previous {{serviceType}} plan. Nothing already on this plan is removed.",
     "none": "There is no other plan to copy from yet.",
+    "searchLabel": "Search past plans",
+    "searchPlaceholder": "Search by title…",
+    "sameTypeOnly": "Only {{serviceType}} plans",
+    "noMatches": "No plans match your search.",
     "sourceMeta": "{{date}} · {{items}} · {{scheduled}}",
     "scheduled_one": "{{count}} scheduled",
     "scheduled_other": "{{count}} scheduled",
@@ -337,5 +348,8 @@
     "no_dates": "The series produces no dates.",
     "service_time_skipped": "The service time does not exist on {{date}} in {{timeZone}} (clocks move forward).",
     "moved_time_skipped": "{{time}} does not exist after moving to {{date}} in {{timeZone}}."
+  },
+  "picker": {
+    "allServiceTypes": "All service types"
   }
 }

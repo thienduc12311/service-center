@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { idempotencyKey, uuid } from './common.js';
 import { attendanceModeSchema } from './attendance.js';
+import { PEOPLE_CURSOR_MAX, decodePeopleCursor } from '../lib/people-cursor.js';
 
 const isoInstant = z.string().datetime({ offset: true });
 const visibility = z.enum(['prepared', 'released']);
@@ -18,8 +19,16 @@ export const staffingMatrixFiltersSchema = z.object({
 
 export const staffingMatrixQuerySchema = z.object({
   filters: staffingMatrixFiltersSchema,
-  /** The last Person id of the previous page. */
-  cursor: uuid.optional(),
+  /**
+   * A `next_cursor`/`prev_cursor` from an earlier page (opaque; People are
+   * ordered by name, then id). A bare Person id, the format before name
+   * ordering, is still accepted and continues after that Person.
+   */
+  cursor: z.string().min(1).max(PEOPLE_CURSOR_MAX)
+    .refine((value) => decodePeopleCursor(value) !== null || uuid.safeParse(value).success, 'Invalid cursor')
+    .optional(),
+  /** `prev` reads the page before `cursor` (a `prev_cursor`); default `next`. */
+  direction: z.enum(['next', 'prev']).optional(),
   page_size: z.number().int().min(1).max(50).default(25),
 });
 

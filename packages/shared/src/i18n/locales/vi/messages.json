@@ -15,7 +15,13 @@
     "recipients_other": "{{count}} người nhận",
     "from": "Từ {{name}}",
     "fromUnknown": "Từ một trưởng ban",
-    "listMeta": "{{summary}} · {{date}}"
+    "listMeta": "{{summary}} · {{date}}",
+    "searchLabel": "Tìm trong các tin nhắn đã tải",
+    "searchPlaceholder": "Tìm theo tiêu đề hoặc người gửi…",
+    "searchScope_other": "Đã tìm trong tiêu đề và người gửi của cả {{count}} tin nhắn.",
+    "searchScopePartial_other": "Đã tìm trong tiêu đề và người gửi của {{count}} tin nhắn mới nhất đã tải. Hãy tải thêm tin nhắn cũ để tìm xa hơn.",
+    "noMatches": "Không có tin nhắn đã tải nào khớp với từ khóa.",
+    "loadOlder": "Tải tin nhắn cũ hơn"
   },
   "messageDetail": {
     "notAvailableTitle": "Không xem được tin nhắn",
@@ -98,7 +104,13 @@
     "reports_other": "{{count}} báo cáo",
     "unread_other": "{{count}} chưa đọc",
     "choose": "Chọn một cuộc trò chuyện.",
-    "planConversation": "{{title}} · {{date}}"
+    "planConversation": "{{title}} · {{date}}",
+    "searchLabel": "Tìm cuộc trò chuyện",
+    "searchPlaceholder": "Tìm cuộc trò chuyện…",
+    "unreadOnly": "Chưa đọc",
+    "filterScope_other": "Đang lọc trong {{count}} cuộc trò chuyện đã tải. Tải thêm để gồm cả các cuộc trò chuyện cũ hơn.",
+    "noMatches": "Không có cuộc trò chuyện nào phù hợp.",
+    "noUnread": "Không có cuộc trò chuyện nào chưa đọc."
   },
   "conversation": {
     "notAvailableTitle": "Không xem được cuộc trò chuyện",
@@ -132,7 +144,10 @@
     "composerPlaceholder": "Nhắn cho {{name}}…",
     "replyingTo": "Đang trả lời {{name}}",
     "replyingToUnknown": "Đang trả lời một người",
-    "privacyNote": "Chỉ thành viên hiện tại của ban hoặc chương trình mới đọc được. Tắt thông báo sẽ ngừng gửi thông báo. Tin nhắn riêng và tệp đính kèm hiện chưa hỗ trợ."
+    "privacyNote": "Chỉ thành viên hiện tại của ban hoặc chương trình mới đọc được. Tắt thông báo sẽ ngừng gửi thông báo. Tin nhắn riêng và tệp đính kèm hiện chưa hỗ trợ.",
+    "loadOlder": "Tải tin nhắn cũ hơn",
+    "searching": "Đang tìm…",
+    "searchNewestMatches_other": "Đang hiển thị {{count}} kết quả mới nhất. Hãy thu hẹp từ khóa để tìm tin nhắn cũ hơn."
   },
   "reportModal": {
     "title": "Báo cáo tin nhắn",
@@ -318,7 +333,26 @@
     "textPreview": "Nội dung sẽ chuyển sang",
     "detailTitle": "Tin nhắn",
     "retryUncertain": "Máy chủ không phản hồi lần thử lại. Hãy kéo xuống để làm mới kết quả trước khi thử lại lần nữa.",
-    "received": "Đã nhận"
+    "received": "Đã nhận",
+    "loadOlder": "Tải tin nhắn cũ hơn",
+    "allLoaded": "Đã hiển thị tất cả tin nhắn.",
+    "reviewRecipients_other": "Xem lại {{count}} người nhận",
+    "reviewTitle": "Người nhận",
+    "namesAndMore_other": "{{names}} và {{count}} người khác",
+    "unreachableCount_other": "{{count}} người không thể liên lạc (không có tài khoản hoặc email).",
+    "searchRecipients": "Tìm theo tên",
+    "includeAll": "Chọn tất cả",
+    "excludeAll": "Bỏ chọn tất cả",
+    "includeShown": "Chọn những người đang hiển thị",
+    "excludeShown": "Bỏ những người đang hiển thị",
+    "noRecipientMatch": "Không có ai khớp với từ khóa này.",
+    "textChoosePeople": "Chọn người để nhắn tin",
+    "textChangePeople": "Đổi người nhận tin nhắn",
+    "textChosen_other": "Nhắn cho {{count}} người: {{names}}",
+    "selectAll": "Chọn tất cả",
+    "clearAll": "Bỏ chọn tất cả",
+    "selectShown": "Chọn những người đang hiển thị",
+    "clearShown": "Bỏ chọn những người đang hiển thị"
   },
   "mobileChat": {
     "entry": "Trò chuyện",
@@ -347,7 +381,8 @@
     "blockTitle": "Chặn {{name}}?",
     "blockMessage": "Bạn sẽ không thấy tin nhắn hay bình luận của {{name}}, và họ sẽ không làm bạn nhận thông báo. {{name}} không được báo về việc này. Bạn có thể bỏ chặn trong Cài đặt → Người đã chặn.",
     "blockConfirm": "Chặn",
-    "blockAfterReport": "Bạn cũng có thể chặn {{name}} để không còn thấy bất cứ điều gì họ viết."
+    "blockAfterReport": "Bạn cũng có thể chặn {{name}} để không còn thấy bất cứ điều gì họ viết.",
+    "chooseTeam": "Chọn một ban…"
   },
   "mobileInbox": {
     "description": "Trò chuyện theo đội và chương trình, cùng tin nhắn từ người phụ trách."

@@ -203,6 +203,8 @@ export const setPlanPositionNeedsSchema = z.object({
 });
 
 export const listPlansQuerySchema = paginationSchema.extend({
+  /** Accent- and case-insensitive title search; every word must match. */
+  q: z.string().trim().max(100).optional(),
   status: planStatusSchema.optional(),
   service_type_id: uuid.optional(),
   from: instantString.optional(),
