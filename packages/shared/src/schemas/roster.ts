@@ -55,8 +55,13 @@ export const listPeoplePageQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(PEOPLE_PAGE_MAX).default(PEOPLE_PAGE_SIZE),
   /** Opaque `next_cursor` of the previous page (base64url; long non-Latin names fit). */
   cursor: z.string().min(1).max(PEOPLE_CURSOR_MAX).optional(),
-  /** Case-insensitive match on name, email, phone or campus (email/phone only where the caller may read them). */
+  /**
+   * Accent- and case-insensitive; every word must match the name, campus,
+   * email or phone (email/phone only where the caller may read them).
+   */
   q: z.string().trim().max(100).optional(),
+  /** Only members of this team. */
+  team_id: uuid.optional(),
   include_archived: z
     .union([z.boolean(), z.enum(['true', 'false'])])
     .transform((value) => value === true || value === 'true')

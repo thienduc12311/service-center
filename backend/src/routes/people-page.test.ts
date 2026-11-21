@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import express, { type Express } from 'express';
 import request from 'supertest';
-import type { OrgRole, RosterPersonPage } from '@service-center/shared';
+import { foldSearchText, type OrgRole, type RosterPersonPage } from '@service-center/shared';
 import type { Db } from '../lib/supabase.js';
 
 process.env.NODE_ENV ||= 'test';
@@ -15,9 +15,13 @@ const uuid = (n: number): string => `00000000-0000-4000-8000-${String(n).padStar
 
 // 70 people; names repeat every 10 so equal sort_names must be ordered by id.
 // Person 5 is archived, person 6 has a login (member) and person 7 a login that is inactive.
+// Person 44 is "Nguyễn Đức" (accent folding); people 10-14 and 33 are on team TEAM_ID.
+const TEAM_ID = uuid(9001);
+const TEAM_MEMBERS = new Set([10, 11, 12, 13, 14, 33].map(uuid));
 const people: Row[] = Array.from({ length: 70 }, (_, index) => {
-  const first = `Name${String(index % 10).padStart(2, '0')}`;
-  const last = index === 33 ? 'Zebra' : 'Person';
+  const first = index === 44 ? 'Nguyễn' : `Name${String(index % 10).padStart(2, '0')}`;
+  const last = index === 33 ? 'Zebra' : index === 44 ? 'Đức' : 'Person';
+  const campus = index % 2 ? 'East' : 'West';
   return {
     id: uuid(index),
     organization_id: 'org',
@@ -28,9 +32,12 @@ const people: Row[] = Array.from({ length: 70 }, (_, index) => {
     avatar_url: null,
     email: `p${index}@example.test`,
     phone: null,
-    campus: index % 2 ? 'East' : 'West',
+    campus,
     archived_at: index === 5 ? '2026-01-01T00:00:00Z' : null,
     secret_note: 'owner only',
+    // Generated `search_text` (name and campus) and the views' `listed` (no login, or a membership that is not inactive).
+    search_text: foldSearchText(`${first} ${last} ${campus}`),
+    listed: index !== 7,
   };
 });
 const members: Row[] = [
@@ -49,19 +56,48 @@ const profileContact: Record<string, { email: string | null; phone: string | nul
 const ownerSearchRows = (): Row[] =>
   people.map((row) => {
     const login = typeof row.profile_id === 'string' ? profileContact[row.profile_id] : undefined;
-    return { ...row, contact_email: login?.email ?? row.email, contact_phone: login?.phone ?? row.phone };
+    const contactEmail = login?.email ?? row.email;
+    const contactPhone = login?.phone ?? row.phone;
+    return {
+      ...row,
+      contact_email: contactEmail,
+      contact_phone: contactPhone,
+      search_text: `${String(row.search_text)} ${foldSearchText(`${String(contactEmail ?? '')} ${String(contactPhone ?? '')}`)}`,
+    };
   });
 /** Every `or=` filter the fake received. */
 const orFilters: string[] = [];
+/** Every `.filter()` call the fake received, as [column, operator, value]. */
+const filterCalls: Array<[string, string, string]> = [];
+/** Every count request: [table, filtered row count]. */
+const countCalls: Array<[string, number]> = [];
 
 class FakeQuery implements PromiseLike<{ data: Row[]; error: null }> {
   private rows: Row[];
   constructor(private readonly table: string, source: Row[], private readonly columns: string[] | null) {
     this.rows = [...source];
   }
-  select(): this { return this; }
+  private head = false;
+  select(_columns?: string, options?: { count?: string; head?: boolean }): this {
+    this.head = Boolean(options?.head);
+    return this;
+  }
   neq(): this { return this; }
-  eq(column: string, value: unknown): this { this.rows = this.rows.filter((r) => r[column] === value); return this; }
+  eq(column: string, value: unknown): this {
+    if (column === 'team_memberships.team_id') {
+      this.rows = this.rows.filter((r) => value === TEAM_ID && TEAM_MEMBERS.has(String(r.id)));
+      return this;
+    }
+    this.rows = this.rows.filter((r) => r[column] === value);
+    return this;
+  }
+  filter(column: string, operator: string, value: string): this {
+    filterCalls.push([column, operator, value]);
+    if (operator !== 'imatch') throw new Error(`Unexpected filter operator ${operator}`);
+    const needle = unescapeRegex(value);
+    this.rows = this.rows.filter((r) => String(r[column] ?? '').includes(needle));
+    return this;
+  }
   is(column: string, value: null): this { this.rows = this.rows.filter((r) => (r[column] ?? null) === value); return this; }
   in(column: string, values: unknown[]): this {
     const key = this.table === 'organization_members' && column === 'user_id' ? 'user_id' : column;
@@ -71,13 +107,7 @@ class FakeQuery implements PromiseLike<{ data: Row[]; error: null }> {
   gt(): this { return this; }
   or(filter: string): this {
     orFilters.push(filter);
-    const imatch = [...filter.matchAll(/(\w+)\.imatch\.("(?:[^"\\]|\\.)*")/g)];
-    if (imatch.length) {
-      const needle = unescapeRegex(unquote(imatch[0]![2]!)).toLowerCase();
-      this.rows = this.rows.filter((r) => imatch.some((m) => String(r[m[1]!] ?? '').toLowerCase().includes(needle)));
-      return this;
-    }
-    if (/\.(i?like)\./.test(filter)) throw new Error(`Search must not use like patterns: ${filter}`);
+    if (/\.(i?like|i?match)\./.test(filter)) throw new Error(`Search must use search_text filters, not or=: ${filter}`);
     const gt = /^sort_name\.gt\.("(?:[^"\\]|\\.)*"),and\(sort_name\.eq\.("(?:[^"\\]|\\.)*"),id\.gt\.([0-9a-f-]+)\)$/.exec(filter);
     if (!gt) throw new Error(`Unexpected or filter: ${filter}`);
     const [, name, , id] = gt.map((part, index) => (index === 1 || index === 2 ? unquote(part!) : part)) as string[];
@@ -92,6 +122,10 @@ class FakeQuery implements PromiseLike<{ data: Row[]; error: null }> {
     ok?: ((value: { data: Row[]; error: null }) => R1 | PromiseLike<R1>) | null,
     fail?: ((reason: unknown) => R2 | PromiseLike<R2>) | null,
   ): PromiseLike<R1 | R2> {
+    if (this.head) {
+      countCalls.push([this.table, this.rows.length]);
+      return Promise.resolve({ data: [] as Row[], error: null, count: this.rows.length }).then(ok, fail);
+    }
     this.rows.sort((a, b) => {
       for (const column of this.orderBy) {
         const left = String(a[column]);
@@ -207,11 +241,52 @@ describe('GET /people/page', () => {
       expect(response.status).toBe(200);
       expect((response.body as RosterPersonPage).items).toEqual([]);
     }
-    orFilters.length = 0;
+    filterCalls.length = 0;
     await request(app).get('/people/page').query({ q: 'a*b%c_d,(e)' });
-    expect(orFilters[0]).toBe(
-      ['sort_name', 'campus', 'contact_email', 'contact_phone'].map((field) => `${field}.imatch."a\\\\*b\\\\%c\\\\_d\\\\,\\\\(e\\\\)"`).join(','),
-    );
+    // One literal regex on search_text (the page and the total each apply it).
+    expect(filterCalls[0]).toEqual(['search_text', 'imatch', 'a\\*b\\%c\\_d\\,\\(e\\)']);
+  });
+
+  it('ignores accents and case: "nguyen" finds "Nguyễn", "DUC" finds "Đức"', async () => {
+    role = 'owner';
+    expect(await readAll({ q: 'nguyen' })).toEqual([uuid(44)]);
+    expect(await readAll({ q: 'DUC' })).toEqual([uuid(44)]);
+    role = 'member';
+    expect(await readAll({ q: 'Nguyên đuc' })).toEqual([uuid(44)]);
+  });
+
+  it('requires every word to match (AND), in any order', async () => {
+    role = 'owner';
+    filterCalls.length = 0;
+    expect(await readAll({ q: 'zebra east' })).toEqual([uuid(33)]);
+    expect(filterCalls.map(([, , value]) => value)).toEqual(expect.arrayContaining(['zebra', 'east']));
+    expect(await readAll({ q: 'west zebra' })).toEqual([]);
+  });
+
+  it('filters by team and reports the total for the current filters', async () => {
+    role = 'owner';
+    expect(new Set(await readAll({ team_id: TEAM_ID }))).toEqual(TEAM_MEMBERS);
+    const team = await request(app).get('/people/page').query({ team_id: TEAM_ID, limit: 2 });
+    expect((team.body as RosterPersonPage).items).toHaveLength(2);
+    expect((team.body as RosterPersonPage).total).toBe(TEAM_MEMBERS.size);
+
+    // Every listed, unarchived person (70 minus archived #5 and the inactive login #7), on every page.
+    const first = await request(app).get('/people/page').query({ limit: 25 });
+    expect((first.body as RosterPersonPage).total).toBe(68);
+    const cursor = (first.body as RosterPersonPage).next_cursor!;
+    expect(((await request(app).get('/people/page').query({ limit: 25, cursor })).body as RosterPersonPage).total).toBe(68);
+    expect(((await request(app).get('/people/page').query({ include_archived: 'true' })).body as RosterPersonPage).total).toBe(69);
+    expect(((await request(app).get('/people/page').query({ q: 'zebra' })).body as RosterPersonPage).total).toBe(1);
+
+    // Counted on a view with `listed`: the owner view for owners, the directory for everyone else.
+    countCalls.length = 0;
+    await request(app).get('/people/page');
+    expect(countCalls.map(([table]) => table)).toEqual(['people_owner_search']);
+    role = 'member';
+    countCalls.length = 0;
+    const member = await request(app).get('/people/page');
+    expect(countCalls.map(([table]) => table)).toEqual(['people_directory']);
+    expect((member.body as RosterPersonPage).total).toBe(68);
   });
 
   it('shapes a has-login member like GET /people', async () => {

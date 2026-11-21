@@ -9,6 +9,11 @@
 import type { FileSummary } from './files.js';
 
 export type MediaRow = {
+  /**
+   * Generated, read-only: the folded (unaccented, lowercased) text searches
+   * match. Optional because list projections leave it out.
+   */
+  search_text?: string;
   id: string;
   organization_id: string;
   title: string;
@@ -45,7 +50,7 @@ export interface MediaSummary {
   revision: number;
   created_at: string;
   updated_at: string;
-  /** Number of plan items that use it (any date). */
+  /** Number of plan items that use it (any date; plans the caller can see). */
   usage_count: number;
   last_used_on: string | null;
 }
@@ -68,9 +73,17 @@ export interface MediaDetail extends MediaSummary {
 }
 
 export interface MediaList {
+  /** Ordered by title; at most `MEDIA_LIST_LIMIT` rows. */
   media: MediaSummary[];
   can_create: boolean;
+  /** Every bundle matching the search and archive filter, before the row cap. */
+  total: number;
+  /** True when `total` exceeds the rows returned (narrow the search to see the rest). */
+  truncated: boolean;
 }
+
+/** Most bundles one media list response returns. */
+export const MEDIA_LIST_LIMIT = 200;
 
 // --------------------------------------------------------- stage layouts --
 
