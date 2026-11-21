@@ -40,4 +40,9 @@ describe('canOpenPlanChat', () => {
     expect(canOpenPlanChat(false, [assignment({})], 'me', undefined)).toBe(true);
     expect(canOpenPlanChat(false, [], 'me', true)).toBe(false);
   });
+
+  it('hides it on the live pages until the plan has loaded (no assignments, no leader grant)', () => {
+    expect(canOpenPlanChat(false, [], undefined, undefined)).toBe(false);
+    expect(canOpenPlanChat(false, [], 'me', false)).toBe(false);
+  });
 });
