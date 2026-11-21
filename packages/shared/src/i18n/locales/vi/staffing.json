@@ -257,6 +257,10 @@
     "offerCount_other": "{{count}} lời đề nghị",
     "cancelRequest": "Hủy yêu cầu",
     "chooseCandidate": "Chọn người thay…",
+    "candidateLabel": "Người thay thế",
+    "teamMembers": "Thành viên ban {{team}}",
+    "everyone": "Mọi người",
+    "onThisPlan": "Trong chương trình này",
     "unnamedPerson": "Thành viên chưa có tên",
     "sendOffer": "Gửi đề nghị",
     "offerStatus": {

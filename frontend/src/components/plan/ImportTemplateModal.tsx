@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ApiError, type AttendanceConflict, type PlanDetail, type PlanSummary } from '@service-center/shared';
 import { api } from '../../lib/api';
-import { usePeople, usePlans, useInvalidateOrg } from '../../hooks/queries';
+import { usePeople, usePlanPages, useInvalidateOrg } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { useFormatters } from '../../i18n';
 import { Button, ErrorNotice, Modal, Spinner } from '../ui';
+import { Icon } from '../icons';
+import { ListFooter } from '../ListFooter';
+import { matchesSearch } from '../../lib/search';
 import { ConflictList } from './attendance';
 
 export interface ImportTemplateModalProps {
@@ -14,6 +17,9 @@ export interface ImportTemplateModalProps {
   plan: PlanDetail;
   onClose: () => void;
 }
+
+/** Past plans loaded per page; "Show more" loads older ones. */
+const SOURCE_PAGE_SIZE = 25;
 
 /**
  * Copies a previous plan of the same service type into this one — the order of
@@ -35,13 +41,31 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
   const { can } = useAuth();
   const people = usePeople();
 
-  const candidates = usePlans({
-    ...(plan.service_type_id ? { service_type_id: plan.service_type_id } : {}),
-    order: 'desc',
-    per_page: 25,
-  });
-  const sources: PlanSummary[] = (candidates.data?.data ?? []).filter(
-    (candidate) => candidate.id !== plan.id,
+  const [search, setSearch] = useState('');
+  const [sameType, setSameType] = useState(true);
+  const filterByType = sameType && Boolean(plan.service_type_id);
+
+  const candidates = usePlanPages(
+    {
+      ...(filterByType && plan.service_type_id ? { service_type_id: plan.service_type_id } : {}),
+      order: 'desc',
+      per_page: SOURCE_PAGE_SIZE,
+    },
+    open,
+  );
+  const loaded: PlanSummary[] = useMemo(
+    () => (candidates.data?.pages ?? []).flatMap((page) => page.data),
+    [candidates.data],
+  );
+  const loadedSources = loaded.filter((candidate) => candidate.id !== plan.id);
+  const lastPage = candidates.data?.pages.at(-1);
+  const total = lastPage ? lastPage.total - (loaded.length > loadedSources.length ? 1 : 0) : null;
+  const searching = search.trim().length > 0;
+  // Search covers the plans loaded so far; the chosen plan stays visible while the search changes.
+  const sources = loadedSources.filter(
+    (source) =>
+      source.id === sourceId ||
+      matchesSearch(search, [source.title, source.service_date.slice(0, 10), fmt.date(source.service_date), source.service_type?.name]),
   );
 
   // One key per import attempt: a retry after a timeout is answered with the
@@ -83,45 +107,101 @@ export const ImportTemplateModal = ({ open, plan, onClose }: ImportTemplateModal
     <Modal open={open} title={t('import.title')} onClose={onClose}>
       <div className="space-y-4">
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          {plan.service_type
+          {plan.service_type && filterByType
             ? t('import.introWithType', { serviceType: plan.service_type.name })
             : t('import.intro')}
         </p>
+
+        <div className="space-y-2">
+          <div className="relative">
+            <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              className="input !pl-9"
+              aria-label={t('import.searchLabel')}
+              placeholder={t('import.searchPlaceholder')}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          {plan.service_type && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-slate-300 dark:border-slate-700"
+                checked={sameType}
+                onChange={(event) => {
+                  setSameType(event.target.checked);
+                  setSourceId('');
+                  setAttemptKey(crypto.randomUUID());
+                }}
+              />
+              {t('import.sameTypeOnly', { serviceType: plan.service_type.name })}
+            </label>
+          )}
+        </div>
 
         {candidates.isLoading ? (
           <div className="flex justify-center py-6 text-slate-400 dark:text-slate-500">
             <Spinner />
           </div>
-        ) : sources.length === 0 ? (
+        ) : candidates.error ? (
+          <ErrorNotice error={candidates.error} />
+        ) : loadedSources.length === 0 && !candidates.hasNextPage ? (
           <p className="surface-inset px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
             {t('import.none')}
           </p>
         ) : (
-          <div className="max-h-56 space-y-1 overflow-y-auto">
-            {sources.map((source) => (
-              <button
-                key={source.id}
-                type="button"
-                onClick={() => {
-                  setSourceId(source.id);
-                  setAttemptKey(crypto.randomUUID());
-                }}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
-                  sourceId === source.id ? 'bg-brand-50 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:ring-brand-500/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
-              >
-                <span className="font-medium">{source.title}</span>
-                <span className="text-xs text-slate-400 dark:text-slate-500">
-                  {t('import.sourceMeta', {
-                    date: fmt.date(source.service_date),
-                    items: t('count.items', { count: source.counts.items }),
-                    scheduled: t('import.scheduled', {
-                      count: source.counts.confirmed + source.counts.unconfirmed + source.counts.declined,
-                    }),
-                  })}
-                </span>
-              </button>
-            ))}
+          <div>
+            {sources.length === 0 ? (
+              <p className="surface-inset px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                {t('import.noMatches')}
+              </p>
+            ) : (
+              <div className="max-h-56 space-y-1 overflow-y-auto">
+                {sources.map((source) => (
+                  <button
+                    key={source.id}
+                    type="button"
+                    aria-pressed={sourceId === source.id}
+                    onClick={() => {
+                      setSourceId(source.id);
+                      setAttemptKey(crypto.randomUUID());
+                    }}
+                    className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm ${
+                      sourceId === source.id ? 'bg-brand-50 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:ring-brand-500/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{source.title}</span>
+                      {!filterByType && source.service_type && (
+                        <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{source.service_type.name}</span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
+                      {t('import.sourceMeta', {
+                        date: fmt.date(source.service_date),
+                        items: t('count.items', { count: source.counts.items }),
+                        scheduled: t('import.scheduled', {
+                          count: source.counts.confirmed + source.counts.unconfirmed + source.counts.declined,
+                        }),
+                      })}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {searching && candidates.hasNextPage && (
+              <p className="pt-2 text-center text-xs text-slate-500 dark:text-slate-400">
+                {t('import.searchingLoaded', { count: loadedSources.length })}
+              </p>
+            )}
+            <ListFooter
+              shown={searching ? sources.length : loadedSources.length}
+              total={searching ? null : total}
+              onShowMore={candidates.hasNextPage ? () => void candidates.fetchNextPage() : undefined}
+              loading={candidates.isFetchingNextPage}
+            />
           </div>
         )}
 

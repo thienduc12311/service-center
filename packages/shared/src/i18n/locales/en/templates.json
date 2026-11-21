@@ -312,6 +312,12 @@
     "intro": "Copy the order of service and the scheduled team from a previous plan. Nothing already on this plan is removed.",
     "introWithType": "Copy the order of service and the scheduled team from a previous {{serviceType}} plan. Nothing already on this plan is removed.",
     "none": "There is no other plan to copy from yet.",
+    "searchLabel": "Search past plans",
+    "searchPlaceholder": "Search by title or date…",
+    "sameTypeOnly": "Only {{serviceType}} plans",
+    "noMatches": "No plans match your search.",
+    "searchingLoaded_one": "Searched the {{count}} most recent plan. Show more to search older ones too.",
+    "searchingLoaded_other": "Searched the {{count}} most recent plans. Show more to search older ones too.",
     "sourceMeta": "{{date}} · {{items}} · {{scheduled}}",
     "scheduled_one": "{{count}} scheduled",
     "scheduled_other": "{{count}} scheduled",
@@ -337,5 +343,8 @@
     "no_dates": "The series produces no dates.",
     "service_time_skipped": "The service time does not exist on {{date}} in {{timeZone}} (clocks move forward).",
     "moved_time_skipped": "{{time}} does not exist after moving to {{date}} in {{timeZone}}."
+  },
+  "picker": {
+    "allServiceTypes": "All service types"
   }
 }

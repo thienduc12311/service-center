@@ -282,6 +282,11 @@
     "intro": "Sao chép trình tự buổi nhóm và những người được phân công từ một chương trình trước. Nội dung đã có trong chương trình này không bị xóa.",
     "introWithType": "Sao chép trình tự buổi nhóm và những người được phân công từ một chương trình {{serviceType}} trước. Nội dung đã có trong chương trình này không bị xóa.",
     "none": "Chưa có chương trình nào khác để sao chép.",
+    "searchLabel": "Tìm chương trình trước",
+    "searchPlaceholder": "Tìm theo tiêu đề hoặc ngày…",
+    "sameTypeOnly": "Chỉ chương trình {{serviceType}}",
+    "noMatches": "Không có chương trình nào phù hợp.",
+    "searchingLoaded_other": "Đã tìm trong {{count}} chương trình gần đây nhất. Bấm Xem thêm để tìm cả các chương trình cũ hơn.",
     "sourceMeta": "{{date}} · {{items}} · {{scheduled}}",
     "scheduled_other": "{{count}} người được phân công",
     "order": "Trình tự buổi nhóm",
@@ -306,5 +311,8 @@
     "no_dates": "Chuỗi lịch này không tạo ra ngày nào.",
     "service_time_skipped": "Giờ nhóm không tồn tại vào {{date}} theo múi giờ {{timeZone}} (đồng hồ được chỉnh nhanh lên).",
     "moved_time_skipped": "{{time}} không tồn tại sau khi dời sang {{date}} theo múi giờ {{timeZone}}."
+  },
+  "picker": {
+    "allServiceTypes": "Mọi loại buổi nhóm"
   }
 }

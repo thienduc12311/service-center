@@ -3,11 +3,13 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { LocalizedError, isOwnApproval, replacementRequestExpiry, replacementRequiredTimes, type ApprovedSwapRow, type AssignmentDetail, type OpportunityClaimDetail, type PlanTimeRow, type ReplacementRequestDetail, type SignupOpportunity } from '@service-center/shared';
 import { api } from '../../lib/api';
-import { keys, useInvalidateOrg, usePeople } from '../../hooks/queries';
+import { keys, useInvalidateOrg, usePeople, useTeams } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice } from '../ui';
 import { Icon } from '../icons';
 import { useFormatters } from '../../i18n';
+import { SearchCombobox } from '../SearchCombobox';
+import { replacementCandidates, type ReplacementCandidateLabels } from './replacementCandidates';
 
 export interface SignupSetupOption {
   teamId: string;
@@ -37,6 +39,7 @@ export const OpportunityPanel = ({ planId, options, assignments, times, currentP
   const invalidate = useInvalidateOrg();
   const canManage = options.some((option) => option.canManage);
   const people = usePeople();
+  const teams = useTeams();
   const actorPersonId = currentPersonId
     ?? people.data?.find((person) => person.profile_id === user?.profile.id)?.person_id
     ?? null;
@@ -95,6 +98,28 @@ export const OpportunityPanel = ({ planId, options, assignments, times, currentP
   const activeRequests = (replacements.data ?? []).filter((request) => request.plan_id === planId);
   const activeSwaps = (swaps.data ?? []).filter((swap) => assignments.some((item) => item.id === swap.first_assignment_id || item.id === swap.second_assignment_id));
   const confirmed = useMemo(() => assignments.filter((item) => item.status === 'confirmed'), [assignments]);
+  const candidateLabels = useMemo<ReplacementCandidateLabels>(() => ({ unnamed: t('opportunities.unnamedPerson'), onThisPlan: t('opportunities.onThisPlan') }), [t]);
+  /** The requester and anyone holding a live offer can't be offered it again. */
+  const excludedCandidates = (request: ReplacementRequestDetail): ReadonlySet<string> => new Set([
+    request.requester_person_id,
+    ...request.offers.filter((offer) => offer.status === 'pending' || offer.status === 'accepted_awaiting_approval').map((offer) => offer.candidate_person_id),
+  ]);
+  const candidatePicker = (request: ReplacementRequestDetail) => {
+    const choices = replacementCandidates({ request, roster: people.data ?? [], teams: teams.data ?? [], assignments, labels: candidateLabels });
+    const team = (teams.data ?? []).find((candidate) => candidate.id === request.team_id);
+    return <div className="min-w-0 flex-1"><SearchCombobox
+      label={t('opportunities.candidateLabel')}
+      hideLabel
+      value={candidateByRequest[request.id] ?? ''}
+      onChange={(id) => setCandidateByRequest((current) => ({ ...current, [request.id]: id }))}
+      options={choices.options}
+      suggested={choices.suggested}
+      suggestedLabel={team ? t('opportunities.teamMembers', { team: team.name }) : undefined}
+      restLabel={t('opportunities.everyone')}
+      excludeIds={excludedCandidates(request)}
+      placeholder={t('opportunities.chooseCandidate')}
+    /></div>;
+  };
 
   return <section className="card space-y-5 p-5">
     <div className="flex items-start gap-3">
@@ -119,7 +144,7 @@ export const OpportunityPanel = ({ planId, options, assignments, times, currentP
     </li>)}</ul>}
     {canManage && (claims.data ?? []).some((item) => item.status === 'awaiting_approval') && <div><h4 className="section-label">{t('opportunities.awaitingApproval')}</h4><ul className="mt-2 space-y-2">{(claims.data ?? []).filter((item) => item.status === 'awaiting_approval').map((item) => <li key={item.id} className="flex items-center justify-between gap-2 rounded-xl border border-app-border p-2.5 text-sm"><span>{item.person_name}</span><span className="flex gap-2">{!isOwnApproval({ beneficiaryPersonIds: [item.person_id] }, actorPersonId) && <Button size="sm" onClick={() => decideClaim.mutate({ item, action:'approve' })}>{t('opportunities.approve')}</Button>}<Button variant="ghost" size="sm" onClick={() => decideClaim.mutate({ item, action:'reject' })}>{t('opportunities.reject')}</Button></span></li>)}</ul></div>}
     {assignments.some((item) => item.person_id === actorPersonId && item.status === 'declined' && !activeRequests.some((request) => request.original_assignment_id === item.id && request.status === 'open')) && <div><h4 className="section-label">{t('opportunities.needReplacement')}</h4><div className="mt-2 flex flex-wrap gap-2">{assignments.filter((item) => item.person_id === actorPersonId && item.status === 'declined' && !activeRequests.some((request) => request.original_assignment_id === item.id && request.status === 'open')).map((item) => <Button key={item.id} variant="secondary" size="sm" onClick={() => requestReplacement.mutate(item)}>{t('opportunities.requestHelp', { position: item.position?.name ?? item.team?.name ?? t('common:fallback.team') })}</Button>)}</div><p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t('opportunities.replacementHint')}</p></div>}
-    {activeRequests.length > 0 && <div><h4 className="section-label">{t('opportunities.replacementRequests')}</h4><ul className="mt-2 space-y-3">{activeRequests.map((request) => <li key={request.id} className="rounded-xl border border-app-border p-3.5 text-sm"><div className="flex justify-between gap-2"><span>{t(`opportunities.requestStatus.${request.status}`)}</span><span className="flex items-center gap-2">{t('opportunities.offerCount', { count: request.offers.length })}{request.status === 'open' && (request.requester_person_id === actorPersonId || canManage) && <Button variant="ghost" size="sm" onClick={() => cancelReplacement.mutate(request)}>{t('opportunities.cancelRequest')}</Button>}</span></div>{canManage && request.status === 'open' && <div className="mt-2 flex flex-wrap gap-2 sm:flex-nowrap"><select className="input" value={candidateByRequest[request.id] ?? ''} onChange={(event) => setCandidateByRequest((current) => ({...current,[request.id]:event.target.value}))}><option value="">{t('opportunities.chooseCandidate')}</option>{(people.data ?? []).filter((person) => person.person_id).map((person) => <option key={person.id} value={person.person_id!}>{person.full_name ?? t('opportunities.unnamedPerson')}</option>)}</select><Button size="sm" onClick={() => issueOffer.mutate(request)}>{t('opportunities.sendOffer')}</Button></div>}<ul className="mt-2 space-y-1">{request.offers.map((offer) => <li key={offer.id} className="surface-inset flex flex-wrap items-center justify-between gap-2 p-2.5"><span>{t(`opportunities.offerStatus.${offer.status}`)}</span><span className="flex gap-1">{actorPersonId === offer.candidate_person_id && offer.status === 'pending' && <><Button size="sm" onClick={() => actOffer.mutate({id:offer.id,version:offer.version,action:'accept'})}>{t('opportunities.acceptOffer')}</Button><Button variant="ghost" size="sm" onClick={() => actOffer.mutate({id:offer.id,version:offer.version,action:'decline'})}>{t('common:actions.decline')}</Button></>}{canManage && ['pending','accepted_awaiting_approval'].includes(offer.status) && <>{!isOwnApproval({ beneficiaryPersonIds: [offer.candidate_person_id] }, actorPersonId) && <Button size="sm" onClick={() => actOffer.mutate({id:offer.id,version:offer.version,action:'approve'})}>{t('opportunities.approve')}</Button>}<Button variant="ghost" size="sm" onClick={() => actOffer.mutate({id:offer.id,version:offer.version,action:'reject'})}>{t('opportunities.reject')}</Button></>}</span></li>)}</ul></li>)}</ul></div>}
+    {activeRequests.length > 0 && <div><h4 className="section-label">{t('opportunities.replacementRequests')}</h4><ul className="mt-2 space-y-3">{activeRequests.map((request) => <li key={request.id} className="rounded-xl border border-app-border p-3.5 text-sm"><div className="flex justify-between gap-2"><span>{t(`opportunities.requestStatus.${request.status}`)}</span><span className="flex items-center gap-2">{t('opportunities.offerCount', { count: request.offers.length })}{request.status === 'open' && (request.requester_person_id === actorPersonId || canManage) && <Button variant="ghost" size="sm" onClick={() => cancelReplacement.mutate(request)}>{t('opportunities.cancelRequest')}</Button>}</span></div>{canManage && request.status === 'open' && <div className="mt-2 flex flex-wrap items-center gap-2 sm:flex-nowrap">{candidatePicker(request)}<Button size="sm" onClick={() => issueOffer.mutate(request)}>{t('opportunities.sendOffer')}</Button></div>}<ul className="mt-2 space-y-1">{request.offers.map((offer) => <li key={offer.id} className="surface-inset flex flex-wrap items-center justify-between gap-2 p-2.5"><span>{t(`opportunities.offerStatus.${offer.status}`)}</span><span className="flex gap-1">{actorPersonId === offer.candidate_person_id && offer.status === 'pending' && <><Button size="sm" onClick={() => actOffer.mutate({id:offer.id,version:offer.version,action:'accept'})}>{t('opportunities.acceptOffer')}</Button><Button variant="ghost" size="sm" onClick={() => actOffer.mutate({id:offer.id,version:offer.version,action:'decline'})}>{t('common:actions.decline')}</Button></>}{canManage && ['pending','accepted_awaiting_approval'].includes(offer.status) && <>{!isOwnApproval({ beneficiaryPersonIds: [offer.candidate_person_id] }, actorPersonId) && <Button size="sm" onClick={() => actOffer.mutate({id:offer.id,version:offer.version,action:'approve'})}>{t('opportunities.approve')}</Button>}<Button variant="ghost" size="sm" onClick={() => actOffer.mutate({id:offer.id,version:offer.version,action:'reject'})}>{t('opportunities.reject')}</Button></>}</span></li>)}</ul></li>)}</ul></div>}
     {confirmed.length >= 2 && <div><h4 className="section-label">{t('opportunities.approvedSwap')}</h4><div className="mt-2 flex flex-wrap gap-2"><select className="input" value={swapFirst} onChange={(event) => setSwapFirst(event.target.value)}><option value="">{t('opportunities.firstCommitment')}</option>{confirmed.map((item) => <option key={item.id} value={item.id}>{t('common:format.nameWithRole', { name: item.person?.full_name ?? t('common:fallback.someone'), role: item.position?.name ?? item.team?.name ?? t('common:fallback.team') })}</option>)}</select><select className="input" value={swapSecond} onChange={(event) => setSwapSecond(event.target.value)}><option value="">{t('opportunities.secondCommitment')}</option>{confirmed.map((item) => <option key={item.id} value={item.id}>{t('common:format.nameWithRole', { name: item.person?.full_name ?? t('common:fallback.someone'), role: item.position?.name ?? item.team?.name ?? t('common:fallback.team') })}</option>)}</select><Button variant="secondary" disabled={!swapFirst || !swapSecond || swapFirst === swapSecond} onClick={() => createSwap.mutate()}>{t('opportunities.proposeSwap')}</Button></div>{activeSwaps.map((swap) => <div key={swap.id} className="surface-inset mt-2 flex flex-wrap items-center justify-between gap-2 p-2.5 text-sm"><span>{t('opportunities.swapProgress', { status: t(`opportunities.swapStatus.${swap.status}`), first: swap.first_consented_at ? '✓':'○', second: swap.second_consented_at ? '✓':'○', leader: swap.leader_approved_at ? '✓':'○' })}</span><span className="flex gap-1">{actorPersonId && [swap.first_person_id,swap.second_person_id].includes(actorPersonId) && <Button size="sm" onClick={() => actSwap.mutate({swap,action:'consent'})}>{t('opportunities.consent')}</Button>}{canManage && !isOwnApproval({ beneficiaryPersonIds: [swap.first_person_id, swap.second_person_id] }, actorPersonId) && <Button size="sm" onClick={() => actSwap.mutate({swap,action:'approve'})}>{t('opportunities.approve')}</Button>}<Button variant="ghost" size="sm" onClick={() => actSwap.mutate({swap,action:'cancel'})}>{t('common:actions.cancel')}</Button></span></div>)}</div>}
   </section>;
 };

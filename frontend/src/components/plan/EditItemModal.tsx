@@ -24,6 +24,9 @@ import { keys, usePeople, useSong, useSongs } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Modal } from '../ui';
 import { KeySelect } from '../KeySelect';
+import { SearchCombobox } from '../SearchCombobox';
+import { SearchableSelect } from '../SearchableSelect';
+import { leaderPersonChoices, leaderPositionChoices, type LeaderChoiceLabels, type PickerChoices } from './leaderChoices';
 
 export interface EditItemModalProps {
   plan: PlanDetail;
@@ -74,17 +77,22 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
     return [...new Set(labels)].filter((label) => label.length <= 20);
   }, [chosenArrangement]);
 
-  const positions = useMemo(() => {
-    const options = teams.flatMap((team) =>
-      team.positions.filter((position) => !position.plan_id).map((position) => ({ id: position.id, label: t('common:format.teamPosition', { team: team.name, position: position.name }) })),
-    );
-    for (const position of plan.plan_positions) {
-      const team = teams.find((candidate) => candidate.id === position.team_id);
-      options.push({ id: position.id, label: t('editItem.positionThisPlan', { team: team?.name ?? t('common:fallback.team'), position: position.name }) });
+  const leaderLabels = useMemo<LeaderChoiceLabels>(() => ({
+    unnamed: t('common:fallback.unnamed'),
+    team: t('common:fallback.team'),
+    planOnly: t('editItem.planOnlyPosition'),
+    teamPosition: (team, position) => t('common:format.teamPosition', { team, position }),
+  }), [t]);
+  const positionChoices = useMemo(() => leaderPositionChoices({ plan, teams, labels: leaderLabels }), [plan, teams, leaderLabels]);
+  const personChoices = useMemo<PickerChoices>(() => {
+    const choices = leaderPersonChoices({ plan, roster: people.data ?? [], labels: leaderLabels });
+    const current = draft.leaderPersonId;
+    // A leader who has since left the roster stays selectable as the current value.
+    if (current && !choices.options.some((option) => option.id === current) && !choices.suggested.some((option) => option.id === current)) {
+      choices.options.push({ id: current, label: item.leader_person?.full_name ?? t('editItem.currentLeader') });
     }
-    return options;
-  }, [teams, plan.plan_positions, t]);
-  const roster = (people.data ?? []).filter((person) => person.person_id && !person.archived);
+    return choices;
+  }, [plan, people.data, leaderLabels, draft.leaderPersonId, item.leader_person, t]);
 
   const save = useMutation({
     mutationFn: () => api.updatePlanItem(plan.id, item.id, { ...changes, expected_revision: baseRevision }),
@@ -297,24 +305,34 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
               ))}
             </div>
             {draft.leaderMode === 'person' && (
-              <select aria-label={t('editItem.personWhoLeads')} className="input mt-2" value={draft.leaderPersonId} onChange={(event) => set('leaderPersonId', event.target.value)}>
-                <option value="">{t('editItem.choosePerson')}</option>
-                {roster.map((person) => (
-                  <option key={person.person_id!} value={person.person_id!}>{person.full_name ?? t('common:fallback.unnamed')}</option>
-                ))}
-                {draft.leaderPersonId && !roster.some((person) => person.person_id === draft.leaderPersonId) && (
-                  <option value={draft.leaderPersonId}>{item.leader_person?.full_name ?? t('editItem.currentLeader')}</option>
-                )}
-              </select>
+              <div className="mt-2">
+                <SearchCombobox
+                  label={t('editItem.personWhoLeads')}
+                  hideLabel
+                  value={draft.leaderPersonId}
+                  onChange={(id) => set('leaderPersonId', id)}
+                  options={personChoices.options}
+                  suggested={personChoices.suggested}
+                  suggestedLabel={t('editItem.onThisPlan')}
+                  restLabel={t('editItem.everyone')}
+                  placeholder={t('editItem.searchPerson')}
+                />
+              </div>
             )}
             {draft.leaderMode === 'position' && (
               <>
-                <select aria-label={t('editItem.positionWhoLeads')} className="input mt-2" value={draft.leaderPositionId} onChange={(event) => set('leaderPositionId', event.target.value)}>
-                  <option value="">{t('editItem.choosePosition')}</option>
-                  {positions.map((position) => (
-                    <option key={position.id} value={position.id}>{position.label}</option>
-                  ))}
-                </select>
+                <div className="mt-2">
+                  <SearchableSelect
+                    label={t('editItem.positionWhoLeads')}
+                    hideLabel
+                    value={draft.leaderPositionId}
+                    onChange={(id) => set('leaderPositionId', id)}
+                    options={positionChoices.options}
+                    suggested={positionChoices.suggested}
+                    suggestedLabel={t('editItem.staffedOnThisPlan')}
+                    placeholder={t('editItem.searchPosition')}
+                  />
+                </div>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('editItem.positionFollowsHint')}</p>
               </>
             )}

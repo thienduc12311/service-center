@@ -274,6 +274,10 @@
     "offerCount_other": "{{count}} offers",
     "cancelRequest": "Cancel request",
     "chooseCandidate": "Choose candidate…",
+    "candidateLabel": "Replacement candidate",
+    "teamMembers": "{{team}} members",
+    "everyone": "Everyone",
+    "onThisPlan": "On this plan",
     "unnamedPerson": "Unnamed person",
     "sendOffer": "Send offer",
     "offerStatus": {
