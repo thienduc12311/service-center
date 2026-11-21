@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   LocalizedError,
@@ -34,11 +34,12 @@ import {
 } from '../../../src/lib/plan-order-edit';
 import { useDebouncedValue } from '../../../src/hooks/useDebouncedValue';
 import { SearchableOptionPicker } from '../../../src/components/SearchableOptionSheet';
+import { SearchField } from '../../../src/components/SearchField';
+import { SongPickRow } from '../../../src/components/song/SongBrowserRow';
 import { useDiscardGuard } from '../../../src/lib/useDiscardGuard';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { ArrangementPicker } from '../../../src/components/ArrangementPicker';
 import { KeyPicker } from '../../../src/components/KeyPicker';
-import { PressableScale } from '../../../src/components/motion';
 import {
   Button,
   Card,
@@ -58,6 +59,9 @@ import { type Theme } from '../../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
 
 const LEADER_MODES: readonly PlanItemLeaderMode[] = ['none', 'person', 'position'];
+
+/** Songs listed at once under "Change song"; the search narrows the rest. */
+const SONG_PICK_LIMIT = 20;
 
 /**
  * MOB-014: edit one order item in place — same id and position — on the
@@ -138,10 +142,13 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
     queryFn: () => api.getSong(draft.songId!),
     enabled: Boolean(queryScope && isSong && draft.songId),
   });
+  // Same server search as the song browser (title, author, CCLI; accents ignored), debounced.
+  const songSearch = useDebouncedValue(songQuery.trim());
   const songs = useQuery({
-    queryKey: queryKeys.songs(queryScope, songQuery),
-    queryFn: () => api.listSongs({ q: songQuery || undefined, per_page: 100 }),
+    queryKey: queryKeys.songs(queryScope, `pick:${songSearch}`),
+    queryFn: () => api.listSongs({ ...(songSearch ? { q: songSearch } : {}), archive: 'active', sort: 'title', per_page: SONG_PICK_LIMIT }),
     enabled: Boolean(queryScope && changingSong),
+    placeholderData: keepPreviousData,
   });
   // One server page of People per (debounced) search; the plan's own people come first.
   const personSearch = useDebouncedValue(personQuery.trim());
@@ -291,28 +298,34 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
             </View>
             {changingSong ? (
               <View style={styles.group}>
-                <Field
-                  label={t('editItem.findSong')}
+                <Label>{t('editItem.findSong')}</Label>
+                <SearchField
                   value={songQuery}
                   onChangeText={setSongQuery}
-                  placeholder={t('editItem.searchPlaceholder')}
-                  autoCorrect={false}
+                  placeholder={t('songBrowser.searchPlaceholder')}
+                  accessibilityLabel={t('editItem.findSong')}
                 />
+                {songs.isLoading ? <Loading /> : null}
                 <ErrorNotice error={songs.error} />
-                {(songs.data?.data ?? []).slice(0, 20).map((candidate) => (
-                  <PressableScale
-                    key={candidate.id}
-                    accessibilityLabel={candidate.title}
-                    onPress={() => {
-                      setDraft((current) => withSong(current, candidate));
-                      setChangingSong(false);
-                    }}
-                    pressedOpacity={0.6}
-                    style={styles.pickRow}
-                  >
-                    <Text style={styles.body}>{candidate.title}</Text>
-                  </PressableScale>
-                ))}
+                <View accessibilityRole="radiogroup" accessibilityLabel={t('editItem.findSong')} style={styles.songList}>
+                  {(songs.data?.data ?? []).map((candidate) => (
+                    <SongPickRow
+                      key={candidate.id}
+                      song={candidate}
+                      chosen={candidate.id === draft.songId}
+                      onPress={() => {
+                        setDraft((current) => withSong(current, candidate));
+                        setChangingSong(false);
+                      }}
+                    />
+                  ))}
+                </View>
+                {songs.data && songs.data.data.length === 0 ? <Text style={styles.hint}>{t('addItem.noSongs')}</Text> : null}
+                {songs.data && songs.data.total > songs.data.data.length ? (
+                  <Text style={styles.hint}>
+                    {t('common:list.showingOfRefine', { shown: songs.data.data.length, total: songs.data.total })}
+                  </Text>
+                ) : null}
               </View>
             ) : null}
 
@@ -538,13 +551,7 @@ const makeStyles = (theme: Theme) =>
     danger: { ...theme.type.bodySmall, color: theme.accent.red.fg },
     multiline: { minHeight: 88, paddingTop: theme.space.sm, textAlignVertical: 'top' },
     songLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.md },
-    pickRow: {
-      minHeight: 44,
-      justifyContent: 'center',
-      paddingHorizontal: theme.space.sm,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.color.border,
-    },
+    songList: { marginHorizontal: -theme.space.sm },
     switchRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     warning: {
       flexDirection: 'row',

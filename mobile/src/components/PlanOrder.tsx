@@ -15,7 +15,7 @@ import type { Theme } from '../lib/theme';
 import { useTheme, useThemedStyles } from '../lib/useTheme';
 import { useFormatters } from '../i18n';
 import { PressableScale } from './motion';
-import { Chip, IconWell, KeyCap, Label, Tag } from './ui';
+import { Button, Chip, IconWell, KeyCap, Label, Tag } from './ui';
 import { BottomSheet } from './BottomSheet';
 import { Icon, type IconName } from './icons';
 
@@ -45,6 +45,8 @@ export interface PlanOrderProps {
   onMove: (index: number, direction: -1 | 1) => void;
   /** Moves the item at `from` straight to position `to` (one reorder request). */
   onMoveTo: (from: number, to: number) => void;
+  /** Opens the song browser with new songs going right after this item. */
+  onAddAfter: (item: PlanItemDetail) => void;
   onRemove: (item: PlanItemDetail) => void;
   onOpenSong: (item: PlanItemDetail) => void;
   /** MOB-030: link or clear an F14 media bundle on a regular item (editors). */
@@ -76,6 +78,7 @@ export const PlanOrder = ({
   onEdit,
   onMove,
   onMoveTo,
+  onAddAfter,
   onRemove,
   onOpenSong,
   onMedia,
@@ -211,6 +214,10 @@ export const PlanOrder = ({
             if (movingIndex !== null) onMoveTo(movingIndex, to);
             setMovingIndex(null);
           }}
+          onAddAfter={(item) => {
+            setMovingIndex(null);
+            onAddAfter(item);
+          }}
           onClose={() => setMovingIndex(null)}
         />
       ) : null}
@@ -224,11 +231,17 @@ interface MoveToSheetProps {
   /** The item being moved; null keeps the sheet closed. */
   fromIndex: number | null;
   onPick: (toIndex: number) => void;
+  /** "Add songs after this": the item's other way to shape the order. */
+  onAddAfter: (item: PlanItemDetail) => void;
   onClose: () => void;
 }
 
-/** "Move to…": the order as it is, tap the place the item should take; the others shift. */
-const MoveToSheet = ({ items, ordinals, fromIndex, onPick, onClose }: MoveToSheetProps) => {
+/**
+ * "Move to…": the order as it is, tap the place the item should take; the
+ * others shift. It also offers adding songs right after the item, so a set
+ * is built in place instead of appended and moved.
+ */
+const MoveToSheet = ({ items, ordinals, fromIndex, onPick, onAddAfter, onClose }: MoveToSheetProps) => {
   const { t } = useTranslation(['plans', 'common']);
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -239,6 +252,15 @@ const MoveToSheet = ({ items, ordinals, fromIndex, onPick, onClose }: MoveToShee
       title={moving ? t('mobileOrder.moveToTitle', { title: moving.title }) : ''}
       onClose={onClose}
     >
+      {moving ? (
+        <Button
+          title={t('mobileOrder.addSongsAfter')}
+          icon="plus"
+          variant="secondary"
+          onPress={() => onAddAfter(moving)}
+          style={styles.addAfter}
+        />
+      ) : null}
       <Text style={styles.moveHint}>{t('mobileOrder.moveToHint')}</Text>
       <FlatList
         style={styles.flex}
@@ -536,6 +558,7 @@ const makeStyles = (theme: Theme) =>
       borderBottomColor: theme.color.border,
     },
     moveRowCurrent: { opacity: 0.55 },
+    addAfter: { marginBottom: theme.space.md },
     moveOrdinal: { ...theme.type.numeric, width: 28, textAlign: 'right', color: theme.color.inkMuted },
     moveTitle: { ...theme.type.body, color: theme.color.ink },
     moveHeader: { fontWeight: '600' },

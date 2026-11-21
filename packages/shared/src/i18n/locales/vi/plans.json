@@ -82,7 +82,9 @@
     "emptyHistoryTitle": "Không có chương trình đã qua",
     "emptyDescription": "Các chương trình bạn được xem sẽ hiện ở đây.",
     "emptyFilteredDescription": "Không có gì khớp với bộ lọc này. Hãy thử loại buổi nhóm hoặc trạng thái khác.",
-    "loadMoreFailed": "Không thể tải thêm chương trình."
+    "loadMoreFailed": "Không thể tải thêm chương trình.",
+    "searchPlaceholder": "Tìm chương trình theo tên",
+    "emptySearchDescription": "Không có chương trình nào khớp với tìm kiếm. Hãy thử từ khác hoặc xóa tìm kiếm."
   },
   "planDetail": {
     "notFound": "Không tìm thấy chương trình",
@@ -608,7 +610,8 @@
     "moveToHint": "Chạm vào vị trí muốn đặt. Các mục khác sẽ tự dời chỗ.",
     "moveToPosition": "Chuyển đến vị trí {{position}}, hiện là {{title}}",
     "moveToCurrent": "Vị trí hiện tại",
-    "moveToItemNumber": "Mục {{number}}"
+    "moveToItemNumber": "Mục {{number}}",
+    "addSongsAfter": "Thêm bài hát sau mục này"
   },
   "mobileTimes": {
     "editTimes": "Sửa giờ",
@@ -628,5 +631,64 @@
     "remindersHint": "Lời nhắc được máy chủ Service Center lên lịch và gửi, không phải điện thoại này.",
     "policyStale": "Có người đã thay đổi cài đặt lời nhắc này trước. Cài đặt mới nhất đang được hiển thị — hãy thực hiện lại thay đổi của bạn.",
     "delivery": "Lời nhắc và gửi thông báo"
+  },
+  "songBrowser": {
+    "title": "Thêm bài hát",
+    "titleAdded_other": "Đã thêm {{count}}",
+    "doneLabel": "Xong, quay lại thứ tự",
+    "searchPlaceholder": "Tìm theo tên, tác giả hoặc số CCLI",
+    "viewsLabel": "Cách xem bài hát",
+    "filtersLabel": "Bộ lọc bài hát",
+    "tabs": {
+      "suggested": "Gợi ý",
+      "recent": "Mới thêm",
+      "title": "Tất cả A–Z"
+    },
+    "filters": {
+      "key": "Tông",
+      "keyValue": "Tông: {{key}}",
+      "tempo": "Tốc độ",
+      "tempoValue": "Tốc độ: {{speed}}",
+      "theme": "Chủ đề",
+      "themeValue": "Chủ đề: {{theme}}",
+      "hideUsed_other": "Ẩn bài đã dùng trong {{count}} tuần qua",
+      "anyKey": "Mọi tông",
+      "anyTempo": "Mọi tốc độ",
+      "anyTheme": "Mọi chủ đề",
+      "themeSearch": "Nhập chủ đề",
+      "useTheme": "Dùng “{{theme}}”",
+      "themeHint": "Các chủ đề của những bài hát đang hiện. Bạn cũng có thể tự nhập.",
+      "clear": "Xóa bộ lọc"
+    },
+    "usedCount_other": "Đã dùng {{count}} lần trong {{weeks}} tuần",
+    "notUsedRecently": "Chưa dùng trong {{weeks}} tuần",
+    "lastUsed": {
+      "today": "dùng gần nhất hôm nay",
+      "days_other": "dùng gần nhất {{count}} ngày trước",
+      "weeks_other": "dùng gần nhất {{count}} tuần trước",
+      "months_other": "dùng gần nhất {{count}} tháng trước",
+      "years_other": "dùng gần nhất {{count}} năm trước",
+      "upcoming": "sắp dùng vào {{date}}"
+    },
+    "neverUsed": "Chưa từng lên lịch",
+    "inPlan": "Đã có trong chương trình",
+    "added": "Đã thêm",
+    "recentWarning_other": "Đã dùng trong vòng {{count}} ngày quanh chương trình này",
+    "addSong": "Thêm {{title}}",
+    "adding": "Đang thêm {{title}}",
+    "addAgainTitle": "“{{title}}” đã có trong chương trình này",
+    "addAgainBody": "Thêm lần nữa, chẳng hạn để hát lại?",
+    "addAgain": "Thêm lần nữa",
+    "insertingAfter": "Thêm sau “{{title}}”",
+    "insertingAtEnd": "Thêm vào cuối thứ tự",
+    "insertAtEnd": "Thêm vào cuối thay vào đó",
+    "placeFailed": "Đã thêm vào cuối: thứ tự vừa bị thay đổi nên không thể đặt sau mục đã chọn. Hãy dùng Chuyển đến… để đặt lại.",
+    "emptySuggestedTitle": "Chưa có bài hát nào thường dùng cho buổi nhóm này",
+    "emptySuggestedBody": "Các bài hát đã dùng với loại buổi nhóm này trong {{weeks}} tuần qua sẽ hiện ở đây. Hãy thử Tất cả A–Z.",
+    "emptyChurchSuggestedBody": "Các bài hát đã dùng trong {{weeks}} tuần qua sẽ hiện ở đây. Hãy thử Tất cả A–Z.",
+    "emptyFilteredTitle": "Không có bài hát phù hợp",
+    "emptyFilteredBody": "Đổi từ khóa tìm hoặc bỏ bớt bộ lọc.",
+    "emptyLibraryTitle": "Thư viện bài hát đang trống",
+    "emptyLibraryBody": "Các bài hát thêm ở thẻ Bài hát sẽ hiện ở đây."
   }
 }
