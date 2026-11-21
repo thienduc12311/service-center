@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
@@ -35,6 +36,7 @@ import {
 } from '../../src/components/AssignmentResponses';
 import {
   filterScheduleGroups,
+  groupIndexInReview,
   groupSchedule,
   scheduleWindowQuery,
   type ScheduleFilter,
@@ -50,6 +52,8 @@ import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { useFormatters } from '../../src/i18n';
 
 const WINDOWS: readonly ScheduleWindow[] = ['upcoming', 'history'];
+/** Rough card height used only when the list has not measured the target card yet. */
+const SCROLL_FALLBACK_ROW_HEIGHT = 320;
 const FILTERS: readonly Exclude<ScheduleFilter, 'all'>[] = ['pending', 'confirmed', 'declined'];
 
 export default function MyScheduleScreen() {
@@ -58,6 +62,7 @@ export default function MyScheduleScreen() {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const responses = useAssignmentResponses();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [scheduleWindow, setScheduleWindow] = useState<ScheduleWindow>('upcoming');
   const [filter, setFilter] = useState<ScheduleFilter>('all');
@@ -96,6 +101,18 @@ export default function MyScheduleScreen() {
   const visible = useMemo(() => filterScheduleGroups(groups, filter), [filter, groups]);
   const awaiting = groups.reduce((total, group) => total + group.pendingCount, 0);
 
+  // The decline/withdraw review grows the card; bring its confirm button into view
+  // (above the tab bar) instead of leaving it for the person to scroll to.
+  const listRef = useRef<FlatList<SchedulePlanGroup>>(null);
+  const reviewIndex = groupIndexInReview(visible, (assignmentId) => responses.draft(assignmentId).mode);
+  useEffect(() => {
+    if (reviewIndex < 0) return;
+    const timer = setTimeout(() => {
+      listRef.current?.scrollToIndex({ index: reviewIndex, viewPosition: 1, animated: true });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [reviewIndex]);
+
   const pendingPlans = useMemo(() => filterScheduleGroups(groups, 'pending').length, [groups]);
   const confirmedPlans = useMemo(() => filterScheduleGroups(groups, 'confirmed').length, [groups]);
   const showStats = scheduleWindow === 'upcoming' && groups.length > 0;
@@ -110,9 +127,14 @@ export default function MyScheduleScreen() {
   return (
     <Screen safeTop>
       <FlatList
+        ref={listRef}
         data={visible}
         keyExtractor={(group) => group.key}
-        contentContainerStyle={[screenPadding(theme), styles.list]}
+        onScrollToIndexFailed={({ index }) => {
+          listRef.current?.scrollToOffset({ offset: Math.max(0, index) * SCROLL_FALLBACK_ROW_HEIGHT, animated: true });
+        }}
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={[screenPadding(theme), { paddingBottom: theme.space.hero + insets.bottom }, styles.list]}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl

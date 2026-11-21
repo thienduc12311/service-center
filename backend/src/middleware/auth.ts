@@ -26,6 +26,13 @@ const bearer = (req: Request): string | null => {
   return token.length > 0 ? token : null;
 };
 
+/**
+ * True when Auth failed to answer (network, timeout, 5xx) rather than judging
+ * the token. A 4xx from Auth (expired, revoked, malformed, banned) is a verdict.
+ */
+const isAuthOutage = (error: { name?: string; status?: number }): boolean =>
+  error.name === 'AuthRetryableFetchError' || !error.status || error.status >= 500;
+
 /** Verifies the Supabase JWT and attaches a user-scoped database client. */
 export const requireAuth = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -34,7 +41,12 @@ export const requireAuth = async (req: Request, _res: Response, next: NextFuncti
 
     // Keep the Auth server's live user and session checks on every request (PERF-005).
     const { data, error } = await adminDb.auth.getUser(token);
-    if (error || !data.user) throw HttpError.unauthorized('Invalid or expired session');
+    if (error) {
+      // A rejected token ends the session; an Auth outage must not sign people out.
+      if (isAuthOutage(error)) throw new HttpError(503, 'Authentication is temporarily unavailable', 'auth_unavailable');
+      throw HttpError.unauthorized('Invalid or expired session');
+    }
+    if (!data.user) throw HttpError.unauthorized('Invalid or expired session');
     // A super admin blocked the account; its sessions were ended too, this covers the rest.
     const bannedUntil = data.user.banned_until ? Date.parse(data.user.banned_until) : Number.NaN;
     if (bannedUntil > Date.now()) throw new HttpError(401, 'This account is blocked', ACCOUNT_BLOCKED);

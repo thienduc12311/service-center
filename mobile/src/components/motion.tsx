@@ -56,6 +56,7 @@ export const PressableScale = ({
   const [pressed, setPressed] = useState(false);
   return (
     <Pressable
+      accessible
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ ...accessibilityState, disabled }}

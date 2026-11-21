@@ -62,6 +62,7 @@
     "message_unrecoverable": "Không thể khôi phục tin nhắn này nữa.",
     "account_deletion_blocked": "Hãy chỉ định người khác làm chủ sở hữu các tổ chức của bạn trước khi xoá tài khoản.",
     "storage_quota_exceeded": "Hội thánh của bạn đã hết dung lượng lưu trữ. Hãy xóa các tệp không còn cần, hoặc liên hệ bộ phận hỗ trợ Service Center để có thêm dung lượng.",
+    "logo_type_unsupported": "Loại tệp này không được hỗ trợ cho logo hội thánh. Hãy dùng ảnh PNG, JPEG, WebP hoặc GIF.",
     "church_application_required": "Hội thánh mới cần được duyệt trước. Hãy gửi yêu cầu đăng ký hội thánh của bạn.",
     "organization_disabled": "Hội thánh này đã bị tạm ngưng. Không có dữ liệu nào bị xóa; hãy liên hệ bộ phận hỗ trợ Service Center.",
     "application_pending": "Bạn đã có một yêu cầu đang chờ xét duyệt.",

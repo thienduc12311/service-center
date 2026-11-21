@@ -9,9 +9,12 @@ import {
   teamTagRulesSchema,
   updatePositionSchema,
   updateTeamSchema,
+  type OrgRole,
   type RelatedTeamsInput,
   type ReplaceScopeGrantsInput,
   type TeamPolicySettings,
+  type TeamRosterPerson,
+  type TeamRosterPersonRow,
   type TeamTagRulesInput,
   type TeamWithPositions,
 } from '@service-center/shared';
@@ -20,27 +23,16 @@ import { requireAdmin, requireCapability, requireManager, requireRosterEditor } 
 import { raw, unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { loadScopeAccess, replaceScopeAccess } from '../services/access.js';
-import { NO_CONTACT, contactsFor, type MemberContact } from '../services/contacts.js';
 
 export const teamsRouter: Router = Router();
 
-// Contact details come from `member_contacts`, never from the join.
+// Names and contact details come from `team_roster_people` (basic info for any
+// member), never from a `people` join: People rows are owner-only (W8-NAT-D1).
 const TEAM_SELECT = `
   *,
   positions:team_positions(*),
-  memberships:team_memberships(
-    id, person_id, user_id, position_id,
-    person:people(id, profile_id, first_name, last_name, avatar_url)
-  )
+  memberships:team_memberships(id, person_id, user_id, position_id)
 `;
-
-interface RawTeamPerson {
-  id: string;
-  profile_id: string | null;
-  first_name: string;
-  last_name: string | null;
-  avatar_url: string | null;
-}
 
 type RawTeam = Record<string, unknown> & {
   positions?: Array<Record<string, unknown>>;
@@ -49,38 +41,48 @@ type RawTeam = Record<string, unknown> & {
     person_id: string;
     user_id: string | null;
     position_id: string | null;
-    person: RawTeamPerson | null;
   }>;
 };
 
+/** Roster rows keyed by `teamId:personId`. */
+type RosterPeople = Map<string, TeamRosterPersonRow>;
+
+const rosterKey = (teamId: string, personId: string): string => `${teamId}:${personId}`;
+
 /** Roles live on organization_members, so they are stitched in separately. */
-const shapeTeam = (
+export const shapeTeam = (
   team: RawTeam,
   roles: Map<string, string>,
-  contacts: Map<string, MemberContact>,
+  people: RosterPeople,
 ): TeamWithPositions => {
   // A team's normal list only; plan-only positions (F02) live on their plan.
   const positions = (team.positions ?? [])
     .filter((position) => position.plan_id === null || position.plan_id === undefined)
     .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
-  const members = (team.memberships ?? []).map((m) => ({
-    person_id: m.person_id,
-    user_id: m.user_id,
-    position_id: m.position_id,
-    membership_id: m.id,
-    profile: m.person
-      ? {
-          id: m.person.id,
-          full_name: [m.person.first_name, m.person.last_name].filter(Boolean).join(' '),
-          avatar_url: m.person.avatar_url,
-          ...(m.user_id ? contacts.get(m.user_id) ?? NO_CONTACT : NO_CONTACT),
-          role: m.user_id ? roles.get(m.user_id) ?? 'member' : 'member',
-        }
-      : null,
-  }));
+  const teamId = String(team.id);
+  const members = (team.memberships ?? []).map((m) => {
+    const person = people.get(rosterKey(teamId, m.person_id));
+    return {
+      person_id: m.person_id,
+      user_id: m.user_id,
+      position_id: m.position_id,
+      membership_id: m.id,
+      profile: person ? mapRosterPerson(person, m.user_id ? roles.get(m.user_id) ?? 'member' : 'member') : null,
+    };
+  });
   const { memberships: _ignored, ...rest } = team;
   return { ...rest, positions, members } as unknown as TeamWithPositions;
 };
+
+export const mapRosterPerson = (row: TeamRosterPersonRow, role: string): TeamRosterPerson => ({
+  id: row.person_id,
+  full_name: [row.first_name, row.last_name].filter(Boolean).join(' '),
+  avatar_url: row.avatar_url,
+  email: row.email,
+  phone: row.phone,
+  date_of_birth: row.birthdate,
+  role: role as OrgRole,
+});
 
 /** Org roles live on organization_members, so fetch them once per request. */
 const roleMap = async (req: Request): Promise<Map<string, string>> => {
@@ -91,11 +93,12 @@ const roleMap = async (req: Request): Promise<Map<string, string>> => {
 };
 
 const shapeTeams = async (req: Request, teams: RawTeam[]): Promise<TeamWithPositions[]> => {
-  const userIds = teams.flatMap((team) =>
-    (team.memberships ?? []).flatMap((membership) => membership.user_id ? [membership.user_id] : []),
-  );
-  const [roles, contacts] = await Promise.all([roleMap(req), contactsFor(req.db, req.orgId, userIds)]);
-  return teams.map((team) => shapeTeam(team, roles, contacts));
+  const [roles, rows] = await Promise.all([
+    roleMap(req),
+    unwrap(req.db.rpc('team_roster_people', { p_org: req.orgId })),
+  ]);
+  const people: RosterPeople = new Map((rows ?? []).map((row) => [rosterKey(row.team_id, row.person_id), row]));
+  return teams.map((team) => shapeTeam(team, roles, people));
 };
 
 const loadTeam = async (req: Request, id: string): Promise<TeamWithPositions> => {

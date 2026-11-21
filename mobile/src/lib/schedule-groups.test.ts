@@ -2,10 +2,27 @@ import { describe, expect, it } from 'vitest';
 import type { AssignmentDetail, AssignmentStatus, MyScheduleEntry, PlanTimeRow } from '@service-center/shared';
 import {
   filterScheduleGroups,
+  groupIndexInReview,
   groupSchedule,
   planResponsibilities,
   scheduleWindowQuery,
+  type SchedulePlanGroup,
 } from './schedule-groups';
+
+describe('groupIndexInReview', () => {
+  const group = (key: string, ids: string[]): SchedulePlanGroup =>
+    ({ key, responsibilities: ids.map((assignmentId) => ({ assignmentId })) }) as unknown as SchedulePlanGroup;
+
+  it('finds the card that is asking for a decline reason', () => {
+    const groups = [group('a', ['1']), group('b', ['2', '3'])];
+    expect(groupIndexInReview(groups, (id) => (id === '3' ? 'declining' : 'idle'))).toBe(1);
+    expect(groupIndexInReview(groups, (id) => (id === '1' ? 'withdrawing' : 'idle'))).toBe(0);
+  });
+
+  it('returns -1 when nothing is in review', () => {
+    expect(groupIndexInReview([group('a', ['1'])], () => 'idle')).toBe(-1);
+  });
+});
 
 const time = (id: string, kind: PlanTimeRow['kind'], startsAt: string): PlanTimeRow => ({
   id,

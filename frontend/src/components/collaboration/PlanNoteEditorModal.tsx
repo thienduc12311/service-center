@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -7,11 +7,13 @@ import {
   noteTeamNames,
   planNoteDraftFrom,
   planNoteLeavesSimple,
+  keyedNoteCreate,
   planNoteRequest,
   toggleNoteTeam,
   validatePlanNoteDraft,
   withNoteCategory,
   type NoteCategoryRow,
+  type NoteCreateAttempt,
   type PlanNote,
   type PlanNoteDraft,
   type TeamWithPositions,
@@ -40,11 +42,19 @@ export const PlanNoteEditorModal = ({ planId, note, planItemId, categories, team
   const { categoryId, audience, teamIds, body } = draft;
   const itemId = draft.planItemId;
 
+  // One key per unchanged draft, reused when the same create is retried.
+  const createAttempt = useRef<NoteCreateAttempt | null>(null);
+  const keyedCreate = () => {
+    const keyed = keyedNoteCreate(createAttempt.current, planNoteRequest(draft, null), () => crypto.randomUUID());
+    createAttempt.current = keyed.attempt;
+    return keyed.request;
+  };
+
   const save = useMutation({
     mutationFn: () =>
       note
         ? api.updatePlanNote(planId, note.id, planNoteRequest(draft, note))
-        : api.createPlanNote(planId, planNoteRequest(draft, null)),
+        : api.createPlanNote(planId, keyedCreate()),
     onSuccess: async () => {
       await invalidate();
       onClose();

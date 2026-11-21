@@ -195,6 +195,12 @@ export interface RosterPerson {
   archived: boolean;
 }
 
+/** One page of the People list (`GET /people/page`). No total: the count is unknown without scanning every person. */
+export interface RosterPersonPage {
+  items: RosterPerson[];
+  next_cursor: string | null;
+}
+
 export interface PersonDetail extends PersonRow {
   profile: ProfileRow | null;
   membership: Pick<OrganizationMemberRow, 'role' | 'status'> | null;
@@ -370,6 +376,15 @@ export interface ImportPlanContentsResult {
   content_revision: number;
 }
 
+/**
+ * What any member sees of a rostered person: name, avatar, email, phone and
+ * date of birth (`YYYY-MM-DD`). Absent values are null; other People fields
+ * stay owner-only.
+ */
+export interface TeamRosterPerson extends PersonSummary {
+  date_of_birth: string | null;
+}
+
 export interface TeamWithPositions extends TeamRow {
   positions: TeamPositionRow[];
   members: Array<{
@@ -378,7 +393,7 @@ export interface TeamWithPositions extends TeamRow {
     position_id: string | null;
     /** The `team_memberships` row id: what `removeTeamMember` takes (MOB-031; always sent by the API). */
     membership_id: string;
-    profile: PersonSummary | null;
+    profile: TeamRosterPerson | null;
   }>;
 }
 
@@ -652,4 +667,13 @@ export interface UnreadNotificationCount {
 export interface ClearReadNotificationsResult extends UnreadNotificationCount {
   /** How many read notifications were deleted from the active organization. */
   deleted: number;
+}
+
+/**
+ * `GET /api/v1/realtime/key` — the secret that Realtime topic names carry (see
+ * `realtimeTopic` in `lib/realtime-pokes.ts`). Served only to an active member; it rotates when a
+ * member is removed, so clients refetch it on a `rekey` poke.
+ */
+export interface RealtimeTopicKey {
+  key: string;
 }

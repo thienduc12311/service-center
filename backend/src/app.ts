@@ -46,6 +46,7 @@ import { availabilityRouter } from './routes/availability.js';
 import { delegationsRouter } from './routes/delegations.js';
 import { meAvailabilityRouter } from './routes/me-availability.js';
 import { accessRouter } from './routes/access.js';
+import { realtimeRouter } from './routes/realtime.js';
 import { foldersRouter } from './routes/folders.js';
 import { staffingMatrixRouter } from './routes/staffing-matrix.js';
 import { rotationsRouter, staffingProposalsRouter } from './routes/staffing-proposals.js';
@@ -93,7 +94,7 @@ const VERCEL_PREVIEW_ORIGIN = /^https:\/\/[a-z0-9-]+\.vercel\.app$/;
 export const createApp = (): Express => {
   const app = express();
 
-  app.set('trust proxy', 1);
+  app.set('trust proxy', config.TRUST_PROXY);
   app.use(helmet());
   app.use(compression());
   app.use(
@@ -221,6 +222,7 @@ export const createApp = (): Express => {
   app.use('/api/v1/releases', scoped, releasesRouter);
   app.use('/api/v1/reminder-policies', scoped, reminderPoliciesRouter);
   app.use('/api/v1/access', scoped, accessRouter);
+  app.use('/api/v1/realtime', scoped, realtimeRouter);
   app.use('/api/v1/folders', scoped, foldersRouter);
   app.use('/api/v1/staffing-matrix', scoped, staffingMatrixRouter);
   app.use('/api/v1/rotations', scoped, rotationsRouter);

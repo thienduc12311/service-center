@@ -50,11 +50,10 @@ export const excerpt = (text: string, max = 140): string => {
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 };
 
-export const toPlanNote = (row: PlanNoteRow, teamIds: readonly string[], authorName: string | null): PlanNote => ({
-  ...row,
-  team_ids: [...teamIds].sort(),
-  author_name: authorName,
-});
+export const toPlanNote = (row: PlanNoteRow, teamIds: readonly string[], authorName: string | null): PlanNote => {
+  const { idempotency_key: _key, idempotency_request: _request, ...note } = row;
+  return { ...note, team_ids: [...teamIds].sort(), author_name: authorName };
+};
 
 const toMentions = (
   records: readonly MentionRecord[],

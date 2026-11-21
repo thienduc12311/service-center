@@ -28,6 +28,7 @@ import { AppearanceSettings } from '../components/settings/AppearanceSettings';
 import { AccountPrivacySettings } from '../components/settings/AccountPrivacySettings';
 import { ChurchApplicationPanel } from '../components/church/ChurchApplicationPanel';
 import { StorageUsageBar } from '../components/church/StorageUsage';
+import { LOGO_FILE_ACCEPT, mapLogoUploadError, validateLogoFile } from '../lib/logo-upload';
 import { explainStorageUploadError } from '../lib/storage-quota';
 
 export const SettingsPage = () => {
@@ -500,15 +501,24 @@ const OrganizationSettings = ({
   const uploadLogo = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !organization) return;
-    setUploading(true);
     setError(null);
+    const invalid = validateLogoFile(file);
+    if (invalid) {
+      setError(invalid);
+      event.target.value = '';
+      return;
+    }
+    setUploading(true);
     try {
       const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png';
       const path = `${organization.id}/logo-${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKETS.organizationLogos)
         .upload(path, file, { contentType: file.type, upsert: false });
-      if (uploadError) throw await explainStorageUploadError(uploadError);
+      if (uploadError) {
+        const mapped = mapLogoUploadError(uploadError);
+        throw mapped === uploadError ? await explainStorageUploadError(uploadError) : mapped;
+      }
       const { data } = supabase.storage.from(STORAGE_BUCKETS.organizationLogos).getPublicUrl(path);
       await api.updateOrganization(organization.id, { logo_url: data.publicUrl });
       await onChanged();
@@ -539,7 +549,7 @@ const OrganizationSettings = ({
           <label className="button inline-flex h-9 cursor-pointer items-center gap-2 bg-white px-3.5 text-sm font-medium text-slate-700 shadow-sm shadow-slate-900/5 ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-500 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-800">
             <Icon name="upload" className="size-4" />
             {uploading ? t('organization.uploading') : t('organization.updateLogo')}
-            <input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={uploadLogo} disabled={uploading} />
+            <input className="sr-only" type="file" accept={LOGO_FILE_ACCEPT} onChange={uploadLogo} disabled={uploading} />
           </label>
         )}
         {canEdit && organization && (

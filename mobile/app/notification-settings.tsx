@@ -240,6 +240,14 @@ const ChatSection = () => {
           </View>
         );
       })}
+      {conversations.hasNextPage ? (
+        <Button
+          title={tMessages('chatPage.loadMore')}
+          variant="quiet"
+          loading={conversations.isFetchingNextPage}
+          onPress={() => void conversations.fetchNextPage()}
+        />
+      ) : null}
       <ErrorNotice error={conversations.error ?? mute.error} />
       <Button title={t('mobileNotifications.chat.open')} variant="quiet" onPress={() => router.push('/chat')} />
     </Card>

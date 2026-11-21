@@ -62,6 +62,7 @@
     "message_unrecoverable": "This message can no longer be restored.",
     "account_deletion_blocked": "Make someone else an owner of your organizations before deleting your account.",
     "storage_quota_exceeded": "Your church is out of media storage. Remove files you no longer need, or ask Service Center support for more space.",
+    "logo_type_unsupported": "That file type isn’t supported for a church logo. Use a PNG, JPEG, WebP or GIF image.",
     "church_application_required": "New churches need to be approved first. Send a request to register your church.",
     "organization_disabled": "This church has been disabled. Nothing has been deleted; contact Service Center support for help.",
     "application_pending": "You already have a request waiting for review.",

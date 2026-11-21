@@ -16,6 +16,12 @@ export const savePlanNoteSchema = z
     body: noteBody,
     /** The revision the editor loaded; required when editing. */
     expected_revision: z.number().int().min(1).optional(),
+    /**
+     * Create only: one key per draft, reused on retry. The same key and body
+     * replays the first note; the same key with another body is refused as
+     * `idempotency_key_reused`. Optional so unkeyed clients keep working.
+     */
+    idempotency_key: idempotencyKey.optional(),
   })
   .refine((v) => v.audience !== 'teams' || v.team_ids.length > 0, {
     message: 'Choose at least one team',
@@ -42,6 +48,13 @@ export const discussionPageQuerySchema = z.object({
   /** Keyset cursor: the `next_before` of the previous page, echoed verbatim. */
   before: keysetCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
+});
+
+/** `GET /conversations`: keyset paging over the caller's conversations (W8-PERF-D3). */
+export const listConversationsQuerySchema = z.object({
+  /** Opaque `next_cursor` of the previous page. */
+  cursor: z.string().min(1).max(400).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
 /** `id` is chosen by the client so a retried post is one logical comment. */
@@ -172,6 +185,7 @@ export type CreateNoteCategoryInput = z.infer<typeof createNoteCategorySchema>;
 export type UpdateNoteCategoryInput = z.infer<typeof updateNoteCategorySchema>;
 export type MentionCandidatesQuery = z.infer<typeof mentionCandidatesQuerySchema>;
 export type DiscussionPageQuery = z.infer<typeof discussionPageQuerySchema>;
+export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
 export type PostItemCommentInput = z.infer<typeof postItemCommentSchema>;
 export type EditDiscussionInput = z.infer<typeof editDiscussionSchema>;
 export type DeleteDiscussionInput = z.infer<typeof deleteDiscussionSchema>;

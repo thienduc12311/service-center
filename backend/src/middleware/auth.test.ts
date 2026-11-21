@@ -67,4 +67,22 @@ describe('requireAuth', () => {
     expect(response.status).toBe(401);
     expect(response.body.code).toBe(ACCOUNT_BLOCKED);
   });
+
+  it.each([
+    ['a network failure', () => Promise.reject(new TypeError('fetch failed'))],
+    ['an Auth 502', () => Promise.resolve(Response.json({ msg: 'bad gateway' }, { status: 502 }))],
+    ['an Auth 500', () => Promise.resolve(Response.json({ msg: 'boom' }, { status: 500 }))],
+  ])('answers 503 auth_unavailable, not 401, on %s (W8-RES-D2)', async (_name, respond) => {
+    fetchAuth.mockImplementationOnce(respond);
+    const response = await getProtectedRoute();
+    expect(response.status).toBe(503);
+    expect(response.body.code).toBe('auth_unavailable');
+  });
+
+  it('still answers 401 for an expired token', async () => {
+    fetchAuth.mockResolvedValueOnce(Response.json({ code: 'bad_jwt', msg: 'invalid JWT: token is expired' }, { status: 401 }));
+    const response = await getProtectedRoute();
+    expect(response.status).toBe(401);
+    expect(response.body.code).toBe('unauthorized');
+  });
 });

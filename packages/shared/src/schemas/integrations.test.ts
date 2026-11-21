@@ -7,6 +7,17 @@ import {
 } from './integrations.js';
 import { API_KEY_PATTERN, webhookErrorLabel } from '../lib/integrations.js';
 
+describe('webhook url validation (W8-INT-D3)', () => {
+  it.each(['not a url', '', 'http://', '://x'])('reports %j as a validation issue instead of throwing', (url) => {
+    const result = createWebhookEndpointSchema.safeParse({
+      url,
+      event_types: ['plan.published'],
+      idempotency_key: 'abcdefgh1',
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
 describe('F17 integration schemas', () => {
   it('accepts a scoped credential and rejects unknown scopes', () => {
     expect(createApiCredentialSchema.parse({ name: ' Display ', scopes: ['plans.read'], idempotency_key: 'abcdefgh1' })).toMatchObject({

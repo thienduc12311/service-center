@@ -191,6 +191,7 @@ import type {
   AccessMoveChange,
   CapabilityExplanation,
   EffectiveAccess,
+  RealtimeTopicKey,
   FolderTree,
   ScopeAccess,
   TeamCandidate,
@@ -221,6 +222,7 @@ import type {
   PlanPositionNeed,
   PlanSummary,
   RosterPerson,
+  RosterPersonPage,
   SchedulingConflict,
   ServiceTypeSetupResult,
   SongChart,
@@ -343,6 +345,7 @@ import type {
 } from '../schemas/plan-templates.js';
 import type {
   ConversationDetail,
+  ConversationListPage,
   ConversationMessage,
   ConversationReport,
   ConversationSummary,
@@ -365,6 +368,7 @@ import type {
   ConversationMessagesQuery,
   CreateNoteCategoryInput,
   DiscussionPageQuery,
+  ListConversationsQuery,
   ListOperationalMessagesQuery,
   OpenConversationInput,
   PostConversationMessageInput,
@@ -474,6 +478,20 @@ export class ApiError extends Error {
     return this.status === 401;
   }
 }
+
+/**
+ * For deletes whose goal is "this is gone": the server answers 404 when there
+ * was nothing to delete, which a retry, a second tab or a sign-out cleanup
+ * must not show as a failure.
+ */
+const settleIfGone = async (call: Promise<void>): Promise<void> => {
+  try {
+    await call;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return;
+    throw error;
+  }
+};
 
 export interface ApiRequestContext {
   accessToken: string | null;
@@ -638,7 +656,8 @@ export class ServiceCenterApi {
   blockedUsers = () => this.request<BlockedUser[]>('GET', '/api/v1/me/blocks');
   /** Hides this person's messages and comments from the caller and stops their notifications. Idempotent. */
   blockUser = (userId: string) => this.request<UserBlockRow>('PUT', `/api/v1/me/blocks/${encodeURIComponent(userId)}`);
-  unblockUser = (userId: string) => this.request<void>('DELETE', `/api/v1/me/blocks/${encodeURIComponent(userId)}`);
+  unblockUser = (userId: string) =>
+    settleIfGone(this.request<void>('DELETE', `/api/v1/me/blocks/${encodeURIComponent(userId)}`));
 
   // ------------------------------------------------------ organizations --
   listOrganizations = () =>
@@ -707,7 +726,7 @@ export class ServiceCenterApi {
   adminEnterOrganization = (id: string, body: EnterOrganizationRequest = {}) =>
     this.request<PlatformAccessGrant>('POST', `/api/v1/admin/organizations/${encodeURIComponent(id)}/access`, body);
   adminExitOrganization = (id: string) =>
-    this.request<void>('DELETE', `/api/v1/admin/organizations/${encodeURIComponent(id)}/access`);
+    settleIfGone(this.request<void>('DELETE', `/api/v1/admin/organizations/${encodeURIComponent(id)}/access`));
   adminChurchApplications = (status?: ChurchApplicationStatus) =>
     this.request<AdminChurchApplication[]>('GET', '/api/v1/admin/church-applications', undefined, { status });
   adminChurchApplication = (id: string) =>
@@ -751,6 +770,9 @@ export class ServiceCenterApi {
   /** Archived people are left out unless asked for. */
   listPeople = (query?: { include_archived?: boolean }) =>
     this.request<RosterPerson[]>('GET', '/api/v1/people', undefined, query as Query);
+  /** One keyset page of the People list for the list screens; pickers keep using `listPeople`. */
+  listPeoplePage = (query?: { limit?: number; cursor?: string; q?: string; include_archived?: boolean }) =>
+    this.request<RosterPersonPage>('GET', '/api/v1/people/page', undefined, query as Query);
   getPerson = (personId: string) => this.request<PersonDetail>('GET', `/api/v1/people/${personId}`);
   createPerson = (body: CreatePersonInput) => this.request<PersonDetail>('POST', '/api/v1/people', body);
   updatePerson = (personId: string, body: UpdatePersonInput) =>
@@ -1281,6 +1303,7 @@ export class ServiceCenterApi {
 
   // ------------------------------------------------------------- access --
   /** The caller's effective access in the active organization. */
+  realtimeKey = () => this.request<RealtimeTopicKey>('GET', '/api/v1/realtime/key');
   myAccess = () => this.request<EffectiveAccess>('GET', '/api/v1/access/me');
   /** Administrators: every member's role, access mode and explicit grants. */
   listAccessMembers = () => this.request<AccessMember[]>('GET', '/api/v1/access/members');
@@ -1512,7 +1535,7 @@ export class ServiceCenterApi {
     this.request<UnreadNotificationCount>('POST', '/api/v1/notifications/read', body);
   /** Permanently deletes one of the caller's notifications in the active organization. */
   deleteNotification = (id: string) =>
-    this.request<void>('DELETE', `/api/v1/notifications/${id}`);
+    settleIfGone(this.request<void>('DELETE', `/api/v1/notifications/${id}`));
   /** Permanently deletes every read notification the caller has in the active organization. */
   clearReadNotifications = () =>
     this.request<ClearReadNotificationsResult>('POST', '/api/v1/notifications/clear-read');
@@ -1521,7 +1544,7 @@ export class ServiceCenterApi {
   registerDevice = (body: RegisterDeviceInput) =>
     this.request<DeviceRegistration>('POST', '/api/v1/me/devices', body);
   unregisterDevice = (token: string) =>
-    this.request<void>('DELETE', `/api/v1/me/devices/${encodeURIComponent(token)}`);
+    settleIfGone(this.request<void>('DELETE', `/api/v1/me/devices/${encodeURIComponent(token)}`));
   /** Revokes one registration after auth is gone; the secret authorizes only this token. */
   revokeDeviceRegistration = (body: RevokeDeviceRegistrationInput) =>
     this.request<void>('POST', '/api/v1/device-revocations', body);
@@ -1579,7 +1602,8 @@ export class ServiceCenterApi {
     this.request<void>('DELETE', `/api/v1/message-templates/${id}`);
 
   // --------------------------------------------------- F09 conversations --
-  conversations = () => this.request<ConversationSummary[]>('GET', '/api/v1/conversations');
+  conversations = (query?: Partial<ListConversationsQuery>) =>
+    this.request<ConversationListPage>('GET', '/api/v1/conversations', undefined, query as Query);
   /** Opens (creating on first use) the conversation for a team or plan. */
   openConversation = (body: OpenConversationInput) =>
     this.request<ConversationSummary>('POST', '/api/v1/conversations/open', body);

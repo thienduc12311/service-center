@@ -29,6 +29,8 @@ export const webhookUrlSchema = z
   .max(2048)
   .url('Enter a full URL')
   .superRefine((value, ctx) => {
+    // `.url()` above already reported an unparseable value; stop here instead of throwing.
+    if (!URL.canParse(value)) return;
     const url = new URL(value);
     if (url.protocol !== 'https:' && url.protocol !== 'http:') {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use an https:// URL' });

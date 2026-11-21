@@ -38,6 +38,10 @@ export type PlanNoteRow = {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  /** Client key the note was created with (null when unkeyed). Never sent to clients. */
+  idempotency_key: string | null;
+  /** The create request that key stands for. Never sent to clients. */
+  idempotency_request: unknown;
 }
 
 export type PlanNoteTeamRow = {
@@ -47,7 +51,7 @@ export type PlanNoteTeamRow = {
 }
 
 /** A note as the API returns it: only notes the caller may read. */
-export interface PlanNote extends PlanNoteRow {
+export interface PlanNote extends Omit<PlanNoteRow, 'idempotency_key' | 'idempotency_request'> {
   team_ids: string[];
   author_name: string | null;
 }
@@ -310,6 +314,14 @@ export interface ConversationSummary {
   muted: boolean;
   can_moderate: boolean;
   open_reports: number;
+}
+
+/** Keyset page of the caller's conversations, most recently active first. */
+export interface ConversationListPage {
+  items: ConversationSummary[];
+  /** Pass as `cursor` for the next page; null on the last page. */
+  next_cursor: string | null;
+  has_more: boolean;
 }
 
 export type ConversationMessageRow = {

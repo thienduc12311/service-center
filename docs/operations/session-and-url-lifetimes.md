@@ -21,10 +21,18 @@ one extra request per minute of continuous playback.
 ## Signed-out sessions
 
 PostgREST and Storage refuse a token whose session was ended (global sign-out, revoked session)
-with 401 or no rows; see `docs/adr/0005-session-liveness-and-token-lifetime.md`. Realtime keeps an
-open socket until the token expires (at most 900 s).
+with 401 or no rows; see `docs/adr/0005-session-liveness-and-token-lifetime.md`. Realtime topic names
+carry a per-organization key that rotates when a member is deactivated, removed or demoted, or when any
+of their sessions is deleted. A removed member's open socket goes silent as soon as that transaction
+commits (seconds, not the 900 s token lifetime) and cannot rejoin; it may still hold the connection.
 
 ## Deploy notes
+
+- Run migration `20261127000400_w8_realtime_revocation.sql`, then check end to end:
+  `SUPABASE_ANON_KEY=<anon key> node supabase/tests/qa-wave8-realtime-revocation.e2e.mjs`.
+  Hosted: the `postgres` role needs TRIGGER on `auth.sessions` (see ADR 0005); web and mobile clients
+  from before this change subscribe to unkeyed topics and receive no pokes until updated (they fall
+  back to the 60 s refresh).
 
 - Run the migration `20261126000200_w7f_session_liveness.sql`; it sets `pgrst.db_pre_request` on
   the `authenticator` role and reloads PostgREST config. Confirm with

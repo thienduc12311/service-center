@@ -274,7 +274,9 @@ export const grantPlatformAccess = async (
 
 /** Idempotent. */
 export const revokePlatformAccess = async (actor: PlatformActor, organizationId: string): Promise<void> => {
-  await unwrap(raw(adminDb).rpc('revoke_platform_access', { p_actor: actor.userId, p_org: organizationId }));
+  const removed = await unwrap(raw(adminDb).rpc('revoke_platform_access', { p_actor: actor.userId, p_org: organizationId }));
+  // The function reports whether an access window existed; none is a 404, never a silent success.
+  if (removed !== true) throw HttpError.notFound('You have no platform access to this church');
 };
 
 // ------------------------------------------------------- applications ------

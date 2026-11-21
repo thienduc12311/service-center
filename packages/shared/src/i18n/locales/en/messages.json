@@ -89,6 +89,7 @@
     }
   },
   "chatPage": {
+    "loadMore": "Load more conversations",
     "title": "Chat",
     "subtitle": "Team and plan conversations.",
     "openTeamChat": "Open a team chat",

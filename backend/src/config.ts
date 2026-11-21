@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { z } from 'zod';
+import { parseTrustProxy } from './lib/trust-proxy.js';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -8,6 +9,27 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(20),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
+
+  /**
+   * Proxies in front of the API whose X-Forwarded-For is believed: "false"
+   * (default; direct access, local dev), a hop count ("1" behind one load
+   * balancer such as Vercel/Render), or proxy addresses/CIDRs.
+   */
+  TRUST_PROXY: z
+    .string()
+    .default('false')
+    .transform((value, ctx) => {
+      try {
+        return parseTrustProxy(value);
+      } catch (error) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: error instanceof Error ? error.message : 'invalid' });
+        return z.NEVER;
+      }
+    }),
+  /** Upper bound for any single request the API makes to Supabase (PostgREST, Auth). */
+  SUPABASE_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).default(15_000),
+  /** Upper bound for Supabase Storage requests, which move whole files. */
+  SUPABASE_STORAGE_TIMEOUT_MS: z.coerce.number().int().min(1000).default(60_000),
 
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
   /**

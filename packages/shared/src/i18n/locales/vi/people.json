@@ -19,7 +19,11 @@
     "sendInvite": "Gửi lời mời",
     "resendInvite": "Gửi lại lời mời",
     "addDetails": "Thêm thông tin",
-    "empty": "Chưa có ai ở đây"
+    "empty": "Chưa có ai ở đây",
+    "searchLabel": "Tìm người",
+    "searchPlaceholder": "Tìm theo tên, email, số điện thoại hoặc cơ sở",
+    "noMatch": "Không có ai khớp với tìm kiếm này.",
+    "loadMore": "Tải thêm người"
   },
   "person": {
     "addTitle": "Thêm thành viên",

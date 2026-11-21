@@ -56,6 +56,10 @@ result format in §12). Past runs: `docs/qa/runs/<date>-wave<N>/` — always rea
   Overlapping runs are safe (SKIP LOCKED) but change other agents' job states.
 - **Servers:** agents must not restart :4000/:5173 or Metro. If a server dies they stop and report;
   the coordinator restarts it (`preview_start`) and resumes them with `SendMessage`.
+- **Private instances / ports:** give each agent its own port range for private API instances,
+  proxies and fakes (e.g. agent 1 → 4610–4619, agent 2 → 4620–4629). Agents stop processes
+  only by the PID listening on their own ports — **never `pkill`/`killall` by name**:
+  `pkill -f "tsx.*src/index.ts"` also kills the shared :4000 (happened in wave 8).
 - **No implementation changes** by testing agents. No edits outside their report file.
 
 ## 3. Spawn agents

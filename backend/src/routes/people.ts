@@ -6,7 +6,9 @@ import {
   invitePersonSchema,
   isAdmin,
   listPeopleQuerySchema,
+  listPeoplePageQuerySchema,
   type ListPeopleQuery,
+  type ListPeoplePageQuery,
   personTagsSchema,
   updateMemberSchema,
   updatePersonSchema,
@@ -21,10 +23,11 @@ import {
   type ProfileRow,
   type PublicProfileRow,
 } from '@service-center/shared';
+import { fetchAllPages } from '../lib/paging.js';
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireAdmin, requireCapability } from '../middleware/organization.js';
-import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { raw, unwrap, unwrapDeleted, unwrapOne } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { issuePersonInvitation } from '../services/person-invitations.js';
 import {
@@ -37,7 +40,8 @@ import {
   type ActiveMemberRow,
   type RosterPersonRecord,
 } from '../model/people.js';
-import { NO_CONTACT, contactsFor } from '../services/contacts.js';
+import { contactsFor, NO_CONTACT } from '../services/contacts.js';
+import { listPeoplePage, toActiveMembers, type MemberWithPublicProfile, type PeoplePageCaller } from '../services/people-page.js';
 
 export const peopleRouter: Router = Router();
 
@@ -89,9 +93,12 @@ const loadPersonDetail = async (req: Request, selected: PersonSelectableRow): Pr
   return toPersonDetail(person, profile, membership, pendingInvitation, !isAdmin(req.orgRole));
 };
 
-interface MemberWithPublicProfile extends Omit<ActiveMemberRow, 'profile'> {
-  profile: PublicProfileRow;
-}
+const callerOf = (req: Request): PeoplePageCaller => ({
+  db: req.db,
+  orgId: req.orgId,
+  userId: req.auth.userId,
+  canReadPrivate: canReadPrivate(req),
+});
 
 /**
  * Everyone in the active organization: has-login members plus no-login roster
@@ -100,29 +107,32 @@ interface MemberWithPublicProfile extends Omit<ActiveMemberRow, 'profile'> {
  */
 peopleRouter.get('/', validateQuery(listPeopleQuerySchema), async (req, res) => {
   const { include_archived } = parsedQuery<ListPeopleQuery>(res);
-  const rawMembers = (await unwrap(
-    raw(req.db)
-      .from('organization_members')
-      .select(`role, status, profile:profiles(${PUBLIC_PROFILE_COLUMNS})`)
-      .eq('organization_id', req.orgId)
-      .neq('status', 'inactive'),
-  )) as unknown as MemberWithPublicProfile[];
-  const contacts = await contactsFor(req.db, req.orgId, rawMembers.map((member) => member.profile?.id).filter(Boolean));
-  const members: ActiveMemberRow[] = rawMembers
-    .filter((member) => member.profile)
-    .map((member) => ({
-      ...member,
-      profile: {
-        ...member.profile,
-        ...(canReadPrivate(req) || member.profile.id === req.auth.userId
-          ? contacts.get(member.profile.id) ?? NO_CONTACT
-          : NO_CONTACT),
-      },
-    }));
+  const rawMembers = await fetchAllPages(
+    async (from, to) =>
+      (await unwrap(
+        raw(req.db)
+          .from('organization_members')
+          .select(`role, status, profile:profiles(${PUBLIC_PROFILE_COLUMNS})`)
+          .eq('organization_id', req.orgId)
+          .neq('status', 'inactive')
+          .order('id')
+          .range(from, to),
+      )) as unknown as MemberWithPublicProfile[] | null,
+  );
+  const members = await toActiveMembers(callerOf(req), rawMembers);
 
   const people: RosterPersonRecord[] = canReadPrivate(req)
-    ? ((await unwrap(raw(req.db).from('people').select(PERSON_COLUMNS).eq('organization_id', req.orgId))) as unknown as RosterPersonRecord[])
-    : ((await unwrap(req.db.from('people_directory').select('*').eq('organization_id', req.orgId))) ?? []).map((row) => ({
+    ? await fetchAllPages(
+        async (from, to) =>
+          (await unwrap(
+            raw(req.db).from('people').select(PERSON_COLUMNS).eq('organization_id', req.orgId).order('id').range(from, to),
+          )) as unknown as RosterPersonRecord[] | null,
+      )
+    : (
+        await fetchAllPages(async (from, to) =>
+          unwrap(req.db.from('people_directory').select('*').eq('organization_id', req.orgId).order('id').range(from, to)),
+        )
+      ).map((row) => ({
         ...row,
         email: null,
         phone: null,
@@ -139,6 +149,14 @@ peopleRouter.get('/', validateQuery(listPeopleQuerySchema), async (req, res) => 
   );
 
   res.json(mergeRoster(members, people ?? [], pendingInvitations ?? [], include_archived));
+});
+
+/**
+ * Keyset-paged People list for the list screens (the pickers keep using the
+ * complete GET /). Same visibility as GET /: members see the directory.
+ */
+peopleRouter.get('/page', validateQuery(listPeoplePageQuerySchema), async (req, res) => {
+  res.json(await listPeoplePage(callerOf(req), parsedQuery<ListPeoplePageQuery>(res)));
 });
 
 // The public directory above is available to members; every personal-detail
@@ -342,12 +360,14 @@ peopleRouter.delete('/members/:userId', requireAdmin, async (req, res) => {
   if (param(req, 'userId') === req.auth.userId) {
     throw HttpError.badRequest('You cannot remove yourself from the organization');
   }
-  await unwrap(
+  await unwrapDeleted(
     req.db
       .from('organization_members')
       .delete()
       .eq('organization_id', req.orgId)
-      .eq('user_id', param(req, 'userId')),
+      .eq('user_id', param(req, 'userId'))
+      .select('user_id'),
+    'That person is not a member of this organization',
   );
   res.status(204).end();
 });
