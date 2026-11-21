@@ -229,6 +229,12 @@ export const queryKeys = {
   /** Server-searched People pages for a picker (team add, item leader); under `people`, so roster writes refresh it. */
   peoplePicker: (scope: ProtectedQueryScope | null, q: string) =>
     [...privateRoot(scope), 'people', 'picker-page', q] as const,
+  /** Schedule people: keyset pages for one scope (a team's members or everyone) and search; under `people`. */
+  peopleSchedulePage: (scope: ProtectedQueryScope | null, teamId: string | null, q: string) =>
+    [...privateRoot(scope), 'people', 'schedule-page', teamId, q] as const,
+  /** How many people a scope holds (a team's members, or everyone when null); under `people`. */
+  peopleCount: (scope: ProtectedQueryScope | null, teamId: string | null) =>
+    [...privateRoot(scope), 'people', 'count', teamId] as const,
   /** MOB-031: the directory with or without archived people; invalidate `people` after any roster write. */
   directory: (scope: ProtectedQueryScope | null, includeArchived: boolean) =>
     [...privateRoot(scope), 'people', 'directory', includeArchived] as const,

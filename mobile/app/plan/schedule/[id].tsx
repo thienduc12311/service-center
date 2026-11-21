@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Switch, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
   ApiError,
@@ -17,21 +18,44 @@ import {
 import { api } from '../../../src/lib/api';
 import { queryKeys } from '../../../src/lib/query-keys';
 import { useAuth } from '../../../src/providers/AuthProvider';
-import { Avatar, Button, Card, Chip, ErrorNotice, Field, Label, Loading, Screen, Tag, screenPadding } from '../../../src/components/ui';
+import { Avatar, Button, Card, ErrorNotice, Field, Label, Loading, Screen, SegmentedControl, Tag, screenPadding } from '../../../src/components/ui';
 import { PressableScale } from '../../../src/components/motion';
+import { Icon } from '../../../src/components/icons';
+import { SearchField } from '../../../src/components/SearchField';
+import { SearchableOptionPicker } from '../../../src/components/SearchableOptionSheet';
+import { useDebouncedValue } from '../../../src/hooks/useDebouncedValue';
 import {
   ALL_TIMES,
+  POSITION_CHIP_LIMIT,
   blockingConflicts,
   canCommitSchedule,
   createAssignmentsBody,
+  defaultPeopleScope,
   isScopeComplete,
-  scheduleCandidates,
+  schedulePeopleQuery,
+  schedulePersonRows,
+  schedulePositionOptions,
+  teamMemberCount,
   toggleScopeTime,
+  toggleSelectedPerson,
+  type PeopleScope,
+  type SchedulePersonRow,
+  type SelectedPerson,
   type TimeScope,
 } from '../../../src/lib/schedule-people';
+import type { SearchableOption } from '../../../src/lib/option-groups';
 import { type Theme } from '../../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
 import { useFormatters, useLanguage } from '../../../src/i18n';
+
+/** Teams up to this many stay chips; more open a searchable list (review §3.3). */
+const TEAM_CHIP_LIMIT = 10;
+
+/** Route params: the plan, and optionally the team to start on. */
+type ScheduleParams = {
+  id: string;
+  teamId?: string;
+};
 
 /**
  * MOB-008 Pass B: "Schedule people" for one plan, mirroring the website's
@@ -39,9 +63,13 @@ import { useFormatters, useLanguage } from '../../../src/i18n';
  * prepare-privately, delivery readiness, conflicts (rechecked by the server at
  * commit) and preference warnings. Creating a plan-only position or a new
  * Person stays on the website (outside initial native parity).
+ *
+ * Large-list review §3.3: people come a server page at a time — the chosen
+ * team's members by default, or everyone — searched on the server; the
+ * people ticked stay pinned as chips whatever the search shows.
  */
 export default function SchedulePeopleScreen() {
-  const { id: planId, teamId: initialTeamId } = useLocalSearchParams<{ id: string; teamId?: string }>();
+  const { id: planId, teamId: initialTeamId } = useLocalSearchParams<ScheduleParams>();
   const { t, i18n } = useTranslation(['staffing', 'reports', 'common']);
   const format = useFormatters();
   const { locale } = useLanguage();
@@ -50,6 +78,7 @@ export default function SchedulePeopleScreen() {
   const queryClient = useQueryClient();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
   const structured = useMemo<StructuredTextContext>(
     () => ({ locale, translate: (message) => translateMessage(i18n, message) }),
     [i18n, locale],
@@ -65,12 +94,6 @@ export default function SchedulePeopleScreen() {
     queryFn: () => api.listTeams(),
     enabled: Boolean(queryScope),
   });
-  const people = useQuery({
-    queryKey: queryKeys.people(queryScope),
-    queryFn: () => api.listPeople(),
-    enabled: Boolean(queryScope),
-  });
-
   const serviceTypeId = plan.data?.service_type_id ?? null;
   // Only the teams this person may schedule on this plan; the server refuses the rest.
   const teams = (allTeams.data ?? []).filter((item) =>
@@ -78,8 +101,11 @@ export default function SchedulePeopleScreen() {
 
   const [teamId, setTeamId] = useState(initialTeamId ?? '');
   const [positionId, setPositionId] = useState<string | null>(null);
-  const [filter, setFilter] = useState('');
-  const [selected, setSelected] = useState<string[]>([]);
+  const [peopleScope, setPeopleScope] = useState<PeopleScope>(() => defaultPeopleScope(initialTeamId ?? ''));
+  const [search, setSearch] = useState('');
+  const settledSearch = useDebouncedValue(search.trim());
+  const [chosen, setChosen] = useState<SelectedPerson[]>([]);
+  const selected = useMemo(() => chosen.map((entry) => entry.personId), [chosen]);
   const [scope, setScope] = useState<TimeScope>(ALL_TIMES);
   /** Conflicts the server reported at commit time (e.g. someone else got there first). */
   const [commitConflicts, setCommitConflicts] = useState<AttendanceConflict[] | null>(null);
@@ -89,8 +115,30 @@ export default function SchedulePeopleScreen() {
   const [overrideReason, setOverrideReason] = useState('');
 
   const team = teams.find((item) => item.id === teamId);
-  const planPositions = (plan.data?.plan_positions ?? []).filter((position) => position.team_id === teamId);
   const sortedPeople = [...selected].sort();
+
+  // One server page of People at a time for the scope and (debounced) search.
+  const listTeamId = peopleScope === 'team' && teamId ? teamId : null;
+  const people = useInfiniteQuery({
+    queryKey: queryKeys.peopleSchedulePage(queryScope, listTeamId, settledSearch),
+    queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
+      api.listPeoplePage(schedulePeopleQuery({ scope: peopleScope, teamId, search: settledSearch, cursor: pageParam })),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    enabled: Boolean(queryScope),
+    placeholderData: keepPreviousData,
+  });
+  // The toggle's honest counts, independent of the search.
+  const teamCount = useQuery({
+    queryKey: queryKeys.peopleCount(queryScope, teamId || null),
+    queryFn: () => api.listPeoplePage({ limit: 1, team_id: teamId }),
+    enabled: Boolean(queryScope && teamId),
+  });
+  const everyoneCount = useQuery({
+    queryKey: queryKeys.peopleCount(queryScope, null),
+    queryFn: () => api.listPeoplePage({ limit: 1 }),
+    enabled: Boolean(queryScope && teamId),
+  });
 
   // F04: advisory preview; the server re-checks at commit.
   const conflictCheck = useQuery({
@@ -163,14 +211,41 @@ export default function SchedulePeopleScreen() {
     },
   });
 
-  const candidates = useMemo(() => scheduleCandidates(people.data ?? [], team, filter), [people.data, team, filter]);
+  const rows = useMemo(
+    () => schedulePersonRows({
+      people: people.data?.pages.flatMap((page) => page.items) ?? [],
+      team,
+      assignments: plan.data?.assignments ?? [],
+      unnamed: t('common:states.unknown'),
+    }),
+    [people.data, plan.data?.assignments, t, team],
+  );
   const nameOf = (personId: string): string =>
-    people.data?.find((person) => person.person_id === personId)?.full_name ?? t('common:fallback.someone');
+    chosen.find((entry) => entry.personId === personId)?.name ?? t('common:fallback.someone');
 
-  const toggle = (personId: string) => {
+  const toggle = (person: SelectedPerson) => {
     setCommitConflicts(null);
-    setSelected((current) => current.includes(personId) ? current.filter((value) => value !== personId) : [...current, personId]);
+    setChosen((current) => toggleSelectedPerson(current, person));
   };
+
+  const chooseTeam = (nextTeamId: string) => {
+    setTeamId(nextTeamId);
+    setPositionId(null);
+    setCommitConflicts(null);
+    // Team members are the likely answers once a team is chosen.
+    setPeopleScope(defaultPeopleScope(nextTeamId));
+  };
+  const teamOptions = useMemo<SearchableOption[]>(
+    () => teams.map((item) => ({ value: item.id, label: item.name })),
+    [teams],
+  );
+  const positionOptions = useMemo(
+    () => schedulePositionOptions(team, plan.data?.plan_positions ?? [], {
+      planPosition: (position) => t('schedulePeople.planPositionShort', { position }),
+      planOnlyGroup: t('schedulePeople.planOnlyGroup'),
+    }),
+    [plan.data?.plan_positions, t, team],
+  );
 
   const conflictWindow = (conflict: AttendanceConflict): string => {
     const values = {
@@ -215,240 +290,311 @@ export default function SchedulePeopleScreen() {
       ? t(visibility === 'prepared' ? 'schedulePeople.prepare' : 'schedulePeople.schedule')
       : t(visibility === 'prepared' ? 'schedulePeople.prepareCount' : 'schedulePeople.scheduleCount', { count: selected.length });
 
+  const teamTotal = teamCount.data?.total ?? teamMemberCount(team);
+  const everyoneTotal = everyoneCount.data?.total;
+  const scopeOptions = [
+    { value: 'team' as const, label: t('schedulePeople.scopeTeam', { count: teamTotal }) },
+    {
+      value: 'everyone' as const,
+      label: everyoneTotal === undefined
+        ? t('schedulePeople.scopeEveryonePlain')
+        : t('schedulePeople.scopeEveryone', { count: everyoneTotal }),
+    },
+  ];
+  const peopleFailed = Boolean(people.error && !people.data);
+
+  const header = (
+    <View style={styles.gap}>
+      <Card>
+        <Label>{t('schedulePeople.team')}</Label>
+        <SearchableOptionPicker
+          title={t('schedulePeople.team')}
+          options={teamOptions}
+          selected={teamId ? [teamId] : []}
+          mode="single"
+          chipLimit={TEAM_CHIP_LIMIT}
+          chooseLabel={t('schedulePeople.chooseTeam')}
+          searchPlaceholder={t('schedulePeople.searchTeams')}
+          onChange={(next) => chooseTeam(next[0] ?? '')}
+        />
+        {teams.length === 0 ? <Text style={styles.muted}>{t('schedulePeople.chooseTeam')}</Text> : null}
+      </Card>
+
+      {team ? (
+        <Card>
+          <Label>{t('schedulePeople.position')}</Label>
+          <SearchableOptionPicker
+            title={t('schedulePeople.position')}
+            options={positionOptions}
+            selected={positionId ? [positionId] : []}
+            mode="single"
+            chipLimit={POSITION_CHIP_LIMIT}
+            emptyOptionLabel={t('schedulePeople.noSpecificPosition')}
+            searchPlaceholder={t('schedulePeople.searchPositions')}
+            onChange={(next) => {
+              setCommitConflicts(null);
+              setPositionId(next[0] ?? null);
+            }}
+          />
+        </Card>
+      ) : null}
+
+      {team ? (
+        <Card>
+          <Label>{t('reports:attendance.scope.legend')}</Label>
+          {times.length === 0 ? (
+            <Text style={styles.warn}>{t('reports:attendance.scope.noTimes')}</Text>
+          ) : (
+            <>
+              <Choice
+                label={t('reports:attendance.scope.all')}
+                hint={t('reports:attendance.scope.allHint')}
+                checked={scope.mode === 'all'}
+                onPress={() => { setCommitConflicts(null); setScope(ALL_TIMES); }}
+              />
+              <Choice
+                label={t('reports:attendance.scope.selected')}
+                hint={t('reports:attendance.scope.selectedHint')}
+                checked={scope.mode === 'selected'}
+                onPress={() => { setCommitConflicts(null); setScope({ mode: 'selected', timeIds: scope.timeIds }); }}
+              />
+              {scope.mode === 'selected' ? (
+                <View style={styles.indent}>
+                  {times.map((time) => (
+                    <Choice
+                      key={time.id}
+                      box
+                      label={timeLabel(time)}
+                      checked={scope.timeIds.includes(time.id)}
+                      onPress={() => { setCommitConflicts(null); setScope(toggleScopeTime(scope, time.id)); }}
+                    />
+                  ))}
+                  {scope.timeIds.length === 0 ? <Text style={styles.warn}>{t('reports:attendance.scope.chooseOne')}</Text> : null}
+                </View>
+              ) : null}
+            </>
+          )}
+        </Card>
+      ) : null}
+
+      <View style={styles.peopleHead}>
+        <Label>{t('schedulePeople.people')}</Label>
+        {team ? (
+          <View accessibilityLabel={t('schedulePeople.scopeLabel')}>
+            <SegmentedControl<PeopleScope> options={scopeOptions} value={peopleScope} onChange={setPeopleScope} />
+          </View>
+        ) : null}
+        {chosen.length ? (
+          <View style={styles.selectedChips}>
+            {chosen.map((entry) => (
+              <PressableScale
+                key={entry.personId}
+                accessibilityRole="button"
+                accessibilityLabel={t('schedulePeople.removeSelected', { name: entry.name })}
+                onPress={() => toggle(entry)}
+                pressedOpacity={0.6}
+                style={styles.selectedChip}
+              >
+                <Text style={styles.selectedChipLabel} numberOfLines={1}>{entry.name}</Text>
+                <Icon name="close" size={13} color={theme.color.onBrand} strokeWidth={2.4} />
+              </PressableScale>
+            ))}
+          </View>
+        ) : null}
+        <View style={styles.searchRow}>
+          <SearchField
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('schedulePeople.findPerson')}
+            style={styles.flex}
+          />
+          {people.isPlaceholderData && people.isFetching ? <ActivityIndicator size="small" color={theme.color.inkFaint} /> : null}
+        </View>
+        {peopleFailed ? (
+          <View style={styles.gapSmall}>
+            <ErrorNotice error={people.error} />
+            <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void people.refetch()} />
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+
+  const footer = (
+    <View style={styles.gap}>
+      {people.isFetchingNextPage ? (
+        <Loading label={t('schedulePeople.loadingMore')} />
+      ) : people.isFetchNextPageError ? (
+        <View style={styles.gapSmall}>
+          <Text style={styles.muted}>{t('schedulePeople.loadMoreFailed')}</Text>
+          <Button title={t('common:actions.retry')} variant="secondary" onPress={() => void people.fetchNextPage()} />
+        </View>
+      ) : null}
+
+      <Card>
+        <View style={styles.switchRow}>
+          <View style={styles.flex}>
+            <Text style={styles.body}>{t('schedulePeople.preparePrivately')}</Text>
+            <Text style={styles.muted}>{t('schedulePeople.preparePrivatelyHint')}</Text>
+          </View>
+          <Switch
+            accessibilityLabel={t('schedulePeople.preparePrivately')}
+            value={visibility === 'prepared'}
+            onValueChange={(value) => setVisibilityChoice(value ? 'prepared' : 'released')}
+          />
+        </View>
+      </Card>
+
+      {visibility === 'released' && unreachable.length > 0 ? (
+        <Card>
+          <Text style={styles.warnTitle}>{t('schedulePeople.unreachableTitle')}</Text>
+          <Text style={styles.muted}>
+            {t('schedulePeople.unreachableBody', {
+              count: unreachable.length,
+              names: format.list(unreachable.map((entry) => nameOf(entry.person_id))),
+            })}
+          </Text>
+        </Card>
+      ) : null}
+
+      {blocking.length > 0 ? (
+        <Card>
+          <Text accessibilityRole="alert" style={styles.warnTitle}>{t('reports:attendance.conflicts.blockingTitle')}</Text>
+          {blocking.map((conflict, index) => (
+            <Text key={`${conflict.candidate_key}-${conflict.starts_at}-${index}`} style={styles.muted}>
+              {conflict.kind === 'overlapping_commitment'
+                ? t('reports:attendance.conflicts.overlapping', { name: nameOf(conflict.person_id), detail: conflictDetail(conflict), window: conflictWindow(conflict) })
+                : t('reports:attendance.conflicts.blockout', { name: nameOf(conflict.person_id), window: conflictWindow(conflict) })}
+            </Text>
+          ))}
+          {mayOverride ? (
+            <Field
+              accessibilityLabel={t('schedulePeople.conflictReasonLabel')}
+              placeholder={t('schedulePeople.conflictReasonPlaceholder')}
+              maxLength={500}
+              value={conflictReason}
+              onChangeText={setConflictReason}
+            />
+          ) : (
+            <Text style={styles.muted}>{t('schedulePeople.cannotOverride')}</Text>
+          )}
+        </Card>
+      ) : null}
+
+      {warningItems.length > 0 ? (
+        <Card>
+          <Text style={styles.body}>{t('reports:attendance.conflicts.warningTitle')}</Text>
+          {warningItems.map((conflict, index) => (
+            <Text key={`${conflict.candidate_key}-${conflict.starts_at}-${index}`} style={styles.muted}>
+              {t('reports:attendance.conflicts.samePlan', { name: nameOf(conflict.person_id), detail: conflictDetail(conflict), window: conflictWindow(conflict) })}
+            </Text>
+          ))}
+          <Text style={styles.muted}>{t('reports:attendance.conflicts.warningHint')}</Text>
+        </Card>
+      ) : null}
+
+      {warningsByPerson.size > 0 ? (
+        <Card>
+          <Text style={styles.body}>{t('schedulePeople.preferencesTitle')}</Text>
+          <Text style={styles.muted}>{t('schedulePeople.preferencesHint')}</Text>
+          {[...warningsByPerson.entries()].map(([personId, list]) => (
+            <Text key={personId} style={styles.muted}>
+              <Text style={styles.strong}>{nameOf(personId)}</Text>
+              {' — '}
+              {list
+                .map((warning) =>
+                  warning.code === 'busy_elsewhere'
+                    ? t(`preferenceWarning.${warning.code}`)
+                    : t('schedulePeople.warningWithDetail', { label: t(`preferenceWarning.${warning.code}`), detail: preferenceWarningText(warning, structured) }))
+                .join(t('schedulePeople.warningSeparator'))}
+            </Text>
+          ))}
+          {hasPreferenceWarnings ? (
+            <Field
+              accessibilityLabel={t('schedulePeople.preferenceReasonLabel')}
+              placeholder={t('schedulePeople.preferenceReasonPlaceholder')}
+              maxLength={500}
+              value={overrideReason}
+              onChangeText={setOverrideReason}
+            />
+          ) : null}
+        </Card>
+      ) : null}
+
+      {schedule.error && !(schedule.error instanceof ApiError && schedule.error.code === 'scheduling_conflict') ? (
+        <ErrorNotice error={schedule.error} />
+      ) : null}
+    </View>
+  );
+
   return (
     <Screen>
       <Stack.Screen options={{ title: t('schedulePeople.title') }} />
-      <ScrollView contentContainerStyle={[screenPadding(theme), styles.gap]} keyboardShouldPersistTaps="handled">
-        <Card>
-          <Label>{t('schedulePeople.team')}</Label>
-          <View style={styles.chips}>
-            {teams.map((item) => (
-              <Chip
-                key={item.id}
-                label={item.name}
-                active={item.id === teamId}
-                onPress={() => {
-                  setTeamId(item.id);
-                  setPositionId(null);
-                  setCommitConflicts(null);
-                }}
-              />
-            ))}
-          </View>
-          {teams.length === 0 ? <Text style={styles.muted}>{t('schedulePeople.chooseTeam')}</Text> : null}
-        </Card>
-
-        {team ? (
-          <Card>
-            <Label>{t('schedulePeople.position')}</Label>
-            <View style={styles.chips}>
-              <Chip
-                label={t('schedulePeople.noSpecificPosition')}
-                active={positionId === null}
-                onPress={() => { setCommitConflicts(null); setPositionId(null); }}
-              />
-              {team.positions.map((position) => (
-                <Chip
-                  key={position.id}
-                  label={position.name}
-                  active={positionId === position.id}
-                  onPress={() => { setCommitConflicts(null); setPositionId(position.id); }}
-                />
-              ))}
-            </View>
-            {planPositions.length ? (
-              <>
-                <Text style={styles.muted}>{t('schedulePeople.planOnlyGroup')}</Text>
-                <View style={styles.chips}>
-                  {planPositions.map((position) => (
-                    <Chip
-                      key={position.id}
-                      label={position.name}
-                      active={positionId === position.id}
-                      onPress={() => { setCommitConflicts(null); setPositionId(position.id); }}
-                    />
-                  ))}
-                </View>
-              </>
-            ) : null}
-          </Card>
-        ) : null}
-
-        {team ? (
-          <Card>
-            <Label>{t('reports:attendance.scope.legend')}</Label>
-            {times.length === 0 ? (
-              <Text style={styles.warn}>{t('reports:attendance.scope.noTimes')}</Text>
-            ) : (
-              <>
-                <Choice
-                  label={t('reports:attendance.scope.all')}
-                  hint={t('reports:attendance.scope.allHint')}
-                  checked={scope.mode === 'all'}
-                  onPress={() => { setCommitConflicts(null); setScope(ALL_TIMES); }}
-                />
-                <Choice
-                  label={t('reports:attendance.scope.selected')}
-                  hint={t('reports:attendance.scope.selectedHint')}
-                  checked={scope.mode === 'selected'}
-                  onPress={() => { setCommitConflicts(null); setScope({ mode: 'selected', timeIds: scope.timeIds }); }}
-                />
-                {scope.mode === 'selected' ? (
-                  <View style={styles.indent}>
-                    {times.map((time) => (
-                      <Choice
-                        key={time.id}
-                        box
-                        label={timeLabel(time)}
-                        checked={scope.timeIds.includes(time.id)}
-                        onPress={() => { setCommitConflicts(null); setScope(toggleScopeTime(scope, time.id)); }}
-                      />
-                    ))}
-                    {scope.timeIds.length === 0 ? <Text style={styles.warn}>{t('reports:attendance.scope.chooseOne')}</Text> : null}
-                  </View>
-                ) : null}
-              </>
-            )}
-          </Card>
-        ) : null}
-
-        <Card>
-          <Label>{t('schedulePeople.people')}</Label>
-          <Field
-            accessibilityLabel={t('schedulePeople.findPerson')}
-            placeholder={t('schedulePeople.findPerson')}
-            value={filter}
-            onChangeText={setFilter}
-            autoCorrect={false}
-          />
-          {people.isLoading ? <Loading /> : null}
-          <ErrorNotice error={people.error} />
-          {candidates.map(({ person, personId, onTeam }) => {
-            const name = person.full_name ?? person.email ?? t('common:states.unknown');
-            const checked = selected.includes(personId);
-            return (
-              <PressableScale
-                key={personId}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked }}
-                onPress={() => toggle(personId)}
-                pressedOpacity={0.6}
-                style={styles.personRow}
-              >
-                <View style={[styles.box, checked && styles.boxOn]}>{checked ? <Text style={styles.tick}>✓</Text> : null}</View>
-                <Avatar name={name} size={32} />
-                <Text style={[styles.body, styles.flex]} numberOfLines={1}>{name}</Text>
-                {!person.has_login ? <Text style={styles.muted}>{t('schedulePeople.noLogin')}</Text> : null}
-                {onTeam ? <Tag label={t('schedulePeople.onTeam')} accent={theme.accent.blue} /> : null}
-              </PressableScale>
-            );
-          })}
-        </Card>
-
-        <Card>
-          <View style={styles.switchRow}>
-            <View style={styles.flex}>
-              <Text style={styles.body}>{t('schedulePeople.preparePrivately')}</Text>
-              <Text style={styles.muted}>{t('schedulePeople.preparePrivatelyHint')}</Text>
-            </View>
-            <Switch
-              accessibilityLabel={t('schedulePeople.preparePrivately')}
-              value={visibility === 'prepared'}
-              onValueChange={(value) => setVisibilityChoice(value ? 'prepared' : 'released')}
-            />
-          </View>
-        </Card>
-
-        {visibility === 'released' && unreachable.length > 0 ? (
-          <Card>
-            <Text style={styles.warnTitle}>{t('schedulePeople.unreachableTitle')}</Text>
-            <Text style={styles.muted}>
-              {t('schedulePeople.unreachableBody', {
-                count: unreachable.length,
-                names: format.list(unreachable.map((entry) => nameOf(entry.person_id))),
-              })}
+      <FlatList<SchedulePersonRow>
+        data={peopleFailed ? [] : rows}
+        keyExtractor={(row) => row.personId}
+        contentContainerStyle={[screenPadding(theme), styles.list]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        onEndReachedThreshold={0.5}
+        onEndReached={() => {
+          if (people.hasNextPage && !people.isFetchingNextPage && !people.isFetchNextPageError) void people.fetchNextPage();
+        }}
+        ListHeaderComponent={header}
+        ListHeaderComponentStyle={styles.listHead}
+        ListFooterComponent={footer}
+        ListFooterComponentStyle={styles.listFoot}
+        ListEmptyComponent={
+          people.isLoading ? (
+            <Loading />
+          ) : peopleFailed ? null : (
+            <Text style={styles.empty}>
+              {listTeamId && !settledSearch ? t('schedulePeople.noTeamMembers') : t('schedulePeople.noMatches')}
             </Text>
-          </Card>
-        ) : null}
-
-        {blocking.length > 0 ? (
-          <Card>
-            <Text accessibilityRole="alert" style={styles.warnTitle}>{t('reports:attendance.conflicts.blockingTitle')}</Text>
-            {blocking.map((conflict, index) => (
-              <Text key={`${conflict.candidate_key}-${conflict.starts_at}-${index}`} style={styles.muted}>
-                {conflict.kind === 'overlapping_commitment'
-                  ? t('reports:attendance.conflicts.overlapping', { name: nameOf(conflict.person_id), detail: conflictDetail(conflict), window: conflictWindow(conflict) })
-                  : t('reports:attendance.conflicts.blockout', { name: nameOf(conflict.person_id), window: conflictWindow(conflict) })}
-              </Text>
-            ))}
-            {mayOverride ? (
-              <Field
-                accessibilityLabel={t('schedulePeople.conflictReasonLabel')}
-                placeholder={t('schedulePeople.conflictReasonPlaceholder')}
-                maxLength={500}
-                value={conflictReason}
-                onChangeText={setConflictReason}
-              />
-            ) : (
-              <Text style={styles.muted}>{t('schedulePeople.cannotOverride')}</Text>
-            )}
-          </Card>
-        ) : null}
-
-        {warningItems.length > 0 ? (
-          <Card>
-            <Text style={styles.body}>{t('reports:attendance.conflicts.warningTitle')}</Text>
-            {warningItems.map((conflict, index) => (
-              <Text key={`${conflict.candidate_key}-${conflict.starts_at}-${index}`} style={styles.muted}>
-                {t('reports:attendance.conflicts.samePlan', { name: nameOf(conflict.person_id), detail: conflictDetail(conflict), window: conflictWindow(conflict) })}
-              </Text>
-            ))}
-            <Text style={styles.muted}>{t('reports:attendance.conflicts.warningHint')}</Text>
-          </Card>
-        ) : null}
-
-        {warningsByPerson.size > 0 ? (
-          <Card>
-            <Text style={styles.body}>{t('schedulePeople.preferencesTitle')}</Text>
-            <Text style={styles.muted}>{t('schedulePeople.preferencesHint')}</Text>
-            {[...warningsByPerson.entries()].map(([personId, list]) => (
-              <Text key={personId} style={styles.muted}>
-                <Text style={styles.strong}>{nameOf(personId)}</Text>
-                {' — '}
-                {list
-                  .map((warning) =>
-                    warning.code === 'busy_elsewhere'
-                      ? t(`preferenceWarning.${warning.code}`)
-                      : t('schedulePeople.warningWithDetail', { label: t(`preferenceWarning.${warning.code}`), detail: preferenceWarningText(warning, structured) }))
-                  .join(t('schedulePeople.warningSeparator'))}
-              </Text>
-            ))}
-            {hasPreferenceWarnings ? (
-              <Field
-                accessibilityLabel={t('schedulePeople.preferenceReasonLabel')}
-                placeholder={t('schedulePeople.preferenceReasonPlaceholder')}
-                maxLength={500}
-                value={overrideReason}
-                onChangeText={setOverrideReason}
-              />
-            ) : null}
-          </Card>
-        ) : null}
-
-        {schedule.error && !(schedule.error instanceof ApiError && schedule.error.code === 'scheduling_conflict') ? (
-          <ErrorNotice error={schedule.error} />
-        ) : null}
-
-        <View style={styles.actions}>
-          <Button title={t('common:actions.cancel')} variant="secondary" onPress={() => router.back()} />
-          <Button
-            title={commitTitle}
-            loading={schedule.isPending}
-            disabled={!commitEnabled || schedule.isPending}
-            onPress={() => schedule.mutate()}
-          />
-        </View>
-      </ScrollView>
+          )
+        }
+        renderItem={({ item }) => {
+          const checked = selected.includes(item.personId);
+          return (
+            <PressableScale
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked }}
+              accessibilityLabel={[
+                item.name,
+                item.onPlan ? t('schedulePeople.onPlan') : null,
+                item.onTeam ? t('schedulePeople.onTeam') : null,
+                item.noLogin ? t('schedulePeople.noLogin') : null,
+              ].filter(Boolean).join(', ')}
+              onPress={() => toggle({ personId: item.personId, name: item.name })}
+              pressedOpacity={0.6}
+              style={styles.personRow}
+            >
+              <View style={[styles.box, checked && styles.boxOn]}>{checked ? <Text style={styles.tick}>✓</Text> : null}</View>
+              <Avatar name={item.name} url={item.avatarUrl} size={32} />
+              <View style={styles.flex}>
+                <Text style={styles.body} numberOfLines={1}>{item.name}</Text>
+                {item.onPlan || item.noLogin ? (
+                  <Text style={styles.muted} numberOfLines={1}>
+                    {[item.onPlan ? t('schedulePeople.onPlan') : null, item.noLogin ? t('schedulePeople.noLogin') : null]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                ) : null}
+              </View>
+              {item.onTeam && peopleScope === 'everyone' ? <Tag label={t('schedulePeople.onTeam')} accent={theme.accent.blue} /> : null}
+            </PressableScale>
+          );
+        }}
+      />
+      <View style={[styles.actions, { paddingBottom: insets.bottom + theme.space.md }]}>
+        <Button title={t('common:actions.cancel')} variant="secondary" onPress={() => router.back()} />
+        <Button
+          title={commitTitle}
+          loading={schedule.isPending}
+          disabled={!commitEnabled || schedule.isPending}
+          onPress={() => schedule.mutate()}
+        />
+      </View>
     </Screen>
   );
 }
@@ -487,15 +633,41 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
     gap: { gap: theme.space.lg },
+    gapSmall: { gap: theme.space.sm },
+    list: { gap: 0 },
+    listHead: { marginBottom: theme.space.sm },
+    listFoot: { marginTop: theme.space.lg },
+    peopleHead: { gap: theme.space.sm },
+    searchRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
+    empty: { ...theme.type.bodySmall, color: theme.color.inkMuted, paddingVertical: theme.space.lg, textAlign: 'center' },
+    selectedChips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.xs },
+    selectedChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      maxWidth: '100%',
+      minHeight: 32,
+      paddingHorizontal: theme.space.md,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.color.brand,
+    },
+    selectedChipLabel: { ...theme.type.label, color: theme.color.onBrand, flexShrink: 1 },
     body: { ...theme.type.body, color: theme.color.ink },
     strong: { fontWeight: '600', color: theme.color.ink },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     warn: { ...theme.type.bodySmall, color: theme.accent.yellow.fg },
     warnTitle: { ...theme.type.body, fontWeight: '600', color: theme.accent.yellow.fg },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm, marginTop: theme.space.sm },
     choice: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, minHeight: 44, paddingVertical: theme.space.xs },
     indent: { marginLeft: theme.space.xl },
-    personRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, minHeight: 48 },
+    personRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.space.md,
+      minHeight: 52,
+      paddingVertical: theme.space.xs,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.color.border,
+    },
     box: {
       width: 22,
       height: 22,
@@ -517,5 +689,14 @@ const makeStyles = (theme: Theme) =>
     boxOn: { backgroundColor: theme.accent.blue.fg, borderColor: theme.accent.blue.fg },
     tick: { color: theme.color.surface, fontWeight: '700', fontSize: 13 },
     switchRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
-    actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: theme.space.sm },
+    actions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: theme.space.sm,
+      paddingHorizontal: theme.space.lg,
+      paddingTop: theme.space.md,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.color.border,
+      backgroundColor: theme.color.surface,
+    },
   });

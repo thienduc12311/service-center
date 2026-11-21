@@ -79,7 +79,21 @@
     "prepareCount_one": "Prepare {{count}}",
     "prepareCount_other": "Prepare {{count}}",
     "scheduleCount_one": "Schedule {{count}}",
-    "scheduleCount_other": "Schedule {{count}}"
+    "scheduleCount_other": "Schedule {{count}}",
+    "scopeLabel": "Who to list",
+    "scopeTeam": "Team members ({{count}})",
+    "scopeEveryone": "Everyone ({{count}})",
+    "scopeTeamPlain": "Team members",
+    "scopeEveryonePlain": "Everyone",
+    "onPlan": "on this plan",
+    "removeSelected": "Remove {{name}}",
+    "noMatches": "No one matches that search.",
+    "noTeamMembers": "No one is on this team yet. Switch to Everyone to schedule someone else.",
+    "searchTeams": "Search teams",
+    "searchPositions": "Search positions",
+    "loadingMore": "Loading more people…",
+    "loadMoreFailed": "More people could not be loaded.",
+    "planPositionShort": "{{position}} (this plan)"
   },
   "preferenceWarning": {
     "frequency": "Serving more often than preferred",
