@@ -253,7 +253,13 @@
     "pushSimulated": "Simulated — not sent (push disabled)",
     "pending": "Waiting to send",
     "needsAttention": "Need attention",
-    "noWorker": "No scheduled delivery worker is configured, so retries and anything interrupted wait until someone acts again or an operator runs the worker.",
+    "noWorker": "No scheduled delivery worker is configured. Until one is, these are paused:",
+    "noWorkerPaused": {
+      "reminders": "Reminders",
+      "scheduledReleases": "Scheduled releases",
+      "retries": "Retries of failed sends"
+    },
+    "noWorkerMentions": "@mention emails go out immediately instead of after about 10 minutes.",
     "recent": "Recent deliveries",
     "problems": "Failed or uncertain",
     "showProblems": "Show only problems",

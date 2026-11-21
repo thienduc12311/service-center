@@ -88,6 +88,26 @@ const DeliveryRowView = ({ delivery }: { delivery: DeliveryListItem }) => {
   );
 };
 
+type PausedWork = 'reminders' | 'scheduledReleases' | 'retries';
+
+const PAUSED_WITHOUT_WORKER: readonly PausedWork[] = ['reminders', 'scheduledReleases', 'retries'];
+
+/** What stops (and what changes) while no scheduled delivery worker runs. */
+const NoWorkerWarning = () => {
+  const { t } = useTranslation('settings');
+  return (
+    <div role="status" className="sm:col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+      <p>{t('delivery.noWorker')}</p>
+      <ul className="my-1 list-disc pl-5">
+        {PAUSED_WITHOUT_WORKER.map((item) => (
+          <li key={item}>{t(`delivery.noWorkerPaused.${item}`)}</li>
+        ))}
+      </ul>
+      <p>{t('delivery.noWorkerMentions')}</p>
+    </div>
+  );
+};
+
 /**
  * Administrator view: how email and push are configured, and which
  * deliveries failed or may not have gone out, with a retry for each.
@@ -121,9 +141,7 @@ export const DeliverySettings = () => {
             <dt className="text-slate-500">{t('delivery.needsAttention')}</dt>
             <dd>{status.data.needs_attention}</dd>
           </div>
-          {!status.data.worker_configured && (
-            <div className="sm:col-span-2 text-amber-700">{t('delivery.noWorker')}</div>
-          )}
+          {!status.data.worker_configured && <NoWorkerWarning />}
         </dl>
       )}
 

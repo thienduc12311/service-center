@@ -249,7 +249,13 @@
     "pushSimulated": "Mô phỏng — không gửi (thông báo đẩy đang tắt)",
     "pending": "Đang chờ gửi",
     "needsAttention": "Cần xử lý",
-    "noWorker": "Chưa cấu hình tiến trình gửi định kỳ, nên các lần gửi lại và những tin bị gián đoạn sẽ chờ đến khi có người thao tác lại hoặc người vận hành chạy tiến trình.",
+    "noWorker": "Chưa cấu hình tiến trình gửi định kỳ. Cho đến khi có, các mục sau đang tạm dừng:",
+    "noWorkerPaused": {
+      "reminders": "Lời nhắc",
+      "scheduledReleases": "Các lần phát hành đã lên lịch",
+      "retries": "Gửi lại các tin bị lỗi"
+    },
+    "noWorkerMentions": "Email @nhắc đến sẽ được gửi ngay thay vì sau khoảng 10 phút.",
     "recent": "Lần gửi gần đây",
     "problems": "Thất bại hoặc chưa rõ",
     "showProblems": "Chỉ hiện lỗi",
