@@ -24,9 +24,15 @@ $$;
 create temporary table poke_key on commit drop as
   select key from private.org_realtime_keys where organization_id = 'aaaaaaaa-0000-4000-8000-000000000001';
 grant select on poke_key to authenticated, anon;
-create function pg_temp.t(p_kind text, p_id uuid) returns text language sql stable as $$
-  select p_kind || ':' || p_id || ':' || (select key from poke_key);
+-- A conversation topic also carries the conversation's own key (created when a member is first
+-- issued the topic; see qa-wave8-realtime-resource-revocation.sql).
+create function pg_temp.t(p_kind text, p_id uuid) returns text language sql stable security definer as $$
+  select p_kind || ':' || p_id || ':' || (select key from poke_key)
+    || case when p_kind = 'conversation'
+         then ':' || coalesce((select k.key from private.conversation_realtime_keys k where k.conversation_id = p_id), repeat('0', 64))
+         else '' end;
 $$;
+grant execute on function pg_temp.t(text, uuid) to authenticated, anon;
 create function pg_temp.topic_is_readable(p_topic text) returns boolean language plpgsql as $$
 begin
   perform set_config('realtime.topic', p_topic, true);
@@ -42,6 +48,7 @@ delete from public.conversations where team_id = pg_temp.id_for('band');
 insert into public.conversations (id, organization_id, kind, team_id)
   values (pg_temp.id_for('chat'), pg_temp.id_for('org'), 'team', pg_temp.id_for('band')),
          (pg_temp.id_for('other_chat'), pg_temp.id_for('other_org'), 'team', pg_temp.id_for('other_team'));
+insert into private.conversation_realtime_keys (conversation_id) values (pg_temp.id_for('chat'));
 insert into public.conversation_messages (id, organization_id, conversation_id, author_id, body)
   values (pg_temp.id_for('message'), pg_temp.id_for('org'), pg_temp.id_for('chat'), pg_temp.id_for('sam'), 'private text'),
          (gen_random_uuid(), pg_temp.id_for('other_org'), pg_temp.id_for('other_chat'), pg_temp.id_for('sam'), 'other private text');

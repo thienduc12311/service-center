@@ -1479,6 +1479,10 @@ export type Database = {
         Args: { p_org: string };
         Returns: string | null;
       };
+      realtime_resource_topics: {
+        Args: { p_org: string; p_resource: string; p_ids: string[] };
+        Returns: { resource_id: string; topic: string }[];
+      };
       my_org_context: {
         Args: { p_org?: string; p_all?: boolean };
         Returns: unknown;

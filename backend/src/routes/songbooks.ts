@@ -8,6 +8,7 @@ import {
 import { param } from '../lib/params.js';
 import { validateBody } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
+import { fetchAllPages, inChunks } from '../lib/paging.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 
@@ -23,14 +24,18 @@ const DETAIL_SELECT = `
 `;
 
 songbooksRouter.get('/', async (req, res) => {
-  const rows = await unwrap(
-    req.db
-      .from('songbooks')
-      .select('*')
-      .eq('organization_id', req.orgId)
-      .order('created_at', { ascending: false }),
+  const rows = await fetchAllPages(async (from, to) =>
+    unwrap(
+      req.db
+        .from('songbooks')
+        .select('*')
+        .eq('organization_id', req.orgId)
+        .order('created_at', { ascending: false })
+        .order('id')
+        .range(from, to),
+    ),
   );
-  res.json(rows ?? []);
+  res.json(rows);
 });
 
 songbooksRouter.get('/:id', async (req, res) => {
@@ -60,16 +65,18 @@ songbooksRouter.post('/', requireCapability('songs.manage'), validateBody(create
 
   if (songs.length) {
     const songIds = [...new Set(songs.map((item: { song_id: string }) => item.song_id))];
-    const ownedSongs = await unwrap(
-      req.db.from('songs').select('id, merged_into_song_id, merged_default_arrangement_id').eq('organization_id', req.orgId).in('id', songIds),
+    const ownedSongs = await inChunks(songIds, (chunk) =>
+      unwrap(
+        req.db.from('songs').select('id, merged_into_song_id, merged_default_arrangement_id').eq('organization_id', req.orgId).in('id', chunk),
+      ),
     );
-    if ((ownedSongs ?? []).length !== songIds.length) {
+    if (ownedSongs.length !== songIds.length) {
       throw HttpError.badRequest('Every selected song must belong to this organization');
     }
 
     // Old saved selections remain valid after an explicit merge.
     for (const item of songs) {
-      const alias = ownedSongs?.find((s) => s.id === item.song_id);
+      const alias = ownedSongs.find((s) => s.id === item.song_id);
       if (alias?.merged_into_song_id) {
         item.song_id = alias.merged_into_song_id;
         item.arrangement_id ??= alias.merged_default_arrangement_id ?? undefined;
@@ -79,10 +86,10 @@ songbooksRouter.post('/', requireCapability('songs.manage'), validateBody(create
       .map((item) => item.arrangement_id)
       .filter((id): id is string => Boolean(id));
     if (arrangementIds.length) {
-      const arrangements = await unwrap(
-        req.db.from('arrangements').select('id, song_id').in('id', arrangementIds),
+      const arrangements = await inChunks([...new Set(arrangementIds)], (chunk) =>
+        unwrap(req.db.from('arrangements').select('id, song_id').in('id', chunk)),
       );
-      const arrangementSongs = new Map((arrangements ?? []).map((item) => [item.id, item.song_id]));
+      const arrangementSongs = new Map(arrangements.map((item) => [item.id, item.song_id]));
       if (songs.some((item) => item.arrangement_id && arrangementSongs.get(item.arrangement_id) !== item.song_id)) {
         throw HttpError.badRequest('Each arrangement must belong to its selected song');
       }
