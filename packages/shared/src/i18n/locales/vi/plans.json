@@ -644,6 +644,7 @@
     "delivery": "Lời nhắc và gửi thông báo"
   },
   "publishConfirm": {
+    "quiet": "Công bố không thông báo: sẽ không ai nhận email hay lời mời trong ứng dụng.",
     "title": "Công bố chương trình này?",
     "loading": "Đang kiểm tra ai sẽ được thông báo…",
     "willEmail_other": "Công bố sẽ gửi email cho {{count}} người.",

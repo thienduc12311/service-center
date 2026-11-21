@@ -658,6 +658,7 @@
     "delivery": "Reminders and delivery"
   },
   "publishConfirm": {
+    "quiet": "Publishing quietly: nobody will be emailed or asked in the app.",
     "title": "Publish this plan?",
     "loading": "Checking who will be notified…",
     "willEmail_one": "Publishing will email {{count}} person.",

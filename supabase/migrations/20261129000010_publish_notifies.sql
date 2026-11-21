@@ -12,7 +12,8 @@
 --   * public.publish_plan_notify publishes and asks everyone released, not declined
 --     and never notified, plan-wide (a plan-level act, whatever teams the
 --     publisher schedules). Past plans (service date in the organization's
---     time zone) publish silently. Re-publishing never re-asks.
+--     time zone) publish silently. Re-publishing never re-asks anyone a
+--     request already reached (private.assignment_was_asked).
 --   * public.publish_plan_notify_preview: who would be emailed, who has no address.
 --
 -- The dispatcher also re-checks the plan's status at send time
@@ -245,6 +246,27 @@ create trigger plans_queue_reminders
   for each row execute function private.reminders_on_plan_change();
 
 -- =============================================================== publish ==
+-- "Already asked" (ADR-0006): the assignment was in a request that reached the
+-- person through any channel — an accepted or simulated email, or an in-app
+-- entry. `notified_at` alone is set only by an accepted email, so people
+-- without an address (and every simulated send) would otherwise be asked
+-- again on each re-publish.
+create or replace function private.assignment_was_asked(p_assignment uuid, p_person uuid, p_plan uuid)
+returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1
+      from public.delivery_effects e
+      join public.deliveries d on d.effect_id = e.id
+     where e.template = 'assignment_request'
+       and (e.plan_id = p_plan or (e.plan_id is null and e.release_batch_id is not null))
+       and p_assignment = any (e.assignment_ids)
+       and d.recipient_person_id = p_person
+       and d.status in ('provider_accepted', 'simulated', 'delivered')
+  );
+$$;
+revoke execute on function private.assignment_was_asked(uuid, uuid, uuid) from public, anon, authenticated;
+
 -- Publishes a plan the caller may edit. When p_notify and the plan's
 -- service date (organization time zone) is today or later, asks everyone
 -- released, not declined and never notified, as one request per Person,
@@ -286,7 +308,8 @@ begin
     select coalesce(array_agg(a.id order by a.id), '{}') into v_ids
       from public.assignments a
      where a.plan_id = p_plan and a.visibility = 'released'
-       and a.status <> 'declined' and a.notified_at is null;
+       and a.status <> 'declined' and a.notified_at is null
+       and not private.assignment_was_asked(a.id, a.person_id, p_plan);
     if cardinality(v_ids) > 0 then
       perform set_config('app.publish_notify', 'on', true);
       v_effect := private.enqueue_assignment_requests(
@@ -336,6 +359,7 @@ begin
         left join public.profiles pr on pr.id = p.profile_id
        where a.plan_id = p_plan and a.visibility = 'released'
          and a.status <> 'declined' and a.notified_at is null
+         and not private.assignment_was_asked(a.id, a.person_id, p_plan)
          and p.archived_at is null
     )
     select (count(*) filter (where r.has_email))::int,

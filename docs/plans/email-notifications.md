@@ -237,9 +237,12 @@ Implemented on `feature/email-notifications`. Differences from the plan above:
 
 Known limitations:
 
-- `notified_at` is set only when an email is provider-accepted. People with no email address, and
-  every run in simulated mode, therefore count as "never notified": unpublish → publish asks them
-  again in the app.
+- "Already asked" is `notified_at` (set only by an accepted email) **or** a request delivery that
+  reached the person (`provider_accepted`, `simulated` or in-app `delivered`) —
+  `private.assignment_was_asked`. So people without an email address, and simulated sends, are not
+  asked again on unpublish → publish (found in QA).
+- The web schedule dialog has no notify checkbox on a published plan; it always notifies (unchanged
+  from before this branch).
 - A retry of a mention email after a newer mention changed its body can end `ambiguous
   provider_duplicate_key` (Resend's idempotency key). A mention landing while an earlier email is
   mid-send can be counted twice.

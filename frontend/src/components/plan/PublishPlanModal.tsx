@@ -58,11 +58,13 @@ export const PublishPlanModal = ({ open, planId, publishing, error, onClose, onP
         ) : (
           <>
             <p>
-              {willNotify > 0 || noEmail.length > 0
-                ? t('publishConfirm.willEmail', { count: willNotify })
-                : t('publishConfirm.nobody')}
+              {!notify
+                ? t('publishConfirm.quiet')
+                : willNotify > 0 || noEmail.length > 0
+                  ? t('publishConfirm.willEmail', { count: willNotify })
+                  : t('publishConfirm.nobody')}
             </p>
-            {noEmail.length > 0 && (
+            {notify && noEmail.length > 0 && (
               <p role="status" className="rounded-lg bg-amber-50 p-3 text-amber-800 ring-1 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200">
                 {t('publishConfirm.noEmail', { count: noEmail.length, names: list(noEmail) })}
               </p>

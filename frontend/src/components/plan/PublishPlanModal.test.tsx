@@ -47,3 +47,14 @@ it('can publish quietly', async () => {
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   expect(onPublish).toHaveBeenCalledExactlyOnceWith(false);
 });
+
+it('says nobody will be emailed once "Notify people" is unticked', async () => {
+  const user = userEvent.setup();
+  renderModal({ will_notify: 2, no_email: ['Alex Kim'] });
+
+  expect(await screen.findByText('Publishing will email 2 people.')).toBeTruthy();
+  await user.click(screen.getByRole('checkbox', { name: /Notify people/ }));
+  expect(screen.getByText('Publishing quietly: nobody will be emailed or asked in the app.')).toBeTruthy();
+  expect(screen.queryByText('Publishing will email 2 people.')).toBeNull();
+  expect(screen.queryByText(/No email address on file/)).toBeNull();
+});

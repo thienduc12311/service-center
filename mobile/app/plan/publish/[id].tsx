@@ -81,11 +81,13 @@ export default function PublishPlanScreen() {
         <Card>
           <Text style={styles.title}>{plan.data.title}</Text>
           <Text style={styles.body}>
-            {willNotify > 0 || noEmail.length > 0
-              ? t('publishConfirm.willEmail', { count: willNotify })
-              : t('publishConfirm.nobody')}
+            {!notify
+              ? t('publishConfirm.quiet')
+              : willNotify > 0 || noEmail.length > 0
+                ? t('publishConfirm.willEmail', { count: willNotify })
+                : t('publishConfirm.nobody')}
           </Text>
-          {noEmail.length > 0 ? (
+          {notify && noEmail.length > 0 ? (
             <Text accessibilityRole="alert" style={styles.warn}>
               {t('publishConfirm.noEmail', { count: noEmail.length, names: format.list(noEmail) })}
             </Text>

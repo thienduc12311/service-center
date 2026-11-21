@@ -139,6 +139,21 @@ begin
   update public.plans set status = 'draft' where id = pg_temp.fx('draft');
   select effect_id into v_effect from public.publish_plan_notify(pg_temp.fx('draft'), true, 'pn-republish');
   perform pg_temp.check(v_effect is null, 'E: re-publishing asks nobody already notified');
+
+  -- Reached without an accepted email (simulated send, or in-app only):
+  -- notified_at stays null, and re-publishing still asks nobody.
+  update public.assignments set notified_at = null where id = pg_temp.fx('a_sam');
+  update public.deliveries d set status = 'simulated'
+    from public.delivery_effects e
+   where e.id = d.effect_id and e.effect_key = 'pn-publish' and d.channel = 'email';
+  update public.plans set status = 'draft' where id = pg_temp.fx('draft');
+  perform pg_temp.check((select will_notify from public.publish_plan_notify_preview(pg_temp.fx('draft'))) = 0,
+    'E: the preview counts nobody a request already reached');
+  select effect_id into v_effect from public.publish_plan_notify(pg_temp.fx('draft'), true, 'pn-republish-simulated');
+  perform pg_temp.check(v_effect is null, 'E: re-publishing asks nobody a request already reached');
+  update public.deliveries d set status = 'queued'
+    from public.delivery_effects e
+   where e.id = d.effect_id and e.effect_key = 'pn-publish' and d.channel = 'email';
 end $$;
 
 -- ================================================================ Pass F ===
