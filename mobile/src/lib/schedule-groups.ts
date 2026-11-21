@@ -235,3 +235,18 @@ export const planResponsibilities = (
         ))
         .sort(byTeamThenPosition)
     : [];
+
+/**
+ * Index of the first card whose position is waiting on a decline or withdraw
+ * reason (its confirm button sits at the bottom of the card), or -1. The home
+ * list scrolls to it so the primary action is not left under the tab bar.
+ */
+export const groupIndexInReview = (
+  groups: readonly SchedulePlanGroup[],
+  modeOf: (assignmentId: string) => string,
+): number =>
+  groups.findIndex((group) =>
+    group.responsibilities.some((item) => {
+      const mode = modeOf(item.assignmentId);
+      return mode === 'declining' || mode === 'withdrawing';
+    }));

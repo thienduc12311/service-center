@@ -18,6 +18,7 @@ import {
   serviceSongBookDocumentFromPlan,
   type AssignmentDetail,
   type PlanItemDetail,
+  canOpenPlanChat,
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { printDocument } from '../lib/print-document';
@@ -263,6 +264,8 @@ export const PlanDetailPage = () => {
   const target = { serviceTypeId: detail.service_type_id };
   const canEditPlan = can('plans.edit', target);
   const canScheduleTeam = (teamId: string): boolean => can('scheduling.manage', { ...target, teamId });
+  // Only offer the chat to people the server will let in (leaders and people scheduled on the plan).
+  const canChat = canOpenPlanChat(canEditPlan || can('scheduling.manage', target), detail.assignments, user?.profile.id);
   const canSchedule = can('scheduling.manage', target) || (teams.data ?? []).some((team) => canScheduleTeam(team.id));
   const organizationName =
     user?.memberships.find((membership) => membership.organization.id === organizationId)
@@ -353,9 +356,11 @@ export const PlanDetailPage = () => {
           <Button icon="play" onClick={() => navigate(`/plans/${planId}/live`)}>
             {t('planDetail.live')}
           </Button>
-          <Button variant="secondary" icon="chat" loading={openChat.isPending} onClick={() => openChat.mutate()}>
-            {t('planDetail.planChat')}
-          </Button>
+          {canChat && (
+            <Button variant="secondary" icon="chat" loading={openChat.isPending} onClick={() => openChat.mutate()}>
+              {t('planDetail.planChat')}
+            </Button>
+          )}
           {canSchedule && (
             <Button variant="secondary" icon="mail" onClick={() => setComposing(true)}>
               {t('planDetail.messagePeople')}

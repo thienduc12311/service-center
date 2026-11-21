@@ -46,6 +46,7 @@ export * from './lib/plan-notes.js';
 export * from './lib/attendance-marking.js';
 export * from './lib/message-compose.js';
 export * from './lib/conversations.js';
+export * from './lib/plan-chat.js';
 export * from './lib/notification-cleanup.js';
 export * from './lib/mentions.js';
 export * from './lib/keyset.js';
