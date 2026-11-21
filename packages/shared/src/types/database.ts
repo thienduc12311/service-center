@@ -1073,6 +1073,18 @@ export type PeopleDirectoryRow = Pick<
 /** A person's private record as API roles may select it (no medical note). */
 export type PersonSelectableRow = Omit<PersonRow, 'medical_note'>;
 
+/** One row of `team_roster_people`: the only People fields a non-owner sees on a roster. */
+export interface TeamRosterPersonRow {
+  team_id: string;
+  person_id: string;
+  first_name: string;
+  last_name: string | null;
+  avatar_url: string | null;
+  email: string | null;
+  phone: string | null;
+  birthdate: string | null;
+}
+
 /** Profile columns API roles may select; contact comes from `member_contacts`. */
 export type PublicProfileRow = Pick<ProfileRow, 'id' | 'full_name' | 'avatar_url' | 'created_at' | 'updated_at'>;
 
@@ -1496,6 +1508,11 @@ export type Database = {
       member_contacts: {
         Args: { p_org: string; p_user_ids: string[] };
         Returns: Array<{ user_id: string; email: string | null; phone: string | null }>;
+      };
+      /** W8-NAT-D1: basic info (name, contact, birthdate) of rostered people for any active member. */
+      team_roster_people: {
+        Args: { p_org: string };
+        Returns: TeamRosterPersonRow[];
       };
       person_medical_note: {
         Args: { p_person: string };

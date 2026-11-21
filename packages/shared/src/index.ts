@@ -22,6 +22,7 @@ export * from './types/church-join-requests.js';
 export * from './schemas/index.js';
 export * from './lib/constants.js';
 export * from './lib/dates.js';
+export * from './lib/team-roster.js';
 export * from './lib/timezone.js';
 export * from './lib/availability.js';
 export * from './lib/chordpro.js';

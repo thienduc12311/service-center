@@ -370,6 +370,15 @@ export interface ImportPlanContentsResult {
   content_revision: number;
 }
 
+/**
+ * What any member sees of a rostered person: name, avatar, email, phone and
+ * date of birth (`YYYY-MM-DD`). Absent values are null; other People fields
+ * stay owner-only.
+ */
+export interface TeamRosterPerson extends PersonSummary {
+  date_of_birth: string | null;
+}
+
 export interface TeamWithPositions extends TeamRow {
   positions: TeamPositionRow[];
   members: Array<{
@@ -378,7 +387,7 @@ export interface TeamWithPositions extends TeamRow {
     position_id: string | null;
     /** The `team_memberships` row id: what `removeTeamMember` takes (MOB-031; always sent by the API). */
     membership_id: string;
-    profile: PersonSummary | null;
+    profile: TeamRosterPerson | null;
   }>;
 }
 
