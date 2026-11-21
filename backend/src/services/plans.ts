@@ -293,7 +293,11 @@ export const importPlanContents = async ({
     p_idempotency_key: input.idempotency_key ?? null,
     p_conflict_override_reason: input.conflict_override_reason ?? null,
   });
-  if (error?.code === 'PT409' && error.hint === 'scheduling_conflict') throw fromPostgrestError(error);
+  // Hinted conflicts (a scheduling conflict, an idempotency key reused with another body) keep
+  // their own code; the unhinted PT409 is the stale expected_revision.
+  if (error?.code === 'PT409' && (error.hint === 'scheduling_conflict' || error.hint === 'idempotency_key_reused')) {
+    throw fromPostgrestError(error);
+  }
   if (error?.code === 'PT409') {
     throw new HttpError(409, 'This plan changed since you opened it. Review it and import again.', STALE_PLAN_CODE);
   }
