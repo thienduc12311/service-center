@@ -49,6 +49,7 @@ export * from './lib/conversations.js';
 export * from './lib/notification-cleanup.js';
 export * from './lib/mentions.js';
 export * from './lib/keyset.js';
+export * from './lib/people-cursor.js';
 export * from './lib/message-format.js';
 export * from './lib/plan-browser.js';
 export * from './lib/run-sheet.js';

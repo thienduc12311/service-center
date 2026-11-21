@@ -19,7 +19,11 @@
     "sendInvite": "Send invite",
     "resendInvite": "Resend invite",
     "addDetails": "Add details",
-    "empty": "Nobody here yet"
+    "empty": "Nobody here yet",
+    "searchLabel": "Search people",
+    "searchPlaceholder": "Search by name, email, phone or campus",
+    "noMatch": "Nobody matches that search.",
+    "loadMore": "Load more people"
   },
   "person": {
     "addTitle": "Add person",

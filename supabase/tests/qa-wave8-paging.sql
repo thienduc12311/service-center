@@ -100,4 +100,28 @@ do $$ begin
   end;
 end $$;
 
+-- People list paging: sort_name is the generated, granted, indexed keyset column
+-- (needs supabase/migrations/20261127000200_w8_people_sort_name.sql loaded first).
+reset role;
+do $$
+declare v int;
+begin
+  if not has_column_privilege('authenticated', 'public.people', 'sort_name', 'select') then
+    raise exception 'authenticated cannot select people.sort_name';
+  end if;
+  if has_table_privilege('authenticated', 'public.people_directory', 'insert')
+     or has_table_privilege('authenticated', 'public.people_directory', 'update')
+     or has_table_privilege('authenticated', 'public.people_directory', 'delete') then
+    raise exception 'people_directory became writable';
+  end if;
+  select count(*) into v from public.people
+   where sort_name is distinct from lower(btrim(first_name || ' ' || coalesce(last_name, '')));
+  if v <> 0 then raise exception 'sort_name drifted on % rows', v; end if;
+  -- the directory view is RLS-filtered by auth.uid(); as postgres it may see 0 rows but must expose the column
+  if not exists (select 1 from information_schema.columns
+                  where table_schema = 'public' and table_name = 'people_directory' and column_name = 'sort_name') then
+    raise exception 'people_directory lacks sort_name';
+  end if;
+end $$;
+
 rollback;

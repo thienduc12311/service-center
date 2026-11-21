@@ -6,7 +6,9 @@ import {
   invitePersonSchema,
   isAdmin,
   listPeopleQuerySchema,
+  listPeoplePageQuerySchema,
   type ListPeopleQuery,
+  type ListPeoplePageQuery,
   personTagsSchema,
   updateMemberSchema,
   updatePersonSchema,
@@ -38,7 +40,8 @@ import {
   type ActiveMemberRow,
   type RosterPersonRecord,
 } from '../model/people.js';
-import { NO_CONTACT, contactsFor } from '../services/contacts.js';
+import { contactsFor, NO_CONTACT } from '../services/contacts.js';
+import { listPeoplePage, toActiveMembers, type MemberWithPublicProfile, type PeoplePageCaller } from '../services/people-page.js';
 
 export const peopleRouter: Router = Router();
 
@@ -90,9 +93,12 @@ const loadPersonDetail = async (req: Request, selected: PersonSelectableRow): Pr
   return toPersonDetail(person, profile, membership, pendingInvitation, !isAdmin(req.orgRole));
 };
 
-interface MemberWithPublicProfile extends Omit<ActiveMemberRow, 'profile'> {
-  profile: PublicProfileRow;
-}
+const callerOf = (req: Request): PeoplePageCaller => ({
+  db: req.db,
+  orgId: req.orgId,
+  userId: req.auth.userId,
+  canReadPrivate: canReadPrivate(req),
+});
 
 /**
  * Everyone in the active organization: has-login members plus no-login roster
@@ -113,18 +119,7 @@ peopleRouter.get('/', validateQuery(listPeopleQuerySchema), async (req, res) => 
           .range(from, to),
       )) as unknown as MemberWithPublicProfile[] | null,
   );
-  const contacts = await contactsFor(req.db, req.orgId, rawMembers.map((member) => member.profile?.id).filter(Boolean));
-  const members: ActiveMemberRow[] = rawMembers
-    .filter((member) => member.profile)
-    .map((member) => ({
-      ...member,
-      profile: {
-        ...member.profile,
-        ...(canReadPrivate(req) || member.profile.id === req.auth.userId
-          ? contacts.get(member.profile.id) ?? NO_CONTACT
-          : NO_CONTACT),
-      },
-    }));
+  const members = await toActiveMembers(callerOf(req), rawMembers);
 
   const people: RosterPersonRecord[] = canReadPrivate(req)
     ? await fetchAllPages(
@@ -154,6 +149,14 @@ peopleRouter.get('/', validateQuery(listPeopleQuerySchema), async (req, res) => 
   );
 
   res.json(mergeRoster(members, people ?? [], pendingInvitations ?? [], include_archived));
+});
+
+/**
+ * Keyset-paged People list for the list screens (the pickers keep using the
+ * complete GET /). Same visibility as GET /: members see the directory.
+ */
+peopleRouter.get('/page', validateQuery(listPeoplePageQuerySchema), async (req, res) => {
+  res.json(await listPeoplePage(callerOf(req), parsedQuery<ListPeoplePageQuery>(res)));
 });
 
 // The public directory above is available to members; every personal-detail

@@ -221,6 +221,7 @@ import type {
   PlanPositionNeed,
   PlanSummary,
   RosterPerson,
+  RosterPersonPage,
   SchedulingConflict,
   ServiceTypeSetupResult,
   SongChart,
@@ -753,6 +754,9 @@ export class ServiceCenterApi {
   /** Archived people are left out unless asked for. */
   listPeople = (query?: { include_archived?: boolean }) =>
     this.request<RosterPerson[]>('GET', '/api/v1/people', undefined, query as Query);
+  /** One keyset page of the People list for the list screens; pickers keep using `listPeople`. */
+  listPeoplePage = (query?: { limit?: number; cursor?: string; q?: string; include_archived?: boolean }) =>
+    this.request<RosterPersonPage>('GET', '/api/v1/people/page', undefined, query as Query);
   getPerson = (personId: string) => this.request<PersonDetail>('GET', `/api/v1/people/${personId}`);
   createPerson = (body: CreatePersonInput) => this.request<PersonDetail>('POST', '/api/v1/people', body);
   updatePerson = (personId: string, body: UpdatePersonInput) =>

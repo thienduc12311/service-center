@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
 import { ORG_ROLES } from '@service-center/shared';
 import { api } from '../lib/api';
-import { usePeople, usePeopleWithArchived, useInvalidateOrg } from '../hooks/queries';
+import { usePeoplePage, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { Avatar, Badge, Button, EmptyState, ErrorNotice, IconButton, Menu, MenuItem, Notice, PageHeader, SectionHeader, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
@@ -25,9 +25,13 @@ export const PeoplePage = () => {
   const owner = role === 'owner';
   const invalidate = useInvalidateOrg();
   const [showArchived, setShowArchived] = useState(false);
-  const active = usePeople();
-  const withArchived = usePeopleWithArchived(showArchived);
-  const people = showArchived ? withArchived : active;
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const people = usePeoplePage({ q: debouncedSearch, includeArchived: showArchived });
   const [sentInvite, setSentInvite] = useState<SentInvite | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [tagsOpen, setTagsOpen] = useState(false);
@@ -115,7 +119,6 @@ export const PeoplePage = () => {
 
         <SectionHeader
           title={t('list.title')}
-          meta={people.data?.length}
           className="!mb-0"
           action={
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
@@ -129,6 +132,18 @@ export const PeoplePage = () => {
             </label>
           }
         />
+
+        <div className="relative min-w-0 sm:max-w-md">
+          <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            className="input pl-9"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t('list.searchPlaceholder')}
+            aria-label={t('list.searchLabel')}
+          />
+        </div>
 
         {people.isLoading ? (
           <SkeletonList rows={6} />
@@ -233,7 +248,15 @@ export const PeoplePage = () => {
             })}
           </ul>
         ) : (
-          <EmptyState icon="people" title={t('list.empty')} />
+          <EmptyState icon="people" title={debouncedSearch ? t('list.noMatch') : t('list.empty')} />
+        )}
+
+        {people.hasNextPage && (
+          <div className="flex justify-center">
+            <Button variant="secondary" loading={people.isFetchingNextPage} onClick={() => void people.fetchNextPage()}>
+              {t('list.loadMore')}
+            </Button>
+          </div>
         )}
       </div>
     </div>

@@ -195,6 +195,12 @@ export interface RosterPerson {
   archived: boolean;
 }
 
+/** One page of the People list (`GET /people/page`). No total: the count is unknown without scanning every person. */
+export interface RosterPersonPage {
+  items: RosterPerson[];
+  next_cursor: string | null;
+}
+
 export interface PersonDetail extends PersonRow {
   profile: ProfileRow | null;
   membership: Pick<OrganizationMemberRow, 'role' | 'status'> | null;
