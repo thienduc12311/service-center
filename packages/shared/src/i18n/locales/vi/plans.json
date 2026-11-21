@@ -588,7 +588,12 @@
     "searchPeople": "Tìm người",
     "keepEditing": "Tiếp tục chỉnh sửa",
     "discard": "Bỏ",
-    "editScreenTitle": "Sửa mục"
+    "editScreenTitle": "Sửa mục",
+    "positionThisPlanShort": "{{position}} (chương trình này)",
+    "onPlanFirst": "Những người trong chương trình này được liệt kê trước.",
+    "onPlanName": "{{name}} · trong chương trình này",
+    "noPersonMatch": "Không có ai khớp với từ khóa này.",
+    "searchPositions": "Tìm vị trí hoặc đội"
   },
   "mobileTimes": {
     "editTimes": "Sửa giờ",

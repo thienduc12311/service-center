@@ -10,8 +10,11 @@ import {
 import {
   labeledKeyText,
   leaderLine,
-  leaderPersonChoices,
+  leaderPersonSuggestions,
   leaderPositionChoices,
+  leaderPositionOptions,
+  planPeopleChoices,
+  staffedTeamIds,
   orderWriteOutcome,
   PlanItemAddAttempts,
   positionNamesFor,
@@ -86,16 +89,51 @@ describe('leader choices', () => {
     expect(positionNamesFor([band], [planOnly]).get('extra')).toBe('Extra keys');
   });
 
-  it('offers active Persons only, filtered by name, keeping the chosen one', () => {
-    const people = [
+  it('groups positions by team for the searchable list', () => {
+    const options = leaderPositionOptions([band], [planOnly], {
+      teamPosition: (t, p) => `${t} · ${p}`,
+      planPosition: (t, p) => `${t} · ${p} (this plan)`,
+      planPositionShort: (p) => `${p} (this plan)`,
+      unknownTeam: 'Team',
+    });
+    expect(options.map((o) => [o.value, o.groupKey, o.groupLabel, o.groupedLabel])).toEqual([
+      ['keys', 'band', 'Band', 'Keys'],
+      ['extra', 'band', 'Band', 'Extra keys (this plan)'],
+    ]);
+    expect(staffedTeamIds([
+      { team_id: 'band', status: 'confirmed' },
+      { team_id: 'tech', status: 'declined' },
+      { team_id: 'band', status: 'unconfirmed' },
+    ])).toEqual(['band']);
+  });
+
+  it('suggests people on the plan first, then active server matches, keeping the chosen one', () => {
+    const planPeople = planPeopleChoices([
+      { person_id: 'ana', status: 'confirmed', person: { id: 'u-ana', full_name: 'Ân Đặng', email: null, avatar_url: null, phone: null, role: 'member' } },
+      { person_id: 'gone', status: 'declined', person: null },
+      { person_id: 'ana', status: 'unconfirmed', person: null },
+    ], 'Unnamed');
+    expect(planPeople).toEqual([{ id: 'ana', label: 'Ân Đặng' }]);
+    const results = [
       person({ id: '1', person_id: 'sam', full_name: 'Sam Rivera' }),
-      person({ id: '2', person_id: 'riley', full_name: 'Riley Chen' }),
+      person({ id: '2', person_id: 'ana', full_name: 'Ân Đặng' }),
       person({ id: '3', person_id: 'old', full_name: 'Sam Old', archived: true }),
       person({ id: '4', person_id: null, full_name: 'Invite only' }),
+      person({ id: '5', person_id: 'riley', full_name: 'Riley Chen' }),
     ];
-    expect(leaderPersonChoices(people, '', '', 'Unnamed').map((c) => c.id)).toEqual(['sam', 'riley']);
-    expect(leaderPersonChoices(people, 'sam', '', 'Unnamed').map((c) => c.id)).toEqual(['sam']);
-    expect(leaderPersonChoices(people, 'sam', 'riley', 'Unnamed').map((c) => c.id)).toEqual(['riley', 'sam']);
+    const base = { planPeople, results, query: '', selectedPersonId: '', hasMore: false, unnamed: 'Unnamed' };
+    expect(leaderPersonSuggestions(base).choices.map((c) => [c.id, c.onPlan])).toEqual([['ana', true], ['sam', false], ['riley', false]]);
+    expect(leaderPersonSuggestions({ ...base, selectedPersonId: 'riley' }).choices.map((c) => c.id)).toEqual(['riley', 'ana', 'sam']);
+    // A search filters the plan's people on the device; the server already filtered its page.
+    expect(leaderPersonSuggestions({ ...base, query: 'sam', results: [results[0]!] }).choices.map((c) => c.id)).toEqual(['sam']);
+  });
+
+  it('is honest when matches are left out', () => {
+    const base = { planPeople: [], results: [person({ person_id: 'a' }), person({ id: 'b', person_id: 'b' })], query: '', selectedPersonId: '', unnamed: 'U' };
+    expect(leaderPersonSuggestions({ ...base, hasMore: false }).truncated).toBe(false);
+    expect(leaderPersonSuggestions({ ...base, hasMore: true }).truncated).toBe(true);
+    const capped = leaderPersonSuggestions({ ...base, hasMore: false, limit: 1 });
+    expect([capped.choices.length, capped.truncated]).toEqual([1, true]);
   });
 });
 

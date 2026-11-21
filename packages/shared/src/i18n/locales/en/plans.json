@@ -602,7 +602,12 @@
     "searchPeople": "Search people",
     "keepEditing": "Keep editing",
     "discard": "Discard",
-    "editScreenTitle": "Edit item"
+    "editScreenTitle": "Edit item",
+    "positionThisPlanShort": "{{position}} (this plan)",
+    "onPlanFirst": "People on this plan are listed first.",
+    "onPlanName": "{{name}} · on this plan",
+    "noPersonMatch": "No one matches that search.",
+    "searchPositions": "Search positions or teams"
   },
   "mobileTimes": {
     "editTimes": "Edit times",
