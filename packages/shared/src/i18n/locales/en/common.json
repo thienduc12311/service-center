@@ -197,6 +197,14 @@
   },
   "list": {
     "showingOf": "Showing {{shown}} of {{total}}",
-    "refineSearch": "Showing the first {{shown}} — refine your search to see others"
+    "refineSearch": "Showing the first {{shown}} — refine your search to see others",
+    "showingOfRefine": "Showing {{shown}} of {{total}} — keep typing to narrow it down"
+  },
+  "combobox": {
+    "placeholder": "Type to search…",
+    "selectPlaceholder": "Search or choose…",
+    "noMatches": "No matches.",
+    "clear": "Clear {{name}}",
+    "change": "Change {{label}}, currently {{name}}"
   }
 }
