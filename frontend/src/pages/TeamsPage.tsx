@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { canEditTeamRoster, type TeamWithPositions } from '@service-center/shared';
+import { canEditTeamRoster, type TeamRow, type TeamWithPositions } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePeople, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
@@ -21,7 +21,7 @@ export const TeamsPage = () => {
   const { t } = useTranslation(['teams', 'common']);
   const { access, can } = useAuth();
   /** Mirrors the `teams_delete` RLS policy: org or service-type scope only; a team-scoped grant does not count. */
-  const canDeleteTeam = (team: { service_type_id: string | null }) =>
+  const canDeleteTeam = (team: TeamRow): boolean =>
     can('teams.manage', { serviceTypeId: team.service_type_id });
   /** A team can be managed organization-wide, per service type, or as its leader. */
   const canManageTeam = (team: { id: string; service_type_id: string | null }) =>

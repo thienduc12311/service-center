@@ -28,6 +28,7 @@ import {
   type PreferenceWarning,
   checkAssignmentConflictsSchema,
   setAssignmentAttendanceSchema,
+  type AssignmentTimeResponseRow,
   type AttendanceInterval,
   type CheckAssignmentConflictsInput,
   type ConflictCheckResult,
@@ -419,7 +420,7 @@ const myScheduleQuerySchema = z.object({
 });
 
 /** Time responses for many assignments, in URL-safe batches (W7-RESP-D5). */
-const timeResponsesFor = async (db: Db, assignmentIds: readonly string[]) => {
+const timeResponsesFor = async (db: Db, assignmentIds: readonly string[]): Promise<AssignmentTimeResponseRow[]> => {
   const batches = await Promise.all(
     chunk(assignmentIds).map((ids) => unwrap(db.from('assignment_time_responses').select('*').in('assignment_id', ids))),
   );
