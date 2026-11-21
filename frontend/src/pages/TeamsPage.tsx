@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { canEditTeamRoster, type TeamRow, type TeamWithPositions } from '@service-center/shared';
+import { canEditTeamRoster, rosterDetailLines, rosterDisplayName, type TeamRow, type TeamWithPositions } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePeople, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
@@ -18,7 +18,7 @@ interface RemoveMemberVariables {
 }
 
 export const TeamsPage = () => {
-  const { t } = useTranslation(['teams', 'common']);
+  const { t, i18n } = useTranslation(['teams', 'common']);
   const { access, can } = useAuth();
   /** Mirrors the `teams_delete` RLS policy: org or service-type scope only; a team-scoped grant does not count. */
   const canDeleteTeam = (team: TeamRow): boolean =>
@@ -211,17 +211,28 @@ export const TeamsPage = () => {
                   <ul className="row-list flex-1 border-t border-app-border">
                     {team.members.map((member) => {
                       const position = team.positions.find((p) => p.id === member.position_id);
-                      const memberName = member.profile?.full_name || member.profile?.email || t('common:states.unknown');
+                      const memberName = rosterDisplayName(member.profile) ?? t('common:states.unknown');
+                      const details = rosterDetailLines(member.profile, i18n.language);
                       return (
                         <li key={member.membership_id} className="group flex items-center gap-3 px-4 py-2.5 sm:px-5">
                           <Avatar
-                            name={member.profile?.full_name ?? member.profile?.email}
+                            name={rosterDisplayName(member.profile) ?? undefined}
                             url={member.profile?.avatar_url}
                             size="sm"
                           />
-                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-                            {member.profile?.full_name ?? member.profile?.email ?? t('common:states.unknown')}
-                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-100">{memberName}</span>
+                            {details.length > 0 && (
+                              <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                                {details.map((line, index) => (
+                                  <span key={line.kind}>
+                                    {index > 0 && ' · '}
+                                    {line.href ? <a href={line.href} className="hover:underline">{line.value}</a> : line.value}
+                                  </span>
+                                ))}
+                              </span>
+                            )}
+                          </div>
                           {position && (
                             <span className="truncate text-xs text-slate-500 dark:text-slate-400">{position.name}</span>
                           )}

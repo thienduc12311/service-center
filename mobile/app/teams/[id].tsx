@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { uuid, type RosterPerson, type TeamWithPositions } from '@service-center/shared';
+import { rosterDetailLines, rosterDisplayName, uuid, type RosterPerson, type TeamWithPositions } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { addableTeamPeople, canOpenPeopleDetails, directoryName, filterDirectory, teamManageTarget } from '../../src/lib/directory';
@@ -43,7 +43,7 @@ const NO_POSITION = 'none';
  */
 export default function TeamScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
-  const { t } = useTranslation(['teams', 'people', 'common']);
+  const { t, i18n } = useTranslation(['teams', 'people', 'common']);
   const { queryScope, canEditRoster, role, generation, isCurrentGeneration } = useAuth();
   const owner = canOpenPeopleDetails(role);
   const router = useRouter();
@@ -120,7 +120,7 @@ export default function TeamScreen() {
   }
 
   const memberName = (member: TeamMember): string =>
-    member.profile?.full_name || member.profile?.email || t('common:states.unknown');
+    rosterDisplayName(member.profile) ?? t('common:states.unknown');
   const positionName = (positionId: string | null): string | null =>
     team.positions.find((position) => position.id === positionId)?.name ?? null;
 
@@ -170,6 +170,16 @@ export default function TeamScreen() {
                       >
                         <Text style={styles.name}>{name}</Text>
                         {position ? <Text style={styles.muted}>{position}</Text> : null}
+                        {rosterDetailLines(member.profile, i18n.language).map((line) => (
+                          <Text
+                            key={line.kind}
+                            style={styles.muted}
+                            onPress={line.href ? () => void Linking.openURL(line.href ?? '') : undefined}
+                            accessibilityRole={line.href ? 'link' : undefined}
+                          >
+                            {line.value}
+                          </Text>
+                        ))}
                       </ListRow>
                     </View>
                     {manageable ? (

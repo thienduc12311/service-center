@@ -56,7 +56,7 @@ Every P1 was checked against source by the coordinator.
 
 ## Product decisions (decided 2026-11-21)
 
-- W8-NAT-D1: native team roster shows "Unknown" for every teammate to a non-owner (`profile: null` from the API, owner-only People privacy). **Decided:** a non-owner viewing a team roster sees each teammate's name and basic information — email, phone and date of birth. Other private People fields stay owner-only.
+- W8-NAT-D1: native team roster shows "Unknown" for every teammate to a non-owner (`profile: null` from the API, owner-only People privacy). **Decided:** a non-owner viewing a team roster sees each teammate's name and basic information — email, phone and date of birth. Other private People fields stay owner-only. Implemented in `20261127000300_w8_team_roster_basic_info` (`team_roster_people(p_org)`: any active member, all teams in the org; other People fields unchanged).
 - W8-INT-D5: a deactivated member's open Realtime socket stays live until token expiry (≤ 900 s); ADR 0005 says that case has no window. **Decided:** close the connection on deactivation (server-enforced, not client-cooperative) and keep ADR 0005's statement true. Same family: after global sign-out an open socket kept receiving 839 s (documented residual of W7-JRN-D3) — covered too if the same mechanism applies.
 
 ## Deferred
