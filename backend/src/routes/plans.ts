@@ -50,7 +50,7 @@ import {
 } from '../services/plans.js';
 import { addPlanItem, deletePlanItem, planScheduleFor, reorderPlanItems, updatePlanItem } from '../services/plan-items.js';
 import { notifyConfirmedAssignmentsForPlan } from './assignments.js';
-import { applyPlanTimes, identifyPlanTimes, previewPlanTimes } from '../services/attendance.js';
+import { identifyPlanTimes, previewPlanTimes, updatePlanWithTimes } from '../services/attendance.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
 
 export const plansRouter: Router = Router();
@@ -166,40 +166,26 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
   const planId = param(req, 'id');
   const existingPlan = await unwrapOne(req.db.from('plans').select('id, location, organization_id, content_revision').eq('id', planId).eq('organization_id', req.orgId).single());
 
-  // F04: one transaction locks the plan, checks its revision and the previewed
-  // impact, keeps time ids across reorder, resolves requests left without a
-  // time, makes outstanding requests stale and re-sends the affected ones.
+  // F04 + W8-RES-D4: one transaction locks the plan, checks its revision and the
+  // previewed impact, replaces the times (keeping time ids across reorder,
+  // resolving/staling/re-sending requests) AND updates the other plan fields.
+  // A failure of either rolls back both, so a retry with the same
+  // `expected_revision` is not a false 409. When `service_date` and `times` are
+  // both sent, the times win (the date follows the earliest service time).
   // Without an impact hash it refuses to remove anyone's selected time.
-  let timeChange: PlanTimeChangeResult | null = null;
-  if (times) {
-    const ctx = { db: req.db, orgId: req.orgId, planId };
-    timeChange = await applyPlanTimes(ctx, {
-      times: await identifyPlanTimes(ctx, times),
-      expectedRevision: expected_revision ?? existingPlan.content_revision,
-      impactHash: time_impact_hash ?? null,
-      orphanResolutions: orphan_resolutions,
-      notify: notify_time_changes,
-      effectKey: `plan-times:${planId}:${randomUUID()}`,
-    });
-  }
-
-  // Do this after the versioned time replacement so a stale time editor cannot
-  // partially apply unrelated plan fields before receiving its 409.
-  // The plan's own date follows its earliest service time inside the database
-  // (plan_times trigger, same transaction as the time write: W7-NAT-D2).
-  const planFields = plan;
-  if (Object.keys(planFields).length > 0) {
-    const updated = await unwrap(
-      req.db
-        .from('plans')
-        .update(planFields)
-        .eq('id', planId)
-        .eq('organization_id', req.orgId)
-        .select('id')
-        .maybeSingle(),
-    );
-    if (!updated) throw HttpError.notFound('Plan not found');
-  }
+  const ctx = { db: req.db, orgId: req.orgId, planId };
+  const hasChange = times !== undefined || Object.keys(plan).length > 0;
+  const timeChange: PlanTimeChangeResult | null = hasChange
+    ? await updatePlanWithTimes(ctx, {
+        times: times ? await identifyPlanTimes(ctx, times) : null,
+        fields: plan,
+        expectedRevision: expected_revision ?? existingPlan.content_revision,
+        impactHash: time_impact_hash ?? null,
+        orphanResolutions: orphan_resolutions,
+        notify: notify_time_changes,
+        effectKey: `plan-times:${planId}:${randomUUID()}`,
+      })
+    : null;
 
   if (timeChange?.effect_id) await deliverEffectNow(timeChange.effect_id);
   // A new place (no time change) still matters to the people who said yes.
