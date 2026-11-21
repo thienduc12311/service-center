@@ -5,6 +5,7 @@ import {
   createPlanPositionSchema,
   createPlanSchema,
   type CreatePlanPositionInput,
+  type PlanDetail,
   duplicatePlanSchema,
   importPlanContentsSchema,
   listPlansQuerySchema,
@@ -44,6 +45,7 @@ import {
   createPlanAtomically,
   duplicatePlanAtomically,
   fetchPlanDetail,
+  fetchViewerIsAdultPerson,
   importPlanContents,
   setPlanPositionNeeds,
   shapePlanSummary,
@@ -109,7 +111,12 @@ plansRouter.get('/', validateQuery(listPlansQuerySchema), async (req, res) => {
 });
 
 plansRouter.get('/:id', async (req, res) => {
-  res.json(await fetchPlanDetail(req.db, req.orgId, param(req, 'id')));
+  const [detail, viewerIsAdultPerson] = await Promise.all([
+    fetchPlanDetail(req.db, req.orgId, param(req, 'id')),
+    fetchViewerIsAdultPerson(req.db, req.orgId, req.auth.userId),
+  ]);
+  const payload: PlanDetail = { ...detail, viewer_is_adult_person: viewerIsAdultPerson };
+  res.json(payload);
 });
 
 /**

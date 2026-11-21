@@ -7,7 +7,8 @@ vi.hoisted(() => {
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key-that-is-long-enough';
 });
 
-import { dedupePositionNeeds, shapePositionNeeds } from './plans.js';
+import type { Db } from '../lib/supabase.js';
+import { dedupePositionNeeds, fetchViewerIsAdultPerson, shapePositionNeeds } from './plans.js';
 
 describe('shapePositionNeeds', () => {
   it('reads the team off the joined position', () => {
@@ -37,5 +38,27 @@ describe('dedupePositionNeeds', () => {
       { position_id: 'drums', needed: 3 },
       { position_id: 'keys', needed: 2 },
     ]);
+  });
+});
+
+describe('fetchViewerIsAdultPerson', () => {
+  const dbReturning = (rows: Array<{ person_type: 'adult' | 'child' }>): Db => {
+    const chain: Record<string, unknown> = {};
+    chain.select = () => chain;
+    chain.eq = () => chain;
+    chain.is = () => Promise.resolve({ data: rows, error: null });
+    return { from: () => chain } as unknown as Db;
+  };
+
+  it('is true for an adult roster person', async () => {
+    expect(await fetchViewerIsAdultPerson(dbReturning([{ person_type: 'adult' }]), 'org', 'me')).toBe(true);
+  });
+
+  it('is false for a child', async () => {
+    expect(await fetchViewerIsAdultPerson(dbReturning([{ person_type: 'child' }]), 'org', 'me')).toBe(false);
+  });
+
+  it('is false with no active roster person, like the database function', async () => {
+    expect(await fetchViewerIsAdultPerson(dbReturning([]), 'org', 'me')).toBe(false);
   });
 });

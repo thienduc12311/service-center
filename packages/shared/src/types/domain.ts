@@ -527,6 +527,12 @@ export interface PlanDetail extends PlanSummary {
   /** Only positions a manager has actually asked for; absent means "none needed". */
   position_needs: PlanPositionNeed[];
   total_length_seconds: number;
+  /**
+   * Set by `GET /plans/:id` only: whether the caller is a non-archived roster
+   * person who is not a `child` (the database's `is_adult_person`). Children
+   * are not conversation participants, so plan chat is hidden from them.
+   */
+  viewer_is_adult_person?: boolean;
 }
 
 /** One of the ready-made teams the "add teams you lead" step offers. */
