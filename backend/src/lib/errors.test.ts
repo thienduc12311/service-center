@@ -63,6 +63,12 @@ describe('fromPostgrestError: caller input', () => {
     expect(error.message).not.toContain('uuid');
   });
 
+  it('keeps unsupported-text 422 for encoding errors only; PGRST102 is a generic bad body', () => {
+    expect(fromPostgrestError({ code: '22P05', message: 'unsupported Unicode escape sequence' })).toMatchObject({ status: 422 });
+    const body = fromPostgrestError({ code: 'PGRST102', message: 'All object keys must match' });
+    expect(body).toMatchObject({ status: 400, message: 'Invalid request body' });
+  });
+
   it('answers invalid dates as 400', () => {
     expect(fromPostgrestError({ code: '22008', message: 'date/time field value out of range' })).toMatchObject({ status: 400 });
     expect(fromPostgrestError({ code: '22007', message: 'invalid input syntax for type timestamp' })).toMatchObject({ status: 400 });
