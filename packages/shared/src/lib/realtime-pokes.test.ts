@@ -1,27 +1,46 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPokeSubscriptions, createRealtimePokeSubscriptions, pokeTopics } from './realtime-pokes.js';
+import { createPokeSubscriptions, createRealtimePokeSubscriptions, pokeSignalOf, type PokeListener } from './realtime-pokes.js';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const secondId = '22222222-2222-4222-8222-222222222222';
 const KEY = 'ab'.repeat(32);
-const topic = `conversation:${id}:${KEY}`;
+const topic = `conversation:${id}:${KEY}:${'cd'.repeat(32)}`;
 
 describe('private poke subscriptions', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('uses exact, distinct topics in a stable order', () => {
-    expect(pokeTopics('conversation', [secondId, 'malformed', id, secondId], KEY)).toBe(
-      `${topic},conversation:${secondId}:${KEY}`,
-    );
-    expect(pokeTopics('conversation', [id], null)).toBe('');
-    expect(pokeTopics('conversation', [id], 'short')).toBe('');
+  it('reads a rekey signal from the poke payload only', () => {
+    expect(pokeSignalOf({ payload: { event: 'rekey' } })).toBe('rekey');
+    expect(pokeSignalOf({ payload: { id, event: 'changed' } })).toBeUndefined();
+    expect(pokeSignalOf({ payload: null })).toBeUndefined();
+    expect(pokeSignalOf({ payload: 'rekey' })).toBeUndefined();
+    expect(pokeSignalOf(undefined)).toBeUndefined();
+  });
+
+  it('runs the rekey callback at once and still refreshes the data', async () => {
+    const notifiers = new Map<string, PokeListener>();
+    const observe = createPokeSubscriptions((key, notify) => {
+      notifiers.set(key, notify);
+      return async () => undefined;
+    });
+    const refresh = vi.fn(async () => undefined);
+    const onRekey = vi.fn();
+    const observer = observe(refresh, onRekey);
+    observer.setTopics([topic]);
+    notifiers.get(topic)?.();
+    expect(onRekey).not.toHaveBeenCalled();
+    notifiers.get(topic)?.('rekey');
+    expect(onRekey).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(50);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    observer.dispose();
   });
 
   it('shares a channel and batches joins and pokes across a list', async () => {
-    const callbacks = new Map<string, () => void>();
+    const callbacks = new Map<string, PokeListener>();
     const remove = vi.fn(async () => undefined);
-    const open = vi.fn((key: string, notify: () => void) => {
+    const open = vi.fn((key: string, notify: PokeListener) => {
       callbacks.set(key, notify);
       return () => remove(key);
     });
@@ -30,7 +49,7 @@ describe('private poke subscriptions', () => {
     const readThread = vi.fn(async () => undefined);
     const list = observe(readList);
     const thread = observe(readThread);
-    list.setTopics([topic, `conversation:${secondId}:${KEY}`]);
+    list.setTopics([topic, `conversation:${secondId}:${KEY}:${KEY}`]);
     thread.setTopics([topic]);
 
     for (const notify of callbacks.values()) notify();
@@ -54,7 +73,7 @@ describe('private poke subscriptions', () => {
     const leave = vi.fn(async () => undefined);
     const open = vi.fn((key: string) => () => leave(key));
     const list = createPokeSubscriptions(open)(async () => undefined);
-    const nextTopic = `conversation:${secondId}:${KEY}`;
+    const nextTopic = `conversation:${secondId}:${KEY}:${KEY}`;
     list.setTopics([topic]);
     list.setTopics([topic, nextTopic]);
     list.setTopics([nextTopic]);

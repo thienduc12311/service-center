@@ -29,3 +29,4 @@ export * from './language.js';
 export * from './account.js';
 export * from './platform-admin.js';
 export * from './church-join-requests.js';
+export * from './realtime.js';
