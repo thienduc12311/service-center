@@ -2,11 +2,14 @@ import {
   decodePeopleCursor,
   encodePeopleCursor,
   type ListPeoplePageQuery,
+  type PeopleCursor,
   type PublicProfileRow,
   type RosterPerson,
   type RosterPersonPage,
 } from '@service-center/shared';
-import { HttpError } from '../lib/errors.js';
+import { HttpError, fromPostgrestError } from '../lib/errors.js';
+import { peopleKeysetFilter } from '../lib/keyset.js';
+import { rawSelect, whereSearchMatches, type RawQuery } from '../lib/search.js';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import {
   PERSON_COLUMNS,
@@ -49,66 +52,83 @@ export const toActiveMembers = async (
     }));
 };
 
-/** Quotes a value for a PostgREST `or=` filter: commas, parens and quotes stay data. */
-const quote = (value: string): string => `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-
 /**
- * The search term as a literal case-insensitive regex (`imatch`, Postgres
- * `~*`). Not `ilike`: PostgREST turns every `*` in a like pattern into `%`,
- * so "a*b" matched like "a%b" and a lone `*` matched everyone. Every
- * character that is not a letter, digit or space is backslash-escaped, which
- * Postgres regexes read as that literal character (`%`, `_`, `*`, `.`, ...).
- */
-export const literalSearchPattern = (text: string): string => text.replace(/[^\p{L}\p{N}\s]/gu, (char) => `\\${char}`);
-
-/**
- * Where a page comes from and what a search matches. Owner: `people` for the
- * plain list; `people_owner_search` when searching, so email/phone match the
- * contact the list displays (the login profile's, else the People row's).
- * Everyone else: the `people_directory` projection (name and campus only).
+ * Where a page comes from. Owner: `people` for the plain list;
+ * `people_owner_search` when searching, so email/phone match the contact the
+ * list displays (the login profile's, else the People row's). Everyone else:
+ * the `people_directory` projection (name and campus only). Both views carry
+ * `search_text` (folded searchable text) and `listed` (the row belongs on the
+ * People list); `people` has `search_text` (name and campus) only.
  */
 interface PeopleSource {
   from: 'people' | 'people_owner_search' | 'people_directory';
   columns: string;
-  searchFields: readonly string[];
+  /** Whether the source has the `listed` column, so unlisted logins are skipped in SQL. */
+  hasListed: boolean;
 }
 
 const ROSTER_RECORD_COLUMNS = 'id, profile_id, first_name, last_name, avatar_url, email, phone, campus, archived_at, sort_name';
+const DIRECTORY_COLUMNS = 'id, profile_id, first_name, last_name, avatar_url, campus, archived_at, sort_name';
 
 const sourceFor = (caller: PeoplePageCaller, searching: boolean): PeopleSource => {
-  if (!caller.canReadPrivate) return { from: 'people_directory', columns: '*', searchFields: ['sort_name', 'campus'] };
-  if (searching) {
-    return {
-      from: 'people_owner_search',
-      columns: ROSTER_RECORD_COLUMNS,
-      searchFields: ['sort_name', 'campus', 'contact_email', 'contact_phone'],
-    };
-  }
-  return { from: 'people', columns: `${PERSON_COLUMNS}, sort_name`, searchFields: [] };
+  if (!caller.canReadPrivate) return { from: 'people_directory', columns: DIRECTORY_COLUMNS, hasListed: true };
+  if (searching) return { from: 'people_owner_search', columns: ROSTER_RECORD_COLUMNS, hasListed: true };
+  return { from: 'people', columns: `${PERSON_COLUMNS}, sort_name`, hasListed: false };
+};
+
+/** Embeds the caller's team filter: `!inner` keeps only people with a membership in that team. */
+const TEAM_EMBED = 'team_memberships!inner()';
+
+/** The filters every page and the total share: organization, archive, search, team. */
+interface PeopleFilters {
+  orgId: string;
+  query: Pick<ListPeoplePageQuery, 'q' | 'team_id' | 'include_archived'>;
+}
+
+const applyFilters = (builder: RawQuery, { orgId, query }: PeopleFilters, hasListed: boolean): RawQuery => {
+  let narrowed = builder.eq('organization_id', orgId);
+  if (hasListed) narrowed = narrowed.eq('listed', true);
+  if (!query.include_archived) narrowed = narrowed.is('archived_at', null);
+  if (query.team_id) narrowed = narrowed.eq('team_memberships.team_id', query.team_id);
+  return whereSearchMatches(narrowed, query.q);
 };
 
 const loadBase = async (
   caller: PeoplePageCaller,
   query: ListPeoplePageQuery,
-  after: { sort_name: string; id: string } | null,
+  after: PeopleCursor | null,
   count: number,
 ): Promise<PageRow[]> => {
   const source = sourceFor(caller, Boolean(query.q));
-  let builder = raw(caller.db)
-    .from(source.from)
-    .select(source.columns)
-    .eq('organization_id', caller.orgId);
-  if (!query.include_archived) builder = builder.is('archived_at', null);
-  if (query.q) {
-    const pattern = quote(literalSearchPattern(query.q));
-    builder = builder.or(source.searchFields.map((field) => `${field}.imatch.${pattern}`).join(','));
-  }
+  const columns = query.team_id ? `${source.columns}, ${TEAM_EMBED}` : source.columns;
+  let builder = applyFilters(rawSelect(caller.db, source.from, columns), { orgId: caller.orgId, query }, source.hasListed);
   if (after) {
-    builder = builder.or(`sort_name.gt.${quote(after.sort_name)},and(sort_name.eq.${quote(after.sort_name)},id.gt.${after.id})`);
+    builder = builder.or(peopleKeysetFilter(after, 'after'));
   }
   const rows = (await unwrap(builder.order('sort_name').order('id').limit(count))) as unknown as Array<Record<string, unknown>> | null;
   return (rows ?? []).map((row) => ({ email: null, phone: null, ...row }) as unknown as PageRow);
 };
+
+/**
+ * How many people the list shows for these filters, across every page. Counted
+ * on a view with `listed` (the owner's covers contact search too), so a login
+ * whose membership is inactive — skipped by the page loop — is not counted.
+ */
+const countPeople = async (caller: PeoplePageCaller, query: ListPeoplePageQuery): Promise<number> => {
+  const from = caller.canReadPrivate ? 'people_owner_search' : 'people_directory';
+  const columns = query.team_id ? `id, ${TEAM_EMBED}` : 'id';
+  const builder = applyFilters(
+    rawSelect(caller.db, from, columns, { count: 'exact', head: true }),
+    { orgId: caller.orgId, query },
+    true,
+  );
+  const { count, error } = await builder;
+  if (error) throw fromPostgrestError(error);
+  return count ?? 0;
+};
+
+/** A page's rows and where the next page starts. */
+type PeoplePageRows = Omit<RosterPersonPage, 'total'>;
 
 /**
  * One keyset page of the People list. The base rows are paged in SQL
@@ -119,9 +139,12 @@ const loadBase = async (
  * page is full or the list ends. Every active member has a `people` row
  * (MOB-005 trigger), so every member appears in exactly one page.
  */
-export const listPeoplePage = async (caller: PeoplePageCaller, query: ListPeoplePageQuery): Promise<RosterPersonPage> => {
-  let after = query.cursor ? decodePeopleCursor(query.cursor) : null;
-  if (query.cursor && !after) throw HttpError.badRequest('Invalid cursor');
+const loadPeoplePage = async (
+  caller: PeoplePageCaller,
+  query: ListPeoplePageQuery,
+  cursor: PeopleCursor | null,
+): Promise<PeoplePageRows> => {
+  let after = cursor;
 
   const kept: PageRow[] = [];
   const members: ActiveMemberRow[] = [];
@@ -172,4 +195,12 @@ export const listPeoplePage = async (caller: PeoplePageCaller, query: ListPeople
     (a, b) => (order.get(a.person_id ?? '') ?? 0) - (order.get(b.person_id ?? '') ?? 0),
   );
   return { items, next_cursor: exhausted || !after ? null : encodePeopleCursor(after) };
+};
+
+/** One page of the People list plus the total for its filters (search, team, archived). */
+export const listPeoplePage = async (caller: PeoplePageCaller, query: ListPeoplePageQuery): Promise<RosterPersonPage> => {
+  const cursor = query.cursor ? decodePeopleCursor(query.cursor) : null;
+  if (query.cursor && !cursor) throw HttpError.badRequest('Invalid cursor');
+  const [page, total] = await Promise.all([loadPeoplePage(caller, query, cursor), countPeople(caller, query)]);
+  return { ...page, total };
 };

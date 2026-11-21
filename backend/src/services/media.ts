@@ -1,21 +1,25 @@
-import type {
-  ArchiveMediaInput,
-  CreateMediaInput,
-  ListMediaQuery,
-  MediaDetail,
-  MediaList,
-  MediaRow,
-  MediaSummary,
-  PlanItemSaveResult,
-  SetPlanItemMediaInput,
-  UpdateMediaInput,
+import {
+  MEDIA_LIST_LIMIT,
+  type ArchiveMediaInput,
+  type CreateMediaInput,
+  type ListMediaQuery,
+  type MediaDetail,
+  type MediaList,
+  type MediaRow,
+  type MediaSummary,
+  type PlanItemSaveResult,
+  type SetPlanItemMediaInput,
+  type UpdateMediaInput,
 } from '@service-center/shared';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
-import { unwrap } from '../lib/supabase.js';
+import { raw, unwrap } from '../lib/supabase.js';
 import {
   organizationToday,
+  parseMediaListResult,
   toMediaSummary,
   toMediaUsage,
+  type MediaListResult,
+  type MediaListRpcQuery,
   type MediaUsageRow,
 } from '../model/media.model.js';
 import { listParentFiles, type FileCaller } from './files.js';
@@ -26,9 +30,10 @@ import { listParentFiles, type FileCaller } from './files.js';
  * UPDATE's WHERE clause, so a stale edit changes nothing.
  */
 
+/** Most "used in" rows the detail page lists, newest first (its counts are exact regardless). */
 const USAGE_LIMIT = 100;
-const LIST_LIMIT = 200;
-const USAGE_SELECT = 'id, media_id, title, plan:plans(id, title, service_date)';
+/** `!inner`: items in plans the caller cannot see are left out (as the summary counts do). */
+const USAGE_SELECT = 'id, media_id, title, plan:plans!inner(id, title, service_date)';
 
 const today = async ({ db, orgId }: FileCaller): Promise<string> => {
   const org = await unwrap(db.from('organizations').select('timezone').eq('id', orgId).maybeSingle());
@@ -47,39 +52,62 @@ const readRow = async ({ db, orgId }: FileCaller, mediaId: string): Promise<Medi
   return row as MediaRow;
 };
 
-const usageFor = async ({ db }: FileCaller, mediaIds: readonly string[], limit: number): Promise<MediaUsageRow[]> => {
-  if (!mediaIds.length) return [];
-  return ((await unwrap(
-    db.from('plan_items').select(USAGE_SELECT).in('media_id', [...mediaIds]).limit(limit),
+/** The newest `limit` plan items using one bundle (newest service date first). */
+const usageFor = async ({ db }: FileCaller, mediaId: string, limit: number): Promise<MediaUsageRow[]> =>
+  ((await unwrap(
+    raw(db)
+      .from('plan_items')
+      .select(USAGE_SELECT)
+      .eq('media_id', mediaId)
+      .order('plan(service_date)', { ascending: false })
+      .order('id')
+      .limit(limit),
   )) ?? []) as unknown as MediaUsageRow[];
+
+/**
+ * Runs `public.list_media` as the caller: search, the archived filter and the
+ * row cap apply in SQL (archived bundles are dropped before the cap), and
+ * usage counts are exact.
+ */
+const listMediaRows = async ({ db, orgId }: FileCaller, query: MediaListRpcQuery): Promise<MediaListResult> => {
+  const { data, error } = await db.rpc('list_media', { p_org: orgId, p_query: query });
+  if (error) throw fromPostgrestError(error);
+  return parseMediaListResult(data);
 };
 
 export const listMedia = async (caller: FileCaller, query: ListMediaQuery): Promise<MediaList> => {
-  let request = caller.db.from('media').select('*').eq('organization_id', caller.orgId).order('title').limit(LIST_LIMIT);
-  if (query.q) request = request.ilike('title', `%${query.q.replace(/[%_\\]/g, (c) => `\\${c}`)}%`);
-  const [rows, date, create] = await Promise.all([unwrap(request), today(caller), canManage(caller)]);
-  const media = (rows ?? []) as MediaRow[];
-  const usage = await usageFor(caller, media.map((row) => row.id), LIST_LIMIT * 20);
-  const summaries = media.map((row) => toMediaSummary(row, date, toMediaUsage(usage.filter((u) => u.media_id === row.id))));
+  const date = await today(caller);
+  const [result, create] = await Promise.all([
+    listMediaRows(caller, {
+      ...(query.q ? { q: query.q } : {}),
+      include_archived: query.include_archived,
+      today: date,
+      limit: MEDIA_LIST_LIMIT,
+    }),
+    canManage(caller),
+  ]);
   return {
-    media: query.include_archived ? summaries : summaries.filter((summary) => !summary.is_archived),
+    media: result.media.map((row) => toMediaSummary(row, date, row)),
     can_create: create,
+    total: result.total,
+    truncated: result.truncated,
   };
 };
 
 export const getMedia = async (caller: FileCaller, mediaId: string): Promise<MediaDetail> => {
-  const row = await readRow(caller, mediaId);
-  const [date, edit, files, usageRows] = await Promise.all([
-    today(caller),
+  const [row, date] = await Promise.all([readRow(caller, mediaId), today(caller)]);
+  const [edit, files, usageRows, counted] = await Promise.all([
     canManage(caller),
     listParentFiles(caller, { owner_kind: 'media', owner_id: mediaId }),
-    usageFor(caller, [mediaId], USAGE_LIMIT),
+    usageFor(caller, mediaId, USAGE_LIMIT),
+    listMediaRows(caller, { media_id: mediaId, include_archived: true, today: date, limit: 1 }),
   ]);
-  const usage = toMediaUsage(usageRows);
+  // Counts come from SQL, so they stay exact past the listed USAGE_LIMIT rows.
+  const counts = counted.media[0] ?? { usage_count: 0, last_used_on: null };
   return {
-    ...toMediaSummary(row, date, usage),
+    ...toMediaSummary(row, date, counts),
     files: files.files,
-    usage,
+    usage: toMediaUsage(usageRows),
     can_edit: edit,
     can_add_files: files.can_add,
   };

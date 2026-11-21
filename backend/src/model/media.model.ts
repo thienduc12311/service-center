@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   localDateAt,
   type MediaRow,
@@ -53,7 +54,19 @@ export const toMediaUsage = (rows: readonly MediaUsageRow[]): MediaUsage[] =>
     )
     .sort((a, b) => b.service_date.localeCompare(a.service_date) || a.plan_title.localeCompare(b.plan_title));
 
-export const toMediaSummary = (row: MediaRow, today: string, usage: readonly MediaUsage[]): MediaSummary => ({
+/** How often, and when last, plans used a bundle. */
+export interface MediaUsageCounts {
+  usage_count: number;
+  last_used_on: string | null;
+}
+
+/** Counts from a newest-first usage list (complete, or the counts would be capped). */
+export const usageCountsOf = (usage: readonly MediaUsage[]): MediaUsageCounts => ({
+  usage_count: usage.length,
+  last_used_on: usage[0]?.service_date ?? null,
+});
+
+export const toMediaSummary = (row: MediaRow, today: string, counts: MediaUsageCounts): MediaSummary => ({
   id: row.id,
   title: row.title,
   creator: row.creator,
@@ -68,6 +81,54 @@ export const toMediaSummary = (row: MediaRow, today: string, usage: readonly Med
   revision: row.revision,
   created_at: row.created_at,
   updated_at: row.updated_at,
-  usage_count: usage.length,
-  last_used_on: usage[0]?.service_date ?? null,
+  usage_count: counts.usage_count,
+  last_used_on: counts.last_used_on,
 });
+
+/** One row of `public.list_media`: the media row plus its usage, counted in SQL. */
+export type MediaListRow = MediaRow & MediaUsageCounts & { is_archived: boolean };
+
+/** What `public.list_media` returns. */
+export interface MediaListResult {
+  media: MediaListRow[];
+  /** Every matching bundle before the row cap. */
+  total: number;
+  truncated: boolean;
+}
+
+/** The query `public.list_media` reads (`p_query`). */
+export interface MediaListRpcQuery {
+  q?: string;
+  include_archived: boolean;
+  /** The organization's local date: `archive_on <= today` means archived. */
+  today: string;
+  media_id?: string;
+  limit?: number;
+}
+
+/**
+ * Shape check on the RPC result: the fields the summary is built from. Other
+ * media columns pass through (the row is the table's own projection).
+ */
+const mediaListRowSchema = z
+  .object({
+    id: z.string().uuid(),
+    title: z.string(),
+    archived_at: z.string().nullable(),
+    archive_on: z.string().nullable(),
+    revision: z.number().int(),
+    is_archived: z.boolean(),
+    usage_count: z.number().int().nonnegative(),
+    last_used_on: z.string().nullable(),
+  })
+  .passthrough();
+
+const mediaListResultSchema = z.object({
+  media: z.array(mediaListRowSchema),
+  total: z.number().int().nonnegative(),
+  truncated: z.boolean(),
+});
+
+/** Validates a `public.list_media` payload (throws on a malformed one). */
+export const parseMediaListResult = (payload: unknown): MediaListResult =>
+  mediaListResultSchema.parse(payload) as unknown as MediaListResult;

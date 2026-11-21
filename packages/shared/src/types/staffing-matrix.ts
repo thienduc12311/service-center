@@ -58,7 +58,10 @@ export interface StaffingMatrixPage {
   people: StaffingMatrixPerson[];
   assignments: StaffingMatrixAssignment[];
   conflicts: StaffingMatrixConflictCell[];
+  /** Cursor of the page after this one (People ordered by name, then id), or null at the end. */
   next_cursor: string | null;
+  /** Cursor (with `direction: 'prev'`) of the page before this one, or null on the first page. */
+  prev_cursor: string | null;
 }
 
 export interface StaffingMatrixSavedView {

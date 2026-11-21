@@ -6,6 +6,7 @@ import { createTeamSchema } from './team.js';
 import { staffingMatrixQuerySchema } from './staffing-matrix.js';
 import { createTeamRotationSchema } from './staffing-proposals.js';
 import { TimeInputError, resolveOneOffBlockout } from '../lib/timezone.js';
+import { encodePeopleCursor } from '../lib/people-cursor.js';
 
 /** QA wave 2: caller mistakes are rejected before they reach Postgres. */
 describe('instant strings (W2-PLANS-D1)', () => {
@@ -52,10 +53,13 @@ describe('team positions (API-D6)', () => {
 });
 
 describe('staffing inputs (W2-STAFF-D4)', () => {
-  it('requires a person id as the matrix cursor', () => {
+  it('requires a matrix cursor issued by the API (or a legacy person id)', () => {
     const filters = { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' };
     expect(staffingMatrixQuerySchema.safeParse({ filters, cursor: 'garbage' }).success).toBe(false);
     expect(staffingMatrixQuerySchema.safeParse({ filters, cursor: '00000000-0000-4000-8000-000000000001' }).success).toBe(true);
+    const cursor = encodePeopleCursor({ sort_name: 'nguyễn an', id: '00000000-0000-4000-8000-000000000001' });
+    expect(staffingMatrixQuerySchema.safeParse({ filters, cursor, direction: 'prev' }).success).toBe(true);
+    expect(staffingMatrixQuerySchema.safeParse({ filters, cursor, direction: 'up' }).success).toBe(false);
   });
 
   it('rejects calendar-invalid rotation dates', () => {

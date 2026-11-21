@@ -195,10 +195,16 @@ export interface RosterPerson {
   archived: boolean;
 }
 
-/** One page of the People list (`GET /people/page`). No total: the count is unknown without scanning every person. */
+/** One page of the People list (`GET /people/page`). */
 export interface RosterPersonPage {
   items: RosterPerson[];
   next_cursor: string | null;
+  /**
+   * How many people match the current filters (search, team, archived) across
+   * every page. The API always sends it; optional in the type only so
+   * pre-existing page fixtures and older clients still compile.
+   */
+  total?: number;
 }
 
 export interface PersonDetail extends PersonRow {
@@ -408,6 +414,13 @@ export interface SongWithArrangements extends SongRow {
  */
 export interface SongListItem extends SongWithArrangements {
   last_scheduled_at: string | null;
+  /**
+   * Distinct plans in the last 12 weeks (`SONG_USAGE_WINDOW_WEEKS`) that
+   * contain the song, scoped to the query's `service_type_id` when given.
+   */
+  usage_count: number;
+  /** True when the query's `plan_id` already contains the song (false without one). */
+  in_plan: boolean;
 }
 
 /**
