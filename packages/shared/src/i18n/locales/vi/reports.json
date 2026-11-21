@@ -35,6 +35,8 @@
     "building": "Đang lập báo cáo…",
     "generated": "Lập lúc {{time}} · {{timezone}}",
     "truncated": "Đã cắt bớt: hãy thu hẹp bộ lọc hoặc xếp hàng một bản xuất.",
+    "truncatedBanner": "Báo cáo này chưa đầy đủ: bảng chỉ hiện tối đa {{rows}} dòng, và mỗi báo cáo chỉ đọc tối đa {{plans}} chương trình (vượt quá mức đó thì số tổng cũng thiếu). Hãy thu hẹp khoảng ngày hoặc bộ lọc để xem đầy đủ.",
+    "sortBy": "Sắp xếp theo {{column}}",
     "downloadCsv": "Tải CSV",
     "queueExport": "Xếp hàng bản xuất",
     "noMatches": "Không có kết quả khớp với bộ lọc này",
@@ -63,7 +65,8 @@
   },
   "followUp": {
     "title": "Cần theo dõi ({{total}})",
-    "line": "{{person}} — {{team}} · {{position}} trong {{plan}}: {{response}}"
+    "line": "{{person}} — {{team}} · {{position}} trong {{plan}}: {{response}}",
+    "showAll": "Hiện tất cả {{total}}"
   },
   "exports": {
     "title": "Bản xuất của tôi",
@@ -72,6 +75,7 @@
     "range": "{{kind}} · {{from}} đến {{to}}",
     "until": "đến {{time}}",
     "buildAgain": "Lập lại",
+    "latest_other": "{{count}} gần nhất",
     "status": {
       "queued": "Đang xếp hàng",
       "running": "Đang lập",

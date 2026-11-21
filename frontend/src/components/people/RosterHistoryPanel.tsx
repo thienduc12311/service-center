@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import type { PersonRosterEvent } from '@service-center/shared';
-import { useRosterAudit, useTeams } from '../../hooks/queries';
-import { ErrorNotice, Loading } from '../ui';
+import { ROSTER_AUDIT_MAX, ROSTER_AUDIT_PAGE, useRosterAudit, useTeams } from '../../hooks/queries';
+import { Button, ErrorNotice, Loading } from '../ui';
 import { Icon } from '../icons';
 import { useFormatters } from '../../i18n';
 
@@ -26,7 +27,12 @@ const describe = (event: PersonRosterEvent, teamName: (id: string) => string, t:
 export const RosterHistoryPanel = ({ personId }: RosterHistoryPanelProps) => {
   const { t } = useTranslation('people');
   const f = useFormatters();
-  const audit = useRosterAudit(personId);
+  // The endpoint has no cursor, only a limit (up to 200): "Show more" asks for the longest list it gives.
+  const [limit, setLimit] = useState(ROSTER_AUDIT_PAGE);
+  const audit = useRosterAudit(personId, true, limit);
+  const shown = audit.data?.length ?? 0;
+  // A full answer means there may be older events than the ones on screen.
+  const capped = shown >= limit;
   const teams = useTeams();
   const teamName = (id: string) => teams.data?.find((team) => team.id === id)?.name ?? t('history.aTeam');
 
@@ -56,6 +62,16 @@ export const RosterHistoryPanel = ({ personId }: RosterHistoryPanelProps) => {
             </li>
           ))}
         </ol>
+      )}
+      {capped && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <span>{t('history.showingLatest', { count: shown })}</span>
+          {limit < ROSTER_AUDIT_MAX && (
+            <Button variant="secondary" size="sm" loading={audit.isFetching} onClick={() => setLimit(ROSTER_AUDIT_MAX)}>
+              {t('history.showOlder')}
+            </Button>
+          )}
+        </div>
       )}
     </section>
   );

@@ -405,7 +405,17 @@
     "itemWillNotify": "{{action}} · will notify after commit",
     "itemNoDelivery": "{{action}} · no delivery",
     "resolveBlocking": "Resolve blocking conflicts before committing this batch. Your selected cells will remain selected.",
-    "commitAll": "Commit all changes"
+    "commitAll": "Commit all changes",
+    "planLimit_one": "This date range has more than {{count}} plan, and the matrix shows up to {{count}} at a time.",
+    "planLimit_other": "This date range has more than {{count}} plans, and the matrix shows up to {{count}} at a time.",
+    "planLimitAction_one": "Show the next {{count}} plan",
+    "planLimitAction_other": "Show the next {{count}} plans",
+    "planWindow_one": "Showing {{count}} plan at a time. Your range runs to {{end}}.",
+    "planWindow_other": "Showing {{count}} plans at a time. Your range runs to {{end}}.",
+    "laterPlans_one": "Next {{count}} plan",
+    "laterPlans_other": "Next {{count}} plans",
+    "previousPeople": "Previous people",
+    "peoplePage": "People page {{page}}"
   },
   "proposalReview": {
     "exclusionCount": {

@@ -27,6 +27,13 @@ const STATUS_TONES: Record<DecidedStatus, string> = {
   withdrawn: 'bg-slate-100 text-slate-500 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600/40',
 };
 
+/**
+ * The server returns at most this many decided requests (the last 30 days,
+ * newest first; `RECENT_JOIN_REQUEST_LIMIT` in the backend), so a full list is
+ * a cap, not a total.
+ */
+const RECENT_JOIN_REQUEST_LIMIT = 20;
+
 const requesterName = (request: ChurchJoinRequest): string => request.requester_name ?? request.requester_email;
 
 /**
@@ -152,7 +159,9 @@ export const JoinRequestsSection = ({ onInvited }: JoinRequestsSectionProps) => 
       {recent.length > 0 && (
         <details className="group">
           <summary className="cursor-pointer select-none text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
-            {t('joinRequests.recent')} ({recent.length})
+            {recent.length >= RECENT_JOIN_REQUEST_LIMIT
+              ? t('joinRequests.recentLatest', { count: RECENT_JOIN_REQUEST_LIMIT })
+              : t('joinRequests.recentCount', { count: recent.length })}
           </summary>
           <ul className="card row-list mt-2 overflow-hidden">
             {recent.map((request) => (

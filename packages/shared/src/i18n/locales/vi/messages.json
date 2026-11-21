@@ -15,7 +15,13 @@
     "recipients_other": "{{count}} người nhận",
     "from": "Từ {{name}}",
     "fromUnknown": "Từ một trưởng ban",
-    "listMeta": "{{summary}} · {{date}}"
+    "listMeta": "{{summary}} · {{date}}",
+    "searchLabel": "Tìm trong các tin nhắn đã tải",
+    "searchPlaceholder": "Tìm theo tiêu đề hoặc người gửi…",
+    "searchScope_other": "Đã tìm trong tiêu đề và người gửi của cả {{count}} tin nhắn.",
+    "searchScopePartial_other": "Đã tìm trong tiêu đề và người gửi của {{count}} tin nhắn mới nhất đã tải. Hãy tải thêm tin nhắn cũ để tìm xa hơn.",
+    "noMatches": "Không có tin nhắn đã tải nào khớp với từ khóa.",
+    "loadOlder": "Tải tin nhắn cũ hơn"
   },
   "messageDetail": {
     "notAvailableTitle": "Không xem được tin nhắn",
@@ -96,7 +102,13 @@
     "reports_other": "{{count}} báo cáo",
     "unread_other": "{{count}} chưa đọc",
     "choose": "Chọn một cuộc trò chuyện.",
-    "planConversation": "{{title}} · {{date}}"
+    "planConversation": "{{title}} · {{date}}",
+    "searchLabel": "Tìm cuộc trò chuyện",
+    "searchPlaceholder": "Tìm cuộc trò chuyện…",
+    "unreadOnly": "Chưa đọc",
+    "filterScope_other": "Đang lọc trong {{count}} cuộc trò chuyện đã tải. Tải thêm để gồm cả các cuộc trò chuyện cũ hơn.",
+    "noMatches": "Không có cuộc trò chuyện nào phù hợp.",
+    "noUnread": "Không có cuộc trò chuyện nào chưa đọc."
   },
   "conversation": {
     "notAvailableTitle": "Không xem được cuộc trò chuyện",
@@ -130,7 +142,10 @@
     "composerPlaceholder": "Nhắn cho {{name}}…",
     "replyingTo": "Đang trả lời {{name}}",
     "replyingToUnknown": "Đang trả lời một người",
-    "privacyNote": "Chỉ thành viên hiện tại của ban hoặc chương trình mới đọc được. Tắt thông báo sẽ ngừng gửi thông báo. Tin nhắn riêng và tệp đính kèm hiện chưa hỗ trợ."
+    "privacyNote": "Chỉ thành viên hiện tại của ban hoặc chương trình mới đọc được. Tắt thông báo sẽ ngừng gửi thông báo. Tin nhắn riêng và tệp đính kèm hiện chưa hỗ trợ.",
+    "loadOlder": "Tải tin nhắn cũ hơn",
+    "searching": "Đang tìm…",
+    "searchNewestMatches_other": "Đang hiển thị {{count}} kết quả mới nhất. Hãy thu hẹp từ khóa để tìm tin nhắn cũ hơn."
   },
   "reportModal": {
     "title": "Báo cáo tin nhắn",

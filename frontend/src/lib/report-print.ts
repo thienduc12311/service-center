@@ -20,6 +20,8 @@ export type ReportCellValue = string | number | boolean | null;
 export interface LocalizedReportTable {
   columns: string[];
   rows: string[][];
+  /** The same cells before formatting, row for row: what the screen sorts by. */
+  raw: ReportCellValue[][];
 }
 
 type ReportColumnKey =
@@ -127,6 +129,7 @@ export const localizedReportTable = (report: AnyReport, localization: ReportLoca
       return column ? localization.t(`columns.${column.key}`) : heading;
     }),
     rows: table.rows.map((row) => row.map((value, index) => formatCell(value, columnAt(index)?.format ?? 'text', localization))),
+    raw: table.rows.map((row) => [...row]),
   };
 };
 

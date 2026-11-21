@@ -138,7 +138,9 @@
       "team_added": "Đã thêm vào {{team}}",
       "team_removed": "Đã gỡ khỏi {{team}}"
     },
-    "byActor": "bởi {{name}}"
+    "byActor": "bởi {{name}}",
+    "showingLatest_other": "Đang hiển thị {{count}} thay đổi gần nhất.",
+    "showOlder": "Xem các thay đổi cũ hơn"
   },
   "tagGroups": {
     "title": "Thẻ và nhóm",
@@ -225,6 +227,8 @@
       "approved": "Đã duyệt",
       "declined": "Đã từ chối",
       "withdrawn": "Đã rút lại"
-    }
+    },
+    "recentLatest_other": "Đã xử lý gần đây · {{count}} yêu cầu mới nhất",
+    "recentCount_other": "Đã xử lý gần đây ({{count}})"
   }
 }

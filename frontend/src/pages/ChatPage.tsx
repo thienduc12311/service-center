@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ import {
   conversationMessageActions,
   conversationMessageState,
   conversationReadMark,
+  CONVERSATION_PAGE_SIZE,
   CONVERSATION_SEARCH_MIN,
   CONVERSATION_THREAD_POLL_MS,
   mergeConversationPages,
@@ -20,9 +21,11 @@ import {
 import { api, getStoredOrganizationId } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { keys, useConversation, useConversations, useMentionCandidates, useTeams } from '../hooks/queries';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { matchesSearch } from '../lib/search';
 import { useAuth } from '../providers/AuthProvider';
 import { useErrorText, useFormatters, type Formatters } from '../i18n';
-import { Badge, Button, EmptyState, ErrorNotice, ListErrorNotice, listFailed, Modal, Notice, PageHeader, SkeletonList } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, ListErrorNotice, listFailed, Modal, Notice, PageHeader, SkeletonList, Spinner } from '../components/ui';
 import { Icon } from '../components/icons';
 import { DiscussionComposer, type DiscussionSubmission } from '../components/collaboration/DiscussionComposer';
 import { DiscussionEntry } from '../components/collaboration/DiscussionEntry';
@@ -96,6 +99,22 @@ interface OutgoingMessage extends DiscussionSubmission {
   createdAt: string;
 }
 
+/**
+ * Messages older than the thread's newest page, loaded with "Load older".
+ * The polled newest page replaces itself; these stay until the thread closes.
+ */
+interface OlderMessages {
+  messages: ConversationMessage[];
+  /** Cursor for the page before these; undefined until the first older page loads. */
+  nextBefore: string | null | undefined;
+}
+
+/** Where the thread was scrolled before older messages were added above it. */
+interface ScrollAnchor {
+  height: number;
+  top: number;
+}
+
 const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   const { t } = useTranslation(['messages', 'common']);
   const format = useFormatters();
@@ -110,11 +129,32 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   const [replyTo, setReplyTo] = useState<ConversationMessage | null>(null);
   const [reporting, setReporting] = useState<ConversationMessage | null>(null);
   const [search, setSearch] = useState('');
+  // Ask once typing settles, and keep the last results on screen meanwhile.
+  const searchTerm = useDebouncedValue(search.trim());
   const results = useQuery({
-    queryKey: [...threadKey, 'search', search],
-    queryFn: () => api.conversationMessages(conversationId, { q: search, limit: 30 }),
-    enabled: Boolean(detail.data && !detail.error) && search.trim().length >= CONVERSATION_SEARCH_MIN,
+    queryKey: [...threadKey, 'search', searchTerm],
+    queryFn: () => api.conversationMessages(conversationId, { q: searchTerm, limit: 30 }),
+    enabled: Boolean(detail.data && !detail.error) && searchTerm.length >= CONVERSATION_SEARCH_MIN,
     refetchInterval: CONVERSATION_THREAD_POLL_MS,
+    placeholderData: (previous) => previous,
+  });
+  const [older, setOlder] = useState<OlderMessages>({ messages: [], nextBefore: undefined });
+  const scrollAnchor = useRef<ScrollAnchor | null>(null);
+  const patchOlder = (message: ConversationMessage) => setOlder((current) => (
+    current.messages.some((known) => known.id === message.id)
+      ? { ...current, messages: mergeConversationPages(current.messages, [message]) }
+      : current
+  ));
+  const loadOlder = useMutation({
+    mutationFn: (before: string) => api.conversationMessages(conversationId, { before, limit: CONVERSATION_PAGE_SIZE }),
+    onSuccess: (page) => {
+      const element = scroller.current;
+      if (element) scrollAnchor.current = { height: element.scrollHeight, top: element.scrollTop };
+      setOlder((current) => ({
+        messages: mergeConversationPages(current.messages, page.data),
+        nextBefore: page.next_before,
+      }));
+    },
   });
   const refreshList = () => client.invalidateQueries({ queryKey: keys.conversations(organizationId) });
   const refresh = () => Promise.all([
@@ -166,10 +206,24 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
     if (mark) void api.markConversationRead(conversationId, mark).then(refreshList);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, newest]);
+  // Older messages go in above: keep the ones the reader was looking at where they were.
+  useLayoutEffect(() => {
+    const element = scroller.current;
+    const anchor = scrollAnchor.current;
+    if (!element || !anchor) return;
+    element.scrollTop = anchor.top + (element.scrollHeight - anchor.height);
+    scrollAnchor.current = null;
+  }, [older.messages.length]);
 
   const mute = useMutation({ mutationFn: (muted: boolean) => api.muteConversation(conversationId, muted), onSuccess: refresh });
-  const remove = useMutation({ mutationFn: (message: ConversationMessage) => api.deleteConversationMessage(conversationId, message.id), onSuccess: refresh });
-  const restore = useMutation({ mutationFn: (message: ConversationMessage) => api.restoreConversationMessage(conversationId, message.id), onSuccess: refresh });
+  const remove = useMutation({
+    mutationFn: (message: ConversationMessage) => api.deleteConversationMessage(conversationId, message.id),
+    onSuccess: (message) => { patchOlder(message); return refresh(); },
+  });
+  const restore = useMutation({
+    mutationFn: (message: ConversationMessage) => api.restoreConversationMessage(conversationId, message.id),
+    onSuccess: (message) => { patchOlder(message); return refresh(); },
+  });
   const block = useMutation({
     mutationFn: (message: ConversationMessage) => api.blockUser(message.author_id),
     onSuccess: () => {
@@ -201,9 +255,13 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
     );
   }
   const { conversation, messages, reports } = detail.data;
-  const byId = new Map(messages.data.map((message) => [message.id, message]));
+  const thread = mergeConversationPages(older.messages, messages.data);
+  const byId = new Map(thread.map((message) => [message.id, message]));
   const searching = search.trim().length >= CONVERSATION_SEARCH_MIN;
-  const shown = searching ? results.data?.data ?? [] : messages.data;
+  // Results for exactly what is typed, not the previous search kept on screen.
+  const searchSettled = searching && searchTerm === search.trim() && results.isSuccess && !results.isPlaceholderData;
+  const shown = searching ? results.data?.data ?? [] : thread;
+  const olderBefore = older.nextBefore === undefined ? messages.next_before : older.nextBefore;
   const shownOutgoing = searching ? [] : outgoing;
   const quoteFor = (parentId: string | null) => {
     if (!parentId) return null;
@@ -280,11 +338,26 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
         )}
 
         <div className="mb-3 empty:hidden">
-          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? block.error ?? detail.error} />
+          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? block.error ?? loadOlder.error ?? results.error ?? detail.error} />
         </div>
-        {messages.next_before && !search && <p className="mb-3 text-center text-xs text-slate-400">{t('conversation.showingLatest', { count: messages.data.length })}</p>}
-        {shown.length === 0 && shownOutgoing.length === 0 ? (
-          <EmptyState compact icon={search ? 'search' : 'chat'} title={search ? t('conversation.noMatches') : t('conversation.noMessages')} />
+        {!searching && olderBefore && (
+          <div className="mb-3 flex flex-col items-center gap-2 text-xs text-slate-400">
+            <span>{t('conversation.showingLatest', { count: thread.length })}</span>
+            <Button variant="secondary" size="sm" loading={loadOlder.isPending} onClick={() => loadOlder.mutate(olderBefore)}>
+              {t('conversation.loadOlder')}
+            </Button>
+          </div>
+        )}
+        {searching && results.data?.next_before && (
+          <p className="mb-3 text-center text-xs text-slate-400">{t('conversation.searchNewestMatches', { count: shown.length })}</p>
+        )}
+        {searching && shown.length === 0 && !searchSettled && !results.isError ? (
+          <p role="status" className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500 dark:text-slate-400">
+            <Spinner className="size-4" />
+            {t('conversation.searching')}
+          </p>
+        ) : shown.length === 0 && shownOutgoing.length === 0 ? (
+          <EmptyState compact icon={searching ? 'search' : 'chat'} title={searching ? t('conversation.noMatches') : t('conversation.noMessages')} />
         ) : (
           <ul className="space-y-1">
             {shown.map((message) => {
@@ -306,7 +379,7 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
                   quote={quoteFor(message.reply_to_id)}
                   canEdit={allowed.edit}
                   onSaveEdit={async (body) => {
-                    await api.editConversationMessage(conversationId, message.id, { body });
+                    patchOlder(await api.editConversationMessage(conversationId, message.id, { body }));
                     await refresh();
                   }}
                   authorActions={[
@@ -406,7 +479,14 @@ export const ChatPage = () => {
     },
   });
 
-  const list = conversations.data ?? [];
+  const [listSearch, setListSearch] = useState('');
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const loaded = conversations.data ?? [];
+  // Filters the conversations loaded so far; the list endpoint has no search.
+  const filtering = unreadOnly || listSearch.trim().length > 0;
+  const list = loaded.filter((conversation) =>
+    (!unreadOnly || conversation.unread_count > 0)
+    && matchesSearch(listSearch, [conversation.title, conversationLabel(conversation, t, format)]));
 
   return (
     <div>
@@ -423,14 +503,46 @@ export const ChatPage = () => {
               <option value="">{t('chatPage.openTeamChatOption')}</option>
               {startable.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
+            {loaded.length > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <Icon name="search" className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    className="input h-9 pl-8 text-sm"
+                    value={listSearch}
+                    onChange={(event) => setListSearch(event.target.value)}
+                    placeholder={t('chatPage.searchPlaceholder')}
+                    aria-label={t('chatPage.searchLabel')}
+                  />
+                </div>
+                <button
+                  type="button"
+                  aria-pressed={unreadOnly}
+                  onClick={() => setUnreadOnly(!unreadOnly)}
+                  className={`h-9 shrink-0 rounded-xl px-3 text-sm font-medium ring-1 ring-inset transition ${
+                    unreadOnly
+                      ? 'bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-500/15 dark:text-brand-200 dark:ring-brand-500/30'
+                      : 'text-slate-600 ring-slate-300 hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {t('chatPage.unreadOnly')}
+                </button>
+              </div>
+            )}
+            {filtering && conversations.hasNextPage && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('chatPage.filterScope', { count: loaded.length })}</p>
+            )}
             <ErrorNotice error={open.error ?? (listFailed(conversations) ? null : conversations.error)} />
           </div>
           {conversations.isLoading ? (
             <div className="p-3"><SkeletonList rows={4} /></div>
           ) : listFailed(conversations) ? (
             <div className="p-3"><ListErrorNotice query={conversations} /></div>
-          ) : list.length === 0 ? (
+          ) : loaded.length === 0 ? (
             <EmptyState compact icon="chat" title={t('chatPage.noConversations')} />
+          ) : list.length === 0 && !conversations.hasNextPage ? (
+            <EmptyState compact icon="search" title={unreadOnly && !listSearch.trim() ? t('chatPage.noUnread') : t('chatPage.noMatches')} />
           ) : (
             <ul className="scrollbar-thin min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
               {list.map((conversation) => {
@@ -475,6 +587,11 @@ export const ChatPage = () => {
                   </li>
                 );
               })}
+              {list.length === 0 && (
+                <li className="px-2 py-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                  {unreadOnly && !listSearch.trim() ? t('chatPage.noUnread') : t('chatPage.noMatches')}
+                </li>
+              )}
               {conversations.hasNextPage && (
                 <li>
                   <Button variant="secondary" className="w-full" loading={conversations.isFetchingNextPage} onClick={() => void conversations.fetchNextPage()}>
