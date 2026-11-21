@@ -174,11 +174,13 @@ describe('Conversation writes in another organization (W7-MSG-D2)', () => {
   it('answer 404 and change nothing when the thread is not in the active organization', async () => {
     const fetchDb = vi.fn<typeof fetch>(async (input) => {
       const url = new URL(String(input));
-      if (url.pathname === '/rest/v1/rpc/my_conversation') return Response.json([]);
+      if (url.pathname === '/rest/v1/conversations') return Response.json([]);
+      if (url.pathname === '/rest/v1/conversation_message_reports') return Response.json([]);
       throw new Error(`Unexpected database call: ${url.pathname}`);
     });
     const app = createApp(fetchDb);
     const base = `/conversations/${threadId}`;
+    const reportId = 'bbbbbbbb-0000-4000-8000-000000000020';
     const messageId = message.id;
     const attempts = [
       request(app).post(`${base}/messages`).send({ id: messageId, body: 'hi' }),
@@ -188,13 +190,16 @@ describe('Conversation writes in another organization (W7-MSG-D2)', () => {
       request(app).post(`${base}/messages/${messageId}/report`).send({ reason: 'spam' }),
       request(app).post(`${base}/read`).send({ read_at: '2026-11-20T10:00:00Z' }),
       request(app).put(`${base}/mute`).send({ muted: true }),
+      request(app).post(`${base}/reports/${reportId}/resolve`).send({ action: 'dismiss' }),
     ];
     for (const attempt of attempts) {
       const response = await attempt;
       expect(response.status).toBe(404);
     }
-    const paths = new Set(fetchDb.mock.calls.map(([input]) => new URL(String(input)).pathname));
-    expect([...paths]).toEqual(['/rest/v1/rpc/my_conversation']);
+    const urls = fetchDb.mock.calls.map(([input]) => new URL(String(input)));
+    // A cheap row lookup, never the unread-counting summary RPC.
+    expect([...new Set(urls.map((url) => url.pathname))]).toEqual(['/rest/v1/conversations', '/rest/v1/conversation_message_reports']);
+    for (const url of urls) expect(url.searchParams.get('organization_id')).toBe(`eq.${orgId}`);
   });
 });
 

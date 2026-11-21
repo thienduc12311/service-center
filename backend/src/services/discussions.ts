@@ -181,6 +181,18 @@ const conversationSummary = async (caller: CollaborationCaller, conversationId: 
   return summary;
 };
 
+/**
+ * 404 unless the caller can see the conversation in the active organization
+ * (W7-MSG-D2). A plain RLS-scoped row lookup: unlike `conversationSummary` it
+ * computes no unread count, so it stays cheap on every write and mark-read.
+ */
+const assertConversationInOrg = async (caller: CollaborationCaller, conversationId: string): Promise<void> => {
+  const row = await unwrap(
+    caller.db.from('conversations').select('id').eq('id', conversationId).eq('organization_id', caller.orgId).maybeSingle(),
+  );
+  if (!row) throw HttpError.notFound('Conversation not found');
+};
+
 export const openConversation = async (caller: CollaborationCaller, input: OpenConversationInput): Promise<ConversationSummary> => {
   const row = (await unwrap(raw(caller.db).rpc('open_conversation', { p_kind: input.kind, p_target: input.target_id }))) as { id: string; organization_id: string } | null;
   if (!row || row.organization_id !== caller.orgId) throw HttpError.notFound('Conversation not found');
@@ -282,7 +294,7 @@ export const postConversationMessage = async (
   conversationId: string,
   input: PostConversationMessageInput,
 ): Promise<PostDiscussionResult<ConversationMessage>> => {
-  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
+  await assertConversationInOrg(caller, conversationId);
   const rows = (await unwrap(raw(caller.db).rpc('post_conversation_message', {
     p_message_id: input.id,
     p_conversation: conversationId,
@@ -300,7 +312,7 @@ export const postConversationMessage = async (
 export const editConversationMessage = async (
   caller: CollaborationCaller, conversationId: string, messageId: string, body: string,
 ): Promise<ConversationMessage> => {
-  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
+  await assertConversationInOrg(caller, conversationId);
   await loadMessage(caller, conversationId, messageId);
   await unwrap(raw(caller.db).rpc('edit_conversation_message', { p_message_id: messageId, p_body: body }));
   return loadMessage(caller, conversationId, messageId);
@@ -309,7 +321,7 @@ export const editConversationMessage = async (
 export const deleteConversationMessage = async (
   caller: CollaborationCaller, conversationId: string, messageId: string,
 ): Promise<ConversationMessage> => {
-  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
+  await assertConversationInOrg(caller, conversationId);
   await loadMessage(caller, conversationId, messageId);
   await unwrap(raw(caller.db).rpc('delete_conversation_message', { p_message_id: messageId }));
   return loadMessage(caller, conversationId, messageId);
@@ -318,7 +330,7 @@ export const deleteConversationMessage = async (
 export const restoreConversationMessage = async (
   caller: CollaborationCaller, conversationId: string, messageId: string,
 ): Promise<ConversationMessage> => {
-  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
+  await assertConversationInOrg(caller, conversationId);
   await loadMessage(caller, conversationId, messageId);
   await unwrap(raw(caller.db).rpc('restore_conversation_message', { p_message_id: messageId }));
   return loadMessage(caller, conversationId, messageId);
@@ -327,7 +339,7 @@ export const restoreConversationMessage = async (
 export const markConversationRead = async (
   caller: CollaborationCaller, conversationId: string, readAt: string,
 ): Promise<{ last_read_at: string | null }> => {
-  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
+  await assertConversationInOrg(caller, conversationId);
   const row = (await unwrap(raw(caller.db).rpc('mark_conversation_read', { p_conversation: conversationId, p_read_at: readAt }))) as { last_read_at: string | null } | null;
   return { last_read_at: row?.last_read_at ?? null };
 };
@@ -335,7 +347,7 @@ export const markConversationRead = async (
 export const muteConversation = async (
   caller: CollaborationCaller, conversationId: string, muted: boolean,
 ): Promise<{ muted: boolean }> => {
-  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
+  await assertConversationInOrg(caller, conversationId);
   const row = (await unwrap(raw(caller.db).rpc('set_conversation_muted', { p_conversation: conversationId, p_muted: muted }))) as { muted: boolean } | null;
   return { muted: row?.muted ?? muted };
 };
@@ -343,7 +355,7 @@ export const muteConversation = async (
 export const reportConversationMessage = async (
   caller: CollaborationCaller, conversationId: string, messageId: string, input: ReportConversationMessageInput,
 ): Promise<ConversationReport> => {
-  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
+  await assertConversationInOrg(caller, conversationId);
   await loadMessage(caller, conversationId, messageId);
   const row = (await unwrap(raw(caller.db).rpc('report_conversation_message', {
     p_message_id: messageId, p_reason: input.reason, p_details: input.details ?? null,
@@ -356,9 +368,11 @@ export const reportConversationMessage = async (
 export const resolveConversationReport = async (
   caller: CollaborationCaller, conversationId: string, reportId: string, input: ResolveConversationReportInput,
 ): Promise<ConversationReport> => {
-  await conversationSummary(caller, conversationId); // 404 unless it belongs to the active organization (W7-MSG-D2)
+  // Moderators need not be participants (`can_moderate_conversation`), so the
+  // report row itself -- RLS: reporter or moderator -- carries the org check (W7-MSG-D2).
   const existing = await unwrap(
-    caller.db.from('conversation_message_reports').select('id').eq('id', reportId).eq('conversation_id', conversationId).maybeSingle(),
+    caller.db.from('conversation_message_reports').select('id')
+      .eq('id', reportId).eq('conversation_id', conversationId).eq('organization_id', caller.orgId).maybeSingle(),
   );
   if (!existing) throw HttpError.notFound('Report not found');
   const row = (await unwrap(raw(caller.db).rpc('resolve_conversation_report', {
