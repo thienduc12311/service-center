@@ -31,8 +31,9 @@ export interface PlanBrowserFilters {
  */
 export type ListPlansRequest = {
   page?: number;
-  q?: string;
   per_page?: number;
+  /** Accent- and case-insensitive title words; every word must match. */
+  q?: string;
   status?: PlanStatus;
   service_type_id?: string;
   from?: string;

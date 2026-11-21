@@ -293,12 +293,12 @@ export default function SchedulePeopleScreen() {
   const teamTotal = teamCount.data?.total ?? teamMemberCount(team);
   const everyoneTotal = everyoneCount.data?.total;
   const scopeOptions = [
-    { value: 'team' as const, label: t('schedulePeople.scopeTeam', { count: teamTotal }) },
+    { value: 'team' as const, label: t('schedulePeople.scopeTeamCount', { count: teamTotal }) },
     {
       value: 'everyone' as const,
       label: everyoneTotal === undefined
         ? t('schedulePeople.scopeEveryonePlain')
-        : t('schedulePeople.scopeEveryone', { count: everyoneTotal }),
+        : t('schedulePeople.scopeEveryoneCount', { count: everyoneTotal }),
     },
   ];
   const peopleFailed = Boolean(people.error && !people.data);

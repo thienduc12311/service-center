@@ -102,18 +102,18 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
   const empty = songs.isLoading ? (
     <Loading />
   ) : firstPageFailed ? null : narrowed ? (
-    <EmptyState icon="search" title={t('songBrowser.emptyFilteredTitle')} description={t('songBrowser.emptyFilteredBody')} />
+    <EmptyState icon="search" title={t('mobileSongBrowser.emptyFilteredTitle')} description={t('mobileSongBrowser.emptyFilteredBody')} />
   ) : tab === 'suggested' ? (
     <EmptyState
       icon="music"
-      title={t('songBrowser.emptySuggestedTitle')}
+      title={t('mobileSongBrowser.emptySuggestedTitle')}
       description={plan.service_type_id
-        ? t('songBrowser.emptySuggestedBody', { weeks: SONG_USAGE_WINDOW_WEEKS })
-        : t('songBrowser.emptyChurchSuggestedBody', { weeks: SONG_USAGE_WINDOW_WEEKS })}
-      action={<Button title={t('songBrowser.tabs.title')} variant="secondary" onPress={() => setTab('title')} />}
+        ? t('mobileSongBrowser.emptySuggestedBody', { weeks: SONG_USAGE_WINDOW_WEEKS })
+        : t('mobileSongBrowser.emptyChurchSuggestedBody', { weeks: SONG_USAGE_WINDOW_WEEKS })}
+      action={<Button title={t('mobileSongBrowser.tabs.title')} variant="secondary" onPress={() => setTab('title')} />}
     />
   ) : (
-    <EmptyState icon="music" title={t('songBrowser.emptyLibraryTitle')} description={t('songBrowser.emptyLibraryBody')} />
+    <EmptyState icon="music" title={t('mobileSongBrowser.emptyLibraryTitle')} description={t('mobileSongBrowser.emptyLibraryBody')} />
   );
 
   return (
@@ -124,7 +124,7 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
           <SearchField
             value={search}
             onChangeText={setSearch}
-            placeholder={t('songBrowser.searchPlaceholder')}
+            placeholder={t('mobileSongBrowser.searchPlaceholder')}
             style={styles.flex}
           />
           {refreshing ? <ActivityIndicator size="small" color={theme.color.inkFaint} /> : null}
@@ -136,39 +136,39 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
           style={styles.chipScroller}
           contentContainerStyle={styles.chips}
         >
-          <View accessibilityRole="radiogroup" accessibilityLabel={t('songBrowser.viewsLabel')} style={styles.chipGroup}>
+          <View accessibilityRole="radiogroup" accessibilityLabel={t('mobileSongBrowser.viewsLabel')} style={styles.chipGroup}>
             {SONG_BROWSER_TABS.map((value) => (
-              <Chip key={value} label={t(`songBrowser.tabs.${value}`)} active={tab === value} onPress={() => setTab(value)} />
+              <Chip key={value} label={t(`mobileSongBrowser.tabs.${value}`)} active={tab === value} onPress={() => setTab(value)} />
             ))}
           </View>
           <View style={styles.chipDivider} />
-          <View accessibilityLabel={t('songBrowser.filtersLabel')} style={styles.chipGroup}>
+          <View accessibilityLabel={t('mobileSongBrowser.filtersLabel')} style={styles.chipGroup}>
             <Chip
               toggle
-              label={filters.key ? t('songBrowser.filters.keyValue', { key: filters.key }) : t('songBrowser.filters.key')}
+              label={filters.key ? t('mobileSongBrowser.filters.keyValue', { key: filters.key }) : t('mobileSongBrowser.filters.key')}
               active={Boolean(filters.key)}
               onPress={() => setEditing('key')}
             />
             <Chip
               toggle
-              label={filters.speed ? t('songBrowser.filters.tempoValue', { speed: speedLabel(filters.speed) }) : t('songBrowser.filters.tempo')}
+              label={filters.speed ? t('mobileSongBrowser.filters.tempoValue', { speed: speedLabel(filters.speed) }) : t('mobileSongBrowser.filters.tempo')}
               active={Boolean(filters.speed)}
               onPress={() => setEditing('tempo')}
             />
             <Chip
               toggle
-              label={filters.theme ? t('songBrowser.filters.themeValue', { theme: filters.theme }) : t('songBrowser.filters.theme')}
+              label={filters.theme ? t('mobileSongBrowser.filters.themeValue', { theme: filters.theme }) : t('mobileSongBrowser.filters.theme')}
               active={Boolean(filters.theme)}
               onPress={() => setEditing('theme')}
             />
             <Chip
               toggle
-              label={t('songBrowser.filters.hideUsed', { count: HIDE_USED_WEEKS })}
+              label={t('mobileSongBrowser.filters.hideUsed', { count: HIDE_USED_WEEKS })}
               active={filters.hideRecentlyUsed}
               onPress={() => setFilter('hideRecentlyUsed', !filters.hideRecentlyUsed)}
             />
             {activeSongFilterCount(filters) > 0 ? (
-              <Button title={t('songBrowser.filters.clear')} variant="quiet" onPress={() => setFilters(NO_SONG_FILTERS)} />
+              <Button title={t('mobileSongBrowser.filters.clear')} variant="quiet" onPress={() => setFilters(NO_SONG_FILTERS)} />
             ) : null}
           </View>
         </ScrollView>

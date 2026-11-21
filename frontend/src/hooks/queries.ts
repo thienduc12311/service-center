@@ -5,6 +5,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import {
   conversationAccess,
   flattenConversationPages,
@@ -21,6 +22,8 @@ import {
   type ListDeliveriesRequest,
   type ListMediaRequest,
   type ListPlanTemplatesRequest,
+  type ListSongsQuery,
+  type SongListItem,
   type StaffingMatrixQueryInput,
   type UnreadNotificationCount,
 } from '@service-center/shared';
@@ -208,6 +211,34 @@ export const useSongs = (query: { q?: string; sort?: string; page?: number; per_
   });
 };
 
+/**
+ * Every page of a song list, loaded on demand ("Show more"); the song
+ * browser's source. Earlier results stay on screen while a new search loads.
+ */
+export const useSongPages = (query: Omit<Partial<ListSongsQuery>, 'page'>, enabled = true) => {
+  const org = useOrg();
+  const pages = useInfiniteQuery({
+    queryKey: [...keys.songs(org, query), 'pages'] as const,
+    queryFn: ({ pageParam }) => api.listSongs({ ...query, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page * last.per_page < last.total ? last.page + 1 : undefined),
+    enabled: Boolean(org) && enabled,
+    placeholderData: (previous) => previous,
+  });
+  const rows = useMemo(() => {
+    // A song can shift between pages while paging (new usage); list it once.
+    const seen = new Set<string>();
+    const unique: SongListItem[] = [];
+    for (const song of (pages.data?.pages ?? []).flatMap((page) => page.data)) {
+      if (seen.has(song.id)) continue;
+      seen.add(song.id);
+      unique.push(song);
+    }
+    return unique;
+  }, [pages.data]);
+  return { ...pages, rows, total: pages.data?.pages[0]?.total ?? null };
+};
+
 export const useSong = (id: string | undefined) => {
   const org = useOrg();
   return useQuery({
@@ -254,6 +285,8 @@ export const usePlanPages = (query: Omit<ListPlansRequest, 'page'>, enabled = tr
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.per_page < last.total ? last.page + 1 : undefined),
     enabled: Boolean(org) && enabled,
+    // A new search keeps the last results on screen until its first page arrives.
+    placeholderData: (previous) => previous,
   });
 };
 
@@ -488,13 +521,22 @@ export const useFolderTree = () => {
 export interface PeoplePageFilters {
   q: string;
   includeArchived: boolean;
+  /** Only members of this team; '' or absent is everyone. */
+  teamId?: string;
+}
+
+/** How a people page list is fetched, beyond its filters. */
+export interface PeoplePageOptions {
+  enabled?: boolean;
 }
 
 /**
  * The People list, 25 at a time. `data` is every page loaded so far; call
- * `fetchNextPage` while `hasNextPage`. Pickers keep using the complete `usePeople`.
+ * `fetchNextPage` while `hasNextPage`. `total` is every match on the server
+ * (null until the first page arrives). Pickers that need the whole roster
+ * keep using `usePeople`.
  */
-export const usePeoplePage = (filters: PeoplePageFilters) => {
+export const usePeoplePage = (filters: PeoplePageFilters, options: PeoplePageOptions = {}) => {
   const org = useOrg();
   const query = useInfiniteQuery({
     queryKey: keys.peoplePage(org, filters),
@@ -503,15 +545,20 @@ export const usePeoplePage = (filters: PeoplePageFilters) => {
         limit: PEOPLE_PAGE_SIZE,
         cursor: pageParam,
         ...(filters.q ? { q: filters.q } : {}),
+        ...(filters.teamId ? { team_id: filters.teamId } : {}),
         ...(filters.includeArchived ? { include_archived: true } : {}),
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
-    enabled: Boolean(org),
+    enabled: Boolean(org) && (options.enabled ?? true),
     // Keep the last results on screen while a new search loads, instead of a skeleton per keystroke.
     placeholderData: (previous) => previous,
   });
-  return { ...query, data: query.data ? flattenPeoplePages(query.data.pages) : undefined };
+  return {
+    ...query,
+    data: query.data ? flattenPeoplePages(query.data.pages) : undefined,
+    total: query.data?.pages[0]?.total ?? null,
+  };
 };
 
 /** Whether requests can reach these People (login, email, active) — never the address. */

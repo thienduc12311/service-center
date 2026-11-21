@@ -31,7 +31,10 @@
       "clear": "Bỏ chọn tất cả",
       "remove": "Bỏ chọn {{name}}",
       "selectLoaded_other": "Chọn {{count}} người đang hiển thị"
-    }
+    },
+    "teamFilter": "Lọc theo ban",
+    "allTeams": "Tất cả các ban",
+    "noTeamMatches": "Không có ban nào phù hợp."
   },
   "person": {
     "addTitle": "Thêm thành viên",

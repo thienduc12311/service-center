@@ -302,7 +302,7 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
                 <SearchField
                   value={songQuery}
                   onChangeText={setSongQuery}
-                  placeholder={t('songBrowser.searchPlaceholder')}
+                  placeholder={t('mobileSongBrowser.searchPlaceholder')}
                   accessibilityLabel={t('editItem.findSong')}
                 />
                 {songs.isLoading ? <Loading /> : null}

@@ -20,13 +20,18 @@ import {
   type TeamWithPositions,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
-import { keys, usePeople, useSong, useSongs } from '../../hooks/queries';
+import { keys, usePeople, useSong, useSongPages } from '../../hooks/queries';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Modal } from '../ui';
 import { KeySelect } from '../KeySelect';
 import { SearchCombobox } from '../SearchCombobox';
 import { SearchableSelect } from '../SearchableSelect';
+import { SongSearchList, songListSource } from './SongSearchList';
 import { leaderPersonChoices, leaderPositionChoices, type LeaderChoiceLabels, type PickerChoices } from './leaderChoices';
+
+/** Rows per page in "Change song". */
+const CHANGE_SONG_PAGE_SIZE = 10;
 
 export interface EditItemModalProps {
   plan: PlanDetail;
@@ -51,7 +56,19 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
   const [changingSong, setChangingSong] = useState(false);
   const [formError, setFormError] = useState<LocalizedError | null>(null);
   const song = useSong(draft.itemType === 'song' ? (draft.songId ?? undefined) : undefined);
-  const songs = useSongs({ q: songQuery || undefined, per_page: 10 });
+  const settledSongQuery = useDebouncedValue(songQuery.trim());
+  const [now] = useState(() => new Date());
+  // The song browser's list, compact: server search by title, author or CCLI, A–Z, 10 at a time.
+  const songs = useSongPages(
+    {
+      sort: 'title',
+      per_page: CHANGE_SONG_PAGE_SIZE,
+      plan_id: plan.id,
+      ...(plan.service_type_id ? { service_type_id: plan.service_type_id } : {}),
+      ...(settledSongQuery ? { q: settledSongQuery } : {}),
+    },
+    changingSong,
+  );
   const people = usePeople();
   const set = <K extends keyof PlanItemDraft>(key: K, value: PlanItemDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
 
@@ -166,26 +183,24 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
               </Button>
             </div>
             {changingSong && (
-              <div>
-                <label className="label" htmlFor="edit-item-song">{t('editItem.findSong')}</label>
-                <input id="edit-item-song" className="input" value={songQuery} onChange={(event) => setSongQuery(event.target.value)} placeholder={t('editItem.searchPlaceholder')} />
-                <ul className="mt-1 max-h-40 overflow-y-auto">
-                  {(songs.data?.data ?? []).map((candidate) => (
-                    <li key={candidate.id}>
-                      <button
-                        type="button"
-                        className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
-                        onClick={() => {
-                          setDraft((current) => withSong(current, candidate));
-                          setChangingSong(false);
-                        }}
-                      >
-                        {candidate.title}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <SongSearchList
+                searchLabel={t('editItem.findSong')}
+                placeholder={t('editItem.searchPlaceholder')}
+                text={songQuery}
+                onTextChange={setSongQuery}
+                settledText={settledSongQuery}
+                songs={songListSource(songs)}
+                onPick={(candidate) => {
+                  setDraft((current) => withSong(current, candidate));
+                  setChangingSong(false);
+                }}
+                pickLabel={(candidate) => t('editItem.useSong', { title: candidate.title })}
+                planDate={plan.service_date}
+                compact
+                autoFocus
+                emptyText={t('addItem.noSongs')}
+                now={now}
+              />
             )}
 
             <div>

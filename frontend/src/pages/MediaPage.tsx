@@ -11,6 +11,7 @@ import {
   type UpdateMediaInput,
 } from '@service-center/shared';
 import { useInvalidateMedia, useMediaDetail, useMediaList } from '../hooks/queries';
+import { ListFooter } from '../components/ListFooter';
 import { useUrlBoolean, useUrlSearch } from '../hooks/useUrlState';
 import { ThumbnailPicker } from '../components/media/ThumbnailPicker';
 import { api } from '../lib/api';
@@ -75,11 +76,15 @@ export const MediaLibraryPage = () => {
       ) : rows.length === 0 ? (
         <EmptyState icon="media" title={t('library.emptyTitle')} description={t('library.emptyDescription')} />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {rows.map((media) => (
-            <MediaRowView key={media.id} media={media} />
-          ))}
-        </ul>
+        <>
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {rows.map((media) => (
+              <MediaRowView key={media.id} media={media} />
+            ))}
+          </ul>
+          {/* The server caps the list; past the cap the way forward is a narrower search. */}
+          <ListFooter shown={rows.length} total={list.data?.total} capped={list.data?.truncated ?? false} />
+        </>
       )}
       {adding && <CreateMediaModal onClose={() => setAdding(false)} onCreated={(id) => navigate(`/media/${id}`)} />}
     </div>

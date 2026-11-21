@@ -3,13 +3,13 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { RosterPerson, RosterPersonPage } from '@service-center/shared';
+import type { RosterPerson, RosterPersonPage, TeamWithPositions } from '@service-center/shared';
 import { api } from '../lib/api';
 import { LanguageProvider } from '../i18n/LanguageProvider';
 import { PeoplePage } from './PeoplePage';
 
 vi.mock('../lib/api', () => ({
-  api: { listPeoplePage: vi.fn() },
+  api: { listPeoplePage: vi.fn(), listTeams: vi.fn(async () => []) },
 }));
 vi.mock('../providers/AuthProvider', () => ({
   useAuth: () => ({ role: 'member', organizationId: 'org-1', user: null, session: null }),
@@ -35,6 +35,24 @@ const person = (id: string, name: string): RosterPerson => ({
   campus: null,
   invite_pending: false,
   archived: false,
+});
+
+const team = (id: string, name: string): TeamWithPositions => ({
+  id,
+  organization_id: 'org-1',
+  service_type_id: null,
+  name,
+  description: null,
+  color: '#6366f1',
+  sort_order: 0,
+  default_visibility: 'released',
+  default_response_owner_id: null,
+  requires_eligibility: false,
+  eligibility_kind: null,
+  created_at: '2026-11-01T00:00:00Z',
+  updated_at: '2026-11-01T00:00:00Z',
+  positions: [],
+  members: [],
 });
 
 const renderPeople = () => {
@@ -65,6 +83,23 @@ describe('web People list', () => {
     await waitFor(() => expect(screen.queryByText('An Nguyen')).toBeNull());
     expect(await screen.findByText('Mai Tran')).toBeTruthy();
     expect(api.listPeoplePage).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'Mai' }));
+  });
+
+  it('shows the server total and filters by team on the server', async () => {
+    vi.mocked(api.listTeams).mockResolvedValue([team('t-band', 'Band'), team('t-tech', 'Tech')]);
+    vi.mocked(api.listPeoplePage).mockImplementation(async (query): Promise<RosterPersonPage> =>
+      query?.team_id === 't-band'
+        ? { items: [person('p-2', 'Mai Tran')], next_cursor: null, total: 1 }
+        : { items: [person('p-1', 'An Nguyen'), person('p-2', 'Mai Tran')], next_cursor: 'c-1', total: 340 },
+    );
+    const user = renderPeople();
+    expect(await screen.findByText('340 people')).toBeTruthy();
+
+    await user.click(await screen.findByRole('combobox', { name: 'Filter by team' }));
+    await user.click(await screen.findByRole('option', { name: 'Band' }));
+    expect(await screen.findByText('1 person')).toBeTruthy();
+    expect(screen.queryByText('An Nguyen')).toBeNull();
+    expect(api.listPeoplePage).toHaveBeenLastCalledWith(expect.objectContaining({ team_id: 't-band' }));
   });
 
   it('loads the next page with the cursor from the previous one', async () => {

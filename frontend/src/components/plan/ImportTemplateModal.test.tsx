@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, expect, it, vi } from 'vitest';
-import type { ListPlansRequest, Paginated, PlanDetail, PlanSummary } from '@service-center/shared';
+import { foldSearchText, type ListPlansRequest, type Paginated, type PlanDetail, type PlanSummary } from '@service-center/shared';
 import { api } from '../../lib/api';
 import { LanguageProvider } from '../../i18n/LanguageProvider';
 import { ImportTemplateModal } from './ImportTemplateModal';
@@ -65,7 +65,9 @@ it('searches past plans accent-insensitively, pages to older ones, and can widen
   vi.mocked(api.listPeople).mockResolvedValue([]);
   vi.mocked(api.listPlans).mockImplementation(async (query) => {
     const request = (query ?? {}) as ListPlansRequest;
-    return page(request.service_type_id ? sundays : [youthPlan, ...sundays], request);
+    const rows = request.service_type_id ? sundays : [youthPlan, ...sundays];
+    const words = request.q ? foldSearchText(request.q).split(/\s+/) : [];
+    return page(rows.filter((row) => words.every((word) => foldSearchText(row.title).includes(word))), request);
   });
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -79,17 +81,21 @@ it('searches past plans accent-insensitively, pages to older ones, and can widen
   expect(screen.getByText('Showing 25 of 30')).toBeTruthy();
   expect(vi.mocked(api.listPlans).mock.calls[0]?.[0]).toMatchObject({ service_type_id: 'sunday', order: 'desc', per_page: 25 });
 
-  // Easter is older than the first page: say the search only covered what's loaded.
+  // Easter is older than the first page: the server search still finds it.
   const search = screen.getByRole('searchbox', { name: 'Search past plans' });
   await user.type(search, 'phuc sinh');
-  expect(screen.getByText('No plans match your search.')).toBeTruthy();
-  expect(screen.getByText('Searched the 25 most recent plans. Show more to search older ones too.')).toBeTruthy();
-
-  await user.click(screen.getByRole('button', { name: 'Show more' }));
   const easter = await screen.findByRole('button', { name: /Lễ Phục Sinh/ });
+  expect(vi.mocked(api.listPlans).mock.calls.at(-1)?.[0]).toMatchObject({ q: 'phuc sinh', service_type_id: 'sunday' });
+  expect(screen.queryByRole('button', { name: /Sunday 0/ })).toBeNull();
   await user.click(easter);
   expect(easter.getAttribute('aria-pressed')).toBe('true');
-  expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+
+  // Clearing the search keeps the chosen plan listed and pages to older plans again.
+  await user.clear(search);
+  await waitFor(() => expect(screen.getByRole('button', { name: /Sunday 0/ })).toBeTruthy());
+  expect(screen.getByRole('button', { name: /Lễ Phục Sinh/ }).getAttribute('aria-pressed')).toBe('true');
+  await user.click(screen.getByRole('button', { name: 'Show more' }));
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull());
 
   // Widening to every service type clears the choice and shows each plan's type.
   await user.clear(search);

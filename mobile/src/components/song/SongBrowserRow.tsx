@@ -56,19 +56,19 @@ export const SongBrowserRow = ({ song, planState, recentlyUsed, now, adding, dis
         {marked ? (
           <View style={styles.badgeRow}>
             <Icon name="check" size={13} color={theme.accent.green.fg} strokeWidth={2.6} />
-            <Text style={styles.inPlan}>{planState === 'added' ? t('songBrowser.added') : t('songBrowser.inPlan')}</Text>
+            <Text style={styles.inPlan}>{planState === 'added' ? t('mobileSongBrowser.added') : t('mobileSongBrowser.inPlan')}</Text>
           </View>
         ) : recentlyUsed ? (
           <View style={styles.badgeRow}>
             <Icon name="alert" size={13} color={theme.accent.yellow.fg} />
-            <Text style={styles.warning}>{t('songBrowser.recentWarning', { count: RECENT_USE_WARNING_DAYS })}</Text>
+            <Text style={styles.warning}>{t('mobileSongBrowser.recentWarning', { count: RECENT_USE_WARNING_DAYS })}</Text>
           </View>
         ) : null}
       </View>
       {keys ? <KeyCap>{keys}</KeyCap> : null}
       <PressableScale
         accessibilityRole="button"
-        accessibilityLabel={adding ? t('songBrowser.adding', { title: song.title }) : t('songBrowser.addSong', { title: song.title })}
+        accessibilityLabel={adding ? t('mobileSongBrowser.adding', { title: song.title }) : t('mobileSongBrowser.addSong', { title: song.title })}
         accessibilityState={{ busy: adding }}
         disabled={disabled || adding}
         onPress={onAdd}
@@ -121,11 +121,11 @@ export const SongPickRow = ({ song, chosen, onPress }: SongPickRowProps) => {
 const useSongUsageText = (song: SongListItem, now: string): string => {
   const { t } = useTranslation('plans');
   const format = useFormatters();
-  if (!song.last_scheduled_at) return t('songBrowser.neverUsed');
+  if (!song.last_scheduled_at) return t('mobileSongBrowser.neverUsed');
   const weeks = SONG_USAGE_WINDOW_WEEKS;
   const count = song.usage_count > 0
-    ? t('songBrowser.usedCount', { count: song.usage_count, weeks })
-    : t('songBrowser.notUsedRecently', { weeks });
+    ? t('mobileSongBrowser.usedCount', { count: song.usage_count, weeks })
+    : t('mobileSongBrowser.notUsedRecently', { weeks });
   const age = songAge(song.last_scheduled_at, now);
   return `${count} · ${ageText(age, song.last_scheduled_at, t, format.date)}`;
 };
@@ -133,17 +133,17 @@ const useSongUsageText = (song: SongListItem, now: string): string => {
 const ageText = (age: SongAge, lastScheduledAt: string, t: TFunction<'plans'>, date: (value: string) => string): string => {
   switch (age.unit) {
     case 'today':
-      return t('songBrowser.lastUsed.today');
+      return t('mobileSongBrowser.lastUsed.today');
     case 'upcoming':
-      return t('songBrowser.lastUsed.upcoming', { date: date(lastScheduledAt) });
+      return t('mobileSongBrowser.lastUsed.upcoming', { date: date(lastScheduledAt) });
     case 'days':
-      return t('songBrowser.lastUsed.days', { count: age.count });
+      return t('mobileSongBrowser.lastUsed.days', { count: age.count });
     case 'weeks':
-      return t('songBrowser.lastUsed.weeks', { count: age.count });
+      return t('mobileSongBrowser.lastUsed.weeks', { count: age.count });
     case 'months':
-      return t('songBrowser.lastUsed.months', { count: age.count });
+      return t('mobileSongBrowser.lastUsed.months', { count: age.count });
     case 'years':
-      return t('songBrowser.lastUsed.years', { count: age.count });
+      return t('mobileSongBrowser.lastUsed.years', { count: age.count });
   }
 };
 

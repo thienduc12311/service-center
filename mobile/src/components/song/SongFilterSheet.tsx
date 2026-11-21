@@ -37,8 +37,8 @@ export const useSpeedLabel = (): ((speed: string) => string) => {
 export const SongFilterSheet = ({ kind, value, songs, onChange, onClose }: SongFilterSheetProps) => {
   const { t } = useTranslation('plans');
   const title = kind === 'key'
-    ? t('songBrowser.filters.key')
-    : kind === 'tempo' ? t('songBrowser.filters.tempo') : t('songBrowser.filters.theme');
+    ? t('mobileSongBrowser.filters.key')
+    : kind === 'tempo' ? t('mobileSongBrowser.filters.tempo') : t('mobileSongBrowser.filters.theme');
   const choose = (next: string | null) => {
     onChange(next);
     onClose();
@@ -50,9 +50,9 @@ export const SongFilterSheet = ({ kind, value, songs, onChange, onClose }: SongF
           <KeyPicker
             value={value}
             onChange={choose}
-            label={t('songBrowser.filters.key')}
-            placeholder={t('songBrowser.filters.anyKey')}
-            resetLabel={t('songBrowser.filters.anyKey')}
+            label={t('mobileSongBrowser.filters.key')}
+            placeholder={t('mobileSongBrowser.filters.anyKey')}
+            resetLabel={t('mobileSongBrowser.filters.anyKey')}
             initiallyOpen
           />
         </ScrollView>
@@ -73,8 +73,8 @@ const TempoChoices = ({ value, onChoose }: ChoiceListProps) => {
   const styles = useThemedStyles(makeStyles);
   const speedLabel = useSpeedLabel();
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={t('songBrowser.filters.tempo')} style={styles.chips}>
-      <Chip label={t('songBrowser.filters.anyTempo')} active={value === null} onPress={() => onChoose(null)} />
+    <View accessibilityRole="radiogroup" accessibilityLabel={t('mobileSongBrowser.filters.tempo')} style={styles.chips}>
+      <Chip label={t('mobileSongBrowser.filters.anyTempo')} active={value === null} onPress={() => onChoose(null)} />
       {SONG_SPEEDS.map((speed) => (
         <Chip key={speed} label={speedLabel(speed)} active={value === speed} onPress={() => onChoose(speed)} />
       ))}
@@ -102,15 +102,15 @@ const ThemeChoices = ({ value, songs, onChoose }: ThemeChoicesProps) => {
     const text = typed.trim();
     const exact = found.some((theme) => theme.toLowerCase() === text.toLowerCase());
     return [
-      { key: 'any', label: t('songBrowser.filters.anyTheme'), value: null },
-      ...(text && !exact ? [{ key: 'typed', label: t('songBrowser.filters.useTheme', { theme: text }), value: text }] : []),
+      { key: 'any', label: t('mobileSongBrowser.filters.anyTheme'), value: null },
+      ...(text && !exact ? [{ key: 'typed', label: t('mobileSongBrowser.filters.useTheme', { theme: text }), value: text }] : []),
       ...found.map((theme) => ({ key: `theme:${theme}`, label: theme, value: theme })),
     ];
   }, [songs, t, typed]);
   return (
     <>
-      <SearchField value={typed} onChangeText={setTyped} placeholder={t('songBrowser.filters.themeSearch')} autoFocus />
-      <Text style={styles.hint}>{t('songBrowser.filters.themeHint')}</Text>
+      <SearchField value={typed} onChangeText={setTyped} placeholder={t('mobileSongBrowser.filters.themeSearch')} autoFocus />
+      <Text style={styles.hint}>{t('mobileSongBrowser.filters.themeHint')}</Text>
       <FlatList
         style={styles.flex}
         data={rows}

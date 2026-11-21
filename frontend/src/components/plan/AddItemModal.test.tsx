@@ -6,11 +6,14 @@ import { LanguageProvider } from '../../i18n/LanguageProvider';
 import { api } from '../../lib/api';
 import { AddItemModal } from './AddItemModal';
 
-vi.mock('../../lib/api', () => ({ api: { addPlanItem: vi.fn() } }));
+vi.mock('../../lib/api', () => ({ api: { addPlanItem: vi.fn(), getPlan: vi.fn(), reorderPlanItems: vi.fn() } }));
 vi.mock('../../lib/supabase', () => ({ supabase: {} }));
 vi.mock('../../providers/AuthProvider', () => ({ useAuth: () => ({ organizationId: null }) }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.resetAllMocks();
+});
 
 it('adds a free-form entry with its own title, duration and notes', async () => {
   const user = userEvent.setup();
@@ -57,4 +60,29 @@ it('adds a free-form entry with its own title, duration and notes', async () => 
     key_override: null,
     idempotency_key: expect.any(String),
   });
+});
+
+it('puts a header at the chosen insert point and reports the new item', async () => {
+  const user = userEvent.setup();
+  const onAdded = vi.fn();
+  const row = (id: string) => ({ id });
+  vi.mocked(api.addPlanItem).mockResolvedValue({ id: 'new-h' } as Awaited<ReturnType<typeof api.addPlanItem>>);
+  vi.mocked(api.getPlan).mockResolvedValue({ content_revision: 7, items: [row('a'), row('b'), row('new-h')] } as Awaited<ReturnType<typeof api.getPlan>>);
+  vi.mocked(api.reorderPlanItems).mockResolvedValue([]);
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <LanguageProvider>
+        <AddItemModal open planId="plan-1" insertPoint={{ kind: 'after', itemId: 'a' }} onAdded={onAdded} onClose={vi.fn()} />
+      </LanguageProvider>
+    </QueryClientProvider>,
+  );
+
+  // Songs are added from the song browser; this form is for headers and items.
+  expect(screen.queryByRole('button', { name: 'Song' })).toBeNull();
+  await user.click(await screen.findByRole('button', { name: 'Header' }));
+  await user.type(screen.getByRole('textbox', { name: 'Title' }), 'Worship');
+  await user.click(screen.getByRole('button', { name: 'Add' }));
+  await waitFor(() => expect(onAdded).toHaveBeenCalledWith('new-h'));
+  expect(api.addPlanItem).toHaveBeenCalledWith('plan-1', expect.objectContaining({ item_type: 'header', title: 'Worship' }));
+  expect(api.reorderPlanItems).toHaveBeenCalledExactlyOnceWith('plan-1', ['a', 'new-h', 'b'], 7);
 });

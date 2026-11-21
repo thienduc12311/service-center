@@ -214,9 +214,9 @@ function AddItems({ plan, afterItemId }: AddItemsProps) {
       sendSong(song);
       return;
     }
-    Alert.alert(t('songBrowser.addAgainTitle', { title: song.title }), t('songBrowser.addAgainBody'), [
+    Alert.alert(t('mobileSongBrowser.addAgainTitle', { title: song.title }), t('mobileSongBrowser.addAgainBody'), [
       { text: t('common:actions.cancel'), style: 'cancel' },
-      { text: t('songBrowser.addAgain'), onPress: () => sendSong(song) },
+      { text: t('mobileSongBrowser.addAgain'), onPress: () => sendSong(song) },
     ]);
   };
 
@@ -254,21 +254,21 @@ function AddItems({ plan, afterItemId }: AddItemsProps) {
   const done = () => router.back();
   const screenTitle = itemType !== 'song'
     ? t('addItem.title')
-    : addedCount > 0 ? t('songBrowser.titleAdded', { count: addedCount }) : t('songBrowser.title');
+    : addedCount > 0 ? t('mobileSongBrowser.titleAdded', { count: addedCount }) : t('mobileSongBrowser.title');
 
   const notices = (
     <>
       {anchor ? (
         <View style={styles.anchor}>
           <Icon name="move" size={15} color={theme.color.brandText} />
-          <Text style={styles.anchorText} numberOfLines={2}>{t('songBrowser.insertingAfter', { title: anchor.title })}</Text>
-          <Button title={t('songBrowser.insertAtEnd')} variant="quiet" onPress={appendInstead} />
+          <Text style={styles.anchorText} numberOfLines={2}>{t('mobileSongBrowser.insertingAfter', { title: anchor.title })}</Text>
+          <Button title={t('mobileSongBrowser.insertAtEnd')} variant="quiet" onPress={appendInstead} />
         </View>
       ) : null}
       {placeFailed ? (
         <View accessibilityRole="alert" style={[styles.warning, styles.warningRow]}>
           <Icon name="alert" size={16} color={theme.accent.yellow.fg} />
-          <Text style={styles.warningText}>{t('songBrowser.placeFailed')}</Text>
+          <Text style={styles.warningText}>{t('mobileSongBrowser.placeFailed')}</Text>
         </View>
       ) : null}
       {uncertain ? (
@@ -293,7 +293,7 @@ function AddItems({ plan, afterItemId }: AddItemsProps) {
           headerRight: () => (
             <PressableScale
               accessibilityRole="button"
-              accessibilityLabel={t('songBrowser.doneLabel')}
+              accessibilityLabel={t('mobileSongBrowser.doneLabel')}
               onPress={done}
               pressedOpacity={0.6}
               hitSlop={8}

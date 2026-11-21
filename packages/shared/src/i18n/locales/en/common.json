@@ -198,7 +198,8 @@
   "list": {
     "showingOf": "Showing {{shown}} of {{total}}",
     "refineSearch": "Showing the first {{shown}} — refine your search to see others",
-    "showingOfRefine": "Showing {{shown}} of {{total}} — keep typing to narrow it down"
+    "showingOfRefine": "Showing {{shown}} of {{total}} — keep typing to narrow it down",
+    "showingOfNarrow": "Showing {{shown}} of {{total}} — narrow your search to see the rest"
   },
   "combobox": {
     "placeholder": "Type to search…",

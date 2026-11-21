@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { PLAN_STATUS_LABELS, type ListPlansRequest, type PlanStatus } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePlanPages, useServiceTypes, useInvalidateOrg } from '../hooks/queries';
-import { useUrlEnum, useUrlString } from '../hooks/useUrlState';
+import { useUrlEnum, useUrlSearch, useUrlString } from '../hooks/useUrlState';
 import { groupBy, localMonthKey } from '../lib/grouping';
 import { useFormatters } from '../i18n';
 import { useAuth } from '../providers/AuthProvider';
@@ -24,6 +24,7 @@ import {
   listFailed,
 } from '../components/ui';
 import { PlanListCard } from '../components/plan/PlanListCard';
+import { Icon } from '../components/icons';
 
 const PLAN_STATUSES = Object.keys(PLAN_STATUS_LABELS) as PlanStatus[];
 
@@ -58,6 +59,8 @@ export const PlansPage = () => {
   const [status, setStatus] = useUrlEnum<StatusFilter>('status', STATUS_FILTERS, '');
   const [planWindow, setPlanWindow] = useUrlEnum<PlanWindow>('when', PLAN_WINDOWS, 'upcoming');
   const [serviceTypeFilter, setServiceTypeFilter] = useUrlString('type', '', { replace: false });
+  // Accent-insensitive title words, searched on the server across every page.
+  const search = useUrlSearch('q');
   const showPast = planWindow === 'past';
   const [creating, setCreating] = useState(false);
   const [openedAt] = useState(() => new Date().toISOString());
@@ -66,6 +69,7 @@ export const PlansPage = () => {
   const listQuery: Omit<ListPlansRequest, 'page'> = {
     ...(status ? { status } : {}),
     ...(serviceTypeFilter ? { service_type_id: serviceTypeFilter } : {}),
+    ...(search.query ? { q: search.query } : {}),
     ...(showPast ? { to: openedAt, order: 'desc' } : { from: openedAt, order: 'asc' }),
     per_page: 50,
   };
@@ -164,6 +168,7 @@ export const PlansPage = () => {
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
         <Segmented
           label={t('plansPage.past')}
           value={planWindow}
@@ -173,6 +178,18 @@ export const PlansPage = () => {
             { value: 'past', label: t('plansPage.past') },
           ]}
         />
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            className="input !pl-9"
+            value={search.text}
+            onChange={(event) => search.setText(event.target.value)}
+            placeholder={t('plansPage.searchPlaceholder')}
+            aria-label={t('plansPage.searchLabel')}
+          />
+        </div>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           {totalPlans !== undefined && (
             <span className="text-sm text-slate-500 tabular-nums dark:text-slate-400">
@@ -243,6 +260,8 @@ export const PlansPage = () => {
             </div>
           )}
         </div>
+      ) : search.query ? (
+        <EmptyState icon="search" title={t('plansPage.noMatchesTitle')} description={t('plansPage.noMatchesDescription', { query: search.query })} />
       ) : (
         <EmptyState
           icon="plans"
