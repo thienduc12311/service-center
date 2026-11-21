@@ -88,6 +88,25 @@ Follow-up validation: typecheck clean; `npm run test` 1,655 passed; `run-all.sh`
 
 Known local test flake (environment, not code): supertest binds an ephemeral port on `::`; when another local app already listens on `127.0.0.1` with the same port (here OpenCode on :52139 answers 407), the request reaches that app and a random backend test fails with 401/404/407. Binding test servers to 127.0.0.1 would remove it.
 
+## Review round (2026-11-21) — branch `feature/qa-wave8-review-fixes`
+
+PR #122 was merged into `feature/qa-wave8-fixes` after #121 had already merged, so the follow-ups never reached `main`; this branch carries them. Three fresh reviewers (database, backend/shared, web/mobile) reviewed #121 + #122; every finding was re-verified against the code before fixing.
+
+Fixed (migrations `20261127000800_w8_review_fixes`, `20261127000900_w8_people_contact_search`):
+- P1 Realtime: archiving, unlinking, marking a child or deleting a linked person left chats reached as plan leader / scheduler / manager on the old key — now every conversation the person loses is rekeyed; team membership moves (UPDATE) rekey the old team's chat.
+- P1 team rosters: `team_roster_people` read unpaged (cut at 1,000 memberships → "Unknown" again); now paged and per-team for single-team reads.
+- Roster privacy: archived people hidden; children show name and avatar only (**coordinator default, product may revisit**).
+- Reports: attendance times paged (were cut at 1,000 result rows).
+- Supabase timeout no longer retried by postgrest-js (~67 s → 15 s); Auth 408/429 → 503 instead of sign-out; error logs and 23505/23503/23514 responses carry no Postgres `details` (row values); 57014 → 504.
+- `GET /conversations` without `cursor`/`limit` returns the legacy array again (installed app builds); new clients call `conversationsPage`.
+- People list: compact base64url cursor (long non-Latin names broke "Load more"); owner search matches the login email/phone shown on each row; search symbols match literally; invitations paged.
+- Song CHECKs count length like JavaScript (emoji) and cover themes, song types and default key; `claim_plan_copy_key` ACL restored; `update_plan_with_times` writes only sent columns.
+- Clients: a failed Realtime join refetches topics with backoff; rekey refetch jittered 0–2 s; key request pinned to its church; role-appropriate search placeholder; misleading chat count removed; Plan chat not offered before the plan loads.
+
+Validation: typecheck clean; `npm run test` all green; `run-all.sh` 60/60; both Realtime e2e scripts pass; live API: People 1,101/1,101 over 45 pages (161-char Thai name included), literal `*` search, legacy and paged conversations 110/110, owner search by login email, schedule report 1,138 rows all with times.
+
+Follow-ups not done: other client delete methods (teams, positions, plans, service types, songs, arrangements, folders, tag groups, matrix views) still surface a 404 on double-submit (behaviour since wave 7).
+
 ## Deferred
 
 - W8-PERF-D4 RLS `FOR ALL` write policies evaluated on every SELECT (songs 125 ms vs 2 ms without RLS) — split into per-command policies; needs a careful RLS migration, schedule as its own perf task.
