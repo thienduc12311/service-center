@@ -592,7 +592,8 @@
     "noTemplates": "No plan templates yet. Save one from a plan on the website."
   },
   "mobileApply": {
-    "putItemsHint": "Where the template's items go in this order."
+    "putItemsHint": "Where the template's items go in this order.",
+    "allServiceTypes": "All service types"
   },
   "mobileOrder": {
     "itemGone": "This item is no longer in the plan. Someone may have removed it.",

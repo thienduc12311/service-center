@@ -364,7 +364,8 @@
     "blockTitle": "Chặn {{name}}?",
     "blockMessage": "Bạn sẽ không thấy tin nhắn hay bình luận của {{name}}, và họ sẽ không làm bạn nhận thông báo. {{name}} không được báo về việc này. Bạn có thể bỏ chặn trong Cài đặt → Người đã chặn.",
     "blockConfirm": "Chặn",
-    "blockAfterReport": "Bạn cũng có thể chặn {{name}} để không còn thấy bất cứ điều gì họ viết."
+    "blockAfterReport": "Bạn cũng có thể chặn {{name}} để không còn thấy bất cứ điều gì họ viết.",
+    "chooseTeam": "Chọn một ban…"
   },
   "mobileInbox": {
     "description": "Trò chuyện theo đội và chương trình, cùng tin nhắn từ người phụ trách."

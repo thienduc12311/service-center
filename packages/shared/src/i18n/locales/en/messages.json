@@ -384,7 +384,8 @@
     "blockTitle": "Block {{name}}?",
     "blockMessage": "You won't see messages or comments from {{name}}, and they won't notify you. {{name}} isn't told. You can unblock them in Settings → Blocked people.",
     "blockConfirm": "Block",
-    "blockAfterReport": "You can also block {{name}} so you no longer see anything they write."
+    "blockAfterReport": "You can also block {{name}} so you no longer see anything they write.",
+    "chooseTeam": "Choose a team…"
   },
   "mobileInbox": {
     "description": "Team and plan chat, and messages from your leaders."

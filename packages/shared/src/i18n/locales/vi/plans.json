@@ -578,7 +578,8 @@
     "noTemplates": "Chưa có mẫu chương trình. Hãy lưu một mẫu từ một chương trình trên trang web."
   },
   "mobileApply": {
-    "putItemsHint": "Vị trí các mục của mẫu trong thứ tự này."
+    "putItemsHint": "Vị trí các mục của mẫu trong thứ tự này.",
+    "allServiceTypes": "Mọi loại buổi nhóm"
   },
   "mobileOrder": {
     "itemGone": "Mục này không còn trong kế hoạch. Có thể ai đó đã xóa nó.",
