@@ -275,4 +275,25 @@ describe('Conversation list paging (W8-PERF-D3)', () => {
     expect(result.status).toBe(400);
     expect(fetchDb).not.toHaveBeenCalled();
   });
+
+  it('answers an app build from before paging (no cursor, no limit) with the whole plain array', async () => {
+    const result = await request(createApp(pagingDb())).get('/conversations');
+    expect(result.status).toBe(200);
+    expect(Array.isArray(result.body)).toBe(true);
+    const items = result.body as ConversationSummary[];
+    expect(items).toHaveLength(230);
+    expect(new Set(items.map((item) => item.id)).size).toBe(230);
+    const { created_at: _createdAt, ...first } = row(1);
+    expect(items[0]).toEqual(first);
+  });
+
+  it('answers the paged shape as soon as either limit or cursor is sent', async () => {
+    const limitOnly = await request(createApp(pagingDb())).get('/conversations').query({ limit: 50 });
+    expect(limitOnly.body).toMatchObject({ has_more: true });
+    expect(limitOnly.body.items).toHaveLength(50);
+    const cursor = limitOnly.body.next_cursor as string;
+    const cursorOnly = await request(createApp(pagingDb())).get('/conversations').query({ cursor });
+    expect(cursorOnly.body.items).toHaveLength(50);
+    expect(cursorOnly.body.items[0].id).toBe(row(51).id);
+  });
 });

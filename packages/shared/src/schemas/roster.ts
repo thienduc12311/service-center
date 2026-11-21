@@ -84,6 +84,8 @@ export type UpdateTagGroupInput = z.infer<typeof updateTagGroupSchema>;
 export type SetTagGroupInput = z.infer<typeof setTagGroupSchema>;
 export type ListPeopleQuery = z.infer<typeof listPeopleQuerySchema>;
 export type ListPeoplePageQuery = z.infer<typeof listPeoplePageQuerySchema>;
+/** What a client sends to `GET /people/page`. */
+export type ListPeoplePageRequest = z.input<typeof listPeoplePageQuerySchema>;
 export type RosterAuditQuery = z.infer<typeof rosterAuditQuerySchema>;
 export type GlobalSearchQuery = z.infer<typeof globalSearchQuerySchema>;
 

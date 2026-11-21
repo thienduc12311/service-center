@@ -65,6 +65,7 @@ import {
   editItemComment,
   getConversation,
   listConversationMessages,
+  listAllConversations,
   listConversations,
   listItemComments,
   markConversationRead,
@@ -217,7 +218,14 @@ messageTemplatesRouter.delete('/:id', async (req, res) => {
 /** Participants are derived per request in the database; a guessed id is 404. */
 export const conversationsRouter: Router = Router();
 
+/** App builds from before paging send neither and expect `ConversationSummary[]`. */
+const isLegacyConversationList = (req: Request): boolean => req.query.cursor === undefined && req.query.limit === undefined;
+
 conversationsRouter.get('/', validateQuery(listConversationsQuerySchema), async (req, res) => {
+  if (isLegacyConversationList(req)) {
+    res.json(await listAllConversations(caller(req)));
+    return;
+  }
   res.json(await listConversations(caller(req), parsedQuery<ListConversationsQuery>(res)));
 });
 conversationsRouter.post('/open', validateBody(openConversationSchema), async (req, res) => {
