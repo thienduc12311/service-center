@@ -193,7 +193,7 @@
   "addItem": {
     "title": "Add to the order",
     "findSong": "Find a song",
-    "searchPlaceholder": "Search by title",
+    "searchPlaceholder": "Search by title, author, or CCLI number",
     "noSongs": "No songs match that search.",
     "mainKey": "Main key",
     "chooseKey": "Choose the service key",

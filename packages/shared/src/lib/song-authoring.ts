@@ -79,6 +79,7 @@ export const rebaseDraft = <T extends object>(draft: T, base: T, latest: T): T =
 /** The Add Song form, before it is turned into a request body. */
 export interface AddSongFormValues {
   title: string;
+  ccliNumber: string;
   arrangementName: string;
   key: string | null;
   capo: number | null;
@@ -91,6 +92,7 @@ export interface AddSongFormValues {
 
 export const EMPTY_ADD_SONG_FORM: AddSongFormValues = {
   title: '',
+  ccliNumber: '',
   arrangementName: '',
   key: null,
   capo: null,
@@ -103,7 +105,7 @@ export const EMPTY_ADD_SONG_FORM: AddSongFormValues = {
 
 /** Whether anything has been typed or chosen in the Add Song form. */
 export const isAddSongFormDirty = (form: AddSongFormValues): boolean =>
-  Boolean(form.title.trim() || form.arrangementName.trim() || form.chordChart.trim() || form.style || form.speed)
+  Boolean(form.title.trim() || form.ccliNumber.trim() || form.arrangementName.trim() || form.chordChart.trim() || form.style || form.speed)
   || form.key !== null || form.capo !== null || form.types.length > 0 || form.themes.length > 0;
 
 /**
@@ -119,6 +121,7 @@ export const toCreateSongInput = (form: AddSongFormValues, defaultArrangementNam
 
   return {
     title: form.title.trim(),
+    ccli_number: textOrNull(form.ccliNumber),
     default_key: key,
     themes: form.themes,
     song_types: form.types,

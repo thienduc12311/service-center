@@ -6,7 +6,7 @@
     "sortRecent": "Cập nhật gần đây",
     "importCsv": "Nhập CSV",
     "addSong": "Thêm bài hát",
-    "searchPlaceholder": "Thêm bộ lọc văn bản",
+    "searchPlaceholder": "Tìm theo tên bài, tác giả hoặc số CCLI",
     "searchLabel": "Tìm bài hát",
     "hideFilters": "Ẩn bộ lọc",
     "filtersCount_other": "Bộ lọc ({{count}})",
@@ -502,7 +502,7 @@
   "mobileSongs": {
     "inLibrary_other": "{{count}} bài trong thư viện",
     "description": "Tìm trong thư viện, rồi mở bảng hợp âm để dịch giọng ngay trên sân khấu.",
-    "searchPlaceholder": "Tìm theo tên bài",
+    "searchPlaceholder": "Tìm theo tên bài, tác giả hoặc số CCLI",
     "noMatch": "Không có kết quả",
     "emptyLibrary": "Thư viện còn trống",
     "noMatchDescription": "Không có bài hát nào khớp với \"{{query}}\".",

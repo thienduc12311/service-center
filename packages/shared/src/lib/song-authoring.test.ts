@@ -102,6 +102,13 @@ describe('add song', () => {
     expect(isAddSongFormDirty({ ...EMPTY_ADD_SONG_FORM, title: '   ' })).toBe(false);
     expect(isAddSongFormDirty({ ...EMPTY_ADD_SONG_FORM, capo: 2 })).toBe(true);
   });
+
+  it('includes an optional CCLI number and keeps it as text', () => {
+    const form = { ...EMPTY_ADD_SONG_FORM, title: 'Amazing Grace' };
+    expect(toCreateSongInput(form, 'Default Arrangement').ccli_number).toBeNull();
+    expect(toCreateSongInput({ ...form, ccliNumber: ' 0022025 ' }, 'Default Arrangement').ccli_number).toBe('0022025');
+    expect(isAddSongFormDirty({ ...EMPTY_ADD_SONG_FORM, ccliNumber: '0022025' })).toBe(true);
+  });
 });
 
 describe('song information', () => {
@@ -117,6 +124,14 @@ describe('song information', () => {
     const form = { ...songInformationFormFrom(current), title: ' Amazing Grace ', copyright: '   ' };
     expect(isSongInformationDirty(form, current)).toBe(false);
     expect(isSongInformationDirty({ ...form, songTypes: ['Hymn', 'Communion'] }, current)).toBe(true);
+  });
+
+  it('detects changes to the CCLI number and supports clearing it', () => {
+    const current = song();
+    const form = { ...songInformationFormFrom(current), ccliNumber: ' 12345 ' };
+    expect(isSongInformationDirty(form, current)).toBe(true);
+    expect(toUpdateSongInput(form).ccli_number).toBe('12345');
+    expect(toUpdateSongInput({ ...form, ccliNumber: '' }).ccli_number).toBeNull();
   });
 
   it('rebases a kept draft onto the latest version without undoing the other edit', () => {

@@ -191,7 +191,7 @@
   "addItem": {
     "title": "Thêm vào thứ tự",
     "findSong": "Tìm bài hát",
-    "searchPlaceholder": "Tìm theo tên",
+    "searchPlaceholder": "Tìm theo tên bài, tác giả hoặc số CCLI",
     "noSongs": "Không có bài hát nào khớp với tìm kiếm.",
     "mainKey": "Tông chính",
     "chooseKey": "Chọn tông buổi nhóm",
