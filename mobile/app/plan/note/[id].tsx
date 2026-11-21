@@ -11,16 +11,19 @@ import {
   planNoteDraftChanged,
   planNoteDraftFrom,
   planNoteLeavesSimple,
+  keyedNoteCreate,
   planNoteRequest,
   toggleNoteTeam,
   validatePlanNoteDraft,
   withNoteCategory,
   type PlanDetail,
+  type NoteCreateAttempt,
   type PlanNote,
   type PlanNoteDraft,
   type PlanNotesResponse,
 } from '@service-center/shared';
 import { api } from '../../../src/lib/api';
+import { newIdempotencyKey } from '../../../src/lib/idempotency';
 import { queryKeys } from '../../../src/lib/query-keys';
 import { draftWithoutWithdrawnCategory, noteWriteOutcome, type NoteWriteOutcome } from '../../../src/lib/plan-notes-edit';
 import { useDiscardGuard } from '../../../src/lib/useDiscardGuard';
@@ -185,11 +188,19 @@ function NoteForm({ plan, notes, note, planItemId }: NoteFormProps) {
     }
   };
 
+  // One key per unchanged draft, reused when the same create is retried.
+  const createAttempt = useRef<NoteCreateAttempt | null>(null);
+  const keyedCreate = () => {
+    const keyed = keyedNoteCreate(createAttempt.current, planNoteRequest(draft, null), newIdempotencyKey);
+    createAttempt.current = keyed.attempt;
+    return keyed.request;
+  };
+
   const save = useMutation({
     mutationFn: () =>
       editing
         ? api.updatePlanNote(plan.id, editing.id, planNoteRequest(draft, editing, baseRevision))
-        : api.createPlanNote(plan.id, planNoteRequest(draft, null)),
+        : api.createPlanNote(plan.id, keyedCreate()),
     onSuccess: async () => {
       if (!isCurrentGeneration(generation)) return;
       await refreshNotes();

@@ -99,7 +99,8 @@ planNotesRouter.get('/', async (req, res) => {
 
 planNotesRouter.post('/', requireCapability('plans.edit'), validateBody(savePlanNoteSchema), async (req, res) => {
   const input = req.body as SavePlanNoteInput;
-  res.status(201).json(await savePlanNote(caller(req), param(req, 'planId'), null, { ...input, expected_revision: undefined }));
+  const result = await savePlanNote(caller(req), param(req, 'planId'), null, { ...input, expected_revision: undefined });
+  res.status(result.replayed ? 200 : 201).json(result.note);
 });
 
 planNotesRouter.put('/:noteId', requireCapability('plans.edit'), validateBody(savePlanNoteSchema), async (req, res) => {
@@ -107,7 +108,7 @@ planNotesRouter.put('/:noteId', requireCapability('plans.edit'), validateBody(sa
   if (input.expected_revision === undefined) {
     throw HttpError.unprocessable('Send the revision you edited', [{ path: 'expected_revision', message: 'Required' }]);
   }
-  res.json(await savePlanNote(caller(req), param(req, 'planId'), param(req, 'noteId'), input));
+  res.json((await savePlanNote(caller(req), param(req, 'planId'), param(req, 'noteId'), input)).note);
 });
 
 const deleteNoteQuerySchema = z.object({ expected_revision: z.coerce.number().int().min(1) });

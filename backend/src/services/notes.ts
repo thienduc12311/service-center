@@ -66,15 +66,30 @@ export const listPlanNotes = async (caller: CollaborationCaller, planId: string)
   };
 };
 
-/** Creates (`noteId` null) or replaces a note in one database call. */
+/** What `save_plan_note` answers: the note and whether it replayed an earlier create with the same key. */
+interface SavePlanNoteResult {
+  note: PlanNoteRow;
+  replayed: boolean;
+}
+
+/** A saved note, and whether a keyed create returned the note an earlier attempt made. */
+export interface SavedPlanNote {
+  note: PlanNote;
+  replayed: boolean;
+}
+
+/**
+ * Creates (`noteId` null) or replaces a note in one database call. A create
+ * carrying `idempotency_key` is safe to retry; an edit ignores the key.
+ */
 export const savePlanNote = async (
   caller: CollaborationCaller,
   planId: string,
   noteId: string | null,
   input: SavePlanNoteInput,
-): Promise<PlanNote> => {
+): Promise<SavedPlanNote> => {
   await loadPlan(caller, planId);
-  const row = (await unwrap(
+  const result = (await unwrap(
     raw(caller.db).rpc('save_plan_note', {
       p_plan: planId,
       p_note: noteId,
@@ -84,11 +99,12 @@ export const savePlanNote = async (
       p_team_ids: input.audience === 'teams' ? input.team_ids : [],
       p_body: input.body,
       p_expected_revision: input.expected_revision ?? null,
+      p_idempotency_key: noteId === null ? input.idempotency_key ?? null : null,
     }),
-  )) as PlanNoteRow;
-  const [note] = await decorate(caller, [row]);
+  )) as SavePlanNoteResult;
+  const [note] = await decorate(caller, [result.note]);
   if (!note) throw HttpError.notFound('Note not found');
-  return note;
+  return { note, replayed: result.replayed };
 };
 
 /** Deletes only the revision the editor saw. */

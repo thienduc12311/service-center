@@ -51,7 +51,7 @@ const fakeDb = (state: FakeDbState): Db => {
       then: (resolve: (value: QueryResult) => unknown, reject: (reason: unknown) => unknown) =>
         Promise.resolve(result()).then(resolve, reject),
     };
-    for (const method of ['eq', 'is', 'not', 'in', 'lt', 'order', 'limit']) {
+    for (const method of ['eq', 'is', 'not', 'in', 'lt', 'order', 'limit', 'select']) {
       chain[method] = (...args: unknown[]) => {
         query.filters.push([method, ...args]);
         return chain;
@@ -101,6 +101,7 @@ describe('notification clean-up routes', () => {
   const deletes = (): RecordedQuery[] => state.queries.filter((query) => query.operation === 'delete');
 
   it('deletes one notification scoped to the caller and the active organization', async () => {
+    state.deleteResult = { data: [{ id: NOTIFICATION_ID }], error: null, count: null };
     const res = await request(app).delete(`/api/v1/notifications/${NOTIFICATION_ID}`);
     expect(res.status).toBe(204);
     expect(deletes()).toHaveLength(1);
@@ -108,7 +109,14 @@ describe('notification clean-up routes', () => {
       ['eq', 'id', NOTIFICATION_ID],
       ['eq', 'organization_id', ORG_ID],
       ['eq', 'user_id', 'user-1'],
+      ['select', 'id'],
     ]);
+  });
+
+  it('answers 404 when no notification matched (gone, or another user\'s)', async () => {
+    state.deleteResult = { data: [], error: null, count: null };
+    const res = await request(app).delete(`/api/v1/notifications/${NOTIFICATION_ID}`);
+    expect(res.status).toBe(404);
   });
 
   it('rejects a malformed id before touching the database', async () => {

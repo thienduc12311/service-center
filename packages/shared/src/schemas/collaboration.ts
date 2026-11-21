@@ -16,6 +16,12 @@ export const savePlanNoteSchema = z
     body: noteBody,
     /** The revision the editor loaded; required when editing. */
     expected_revision: z.number().int().min(1).optional(),
+    /**
+     * Create only: one key per draft, reused on retry. The same key and body
+     * replays the first note; the same key with another body is refused as
+     * `idempotency_key_reused`. Optional so unkeyed clients keep working.
+     */
+    idempotency_key: idempotencyKey.optional(),
   })
   .refine((v) => v.audience !== 'teams' || v.team_ids.length > 0, {
     message: 'Choose at least one team',

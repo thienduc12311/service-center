@@ -475,6 +475,20 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * For deletes whose goal is "this is gone": the server answers 404 when there
+ * was nothing to delete, which a retry, a second tab or a sign-out cleanup
+ * must not show as a failure.
+ */
+const settleIfGone = async (call: Promise<void>): Promise<void> => {
+  try {
+    await call;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return;
+    throw error;
+  }
+};
+
 export interface ApiRequestContext {
   accessToken: string | null;
   organizationId?: string | null;
@@ -638,7 +652,8 @@ export class ServiceCenterApi {
   blockedUsers = () => this.request<BlockedUser[]>('GET', '/api/v1/me/blocks');
   /** Hides this person's messages and comments from the caller and stops their notifications. Idempotent. */
   blockUser = (userId: string) => this.request<UserBlockRow>('PUT', `/api/v1/me/blocks/${encodeURIComponent(userId)}`);
-  unblockUser = (userId: string) => this.request<void>('DELETE', `/api/v1/me/blocks/${encodeURIComponent(userId)}`);
+  unblockUser = (userId: string) =>
+    settleIfGone(this.request<void>('DELETE', `/api/v1/me/blocks/${encodeURIComponent(userId)}`));
 
   // ------------------------------------------------------ organizations --
   listOrganizations = () =>
@@ -707,7 +722,7 @@ export class ServiceCenterApi {
   adminEnterOrganization = (id: string, body: EnterOrganizationRequest = {}) =>
     this.request<PlatformAccessGrant>('POST', `/api/v1/admin/organizations/${encodeURIComponent(id)}/access`, body);
   adminExitOrganization = (id: string) =>
-    this.request<void>('DELETE', `/api/v1/admin/organizations/${encodeURIComponent(id)}/access`);
+    settleIfGone(this.request<void>('DELETE', `/api/v1/admin/organizations/${encodeURIComponent(id)}/access`));
   adminChurchApplications = (status?: ChurchApplicationStatus) =>
     this.request<AdminChurchApplication[]>('GET', '/api/v1/admin/church-applications', undefined, { status });
   adminChurchApplication = (id: string) =>
@@ -1512,7 +1527,7 @@ export class ServiceCenterApi {
     this.request<UnreadNotificationCount>('POST', '/api/v1/notifications/read', body);
   /** Permanently deletes one of the caller's notifications in the active organization. */
   deleteNotification = (id: string) =>
-    this.request<void>('DELETE', `/api/v1/notifications/${id}`);
+    settleIfGone(this.request<void>('DELETE', `/api/v1/notifications/${id}`));
   /** Permanently deletes every read notification the caller has in the active organization. */
   clearReadNotifications = () =>
     this.request<ClearReadNotificationsResult>('POST', '/api/v1/notifications/clear-read');
@@ -1521,7 +1536,7 @@ export class ServiceCenterApi {
   registerDevice = (body: RegisterDeviceInput) =>
     this.request<DeviceRegistration>('POST', '/api/v1/me/devices', body);
   unregisterDevice = (token: string) =>
-    this.request<void>('DELETE', `/api/v1/me/devices/${encodeURIComponent(token)}`);
+    settleIfGone(this.request<void>('DELETE', `/api/v1/me/devices/${encodeURIComponent(token)}`));
   /** Revokes one registration after auth is gone; the secret authorizes only this token. */
   revokeDeviceRegistration = (body: RevokeDeviceRegistrationInput) =>
     this.request<void>('POST', '/api/v1/device-revocations', body);

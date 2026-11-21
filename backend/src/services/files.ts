@@ -261,7 +261,8 @@ export const createUploadIntent = async (
 
   let upload: FileUploadTarget | null = null;
   if (version.status === 'pending' && version.storage_path) {
-    const signed = await caller.db.storage.from(BUCKET).createSignedUploadUrl(version.storage_path);
+    const bucket = caller.db.storage.from(BUCKET);
+    const signed = await bucket.createSignedUploadUrl(version.storage_path);
     if (signed.data) {
       upload = {
         bucket: BUCKET,
@@ -271,11 +272,12 @@ export const createUploadIntent = async (
         expires_at:
           version.upload_expires_at ?? new Date(Date.now() + FILE_UPLOAD_TTL_SECONDS * 1000).toISOString(),
       };
-    } else if (!result.replayed) {
-      // A fresh intent must be uploadable; anything else is a configuration problem.
+    } else if (!(result.replayed && (await bucket.exists(version.storage_path)).data === true)) {
+      // Only a replay whose bytes are already stored may answer without an upload
+      // target (the client finalizes instead). Anything else would be a success
+      // with nowhere to upload to: retryable, with a stable code.
       throw new HttpError(503, 'File storage is unavailable. Try again shortly.', 'storage_unavailable');
     }
-    // A replay whose bytes are already stored cannot be signed again: finalize instead.
   }
   return { file, version: summary, upload, replayed: result.replayed };
 };

@@ -1,5 +1,5 @@
 import type { AccountDeletionPlan, AccountDeletionResult, BlockedUser, UserBlockRow } from '@service-center/shared';
-import { adminDb, raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
+import { adminDb, raw, unwrap, unwrapDeleted, unwrapOne, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import {
   mapAccountDeletionPlan,
@@ -80,5 +80,8 @@ export const blockUser = async (caller: AccountCaller, blockedId: string): Promi
 
 /** Idempotent. */
 export const unblockUser = async (caller: AccountCaller, blockedId: string): Promise<void> => {
-  await unwrap(caller.db.from('user_blocks').delete().eq('blocker_id', caller.userId).eq('blocked_id', blockedId));
+  await unwrapDeleted(
+    caller.db.from('user_blocks').delete().eq('blocker_id', caller.userId).eq('blocked_id', blockedId).select('blocked_id'),
+    'That person is not blocked',
+  );
 };
