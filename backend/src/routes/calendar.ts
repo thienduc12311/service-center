@@ -21,6 +21,7 @@ import {
   type FeedCaller,
 } from '../services/calendar-scoped-feeds.js';
 import { raw, unwrap } from '../lib/supabase.js';
+import { fetchAllPages, inChunks } from '../lib/paging.js';
 
 export const calendarRouter: Router = Router();
 
@@ -52,9 +53,10 @@ const myStatusForTimes = async (req: Request, planIds: readonly string[]): Promi
     req.db.from('people').select('id').eq('organization_id', req.orgId).eq('profile_id', req.auth.userId).maybeSingle(),
   );
   if (!me) return statusByTime;
-  const mine = (await unwrap(
-    req.db.from('assignments').select('id, status').eq('person_id', me.id).eq('visibility', 'released').in('plan_id', [...planIds]),
-  )) ?? [];
+  // A wide window can hold hundreds of plans: one `.in()` list would pass the URL limit (W9-DATA-D3).
+  const mine = await inChunks(planIds, (chunk) =>
+    unwrap(req.db.from('assignments').select('id, status').eq('person_id', me.id).eq('visibility', 'released').in('plan_id', chunk)),
+  );
   const attendance = await attendanceFor(req.db, mine.map((assignment) => assignment.id));
   for (const assignment of mine) {
     for (const interval of attendance.get(assignment.id) ?? []) {
@@ -76,25 +78,25 @@ calendarRouter.get('/', validateQuery(calendarQuerySchema), async (req, res) => 
   const { from, to, service_type_id, team_id, mine, include_rehearsals } =
     parsedQuery<CalendarQuery>(res);
 
-  let query = raw(req.db)
-    .from('plan_times')
-    .select(
-      `id, kind, name, starts_at, ends_at,
-       plan:plans!inner(
-         id, title, status, location, service_type_id, organization_id,
-         service_type:service_types(name),
-         assignments:assignments(team_id, visibility)
-       )`,
-    )
-    .eq('plan.organization_id', req.orgId)
-    .gte('starts_at', from)
-    .lte('starts_at', to)
-    .order('starts_at');
-
-  if (service_type_id) query = query.eq('plan.service_type_id', service_type_id);
-  if (!include_rehearsals) query = query.eq('kind', 'service');
-
-  const rows = (await unwrap(query)) as unknown as RawPlanTime[];
+  // Paged on (starts_at, id): a long window can pass PostgREST's 1000-row cap.
+  const rows = await fetchAllPages(async (pageFrom, pageTo) => {
+    let query = raw(req.db)
+      .from('plan_times')
+      .select(
+        `id, kind, name, starts_at, ends_at,
+         plan:plans!inner(
+           id, title, status, location, service_type_id, organization_id,
+           service_type:service_types(name),
+           assignments:assignments(team_id, visibility)
+         )`,
+      )
+      .eq('plan.organization_id', req.orgId)
+      .gte('starts_at', from)
+      .lte('starts_at', to);
+    if (service_type_id) query = query.eq('plan.service_type_id', service_type_id);
+    if (!include_rehearsals) query = query.eq('kind', 'service');
+    return (await unwrap(query.order('starts_at').order('id').range(pageFrom, pageTo))) as unknown as RawPlanTime[] | null;
+  });
   const myStatusByTime = await myStatusForTimes(req, [...new Set(rows.flatMap((row) => (row.plan ? [row.plan.id] : [])))]);
 
   const events: CalendarEvent[] = [];

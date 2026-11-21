@@ -28,6 +28,7 @@ import type {
   StoredAssignmentNotification,
 } from '../model/assignment-response.model.js';
 import type { SnapshotAssignmentJoin } from '../model/assignment-snapshot.model.js';
+import { TIME_RESPONSE_COLUMNS } from '../model/time-response.model.js';
 import { delegationSummary, type AvailabilityContext } from './availability.js';
 import { hashInviteToken } from './invitations.js';
 
@@ -147,6 +148,10 @@ const delegateAnswerError = (error: DatabaseError): HttpError => {
 
 // ----------------------------------------------------- review loading -----
 
+/**
+ * Read with the service role for the snapshot's own recipient, so the
+ * recipient's private per-time reason (W9-JRN-D1) is included.
+ */
 const REVIEW_ITEM_SELECT = `
   *,
   assignment:assignments!inner(
@@ -154,7 +159,7 @@ const REVIEW_ITEM_SELECT = `
     team:teams(name),
     position:team_positions(name),
     plan:plans(title),
-    time_responses:assignment_time_responses(*)
+    time_responses:assignment_time_responses(${TIME_RESPONSE_COLUMNS}, response_note)
   )
 `;
 

@@ -13,6 +13,7 @@ import type {
 } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
+import { inChunks } from '../lib/paging.js';
 import { isUntimed, timesForAttendance } from '../model/attendance.model.js';
 import { planReleaseBatchKey, planReleaseItems, type ReleaseItem } from '../model/release.model.js';
 import {
@@ -33,8 +34,8 @@ const CANDIDATE_SELECT = `
 
 const personNames = async (db: Db, personIds: readonly string[]): Promise<Map<string, string>> => {
   if (personIds.length === 0) return new Map();
-  const people = await unwrap(db.from('people_directory').select('id, first_name, last_name').in('id', [...personIds]));
-  return new Map((people ?? []).map((person) => [person.id, personDisplayName(person)]));
+  const people = await inChunks(personIds, (ids) => unwrap(db.from('people_directory').select('id, first_name, last_name').in('id', ids)));
+  return new Map(people.map((person) => [person.id, personDisplayName(person)]));
 };
 
 /**
@@ -84,12 +85,13 @@ export const previewReleaseBatch = async (
   orgId: string,
   assignmentIds: readonly string[],
 ): Promise<ReleaseBatchPreview> => {
-  const rows = (await unwrap(
+  // A release review can hold up to 500 requests: keep each `.in()` list URL-safe.
+  const rows = await inChunks(assignmentIds, async (ids) => (await unwrap(
     raw(db).from('assignments').select(CANDIDATE_SELECT)
-      .in('id', [...assignmentIds])
+      .in('id', ids)
       .eq('visibility', 'prepared')
       .eq('plan.organization_id', orgId),
-  )) as unknown as ReleaseCandidateRow[];
+  )) as unknown as ReleaseCandidateRow[] | null);
   if (rows.length !== new Set(assignmentIds).size) {
     throw new HttpError(409, 'Prepared requests changed. Refresh the release review.', 'assignment_release_stale');
   }
@@ -99,7 +101,7 @@ export const previewReleaseBatch = async (
     personNames(db, personIds),
     unwrap(db.rpc('person_delivery_readiness', { p_org: orgId, p_person_ids: personIds })),
     attendanceFor(db, rows.map((row) => row.id)),
-    unwrap(db.from('plan_times').select('*').in('plan_id', planIds).order('sort_order')),
+    inChunks(planIds, (ids) => unwrap(db.from('plan_times').select('*').in('plan_id', ids).order('sort_order'))),
   ]);
   const timesByPlan = new Map<string, PlanTimeRow[]>();
   for (const time of (planTimes ?? []) as PlanTimeRow[]) {
@@ -184,9 +186,9 @@ export const releasePlanAssignments = async (
     }
     releasedIds = existing.status === 'released' ? [...batchIds] : [];
   } else {
-    const onPlan = ((await unwrap(
-      db.from('assignments').select('id, request_revision').eq('plan_id', planId).in('id', input.assignment_ids),
-    )) ?? []).map((row) => ({ assignment_id: row.id, request_revision: row.request_revision }));
+    const onPlan = (await inChunks(input.assignment_ids, (ids) =>
+      unwrap(db.from('assignments').select('id, request_revision').eq('plan_id', planId).in('id', ids)),
+    )).map((row) => ({ assignment_id: row.id, request_revision: row.request_revision }));
     const items = planReleaseItems(input.assignment_ids, input.expected_revisions, onPlan);
     if (!items) {
       throw new HttpError(409, 'Prepared requests changed since the release review', 'assignment_release_stale');
@@ -199,7 +201,7 @@ export const releasePlanAssignments = async (
     }));
   }
   if (releasedIds.length === 0) return [];
-  return (await unwrap(db.from('assignments').select('*').in('id', releasedIds))) ?? [];
+  return inChunks(releasedIds, (ids) => unwrap(db.from('assignments').select('*').in('id', ids)));
 };
 
 const withPlanTitles = async (db: Db, batches: readonly ReleaseBatchRow[]): Promise<ReleaseBatchSummary[]> => {

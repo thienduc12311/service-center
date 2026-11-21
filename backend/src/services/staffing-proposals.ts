@@ -29,6 +29,7 @@ import {
 } from '@service-center/shared';
 import { fromPostgrestError, HttpError } from '../lib/errors.js';
 import { raw, unwrap } from '../lib/supabase.js';
+import { fetchAllPages } from '../lib/paging.js';
 import {
   mapProposal,
   mapRotation,
@@ -127,12 +128,14 @@ export const captureSnapshot = async (req: Request, scope: SnapshotScope): Promi
   }
   const teamIds = teams.map((team) => team.id).sort();
 
-  const memberships = (((await unwrap(req.db.from('team_memberships').select('person_id, team_id, position_id')
-    .in('team_id', teamIds).not('position_id', 'is', null))) ?? []) as SnapshotMembershipRow[])
+  // Paged: a capped read would hide members past row 1000 and skip the MAX_CANDIDATES guard.
+  const memberships = (await fetchAllPages(async (from, to) => (await unwrap(req.db.from('team_memberships')
+    .select('person_id, team_id, position_id')
+    .in('team_id', teamIds).not('position_id', 'is', null).order('id').range(from, to))) as SnapshotMembershipRow[] | null))
     .filter((row): row is SnapshotMembershipRow & { position_id: string } => row.position_id !== null);
-  const assignments = ((await unwrap(req.db.from('assignments')
+  const assignments = await fetchAllPages(async (from, to) => (await unwrap(req.db.from('assignments')
     .select('id, plan_id, person_id, team_id, position_id, status, visibility')
-    .in('plan_id', plans.map((plan) => plan.id)))) ?? []) as SnapshotAssignmentRow[];
+    .in('plan_id', plans.map((plan) => plan.id)).order('id').range(from, to))) as SnapshotAssignmentRow[] | null);
   const rotations = await loadRotations(req, teamIds, scope.rotation_ids);
 
   const candidateIds = [...new Set(memberships.map((row) => row.person_id))].sort();

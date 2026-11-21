@@ -1,0 +1,50 @@
+import * as L from './lib.mjs';
+const { sql, sleep, rec, ids, login, api, randomUUID, URL_, ANON, createClient } = L;
+const A = ids.org.A, T = 'stor';
+const oa = await login('oa');
+const plan = randomUUID();
+sql(`insert into public.plans (id, organization_id, title, service_date, status) values ('${plan}','${A}','w9 storage plan', now(),'published');`);
+const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+const intent = await api(oa.token, 'POST', '/api/v1/files/upload-intents', A, { owner: { kind: 'plan', id: plan }, filename: 'w9.png', mime_type: 'image/png', size_bytes: png.length, title: 'w9 private fixture', idempotency_key: randomUUID(), audience: 'organization', category: 'image' });
+rec(T, 'st.intent', 'oa', 'POST /files/upload-intents (plan attachment)', '200 + signed upload target', `HTTP ${intent.status} ${intent.status === 200 ? '' : JSON.stringify(intent.json).slice(0, 200)}`, intent.status === 200 || intent.status === 201);
+const up = intent.json?.upload;
+const path = up?.path;
+const upl = await oa.client.storage.from('attachments').uploadToSignedUrl(path, up.token, png, { contentType: 'image/png' });
+rec(T, 'st.upload', 'oa', 'uploadToSignedUrl', 'ok', upl.error ? upl.error.message : 'ok', !upl.error);
+const fin = await api(oa.token, 'POST', `/api/v1/files/${intent.json.file.id}/finalize`, A, { version_id: intent.json.version.id });
+rec(T, 'st.final', 'oa', 'finalize', 'ready', `HTTP ${fin.status} ${fin.json?.outcome ?? JSON.stringify(fin.json).slice(0, 100)}`, fin.status === 200);
+const bucket = sql(`select public from storage.buckets where id='attachments'`);
+const get = (tok, p = path) => fetch(`${URL_}/storage/v1/object/authenticated/attachments/${p}`, { headers: { authorization: `Bearer ${tok}`, apikey: ANON } });
+const anon = await fetch(`${URL_}/storage/v1/object/public/attachments/${path}`);
+rec(T, 'st.private', 'anon', 'bucket private; public URL refused', 'bucket public=f; public URL 4xx', `public=${bucket}; HTTP ${anon.status}`, bucket === 'f' && anon.status >= 400);
+const r0 = await get(oa.token);
+rec(T, 'st.read.before', 'oa', 'GET authenticated object with live token', '200 + bytes', `HTTP ${r0.status}, ${(await r0.arrayBuffer()).byteLength} bytes`, r0.status === 200);
+// pre-issue a signed URL and a signed upload for later
+const su = await oa.client.storage.from('attachments').createSignedUrl(path, 3600);
+const oldTok = oa.token;
+const t0 = Date.now();
+const so = await oa.client.auth.signOut({ scope: 'global' });
+await sleep(300);
+const r1 = await get(oldTok);
+const body1 = await r1.text();
+rec(T, 'st.read.after', 'oa (old token)', 'GET authenticated object after global sign-out', '401/400/404, no bytes', `HTTP ${r1.status} ${body1.slice(0, 90)}`, r1.status !== 200, `${Date.now() - t0} ms after sign-out`);
+const sign2 = await fetch(`${URL_}/storage/v1/object/sign/attachments/${path}`, { method: 'POST', headers: { authorization: `Bearer ${oldTok}`, apikey: ANON, 'content-type': 'application/json' }, body: JSON.stringify({ expiresIn: 60 }) });
+rec(T, 'st.sign.after', 'oa (old token)', 'issue a NEW signed URL after sign-out', 'refused', `HTTP ${sign2.status} ${(await sign2.text()).slice(0, 80)}`, sign2.status >= 400);
+const list = await fetch(`${URL_}/storage/v1/object/list/attachments`, { method: 'POST', headers: { authorization: `Bearer ${oldTok}`, apikey: ANON, 'content-type': 'application/json' }, body: JSON.stringify({ prefix: path.split('/').slice(0, 2).join('/'), limit: 5 }) });
+const lj = await list.json().catch(() => null);
+rec(T, 'st.list.after', 'oa (old token)', 'LIST bucket prefix after sign-out', 'empty/refused', `HTTP ${list.status} ${Array.isArray(lj) ? lj.length + ' entries' : JSON.stringify(lj).slice(0, 60)}`, !(Array.isArray(lj) && lj.length > 0));
+const dl = await api(oldTok, 'POST', `/api/v1/files/${intent.json.file.id}/download`, A, { disposition: 'inline' });
+rec(T, 'st.api.after', 'oa (old token)', 'POST /files/:id/download after sign-out', '401', `HTTP ${dl.status}`, dl.status === 401);
+const sig = su.data?.signedUrl ? await fetch(su.data.signedUrl.startsWith('http') ? su.data.signedUrl : `${URL_}/storage/v1${su.data.signedUrl}`) : null;
+rec(T, 'st.signed.pre', 'bearer of pre-issued signed URL', 'signed URL issued before sign-out (documented residual: works until expiry, 3600 s requested)', sig ? `HTTP ${sig.status}` : 'n/a', 'n/a', null, 'informational per ADR 0005 residual windows');
+// upload attempt with old token
+const upOld = await fetch(`${URL_}/storage/v1/object/attachments/${A}/w9-late.png`, { method: 'POST', headers: { authorization: `Bearer ${oldTok}`, apikey: ANON, 'content-type': 'image/png' }, body: png });
+rec(T, 'st.upload.after', 'oa (old token)', 'direct upload with old token', 'refused', `HTTP ${upOld.status}`, upOld.status >= 400);
+// fresh login still reads
+const oa2 = await login('oa');
+const r2 = await get(oa2.token);
+rec(T, 'st.read.fresh', 'oa (new login)', 'GET with fresh token', '200', `HTTP ${r2.status}`, r2.status === 200);
+// service-role control: object exists
+rec(T, 'st.exists', 'db', 'object row exists (not a false negative)', '1', sql(`select count(*) from storage.objects where bucket_id='attachments' and name='${path}'`), sql(`select count(*) from storage.objects where bucket_id='attachments' and name='${path}'`) === '1');
+sql(`delete from public.plans where id='${plan}'`);
+process.exit(0);

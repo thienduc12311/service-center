@@ -28,6 +28,13 @@ import {
 /** Whether this caller may open Person records and manage people (the website's `role === 'owner'`; the server re-checks). */
 export const canOpenPeopleDetails = (role: OrgRole | null): boolean => role === 'owner';
 
+/** The `people` catalog key for the directory search hint: what the server actually searches for this role. */
+export type DirectorySearchPlaceholderKey = 'list.searchPlaceholder' | 'list.searchPlaceholderMember';
+
+/** The website's People search hint: the owner searches email, phone and campus too; everyone else name and campus. */
+export const directorySearchPlaceholderKey = (role: OrgRole | null): DirectorySearchPlaceholderKey =>
+  canOpenPeopleDetails(role) ? 'list.searchPlaceholder' : 'list.searchPlaceholderMember';
+
 /** A directory row can open a record only when it has a roster Person (web: rows without one are not links). */
 export const canOpenPerson = (row: Pick<RosterPerson, 'person_id'>): row is RosterPerson & { person_id: string } =>
   Boolean(row.person_id);

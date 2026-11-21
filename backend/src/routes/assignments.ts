@@ -38,11 +38,15 @@ import {
 import { preferenceWarnings } from '../services/availability.js';
 import { attendanceFor, blockingConflicts, checkConflicts } from '../services/attendance.js';
 import { isUntimed, timesForAttendance } from '../model/attendance.model.js';
+import { TIME_RESPONSE_COLUMNS, withResponseNote, type PublicTimeResponseRow } from '../model/time-response.model.js';
+import { timeResponseNotesFor } from '../services/time-response-notes.js';
 import { z } from 'zod';
 import { validateBody, validateQuery, parsedQuery } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
 import { adminDb, raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
 import { chunk } from '../lib/chunk.js';
+import { fetchAllPages, inChunks } from '../lib/paging.js';
+import type { ReleasePreviewAssignment } from '../model/release.model.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { createResponses, latestDeclineReasons } from '../services/assignment-responses.js';
 import { effectIdForKey, notifyPlanAssignments } from '../services/deliveries.js';
@@ -218,24 +222,20 @@ planReleaseRouter.post(
   async (req, res) => {
     const planId = param(req, 'planId');
     const { assignment_ids } = req.body as ReleaseAssignmentsPreviewInput;
-    const assignments = await unwrap(
+    // Up to 500 requests: URL-safe `.in()` chunks.
+    const assignments = await inChunks(assignment_ids, async (ids) => (await unwrap(
       raw(req.db).from('assignments').select(
         'id, person_id, request_revision, team:teams(name), position:team_positions(name)',
-      ).eq('plan_id', planId).eq('visibility', 'prepared').in('id', assignment_ids),
-    ) as unknown as Array<{
-      id: string;
-      person_id: string;
-      request_revision: number;
-      team: { name: string } | null;
-      position: { name: string } | null;
-    }>;
+      ).eq('plan_id', planId).eq('visibility', 'prepared').in('id', ids),
+    )) as unknown as ReleasePreviewAssignment[] | null);
     if (assignments.length !== assignment_ids.length) {
       throw new HttpError(409, 'Prepared requests changed. Refresh the release review.', 'assignment_release_stale');
     }
     const [times, attendance, people] = await Promise.all([
       unwrap(req.db.from('plan_times').select('*').eq('plan_id', planId).order('sort_order')),
       attendanceFor(req.db, assignment_ids),
-      unwrap(req.db.from('people_directory').select('*').in('id', assignments.map((assignment) => assignment.person_id))),
+      inChunks([...new Set(assignments.map((assignment) => assignment.person_id))], (ids) =>
+        unwrap(req.db.from('people_directory').select('*').in('id', ids))),
     ]);
     const personNames = new Map((people ?? []).map((person) => [
       person.id,
@@ -419,12 +419,20 @@ const myScheduleQuerySchema = z.object({
     .default(false),
 });
 
-/** Time responses for many assignments, in URL-safe batches (W7-RESP-D5). */
+/**
+ * Time responses for many assignments, in URL-safe batches (W7-RESP-D5). The
+ * private decline reason is attached only where the caller may read it (W9-JRN-D1).
+ */
 const timeResponsesFor = async (db: Db, assignmentIds: readonly string[]): Promise<AssignmentTimeResponseRow[]> => {
-  const batches = await Promise.all(
-    chunk(assignmentIds).map((ids) => unwrap(db.from('assignment_time_responses').select('*').in('assignment_id', ids))),
-  );
-  return batches.flatMap((rows) => rows ?? []);
+  const [batches, notes] = await Promise.all([
+    Promise.all(
+      chunk(assignmentIds).map((ids) =>
+        unwrap(db.from('assignment_time_responses').select(TIME_RESPONSE_COLUMNS).in('assignment_id', ids)),
+      ),
+    ),
+    timeResponseNotesFor(db, assignmentIds),
+  ]);
+  return batches.flatMap((rows): PublicTimeResponseRow[] => rows ?? []).map((row) => withResponseNote(row, notes));
 };
 
 scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, res) => {
@@ -435,25 +443,27 @@ scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, re
   );
   if (!me) return res.json([]);
 
-  let query = raw(req.db)
-    .from('assignments')
-    .select(
-      `*,
-       team:teams(id, name, color),
-       position:team_positions(id, name),
-       plan:plans!inner(id, title, service_date, location, status, organization_id, times:plan_times(*))`,
-    )
-    .eq('person_id', me.id)
-    // A recipient surface: a leader who prepared themself still sees only released requests here.
-    .eq('visibility', 'released')
-    .eq('plan.organization_id', req.orgId);
-
-  if (status) query = query.eq('status', status);
-  if (from) query = query.gte('plan.service_date', from);
-  else if (!include_past) query = query.gte('plan.service_date', new Date().toISOString());
-  if (to) query = query.lte('plan.service_date', to);
-
-  const rows = (await unwrap(query)) as Array<Record<string, unknown>>;
+  // Every page, on the assignment's unique id: a long history passes PostgREST's
+  // 1000-row cap and used to drop entries silently (W9-DATA-D4). Sorted by date below.
+  const since = from || (include_past ? undefined : new Date().toISOString());
+  const rows = await fetchAllPages(async (pageFrom, pageTo) => {
+    let query = raw(req.db)
+      .from('assignments')
+      .select(
+        `*,
+         team:teams(id, name, color),
+         position:team_positions(id, name),
+         plan:plans!inner(id, title, service_date, location, status, organization_id, times:plan_times(*))`,
+      )
+      .eq('person_id', me.id)
+      // A recipient surface: a leader who prepared themself still sees only released requests here.
+      .eq('visibility', 'released')
+      .eq('plan.organization_id', req.orgId);
+    if (status) query = query.eq('status', status);
+    if (since) query = query.gte('plan.service_date', since);
+    if (to) query = query.lte('plan.service_date', to);
+    return (await unwrap(query.order('id').range(pageFrom, pageTo))) as Array<Record<string, unknown>> | null;
+  });
   const assignmentIds = rows.map((row) => String(row.id));
   const [attendance, timeResponses] = assignmentIds.length
     ? await Promise.all([

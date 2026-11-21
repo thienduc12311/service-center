@@ -1,0 +1,40 @@
+import * as L from './lib.mjs';
+const { sql, sleep, rec, ids, login, topicFor, orgKey, join, api, randomUUID, waitFor, pokes, rekeys, admin } = L;
+const C = ids.org.C; const T = 'orgdel';
+const oc = await login('oc'), c1 = await login('c1');
+const tm = randomUUID(), pl = randomUUID();
+sql(`insert into public.teams (id, organization_id, name) values ('${tm}','${C}','w9 CT');
+ insert into public.team_memberships (team_id, person_id) values ('${tm}','${ids.ppl['C:c1']}'),('${tm}','${ids.ppl['C:oc']}');
+ insert into public.plans (id, organization_id, title, service_date, status) values ('${pl}','${C}','w9 CP', now(),'published');
+ insert into public.conversations (organization_id, kind, team_id) values ('${C}','team','${tm}');`);
+const conv = sql(`select id from public.conversations where team_id='${tm}'`);
+const t1 = await topicFor(c1, C, 'conversation', conv); const ck = await orgKey(c1, C);
+const got = [], got2 = [];
+const j1 = await join(c1.client, t1.topic, got); const j2 = await join(c1.client, `org:${C}:${ck.key}`, got2);
+L.poke('conversation', conv);
+await waitFor(() => got.length === 1, 4000);
+const cnt = () => sql(`select (select count(*) from private.org_realtime_keys where organization_id='${C}'), (select count(*) from private.conversation_realtime_keys where conversation_id='${conv}'), (select count(*) from public.organization_members where organization_id='${C}'), (select count(*) from public.conversations where organization_id='${C}')`);
+const pre = cnt();
+rec(T, 'od.pre', 'c1', 'org with members, keys, keyed conversation, 2 sockets', 'org key 1, conv key 1, members 2, convs 1; sockets SUBSCRIBED', `${pre}; ${j1.status}/${j2.status}; delivered ${got.length}`, pre === '1|1|2|1' && j1.status === 'SUBSCRIBED' && got.length === 1);
+// Owner attempt via PostgREST
+let how = 'owner PostgREST';
+let { error, data } = await oc.client.from('organizations').delete().eq('id', C).select();
+if (error || !data?.length) { how = `service role PostgREST (owner: ${error ? error.message.slice(0, 80) : 'zero rows'})`; ({ error, data } = await admin.from('organizations').delete().eq('id', C).select()); }
+const exists = sql(`select count(*) from public.organizations where id='${C}'`);
+rec(T, 'od.delete', how, 'DELETE organization (members + keys)', 'succeeds, org gone', `${error ? 'ERROR ' + error.message : 'ok'}; org rows ${exists}`, !error && exists === '0');
+const post = cnt();
+rec(T, 'od.cascade', 'db', 'keys and members cascade', '0|0|0|0', post, post === '0|0|0|0');
+const before = got.length;
+await sleep(500);
+const orphan = sql(`select (select count(*) from private.org_realtime_keys where organization_id='${C}') + (select count(*) from private.conversation_realtime_keys where conversation_id='${conv}')`);
+rec(T, 'od.noorphan', 'db', 'no orphan keys', '0', orphan, orphan === '0');
+// delete a second time with members: recreate org to leave fixture in place
+const newC = sql(`insert into public.organizations (name, slug) values ('QA W9 RT C','qa-w9-rt-c') returning id;`).split('\n')[0];
+sql(`insert into public.organization_members (organization_id,user_id,role,status) values ('${newC}','${ids.uid.oc}','owner','active'),('${newC}','${ids.uid.c1}','member','active');
+ insert into public.people (organization_id, profile_id, first_name, last_name, email) values ('${newC}','${ids.uid.oc}','QW9','oc','${L.email('oc')}'),('${newC}','${ids.uid.c1}','QW9','c1','${L.email('c1')}');`);
+const k2 = sql(`select count(*) from private.org_realtime_keys where organization_id='${newC}'`);
+rec(T, 'od.recreate', 'service role', 'recreate org C as fixture', 'new org gets org key', `key rows ${k2}`, k2 === '1');
+const fx = JSON.parse(L.sql ? (await import('node:fs')).readFileSync(L.SCR + '/fx.json', 'utf8') : '{}');
+fx.org.C = newC; fx.ppl['C:oc'] = sql(`select id from public.people where organization_id='${newC}' and profile_id='${ids.uid.oc}'`); fx.ppl['C:c1'] = sql(`select id from public.people where organization_id='${newC}' and profile_id='${ids.uid.c1}'`);
+(await import('node:fs')).writeFileSync(L.SCR + '/fx.json', JSON.stringify(fx, null, 1));
+process.exit(0);

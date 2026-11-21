@@ -11,7 +11,7 @@ import type {
   ReplaceScopeGrantsInput,
   ScopeAccess,
 } from '@service-center/shared';
-import { fetchAllPages } from '../lib/paging.js';
+import { fetchAllPages, inChunks } from '../lib/paging.js';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { mapEffectiveAccess, mapScopeAccess, parseExplanation, type NamedGrant } from '../model/access.model.js';
@@ -116,11 +116,10 @@ export const setAccessMode = async ({ db, orgId, userId, accessMode }: SetAccess
 const scopeColumn = (scope: AccessScopeType): 'service_type_id' | 'team_id' | 'folder_id' | null =>
   scope === 'service_type' ? 'service_type_id' : scope === 'team' ? 'team_id' : scope === 'folder' ? 'folder_id' : null;
 
+/** Grantee names, looked up in URL-safe chunks (a scope can have hundreds of grantees, W9-DATA-D2). */
 const withNames = async (db: Db, grants: readonly AccessGrantRow[]): Promise<NamedGrant[]> => {
   const ids = [...new Set(grants.map((grant) => grant.user_id))];
-  const profiles = ids.length
-    ? ((await unwrap(db.from('profiles').select('id, full_name').in('id', ids))) ?? [])
-    : [];
+  const profiles = await inChunks(ids, (chunk) => unwrap(db.from('profiles').select('id, full_name').in('id', chunk)));
   const names = new Map(profiles.map((profile) => [profile.id, profile.full_name]));
   return grants.map((grant) => ({ ...grant, full_name: names.get(grant.user_id) ?? null }));
 };
@@ -132,11 +131,14 @@ export interface ScopeRef {
   scopeId: string | null;
 }
 
+/** Every grant at one scope, paged past PostgREST's row cap (W9-DATA-D2). */
 export const loadScopeAccess = async ({ db, orgId, scopeType, scopeId }: ScopeRef): Promise<ScopeAccess> => {
-  let query = db.from('access_grants').select('*').eq('organization_id', orgId).eq('scope_type', scopeType);
   const column = scopeColumn(scopeType);
-  if (column && scopeId) query = query.eq(column, scopeId);
-  const grants = (await unwrap(query.order('created_at'))) ?? [];
+  const grants = await fetchAllPages(async (from, to) => {
+    let query = db.from('access_grants').select('*').eq('organization_id', orgId).eq('scope_type', scopeType);
+    if (column && scopeId) query = query.eq(column, scopeId);
+    return unwrap(query.order('created_at').order('id').range(from, to));
+  });
   return mapScopeAccess(scopeType, scopeId, await withNames(db, grants));
 };
 
@@ -144,9 +146,14 @@ export interface ReplaceScopeAccessInput extends ScopeRef {
   input: ReplaceScopeGrantsInput;
 }
 
-/** PUT …/access: the whole set at one scope, atomically (`replace_scope_grants`). */
-export const replaceScopeAccess = async ({ db, orgId, scopeType, scopeId, input }: ReplaceScopeAccessInput): Promise<ScopeAccess> => {
-  const grants = await unwrap(
+/**
+ * PUT …/access: the whole set at one scope, atomically (`replace_scope_grants`).
+ * The function's own result is capped at PostgREST's row limit and cannot be
+ * paged without running it again, so the committed set is re-read page by page.
+ */
+export const replaceScopeAccess = async (ref: ReplaceScopeAccessInput): Promise<ScopeAccess> => {
+  const { db, orgId, scopeType, scopeId, input } = ref;
+  await unwrap(
     db.rpc('replace_scope_grants', {
       p_org: orgId,
       p_scope_type: scopeType,
@@ -154,7 +161,7 @@ export const replaceScopeAccess = async ({ db, orgId, scopeType, scopeId, input 
       p_grants: input.grants,
     }),
   );
-  return mapScopeAccess(scopeType, scopeId, await withNames(db, grants ?? []));
+  return loadScopeAccess({ db, orgId, scopeType, scopeId });
 };
 
 /** Server-side precondition check with the same rule as RLS, for clearer errors. */

@@ -851,9 +851,21 @@ export type AssignmentTimeResponseRow = {
   assignment_id: string;
   plan_time_id: string;
   status: Exclude<AssignmentStatus, 'unconfirmed'>;
+  /**
+   * Private decline reason (W9-JRN-D1). Only the assignee, the response owner
+   * and schedulers can read it (`assignment_time_response_notes`); API
+   * responses carry null for everyone else.
+   */
   response_note: string | null;
   actor_id: string | null;
   responded_at: string;
+}
+
+/** One row of `assignment_time_response_notes()`: a per-time reason the caller may read. */
+export type AssignmentTimeResponseNote = {
+  assignment_id: string;
+  plan_time_id: string;
+  response_note: string;
 }
 
 export type AssignmentRequestSnapshotRow = {
@@ -1602,6 +1614,10 @@ export type Database = {
       replace_plan_times: {
         Args: { p_plan_id: string; p_times: unknown; p_expected_revision?: number | null };
         Returns: PlanTimeRow[];
+      };
+      assignment_time_response_notes: {
+        Args: { p_assignment_ids: string[] };
+        Returns: AssignmentTimeResponseNote[];
       };
       assignment_attendance_for: {
         Args: { p_assignment_ids: string[] };
