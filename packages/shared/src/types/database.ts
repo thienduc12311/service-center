@@ -1475,6 +1475,10 @@ export type Database = {
         Args: { p_user: string; p_assignment: string };
         Returns: boolean;
       };
+      realtime_topic_key: {
+        Args: { p_org: string };
+        Returns: string | null;
+      };
       my_org_context: {
         Args: { p_org?: string; p_all?: boolean };
         Returns: unknown;

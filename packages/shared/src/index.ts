@@ -81,3 +81,4 @@ export * from './types/platform-users.js';
 export * from './schemas/platform-users.js';
 export * from './lib/platform-users.js';
 export * from './lib/realtime-pokes.js';
+export * from './lib/realtime-keys.js';

@@ -20,6 +20,13 @@ begin
   if not coalesce(ok, false) then raise exception 'PERF-008: %', label; end if;
 end;
 $$;
+-- Topics carry the organization's realtime key (captured once, before any rotation).
+create temporary table poke_key on commit drop as
+  select key from private.org_realtime_keys where organization_id = 'aaaaaaaa-0000-4000-8000-000000000001';
+grant select on poke_key to authenticated, anon;
+create function pg_temp.t(p_kind text, p_id uuid) returns text language sql stable as $$
+  select p_kind || ':' || p_id || ':' || (select key from poke_key);
+$$;
 create function pg_temp.topic_is_readable(p_topic text) returns boolean language plpgsql as $$
 begin
   perform set_config('realtime.topic', p_topic, true);
@@ -55,53 +62,53 @@ update public.live_runs set status = 'live', current_index = 0, current_started_
    revision = revision + 1 where id = pg_temp.id_for('run');
 update public.live_runs set revision = revision + 1 where id = pg_temp.id_for('run');
 
-select pg_temp.check((select count(*) = 5 from realtime.messages where topic = 'conversation:' || pg_temp.id_for('chat')),
+select pg_temp.check((select count(*) = 5 from realtime.messages where topic = pg_temp.t('conversation', pg_temp.id_for('chat'))),
   'create, edit, hide, soft delete and hard delete each notify');
-select pg_temp.check((select count(*) = 3 from realtime.messages where topic = 'live_run:' || pg_temp.id_for('run')),
+select pg_temp.check((select count(*) = 3 from realtime.messages where topic = pg_temp.t('live_run', pg_temp.id_for('run'))),
   'creation and state revisions notify the run');
-select pg_temp.check((select count(*) = 3 from realtime.messages where topic = 'live_plan:' || pg_temp.id_for('plan')),
+select pg_temp.check((select count(*) = 3 from realtime.messages where topic = pg_temp.t('live_plan', pg_temp.id_for('plan'))),
   'service time creation, run creation and status changes notify discovery; other run revisions do not');
 
 update public.plans set content_revision = content_revision + 1 where id = pg_temp.id_for('plan');
 update public.plan_times set ends_at = ends_at + interval '10 minutes' where id = pg_temp.id_for('time');
-select pg_temp.check((select count(*) = 5 from realtime.messages where topic = 'live_run:' || pg_temp.id_for('run')),
+select pg_temp.check((select count(*) = 5 from realtime.messages where topic = pg_temp.t('live_run', pg_temp.id_for('run'))),
   'a plan revision and an actual time change notify the open run');
-select pg_temp.check((select count(*) = 5 from realtime.messages where topic = 'live_plan:' || pg_temp.id_for('plan')),
+select pg_temp.check((select count(*) = 5 from realtime.messages where topic = pg_temp.t('live_plan', pg_temp.id_for('plan'))),
   'a plan revision and an actual time change notify discovery');
 select pg_temp.check(not exists (
   select 1 from realtime.messages
-  where topic in ('conversation:' || pg_temp.id_for('chat'), 'live_plan:' || pg_temp.id_for('plan'), 'live_run:' || pg_temp.id_for('run'))
+  where topic in (pg_temp.t('conversation', pg_temp.id_for('chat')), pg_temp.t('live_plan', pg_temp.id_for('plan')), pg_temp.t('live_run', pg_temp.id_for('run')))
     and (private is distinct from true or extension <> 'broadcast' or event <> 'changed'
       or payload is distinct from jsonb_build_object('id', split_part(topic, ':', 2), 'event', 'changed'))
 ), 'all broadcasts are private and carry only the resource id and event');
 
 set local role authenticated;
 set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
-select pg_temp.check(pg_temp.topic_is_readable('conversation:' || pg_temp.id_for('chat')), 'participant may receive');
-select pg_temp.check(pg_temp.topic_is_readable('live_plan:' || pg_temp.id_for('plan')), 'member may discover runs');
-select pg_temp.check(pg_temp.topic_is_readable('live_run:' || pg_temp.id_for('run')), 'member may follow runs');
-select pg_temp.check(not pg_temp.topic_is_readable('conversation:' || pg_temp.id_for('other_chat')), 'foreign chat denied');
-select pg_temp.check(not pg_temp.topic_is_readable('live_plan:' || pg_temp.id_for('other_plan')), 'foreign plan denied');
-select pg_temp.check(not pg_temp.topic_is_readable('live_run:' || pg_temp.id_for('other_run')), 'foreign run denied');
+select pg_temp.check(pg_temp.topic_is_readable(pg_temp.t('conversation', pg_temp.id_for('chat'))), 'participant may receive');
+select pg_temp.check(pg_temp.topic_is_readable(pg_temp.t('live_plan', pg_temp.id_for('plan'))), 'member may discover runs');
+select pg_temp.check(pg_temp.topic_is_readable(pg_temp.t('live_run', pg_temp.id_for('run'))), 'member may follow runs');
+select pg_temp.check(not pg_temp.topic_is_readable(pg_temp.t('conversation', pg_temp.id_for('other_chat'))), 'foreign chat denied');
+select pg_temp.check(not pg_temp.topic_is_readable(pg_temp.t('live_plan', pg_temp.id_for('other_plan'))), 'foreign plan denied');
+select pg_temp.check(not pg_temp.topic_is_readable(pg_temp.t('live_run', pg_temp.id_for('other_run'))), 'foreign run denied');
 select pg_temp.check(not private.can_receive_resource_poke('conversation:malformed'), 'invalid ids are denied safely');
-select pg_temp.check(not private.can_receive_resource_poke('conversation:' || pg_temp.id_for('chat') || ':extra'), 'extra topic segments are denied');
-select pg_temp.check(not has_function_privilege('private.send_resource_poke(text,uuid)', 'execute'), 'clients cannot call the broadcaster');
+select pg_temp.check(not private.can_receive_resource_poke(pg_temp.t('conversation', pg_temp.id_for('chat')) || ':extra'), 'extra topic segments are denied');
+select pg_temp.check(not has_function_privilege('private.send_resource_poke(text,uuid,uuid)', 'execute'), 'clients cannot call the broadcaster');
 
 reset role;
 delete from public.team_memberships where team_id = pg_temp.id_for('band') and user_id = '55555555-5555-4555-8555-555555555555';
 set local role authenticated;
 set local request.jwt.claim.sub = '55555555-5555-4555-8555-555555555555';
-select pg_temp.check(not pg_temp.topic_is_readable('conversation:' || pg_temp.id_for('chat')), 'same-org nonparticipant denied');
+select pg_temp.check(not pg_temp.topic_is_readable(pg_temp.t('conversation', pg_temp.id_for('chat'))), 'same-org nonparticipant denied');
 set local role anon;
-select pg_temp.check(not pg_temp.topic_is_readable('conversation:' || pg_temp.id_for('chat')), 'anonymous subscription denied');
+select pg_temp.check(not pg_temp.topic_is_readable(pg_temp.t('conversation', pg_temp.id_for('chat'))), 'anonymous subscription denied');
 
 reset role;
 delete from public.organization_members where organization_id = pg_temp.id_for('org') and user_id = pg_temp.id_for('sam');
 set local role authenticated;
 set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
-select pg_temp.check(not pg_temp.topic_is_readable('conversation:' || pg_temp.id_for('chat')), 'removed member cannot rejoin chat');
-select pg_temp.check(not pg_temp.topic_is_readable('live_run:' || pg_temp.id_for('run')), 'removed member cannot rejoin live run');
-select pg_temp.check(not pg_temp.topic_is_readable('live_plan:' || pg_temp.id_for('plan')), 'removed member cannot rejoin plan discovery');
+select pg_temp.check(not pg_temp.topic_is_readable(pg_temp.t('conversation', pg_temp.id_for('chat'))), 'removed member cannot rejoin chat');
+select pg_temp.check(not pg_temp.topic_is_readable(pg_temp.t('live_run', pg_temp.id_for('run'))), 'removed member cannot rejoin live run');
+select pg_temp.check(not pg_temp.topic_is_readable(pg_temp.t('live_plan', pg_temp.id_for('plan'))), 'removed member cannot rejoin plan discovery');
 select pg_temp.check(public.live_run_state(pg_temp.id_for('run')) is null, 'canonical run read also denies removed member');
 
 rollback;
