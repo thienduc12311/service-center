@@ -199,6 +199,18 @@ export const leaderPositionOptions = (
 export const staffedTeamIds = (assignments: readonly Pick<AssignmentDetail, 'team_id' | 'status'>[]): string[] =>
   [...new Set(assignments.filter((assignment) => assignment.status !== 'declined').map((assignment) => assignment.team_id))];
 
+/**
+ * The whole order after moving the item at `from` to position `to` (the
+ * others shift), for one `reorderPlanItems` request; null when nothing moves.
+ */
+export const itemIdsMovedTo = (ids: readonly string[], from: number, to: number): string[] | null => {
+  if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) return null;
+  const next = [...ids];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved!);
+  return next;
+};
+
 /** Labels an item leader is described with, in the displayed language. */
 export interface LeaderWords {
   someoneOnRoster: string;

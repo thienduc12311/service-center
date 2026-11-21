@@ -594,7 +594,13 @@
     "onPlanFirst": "Những người trong chương trình này được liệt kê trước.",
     "onPlanName": "{{name}} · trong chương trình này",
     "noPersonMatch": "Không có ai khớp với từ khóa này.",
-    "searchPositions": "Tìm vị trí hoặc ban"
+    "searchPositions": "Tìm vị trí hoặc ban",
+    "moveToLabel": "Chuyển {{title}} đến…",
+    "moveToTitle": "Chuyển “{{title}}” đến…",
+    "moveToHint": "Chạm vào vị trí muốn đặt. Các mục khác sẽ tự dời chỗ.",
+    "moveToPosition": "Chuyển đến vị trí {{position}}, hiện là {{title}}",
+    "moveToCurrent": "Vị trí hiện tại",
+    "moveToItemNumber": "Mục {{number}}"
   },
   "mobileTimes": {
     "editTimes": "Sửa giờ",

@@ -8,6 +8,7 @@ import {
   type TeamWithPositions,
 } from '@service-center/shared';
 import {
+  itemIdsMovedTo,
   labeledKeyText,
   leaderLine,
   leaderPersonSuggestions,
@@ -61,6 +62,23 @@ const words: LeaderWords = {
   notYetAsked: (name) => `${name} (not yet asked)`,
   list: (items) => items.join(', '),
 };
+
+describe('itemIdsMovedTo', () => {
+  const ids = ['a', 'b', 'c', 'd', 'e'];
+
+  it('moves one item to a target position in one new order', () => {
+    expect(itemIdsMovedTo(ids, 0, 3)).toEqual(['b', 'c', 'd', 'a', 'e']);
+    expect(itemIdsMovedTo(ids, 4, 0)).toEqual(['e', 'a', 'b', 'c', 'd']);
+    expect(itemIdsMovedTo(ids, 2, 3)).toEqual(['a', 'b', 'd', 'c', 'e']);
+    expect(ids).toEqual(['a', 'b', 'c', 'd', 'e']);
+  });
+
+  it('sends nothing when the item stays or a position is out of range', () => {
+    expect(itemIdsMovedTo(ids, 2, 2)).toBeNull();
+    expect(itemIdsMovedTo(ids, -1, 2)).toBeNull();
+    expect(itemIdsMovedTo(ids, 1, 5)).toBeNull();
+  });
+});
 
 describe('orderWriteOutcome', () => {
   it('separates stale, gone, refused and unanswered writes', () => {

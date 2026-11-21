@@ -608,7 +608,13 @@
     "onPlanFirst": "People on this plan are listed first.",
     "onPlanName": "{{name}} · on this plan",
     "noPersonMatch": "No one matches that search.",
-    "searchPositions": "Search positions or teams"
+    "searchPositions": "Search positions or teams",
+    "moveToLabel": "Move {{title}} to…",
+    "moveToTitle": "Move “{{title}}” to…",
+    "moveToHint": "Tap the place it should take. The other items shift to make room.",
+    "moveToPosition": "Move to position {{position}}, now {{title}}",
+    "moveToCurrent": "Where it is now",
+    "moveToItemNumber": "Item {{number}}"
   },
   "mobileTimes": {
     "editTimes": "Edit times",
