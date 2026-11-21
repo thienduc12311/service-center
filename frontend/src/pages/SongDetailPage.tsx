@@ -90,7 +90,9 @@ export const SongDetailPage = () => {
         canManage={canManage}
         onEditInformation={() => setDialog('song-information')}
         onAddArrangement={() => openArrangementDialog(null)}
+        deleting={removeSong.isPending}
         onDelete={() => {
+          if (removeSong.isPending) return;
           if (window.confirm(t('songDetail.deleteSongConfirm', { title: detail.title }))) {
             removeSong.mutate();
           }
@@ -131,7 +133,9 @@ export const SongDetailPage = () => {
               arrangement={arrangement}
               canManage={canManage}
               onEdit={() => openArrangementDialog(arrangement)}
+              deleting={removeArrangement.isPending}
               onDelete={() => {
+                if (removeArrangement.isPending) return;
                 if (
                   window.confirm(t('songDetail.deleteArrangementConfirm', { name: arrangement.name }))
                 ) {

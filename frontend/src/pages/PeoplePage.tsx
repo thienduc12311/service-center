@@ -6,7 +6,7 @@ import { ORG_ROLES } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePeoplePage, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Avatar, Badge, Button, EmptyState, ErrorNotice, IconButton, Menu, MenuItem, Notice, PageHeader, SectionHeader, SkeletonList } from '../components/ui';
+import { Avatar, Badge, Button, EmptyState, ErrorNotice, IconButton, ListErrorNotice, Menu, MenuItem, Notice, PageHeader, SectionHeader, SkeletonList, listFailed } from '../components/ui';
 import { Icon } from '../components/icons';
 import { BulkRosterPanel } from '../components/people/BulkRosterPanel';
 import { TagGroupsModal } from '../components/people/TagGroupsModal';
@@ -115,7 +115,7 @@ export const PeoplePage = () => {
         {/* Who asked to join by the church ID: owners are the ones who invite. */}
         {owner && <JoinRequestsSection onInvited={(personName, url) => setSentInvite({ personName, url })} />}
 
-        <ErrorNotice error={people.error ?? changeRole.error ?? convert.error ?? invite.error} />
+        <ErrorNotice error={(listFailed(people) ? null : people.error) ?? changeRole.error ?? convert.error ?? invite.error} />
 
         <SectionHeader
           title={t('list.title')}
@@ -147,6 +147,8 @@ export const PeoplePage = () => {
 
         {people.isLoading ? (
           <SkeletonList rows={6} />
+        ) : listFailed(people) ? (
+          <ListErrorNotice query={people} />
         ) : people.data?.length ? (
           <ul className="card row-list overflow-hidden">
             {people.data.map((person) => {

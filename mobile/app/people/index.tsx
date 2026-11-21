@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { flattenPeoplePages, PEOPLE_PAGE_SIZE, type RosterPerson } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
-import { canOpenPeopleDetails, canOpenPerson, directoryBadges, directoryName, ownPersonId } from '../../src/lib/directory';
+import { canOpenPeopleDetails, canOpenPerson, directoryBadges, directoryName, directorySearchPlaceholderKey, ownPersonId } from '../../src/lib/directory';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { Avatar, Button, Card, EmptyState, ErrorNotice, ListRow, Loading, Screen, ScreenHeader, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
 import { Icon } from '../../src/components/icons';
@@ -50,6 +50,8 @@ export default function DirectoryScreen() {
     enabled: Boolean(queryScope),
   });
   const rows = people.data ? flattenPeoplePages(people.data.pages) : [];
+  // A failed first page shows the error with a retry; a failed later page keeps what loaded.
+  const firstPageFailed = Boolean(people.error && !people.data);
   const myPersonId = ownPersonId(rows, user?.profile.id);
 
   const badgeLabel = { archived: t('list.archived'), inviteSent: t('list.inviteSent'), noLogin: t('list.noLogin') } as const;
@@ -119,7 +121,7 @@ export default function DirectoryScreen() {
                 accessibilityLabel={t('mobileDirectory.searchLabel')}
                 value={query}
                 onChangeText={setQuery}
-                placeholder={t('mobileDirectory.searchPlaceholder')}
+                placeholder={t(directorySearchPlaceholderKey(role))}
                 placeholderTextColor={theme.color.inkFaint}
                 autoCorrect={false}
                 autoCapitalize="none"
@@ -134,14 +136,21 @@ export default function DirectoryScreen() {
               </View>
               <Text style={styles.muted}>{owner ? t('mobileDirectory.privacyNote') : t('mobileDirectory.ownerOnlyNote')}</Text>
             </Card>
-            <ErrorNotice error={people.error} />
+            {firstPageFailed ? (
+              <View style={styles.retry}>
+                <ErrorNotice error={people.error} />
+                <Button title={t('common:actions.retry')} variant="secondary" loading={people.isFetching} onPress={() => void people.refetch()} />
+              </View>
+            ) : (
+              <ErrorNotice error={people.error} />
+            )}
             {rows.length ? <SectionHeader title={t('list.title')} /> : null}
           </View>
         }
         ListEmptyComponent={
           people.isLoading ? (
             <Loading />
-          ) : people.error ? null : (
+          ) : firstPageFailed ? null : (
             <EmptyState icon={search ? 'search' : 'people'} title={search ? t('mobileDirectory.noMatch') : t('list.empty')} />
           )
         }
@@ -185,6 +194,7 @@ const makeStyles = (theme: Theme) =>
     },
     searchInput: { ...theme.type.body, lineHeight: undefined, flex: 1, color: theme.color.ink, paddingVertical: theme.space.sm + 2 },
     optionsCard: { gap: theme.space.sm },
+    retry: { gap: theme.space.md, paddingVertical: theme.space.md },
     row: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.md },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.xs, marginTop: theme.space.xs },
     switchRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md, minHeight: 44 },

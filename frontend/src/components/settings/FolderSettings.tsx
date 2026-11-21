@@ -100,7 +100,7 @@ export const FolderSettings = () => {
                 <Button
                   variant="ghost"
                   className="!px-2 text-xs"
-                  disabled={node.children.length > 0 || node.service_type_ids.length > 0}
+                  disabled={remove.isPending || node.children.length > 0 || node.service_type_ids.length > 0}
                   title={node.children.length > 0 || node.service_type_ids.length > 0 ? t('folders.emptyFirst') : undefined}
                   onClick={() => remove.mutate(node.id)}
                 >

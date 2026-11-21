@@ -79,7 +79,8 @@ export const TagGroupsModal = ({ open, onClose }: TagGroupsModalProps) => {
                 <button
                   type="button"
                   aria-label={t('tagGroups.deleteGroup', { name: group.name })}
-                  className="grid size-5 place-items-center rounded-full text-slate-500 hover:bg-slate-200 hover:text-rose-600 dark:hover:bg-slate-700"
+                  className="grid size-5 place-items-center rounded-full text-slate-500 hover:bg-slate-200 hover:text-rose-600 dark:hover:bg-slate-700 disabled:opacity-40"
+                  disabled={deleteGroup.isPending}
                   onClick={() => deleteGroup.mutate(group.id)}
                 >
                   <Icon name="close" className="size-3" />

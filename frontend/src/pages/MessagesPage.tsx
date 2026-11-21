@@ -8,7 +8,7 @@ import { api } from '../lib/api';
 import { useInvalidateOrg, useMessage, useMessages, useTeams } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters } from '../i18n';
-import { Avatar, Badge, Button, EmptyState, ErrorNotice, Notice, PageHeader, SectionHeader, SkeletonList, Tabs } from '../components/ui';
+import { Avatar, Badge, Button, EmptyState, ErrorNotice, ListErrorNotice, listFailed, Notice, PageHeader, SectionHeader, SkeletonList, Tabs } from '../components/ui';
 import { Icon } from '../components/icons';
 import { MessageComposerModal } from '../components/collaboration/MessageComposerModal';
 
@@ -84,8 +84,8 @@ export const MessagesPage = () => {
       )}
       {messages.isLoading ? (
         <SkeletonList rows={5} />
-      ) : messages.error ? (
-        <ErrorNotice error={messages.error} />
+      ) : listFailed(messages) ? (
+        <ListErrorNotice query={messages} />
       ) : list.length === 0 ? (
         <EmptyState icon="mail" title={box === 'sent' ? t('messagesPage.empty.sentTitle') : t('messagesPage.empty.receivedTitle')} description={box === 'sent' ? t('messagesPage.empty.sentDescription') : undefined} />
       ) : (

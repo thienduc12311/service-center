@@ -12,6 +12,8 @@ export interface SongWorkspaceHeaderProps {
   onEditInformation: () => void;
   onAddArrangement: () => void;
   onDelete: () => void;
+  /** A delete request is in flight: the delete action is disabled so it cannot be sent twice. */
+  deleting?: boolean;
 }
 
 /**
@@ -25,6 +27,7 @@ export const SongWorkspaceHeader = ({
   onEditInformation,
   onAddArrangement,
   onDelete,
+  deleting = false,
 }: SongWorkspaceHeaderProps) => {
   const { t } = useTranslation(['songs', 'common']);
   return (
@@ -78,6 +81,7 @@ export const SongWorkspaceHeader = ({
                 <MenuItem
                   icon="trash"
                   tone="danger"
+                  disabled={deleting}
                   onClick={() => {
                     onDelete();
                     close();

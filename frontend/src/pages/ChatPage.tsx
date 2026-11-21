@@ -22,7 +22,7 @@ import { supabase } from '../lib/supabase';
 import { keys, useConversation, useConversations, useMentionCandidates, useTeams } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useErrorText, useFormatters, type Formatters } from '../i18n';
-import { Badge, Button, EmptyState, ErrorNotice, Modal, Notice, PageHeader, SkeletonList } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, ListErrorNotice, listFailed, Modal, Notice, PageHeader, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
 import { DiscussionComposer, type DiscussionSubmission } from '../components/collaboration/DiscussionComposer';
 import { DiscussionEntry } from '../components/collaboration/DiscussionEntry';
@@ -423,10 +423,12 @@ export const ChatPage = () => {
               <option value="">{t('chatPage.openTeamChatOption')}</option>
               {startable.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
-            <ErrorNotice error={open.error ?? conversations.error} />
+            <ErrorNotice error={open.error ?? (listFailed(conversations) ? null : conversations.error)} />
           </div>
           {conversations.isLoading ? (
             <div className="p-3"><SkeletonList rows={4} /></div>
+          ) : listFailed(conversations) ? (
+            <div className="p-3"><ListErrorNotice query={conversations} /></div>
           ) : list.length === 0 ? (
             <EmptyState compact icon="chat" title={t('chatPage.noConversations')} />
           ) : (

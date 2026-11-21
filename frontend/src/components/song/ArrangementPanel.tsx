@@ -23,6 +23,8 @@ export interface ArrangementPanelProps {
   canManage: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  /** A delete request is in flight: the delete action is disabled so it cannot be sent twice. */
+  deleting?: boolean;
 }
 
 /** One labelled readout in the arrangement header. */
@@ -60,6 +62,7 @@ export const ArrangementPanel = ({
   canManage,
   onEdit,
   onDelete,
+  deleting = false,
 }: ArrangementPanelProps) => {
   const { t } = useTranslation(['songs', 'common']);
   const { locale } = useLanguage();
@@ -132,6 +135,7 @@ export const ArrangementPanel = ({
               icon="trash"
               label={t('arrangementPanel.delete')}
               onClick={onDelete}
+              disabled={deleting}
               className="hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10 dark:hover:!text-rose-400"
             />
           </div>

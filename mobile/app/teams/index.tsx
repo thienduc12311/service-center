@@ -7,7 +7,7 @@ import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { teamManageTarget } from '../../src/lib/directory';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { EmptyState, ErrorNotice, ListRow, Loading, Screen, ScreenHeader, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
+import { Button, EmptyState, ErrorNotice, ListRow, Loading, Screen, ScreenHeader, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
 import { Icon } from '../../src/components/icons';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
@@ -72,7 +72,14 @@ export default function TeamsScreen() {
           <View style={styles.header}>
             <ScreenHeader title={t('teamsPage.title')} description={t('teamsPage.subtitle')} />
             {can('teams.manage') ? <Text style={styles.muted}>{t('mobileTeams.setupOnWebsite')}</Text> : null}
-            <ErrorNotice error={teams.error} />
+            {teams.error && !teams.data ? (
+              <View style={styles.retry}>
+                <ErrorNotice error={teams.error} />
+                <Button title={t('common:actions.retry')} variant="secondary" loading={teams.isFetching} onPress={() => void teams.refetch()} />
+              </View>
+            ) : (
+              <ErrorNotice error={teams.error} />
+            )}
             {count ? <SectionHeader title={t('teamsPage.title')} count={count} /> : null}
           </View>
         }
@@ -90,6 +97,7 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     header: { gap: theme.space.lg, marginBottom: theme.space.md },
     list: { gap: 0 },
+    retry: { gap: theme.space.md, paddingVertical: theme.space.md },
     groupRow: {
       backgroundColor: theme.color.surface,
       borderLeftWidth: 1,

@@ -87,6 +87,7 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
   };
 
   const confirmRemove = (position: TeamPositionRow) => {
+    if (removePosition.isPending) return;
     const message = t('teamEditor.removeConfirm', { position: position.name });
     if (window.confirm(message)) removePosition.mutate(position.id);
   };
@@ -186,6 +187,7 @@ export const TeamEditor = ({ team, onClose }: TeamEditorProps) => {
                     size="sm"
                     label={t('common:actions.delete')}
                     className="hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10 dark:hover:!text-rose-400"
+                    disabled={removePosition.isPending}
                     onClick={() => confirmRemove(position)}
                   />
                 </>
