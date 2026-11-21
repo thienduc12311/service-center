@@ -68,7 +68,11 @@
     "locationPlaceholder": "Main Auditorium",
     "createPlan": "Create plan",
     "filterServiceType": "Filter by service type",
-    "allServiceTypes": "All service types"
+    "allServiceTypes": "All service types",
+    "searchLabel": "Search plans",
+    "searchPlaceholder": "Search plans by title…",
+    "noMatchesTitle": "No plans match",
+    "noMatchesDescription": "Nothing here matches “{{query}}”. Try other words, or look in Upcoming and Past."
   },
   "mobilePlans": {
     "loading": "Loading plans",

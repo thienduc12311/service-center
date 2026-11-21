@@ -4,14 +4,15 @@ import { useMutation } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
 import { ORG_ROLES, type RosterPerson } from '@service-center/shared';
 import { api } from '../lib/api';
-import { usePeoplePage, useInvalidateOrg } from '../hooks/queries';
-import { useUrlBoolean, useUrlSearch } from '../hooks/useUrlState';
+import { usePeoplePage, useInvalidateOrg, useTeams } from '../hooks/queries';
+import { useUrlBoolean, useUrlSearch, useUrlString } from '../hooks/useUrlState';
 import { useAuth } from '../providers/AuthProvider';
 import { Avatar, Badge, Button, EmptyState, ErrorNotice, IconButton, ListErrorNotice, Menu, MenuItem, Notice, PageHeader, SectionHeader, SkeletonList, listFailed } from '../components/ui';
 import { Icon } from '../components/icons';
 import { BulkRosterPanel } from '../components/people/BulkRosterPanel';
 import { TagGroupsModal } from '../components/people/TagGroupsModal';
 import { JoinRequestsSection } from '../components/people/JoinRequestsSection';
+import { SearchableSelect } from '../components/SearchableSelect';
 
 /** A selected Person, kept with enough to show them after a new search hides their row. */
 interface SelectedPerson {
@@ -34,7 +35,10 @@ export const PeoplePage = () => {
   const invalidate = useInvalidateOrg();
   const [showArchived, setShowArchived] = useUrlBoolean('archived');
   const search = useUrlSearch('q');
-  const people = usePeoplePage({ q: search.query, includeArchived: showArchived });
+  const [teamFilter, setTeamFilter] = useUrlString('team', '', { replace: false });
+  const teams = useTeams();
+  const teamOptions = (teams.data ?? []).map((team) => ({ id: team.id, label: team.name }));
+  const people = usePeoplePage({ q: search.query, includeArchived: showArchived, teamId: teamFilter });
   const [sentInvite, setSentInvite] = useState<SentInvite | null>(null);
   // Selections survive a new search or filter; the tray keeps every one of them in view.
   const [selected, setSelected] = useState<readonly SelectedPerson[]>([]);
@@ -200,6 +204,24 @@ export const PeoplePage = () => {
               aria-label={t('list.searchLabel')}
             />
           </div>
+          {(teamOptions.length > 0 || teamFilter) && (
+            <div className="min-w-0 sm:w-60">
+              <SearchableSelect
+                label={t('list.teamFilter')}
+                hideLabel
+                value={teamFilter}
+                onChange={(id) => setTeamFilter(id)}
+                options={teamOptions}
+                placeholder={t('list.allTeams')}
+                noMatchesText={t('list.noTeamMatches')}
+              />
+            </div>
+          )}
+          {people.total !== null && (
+            <span className="text-sm text-slate-500 tabular-nums sm:ml-auto dark:text-slate-400">
+              {t('common:count.people', { count: people.total })}
+            </span>
+          )}
           {canBulk && selectable.length > 0 && (
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
               <input
@@ -319,7 +341,7 @@ export const PeoplePage = () => {
             })}
           </ul>
         ) : (
-          <EmptyState icon="people" title={search.query ? t('list.noMatch') : t('list.empty')} />
+          <EmptyState icon="people" title={search.query || teamFilter ? t('list.noMatch') : t('list.empty')} />
         )}
 
         {people.hasNextPage && (

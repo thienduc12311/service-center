@@ -490,13 +490,22 @@ export const useFolderTree = () => {
 export interface PeoplePageFilters {
   q: string;
   includeArchived: boolean;
+  /** Only members of this team; '' or absent is everyone. */
+  teamId?: string;
+}
+
+/** How a people page list is fetched, beyond its filters. */
+export interface PeoplePageOptions {
+  enabled?: boolean;
 }
 
 /**
  * The People list, 25 at a time. `data` is every page loaded so far; call
- * `fetchNextPage` while `hasNextPage`. Pickers keep using the complete `usePeople`.
+ * `fetchNextPage` while `hasNextPage`. `total` is every match on the server
+ * (null until the first page arrives). Pickers that need the whole roster
+ * keep using `usePeople`.
  */
-export const usePeoplePage = (filters: PeoplePageFilters) => {
+export const usePeoplePage = (filters: PeoplePageFilters, options: PeoplePageOptions = {}) => {
   const org = useOrg();
   const query = useInfiniteQuery({
     queryKey: keys.peoplePage(org, filters),
@@ -505,15 +514,20 @@ export const usePeoplePage = (filters: PeoplePageFilters) => {
         limit: PEOPLE_PAGE_SIZE,
         cursor: pageParam,
         ...(filters.q ? { q: filters.q } : {}),
+        ...(filters.teamId ? { team_id: filters.teamId } : {}),
         ...(filters.includeArchived ? { include_archived: true } : {}),
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
-    enabled: Boolean(org),
+    enabled: Boolean(org) && (options.enabled ?? true),
     // Keep the last results on screen while a new search loads, instead of a skeleton per keystroke.
     placeholderData: (previous) => previous,
   });
-  return { ...query, data: query.data ? flattenPeoplePages(query.data.pages) : undefined };
+  return {
+    ...query,
+    data: query.data ? flattenPeoplePages(query.data.pages) : undefined,
+    total: query.data?.pages[0]?.total ?? null,
+  };
 };
 
 /** Whether requests can reach these People (login, email, active) — never the address. */

@@ -68,7 +68,11 @@
     "locationPlaceholder": "Hội trường chính",
     "createPlan": "Tạo chương trình",
     "filterServiceType": "Lọc theo loại buổi nhóm",
-    "allServiceTypes": "Tất cả loại buổi nhóm"
+    "allServiceTypes": "Tất cả loại buổi nhóm",
+    "searchLabel": "Tìm chương trình",
+    "searchPlaceholder": "Tìm chương trình theo tiêu đề…",
+    "noMatchesTitle": "Không có chương trình phù hợp",
+    "noMatchesDescription": "Không có chương trình nào khớp với “{{query}}”. Hãy thử từ khác, hoặc xem cả mục Sắp tới và Đã qua."
   },
   "mobilePlans": {
     "loading": "Đang tải chương trình",

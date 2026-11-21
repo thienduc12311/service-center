@@ -24,7 +24,7 @@ export const ListFooter = ({ shown, total, onShowMore, loading = false, capped =
   return (
     <div className="flex flex-wrap items-center justify-center gap-3 py-2 text-xs text-slate-500 dark:text-slate-400">
       {capped ? (
-        <span>{t('list.refineSearch', { shown })}</span>
+        <span>{hasTotal ? t('list.showingOfNarrow', { shown, total }) : t('list.refineSearch', { shown })}</span>
       ) : (
         hasTotal && <span>{t('list.showingOf', { shown, total })}</span>
       )}

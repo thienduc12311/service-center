@@ -33,7 +33,10 @@
       "remove": "Unselect {{name}}",
       "selectLoaded_one": "Select the {{count}} shown",
       "selectLoaded_other": "Select all {{count}} shown"
-    }
+    },
+    "teamFilter": "Filter by team",
+    "allTeams": "All teams",
+    "noTeamMatches": "No teams match."
   },
   "person": {
     "addTitle": "Add person",
