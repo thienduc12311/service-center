@@ -66,7 +66,9 @@
     "fieldServiceType": "Service type",
     "fieldLocation": "Location",
     "locationPlaceholder": "Main Auditorium",
-    "createPlan": "Create plan"
+    "createPlan": "Create plan",
+    "filterServiceType": "Filter by service type",
+    "allServiceTypes": "All service types"
   },
   "mobilePlans": {
     "loading": "Loading plans",

@@ -43,7 +43,15 @@
     "empty": "Chưa có bài hát nào",
     "emptyDescription": "Thêm bài hát để xây dựng thư viện cho các chương trình.",
     "previousPage": "Trang trước",
-    "page": "Trang {{page}}"
+    "page": "Trang {{page}}",
+    "pageOf": "Trang {{page}}/{{pages}}",
+    "selection": {
+      "label": "Bài hát đã chọn",
+      "selectPage": "Chọn tất cả bài hát trên trang này",
+      "offPage_other": "({{count}} bài ở trang khác)",
+      "limit": "Mỗi lần chỉ sửa được tối đa {{max}} bài hát, nên những bài còn lại chưa được chọn.",
+      "clear": "Bỏ chọn tất cả"
+    }
   },
   "songDetail": {
     "notFound": "Không tìm thấy bài hát",
@@ -474,7 +482,12 @@
     "limitOption_other": "{{count}} lần gần nhất",
     "loading": "Đang tìm các buổi nhóm gần đây…",
     "emptyArrangement": "Bản phối này chưa được xếp lịch lần nào.",
-    "emptySong": "Bài hát này chưa được xếp lịch lần nào."
+    "emptySong": "Bài hát này chưa được xếp lịch lần nào.",
+    "playedTimes_other": "Đã dùng {{count}} lần",
+    "playedAtLeast_other": "Đã dùng ít nhất {{count}} lần",
+    "lastPlayed": "gần nhất vào {{date}}",
+    "limitAll_other": "Tất cả (tối đa {{count}})",
+    "showAll": "Xem tất cả"
   },
   "tags": {
     "empty": "Bài hát này chưa có thẻ nào.",

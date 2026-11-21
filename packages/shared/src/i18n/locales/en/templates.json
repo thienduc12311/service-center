@@ -80,7 +80,14 @@
     "revisionLabel": "Revision",
     "revisionOption": "Revision {{revision}} · {{date}}",
     "revisionOptionFromPlan": "Revision {{revision}} · {{date}} · from a plan",
-    "viewingOld": "You are viewing an older revision. It cannot be edited; plans made from it keep their content."
+    "viewingOld": "You are viewing an older revision. It cannot be edited; plans made from it keep their content.",
+    "filterPlaceholder": "Filter by name or service type",
+    "filterLabel": "Filter templates",
+    "noMatch": "No templates match that filter.",
+    "kindGroup": {
+      "plan": "Plan templates",
+      "section": "Reusable sections"
+    }
   },
   "editor": {
     "name": "Name",

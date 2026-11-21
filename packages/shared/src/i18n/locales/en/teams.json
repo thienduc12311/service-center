@@ -29,7 +29,30 @@
       "hint": "Anyone on the roster can join a team, with or without a login. Archived people aren’t listed.",
       "positionFor": "Position for {{name}}",
       "addAs": "Add as…",
-      "noPosition": "No position"
+      "noPosition": "No position",
+      "searchLabel": "Find people",
+      "searchPlaceholder": "Search by name or email",
+      "queued_one": "To add ({{count}})",
+      "queued_other": "To add ({{count}})",
+      "queuedLabel": "People to add",
+      "nobodyQueued": "Search above and pick one or more people. Nobody is added until you press Add.",
+      "unqueue": "Don’t add {{name}}",
+      "position": "Position",
+      "submit_one": "Add {{count}} person",
+      "submit_other": "Add {{count}} people",
+      "submitAs_one": "Add {{count}} as {{position}}",
+      "submitAs_other": "Add {{count}} as {{position}}"
+    },
+    "positionsCount_one": "{{count}} position",
+    "positionsCount_other": "{{count}} positions",
+    "collapseAll": "Collapse all",
+    "search": {
+      "label": "Search teams and members",
+      "placeholder": "Search teams or people",
+      "noMatch": "No team or member matches that search.",
+      "shownOf": "{{shown}} of {{total}}",
+      "matchingMembers_one": "{{count}} matching member",
+      "matchingMembers_other": "{{count}} matching members"
     }
   },
   "teamForm": {

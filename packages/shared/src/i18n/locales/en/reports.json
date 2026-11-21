@@ -203,6 +203,13 @@
     "nobody": "Nobody with a released request is scheduled at this time.",
     "nobodyOnYourTeams": "Nobody with a released request is scheduled at this time on the teams you schedule.",
     "markEveryone": "Mark everyone I can:",
+    "searchLabel": "Search people at this time",
+    "searchPlaceholder": "Search by name or position",
+    "noMatch": "Nobody matches that search and filter.",
+    "filter": {
+      "label": "Show",
+      "all": "Everyone"
+    },
     "discardChanges": "Discard changes",
     "hiddenPeople_one": "{{count}} more person is scheduled on teams you do not schedule.",
     "hiddenPeople_other": "{{count}} more people are scheduled on teams you do not schedule.",

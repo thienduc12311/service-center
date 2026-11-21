@@ -202,6 +202,13 @@
     "nobody": "Không có ai có yêu cầu đã gửi được phân công vào giờ này.",
     "nobodyOnYourTeams": "Không có ai có yêu cầu đã gửi được phân công vào giờ này trong các ban bạn phân công.",
     "markEveryone": "Đánh dấu tất cả những người tôi có thể:",
+    "searchLabel": "Tìm người trong khung giờ này",
+    "searchPlaceholder": "Tìm theo tên hoặc vị trí",
+    "noMatch": "Không có ai khớp với từ khóa và bộ lọc này.",
+    "filter": {
+      "label": "Hiển thị",
+      "all": "Tất cả"
+    },
     "discardChanges": "Bỏ các thay đổi",
     "hiddenPeople_other": "Còn {{count}} người khác được phân công trong các ban bạn không phân công.",
     "orphaned": "Giữ lại từ trước (không còn được phân công vào giờ này): {{list}}",

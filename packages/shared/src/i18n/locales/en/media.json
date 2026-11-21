@@ -32,7 +32,10 @@
     "alt": "Thumbnail for {{title}}",
     "none": "No thumbnail.",
     "selectLabel": "Thumbnail image",
-    "uploadHint": "Upload an image under Files to use it here."
+    "uploadHint": "Upload an image under Files to use it here.",
+    "searchPlaceholder": "Search images by title",
+    "searchLabel": "Search images",
+    "noMatch": "No image matches that search."
   },
   "form": {
     "title": "Title",
@@ -218,7 +221,10 @@
     "noItemFilesDescription": "Song and item files you are allowed to see appear here.",
     "noFiles": "No files.",
     "allDefaultsLinked": "Every default file of this service type is already on the plan.",
-    "defaultPinHint": "The plan keeps the version you add now, even if the default is replaced later."
+    "defaultPinHint": "The plan keeps the version you add now, even if the default is replaced later.",
+    "onlyWithFiles_one": "Only items with files ({{count}} of {{total}})",
+    "onlyWithFiles_other": "Only items with files ({{count}} of {{total}})",
+    "noItemFilesYet": "No item has files yet."
   },
   "rehearsal": {
     "unavailable": "This recording is no longer available to you. Other items are still playable.",

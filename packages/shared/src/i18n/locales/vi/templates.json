@@ -69,7 +69,14 @@
     "revisionLabel": "Phiên bản",
     "revisionOption": "Phiên bản {{revision}} · {{date}}",
     "revisionOptionFromPlan": "Phiên bản {{revision}} · {{date}} · từ một chương trình",
-    "viewingOld": "Bạn đang xem một phiên bản cũ. Không thể chỉnh sửa phiên bản này; các chương trình tạo từ nó vẫn giữ nội dung của mình."
+    "viewingOld": "Bạn đang xem một phiên bản cũ. Không thể chỉnh sửa phiên bản này; các chương trình tạo từ nó vẫn giữ nội dung của mình.",
+    "filterPlaceholder": "Lọc theo tên hoặc loại buổi nhóm",
+    "filterLabel": "Lọc mẫu",
+    "noMatch": "Không có mẫu nào khớp bộ lọc.",
+    "kindGroup": {
+      "plan": "Mẫu chương trình",
+      "section": "Phần dùng lại"
+    }
   },
   "editor": {
     "name": "Tên",

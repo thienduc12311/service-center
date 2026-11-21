@@ -30,7 +30,13 @@
     "removePerson": "Gỡ {{name}}",
     "reviewAndRelease_other": "Xem lại và gửi {{count}} phân công",
     "willBeNotified": "Những người này sẽ được thông báo:",
-    "release": "Gửi phân công"
+    "release": "Gửi phân công",
+    "onlyGaps_other": "Chỉ xem chỗ còn thiếu ({{count}} ban)",
+    "noGapsTitle": "Không còn chỗ thiếu",
+    "noGapsDescription": "Mọi vị trí cần đều đã có người và mọi lời mời đều đã được trả lời.",
+    "summary": "{{confirmed}}/{{places}} đã xác nhận",
+    "summaryNobody": "Chưa phân công ai",
+    "openPlaces_other": "còn thiếu {{count}} chỗ"
   },
   "schedulePeople": {
     "title": "Phân công người",

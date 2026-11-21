@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useFormatters } from '../../i18n';
 import { useSongSchedule } from '../../hooks/queries';
-import { ErrorNotice, Spinner } from '../ui';
+import { Button, ErrorNotice, Spinner } from '../ui';
 import { Icon } from '../icons';
 
 export interface SongSchedulePanelProps {
@@ -14,6 +14,8 @@ export interface SongSchedulePanelProps {
 
 /** How many services back the panel looks. */
 const SCHEDULE_LIMITS: readonly number[] = [3, 6, 12];
+/** "Show all": the most the schedule endpoint returns (`songScheduleQuerySchema`). */
+const SCHEDULE_MAX = 50;
 
 /**
  * When the song was last used: the most recent services it was scheduled in,
@@ -29,6 +31,9 @@ export const SongSchedulePanel = ({ songId, arrangementId }: SongSchedulePanelPr
   });
 
   const entries = schedule.data ?? [];
+  // Fewer entries than asked for means this is every time it was played.
+  const complete = !schedule.isPlaceholderData && entries.length < limit;
+  const lastPlayed = entries[0]?.service_date;
 
   return (
     <section className="card flex flex-col overflow-hidden">
@@ -39,15 +44,24 @@ export const SongSchedulePanel = ({ songId, arrangementId }: SongSchedulePanelPr
       </div>
 
       <div className="space-y-2 px-4 pt-3">
+      {lastPlayed && (
+        <p className="text-xs text-slate-600 dark:text-slate-300" role="status">
+          {complete
+            ? t('schedule.playedTimes', { count: entries.length })
+            : t('schedule.playedAtLeast', { count: entries.length })}
+          {' · '}
+          {t('schedule.lastPlayed', { date: formatters.calendarDate(lastPlayed, 'medium') })}
+        </p>
+      )}
       <select
         aria-label={t('schedule.limitLabel')}
         className="input"
         value={limit}
         onChange={(event) => setLimit(Number(event.target.value))}
       >
-        {SCHEDULE_LIMITS.map((option) => (
+        {[...SCHEDULE_LIMITS, SCHEDULE_MAX].map((option) => (
           <option key={option} value={option}>
-            {t('schedule.limitOption', { count: option })}
+            {option === SCHEDULE_MAX ? t('schedule.limitAll', { count: SCHEDULE_MAX }) : t('schedule.limitOption', { count: option })}
           </option>
         ))}
       </select>
@@ -90,6 +104,13 @@ export const SongSchedulePanel = ({ songId, arrangementId }: SongSchedulePanelPr
           ))
         )}
       </div>
+      {!complete && entries.length === limit && limit < SCHEDULE_MAX && (
+        <div className="border-t border-app-border px-4 py-2">
+          <Button variant="ghost" size="sm" loading={schedule.isFetching} onClick={() => setLimit(SCHEDULE_MAX)}>
+            {t('schedule.showAll')}
+          </Button>
+        </div>
+      )}
     </section>
   );
 };
