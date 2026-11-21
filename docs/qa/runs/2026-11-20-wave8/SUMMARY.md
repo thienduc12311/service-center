@@ -79,7 +79,7 @@ Validation on the merged branch:
 - Not verified live: Auth outage → 503 and upstream 5xx/timeout mapping (unit tests only; stopping shared Auth/PostgREST was out of bounds); iOS accessibility and plan-chat visibility (unit tests only, no simulator run).
 
 Open follow-ups:
-- Team roster visibility: currently any active member sees basic info for every team in the org; confirm or restrict to the caller's own teams.
+- Team roster visibility: **decided 2026-11-21 — keep as implemented**: any active member sees teammates' name, email, phone and date of birth for every team in the org.
 - Plan-chat entry point does not model the DB's child-participant rule (a child sees the entry and gets 404).
 - Unpaged selects that may exceed 1,000 rows, not fixed: `folders.ts:36`, `teams.ts:88`, `teams.ts:113`, `songbooks.ts:64`.
 - Realtime: key rotation is org-wide; team/assignment removal does not rotate; old clients fall back to 60 s polling until updated.
