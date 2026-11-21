@@ -59,6 +59,31 @@ Every P1 was checked against source by the coordinator.
 - W8-NAT-D1: native team roster shows "Unknown" for every teammate to a non-owner (`profile: null` from the API, owner-only People privacy). **Decided:** a non-owner viewing a team roster sees each teammate's name and basic information — email, phone and date of birth. Other private People fields stay owner-only. Implemented in `20261127000300_w8_team_roster_basic_info` (`team_roster_people(p_org)`: any active member, all teams in the org; other People fields unchanged).
 - W8-INT-D5: a deactivated member's open Realtime socket stays live until token expiry (≤ 900 s); ADR 0005 says that case has no window. **Decided:** close the connection on deactivation (server-enforced, not client-cooperative) and keep ADR 0005's statement true. Same family: after global sign-out an open socket kept receiving 839 s (documented residual of W7-JRN-D3) — covered too if the same mechanism applies.
 
+## Fix round (2026-11-21) — branch `feature/qa-wave8-fixes`
+
+Seven fix branches merged without conflicts: `fix-api`, `fix-db`, `fix-idem`, `fix-ui`, `fix-roster`, `fix-realtime`, `fix-paging`. Migrations `20261127000000`–`20261127000600` applied to the local stack with `supabase migration up` (no reset).
+
+Coordinator follow-ups on the merged branch:
+- `20261127000500_w8_people_sort_name` was renamed from `…000200`, which the note idempotency migration already used.
+- `20261127000600_w8_realtime_org_delete`: the member-delete key rotation tried to insert a key for an organization being deleted, so **every organization delete failed** (caught by `f02-roster-extensions.sql` and `platform-user-management.sql`). A key is now created only for an existing organization; regression check added to `qa-wave8-realtime-revocation.sql`.
+- The `auth.sessions` trigger is created inside a guarded block, so the migration still applies where the migration role lacks TRIGGER on auth tables (sign-out rotation is then unavailable and a warning is raised).
+- `qa-wave8-db.sql` Retry-After cap check widened to the ±10% jitter band (failed ~40% of runs).
+
+Product change requested during the round: the People list screens (web `PeoplePage`, mobile `people/index`) page from the server, 25 per page (`GET /people/page`, max 100, keyset on `sort_name, id`, name search server-side, total count removed). `GET /people` still returns the full list for pickers.
+
+Validation on the merged branch:
+- `npm run typecheck` clean in every package; `npm run test` 1,621 passed (629 / 466 / 52 / 402 / 72); `i18n:check` OK.
+- `supabase/tests/run-all.sh`: 57 passed, 0 failed; `qa-wave8-db.sql` 5/5 runs.
+- `qa-wave8-realtime-revocation.e2e.mjs` against live Realtime: all 15 checks pass (removed member's open socket silent and unable to rejoin; remaining member rekeyed in 149 ms; deleted session's socket silent).
+- Live API on :4000 (org B with 1,100 temporary people, removed afterwards): `GET /people` 1,101/1,101; `GET /people/page` 45 pages of 25, no loss or duplicates, search past page 1; `GET /conversations` 110/110 over 3 pages; schedule report 1,138/1,138 rows; expired and malformed JWT → 401 `unauthorized`.
+- Not verified live: Auth outage → 503 and upstream 5xx/timeout mapping (unit tests only; stopping shared Auth/PostgREST was out of bounds); iOS accessibility and plan-chat visibility (unit tests only, no simulator run).
+
+Open follow-ups:
+- Team roster visibility: currently any active member sees basic info for every team in the org; confirm or restrict to the caller's own teams.
+- Plan-chat entry point does not model the DB's child-participant rule (a child sees the entry and gets 404).
+- Unpaged selects that may exceed 1,000 rows, not fixed: `folders.ts:36`, `teams.ts:88`, `teams.ts:113`, `songbooks.ts:64`.
+- Realtime: key rotation is org-wide; team/assignment removal does not rotate; old clients fall back to 60 s polling until updated.
+
 ## Deferred
 
 - W8-PERF-D4 RLS `FOR ALL` write policies evaluated on every SELECT (songs 125 ms vs 2 ms without RLS) — split into per-command policies; needs a careful RLS migration, schedule as its own perf task.
