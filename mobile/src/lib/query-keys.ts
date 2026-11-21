@@ -222,6 +222,9 @@ export const queryKeys = {
     [...privateRoot(scope), 'delegations', 'schedule', delegationId ?? null] as const,
   people: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'people'] as const,
+  /** W8 paging: the People list screen's keyset pages (search and archive are server-side); under `people`, so roster writes refresh it. */
+  directoryPage: (scope: ProtectedQueryScope | null, includeArchived: boolean, q: string) =>
+    [...privateRoot(scope), 'people', 'directory-page', includeArchived, q] as const,
   /** MOB-031: the directory with or without archived people; invalidate `people` after any roster write. */
   directory: (scope: ProtectedQueryScope | null, includeArchived: boolean) =>
     [...privateRoot(scope), 'people', 'directory', includeArchived] as const,

@@ -1,14 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import type { RosterPerson } from '@service-center/shared';
+import { flattenPeoplePages, PEOPLE_PAGE_SIZE, type RosterPerson } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
-import { canOpenPeopleDetails, canOpenPerson, directoryBadges, directoryName, filterDirectory, ownPersonId } from '../../src/lib/directory';
+import { canOpenPeopleDetails, canOpenPerson, directoryBadges, directoryName, ownPersonId } from '../../src/lib/directory';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { Avatar, Card, EmptyState, ErrorNotice, ListRow, Loading, Screen, ScreenHeader, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
+import { Avatar, Button, Card, EmptyState, ErrorNotice, ListRow, Loading, Screen, ScreenHeader, SectionHeader, Tag, screenPadding } from '../../src/components/ui';
 import { Icon } from '../../src/components/icons';
 import type { Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
@@ -29,13 +29,28 @@ export default function DirectoryScreen() {
   const [query, setQuery] = useState('');
   const [includeArchived, setIncludeArchived] = useState(false);
 
-  const people = useQuery({
-    queryKey: queryKeys.directory(queryScope, includeArchived),
-    queryFn: () => api.listPeople(includeArchived ? { include_archived: true } : undefined),
+  const [search, setSearch] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // Keyset pages of 25; search and the archived switch are applied by the server.
+  const people = useInfiniteQuery({
+    queryKey: queryKeys.directoryPage(queryScope, includeArchived, search),
+    queryFn: ({ pageParam }) =>
+      api.listPeoplePage({
+        limit: PEOPLE_PAGE_SIZE,
+        cursor: pageParam,
+        ...(search ? { q: search } : {}),
+        ...(includeArchived ? { include_archived: true } : {}),
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: Boolean(queryScope),
   });
-  const rows = useMemo(() => filterDirectory(people.data ?? [], query), [people.data, query]);
-  const myPersonId = ownPersonId(people.data ?? [], user?.profile.id);
+  const rows = people.data ? flattenPeoplePages(people.data.pages) : [];
+  const myPersonId = ownPersonId(rows, user?.profile.id);
 
   const badgeLabel = { archived: t('list.archived'), inviteSent: t('list.inviteSent'), noLogin: t('list.noLogin') } as const;
 
@@ -85,6 +100,15 @@ export default function DirectoryScreen() {
         contentContainerStyle={[screenPadding(theme), styles.list]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        onEndReached={() => {
+          if (people.hasNextPage && !people.isFetchingNextPage) void people.fetchNextPage();
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          people.hasNextPage ? (
+            <Button title={t('list.loadMore')} variant="quiet" loading={people.isFetchingNextPage} onPress={() => void people.fetchNextPage()} />
+          ) : null
+        }
         refreshControl={<RefreshControl refreshing={people.isRefetching} onRefresh={() => void people.refetch()} />}
         ListHeaderComponent={
           <View style={styles.header}>
@@ -111,14 +135,14 @@ export default function DirectoryScreen() {
               <Text style={styles.muted}>{owner ? t('mobileDirectory.privacyNote') : t('mobileDirectory.ownerOnlyNote')}</Text>
             </Card>
             <ErrorNotice error={people.error} />
-            {rows.length ? <SectionHeader title={t('list.title')} count={rows.length} /> : null}
+            {rows.length ? <SectionHeader title={t('list.title')} /> : null}
           </View>
         }
         ListEmptyComponent={
           people.isLoading ? (
             <Loading />
           ) : people.error ? null : (
-            <EmptyState icon={query.trim() ? 'search' : 'people'} title={query.trim() ? t('mobileDirectory.noMatch') : t('list.empty')} />
+            <EmptyState icon={search ? 'search' : 'people'} title={search ? t('mobileDirectory.noMatch') : t('list.empty')} />
           )
         }
       />

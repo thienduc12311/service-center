@@ -222,6 +222,7 @@ import type {
   PlanPositionNeed,
   PlanSummary,
   RosterPerson,
+  RosterPersonPage,
   SchedulingConflict,
   ServiceTypeSetupResult,
   SongChart,
@@ -344,6 +345,7 @@ import type {
 } from '../schemas/plan-templates.js';
 import type {
   ConversationDetail,
+  ConversationListPage,
   ConversationMessage,
   ConversationReport,
   ConversationSummary,
@@ -366,6 +368,7 @@ import type {
   ConversationMessagesQuery,
   CreateNoteCategoryInput,
   DiscussionPageQuery,
+  ListConversationsQuery,
   ListOperationalMessagesQuery,
   OpenConversationInput,
   PostConversationMessageInput,
@@ -767,6 +770,9 @@ export class ServiceCenterApi {
   /** Archived people are left out unless asked for. */
   listPeople = (query?: { include_archived?: boolean }) =>
     this.request<RosterPerson[]>('GET', '/api/v1/people', undefined, query as Query);
+  /** One keyset page of the People list for the list screens; pickers keep using `listPeople`. */
+  listPeoplePage = (query?: { limit?: number; cursor?: string; q?: string; include_archived?: boolean }) =>
+    this.request<RosterPersonPage>('GET', '/api/v1/people/page', undefined, query as Query);
   getPerson = (personId: string) => this.request<PersonDetail>('GET', `/api/v1/people/${personId}`);
   createPerson = (body: CreatePersonInput) => this.request<PersonDetail>('POST', '/api/v1/people', body);
   updatePerson = (personId: string, body: UpdatePersonInput) =>
@@ -1596,7 +1602,8 @@ export class ServiceCenterApi {
     this.request<void>('DELETE', `/api/v1/message-templates/${id}`);
 
   // --------------------------------------------------- F09 conversations --
-  conversations = () => this.request<ConversationSummary[]>('GET', '/api/v1/conversations');
+  conversations = (query?: Partial<ListConversationsQuery>) =>
+    this.request<ConversationListPage>('GET', '/api/v1/conversations', undefined, query as Query);
   /** Opens (creating on first use) the conversation for a team or plan. */
   openConversation = (body: OpenConversationInput) =>
     this.request<ConversationSummary>('POST', '/api/v1/conversations/open', body);

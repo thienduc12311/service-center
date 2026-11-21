@@ -7,6 +7,7 @@ import {
   deleteDiscussionSchema,
   discussionPageQuerySchema,
   editDiscussionSchema,
+  listConversationsQuerySchema,
   listOperationalMessagesQuerySchema,
   markConversationReadSchema,
   mentionCandidatesQuerySchema,
@@ -27,6 +28,7 @@ import {
   type DeleteDiscussionInput,
   type DiscussionPageQuery,
   type EditDiscussionInput,
+  type ListConversationsQuery,
   type ListOperationalMessagesQuery,
   type MarkConversationReadInput,
   type MentionCandidatesQuery,
@@ -215,8 +217,8 @@ messageTemplatesRouter.delete('/:id', async (req, res) => {
 /** Participants are derived per request in the database; a guessed id is 404. */
 export const conversationsRouter: Router = Router();
 
-conversationsRouter.get('/', async (req, res) => {
-  res.json(await listConversations(caller(req)));
+conversationsRouter.get('/', validateQuery(listConversationsQuerySchema), async (req, res) => {
+  res.json(await listConversations(caller(req), parsedQuery<ListConversationsQuery>(res)));
 });
 conversationsRouter.post('/open', validateBody(openConversationSchema), async (req, res) => {
   res.json(await openConversation(caller(req), req.body as OpenConversationInput));

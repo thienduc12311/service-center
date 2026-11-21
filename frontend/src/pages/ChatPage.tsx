@@ -473,6 +473,13 @@ export const ChatPage = () => {
                   </li>
                 );
               })}
+              {conversations.hasNextPage && (
+                <li>
+                  <Button variant="secondary" className="w-full" loading={conversations.isFetchingNextPage} onClick={() => void conversations.fetchNextPage()}>
+                    {t('chatPage.loadMore')}
+                  </Button>
+                </li>
+              )}
             </ul>
           )}
         </aside>

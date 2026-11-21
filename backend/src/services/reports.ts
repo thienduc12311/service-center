@@ -24,6 +24,7 @@ import {
   type ReportTimeSource,
 } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
+import { fetchAllPages } from '../lib/paging.js';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { attendanceFor } from './attendance.js';
 import { personName } from '../model/availability.model.js';
@@ -113,9 +114,11 @@ const loadPlans = async (
 const loadPeople = async (ctx: ReportContext, ids: readonly string[]): Promise<ReportPersonSource[]> => {
   const source = ctx.serviceRole ? 'people' : 'people_directory';
   const rows = await inChunks(ids, async (chunk) =>
-    ((await unwrap(
-      raw(ctx.db).from(source).select('id, first_name, last_name, archived_at').eq('organization_id', ctx.orgId).in('id', chunk),
-    )) ?? []) as ReportPersonRow[],
+    fetchAllPages(async (from, to) =>
+      (await unwrap(
+        raw(ctx.db).from(source).select('id, first_name, last_name, archived_at').eq('organization_id', ctx.orgId).in('id', chunk).order('id').range(from, to),
+      )) as ReportPersonRow[] | null,
+    ),
   );
   return rows.map((row) => ({ id: row.id, name: personName(row), archived: Boolean(row.archived_at) }));
 };
@@ -124,13 +127,17 @@ const loadPeople = async (ctx: ReportContext, ids: readonly string[]): Promise<R
 const loadAssignments = async (ctx: ReportContext, plans: readonly ReportPlanSource[]): Promise<ReportAssignmentSource[]> => {
   const byId = new Map(plans.map((plan) => [plan.id, plan]));
   const rows = await inChunks(plans.map((plan) => plan.id), async (chunk) =>
-    ((await unwrap(
-      raw(ctx.db)
-        .from('assignments')
-        .select('id, plan_id, person_id, team_id, status, released_at, team:teams(name), position:team_positions(name)')
-        .in('plan_id', chunk)
-        .eq('visibility', 'released'),
-    )) ?? []) as unknown as ReportAssignmentRow[],
+    fetchAllPages(async (from, to) =>
+      (await unwrap(
+        raw(ctx.db)
+          .from('assignments')
+          .select('id, plan_id, person_id, team_id, status, released_at, team:teams(name), position:team_positions(name)')
+          .in('plan_id', chunk)
+          .eq('visibility', 'released')
+          .order('id')
+          .range(from, to),
+      )) as unknown as ReportAssignmentRow[] | null,
+    ),
   );
   const scoped = rows.filter((row) => teamInScope(ctx.access, byId.get(row.plan_id)?.service_type_id ?? null, row.team_id));
   const intervals = await attendanceFor(ctx.db, scoped.map((row) => row.id));
@@ -145,12 +152,16 @@ const loadAssignments = async (ctx: ReportContext, plans: readonly ReportPlanSou
 const loadNeeds = async (ctx: ReportContext, plans: readonly ReportPlanSource[]) => {
   const byId = new Map(plans.map((plan) => [plan.id, plan]));
   const rows = await inChunks(plans.map((plan) => plan.id), async (chunk) =>
-    ((await unwrap(
-      raw(ctx.db)
-        .from('plan_position_needs')
-        .select('plan_id, needed, position:team_positions(name, team_id, team:teams(name))')
-        .in('plan_id', chunk),
-    )) ?? []) as unknown as ReportNeedRow[],
+    fetchAllPages(async (from, to) =>
+      (await unwrap(
+        raw(ctx.db)
+          .from('plan_position_needs')
+          .select('plan_id, needed, position:team_positions(name, team_id, team:teams(name))')
+          .in('plan_id', chunk)
+          .order('id')
+          .range(from, to),
+      )) as unknown as ReportNeedRow[] | null,
+    ),
   );
   return rows
     .map(toReportNeed)
@@ -161,33 +172,43 @@ const loadNeeds = async (ctx: ReportContext, plans: readonly ReportPlanSource[])
 const loadAttendance = async (ctx: ReportContext, plans: readonly ReportPlanSource[]) =>
   (
     await inChunks(plans.map((plan) => plan.id), async (chunk) =>
-      ((await unwrap(
-        raw(ctx.db)
-          .from('attendance_records')
-          .select('plan_id, plan_time_id, person_id, status, time_kind')
-          .eq('organization_id', ctx.orgId)
-          .in('plan_id', chunk),
-      )) ?? []) as ReportAttendanceRow[],
+      fetchAllPages(async (from, to) =>
+        (await unwrap(
+          raw(ctx.db)
+            .from('attendance_records')
+            .select('plan_id, plan_time_id, person_id, status, time_kind')
+            .eq('organization_id', ctx.orgId)
+            .in('plan_id', chunk)
+            .order('id')
+            .range(from, to),
+        )) as ReportAttendanceRow[] | null,
+      ),
     )
   ).map(toReportAttendance);
 
 const loadTimes = async (ctx: ReportContext, plans: readonly ReportPlanSource[]): Promise<ReportTimeSource[]> =>
   inChunks(plans.map((plan) => plan.id), async (chunk) =>
-    ((await unwrap(
-      raw(ctx.db).from('plan_times').select('id, plan_id, kind, name, starts_at').in('plan_id', chunk),
-    )) ?? []) as ReportTimeSource[],
+    fetchAllPages(async (from, to) =>
+      (await unwrap(
+        raw(ctx.db).from('plan_times').select('id, plan_id, kind, name, starts_at').in('plan_id', chunk).order('id').range(from, to),
+      )) as ReportTimeSource[] | null,
+    ),
   );
 
 const loadSongItems = async (ctx: ReportContext, plans: readonly ReportPlanSource[]) =>
   (
     await inChunks(plans.map((plan) => plan.id), async (chunk) =>
-      ((await unwrap(
-        raw(ctx.db)
-          .from('plan_items')
-          .select('id, plan_id, song_id, key_override, song:songs(title, author, default_key), arrangement:arrangements(song_key)')
-          .in('plan_id', chunk)
-          .eq('item_type', 'song'),
-      )) ?? []) as unknown as ReportSongItemRow[],
+      fetchAllPages(async (from, to) =>
+        (await unwrap(
+          raw(ctx.db)
+            .from('plan_items')
+            .select('id, plan_id, song_id, key_override, song:songs(title, author, default_key), arrangement:arrangements(song_key)')
+            .in('plan_id', chunk)
+            .eq('item_type', 'song')
+            .order('id')
+            .range(from, to),
+        )) as unknown as ReportSongItemRow[] | null,
+      ),
     )
   )
     .map(toReportSongItem)
@@ -195,23 +216,33 @@ const loadSongItems = async (ctx: ReportContext, plans: readonly ReportPlanSourc
 
 /** Ended runs only, with actuals derived from transitions and audited corrections. */
 const loadRuns = async (ctx: ReportContext, plans: readonly ReportPlanSource[]) => {
-  const runs = (await inChunks(plans.map((plan) => plan.id), async (chunk) =>
-    ((await unwrap(
-      raw(ctx.db)
-        .from('live_runs')
-        .select('*')
-        .eq('organization_id', ctx.orgId)
-        .in('plan_id', chunk)
-        .eq('status', 'ended'),
-    )) ?? []) as LiveRun[],
-  )).slice(0, REPORT_ROW_LIMIT);
+  const allRuns = await inChunks(plans.map((plan) => plan.id), async (chunk) =>
+    fetchAllPages(async (from, to) =>
+      (await unwrap(
+        raw(ctx.db)
+          .from('live_runs')
+          .select('*')
+          .eq('organization_id', ctx.orgId)
+          .in('plan_id', chunk)
+          .eq('status', 'ended')
+          .order('id')
+          .range(from, to),
+      )) as LiveRun[] | null,
+    ),
+  );
+  // One row past the limit, so `cap` can still see (and flag) that the run list was cut.
+  const runs = allRuns.slice(0, REPORT_ROW_LIMIT + 1);
   const runIds = runs.map((run) => run.id);
   const [transitions, corrections] = await Promise.all([
     inChunks(runIds, async (chunk) =>
-      ((await unwrap(raw(ctx.db).from('live_run_transitions').select('*').in('run_id', chunk).order('id'))) ?? []) as LiveRunTransitionRow[],
+      fetchAllPages(async (from, to) =>
+        (await unwrap(raw(ctx.db).from('live_run_transitions').select('*').in('run_id', chunk).order('id').range(from, to))) as LiveRunTransitionRow[] | null,
+      ),
     ),
     inChunks(runIds, async (chunk) =>
-      ((await unwrap(raw(ctx.db).from('live_run_corrections').select('*').in('run_id', chunk).order('id'))) ?? []) as LiveRunCorrectionRow[],
+      fetchAllPages(async (from, to) =>
+        (await unwrap(raw(ctx.db).from('live_run_corrections').select('*').in('run_id', chunk).order('id').range(from, to))) as LiveRunCorrectionRow[] | null,
+      ),
     ),
   ]);
   return runs.map((run) =>

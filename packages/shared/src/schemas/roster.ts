@@ -45,6 +45,23 @@ export const listPeopleQuerySchema = z.object({
     .default(false),
 });
 
+/** Rows per People list page (web and mobile ask for this many; the server accepts up to the max). */
+export const PEOPLE_PAGE_SIZE = 25;
+export const PEOPLE_PAGE_MAX = 100;
+
+/** `GET /people/page`: keyset-paged People list with server-side search. */
+export const listPeoplePageQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(PEOPLE_PAGE_MAX).default(PEOPLE_PAGE_SIZE),
+  /** Opaque `next_cursor` of the previous page. */
+  cursor: z.string().min(1).max(400).optional(),
+  /** Case-insensitive match on name, email, phone or campus (email/phone only where the caller may read them). */
+  q: z.string().trim().max(100).optional(),
+  include_archived: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .transform((value) => value === true || value === 'true')
+    .default(false),
+});
+
 export const rosterAuditQuerySchema = z.object({
   person_id: uuid.optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
@@ -66,6 +83,7 @@ export type CreateTagGroupRequest = z.input<typeof createTagGroupSchema>;
 export type UpdateTagGroupInput = z.infer<typeof updateTagGroupSchema>;
 export type SetTagGroupInput = z.infer<typeof setTagGroupSchema>;
 export type ListPeopleQuery = z.infer<typeof listPeopleQuerySchema>;
+export type ListPeoplePageQuery = z.infer<typeof listPeoplePageQuerySchema>;
 export type RosterAuditQuery = z.infer<typeof rosterAuditQuerySchema>;
 export type GlobalSearchQuery = z.infer<typeof globalSearchQuerySchema>;
 

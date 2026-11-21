@@ -8,7 +8,7 @@ import { api } from '../lib/api';
 import { useConversations } from '../lib/useConversations';
 import { queryKeys } from '../lib/query-keys';
 import { useAuth } from '../providers/AuthProvider';
-import { Card, Chip, EmptyState, ErrorNotice, IconWell, ListRow, Loading, SectionHeader, Tag, screenPadding } from './ui';
+import { Button, Card, Chip, EmptyState, ErrorNotice, IconWell, ListRow, Loading, SectionHeader, Tag, screenPadding } from './ui';
 import { useFormatters } from '../i18n';
 import { conversationTitle } from '../lib/conversation-labels';
 import { type Theme } from '../lib/theme';
@@ -117,6 +117,20 @@ export function ChatList({ header }: ChatListProps) {
         ) : conversations.error ? null : (
           <EmptyState icon="chat" title={t('chatPage.noConversations')} />
         )
+      }
+      onEndReached={() => {
+        if (conversations.hasNextPage && !conversations.isFetchingNextPage) void conversations.fetchNextPage();
+      }}
+      onEndReachedThreshold={0.5}
+      ListFooterComponent={
+        conversations.hasNextPage ? (
+          <Button
+            title={t('chatPage.loadMore')}
+            variant="quiet"
+            loading={conversations.isFetchingNextPage}
+            onPress={() => void conversations.fetchNextPage()}
+          />
+        ) : null
       }
       renderItem={({ item, index }) => {
         const unread = item.unread_count > 0;

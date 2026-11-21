@@ -7,6 +7,9 @@ import {
 } from '@tanstack/react-query';
 import {
   conversationAccess,
+  flattenConversationPages,
+  flattenPeoplePages,
+  PEOPLE_PAGE_SIZE,
   CONVERSATION_LIST_POLL_MS,
   CONVERSATION_LIST_TOPIC_LIMIT,
   CONVERSATION_THREAD_POLL_MS,
@@ -72,7 +75,8 @@ export const keys = {
   songbooks: (org: string | null) => [...keys.all(org), 'songbooks'] as const,
   songbook: (org: string | null, id: string) => [...keys.songbooks(org), id] as const,
   /** Includes archived people (F02); a separate entry from the default list. */
-  peopleWithArchived: (org: string | null) => [...keys.people(org), { archived: true }] as const,
+  /** The People list screen's keyset pages; under `people`, so any roster invalidation refreshes it. */
+  peoplePage: (org: string | null, filters: PeoplePageFilters) => [...keys.people(org), 'page', filters] as const,
   deliveryReadiness: (org: string | null, ids: readonly string[]) =>
     [...keys.people(org), { readiness: [...ids].sort() }] as const,
   rosterAudit: (org: string | null, personId: string | null) => [...keys.all(org), 'roster-audit', personId] as const,
@@ -479,14 +483,32 @@ export const useFolderTree = () => {
 
 // ------------------------------------------------------------------ F02 --
 
-/** The roster including archived people, for the People page's filter. */
-export const usePeopleWithArchived = (enabled: boolean) => {
+/** Filters the People list sends to the server (W8 paging: search and archive moved server-side). */
+export interface PeoplePageFilters {
+  q: string;
+  includeArchived: boolean;
+}
+
+/**
+ * The People list, 25 at a time. `data` is every page loaded so far; call
+ * `fetchNextPage` while `hasNextPage`. Pickers keep using the complete `usePeople`.
+ */
+export const usePeoplePage = (filters: PeoplePageFilters) => {
   const org = useOrg();
-  return useQuery({
-    queryKey: keys.peopleWithArchived(org),
-    queryFn: () => api.listPeople({ include_archived: true }),
-    enabled: Boolean(org) && enabled,
+  const query = useInfiniteQuery({
+    queryKey: keys.peoplePage(org, filters),
+    queryFn: ({ pageParam }) =>
+      api.listPeoplePage({
+        limit: PEOPLE_PAGE_SIZE,
+        cursor: pageParam,
+        ...(filters.q ? { q: filters.q } : {}),
+        ...(filters.includeArchived ? { include_archived: true } : {}),
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    enabled: Boolean(org),
   });
+  return { ...query, data: query.data ? flattenPeoplePages(query.data.pages) : undefined };
 };
 
 /** Whether requests can reach these People (login, email, active) — never the address. */
@@ -657,19 +679,26 @@ export const useMessageTemplates = (enabled = true) => {
   return useQuery({ queryKey: keys.messageTemplates(org), queryFn: () => api.messageTemplates(), enabled: Boolean(org) && enabled });
 };
 
-/** Known conversations each have their own authorization; polling also discovers new ones. */
+/**
+ * Known conversations each have their own authorization; polling also
+ * discovers new ones. Keyset-paged (W8-PERF-D3): `data` is every page loaded
+ * so far, and `fetchNextPage` keeps going until `hasNextPage` is false.
+ */
 export const useConversations = (visible: boolean) => {
   const org = useOrg();
-  const queryKey = keys.conversations(org);
-  const query = useQuery({
+  const queryKey = [...keys.conversations(org), 'pages'] as const;
+  const query = useInfiniteQuery({
     queryKey,
-    queryFn: () => api.conversations(),
+    queryFn: ({ pageParam }) => api.conversations({ cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: Boolean(org && visible),
     staleTime: 0,
     refetchInterval: CONVERSATION_LIST_POLL_MS,
     refetchOnWindowFocus: 'always',
   });
-  const data = conversationAccess(query.error) === 'unavailable' ? undefined : query.data;
+  const loaded = query.data ? flattenConversationPages(query.data.pages) : undefined;
+  const data = conversationAccess(query.error) === 'unavailable' ? undefined : loaded;
   useBroadcastRefresh('conversation', visible ? data?.slice(0, CONVERSATION_LIST_TOPIC_LIMIT).map((conversation) => conversation.id) ?? [] : [], { queryKey, exact: true });
   return { ...query, data };
 };
