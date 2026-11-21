@@ -84,6 +84,14 @@ Validation on the merged branch: `npm run typecheck` clean; `npm run test` 1,711
 
 Deploy order: **migration `20261128000000` and the backend go together** — old backend code on the migrated DB fails `GET /plans/:id` (`select *` on the table is refused → 403; observed on the old-code API at :4000 after `migration up`), and the new backend on an unmigrated DB fails on the missing RPC. Clients need no release for the P0.
 
+### Plans read-path regression (W9-PLANS-GET, after the fix round)
+
+Sonnet agent against the fixed API (:4100) and a private Vite pointed at it — [plans-get.md](plans-get.md): 385 rows, **379 PASS**, 1 FAIL, 5 N/A. `GET /plans` (every role, anonymous, missing/foreign/malformed org header, paging both orders), `GET /plans/:id` (shape vs DB, 404 on unknown/other-org ids, prepared requests hidden from members), `/plans/:id/schedule`, `/schedule/mine`, PostgREST and the notes RPC: decline reason only for assignee / response owner / schedulers, `null` for viewer, teammate, candidate, child-linked person and the other team's leader; `select=response_note` and `select=*` 403 for every actor; 170-assignee plan returns all 170 people and notes only to schedulers. Web list/detail render for owner and member; forced 503 on the list shows the error + "Try again" (no "No plans yet") and recovers — W9-WEB-D2 verified in the browser for Plans.
+
+- **W9-PLN-D1 (P2, pre-existing, open):** `GET /plans?page=99999999999999999999` → 500; `page=1e21` returns page 1 labelled 1e+21. `paginationSchema.page` has no upper bound (`packages/shared/src/schemas/common.ts:44`, used at `backend/src/routes/plans.ts:88`). Fix: cap `page` (e.g. `.max(100_000)`) or reject unsafe integers.
+- Observation: draft and archived plans are visible to every active member (`plans_select` = any org member) — product to confirm.
+- Not covered: web fault injection for the member role and the detail page; mid-session grant revocation.
+
 Open: `PUT …/access` still rejects more than 500 grants (`replaceScopeGrantsSchema`), so an org-scope set of 1,101 grants cannot be saved back as one set — product limit, left unchanged.
 
 ## Product decisions needed
