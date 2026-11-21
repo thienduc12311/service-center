@@ -38,6 +38,8 @@ import {
 import { preferenceWarnings } from '../services/availability.js';
 import { attendanceFor, blockingConflicts, checkConflicts } from '../services/attendance.js';
 import { isUntimed, timesForAttendance } from '../model/attendance.model.js';
+import { TIME_RESPONSE_COLUMNS, withResponseNote, type PublicTimeResponseRow } from '../model/time-response.model.js';
+import { timeResponseNotesFor } from '../services/time-response-notes.js';
 import { z } from 'zod';
 import { validateBody, validateQuery, parsedQuery } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
@@ -419,12 +421,20 @@ const myScheduleQuerySchema = z.object({
     .default(false),
 });
 
-/** Time responses for many assignments, in URL-safe batches (W7-RESP-D5). */
+/**
+ * Time responses for many assignments, in URL-safe batches (W7-RESP-D5). The
+ * private decline reason is attached only where the caller may read it (W9-JRN-D1).
+ */
 const timeResponsesFor = async (db: Db, assignmentIds: readonly string[]): Promise<AssignmentTimeResponseRow[]> => {
-  const batches = await Promise.all(
-    chunk(assignmentIds).map((ids) => unwrap(db.from('assignment_time_responses').select('*').in('assignment_id', ids))),
-  );
-  return batches.flatMap((rows) => rows ?? []);
+  const [batches, notes] = await Promise.all([
+    Promise.all(
+      chunk(assignmentIds).map((ids) =>
+        unwrap(db.from('assignment_time_responses').select(TIME_RESPONSE_COLUMNS).in('assignment_id', ids)),
+      ),
+    ),
+    timeResponseNotesFor(db, assignmentIds),
+  ]);
+  return batches.flatMap((rows): PublicTimeResponseRow[] => rows ?? []).map((row) => withResponseNote(row, notes));
 };
 
 scheduleRouter.get('/mine', validateQuery(myScheduleQuerySchema), async (req, res) => {
