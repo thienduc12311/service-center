@@ -174,7 +174,12 @@
     "sequenceThisPlan": "(this plan)",
     "ledBy": "Led by {{leader}}",
     "mediaLink": "Media: <0>{{title}}</0>",
-    "mediaLinkArchived": "Media: <0>{{title}}</0> (archived)"
+    "mediaLinkArchived": "Media: <0>{{title}}</0> (archived)",
+    "addSongs": "Add songs",
+    "addOther": "Header or item",
+    "insertAfter": "Add here, after {{title}}",
+    "insertAtStart": "Add here, at the start",
+    "insertingHere": "New songs go here"
   },
   "leader": {
     "someoneOnRoster": "Someone on the roster",
@@ -209,7 +214,7 @@
     "keepSong": "Keep this song",
     "changeSong": "Change song",
     "findSong": "Find a song",
-    "searchPlaceholder": "Search by title",
+    "searchPlaceholder": "Search title, author, CCLI…",
     "arrangement": "Arrangement",
     "songDefault": "Song default",
     "songDefaultNamed": "Song default ({{name}})",
@@ -266,7 +271,8 @@
       "sequenceStepTooLong": "Each sequence step can be at most 20 characters.",
       "leaderPersonRequired": "Choose who leads this item.",
       "leaderPositionRequired": "Choose the position that leads this item."
-    }
+    },
+    "useSong": "Use {{title}}"
   },
   "editTimes": {
     "title": "Service & rehearsal times",
@@ -646,5 +652,71 @@
     "remindersHint": "Reminders are scheduled and sent by Service Center's server, not by this phone.",
     "policyStale": "Someone changed this reminder setting first. The latest setting is shown — make your change again.",
     "delivery": "Reminders and delivery"
+  },
+  "songBrowser": {
+    "title": "Add songs",
+    "searchLabel": "Search songs",
+    "searchPlaceholder": "Search title, author, CCLI…",
+    "keyboardHint": "Use the up and down arrows to move through the songs and Enter to add the highlighted one.",
+    "highlighted": "{{title}}. Press Enter to add.",
+    "tabsLabel": "Which songs to show",
+    "tabs": {
+      "suggested": "Suggested",
+      "recent": "Recently added",
+      "all": "All A–Z"
+    },
+    "suggestedHint": "Songs used for {{serviceType}} in the last {{weeks}} weeks, most used first.",
+    "suggestedHintChurch": "Songs used in the last {{weeks}} weeks, most used first.",
+    "filters": {
+      "label": "Filters",
+      "key": "Key",
+      "anyKey": "Any key",
+      "tempo": "Tempo",
+      "anyTempo": "Any tempo",
+      "type": "Type",
+      "anyType": "Any type",
+      "theme": "Theme",
+      "clear": "Clear filters",
+      "hideRecent_one": "Hide songs used in the last week",
+      "hideRecent_other": "Hide songs used in the last {{count}} weeks"
+    },
+    "bpm": "{{bpm}} bpm",
+    "usedCount_one": "used {{count}}×",
+    "usedCount_other": "used {{count}}×",
+    "lastUsed": "last used {{ago}}",
+    "scheduledOn": "scheduled {{date}}",
+    "neverUsed": "not used yet",
+    "ago": {
+      "today": "today",
+      "days_one": "{{count}} day ago",
+      "days_other": "{{count}} days ago",
+      "weeks_one": "{{count}} week ago",
+      "weeks_other": "{{count}} weeks ago",
+      "months_one": "{{count}} month ago",
+      "months_other": "{{count}} months ago",
+      "years_one": "{{count}} year ago",
+      "years_other": "{{count}} years ago"
+    },
+    "inPlan": "In this plan",
+    "recentWarning": "Used recently",
+    "add": "Add {{title}}",
+    "addAgain": "Add {{title}} again",
+    "expand": "Show arrangements of {{title}}",
+    "collapse": "Hide arrangements of {{title}}",
+    "arrangementFor": "Arrangement of {{title}}",
+    "arrangementDefault": "{{name}} (default)",
+    "noSongs": "No songs match. Try other words or fewer filters.",
+    "noSuggested": "No songs were used in the last {{weeks}} weeks. Try Recently added or All A–Z.",
+    "insertAtEnd": "Adding at the end of the order",
+    "insertAtStart": "Adding at the start of the order",
+    "insertAfter": "Adding after “{{title}}”",
+    "chosenItem": "the chosen item",
+    "addedCount_one": "{{count}} added",
+    "addedCount_other": "{{count}} added",
+    "addedToast": "Added “{{title}}”",
+    "undo": "Undo",
+    "notPlaced": "“{{title}}” was added at the end of the order: the order changed while it was being moved into place.",
+    "addOther": "Add a header or item here",
+    "done": "Done"
   }
 }

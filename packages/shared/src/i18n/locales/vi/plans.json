@@ -172,7 +172,12 @@
     "sequenceThisPlan": "(chương trình này)",
     "ledBy": "Người dẫn: {{leader}}",
     "mediaLink": "Trình chiếu: <0>{{title}}</0>",
-    "mediaLinkArchived": "Trình chiếu: <0>{{title}}</0> (đã lưu trữ)"
+    "mediaLinkArchived": "Trình chiếu: <0>{{title}}</0> (đã lưu trữ)",
+    "addSongs": "Thêm bài hát",
+    "addOther": "Tiêu đề hoặc mục",
+    "insertAfter": "Thêm vào đây, sau {{title}}",
+    "insertAtStart": "Thêm vào đây, ở đầu",
+    "insertingHere": "Bài hát mới sẽ được thêm vào đây"
   },
   "leader": {
     "someoneOnRoster": "Một thành viên trong danh sách",
@@ -207,7 +212,7 @@
     "keepSong": "Giữ bài hát này",
     "changeSong": "Đổi bài hát",
     "findSong": "Tìm bài hát",
-    "searchPlaceholder": "Tìm theo tên",
+    "searchPlaceholder": "Tìm theo tên, tác giả, số CCLI…",
     "arrangement": "Bản phối",
     "songDefault": "Mặc định của bài hát",
     "songDefaultNamed": "Mặc định của bài hát ({{name}})",
@@ -264,7 +269,8 @@
       "sequenceStepTooLong": "Mỗi bước trong trình tự tối đa 20 ký tự.",
       "leaderPersonRequired": "Hãy chọn người dẫn mục này.",
       "leaderPositionRequired": "Hãy chọn vị trí dẫn mục này."
-    }
+    },
+    "useSong": "Dùng {{title}}"
   },
   "editTimes": {
     "title": "Giờ buổi nhóm & buổi tập",
@@ -632,5 +638,64 @@
     "remindersHint": "Lời nhắc được máy chủ Service Center lên lịch và gửi, không phải điện thoại này.",
     "policyStale": "Có người đã thay đổi cài đặt lời nhắc này trước. Cài đặt mới nhất đang được hiển thị — hãy thực hiện lại thay đổi của bạn.",
     "delivery": "Lời nhắc và gửi thông báo"
+  },
+  "songBrowser": {
+    "title": "Thêm bài hát",
+    "searchLabel": "Tìm bài hát",
+    "searchPlaceholder": "Tìm theo tên, tác giả, số CCLI…",
+    "keyboardHint": "Dùng phím mũi tên lên và xuống để di chuyển giữa các bài hát, nhấn Enter để thêm bài đang chọn.",
+    "highlighted": "{{title}}. Nhấn Enter để thêm.",
+    "tabsLabel": "Hiển thị bài hát nào",
+    "tabs": {
+      "suggested": "Gợi ý",
+      "recent": "Mới thêm",
+      "all": "Tất cả A–Z"
+    },
+    "suggestedHint": "Các bài đã dùng cho {{serviceType}} trong {{weeks}} tuần qua, dùng nhiều nhất trước.",
+    "suggestedHintChurch": "Các bài đã dùng trong {{weeks}} tuần qua, dùng nhiều nhất trước.",
+    "filters": {
+      "label": "Bộ lọc",
+      "key": "Tông",
+      "anyKey": "Mọi tông",
+      "tempo": "Nhịp độ",
+      "anyTempo": "Mọi nhịp độ",
+      "type": "Thể loại",
+      "anyType": "Mọi thể loại",
+      "theme": "Chủ đề",
+      "clear": "Xóa bộ lọc",
+      "hideRecent_other": "Ẩn các bài đã dùng trong {{count}} tuần qua"
+    },
+    "bpm": "{{bpm}} bpm",
+    "usedCount_other": "đã dùng {{count}} lần",
+    "lastUsed": "lần cuối {{ago}}",
+    "scheduledOn": "đã xếp vào ngày {{date}}",
+    "neverUsed": "chưa dùng lần nào",
+    "ago": {
+      "today": "hôm nay",
+      "days_other": "{{count}} ngày trước",
+      "weeks_other": "{{count}} tuần trước",
+      "months_other": "{{count}} tháng trước",
+      "years_other": "{{count}} năm trước"
+    },
+    "inPlan": "Đã có trong chương trình",
+    "recentWarning": "Mới dùng gần đây",
+    "add": "Thêm {{title}}",
+    "addAgain": "Thêm {{title}} lần nữa",
+    "expand": "Xem các bản phối của {{title}}",
+    "collapse": "Ẩn các bản phối của {{title}}",
+    "arrangementFor": "Bản phối của {{title}}",
+    "arrangementDefault": "{{name}} (mặc định)",
+    "noSongs": "Không có bài hát nào phù hợp. Hãy thử từ khác hoặc bớt bộ lọc.",
+    "noSuggested": "Chưa có bài nào được dùng trong {{weeks}} tuần qua. Hãy xem mục Mới thêm hoặc Tất cả A–Z.",
+    "insertAtEnd": "Đang thêm vào cuối trình tự",
+    "insertAtStart": "Đang thêm vào đầu trình tự",
+    "insertAfter": "Đang thêm sau “{{title}}”",
+    "chosenItem": "mục đã chọn",
+    "addedCount_other": "đã thêm {{count}}",
+    "addedToast": "Đã thêm “{{title}}”",
+    "undo": "Hoàn tác",
+    "notPlaced": "“{{title}}” đã được thêm vào cuối trình tự vì trình tự thay đổi trong lúc đang chuyển bài vào vị trí đã chọn.",
+    "addOther": "Thêm tiêu đề hoặc mục tại đây",
+    "done": "Xong"
   }
 }

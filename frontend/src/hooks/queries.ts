@@ -5,6 +5,7 @@ import {
   useQueryClient,
   type UseQueryOptions,
 } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import {
   conversationAccess,
   flattenConversationPages,
@@ -21,6 +22,8 @@ import {
   type ListDeliveriesRequest,
   type ListMediaRequest,
   type ListPlanTemplatesRequest,
+  type ListSongsQuery,
+  type SongListItem,
   type StaffingMatrixQueryInput,
   type UnreadNotificationCount,
 } from '@service-center/shared';
@@ -206,6 +209,34 @@ export const useSongs = (query: { q?: string; sort?: string; page?: number; per_
     enabled: Boolean(org),
     placeholderData: (previous) => previous,
   });
+};
+
+/**
+ * Every page of a song list, loaded on demand ("Show more"); the song
+ * browser's source. Earlier results stay on screen while a new search loads.
+ */
+export const useSongPages = (query: Omit<Partial<ListSongsQuery>, 'page'>, enabled = true) => {
+  const org = useOrg();
+  const pages = useInfiniteQuery({
+    queryKey: [...keys.songs(org, query), 'pages'] as const,
+    queryFn: ({ pageParam }) => api.listSongs({ ...query, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page * last.per_page < last.total ? last.page + 1 : undefined),
+    enabled: Boolean(org) && enabled,
+    placeholderData: (previous) => previous,
+  });
+  const rows = useMemo(() => {
+    // A song can shift between pages while paging (new usage); list it once.
+    const seen = new Set<string>();
+    const unique: SongListItem[] = [];
+    for (const song of (pages.data?.pages ?? []).flatMap((page) => page.data)) {
+      if (seen.has(song.id)) continue;
+      seen.add(song.id);
+      unique.push(song);
+    }
+    return unique;
+  }, [pages.data]);
+  return { ...pages, rows, total: pages.data?.pages[0]?.total ?? null };
 };
 
 export const useSong = (id: string | undefined) => {

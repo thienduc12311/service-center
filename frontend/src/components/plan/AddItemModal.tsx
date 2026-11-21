@@ -3,8 +3,6 @@ import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   LocalizedError,
-  PLAN_ITEM_TYPES,
-  initialArrangementFor,
   keyedPlanItemRequest,
   newPlanItemRequest,
   validateNewPlanItemDraft,
@@ -12,31 +10,35 @@ import {
   type NewPlanItemDraft,
   type PlanItemType,
 } from '@service-center/shared';
-import { api } from '../../lib/api';
-import { useSongs, useInvalidateOrg } from '../../hooks/queries';
+import { useInvalidateOrg } from '../../hooks/queries';
 import { Button, ErrorNotice, Modal } from '../ui';
-import { KeySelect } from '../KeySelect';
+import { INSERT_AT_END, type OrderInsertPoint } from './insertPoint';
+import { usePlanItemInsert } from './usePlanItemInsert';
+
+/** What this form adds; songs are added from the song browser panel. */
+type OtherItemType = Exclude<PlanItemType, 'song'>;
+const OTHER_ITEM_TYPES: readonly OtherItemType[] = ['item', 'header'];
 
 export interface AddItemModalProps {
   open: boolean;
   planId: string;
+  /** Where the item goes; the end of the order unless the planner chose a spot. */
+  insertPoint?: OrderInsertPoint;
+  /** Called with the new item's id once it is in the order. */
+  onAdded?: (itemId: string) => void;
   onClose: () => void;
 }
 
-export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
+/** Headers and free-form items: a title (and for items a length and notes), at the insert point. */
+export const AddItemModal = ({ open, planId, insertPoint = INSERT_AT_END, onAdded, onClose }: AddItemModalProps) => {
   const { t } = useTranslation(['plans', 'common']);
   const invalidate = useInvalidateOrg();
-  const [itemType, setItemType] = useState<PlanItemType>('song');
-  const [songQuery, setSongQuery] = useState('');
-  const [songId, setSongId] = useState('');
-  const [mainKey, setMainKey] = useState<string | null>(null);
+  const insert = usePlanItemInsert(planId);
+  const [itemType, setItemType] = useState<OtherItemType>('item');
   const [title, setTitle] = useState('');
   const [length, setLength] = useState('');
   const [description, setDescription] = useState('');
   const [formError, setFormError] = useState<LocalizedError | null>(null);
-
-  const songs = useSongs({ q: songQuery || undefined, per_page: 20 });
-  const selectedSong = songs.data?.data.find((song) => song.id === songId);
 
   // The last unanswered add: sending the same draft again reuses its key, so
   // a retry after a lost response returns that item instead of a second one.
@@ -51,16 +53,15 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
         () => crypto.randomUUID(),
       );
       pending.current = body;
-      return api.addPlanItem(planId, body);
+      return insert(body, insertPoint);
     },
-    onSuccess: async () => {
+    onSuccess: async ({ item }) => {
       pending.current = null;
       await invalidate();
       setTitle('');
       setLength('');
       setDescription('');
-      setSongId('');
-      setMainKey(null);
+      onAdded?.(item.id);
       onClose();
     },
   });
@@ -68,7 +69,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (create.isPending) return;
-    const draft: NewPlanItemDraft = { itemType, title, song: selectedSong ?? null, keyOverride: mainKey, length, description };
+    const draft: NewPlanItemDraft = { itemType, title, song: null, keyOverride: null, length, description };
     const problem = validateNewPlanItemDraft(draft);
     setFormError(problem ? new LocalizedError({ key: `plans:editItem.errors.${problem}` }) : null);
     if (!problem) create.mutate(draft);
@@ -78,7 +79,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
     <Modal open={open} title={t('addItem.title')} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
         <div className="flex flex-wrap gap-2" role="group" aria-label={t('editItem.type')}>
-          {PLAN_ITEM_TYPES.map((value) => (
+          {OTHER_ITEM_TYPES.map((value) => (
             <button
               key={value}
               type="button"
@@ -96,78 +97,20 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
           ))}
         </div>
 
-        {itemType === 'song' ? (
-          <>
-            <div>
-              <label className="label" htmlFor="song-search">
-                {t('addItem.findSong')}
-              </label>
-              <input
-                id="song-search"
-                className="input"
-                value={songQuery}
-                onChange={(e) => setSongQuery(e.target.value)}
-                placeholder={t('addItem.searchPlaceholder')}
-              />
-            </div>
-            <div className="max-h-56 space-y-1 overflow-y-auto">
-              {(songs.data?.data ?? []).map((song) => (
-                <button
-                  key={song.id}
-                  type="button"
-                  onClick={() => {
-                    const arrangement = initialArrangementFor(song.arrangements);
-                    setSongId(song.id);
-                    setMainKey(arrangement?.song_key ?? song.default_key ?? null);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${
-                    songId === song.id ? 'bg-brand-50 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:ring-brand-500/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <span>
-                    <span className="font-medium">{song.title}</span>
-                    {song.author && <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">{song.author}</span>}
-                  </span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500">{song.default_key ?? ''}</span>
-                </button>
-              ))}
-              {songs.data?.data.length === 0 && (
-                <p className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">{t('addItem.noSongs')}</p>
-              )}
-            </div>
-            {selectedSong && (
-              <div>
-                <label className="label" htmlFor="song-main-key">
-                  {t('addItem.mainKey')}
-                </label>
-                <KeySelect
-                  id="song-main-key"
-                  value={mainKey}
-                  onChange={setMainKey}
-                  placeholder={t('addItem.chooseKey')}
-                />
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                  {t('addItem.transposeHint')}
-                </p>
-              </div>
-            )}
-          </>
-        ) : (
-          <div>
-            <label className="label" htmlFor="item-title">
-              {t('addItem.fieldTitle')}
-            </label>
-            <input
-              id="item-title"
-              className="input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={itemType === 'header' ? t('addItem.headerPlaceholder') : t('addItem.itemPlaceholder')}
-              maxLength={200}
-              required
-            />
-          </div>
-        )}
+        <div>
+          <label className="label" htmlFor="item-title">
+            {t('addItem.fieldTitle')}
+          </label>
+          <input
+            id="item-title"
+            className="input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={itemType === 'header' ? t('addItem.headerPlaceholder') : t('addItem.itemPlaceholder')}
+            maxLength={200}
+            required
+          />
+        </div>
 
         {itemType !== 'header' && (
           <>
@@ -205,7 +148,7 @@ export const AddItemModal = ({ open, planId, onClose }: AddItemModalProps) => {
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common:actions.cancel')}
           </Button>
-          <Button type="submit" loading={create.isPending} disabled={itemType === 'song' && !songId}>
+          <Button type="submit" loading={create.isPending}>
             {t('common:actions.add')}
           </Button>
         </div>

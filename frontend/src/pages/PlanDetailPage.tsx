@@ -39,6 +39,8 @@ import { AttendanceTab } from '../components/plan/AttendanceTab';
 import { ShareTab } from '../components/plan/ShareTab';
 import { PlanFilesTab } from '../components/files/PlanFilesTab';
 import { AddItemModal } from '../components/plan/AddItemModal';
+import { SongBrowserPanel } from '../components/plan/SongBrowserPanel';
+import { INSERT_AT_END, advanceInsertPoint, type OrderInsertPoint } from '../components/plan/insertPoint';
 import { EditItemModal } from '../components/plan/EditItemModal';
 import { PrintOrderModal } from '../components/plan/PrintOrderModal';
 import { SchedulePeopleModal } from '../components/plan/SchedulePeopleModal';
@@ -52,6 +54,12 @@ import { DeliveryOutcomeNotice } from '../components/plan/DeliveryOutcomeNotice'
 import { OpportunityPanel, type SignupSetupOption } from '../components/plan/OpportunityPanel';
 import { PLAN_TABS, buildPlanTeams, type PlanTab } from '../components/plan/types';
 import { useFormatters } from '../i18n';
+
+/**
+ * Room for the song browser beside the workspace on wide screens: the panel
+ * is 26rem; whatever margin the centered page already has beside it counts.
+ */
+const SONG_BROWSER_ROOM = 'lg:pr-[max(0px,calc(24rem_-_max(0px,calc((100vw_-_80rem)_/_2))))]';
 
 const PLAN_CHAT_RESTRICTED = new LocalizedError({ key: 'plans:planDetail.errors.planChatRestricted' });
 
@@ -89,6 +97,11 @@ export const PlanDetailPage = () => {
   const [editingTimesFor, setEditingTimesFor] = useState<AssignmentDetail | null>(null);
   const [discussingId, setDiscussingId] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  /** The song browser: open or not, and where its songs go. */
+  const [songBrowserOpen, setSongBrowserOpen] = useState(false);
+  const [songInsertPoint, setSongInsertPoint] = useState<OrderInsertPoint>(INSERT_AT_END);
+  /** Where the header / item form adds. */
+  const [otherInsertPoint, setOtherInsertPoint] = useState<OrderInsertPoint>(INSERT_AT_END);
   /** F11: which service time the order is timed against; null = the first. */
   const [timeId, setTimeId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
@@ -315,8 +328,17 @@ export const PlanDetailPage = () => {
     printDocument(renderServiceSongBookHtml(songBook), t('planDetail.songBookFrameTitle'));
   };
 
+  const openSongBrowser = (point: OrderInsertPoint) => {
+    setSongInsertPoint(point);
+    setSongBrowserOpen(true);
+  };
+  const openAddOther = (point: OrderInsertPoint) => {
+    setOtherInsertPoint(point);
+    setDialog('add-item');
+  };
+
   return (
-    <div>
+    <div className={songBrowserOpen ? SONG_BROWSER_ROOM : undefined}>
       <PlanWorkspaceHeader
         plan={detail}
         organizationName={organizationName}
@@ -451,7 +473,9 @@ export const PlanDetailPage = () => {
                 onSelectTime={setTimeId}
                 positionNames={positionNames}
                 busy={orderBusy}
-                onAddItem={() => setDialog('add-item')}
+                onAddSongs={openSongBrowser}
+                onAddOther={openAddOther}
+                insertPoint={songBrowserOpen ? songInsertPoint : null}
                 onEditItem={(item) => setEditingItemId(item.id)}
                 onMoveItem={move}
                 onRemoveItem={confirmRemove}
@@ -516,9 +540,23 @@ export const PlanDetailPage = () => {
           onClose={() => setDialog(null)}
         />
       )}
+      {songBrowserOpen && canEditPlan && (
+        <SongBrowserPanel
+          plan={detail}
+          insertPoint={songInsertPoint}
+          onInsertPointChange={setSongInsertPoint}
+          onAddOther={() => openAddOther(songInsertPoint)}
+          onClose={() => setSongBrowserOpen(false)}
+        />
+      )}
       <AddItemModal
         open={dialog === 'add-item'}
         planId={planId}
+        insertPoint={otherInsertPoint}
+        // Added from the song browser's spot: the next song follows the new item.
+        onAdded={(itemId) => {
+          if (songBrowserOpen) setSongInsertPoint(advanceInsertPoint(otherInsertPoint, itemId));
+        }}
         onClose={() => setDialog(null)}
       />
       <SchedulePeopleModal
