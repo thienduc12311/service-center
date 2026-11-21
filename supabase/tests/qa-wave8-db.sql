@@ -71,10 +71,10 @@ begin
   select next_attempt_at into v_next from public.webhook_deliveries where id = (select id from w8_events where tag = 'a2');
   perform pg_temp.check(v_next between now() + interval '100 seconds' and now() + interval '140 seconds', 'Retry-After 120 is honoured');
 
-  -- Absurd Retry-After is capped at 24 h.
+  -- Absurd Retry-After is capped at 24 h (the delay then gets +/-10% jitter: 77760..95040 s).
   perform public.complete_webhook_delivery((select id from w8_events where tag = 'a3'), 1, 'retry', 429, 'http_429', now(), 10, 9999999);
   select next_attempt_at into v_next from public.webhook_deliveries where id = (select id from w8_events where tag = 'a3');
-  perform pg_temp.check(v_next <= now() + interval '87000 seconds', 'Retry-After is capped at 24 h');
+  perform pg_temp.check(v_next between now() + interval '77000 seconds' and now() + interval '95100 seconds', 'Retry-After is capped at 24 h');
 end $$;
 
 -- ================================================================ Pass B ===

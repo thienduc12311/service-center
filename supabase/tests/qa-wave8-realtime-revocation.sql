@@ -163,4 +163,15 @@ insert into public.organization_members (organization_id, user_id, role, status)
 delete from public.organization_members where organization_id = pg_temp.id_for('org') and status = 'invited';
 select pg_temp.check(pg_temp.key_of(pg_temp.id_for('org')) = (select k from rr_k), 'removing an invited member does not rotate');
 
+-- Deleting an organization (its active members cascade) must not fail on key rotation.
+reset role;
+insert into public.organizations (id, name, slug) values (pg_temp.id_for('new_org') , 'Doomed org', 'w8-rr-doomed-' || left(pg_temp.id_for('new_org')::text, 8))
+  on conflict (id) do nothing;
+insert into public.organization_members (organization_id, user_id, role, status)
+  values (pg_temp.id_for('new_org'), pg_temp.id_for('owner'), 'owner', 'active')
+  on conflict do nothing;
+delete from public.organizations where id = pg_temp.id_for('new_org');
+select pg_temp.check(not exists (select 1 from public.organizations where id = pg_temp.id_for('new_org')), 'an organization with active members can be deleted');
+select pg_temp.check(not exists (select 1 from private.org_realtime_keys where organization_id = pg_temp.id_for('new_org')), 'a deleted organization keeps no key');
+
 rollback;
