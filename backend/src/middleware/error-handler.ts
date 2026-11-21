@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { config } from '../config.js';
 import { TimeInputError } from '@service-center/shared';
-import { HttpError } from '../lib/errors.js';
+import { HttpError, fromUpstreamFailure } from '../lib/errors.js';
 
 export const notFoundHandler = (req: Request, res: Response): void => {
   res.status(404).json({ error: `No route for ${req.method} ${req.path}`, code: 'not_found' });
@@ -68,11 +68,15 @@ export const errorHandler = (
     return;
   }
 
-  const message = err instanceof Error ? err.message : 'Unexpected error';
+  // A dependency failing mid-request (aborted by our timeout, connection refused).
+  if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError' || /fetch failed/i.test(err.message))) {
+    const mapped = fromUpstreamFailure(`${err.name}: ${err.message}`);
+    res.status(mapped.status).json({ error: mapped.message, code: mapped.code });
+    return;
+  }
+
   if (!config.isTest) console.error('[error]', err);
 
-  res.status(500).json({
-    error: config.isProduction ? 'Internal server error' : message,
-    code: 'internal_error',
-  });
+  // The raw message may carry upstream or database detail: never send it.
+  res.status(500).json({ error: 'Internal server error', code: 'internal_error' });
 };

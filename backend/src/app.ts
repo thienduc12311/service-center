@@ -93,7 +93,7 @@ const VERCEL_PREVIEW_ORIGIN = /^https:\/\/[a-z0-9-]+\.vercel\.app$/;
 export const createApp = (): Express => {
   const app = express();
 
-  app.set('trust proxy', 1);
+  app.set('trust proxy', config.TRUST_PROXY);
   app.use(helmet());
   app.use(compression());
   app.use(

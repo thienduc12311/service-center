@@ -29,6 +29,12 @@ export class HttpError extends Error {
   static notFound = (message = 'Not found') => new HttpError(404, message, 'not_found');
   static conflict = (message: string, details?: unknown) =>
     new HttpError(409, message, 'conflict', details);
+  static upstreamUnavailable = () =>
+    new HttpError(503, 'A required service is temporarily unavailable. Please try again.', 'upstream_unavailable');
+  static upstreamError = () =>
+    new HttpError(502, 'A required service returned an unexpected response. Please try again.', 'upstream_error');
+  static upstreamTimeout = () =>
+    new HttpError(504, 'A required service took too long to respond. Please try again.', 'upstream_timeout');
   static unprocessable = (message: string, details?: unknown) =>
     new HttpError(422, message, 'unprocessable', details);
 }
@@ -104,12 +110,41 @@ const PT409_HINTS: Record<string, string> = {
   join_request_not_pending: JOIN_REQUEST_NOT_PENDING,
 };
 
+const TIMEOUT_PATTERN = /timeout|timed out|aborted|ETIMEDOUT/i;
+const NETWORK_PATTERN = /fetch failed|network|ECONNREFUSED|ECONNRESET|ENOTFOUND|EAI_AGAIN|socket|EPIPE|UND_ERR/i;
+const JWT_PATTERN = /\bJWT\b.*(expired|invalid|malformed|signature)|invalid jwt/i;
+const JWT_CODES = new Set(['PGRST301', 'PGRST302', 'PGRST303']);
+
+const logUpstream = (detail: Record<string, unknown>): void => {
+  if (process.env.NODE_ENV === 'test') return;
+  console.error('[upstream-error]', detail);
+};
+
+/**
+ * Maps a failure from an upstream dependency (network, Kong, PostgREST) that
+ * has no application meaning. The client only ever sees a generic message and
+ * a stable code; the detail goes to the server log.
+ */
+export const fromUpstreamFailure = (message: string, code?: string): HttpError => {
+  logUpstream({ code: code ?? null, message });
+  if (TIMEOUT_PATTERN.test(message)) return HttpError.upstreamTimeout();
+  if (NETWORK_PATTERN.test(message) || code === 'PGRST000' || code === 'PGRST001' || code === 'PGRST002') {
+    return HttpError.upstreamUnavailable();
+  }
+  return HttpError.upstreamError();
+};
+
 export const fromPostgrestError = (error: {
   code?: string;
   message: string;
   details?: string | null;
   hint?: string | null;
 }): HttpError => {
+  // The caller's access token was rejected by PostgREST: same 401 the auth
+  // middleware sends, so clients refresh their session.
+  if ((error.code && JWT_CODES.has(error.code)) || JWT_PATTERN.test(error.message)) {
+    return HttpError.unauthorized('Invalid or expired session');
+  }
   if (error.code === 'PT409' && error.hint && PT409_HINTS[error.hint]) {
     return new HttpError(
       409,
@@ -177,6 +212,11 @@ export const fromPostgrestError = (error: {
     case 'PT410':
       return new HttpError(410, error.message, 'assignment_request_expired');
     default:
-      return new HttpError(500, error.message, error.code);
+      // No SQLSTATE/PostgREST code: the failure came from the network or a
+      // gateway, not from the database.
+      if (!error.code) return fromUpstreamFailure(error.message);
+      if (/^PGRST00[012]$/.test(error.code)) return fromUpstreamFailure(error.message, error.code);
+      logUpstream({ code: error.code, message: error.message, details: error.details ?? null, hint: error.hint ?? null });
+      return new HttpError(500, 'Internal server error', 'internal_error');
   }
 };

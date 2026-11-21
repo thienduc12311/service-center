@@ -150,6 +150,6 @@ describe('/api/v1/me/language-preference', () => {
     reset({ rpcError: { code: 'XX000', message: 'relation "people" is broken' } });
     const res = await request(app).get('/api/v1/me/language-preference').set('X-Organization-Id', 'org-a');
     expect(res.status).toBe(500);
-    expect(res.body.code).toBe('XX000');
+    expect(res.body.code).toBe('internal_error');
   });
 });
