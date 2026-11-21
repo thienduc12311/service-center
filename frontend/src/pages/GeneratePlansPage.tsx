@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +24,7 @@ import { Badge, Button, DateTile, EmptyState, ErrorNotice, PageHeader, SectionHe
 import { Icon } from '../components/icons';
 import { ConflictList } from '../components/plan/attendance';
 import { TemplateApplyReview } from '../components/templates/TemplateApplyReview';
+import { TemplateSelect } from '../components/templates/TemplateSelect';
 
 const WARN_TONE = 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300';
 
@@ -65,6 +66,7 @@ export const GeneratePlansPage = () => {
   const [created, setCreated] = useState<PlanGenerationResult | null>(null);
 
   const template = templates.data?.find((candidate) => candidate.id === templateId);
+  const usableTemplates = useMemo(() => (templates.data ?? []).filter((candidate) => candidate.current_revision_id), [templates.data]);
   const series = (): PlanSeriesRequest => ({
     revision_id: template?.current_revision_id ?? '',
     components: components.filter((component) => component !== 'times'),
@@ -172,19 +174,15 @@ export const GeneratePlansPage = () => {
       <div className="card space-y-5 p-4 sm:p-5">
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="label" htmlFor="gen-template">{t('generate.template')}</label>
-            <select id="gen-template" className="input" value={templateId} onChange={(event) => { setTemplateId(event.target.value); invalidatePreview(); }}>
-              <option value="">{t('generate.choose')}</option>
-              {(templates.data ?? []).filter((candidate) => candidate.current_revision_id).map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {t('generate.templateOption', {
-                    name: candidate.name,
-                    serviceType: candidate.service_type?.name ?? t('generate.noServiceType'),
-                    revision: candidate.current_revision,
-                  })}
-                </option>
-              ))}
-            </select>
+            <TemplateSelect
+              id="gen-template"
+              label={t('generate.template')}
+              placeholder={t('generate.choose')}
+              templates={usableTemplates}
+              value={templateId}
+              onChange={(id) => { setTemplateId(id); invalidatePreview(); }}
+              optionLabel={(candidate) => t('apply.optionWithRevision', { name: candidate.name, revision: candidate.current_revision })}
+            />
             {template && template.counts.times === 0 && (
               <p className="mt-1.5 flex items-start gap-1 text-xs text-amber-700 dark:text-amber-300"><Icon name="alert" className="mt-px size-3.5 shrink-0" />{t('generate.noTimesHint')}</p>
             )}

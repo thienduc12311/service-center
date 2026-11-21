@@ -18,6 +18,7 @@ import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Modal, Spinner } from '../ui';
 import { ConflictList } from '../plan/attendance';
 import { TemplateApplyReview } from './TemplateApplyReview';
+import { TemplateSelect } from './TemplateSelect';
 
 export interface ApplyTemplateModalProps {
   plan: PlanDetail;
@@ -124,31 +125,24 @@ export const ApplyTemplateModal = ({ plan, onClose }: ApplyTemplateModalProps) =
             {t('apply.empty')}
           </p>
         ) : (
-          <div>
-            <label className="label" htmlFor="apply-template">{t('apply.template')}</label>
-            <select
-              id="apply-template"
-              className="input"
-              value={templateId}
-              onChange={(event) => {
-                setTemplateId(event.target.value);
-                setInsertAt(null);
-                resetReview();
-              }}
-            >
-              <option value="">{t('apply.choose')}</option>
-              {usable.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {t('apply.optionWithRevision', {
-                    name: candidate.kind === 'section'
-                      ? t(candidate.service_type ? 'apply.sectionName' : 'apply.sectionAllTypesName', { name: candidate.name })
-                      : candidate.service_type ? candidate.name : t('apply.allTypesName', { name: candidate.name }),
-                    revision: candidate.current_revision,
-                  })}
-                </option>
-              ))}
-            </select>
-          </div>
+          <TemplateSelect
+            id="apply-template"
+            label={t('apply.template')}
+            placeholder={t('apply.choose')}
+            templates={usable}
+            firstServiceTypeId={plan.service_type_id}
+            value={templateId}
+            onChange={(id) => {
+              setTemplateId(id);
+              setInsertAt(null);
+              resetReview();
+            }}
+            optionLabel={(candidate) => t('apply.optionWithRevision', {
+              // Grouped by service type, so the name only says what the group can't.
+              name: candidate.kind === 'section' ? t('apply.sectionName', { name: candidate.name }) : candidate.name,
+              revision: candidate.current_revision,
+            })}
+          />
         )}
 
         {template && !isSection && (

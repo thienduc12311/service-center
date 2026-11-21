@@ -1,6 +1,9 @@
 import type { Request } from 'express';
 import {
   canAccess,
+  decodePeopleCursor,
+  encodePeopleCursor,
+  type PeopleCursor,
   type AttendanceConflict,
   type StaffingMatrixAction,
   type StaffingMatrixAssignment,
@@ -16,8 +19,11 @@ import {
   type StaffingMatrixWarning,
 } from '@service-center/shared';
 import { raw, unwrap } from '../lib/supabase.js';
-import { fetchAllPages, IN_CHUNK_SIZE } from '../lib/paging.js';
+import { fetchAllPages } from '../lib/paging.js';
 import { HttpError } from '../lib/errors.js';
+import { peopleKeysetFilter } from '../lib/keyset.js';
+import { isUuid } from '../lib/params.js';
+import { rawSelect, whereSearchMatches } from '../lib/search.js';
 import { checkConflicts } from './attendance.js';
 import { preferenceWarnings } from './availability.js';
 
@@ -48,7 +54,7 @@ interface MatrixPlanRow {
   times: StaffingMatrixPlan['times'];
   position_needs: MatrixNeedRow[];
 }
-interface MatrixPersonRow { id: string; first_name: string; last_name: string | null; avatar_url: string | null; campus: string | null }
+interface MatrixPersonRow { id: string; first_name: string; last_name: string | null; avatar_url: string | null; campus: string | null; sort_name: string }
 interface MatrixAssignmentRow {
   id: string; plan_id: string; person_id: string; team_id: string; position_id: string | null;
   status: StaffingMatrixAssignment['status']; visibility: StaffingMatrixAssignment['visibility'];
@@ -120,49 +126,75 @@ const mapPlan = (plan: MatrixPlanRow, selectedTeamIds: readonly string[]): Staff
     .sort((a, b) => a.team_name.localeCompare(b.team_name) || a.position_name.localeCompare(b.position_name)),
 });
 
-const rosterPersonIds = async (req: Request, teamIds: readonly string[]): Promise<string[] | null> => {
-  if (!teamIds.length) return null;
-  const memberships = await fetchAllPages((from, to) =>
-    unwrap(req.db.from('team_memberships').select('person_id').in('team_id', [...teamIds]).order('id').range(from, to)));
-  // Sorted like Postgres sorts lowercase uuids, so chunks can be read in cursor order.
-  return [...new Set(memberships.map((row) => row.person_id).filter((id): id is string => Boolean(id)))].sort();
+const MATRIX_PERSON_COLUMNS = 'id, first_name, last_name, avatar_url, campus, sort_name';
+/** `!inner`: only People with a membership in one of the selected teams. */
+const MATRIX_TEAM_EMBED = 'team_memberships!inner()';
+
+/** One page of matrix People and the cursors either side of it. */
+interface MatrixPeoplePage {
+  rows: MatrixPersonRow[];
+  next: string | null;
+  prev: string | null;
+}
+
+/**
+ * The keyset position a request continues from. A bare Person id is the
+ * cursor format from before People were ordered by name: it continues after
+ * that Person, wherever their name sorts.
+ */
+const resolveMatrixCursor = async (req: Request, cursor: string | undefined): Promise<PeopleCursor | null> => {
+  if (!cursor) return null;
+  const decoded = decodePeopleCursor(cursor);
+  if (decoded) return decoded;
+  if (isUuid(cursor)) {
+    const row = (await unwrap(
+      raw(req.db).from('people_directory').select('id, sort_name').eq('organization_id', req.orgId).eq('id', cursor.toLowerCase()).maybeSingle(),
+    )) as PeopleCursor | null;
+    if (row) return { sort_name: row.sort_name, id: row.id };
+  }
+  throw HttpError.badRequest('Invalid cursor');
 };
 
-const loadPeople = async (req: Request, input: StaffingMatrixQueryInput): Promise<{ rows: MatrixPersonRow[]; next: string | null }> => {
-  const eligibleIds = await rosterPersonIds(req, input.filters.team_ids);
-  if (eligibleIds?.length === 0) return { rows: [], next: null };
-  const loadPage = async (ids: readonly string[] | null): Promise<MatrixPersonRow[]> => {
-    let query = req.db.from('people_directory').select('id, first_name, last_name, avatar_url, campus')
-      // Only People who can actually be scheduled: not archived, active membership (W2-STAFF-D2).
-      .eq('organization_id', req.orgId).eq('schedulable', true).order('id').limit(input.page_size + 1);
-    if (input.cursor) query = query.gt('id', input.cursor);
-    if (ids) query = query.in('id', [...ids]);
-    if (input.filters.search) {
-      const escaped = input.filters.search.replace(/[%_,]/g, '');
-      query = query.or(`first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%`);
-    }
-    return ((await unwrap(query)) ?? []) as MatrixPersonRow[];
-  };
-  let rows: MatrixPersonRow[] = [];
-  if (!eligibleIds) rows = await loadPage(null);
-  else {
-    // A big team's roster does not fit one `.in()` list: walk it in sorted chunks
-    // past the cursor until the page (plus the look-ahead row) is full.
-    const after = input.cursor ? eligibleIds.filter((id) => id > input.cursor!) : eligibleIds;
-    for (let start = 0; start < after.length && rows.length <= input.page_size; start += IN_CHUNK_SIZE) {
-      rows.push(...(await loadPage(after.slice(start, start + IN_CHUNK_SIZE))));
-    }
-    rows = rows.slice(0, input.page_size + 1);
+const cursorOf = (person: MatrixPersonRow): string => encodePeopleCursor({ sort_name: person.sort_name, id: person.id });
+
+/**
+ * One page of schedulable People ordered by name, then id (stable across
+ * pages), forwards from `cursor` or — `direction: 'prev'` — the page before it.
+ * Team and search filters run in SQL, so a big roster needs no id chunking.
+ */
+const loadPeople = async (req: Request, input: StaffingMatrixQueryInput): Promise<MatrixPeoplePage> => {
+  const cursor = await resolveMatrixCursor(req, input.cursor);
+  const backward = input.direction === 'prev' && cursor !== null;
+  const teamIds = input.filters.team_ids;
+  const columns: string = teamIds.length ? `${MATRIX_PERSON_COLUMNS}, ${MATRIX_TEAM_EMBED}` : MATRIX_PERSON_COLUMNS;
+  let query = rawSelect(req.db, 'people_directory', columns)
+    // Only People who can actually be scheduled: not archived, active membership (W2-STAFF-D2).
+    .eq('organization_id', req.orgId)
+    .eq('schedulable', true);
+  if (teamIds.length) query = query.in('team_memberships.team_id', [...teamIds]);
+  query = whereSearchMatches(query, input.filters.search);
+  if (cursor) query = query.or(peopleKeysetFilter(cursor, backward ? 'before' : 'after'));
+  const fetched = ((await unwrap(
+    query.order('sort_name', { ascending: !backward }).order('id', { ascending: !backward }).limit(input.page_size + 1),
+  )) ?? []) as unknown as MatrixPersonRow[];
+  const more = fetched.length > input.page_size;
+  const page = fetched.slice(0, input.page_size);
+  const rows = backward ? page.reverse() : page;
+  const first = rows[0];
+  const last = rows.at(-1);
+  if (backward) {
+    // Going back, the rows after this page always exist: the page we came from.
+    return { rows, next: last ? cursorOf(last) : encodePeopleCursor(cursor), prev: more && first ? cursorOf(first) : null };
   }
-  return { rows: rows.slice(0, input.page_size), next: rows.length > input.page_size ? rows[input.page_size - 1]!.id : null };
+  return { rows, next: more && last ? cursorOf(last) : null, prev: cursor && first ? cursorOf(first) : null };
 };
 
 export const loadStaffingMatrix = async (req: Request, input: StaffingMatrixQueryInput): Promise<StaffingMatrixPage> => {
   const teams = ((await unwrap(req.db.from('teams').select('id, name, service_type_id').eq('organization_id', req.orgId))) ?? []) as MatrixTeamRow[];
   const selectedTeams = input.filters.team_ids.filter((id) => teams.some((team) => team.id === id));
   const plans = await loadAuthorizedPlans(req, { ...input.filters, team_ids: selectedTeams }, teams);
-  if (!plans.length) return { plans: [], people: [], assignments: [], conflicts: [], next_cursor: null };
-  const { rows: peopleRows, next } = await loadPeople(req, { ...input, filters: { ...input.filters, team_ids: selectedTeams } });
+  if (!plans.length) return { plans: [], people: [], assignments: [], conflicts: [], next_cursor: null, prev_cursor: null };
+  const { rows: peopleRows, next, prev } = await loadPeople(req, { ...input, filters: { ...input.filters, team_ids: selectedTeams } });
   const planIds = plans.map((plan) => plan.id);
   const personIds = peopleRows.map((person) => person.id);
   // Up to 12 plans of big teams can pass PostgREST's 1000-row cap: every page.
@@ -215,6 +247,7 @@ export const loadStaffingMatrix = async (req: Request, input: StaffingMatrixQuer
       return { key, person_id: person_id!, plan_id: plan_id!, conflicts: cell };
     }),
     next_cursor: next,
+    prev_cursor: prev,
   };
 };
 

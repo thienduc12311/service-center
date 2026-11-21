@@ -39,6 +39,8 @@ import { AttendanceTab } from '../components/plan/AttendanceTab';
 import { ShareTab } from '../components/plan/ShareTab';
 import { PlanFilesTab } from '../components/files/PlanFilesTab';
 import { AddItemModal } from '../components/plan/AddItemModal';
+import { SongBrowserPanel } from '../components/plan/SongBrowserPanel';
+import { INSERT_AT_END, advanceInsertPoint, type OrderInsertPoint } from '../components/plan/insertPoint';
 import { EditItemModal } from '../components/plan/EditItemModal';
 import { PrintOrderModal } from '../components/plan/PrintOrderModal';
 import { SchedulePeopleModal } from '../components/plan/SchedulePeopleModal';
@@ -52,6 +54,12 @@ import { DeliveryOutcomeNotice } from '../components/plan/DeliveryOutcomeNotice'
 import { OpportunityPanel, type SignupSetupOption } from '../components/plan/OpportunityPanel';
 import { PLAN_TABS, buildPlanTeams, type PlanTab } from '../components/plan/types';
 import { useFormatters } from '../i18n';
+
+/**
+ * Reserve room for the 26rem drawer and 1rem gap. The shell's 2rem content
+ * padding and centering within the area beside the 16rem rail already count.
+ */
+const SONG_BROWSER_ROOM = 'xl:pr-[max(0px,calc(25rem_-_max(0px,calc((100vw_-_96rem)_/_2))))]';
 
 const PLAN_CHAT_RESTRICTED = new LocalizedError({ key: 'plans:planDetail.errors.planChatRestricted' });
 
@@ -89,6 +97,11 @@ export const PlanDetailPage = () => {
   const [editingTimesFor, setEditingTimesFor] = useState<AssignmentDetail | null>(null);
   const [discussingId, setDiscussingId] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  /** The song browser: open or not, and where its songs go. */
+  const [songBrowserOpen, setSongBrowserOpen] = useState(false);
+  const [songInsertPoint, setSongInsertPoint] = useState<OrderInsertPoint>(INSERT_AT_END);
+  /** Where the header / item form adds. */
+  const [otherInsertPoint, setOtherInsertPoint] = useState<OrderInsertPoint>(INSERT_AT_END);
   /** F11: which service time the order is timed against; null = the first. */
   const [timeId, setTimeId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
@@ -315,8 +328,17 @@ export const PlanDetailPage = () => {
     printDocument(renderServiceSongBookHtml(songBook), t('planDetail.songBookFrameTitle'));
   };
 
+  const openSongBrowser = (point: OrderInsertPoint) => {
+    setSongInsertPoint(point);
+    setSongBrowserOpen(true);
+  };
+  const openAddOther = (point: OrderInsertPoint) => {
+    setOtherInsertPoint(point);
+    setDialog('add-item');
+  };
+
   return (
-    <div>
+    <div className={songBrowserOpen ? SONG_BROWSER_ROOM : undefined}>
       <PlanWorkspaceHeader
         plan={detail}
         organizationName={organizationName}
@@ -403,7 +425,9 @@ export const PlanDetailPage = () => {
         <ErrorNotice error={openChat.error ? PLAN_CHAT_RESTRICTED : null} />
       </div>
 
-      <div className="mt-8 grid gap-8 border-t border-app-border pt-6 lg:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]">
+      <div className={`mt-8 grid gap-8 border-t border-app-border pt-6 ${
+        songBrowserOpen ? '' : 'lg:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]'
+      }`}>
         <PlanSidebar
           plan={detail}
           canEditPlan={canEditPlan}
@@ -418,7 +442,7 @@ export const PlanDetailPage = () => {
           onEditNeededPositions={openNeededPositions}
         />
 
-        <div className="order-first min-w-0 lg:order-last">
+        <div className={`order-first min-w-0 ${songBrowserOpen ? '' : 'lg:order-last'}`}>
           {/* F14: stage layouts are for the plan's editors and leaders (RLS decides). */}
           {/* F16: attendance for team schedulers; public sharing for the plan's editors. */}
           <Tabs
@@ -451,7 +475,9 @@ export const PlanDetailPage = () => {
                 onSelectTime={setTimeId}
                 positionNames={positionNames}
                 busy={orderBusy}
-                onAddItem={() => setDialog('add-item')}
+                onAddSongs={openSongBrowser}
+                onAddOther={openAddOther}
+                insertPoint={songBrowserOpen ? songInsertPoint : null}
                 onEditItem={(item) => setEditingItemId(item.id)}
                 onMoveItem={move}
                 onRemoveItem={confirmRemove}
@@ -516,9 +542,23 @@ export const PlanDetailPage = () => {
           onClose={() => setDialog(null)}
         />
       )}
+      {songBrowserOpen && canEditPlan && (
+        <SongBrowserPanel
+          plan={detail}
+          insertPoint={songInsertPoint}
+          onInsertPointChange={setSongInsertPoint}
+          onAddOther={() => openAddOther(songInsertPoint)}
+          onClose={() => setSongBrowserOpen(false)}
+        />
+      )}
       <AddItemModal
         open={dialog === 'add-item'}
         planId={planId}
+        insertPoint={otherInsertPoint}
+        // Added from the song browser's spot: the next song follows the new item.
+        onAdded={(itemId) => {
+          if (songBrowserOpen) setSongInsertPoint(advanceInsertPoint(otherInsertPoint, itemId));
+        }}
         onClose={() => setDialog(null)}
       />
       <SchedulePeopleModal

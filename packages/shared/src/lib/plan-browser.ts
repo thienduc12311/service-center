@@ -28,9 +28,11 @@ export const PLAN_NEIGHBOUR_WINDOW = 20;
  */
 export const planBrowserQuery = (filters: PlanBrowserFilters, page: number): ListPlansRequest => {
   const history = filters.window === 'history';
+  const q = filters.q?.trim();
   return {
     page,
     per_page: PLAN_BROWSER_PAGE_SIZE,
+    ...(q ? { q } : {}),
     ...(filters.serviceTypeId ? { service_type_id: filters.serviceTypeId } : {}),
     ...(filters.status ? { status: filters.status } : {}),
     ...(history

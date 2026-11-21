@@ -10,8 +10,9 @@ import {
 } from '../hooks/queries';
 import { useUndoableNotificationDelete } from '../hooks/useUndoableNotificationDelete';
 import { useFormatters } from '../i18n';
-import { Button, EmptyState, ErrorNotice, IconButton, Modal, PageHeader, SkeletonList } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, IconButton, Modal, Notice, PageHeader, Segmented, SkeletonList } from '../components/ui';
 import { Icon, type IconName } from '../components/icons';
+import { dayLabelKind, groupByDay } from '../lib/day-groups';
 
 /** Where tapping a notification leads on web; null when it points nowhere. */
 const notificationHref = (item: NotificationFeedItem): string | null => {
@@ -38,23 +39,37 @@ type FocusTarget = { kind: 'delete'; id: string } | { kind: 'undo' };
 const focusSelector = (target: FocusTarget): string =>
   target.kind === 'undo' ? '[data-notification-undo]' : `[data-notification-delete="${target.id}"]`;
 
+/** Which notifications the feed shows; the server filters unread ones. */
+type FeedView = 'all' | 'unread';
+
 /** Everything the bell has collected in the active church, newest first. */
 export const NotificationsPage = () => {
   const { t } = useTranslation(['scheduling', 'common']);
+  const f = useFormatters();
   const navigate = useNavigate();
-  const feed = useNotificationFeed();
+  const [view, setView] = useState<FeedView>('all');
+  const feed = useNotificationFeed(view === 'unread');
   const unread = useUnreadNotificationCount().data?.unread ?? feed.data?.pages[0]?.unread ?? 0;
   const markRead = useMarkNotificationsRead();
   const clearRead = useClearReadNotifications();
   const removal = useUndoableNotificationDelete();
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
+  const [cleared, setCleared] = useState<number | null>(null);
 
   const items = useMemo<NotificationFeedItem[]>(
     () => (feed.data?.pages ?? []).flatMap((page) => page.items).filter((item) => item.id !== removal.pending?.id),
     [feed.data, removal.pending],
   );
-  const hasRead = items.some((item) => item.read_at);
+  const days = useMemo(() => groupByDay(items, (item) => item.created_at), [items]);
+  // Read rows may sit on pages not loaded yet, or be filtered out of the Unread
+  // view: offer the clean-up unless the whole feed is known to be empty, and let
+  // the server find what is read.
+  const feedKnownEmpty = view === 'all' && !feed.isLoading && !feed.hasNextPage && items.length === 0 && !removal.pending;
+  const dayLabel = (day: string): string => {
+    const kind = dayLabelKind(day);
+    return kind === 'date' ? f.calendarDate(day, 'long') : t(`common:states.${kind}`);
+  };
 
   // Runs after the row has gone (or come back), so the target exists in the DOM.
   useEffect(() => {
@@ -100,7 +115,7 @@ export const NotificationsPage = () => {
                 {t('notifications.markAllRead')}
               </Button>
             )}
-            {hasRead && (
+            {!feedKnownEmpty && (
               <Button variant="secondary" icon="trash" onClick={() => setConfirmingClear(true)}>
                 {t('notifications.clearRead')}
               </Button>
@@ -110,18 +125,41 @@ export const NotificationsPage = () => {
       />
 
       <div className="space-y-4">
+        <Segmented<FeedView>
+          label={t('notifications.viewLabel')}
+          value={view}
+          onChange={(next) => { setView(next); setCleared(null); }}
+          items={[
+            { value: 'all', label: t('notifications.views.all') },
+            { value: 'unread', label: t('notifications.views.unread'), count: unread || undefined },
+          ]}
+        />
         <ErrorNotice error={feed.error ?? markRead.error ?? removal.error} />
+        {cleared !== null && (
+          <Notice tone="success">
+            {cleared > 0 ? t('notifications.clearedRead', { count: cleared }) : t('notifications.clearedNone')}
+          </Notice>
+        )}
 
         {feed.isLoading ? (
           <SkeletonList rows={4} />
         ) : items.length === 0 ? (
-          <EmptyState icon="bell" title={t('notifications.emptyTitle')} description={t('notifications.emptyDescription')} />
+          view === 'unread'
+            ? <EmptyState icon="check" title={t('notifications.emptyUnreadTitle')} description={t('notifications.emptyUnreadDescription')} />
+            : <EmptyState icon="bell" title={t('notifications.emptyTitle')} description={t('notifications.emptyDescription')} />
         ) : (
-          <ul className="card divide-y divide-app-border overflow-hidden">
-            {items.map((item) => (
-              <NotificationListItem key={item.id} item={item} onOpen={() => open(item)} onDelete={() => remove(item)} />
-            ))}
-          </ul>
+          days.map((group) => (
+            <section key={group.day} aria-label={dayLabel(group.day)}>
+              <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {dayLabel(group.day)}
+              </h2>
+              <ul className="card divide-y divide-app-border overflow-hidden">
+                {group.items.map((item) => (
+                  <NotificationListItem key={item.id} item={item} onOpen={() => open(item)} onDelete={() => remove(item)} />
+                ))}
+              </ul>
+            </section>
+          ))
         )}
 
         {feed.hasNextPage && (
@@ -146,7 +184,12 @@ export const NotificationsPage = () => {
             <Button
               variant="danger"
               loading={clearRead.isPending}
-              onClick={() => clearRead.mutate(undefined, { onSuccess: () => setConfirmingClear(false) })}
+              onClick={() => clearRead.mutate(undefined, {
+                onSuccess: ({ deleted }) => {
+                  setConfirmingClear(false);
+                  setCleared(deleted);
+                },
+              })}
             >
               {t('notifications.clearReadConfirm')}
             </Button>

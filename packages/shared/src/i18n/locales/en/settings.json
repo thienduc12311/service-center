@@ -752,8 +752,7 @@
   "memberPicker": {
     "placeholder": "Search by name or email…",
     "noMatches": "No members match.",
-    "clear": "Clear {{name}}",
-    "more": "Showing {{shown}} of {{total}} — keep typing to narrow it down."
+    "clear": "Clear {{name}}"
   },
   "memberAccess": {
     "open": "Open access for {{name}}",

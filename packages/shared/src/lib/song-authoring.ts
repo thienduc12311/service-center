@@ -388,8 +388,12 @@ export interface SongLibraryFilterValues {
 
 export type SongLibraryFilterName = keyof SongLibraryFilterValues;
 
-/** The query parameters that are scope, sort or paging rather than a filter. */
-const NOT_FILTERS: ReadonlySet<string> = new Set(['archive', 'sort', 'page', 'per_page', 'q']);
+/**
+ * The query parameters that are scope, sort or paging rather than a filter.
+ * `service_type_id` only scopes usage counts (and the scheduled window, itself
+ * counted) and `plan_id` only marks rows, so neither narrows the list.
+ */
+const NOT_FILTERS: ReadonlySet<string> = new Set(['archive', 'sort', 'page', 'per_page', 'q', 'service_type_id', 'plan_id']);
 
 /** The outcome of reading typed filters into a library query. */
 export type SongLibraryFilterResult =

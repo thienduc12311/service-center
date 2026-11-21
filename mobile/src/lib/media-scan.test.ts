@@ -69,6 +69,14 @@ describe('media browsing and linking', () => {
     expect(linkableMedia([media(), media({ id: 'm2', is_archived: true })]).map((row) => row.id)).toEqual(['m1']);
   });
 
+  it('requests active results from the server before the cap and uses the server truncation flag', () => {
+    const picker = source('app/plan/media/[id].tsx');
+    expect(listMediaQuerySchema.parse(mediaListRequest(' loop ', false))).toEqual({ q: 'loop', include_archived: false });
+    expect(picker).toContain('queryKey: queryKeys.mediaList(queryScope, settled, false)');
+    expect(picker).toContain('queryFn: () => api.mediaList(mediaListRequest(settled, false))');
+    expect(picker).toContain('list.data?.truncated ?');
+  });
+
   it('reads a refused link the way the order editor does', () => {
     expect(orderWriteOutcome(new ApiError(409, 'changed', 'plan_revision_stale'))).toBe('stale');
     expect(orderWriteOutcome(new ApiError(404, 'Item not found'))).toBe('gone');

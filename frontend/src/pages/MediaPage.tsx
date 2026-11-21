@@ -11,6 +11,9 @@ import {
   type UpdateMediaInput,
 } from '@service-center/shared';
 import { useInvalidateMedia, useMediaDetail, useMediaList } from '../hooks/queries';
+import { ListFooter } from '../components/ListFooter';
+import { useUrlBoolean, useUrlSearch } from '../hooks/useUrlState';
+import { ThumbnailPicker } from '../components/media/ThumbnailPicker';
 import { api } from '../lib/api';
 import { Badge, Button, EmptyState, ErrorNotice, ListErrorNotice, listFailed, Modal, PageHeader, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
@@ -43,10 +46,10 @@ const useMediaErrorText = (): ((error: unknown) => string | null) => {
 export const MediaLibraryPage = () => {
   const { t } = useTranslation('media');
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
-  const [showArchived, setShowArchived] = useState(false);
+  const search = useUrlSearch('q');
+  const [showArchived, setShowArchived] = useUrlBoolean('archived');
   const [adding, setAdding] = useState(false);
-  const list = useMediaList({ q: query.trim() || undefined, include_archived: showArchived });
+  const list = useMediaList({ q: search.query || undefined, include_archived: showArchived });
   const rows = list.data?.media ?? [];
 
   return (
@@ -59,7 +62,7 @@ export const MediaLibraryPage = () => {
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1 sm:max-w-md">
           <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
-          <input type="search" className="input pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('library.searchPlaceholder')} aria-label={t('library.searchLabel')} />
+          <input type="search" className="input pl-9" value={search.text} onChange={(event) => search.setText(event.target.value)} placeholder={t('library.searchPlaceholder')} aria-label={t('library.searchLabel')} />
         </div>
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
           <input type="checkbox" className="size-4 rounded border-slate-300 accent-brand-600" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
@@ -73,11 +76,15 @@ export const MediaLibraryPage = () => {
       ) : rows.length === 0 ? (
         <EmptyState icon="media" title={t('library.emptyTitle')} description={t('library.emptyDescription')} />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {rows.map((media) => (
-            <MediaRowView key={media.id} media={media} />
-          ))}
-        </ul>
+        <>
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {rows.map((media) => (
+              <MediaRowView key={media.id} media={media} />
+            ))}
+          </ul>
+          {/* The server caps the list; past the cap the way forward is a narrower search. */}
+          <ListFooter shown={rows.length} total={list.data?.total} capped={list.data?.truncated ?? false} />
+        </>
       )}
       {adding && <CreateMediaModal onClose={() => setAdding(false)} onCreated={(id) => navigate(`/media/${id}`)} />}
     </div>
@@ -276,18 +283,13 @@ const Thumbnail = ({ media }: ThumbnailProps) => {
           {t('thumbnail.none')}
         </div>
       )}
-      {media.can_edit && (
-        <select
-          className="input"
-          aria-label={t('thumbnail.selectLabel')}
-          value={media.thumbnail_file_id ?? ''}
-          onChange={(event) => choose.mutate(event.target.value || null)}
-        >
-          <option value="">{t('common:states.none')}</option>
-          {images.map((file) => (
-            <option key={file.id} value={file.id}>{file.title}</option>
-          ))}
-        </select>
+      {media.can_edit && images.length > 0 && (
+        <ThumbnailPicker
+          images={images}
+          value={choose.isPending ? (choose.variables ?? null) : media.thumbnail_file_id}
+          disabled={choose.isPending}
+          onChange={(fileId) => choose.mutate(fileId)}
+        />
       )}
       {media.can_edit && images.length === 0 && <p className="mt-1 text-xs text-slate-500">{t('thumbnail.uploadHint')}</p>}
       {choose.error && <p role="alert" className="mt-1 text-xs text-rose-700">{mediaError(choose.error)}</p>}

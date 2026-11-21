@@ -46,7 +46,16 @@
     "empty": "No songs yet",
     "emptyDescription": "Add songs to build the library your plans draw from.",
     "previousPage": "Previous",
-    "page": "Page {{page}}"
+    "page": "Page {{page}}",
+    "pageOf": "Page {{page}} of {{pages}}",
+    "selection": {
+      "label": "Selected songs",
+      "selectPage": "Select every song on this page",
+      "offPage_one": "({{count}} on other pages)",
+      "offPage_other": "({{count}} on other pages)",
+      "limit": "You can edit up to {{max}} songs at once, so the rest were not selected.",
+      "clear": "Clear selection"
+    }
   },
   "songDetail": {
     "notFound": "Song not found",
@@ -486,7 +495,15 @@
     "limitOption_other": "Since {{count}} Most Recent",
     "loading": "Looking up recent services…",
     "emptyArrangement": "This arrangement has not been scheduled yet.",
-    "emptySong": "This song has not been scheduled yet."
+    "emptySong": "This song has not been scheduled yet.",
+    "playedTimes_one": "Played {{count}} time",
+    "playedTimes_other": "Played {{count}} times",
+    "playedAtLeast_one": "Played at least {{count}} time",
+    "playedAtLeast_other": "Played at least {{count}} times",
+    "lastPlayed": "last on {{date}}",
+    "limitAll_one": "All (up to {{count}})",
+    "limitAll_other": "All (up to {{count}})",
+    "showAll": "Show all"
   },
   "tags": {
     "empty": "There are no tags on this song.",

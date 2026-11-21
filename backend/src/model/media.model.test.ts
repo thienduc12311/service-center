@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AssignmentDetail, MediaRow } from '@service-center/shared';
-import { isMediaArchived, organizationToday, toMediaSummary, toMediaUsage, toRehearsalMediaRef } from './media.model.js';
+import { isMediaArchived, organizationToday, parseMediaListResult, toMediaSummary, toMediaUsage, toRehearsalMediaRef, usageCountsOf } from './media.model.js';
 import { stageRosterFromPlan } from './stage-layout.model.js';
 
 const row: MediaRow = {
@@ -28,7 +28,7 @@ describe('media archive rule', () => {
       { id: 'i3', media_id: 'm', title: 'Hidden', plan: null },
     ]);
     expect(usage.map((u) => u.plan_id)).toEqual(['p2', 'p1']);
-    expect(toMediaSummary(row, '2026-10-18', usage)).toMatchObject({ usage_count: 2, last_used_on: '2026-10-11', is_archived: false });
+    expect(toMediaSummary(row, '2026-10-18', usageCountsOf(usage))).toMatchObject({ usage_count: 2, last_used_on: '2026-10-11', is_archived: false });
   });
 });
 

@@ -17,6 +17,8 @@ export interface KeyPickerProps {
   placeholder: string;
   /** A first choice that clears the key; omitted when not given. */
   resetLabel?: string;
+  /** Opens with the grid showing (e.g. inside a sheet that exists only to pick a key). */
+  initiallyOpen?: boolean;
 }
 
 /**
@@ -25,11 +27,11 @@ export interface KeyPickerProps {
  * Major / Minor switch. Keys come from `keyGridFor`, so both clients offer
  * exactly the same spellings.
  */
-export const KeyPicker = ({ value, onChange, label, placeholder, resetLabel }: KeyPickerProps) => {
+export const KeyPicker = ({ value, onChange, label, placeholder, resetLabel, initiallyOpen = false }: KeyPickerProps) => {
   const { t } = useTranslation('songs');
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const [quality, setQuality] = useState<KeyQuality>(value?.endsWith('m') ? 'minor' : 'major');
 
   const choose = (key: string | null) => {

@@ -22,6 +22,7 @@ import {
   isStaleTemplateError,
   showsInsertPosition,
   usableTemplates,
+  templateOptions,
 } from '../../../src/lib/template-use';
 import { useTemplateNames } from '../../../src/lib/useTemplateNames';
 import { useAuth } from '../../../src/providers/AuthProvider';
@@ -43,6 +44,7 @@ import { ConflictList } from '../../../src/components/ConflictList';
 import { TemplateApplyReview } from '../../../src/components/TemplateApplyReview';
 import { type Theme } from '../../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
+import { SearchableOptionPicker } from '../../../src/components/SearchableOptionSheet';
 
 const MODES: readonly TemplateApplyMode[] = ['append', 'replace'];
 
@@ -56,7 +58,7 @@ const MODES: readonly TemplateApplyMode[] = ['append', 'replace'];
  */
 export default function ApplyTemplateScreen() {
   const { id: planId } = useLocalSearchParams<{ id: string }>();
-  const { t } = useTranslation(['templates', 'common']);
+  const { t } = useTranslation(['templates', 'plans', 'common']);
   const { can, queryScope, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -211,16 +213,21 @@ export default function ApplyTemplateScreen() {
         ) : (
           <View style={styles.group}>
             <Label>{t('apply.template')}</Label>
-            <View style={styles.chips}>
-              {usable.map((candidate) => (
-                <Chip
-                  key={candidate.id}
-                  label={t('apply.optionWithRevision', { name: templateLabel(candidate), revision: candidate.current_revision })}
-                  active={candidate.id === templateId}
-                  onPress={() => { setTemplateId(candidate.id); setInsertAt(null); resetReview(); }}
-                />
-              ))}
-            </View>
+            <SearchableOptionPicker
+              title={t('apply.template')}
+              options={templateOptions(usable, {
+                label: (candidate) => t('apply.optionWithRevision', { name: templateLabel(candidate), revision: candidate.current_revision }),
+                groupedLabel: (candidate) => t('apply.optionWithRevision', {
+                  name: candidate.kind === 'section' ? t('apply.sectionName', { name: candidate.name }) : candidate.name,
+                  revision: candidate.current_revision,
+                }),
+                allServiceTypes: t('plans:mobileApply.allServiceTypes'),
+              })}
+              selected={templateId ? [templateId] : []}
+              mode="single"
+              leadingGroupKeys={serviceTypeId ? [serviceTypeId] : []}
+              onChange={(next) => { setTemplateId(next[0] ?? null); setInsertAt(null); resetReview(); }}
+            />
           </View>
         )}
 

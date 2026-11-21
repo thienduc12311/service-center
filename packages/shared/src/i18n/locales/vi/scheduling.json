@@ -63,7 +63,8 @@
       "mine": "Chỉ tôi"
     },
     "openMonthTitle": "Tháng này còn trống",
-    "openMonthDescription": "Chưa có gì trên lịch cho {{month}}."
+    "openMonthDescription": "Chưa có gì trên lịch cho {{month}}.",
+    "moreEventsLabel_other": "Xem cả ngày {{date}} (thêm {{count}} mục)"
   },
   "layers": {
     "legend": "Lớp hiển thị",
@@ -244,7 +245,15 @@
     "clearReadConfirm": "Xóa đã đọc",
     "clearedRead_other": "Đã xóa {{count}} thông báo",
     "swipeHint": "Vuốt sang trái trên một thông báo để xóa.",
-    "loadMore": "Tải thêm"
+    "loadMore": "Tải thêm",
+    "viewLabel": "Hiển thị",
+    "views": {
+      "all": "Tất cả",
+      "unread": "Chưa đọc"
+    },
+    "emptyUnreadTitle": "Không có thông báo chưa đọc",
+    "emptyUnreadDescription": "Bạn đã xem hết rồi. Chọn Tất cả để xem lại các thông báo trước đó.",
+    "clearedNone": "Không có thông báo đã đọc nào để xóa."
   },
   "mobileCalendar": {
     "layersNote": "Các lớp chỉ hiện những gì bạn được phép xem cho ban này, và được kiểm tra lại mỗi lần tải."

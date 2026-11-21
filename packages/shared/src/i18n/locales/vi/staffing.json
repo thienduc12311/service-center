@@ -30,7 +30,13 @@
     "removePerson": "Gỡ {{name}}",
     "reviewAndRelease_other": "Xem lại và gửi {{count}} phân công",
     "willBeNotified": "Những người này sẽ được thông báo:",
-    "release": "Gửi phân công"
+    "release": "Gửi phân công",
+    "onlyGaps_other": "Chỉ xem chỗ còn thiếu ({{count}} ban)",
+    "noGapsTitle": "Không còn chỗ thiếu",
+    "noGapsDescription": "Mọi vị trí cần đều đã có người và mọi lời mời đều đã được trả lời.",
+    "summary": "{{confirmed}}/{{places}} đã xác nhận",
+    "summaryNobody": "Chưa phân công ai",
+    "openPlaces_other": "còn thiếu {{count}} chỗ"
   },
   "schedulePeople": {
     "title": "Phân công người",
@@ -65,7 +71,27 @@
     "prepare": "Chuẩn bị",
     "schedule": "Phân công",
     "prepareCount_other": "Chuẩn bị {{count}}",
-    "scheduleCount_other": "Phân công {{count}}"
+    "scheduleCount_other": "Phân công {{count}}",
+    "scopeLabel": "Hiển thị những ai",
+    "scopeTeam": "Thành viên ban",
+    "scopeEveryone": "Mọi người",
+    "scopeTeamPlain": "Thành viên ban",
+    "scopeEveryonePlain": "Mọi người",
+    "onPlan": "đã có trong chương trình",
+    "removeSelected": "Bỏ chọn {{name}}",
+    "noMatches": "Không có ai khớp với tìm kiếm.",
+    "noTeamMembers": "Ban này chưa có thành viên. Chuyển sang Mọi người để tìm.",
+    "searchTeams": "Tìm ban",
+    "searchPositions": "Tìm vị trí",
+    "loadingMore": "Đang tải thêm người…",
+    "loadMoreFailed": "Không tải thêm được người.",
+    "planPositionShort": "{{position}} (chương trình này)",
+    "newPlanPositionChip": "+ Vị trí mới cho chương trình này",
+    "selectedLabel": "Những người đã chọn",
+    "unselect": "Bỏ chọn {{name}}",
+    "noPeople": "Chưa có ai để phân công.",
+    "scopeTeamCount": "Thành viên ban ({{count}})",
+    "scopeEveryoneCount": "Mọi người ({{count}})"
   },
   "preferenceWarning": {
     "frequency": "Phục vụ thường xuyên hơn mong muốn",
@@ -257,6 +283,10 @@
     "offerCount_other": "{{count}} lời đề nghị",
     "cancelRequest": "Hủy yêu cầu",
     "chooseCandidate": "Chọn người thay…",
+    "candidateLabel": "Người thay thế",
+    "teamMembers": "Thành viên ban {{team}}",
+    "everyone": "Mọi người",
+    "onThisPlan": "Trong chương trình này",
     "unnamedPerson": "Thành viên chưa có tên",
     "sendOffer": "Gửi đề nghị",
     "offerStatus": {
@@ -383,7 +413,13 @@
     "itemWillNotify": "{{action}} · sẽ thông báo sau khi áp dụng",
     "itemNoDelivery": "{{action}} · không gửi thông báo",
     "resolveBlocking": "Hãy giải quyết các trùng lịch chặn trước khi áp dụng đợt này. Các ô bạn đã chọn vẫn được giữ.",
-    "commitAll": "Áp dụng tất cả thay đổi"
+    "commitAll": "Áp dụng tất cả thay đổi",
+    "planLimit_other": "Khoảng ngày này có hơn {{count}} chương trình, mà bảng chỉ hiển thị tối đa {{count}} chương trình mỗi lần.",
+    "planLimitAction_other": "Xem {{count}} chương trình kế tiếp",
+    "planWindow_other": "Mỗi lần hiển thị {{count}} chương trình. Khoảng ngày bạn chọn kéo dài đến {{end}}.",
+    "laterPlans_other": "{{count}} chương trình tiếp theo",
+    "previousPeople": "Những người trước đó",
+    "peoplePage": "Trang thành viên {{page}}"
   },
   "proposalReview": {
     "exclusionCount": {

@@ -22,18 +22,24 @@ import {
   type PlanItemType,
 } from '@service-center/shared';
 import { api } from '../../../src/lib/api';
-import { queryKeys } from '../../../src/lib/query-keys';
+import { keepScopedData, queryKeys } from '../../../src/lib/query-keys';
 import {
+  PERSON_CHOICE_LIMIT,
   labeledKeyText,
-  leaderPersonChoices,
-  leaderPositionChoices,
+  leaderPersonSuggestions,
+  leaderPositionOptions,
   orderWriteOutcome,
+  planPeopleChoices,
+  staffedTeamIds,
 } from '../../../src/lib/plan-order-edit';
+import { useDebouncedValue } from '../../../src/hooks/useDebouncedValue';
+import { SearchableOptionPicker } from '../../../src/components/SearchableOptionSheet';
+import { SearchField } from '../../../src/components/SearchField';
+import { SongPickRow } from '../../../src/components/song/SongBrowserRow';
 import { useDiscardGuard } from '../../../src/lib/useDiscardGuard';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { ArrangementPicker } from '../../../src/components/ArrangementPicker';
 import { KeyPicker } from '../../../src/components/KeyPicker';
-import { PressableScale } from '../../../src/components/motion';
 import {
   Button,
   Card,
@@ -53,6 +59,9 @@ import { type Theme } from '../../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../../src/lib/useTheme';
 
 const LEADER_MODES: readonly PlanItemLeaderMode[] = ['none', 'person', 'position'];
+
+/** Songs listed at once under "Change song"; the search narrows the rest. */
+const SONG_PICK_LIMIT = 20;
 
 /**
  * MOB-014: edit one order item in place — same id and position — on the
@@ -133,15 +142,21 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
     queryFn: () => api.getSong(draft.songId!),
     enabled: Boolean(queryScope && isSong && draft.songId),
   });
+  // Same server search as the song browser (title, author, CCLI; accents ignored), debounced.
+  const songSearch = useDebouncedValue(songQuery.trim());
   const songs = useQuery({
-    queryKey: queryKeys.songs(queryScope, songQuery),
-    queryFn: () => api.listSongs({ q: songQuery || undefined, per_page: 100 }),
+    queryKey: queryKeys.songs(queryScope, `pick:${songSearch}`),
+    queryFn: () => api.listSongs({ ...(songSearch ? { q: songSearch } : {}), archive: 'active', sort: 'title', per_page: SONG_PICK_LIMIT }),
     enabled: Boolean(queryScope && changingSong),
+    placeholderData: keepScopedData(queryScope),
   });
+  // One server page of People per (debounced) search; the plan's own people come first.
+  const personSearch = useDebouncedValue(personQuery.trim());
   const people = useQuery({
-    queryKey: queryKeys.people(queryScope),
-    queryFn: () => api.listPeople(),
+    queryKey: queryKeys.peoplePicker(queryScope, `leader:${personSearch}`),
+    queryFn: () => api.listPeoplePage({ limit: PERSON_CHOICE_LIMIT, ...(personSearch ? { q: personSearch } : {}) }),
     enabled: Boolean(queryScope && draft.leaderMode === 'person'),
+    placeholderData: keepScopedData(queryScope),
   });
   const teams = useQuery({
     queryKey: queryKeys.teams(queryScope),
@@ -169,16 +184,27 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
     return [...new Set(labels)].filter((label) => label.length <= 20);
   }, [chosenArrangement]);
 
-  const positions = useMemo(
-    () => leaderPositionChoices(teams.data ?? [], plan.plan_positions, {
+  const positionOptions = useMemo(
+    () => leaderPositionOptions(teams.data ?? [], plan.plan_positions, {
       teamPosition: (team, position) => t('common:format.teamPosition', { team, position }),
       planPosition: (team, position) => t('editItem.positionThisPlan', { team, position }),
+      planPositionShort: (position) => t('mobileOrder.positionThisPlanShort', { position }),
       unknownTeam: t('common:fallback.team'),
     }),
     [plan.plan_positions, t, teams.data],
   );
-  const personChoices = leaderPersonChoices(people.data ?? [], personQuery, draft.leaderPersonId, t('common:fallback.unnamed'));
-  const leaderOffRoster = Boolean(
+  const leadingTeams = useMemo(() => staffedTeamIds(plan.assignments), [plan.assignments]);
+  const planPeople = useMemo(() => planPeopleChoices(plan.assignments, t('common:fallback.unnamed')), [plan.assignments, t]);
+  const { choices: personChoices, truncated: personsTruncated } = leaderPersonSuggestions({
+    planPeople,
+    results: people.data?.items ?? [],
+    query: personSearch,
+    selectedPersonId: draft.leaderPersonId,
+    hasMore: Boolean(people.data?.next_cursor),
+    unnamed: t('common:fallback.unnamed'),
+  });
+  // The chosen leader is not among these suggestions (another search, or off the roster): keep showing them.
+  const leaderNotListed = Boolean(
     draft.leaderPersonId && people.data && !personChoices.some((choice) => choice.id === draft.leaderPersonId),
   );
 
@@ -272,28 +298,34 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
             </View>
             {changingSong ? (
               <View style={styles.group}>
-                <Field
-                  label={t('editItem.findSong')}
+                <Label>{t('editItem.findSong')}</Label>
+                <SearchField
                   value={songQuery}
                   onChangeText={setSongQuery}
-                  placeholder={t('editItem.searchPlaceholder')}
-                  autoCorrect={false}
+                  placeholder={t('mobileSongBrowser.searchPlaceholder')}
+                  accessibilityLabel={t('editItem.findSong')}
                 />
+                {songs.isLoading ? <Loading /> : null}
                 <ErrorNotice error={songs.error} />
-                {(songs.data?.data ?? []).slice(0, 20).map((candidate) => (
-                  <PressableScale
-                    key={candidate.id}
-                    accessibilityLabel={candidate.title}
-                    onPress={() => {
-                      setDraft((current) => withSong(current, candidate));
-                      setChangingSong(false);
-                    }}
-                    pressedOpacity={0.6}
-                    style={styles.pickRow}
-                  >
-                    <Text style={styles.body}>{candidate.title}</Text>
-                  </PressableScale>
-                ))}
+                <View accessibilityRole="radiogroup" accessibilityLabel={t('editItem.findSong')} style={styles.songList}>
+                  {(songs.data?.data ?? []).map((candidate) => (
+                    <SongPickRow
+                      key={candidate.id}
+                      song={candidate}
+                      chosen={candidate.id === draft.songId}
+                      onPress={() => {
+                        setDraft((current) => withSong(current, candidate));
+                        setChangingSong(false);
+                      }}
+                    />
+                  ))}
+                </View>
+                {songs.data && songs.data.data.length === 0 ? <Text style={styles.hint}>{t('addItem.noSongs')}</Text> : null}
+                {songs.data && songs.data.total > songs.data.data.length ? (
+                  <Text style={styles.hint}>
+                    {t('common:list.showingOfRefine', { shown: songs.data.data.length, total: songs.data.total })}
+                  </Text>
+                ) : null}
               </View>
             ) : null}
 
@@ -435,24 +467,44 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
                   />
                   {people.isLoading ? <Loading /> : null}
                   <ErrorNotice error={people.error} />
+                  {!personSearch && planPeople.length ? <Text style={styles.hint}>{t('mobileOrder.onPlanFirst')}</Text> : null}
                   <View accessibilityRole="radiogroup" accessibilityLabel={t('editItem.personWhoLeads')} style={styles.chips}>
-                    {leaderOffRoster ? (
-                      <Chip label={item.leader_person?.full_name ?? t('editItem.currentLeader')} active onPress={() => undefined} />
+                    {leaderNotListed ? (
+                      <Chip
+                        label={draft.leaderPersonId === item.leader_person_id
+                          ? (item.leader_person?.full_name ?? t('editItem.currentLeader'))
+                          : t('editItem.currentLeader')}
+                        active
+                        onPress={() => undefined}
+                      />
                     ) : null}
                     {personChoices.map((choice) => (
-                      <Chip key={choice.id} label={choice.label} active={draft.leaderPersonId === choice.id} onPress={() => set('leaderPersonId', choice.id)} />
+                      <Chip
+                        key={choice.id}
+                        label={choice.onPlan ? t('mobileOrder.onPlanName', { name: choice.label }) : choice.label}
+                        active={draft.leaderPersonId === choice.id}
+                        onPress={() => set('leaderPersonId', choice.id)}
+                      />
                     ))}
                   </View>
+                  {people.data && personChoices.length === 0 ? <Text style={styles.hint}>{t('mobileOrder.noPersonMatch')}</Text> : null}
+                  {personsTruncated ? (
+                    <Text style={styles.hint}>{t('common:list.refineSearch', { shown: personChoices.length })}</Text>
+                  ) : null}
                 </View>
               ) : null}
               {draft.leaderMode === 'position' ? (
                 <View style={styles.group}>
                   <ErrorNotice error={teams.error} />
-                  <View accessibilityRole="radiogroup" accessibilityLabel={t('editItem.positionWhoLeads')} style={styles.chips}>
-                    {positions.map((position) => (
-                      <Chip key={position.id} label={position.label} active={draft.leaderPositionId === position.id} onPress={() => set('leaderPositionId', position.id)} />
-                    ))}
-                  </View>
+                  <SearchableOptionPicker
+                    title={t('editItem.positionWhoLeads')}
+                    options={positionOptions}
+                    selected={draft.leaderPositionId ? [draft.leaderPositionId] : []}
+                    mode="single"
+                    leadingGroupKeys={leadingTeams}
+                    searchPlaceholder={t('mobileOrder.searchPositions')}
+                    onChange={(next) => set('leaderPositionId', next[0] ?? '')}
+                  />
                   <Text style={styles.hint}>{t('editItem.positionFollowsHint')}</Text>
                 </View>
               ) : null}
@@ -499,13 +551,7 @@ const makeStyles = (theme: Theme) =>
     danger: { ...theme.type.bodySmall, color: theme.accent.red.fg },
     multiline: { minHeight: 88, paddingTop: theme.space.sm, textAlignVertical: 'top' },
     songLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.space.md },
-    pickRow: {
-      minHeight: 44,
-      justifyContent: 'center',
-      paddingHorizontal: theme.space.sm,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.color.border,
-    },
+    songList: { marginHorizontal: -theme.space.sm },
     switchRow: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     warning: {
       flexDirection: 'row',

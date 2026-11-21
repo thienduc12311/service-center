@@ -19,7 +19,9 @@ import {
   seriesRequest,
   showsInsertPosition,
   upsertGenerationEdit,
+  templateOptions,
   usableTemplates,
+  ALL_SERVICE_TYPES_GROUP,
 } from './template-use';
 
 const REVISION = '11111111-1111-4111-8111-111111111111';
@@ -41,6 +43,19 @@ const template = (overrides: Partial<PlanTemplateSummary> = {}): PlanTemplateSum
   current_revision_id: REVISION,
   counts: { times: 1, items: 4, needs: 0, roster: 2, has_notes: false },
   ...overrides,
+});
+
+describe('template options', () => {
+  it('groups by service type, templates for every type together', () => {
+    const options = templateOptions(
+      [template(), template({ id: 'b', name: 'Easter', service_type: { id: 'st1', name: 'Sunday service' } })],
+      { label: (t) => `${t.name} · rev ${t.current_revision}`, groupedLabel: (t) => t.name, allServiceTypes: 'All service types' },
+    );
+    expect(options.map((o) => [o.value, o.label, o.groupedLabel, o.groupKey, o.groupLabel])).toEqual([
+      ['22222222-2222-4222-8222-222222222222', 'Sunday · rev 2', 'Sunday', ALL_SERVICE_TYPES_GROUP, 'All service types'],
+      ['b', 'Easter · rev 2', 'Easter', 'st1', 'Sunday service'],
+    ]);
+  });
 });
 
 describe('template choices', () => {

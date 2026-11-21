@@ -4,25 +4,34 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type {
   AttendanceConflict,
+  Paginated,
+  PlanSummary,
   StaffingMatrixAction,
   StaffingMatrixFilters,
   StaffingMatrixPreview,
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { keys, useServiceTypes, useStaffingMatrix, useStaffingMatrixViews, useTeams } from '../hooks/queries';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { FIRST_PAGE, hasPreviousPage, nextPage, pageNumber, previousPage, type CursorStack } from '../lib/cursor-stack';
+import {
+  defaultMatrixFilters,
+  isPlanLimitError,
+  STAFFING_MATRIX_PLAN_LIMIT,
+} from '../lib/staffing-window';
 import { useAuth } from '../providers/AuthProvider';
-import { Badge, Button, EmptyState, ErrorNotice, Modal, PageHeader, SkeletonList } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, Modal, Notice, PageHeader, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
 import { assignmentTone } from '../lib/format';
 import { useFormatters, useStructuredText } from '../i18n';
 import { staffingMatrixItemWarnings } from '@service-center/shared';
 
-const day = 86_400_000;
-const defaultFilters = (): StaffingMatrixFilters => ({
-  from: new Date().toISOString(),
-  to: new Date(Date.now() + 56 * day).toISOString(),
-  service_type_ids: [], team_ids: [], plan_ids: [], search: null,
-});
+/** People pages, remembered per person search: a new search starts again at the first page. */
+interface PeoplePaging {
+  search: string;
+  stack: CursorStack;
+}
+
 const dateInput = (value: string): string => value.slice(0, 10);
 const dateStart = (value: string): string => new Date(`${value}T00:00:00`).toISOString();
 const dateEnd = (value: string): string => new Date(`${value}T23:59:59.999`).toISOString();
@@ -30,12 +39,18 @@ const cellKey = (personId: string, planId: string): string => `${personId}:${pla
 
 export const StaffingMatrixPage = () => {
   const { t } = useTranslation(['staffing', 'common']);
-  const { dateTime } = useFormatters();
+  const { date, dateTime } = useFormatters();
   const structured = useStructuredText();
   const { organizationId } = useAuth();
   const client = useQueryClient();
-  const [filters, setFilters] = useState<StaffingMatrixFilters>(defaultFilters);
-  const [cursor, setCursor] = useState<string>();
+  const [filters, setFilters] = useState<StaffingMatrixFilters>(() => defaultMatrixFilters());
+  const [personSearch, setPersonSearch] = useState('');
+  const search = useDebouncedValue(personSearch.trim());
+  const [paging, setPaging] = useState<PeoplePaging>({ search: '', stack: FIRST_PAGE });
+  const pages = paging.search === search ? paging.stack : FIRST_PAGE;
+  const setPages = (stack: CursorStack) => setPaging({ search, stack });
+  const resetPages = () => setPages(FIRST_PAGE);
+  const [planPage, setPlanPage] = useState<Paginated<PlanSummary> | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<StaffingMatrixPreview | null>(null);
   const [commitKey, setCommitKey] = useState('');
@@ -45,8 +60,50 @@ export const StaffingMatrixPage = () => {
   const [visibility, setVisibility] = useState<'prepared' | 'released'>('prepared');
   const [notify, setNotify] = useState(false);
   const gridRef = useRef<HTMLTableElement>(null);
-  const input = useMemo(() => ({ filters, ...(cursor ? { cursor } : {}), page_size: 25 }), [filters, cursor]);
+  const matrixFilters = useMemo<StaffingMatrixFilters>(() => ({
+    ...filters,
+    plan_ids: planPage?.data.map((plan) => plan.id) ?? filters.plan_ids,
+    search: search || null,
+  }), [filters, planPage, search]);
+  const input = useMemo(
+    () => ({ filters: matrixFilters, ...(pages.current ? { cursor: pages.current } : {}), page_size: 25 }),
+    [matrixFilters, pages],
+  );
   const matrix = useStaffingMatrix(input);
+  const planLimitHit = isPlanLimitError(matrix.error);
+  // The plan list orders by service date and id, so plans at the same instant
+  // can span pages. Pin each page by ID within the original date range.
+  const fitWindow = useMutation({
+    mutationFn: (page: number): Promise<Paginated<PlanSummary>> => {
+      const serviceTypeId = filters.service_type_ids.length === 1 ? filters.service_type_ids[0] : undefined;
+      return api.listPlans({
+        from: filters.from, to: filters.to, order: 'asc', page, per_page: STAFFING_MATRIX_PLAN_LIMIT,
+        ...(serviceTypeId ? { service_type_id: serviceTypeId } : {}),
+      });
+    },
+  });
+  const showPlanPage = (page: number) => fitWindow.mutate(page, {
+    onSuccess: (next) => {
+      if (next.data.length > 0) {
+        resetPages();
+        setSelected(new Set());
+        setPlanPage(next);
+      } else {
+        // If plans were removed while paging, keep the current columns.
+        setPlanPage((current) => current && { ...current, total: next.total });
+      }
+    },
+  });
+  const resetPlanPages = () => {
+    fitWindow.reset();
+    setPlanPage(null);
+    resetPages();
+  };
+  const changeRange = (next: StaffingMatrixFilters) => {
+    resetPlanPages();
+    setFilters({ ...next, plan_ids: [] });
+  };
+  const laterPlans = planPage && planPage.page * planPage.per_page < planPage.total;
   const views = useStaffingMatrixViews();
   const teams = useTeams();
   const serviceTypes = useServiceTypes();
@@ -85,7 +142,7 @@ export const StaffingMatrixPage = () => {
     },
   });
   const saveView = useMutation({
-    mutationFn: () => api.saveStaffingMatrixView({ name: viewName, filters }),
+    mutationFn: () => api.saveStaffingMatrixView({ name: viewName, filters: matrixFilters }),
     onSuccess: async () => { setViewName(''); await client.invalidateQueries({ queryKey: keys.staffingMatrixViews(organizationId) }); },
   });
 
@@ -152,21 +209,45 @@ export const StaffingMatrixPage = () => {
         actions={<Link to="/plans/proposals"><Button variant="secondary" icon="people" tabIndex={-1}>{t('matrix.proposeStaffing')}</Button></Link>} />
       <section className="card space-y-4 p-4" aria-label={t('matrix.filters')}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="field">{t('matrix.from')}<input className="input" type="date" value={dateInput(filters.from)} onChange={(e) => { setCursor(undefined); setFilters({ ...filters, from: dateStart(e.target.value) }); }} /></label>
-          <label className="field">{t('matrix.to')}<input className="input" type="date" value={dateInput(filters.to)} onChange={(e) => { setCursor(undefined); setFilters({ ...filters, to: dateEnd(e.target.value) }); }} /></label>
-          <label className="field">{t('matrix.serviceType')}<select className="input" value={filters.service_type_ids[0] ?? ''} onChange={(e) => { setCursor(undefined); setFilters({ ...filters, service_type_ids: e.target.value ? [e.target.value] : [] }); }}><option value="">{t('matrix.allPermitted')}</option>{(serviceTypes.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label className="field">{t('matrix.team')}<select className="input" value={filters.team_ids[0] ?? ''} onChange={(e) => { setCursor(undefined); setTeamId(e.target.value); setPositionId(''); setFilters({ ...filters, team_ids: e.target.value ? [e.target.value] : [] }); }}><option value="">{t('matrix.allPermitted')}</option>{(teams.data ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
+          <label className="field">{t('matrix.from')}<input className="input" type="date" value={dateInput(filters.from)} onChange={(e) => changeRange({ ...filters, from: dateStart(e.target.value) })} /></label>
+          <label className="field">{t('matrix.to')}<input className="input" type="date" value={dateInput(filters.to)} onChange={(e) => changeRange({ ...filters, to: dateEnd(e.target.value) })} /></label>
+          <label className="field">{t('matrix.serviceType')}<select className="input" value={filters.service_type_ids[0] ?? ''} onChange={(e) => changeRange({ ...filters, service_type_ids: e.target.value ? [e.target.value] : [] })}><option value="">{t('matrix.allPermitted')}</option>{(serviceTypes.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label className="field">{t('matrix.team')}<select className="input" value={filters.team_ids[0] ?? ''} onChange={(e) => { resetPages(); setTeamId(e.target.value); setPositionId(''); setFilters({ ...filters, team_ids: e.target.value ? [e.target.value] : [] }); }}><option value="">{t('matrix.allPermitted')}</option>{(teams.data ?? []).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
         </div>
         <div className="flex flex-wrap items-end gap-2 border-t border-app-border pt-4">
-          <label className="field min-w-0 flex-1 basis-48">{t('matrix.findPerson')}<input className="input" value={filters.search ?? ''} onChange={(e) => { setCursor(undefined); setFilters({ ...filters, search: e.target.value || null }); }} /></label>
-          <label className="field min-w-0 flex-1 basis-48 sm:flex-none">{t('matrix.savedView')}<select className="input" value="" onChange={(e) => { const view = views.data?.find((item) => item.id === e.target.value); if (view) { setCursor(undefined); setFilters(view.filters); setTeamId(view.filters.team_ids[0] ?? ''); } }}><option value="">{t('matrix.chooseEllipsis')}</option>{(views.data ?? []).map((view) => <option key={view.id} value={view.id}>{view.name}</option>)}</select></label>
+          <label className="field min-w-0 flex-1 basis-48">{t('matrix.findPerson')}<input className="input" type="search" value={personSearch} onChange={(e) => setPersonSearch(e.target.value)} /></label>
+          <label className="field min-w-0 flex-1 basis-48 sm:flex-none">{t('matrix.savedView')}<select className="input" value="" onChange={(e) => { const view = views.data?.find((item) => item.id === e.target.value); if (view) { resetPlanPages(); setFilters(view.filters); setPersonSearch(view.filters.search ?? ''); setTeamId(view.filters.team_ids[0] ?? ''); } }}><option value="">{t('matrix.chooseEllipsis')}</option>{(views.data ?? []).map((view) => <option key={view.id} value={view.id}>{view.name}</option>)}</select></label>
           <input aria-label={t('matrix.newViewName')} className="input min-w-0 flex-1 basis-40 sm:w-48 sm:flex-none" placeholder={t('matrix.viewName')} value={viewName} onChange={(e) => setViewName(e.target.value)} />
           <Button variant="secondary" icon="check" disabled={!viewName.trim()} loading={saveView.isPending} onClick={() => saveView.mutate()}>{t('matrix.saveView')}</Button>
         </div>
       </section>
 
-      <ErrorNotice error={matrix.error ?? previewMutation.error ?? saveView.error} />
-      {matrix.isLoading ? <SkeletonList rows={4} /> : !matrix.data?.plans.length ? <EmptyState icon="grid" title={t('matrix.emptyTitle')} description={t('matrix.emptyDescription')} /> : (
+      <ErrorNotice error={(planLimitHit ? null : matrix.error) ?? fitWindow.error ?? previewMutation.error ?? saveView.error} />
+      {planLimitHit && (
+        <Notice tone="warning">
+          <p>{t('matrix.planLimit', { count: STAFFING_MATRIX_PLAN_LIMIT })}</p>
+          <Button className="mt-2" size="sm" loading={fitWindow.isPending} onClick={() => showPlanPage(1)}>
+            {t('matrix.planLimitAction', { count: STAFFING_MATRIX_PLAN_LIMIT })}
+          </Button>
+        </Notice>
+      )}
+      {planPage && !planLimitHit && (
+        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+          <span>{t('matrix.planWindow', { count: STAFFING_MATRIX_PLAN_LIMIT, end: date(filters.to, 'medium') })}</span>
+          {laterPlans && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="chevronRight"
+              loading={fitWindow.isPending}
+              onClick={() => showPlanPage(planPage.page + 1)}
+            >
+              {t('matrix.laterPlans', { count: STAFFING_MATRIX_PLAN_LIMIT })}
+            </Button>
+          )}
+        </div>
+      )}
+      {matrix.isLoading ? <SkeletonList rows={4} /> : planLimitHit ? null : !matrix.data?.plans.length ? <EmptyState icon="grid" title={t('matrix.emptyTitle')} description={t('matrix.emptyDescription')} /> : (
         <>
           <section className="card flex flex-wrap items-end gap-3 p-4" aria-label={t('matrix.selectedActions')}>
             <div className="mr-auto flex w-full items-start gap-3 lg:w-auto"><span className={`grid size-9 shrink-0 place-items-center rounded-xl ${selected.size ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}><Icon name="check" className="size-[18px]" /></span><div className="min-w-0"><p className="font-semibold text-slate-900 dark:text-white">{t('matrix.cellsSelected', { count: selected.size })}</p><p className="text-xs text-slate-500 dark:text-slate-400">{t('matrix.keyboardHint')}</p></div></div>
@@ -185,7 +266,17 @@ export const StaffingMatrixPage = () => {
               <tbody>{matrix.data.people.map((person, row) => <tr key={person.id}><th className="sticky left-0 z-10 border-b border-r border-app-border bg-app-surface p-3 text-left align-top font-normal"><div className="font-medium text-slate-900 dark:text-white">{person.full_name}</div><div className="text-xs text-slate-500 dark:text-slate-400">{person.last_served_at ? t('matrix.recentWithLast', { count: person.recent_serving_count, last: dateTime(person.last_served_at) }) : t('matrix.recent', { count: person.recent_serving_count })}</div></th>{matrix.data!.plans.map((plan, column) => { const key = cellKey(person.id, plan.id); const assignments = assignmentsByCell.get(key) ?? []; const conflicts = conflictsByCell.get(key) ?? []; const chosen = selected.has(key); return <td key={plan.id} className="border-b border-r border-app-border p-1 align-top"><button type="button" data-row={row} data-column={column} aria-pressed={chosen} aria-label={t(chosen ? 'matrix.deselectCell' : 'matrix.selectCell', { name: person.full_name, plan: plan.title })} className={`min-h-20 w-full rounded-lg p-2 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-brand-500 ${chosen ? 'bg-brand-50 ring-1 ring-inset ring-brand-300 dark:bg-brand-500/15 dark:ring-brand-500/40' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'}`} onClick={() => toggleCell(key)} onKeyDown={(event) => navigateGrid(event, row, column, key)}>{assignments.map((assignment) => <div key={assignment.id} className="mb-1 flex flex-wrap items-center gap-1"><span className="font-medium text-slate-800 dark:text-slate-100">{assignment.position_name ?? assignment.team_name}</span> <Badge tone={assignment.visibility === 'prepared' ? 'bg-transparent text-slate-600 ring-slate-400/50 dark:text-slate-300' : assignmentTone[assignment.status]}>{assignment.visibility === 'prepared' ? t('matrix.prepared') : t(`common:assignmentStatus.${assignment.status}`)}</Badge></div>)}{!assignments.length && <span className="text-slate-300 dark:text-slate-600">{t('matrix.emptyCell')}</span>}{conflicts.length > 0 && <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300"><Icon name="alert" className="size-3.5" />{t('matrix.conflictCount', { count: conflicts.length })}</div>}</button></td>; })}</tr>)}</tbody>
             </table>
           </div>
-          {matrix.data.next_cursor && <div className="flex justify-end"><Button variant="secondary" icon="chevronRight" onClick={() => setCursor(matrix.data!.next_cursor ?? undefined)}>{t('matrix.nextPeople')}</Button></div>}
+          {(hasPreviousPage(pages) || matrix.data.next_cursor) && (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className="mr-auto text-xs text-slate-500 dark:text-slate-400">{t('matrix.peoplePage', { page: pageNumber(pages) })}</span>
+              {hasPreviousPage(pages) && (
+                <Button variant="secondary" icon="chevronLeft" onClick={() => setPages(previousPage(pages))}>{t('matrix.previousPeople')}</Button>
+              )}
+              {matrix.data.next_cursor && (
+                <Button variant="secondary" icon="chevronRight" onClick={() => setPages(nextPage(pages, matrix.data!.next_cursor!))}>{t('matrix.nextPeople')}</Button>
+              )}
+            </div>
+          )}
         </>
       )}
 

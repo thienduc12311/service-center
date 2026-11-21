@@ -20,10 +20,18 @@ import {
   type TeamWithPositions,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
-import { keys, usePeople, useSong, useSongs } from '../../hooks/queries';
+import { keys, usePeople, useSong, useSongPages } from '../../hooks/queries';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, ErrorNotice, Modal } from '../ui';
 import { KeySelect } from '../KeySelect';
+import { SearchCombobox } from '../SearchCombobox';
+import { SearchableSelect } from '../SearchableSelect';
+import { SongSearchList, songListSource } from './SongSearchList';
+import { leaderPersonChoices, leaderPositionChoices, type LeaderChoiceLabels, type PickerChoices } from './leaderChoices';
+
+/** Rows per page in "Change song". */
+const CHANGE_SONG_PAGE_SIZE = 10;
 
 export interface EditItemModalProps {
   plan: PlanDetail;
@@ -48,7 +56,19 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
   const [changingSong, setChangingSong] = useState(false);
   const [formError, setFormError] = useState<LocalizedError | null>(null);
   const song = useSong(draft.itemType === 'song' ? (draft.songId ?? undefined) : undefined);
-  const songs = useSongs({ q: songQuery || undefined, per_page: 10 });
+  const settledSongQuery = useDebouncedValue(songQuery.trim());
+  const [now] = useState(() => new Date());
+  // The song browser's list, compact: server search by title, author or CCLI, A–Z, 10 at a time.
+  const songs = useSongPages(
+    {
+      sort: 'title',
+      per_page: CHANGE_SONG_PAGE_SIZE,
+      plan_id: plan.id,
+      ...(plan.service_type_id ? { service_type_id: plan.service_type_id } : {}),
+      ...(settledSongQuery ? { q: settledSongQuery } : {}),
+    },
+    changingSong,
+  );
   const people = usePeople();
   const set = <K extends keyof PlanItemDraft>(key: K, value: PlanItemDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
 
@@ -74,17 +94,22 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
     return [...new Set(labels)].filter((label) => label.length <= 20);
   }, [chosenArrangement]);
 
-  const positions = useMemo(() => {
-    const options = teams.flatMap((team) =>
-      team.positions.filter((position) => !position.plan_id).map((position) => ({ id: position.id, label: t('common:format.teamPosition', { team: team.name, position: position.name }) })),
-    );
-    for (const position of plan.plan_positions) {
-      const team = teams.find((candidate) => candidate.id === position.team_id);
-      options.push({ id: position.id, label: t('editItem.positionThisPlan', { team: team?.name ?? t('common:fallback.team'), position: position.name }) });
+  const leaderLabels = useMemo<LeaderChoiceLabels>(() => ({
+    unnamed: t('common:fallback.unnamed'),
+    team: t('common:fallback.team'),
+    planOnly: t('editItem.planOnlyPosition'),
+    teamPosition: (team, position) => t('common:format.teamPosition', { team, position }),
+  }), [t]);
+  const positionChoices = useMemo(() => leaderPositionChoices({ plan, teams, labels: leaderLabels }), [plan, teams, leaderLabels]);
+  const personChoices = useMemo<PickerChoices>(() => {
+    const choices = leaderPersonChoices({ plan, roster: people.data ?? [], labels: leaderLabels });
+    const current = draft.leaderPersonId;
+    // A leader who has since left the roster stays selectable as the current value.
+    if (current && !choices.options.some((option) => option.id === current) && !choices.suggested.some((option) => option.id === current)) {
+      choices.options.push({ id: current, label: item.leader_person?.full_name ?? t('editItem.currentLeader') });
     }
-    return options;
-  }, [teams, plan.plan_positions, t]);
-  const roster = (people.data ?? []).filter((person) => person.person_id && !person.archived);
+    return choices;
+  }, [plan, people.data, leaderLabels, draft.leaderPersonId, item.leader_person, t]);
 
   const save = useMutation({
     mutationFn: () => api.updatePlanItem(plan.id, item.id, { ...changes, expected_revision: baseRevision }),
@@ -158,26 +183,24 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
               </Button>
             </div>
             {changingSong && (
-              <div>
-                <label className="label" htmlFor="edit-item-song">{t('editItem.findSong')}</label>
-                <input id="edit-item-song" className="input" value={songQuery} onChange={(event) => setSongQuery(event.target.value)} placeholder={t('editItem.searchPlaceholder')} />
-                <ul className="mt-1 max-h-40 overflow-y-auto">
-                  {(songs.data?.data ?? []).map((candidate) => (
-                    <li key={candidate.id}>
-                      <button
-                        type="button"
-                        className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
-                        onClick={() => {
-                          setDraft((current) => withSong(current, candidate));
-                          setChangingSong(false);
-                        }}
-                      >
-                        {candidate.title}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <SongSearchList
+                searchLabel={t('editItem.findSong')}
+                placeholder={t('editItem.searchPlaceholder')}
+                text={songQuery}
+                onTextChange={setSongQuery}
+                settledText={settledSongQuery}
+                songs={songListSource(songs)}
+                onPick={(candidate) => {
+                  setDraft((current) => withSong(current, candidate));
+                  setChangingSong(false);
+                }}
+                pickLabel={(candidate) => t('editItem.useSong', { title: candidate.title })}
+                planDate={plan.service_date}
+                compact
+                autoFocus
+                emptyText={t('addItem.noSongs')}
+                now={now}
+              />
             )}
 
             <div>
@@ -297,24 +320,34 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
               ))}
             </div>
             {draft.leaderMode === 'person' && (
-              <select aria-label={t('editItem.personWhoLeads')} className="input mt-2" value={draft.leaderPersonId} onChange={(event) => set('leaderPersonId', event.target.value)}>
-                <option value="">{t('editItem.choosePerson')}</option>
-                {roster.map((person) => (
-                  <option key={person.person_id!} value={person.person_id!}>{person.full_name ?? t('common:fallback.unnamed')}</option>
-                ))}
-                {draft.leaderPersonId && !roster.some((person) => person.person_id === draft.leaderPersonId) && (
-                  <option value={draft.leaderPersonId}>{item.leader_person?.full_name ?? t('editItem.currentLeader')}</option>
-                )}
-              </select>
+              <div className="mt-2">
+                <SearchCombobox
+                  label={t('editItem.personWhoLeads')}
+                  hideLabel
+                  value={draft.leaderPersonId}
+                  onChange={(id) => set('leaderPersonId', id)}
+                  options={personChoices.options}
+                  suggested={personChoices.suggested}
+                  suggestedLabel={t('editItem.onThisPlan')}
+                  restLabel={t('editItem.everyone')}
+                  placeholder={t('editItem.searchPerson')}
+                />
+              </div>
             )}
             {draft.leaderMode === 'position' && (
               <>
-                <select aria-label={t('editItem.positionWhoLeads')} className="input mt-2" value={draft.leaderPositionId} onChange={(event) => set('leaderPositionId', event.target.value)}>
-                  <option value="">{t('editItem.choosePosition')}</option>
-                  {positions.map((position) => (
-                    <option key={position.id} value={position.id}>{position.label}</option>
-                  ))}
-                </select>
+                <div className="mt-2">
+                  <SearchableSelect
+                    label={t('editItem.positionWhoLeads')}
+                    hideLabel
+                    value={draft.leaderPositionId}
+                    onChange={(id) => set('leaderPositionId', id)}
+                    options={positionChoices.options}
+                    suggested={positionChoices.suggested}
+                    suggestedLabel={t('editItem.staffedOnThisPlan')}
+                    placeholder={t('editItem.searchPosition')}
+                  />
+                </div>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('editItem.positionFollowsHint')}</p>
               </>
             )}

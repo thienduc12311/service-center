@@ -20,9 +20,14 @@ insert into fx values
   ('plan',  gen_random_uuid()),
   ('st2',   gen_random_uuid());
 
+-- Schedule beyond the seeded services and rehearsals so the authorization
+-- assertions do not depend on when the suite runs relative to seed dates.
 insert into public.plans (id, organization_id, service_type_id, title, service_date, status)
-values ((select id from fx where k = 'plan'), (select id from fx where k = 'org'), (select id from fx where k = 'st'),
-        'F01 fixture', now() + interval '20 days', 'published');
+select (select id from fx where k = 'plan'), (select id from fx where k = 'org'), (select id from fx where k = 'st'),
+       'F01 fixture', greatest(now(), max(p.service_date), max(t.ends_at)) + interval '20 days', 'published'
+  from public.plans p
+  left join public.plan_times t on t.plan_id = p.id
+ where p.organization_id = (select id from fx where k = 'org');
 insert into public.service_types (id, organization_id, name)
 values ((select id from fx where k = 'st2'), (select id from fx where k = 'org'), 'F01 Youth');
 

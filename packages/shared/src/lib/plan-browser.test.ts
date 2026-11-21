@@ -30,8 +30,13 @@ describe('planBrowserQuery', () => {
     });
   });
 
+  it('sends a title search only when one is typed', () => {
+    expect(planBrowserQuery({ window: 'upcoming', serviceTypeId: null, status: null, openedAt, q: '  easter ' }, 1).q).toBe('easter');
+    expect(planBrowserQuery({ window: 'upcoming', serviceTypeId: null, status: null, openedAt, q: '   ' }, 1)).not.toHaveProperty('q');
+  });
+
   it('is accepted unchanged by the server schema', () => {
-    const query = planBrowserQuery({ window: 'history', serviceTypeId: typeId, status: 'draft', openedAt }, 2);
+    const query = planBrowserQuery({ window: 'history', serviceTypeId: typeId, status: 'draft', openedAt, q: 'easter' }, 2);
     expect(listPlansQuerySchema.parse(query)).toEqual(query);
   });
 });

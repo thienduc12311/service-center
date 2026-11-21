@@ -35,6 +35,8 @@
     "building": "Đang lập báo cáo…",
     "generated": "Lập lúc {{time}} · {{timezone}}",
     "truncated": "Đã cắt bớt: hãy thu hẹp bộ lọc hoặc xếp hàng một bản xuất.",
+    "truncatedBanner": "Báo cáo này chưa đầy đủ: bảng chỉ hiện tối đa {{rows}} dòng, và mỗi báo cáo chỉ đọc tối đa {{plans}} chương trình (vượt quá mức đó thì số tổng cũng thiếu). Hãy thu hẹp khoảng ngày hoặc bộ lọc để xem đầy đủ.",
+    "sortBy": "Sắp xếp theo {{column}}",
     "downloadCsv": "Tải CSV",
     "queueExport": "Xếp hàng bản xuất",
     "noMatches": "Không có kết quả khớp với bộ lọc này",
@@ -63,7 +65,8 @@
   },
   "followUp": {
     "title": "Cần theo dõi ({{total}})",
-    "line": "{{person}} — {{team}} · {{position}} trong {{plan}}: {{response}}"
+    "line": "{{person}} — {{team}} · {{position}} trong {{plan}}: {{response}}",
+    "showAll": "Hiện tất cả {{total}}"
   },
   "exports": {
     "title": "Bản xuất của tôi",
@@ -72,6 +75,7 @@
     "range": "{{kind}} · {{from}} đến {{to}}",
     "until": "đến {{time}}",
     "buildAgain": "Lập lại",
+    "latest_other": "{{count}} gần nhất",
     "status": {
       "queued": "Đang xếp hàng",
       "running": "Đang lập",
@@ -198,6 +202,13 @@
     "nobody": "Không có ai có yêu cầu đã gửi được phân công vào giờ này.",
     "nobodyOnYourTeams": "Không có ai có yêu cầu đã gửi được phân công vào giờ này trong các ban bạn phân công.",
     "markEveryone": "Đánh dấu tất cả những người tôi có thể:",
+    "searchLabel": "Tìm người trong khung giờ này",
+    "searchPlaceholder": "Tìm theo tên hoặc vị trí",
+    "noMatch": "Không có ai khớp với từ khóa và bộ lọc này.",
+    "filter": {
+      "label": "Hiển thị",
+      "all": "Tất cả"
+    },
     "discardChanges": "Bỏ các thay đổi",
     "hiddenPeople_other": "Còn {{count}} người khác được phân công trong các ban bạn không phân công.",
     "orphaned": "Giữ lại từ trước (không còn được phân công vào giờ này): {{list}}",
@@ -257,7 +268,11 @@
     "markLabel": "Đánh dấu {{name}} {{status}}",
     "hideHistory": "Ẩn lịch sử",
     "role": "{{team}} · {{position}}",
-    "orphanedTitle": "Giữ lại từ trước (không còn được phân công vào giờ này)"
+    "orphanedTitle": "Giữ lại từ trước (không còn được phân công vào giờ này)",
+    "searchNames": "Lọc theo tên",
+    "noNameMatch": "Không có ai trong danh sách này trùng với tên đó.",
+    "teamGroup_other": "{{team}} · {{count}} người",
+    "otherTeam": "Khác"
   },
   "mobileReport": {
     "screenTitle": "Báo cáo lịch phục vụ",

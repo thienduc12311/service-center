@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -27,14 +27,28 @@ import {
   type PlanDetail,
   type SendOperationalMessageResult,
   type TeamWithPositions,
+  type TextHandoffRecipient,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
 import { newIdempotencyKey } from '../../src/lib/idempotency';
 import { openTextComposer } from '../../src/lib/message-handoff';
 import { useDiscardGuard } from '../../src/lib/useDiscardGuard';
+import {
+  containsAll,
+  filterHandoffCandidates,
+  filterRecipients,
+  recipientName,
+  recipientNamePreview,
+  toggleableIds,
+  withAll,
+  withoutAll,
+} from '../../src/lib/compose-recipients';
 import { useAuth } from '../../src/providers/AuthProvider';
-import { Button, Card, Chip, Divider, EmptyState, ErrorNotice, Field, Label, Loading, Screen, Tag, screenPadding } from '../../src/components/ui';
+import { Button, Card, Chip, EmptyState, ErrorNotice, Field, Label, Loading, Screen, Tag, screenPadding } from '../../src/components/ui';
+import { BottomSheet } from '../../src/components/BottomSheet';
+import { SearchField } from '../../src/components/SearchField';
+import { SearchableOptionPicker } from '../../src/components/SearchableOptionSheet';
 import { PressableScale } from '../../src/components/motion';
 import { Icon } from '../../src/components/icons';
 import { useFormatters } from '../../src/i18n';
@@ -123,6 +137,7 @@ function MessageComposer({ plan, teams }: MessageComposerProps) {
   const [selectionChanged, setSelectionChanged] = useState(false);
   const [staleNotice, setStaleNotice] = useState(false);
   const [excluded, setExcluded] = useState<string[]>([]);
+  const [reviewing, setReviewing] = useState(false);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -286,16 +301,13 @@ function MessageComposer({ plan, teams }: MessageComposerProps) {
               />
             ))}
             <Text style={styles.muted}>{plan ? t('messageComposer.limitTeamsHint') : t('messageComposer.teamsLabel')}</Text>
-            <View style={styles.wrap}>
-              {teams.map((team) => (
-                <Chip
-                  key={team.id}
-                  label={team.name}
-                  active={teamIds.includes(team.id)}
-                  onPress={() => changeAudience(() => setTeamIds((current) => toggle(current, team.id)))}
-                />
-              ))}
-            </View>
+            <SearchableOptionPicker
+              title={plan ? t('messageComposer.limitTeamsHint') : t('messageComposer.teamsLabel')}
+              options={teams.map((team) => ({ value: team.id, label: team.name }))}
+              selected={teamIds}
+              mode="multi"
+              onChange={(next) => changeAudience(() => setTeamIds(next))}
+            />
             {problem ? <Text style={styles.muted}>{t(`mobileMessages.problems.${problem}`)}</Text> : null}
             <Button
               title={preview ? t('messageComposer.refreshRecipients') : t('messageComposer.previewRecipients')}
@@ -323,18 +335,26 @@ function MessageComposer({ plan, teams }: MessageComposerProps) {
               {preview.recipients.length === 0 ? (
                 <Text style={styles.muted}>{t('messageComposer.nobodyMatches')}</Text>
               ) : (
-                preview.recipients.map((recipient, index) => (
-                  <View key={recipient.person_id}>
-                    {index > 0 ? <Divider /> : null}
-                    <RecipientRow
-                      recipient={recipient}
-                      included={recipient.reachable && !excluded.includes(recipient.person_id)}
-                      onToggle={() => setExcluded((current) => toggle(current, recipient.person_id))}
-                    />
-                  </View>
-                ))
+                <>
+                  <RecipientSummary preview={preview} excluded={excluded} />
+                  <Button
+                    title={t('mobileMessages.reviewRecipients', { count: preview.recipients.length })}
+                    variant="secondary"
+                    icon="people"
+                    onPress={() => setReviewing(true)}
+                  />
+                </>
               )}
             </Card>
+          ) : null}
+          {preview ? (
+            <RecipientReviewSheet
+              visible={reviewing}
+              recipients={preview.recipients}
+              excluded={excluded}
+              onChange={setExcluded}
+              onClose={() => setReviewing(false)}
+            />
           ) : null}
 
           <Card>
@@ -489,6 +509,105 @@ function CheckRow({ label, checked, disabled = false, onPress, children }: Check
   );
 }
 
+interface RecipientSummaryProps {
+  preview: MessageAudiencePreview;
+  excluded: readonly string[];
+}
+
+/** A few names that will receive it, and how many more; who can't be reached is called out. */
+function RecipientSummary({ preview, excluded }: RecipientSummaryProps) {
+  const { t } = useTranslation('messages');
+  const format = useFormatters();
+  const styles = useThemedStyles(makeStyles);
+  const { names, more } = recipientNamePreview(preview.recipients, excluded);
+  const unreachable = preview.recipients.filter((recipient) => !recipient.reachable).length;
+  return (
+    <>
+      {names.length ? (
+        <Text style={styles.body}>
+          {more > 0 ? t('mobileMessages.namesAndMore', { names: format.list(names), count: more }) : format.list(names)}
+        </Text>
+      ) : null}
+      {unreachable > 0 ? <Text style={styles.danger}>{t('mobileMessages.unreachableCount', { count: unreachable })}</Text> : null}
+    </>
+  );
+}
+
+interface RecipientReviewSheetProps {
+  visible: boolean;
+  recipients: readonly MessageAudienceRecipient[];
+  excluded: readonly string[];
+  onChange: (excluded: string[]) => void;
+  onClose: () => void;
+}
+
+/** Every previewed recipient, searchable, each with an include toggle and bulk include/exclude of what's shown. */
+function RecipientReviewSheet({ visible, recipients, excluded, onChange, onClose }: RecipientReviewSheetProps) {
+  const { t } = useTranslation(['messages', 'common']);
+  const styles = useThemedStyles(makeStyles);
+  const [query, setQuery] = useState('');
+  const shown = useMemo(
+    () => filterRecipients(recipients, query, (reason) => t(`audienceReasons.${reason}`)),
+    [query, recipients, t],
+  );
+  const shownIds = toggleableIds(shown);
+  const allExcluded = containsAll(excluded, shownIds);
+  const noneExcluded = !shownIds.some((id) => excluded.includes(id));
+  const included = recipients.filter((recipient) => recipient.reachable && !excluded.includes(recipient.person_id)).length;
+
+  return (
+    <BottomSheet
+      visible={visible}
+      title={t('mobileMessages.reviewTitle')}
+      onClose={onClose}
+      footer={
+        <>
+          <Text style={[styles.muted, styles.flex]}>{t('messageComposer.willReceive', { count: included })}</Text>
+          <Button title={t('common:actions.done')} onPress={onClose} />
+        </>
+      }
+    >
+      <SearchField value={query} onChangeText={setQuery} placeholder={t('mobileMessages.searchRecipients')} />
+      <View style={styles.wrap}>
+        <Button
+          title={query.trim() ? t('mobileMessages.includeShown') : t('mobileMessages.includeAll')}
+          variant="quiet"
+          disabled={noneExcluded}
+          onPress={() => onChange(withoutAll(excluded, shownIds))}
+        />
+        <Button
+          title={query.trim() ? t('mobileMessages.excludeShown') : t('mobileMessages.excludeAll')}
+          variant="quiet"
+          disabled={shownIds.length === 0 || allExcluded}
+          onPress={() => onChange(withAll(excluded, shownIds))}
+        />
+      </View>
+      <FlatList
+        style={styles.flex}
+        data={shown}
+        keyExtractor={(recipient) => recipient.person_id}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        ItemSeparatorComponent={RowSeparator}
+        renderItem={({ item }) => (
+          <RecipientRow
+            recipient={item}
+            included={item.reachable && !excluded.includes(item.person_id)}
+            onToggle={() => onChange(excluded.includes(item.person_id) ? withoutAll(excluded, [item.person_id]) : withAll(excluded, [item.person_id]))}
+          />
+        )}
+        ListEmptyComponent={<Text style={styles.muted}>{t('mobileMessages.noRecipientMatch')}</Text>}
+      />
+    </BottomSheet>
+  );
+}
+
+/** A hairline between list rows. */
+function RowSeparator() {
+  const styles = useThemedStyles(makeStyles);
+  return <View style={styles.separator} />;
+}
+
 interface RecipientRowProps {
   recipient: MessageAudienceRecipient;
   included: boolean;
@@ -499,7 +618,7 @@ function RecipientRow({ recipient, included, onToggle }: RecipientRowProps) {
   const { t } = useTranslation('messages');
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const name = [recipient.first_name, recipient.last_name].filter(Boolean).join(' ');
+  const name = recipientName(recipient);
   return (
     <CheckRow
       label={t('messageComposer.includeName', { name })}
@@ -534,19 +653,24 @@ interface TextHandoffProps {
  * Texting from the person's own phone: only previewed recipients, only phone
  * numbers the People list discloses to this caller, nobody selected until the
  * sender chooses. Opening the composer records nothing and proves nothing.
+ *
+ * The preview carries no phone numbers, so they come from the People list —
+ * read only once the sender opens the chooser, never just for composing.
  */
 function TextHandoff({ preview, body, snapshot }: TextHandoffProps) {
-  const { t } = useTranslation('messages');
+  const { t } = useTranslation(['messages', 'common']);
   const format = useFormatters();
   const { queryScope } = useAuth();
   const styles = useThemedStyles(makeStyles);
   const [selected, setSelected] = useState<string[]>([]);
   const [opened, setOpened] = useState<'opened' | 'failed' | null>(null);
+  const [choosing, setChoosing] = useState(false);
+  const [wanted, setWanted] = useState(false);
 
   const people = useQuery({
     queryKey: queryKeys.people(queryScope),
     queryFn: () => api.listPeople(),
-    enabled: Boolean(queryScope),
+    enabled: Boolean(queryScope && wanted),
   });
 
   const candidates = useMemo(
@@ -563,41 +687,49 @@ function TextHandoff({ preview, body, snapshot }: TextHandoffProps) {
     const ok = await openTextComposer(chosen.flatMap((candidate) => (candidate.phone ? [candidate.phone] : [])), handoff.text);
     setOpened(ok ? 'opened' : 'failed');
   };
+  const choose = (next: string[]) => {
+    setOpened(null);
+    setSelected(next);
+  };
 
   return (
     <Card>
       <Label>{t('mobileMessages.textHeading')}</Label>
       <Text style={styles.muted}>{t('mobileMessages.textIntro')}</Text>
-      {people.isLoading ? <Loading /> : null}
-      <ErrorNotice error={people.error} />
-      {people.data && withPhone.length === 0 ? <Text style={styles.body}>{t('mobileMessages.textNoPhones')}</Text> : null}
-      {withPhone.map((candidate, index) => (
-        <View key={candidate.person_id}>
-          {index > 0 ? <Divider /> : null}
-          <CheckRow
-            label={t('mobileMessages.textSelect', { name: candidate.name })}
-            checked={selected.includes(candidate.person_id)}
-            onPress={() => {
-              setOpened(null);
-              setSelected((current) => current.includes(candidate.person_id)
-                ? current.filter((id) => id !== candidate.person_id)
-                : [...current, candidate.person_id]);
-            }}
-          >
-            <Text style={styles.body}>{candidate.name}</Text>
-            <Text style={styles.muted}>{candidate.phone}</Text>
-          </CheckRow>
-        </View>
-      ))}
-      {people.data && withPhone.length > 0 && candidates.length > withPhone.length ? (
-        <Text style={styles.muted}>{t('mobileMessages.textHidden', { count: candidates.length - withPhone.length })}</Text>
+      {chosen.length ? (
+        <Text style={styles.body}>
+          {t('mobileMessages.textChosen', {
+            count: chosen.length,
+            names: chosen.length > 3
+              ? t('mobileMessages.namesAndMore', { names: format.list(chosen.slice(0, 3).map((candidate) => candidate.name)), count: chosen.length - 3 })
+              : format.list(chosen.map((candidate) => candidate.name)),
+          })}
+        </Text>
       ) : null}
-      {withPhone.length > 0 ? (
+      <Button
+        title={chosen.length ? t('mobileMessages.textChangePeople') : t('mobileMessages.textChoosePeople')}
+        variant="secondary"
+        icon="people"
+        onPress={() => {
+          setWanted(true);
+          setChoosing(true);
+        }}
+      />
+      <HandoffSheet
+        visible={choosing}
+        loading={people.isLoading}
+        error={people.error}
+        loaded={Boolean(people.data)}
+        candidates={withPhone}
+        hiddenCount={candidates.length - withPhone.length}
+        selected={selected}
+        onChange={choose}
+        onClose={() => setChoosing(false)}
+      />
+      {chosen.length > 0 ? (
         <>
           {!body.trim() ? (
             <Text style={styles.muted}>{t('mobileMessages.textEmpty')}</Text>
-          ) : chosen.length === 0 ? (
-            <Text style={styles.muted}>{t('mobileMessages.textSelectNone')}</Text>
           ) : !handoff.ok ? (
             <Text accessibilityRole="alert" style={styles.danger}>
               {t('mobileMessages.textPersonalVariables', {
@@ -614,7 +746,7 @@ function TextHandoff({ preview, body, snapshot }: TextHandoffProps) {
           <Button
             title={t('mobileMessages.textOpen', { count: chosen.length })}
             variant="secondary"
-            disabled={!body.trim() || chosen.length === 0 || !handoff.ok}
+            disabled={!body.trim() || !handoff.ok}
             onPress={() => void open()}
           />
           {opened === 'opened' ? <Text style={styles.muted}>{t('mobileMessages.textOpened')}</Text> : null}
@@ -622,6 +754,88 @@ function TextHandoff({ preview, body, snapshot }: TextHandoffProps) {
         </>
       ) : null}
     </Card>
+  );
+}
+
+interface HandoffSheetProps {
+  visible: boolean;
+  loading: boolean;
+  error: unknown;
+  /** The People list has answered (so "no phone numbers" is a fact, not a wait). */
+  loaded: boolean;
+  candidates: readonly TextHandoffRecipient[];
+  /** Previewed recipients whose number this caller can't see. */
+  hiddenCount: number;
+  selected: readonly string[];
+  onChange: (selected: string[]) => void;
+  onClose: () => void;
+}
+
+/** Recipients with a phone number this caller may see: searchable, select-all over what's shown. */
+function HandoffSheet({ visible, loading, error, loaded, candidates, hiddenCount, selected, onChange, onClose }: HandoffSheetProps) {
+  const { t } = useTranslation(['messages', 'common']);
+  const styles = useThemedStyles(makeStyles);
+  const [query, setQuery] = useState('');
+  const shown = useMemo(() => filterHandoffCandidates(candidates, query), [candidates, query]);
+  const shownIds = shown.map((candidate) => candidate.person_id);
+  const allShownSelected = containsAll(selected, shownIds);
+  const chosenCount = candidates.filter((candidate) => selected.includes(candidate.person_id)).length;
+
+  return (
+    <BottomSheet
+      visible={visible}
+      title={t('mobileMessages.textHeading')}
+      onClose={onClose}
+      footer={
+        <>
+          <Text style={[styles.muted, styles.flex]}>{t('common:count.selected', { count: chosenCount })}</Text>
+          <Button title={t('common:actions.done')} onPress={onClose} />
+        </>
+      }
+    >
+      {loading ? <Loading /> : null}
+      <ErrorNotice error={error} />
+      {loaded && candidates.length === 0 ? <Text style={styles.body}>{t('mobileMessages.textNoPhones')}</Text> : null}
+      {candidates.length > 0 ? (
+        <>
+          <SearchField value={query} onChangeText={setQuery} placeholder={t('mobileMessages.searchRecipients')} />
+          <View style={styles.wrap}>
+            <Button
+              title={allShownSelected
+                ? (query.trim() ? t('mobileMessages.clearShown') : t('mobileMessages.clearAll'))
+                : (query.trim() ? t('mobileMessages.selectShown') : t('mobileMessages.selectAll'))}
+              variant="quiet"
+              disabled={shownIds.length === 0}
+              onPress={() => onChange(allShownSelected ? withoutAll(selected, shownIds) : withAll(selected, shownIds))}
+            />
+          </View>
+        </>
+      ) : null}
+      <FlatList
+        style={styles.flex}
+        data={shown}
+        keyExtractor={(candidate) => candidate.person_id}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        ItemSeparatorComponent={RowSeparator}
+        renderItem={({ item }) => (
+          <CheckRow
+            label={t('mobileMessages.textSelect', { name: item.name })}
+            checked={selected.includes(item.person_id)}
+            onPress={() => onChange(selected.includes(item.person_id) ? withoutAll(selected, [item.person_id]) : withAll(selected, [item.person_id]))}
+          >
+            <Text style={styles.body}>{item.name}</Text>
+            <Text style={styles.muted}>{item.phone}</Text>
+          </CheckRow>
+        )}
+        ListEmptyComponent={candidates.length > 0 ? <Text style={styles.muted}>{t('mobileMessages.noRecipientMatch')}</Text> : null}
+        ListFooterComponent={
+          loaded && candidates.length > 0 && hiddenCount > 0 ? (
+            <Text style={[styles.muted, styles.footerNote]}>{t('mobileMessages.textHidden', { count: hiddenCount })}</Text>
+          ) : null
+        }
+      />
+    </BottomSheet>
   );
 }
 
@@ -683,4 +897,6 @@ const makeStyles = (theme: Theme) =>
       justifyContent: 'center',
     },
     boxOn: { backgroundColor: theme.color.brand, borderColor: theme.color.brand },
+    separator: { height: StyleSheet.hairlineWidth, backgroundColor: theme.color.border },
+    footerNote: { paddingVertical: theme.space.md },
   });

@@ -14,7 +14,6 @@ import { useTranslation } from 'react-i18next';
 import {
   MENTION_PICKER_ROWS,
   activeMentionQuery,
-  filterMentionCandidates,
   formatMessageText,
   insertMention,
   resolveMentionIds,
@@ -25,6 +24,7 @@ import {
   type MessageTextStyle,
 } from '@service-center/shared';
 import { PressableScale } from './motion';
+import { mentionSuggestions } from '../lib/mention-suggestions';
 import { fonts, type Theme } from '../lib/theme';
 import { useThemedStyles } from '../lib/useTheme';
 
@@ -43,6 +43,8 @@ export interface MentionInputOptions {
   /** People picked into this draft (kept by the caller, e.g. in a saved draft). */
   pickedIds: readonly string[];
   onPicked: (personId: string) => void;
+  /** Offered first for an empty `@` (e.g. who spoke most recently); the rest follow, capped. */
+  priorityIds?: readonly string[];
 }
 
 /** Props to spread on the `TextInput`; its text arrives as `children` (highlighted), not `value`. */
@@ -77,7 +79,7 @@ export interface MentionInput {
  * people while an `@query` is typed, inserts a pick, and highlights picked
  * names inside the box. Mirrors the website's `DiscussionComposer`.
  */
-export function useMentionInput({ text, onChangeText, candidates, pickedIds, onPicked }: MentionInputOptions): MentionInput {
+export function useMentionInput({ text, onChangeText, candidates, pickedIds, onPicked, priorityIds = [] }: MentionInputOptions): MentionInput {
   const styles = useThemedStyles(makeStyles);
   const input = useRef<TextInput>(null);
   const caret = useRef(text.length);
@@ -87,7 +89,7 @@ export function useMentionInput({ text, onChangeText, candidates, pickedIds, onP
 
   const picked = pickedIds.flatMap((id) => candidates.filter((candidate) => candidate.person_id === id));
   const query: MentionQuery | null = activeMentionQuery(text, caret.current, picked);
-  const matches = query ? filterMentionCandidates(candidates, query.query) : [];
+  const matches = query ? mentionSuggestions(candidates, query.query, priorityIds) : [];
   const open = query !== null && (matches.length > 0 || query.query === '');
 
   const moveCaret = (next: number) => {

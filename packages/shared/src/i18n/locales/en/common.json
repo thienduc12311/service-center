@@ -194,5 +194,28 @@
       "unsupported_type": "Choose a PNG, JPEG or WebP image.",
       "too_large": "That image is larger than 5 MB."
     }
+  },
+  "list": {
+    "showingOf": "Showing {{shown}} of {{total}}",
+    "refineSearch": "Showing the first {{shown}} — refine your search to see others",
+    "showingOfRefine": "Showing {{shown}} of {{total}} — keep typing to narrow it down",
+    "showingOfNarrow": "Showing {{shown}} of {{total}} — narrow your search to see the rest"
+  },
+  "combobox": {
+    "placeholder": "Type to search…",
+    "selectPlaceholder": "Search or choose…",
+    "noMatches": "No matches.",
+    "clear": "Clear {{name}}",
+    "change": "Change {{label}}, currently {{name}}"
+  },
+  "optionPicker": {
+    "search": "Search",
+    "noMatches": "No matches",
+    "choose": "Choose…",
+    "change": "Change…",
+    "selectedNames_one": "{{count}} selected: {{names}}",
+    "selectedNames_other": "{{count}} selected: {{names}}",
+    "optionCount_one": "{{count}} option",
+    "optionCount_other": "{{count}} options"
   }
 }

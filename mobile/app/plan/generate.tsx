@@ -32,6 +32,7 @@ import {
   seriesRequest,
   upsertGenerationEdit,
   usableTemplates,
+  templateOptions,
 } from '../../src/lib/template-use';
 import { useTemplateNames } from '../../src/lib/useTemplateNames';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -57,6 +58,7 @@ import { TemplateApplyReview } from '../../src/components/TemplateApplyReview';
 import { type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { useFormatters, useStructuredText } from '../../src/i18n';
+import { SearchableOptionPicker } from '../../src/components/SearchableOptionSheet';
 
 type PickerTarget =
   | { kind: 'start' }
@@ -298,20 +300,21 @@ export default function GeneratePlansScreen() {
         ) : (
           <View style={styles.group}>
             <Label>{t('generate.template')}</Label>
-            <View style={styles.chips}>
-              {usable.map((candidate) => (
-                <Chip
-                  key={candidate.id}
-                  label={t('generate.templateOption', {
-                    name: candidate.name,
-                    serviceType: candidate.service_type?.name ?? t('generate.noServiceType'),
-                    revision: candidate.current_revision,
-                  })}
-                  active={candidate.id === templateId}
-                  onPress={() => { setTemplateId(candidate.id); invalidatePreview(); }}
-                />
-              ))}
-            </View>
+            <SearchableOptionPicker
+              title={t('generate.template')}
+              options={templateOptions(usable, {
+                label: (candidate) => t('generate.templateOption', {
+                  name: candidate.name,
+                  serviceType: candidate.service_type?.name ?? t('generate.noServiceType'),
+                  revision: candidate.current_revision,
+                }),
+                groupedLabel: (candidate) => t('apply.optionWithRevision', { name: candidate.name, revision: candidate.current_revision }),
+                allServiceTypes: t('generate.noServiceType'),
+              })}
+              selected={templateId ? [templateId] : []}
+              mode="single"
+              onChange={(next) => { setTemplateId(next[0] ?? null); invalidatePreview(); }}
+            />
             {template && template.counts.times === 0 ? <Text style={styles.warn}>{t('generate.noTimesHint')}</Text> : null}
           </View>
         )}

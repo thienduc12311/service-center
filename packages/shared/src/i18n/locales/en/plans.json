@@ -66,7 +66,13 @@
     "fieldServiceType": "Service type",
     "fieldLocation": "Location",
     "locationPlaceholder": "Main Auditorium",
-    "createPlan": "Create plan"
+    "createPlan": "Create plan",
+    "filterServiceType": "Filter by service type",
+    "allServiceTypes": "All service types",
+    "searchLabel": "Search plans",
+    "searchPlaceholder": "Search plans by title…",
+    "noMatchesTitle": "No plans match",
+    "noMatchesDescription": "Nothing here matches “{{query}}”. Try other words, or look in Upcoming and Past."
   },
   "mobilePlans": {
     "loading": "Loading plans",
@@ -80,7 +86,9 @@
     "emptyHistoryTitle": "No past plans",
     "emptyDescription": "Plans you can see will appear here.",
     "emptyFilteredDescription": "Nothing matches these filters. Try another service type or status.",
-    "loadMoreFailed": "More plans could not be loaded."
+    "loadMoreFailed": "More plans could not be loaded.",
+    "searchPlaceholder": "Search plans by title",
+    "emptySearchDescription": "No plans match that search. Try other words or clear it."
   },
   "planDetail": {
     "notFound": "Plan not found",
@@ -168,7 +176,12 @@
     "sequenceThisPlan": "(this plan)",
     "ledBy": "Led by {{leader}}",
     "mediaLink": "Media: <0>{{title}}</0>",
-    "mediaLinkArchived": "Media: <0>{{title}}</0> (archived)"
+    "mediaLinkArchived": "Media: <0>{{title}}</0> (archived)",
+    "addSongs": "Add songs",
+    "addOther": "Header or item",
+    "insertAfter": "Add here, after {{title}}",
+    "insertAtStart": "Add here, at the start",
+    "insertingHere": "New songs go here"
   },
   "leader": {
     "someoneOnRoster": "Someone on the roster",
@@ -203,7 +216,7 @@
     "keepSong": "Keep this song",
     "changeSong": "Change song",
     "findSong": "Find a song",
-    "searchPlaceholder": "Search by title",
+    "searchPlaceholder": "Search title, author, CCLI…",
     "arrangement": "Arrangement",
     "songDefault": "Song default",
     "songDefaultNamed": "Song default ({{name}})",
@@ -241,6 +254,12 @@
     "positionWhoLeads": "Position that leads",
     "choosePosition": "Choose a position",
     "positionThisPlan": "{{team}} · {{position}} (this plan)",
+    "planOnlyPosition": "Only on this plan",
+    "onThisPlan": "On this plan",
+    "staffedOnThisPlan": "Staffed on this plan",
+    "everyone": "Everyone",
+    "searchPerson": "Search people by name or email…",
+    "searchPosition": "Search positions or teams…",
     "positionFollowsHint": "The leader follows this plan’s staffing: whoever holds the position now.",
     "stale": "Someone else changed this plan after you opened this item. Your edits are still here.",
     "loadLatest": "Load the latest plan and keep my edits",
@@ -254,7 +273,8 @@
       "sequenceStepTooLong": "Each sequence step can be at most 20 characters.",
       "leaderPersonRequired": "Choose who leads this item.",
       "leaderPositionRequired": "Choose the position that leads this item."
-    }
+    },
+    "useSong": "Use {{title}}"
   },
   "editTimes": {
     "title": "Service & rehearsal times",
@@ -592,7 +612,8 @@
     "noTemplates": "No plan templates yet. Save one from a plan on the website."
   },
   "mobileApply": {
-    "putItemsHint": "Where the template's items go in this order."
+    "putItemsHint": "Where the template's items go in this order.",
+    "allServiceTypes": "All service types"
   },
   "mobileOrder": {
     "itemGone": "This item is no longer in the plan. Someone may have removed it.",
@@ -602,7 +623,19 @@
     "searchPeople": "Search people",
     "keepEditing": "Keep editing",
     "discard": "Discard",
-    "editScreenTitle": "Edit item"
+    "editScreenTitle": "Edit item",
+    "positionThisPlanShort": "{{position}} (this plan)",
+    "onPlanFirst": "People on this plan are listed first.",
+    "onPlanName": "{{name}} · on this plan",
+    "noPersonMatch": "No one matches that search.",
+    "searchPositions": "Search positions or teams",
+    "moveToLabel": "Move {{title}} to…",
+    "moveToTitle": "Move “{{title}}” to…",
+    "moveToHint": "Tap the place it should take. The other items shift to make room.",
+    "moveToPosition": "Move to position {{position}}, now {{title}}",
+    "moveToCurrent": "Where it is now",
+    "moveToItemNumber": "Item {{number}}",
+    "addSongsAfter": "Add songs after this"
   },
   "mobileTimes": {
     "editTimes": "Edit times",
@@ -622,5 +655,141 @@
     "remindersHint": "Reminders are scheduled and sent by Service Center's server, not by this phone.",
     "policyStale": "Someone changed this reminder setting first. The latest setting is shown — make your change again.",
     "delivery": "Reminders and delivery"
+  },
+  "songBrowser": {
+    "title": "Add songs",
+    "searchLabel": "Search songs",
+    "searchPlaceholder": "Search title, author, CCLI…",
+    "keyboardHint": "Use the up and down arrows to move through the songs and Enter to add the highlighted one.",
+    "highlighted": "{{title}}. Press Enter to add.",
+    "tabsLabel": "Which songs to show",
+    "tabs": {
+      "suggested": "Suggested",
+      "recent": "Recently added",
+      "all": "All A–Z"
+    },
+    "suggestedHint": "Songs used for {{serviceType}} in the last {{weeks}} weeks, most used first.",
+    "suggestedHintChurch": "Songs used in the last {{weeks}} weeks, most used first.",
+    "filters": {
+      "label": "Filters",
+      "key": "Key",
+      "anyKey": "Any key",
+      "tempo": "Tempo",
+      "anyTempo": "Any tempo",
+      "type": "Type",
+      "anyType": "Any type",
+      "theme": "Theme",
+      "clear": "Clear filters",
+      "hideRecent_one": "Hide songs used in the last week",
+      "hideRecent_other": "Hide songs used in the last {{count}} weeks"
+    },
+    "bpm": "{{bpm}} bpm",
+    "usedCount_one": "used {{count}}×",
+    "usedCount_other": "used {{count}}×",
+    "lastUsed": "last used {{ago}}",
+    "scheduledOn": "scheduled {{date}}",
+    "neverUsed": "not used yet",
+    "ago": {
+      "today": "today",
+      "days_one": "{{count}} day ago",
+      "days_other": "{{count}} days ago",
+      "weeks_one": "{{count}} week ago",
+      "weeks_other": "{{count}} weeks ago",
+      "months_one": "{{count}} month ago",
+      "months_other": "{{count}} months ago",
+      "years_one": "{{count}} year ago",
+      "years_other": "{{count}} years ago"
+    },
+    "inPlan": "In this plan",
+    "recentWarning": "Used recently",
+    "add": "Add {{title}}",
+    "addAgain": "Add {{title}} again",
+    "expand": "Show arrangements of {{title}}",
+    "collapse": "Hide arrangements of {{title}}",
+    "arrangementFor": "Arrangement of {{title}}",
+    "arrangementDefault": "{{name}} (default)",
+    "noSongs": "No songs match. Try other words or fewer filters.",
+    "noSuggested": "No songs were used in the last {{weeks}} weeks. Try Recently added or All A–Z.",
+    "insertAtEnd": "Adding at the end of the order",
+    "insertAtStart": "Adding at the start of the order",
+    "insertAfter": "Adding after “{{title}}”",
+    "chosenItem": "the chosen item",
+    "addedCount_one": "{{count}} added",
+    "addedCount_other": "{{count}} added",
+    "addedToast": "Added “{{title}}”",
+    "undo": "Undo",
+    "notPlaced": "“{{title}}” was added. Check the order to confirm its position.",
+    "addOther": "Add a header or item here",
+    "done": "Done"
+  },
+  "mobileSongBrowser": {
+    "title": "Add songs",
+    "titleAdded_one": "{{count}} added",
+    "titleAdded_other": "{{count}} added",
+    "doneLabel": "Done, back to the order",
+    "searchPlaceholder": "Search title, author or CCLI",
+    "viewsLabel": "Song views",
+    "filtersLabel": "Song filters",
+    "tabs": {
+      "suggested": "Suggested",
+      "recent": "Recently added",
+      "title": "All A–Z"
+    },
+    "filters": {
+      "key": "Key",
+      "keyValue": "Key: {{key}}",
+      "tempo": "Tempo",
+      "tempoValue": "Tempo: {{speed}}",
+      "theme": "Theme",
+      "themeValue": "Theme: {{theme}}",
+      "type": "Type",
+      "typeValue": "{{type}}",
+      "anyType": "Any type",
+      "hideUsed_one": "Hide used in last {{count}} week",
+      "hideUsed_other": "Hide used in last {{count}} weeks",
+      "anyKey": "Any key",
+      "anyTempo": "Any tempo",
+      "anyTheme": "Any theme",
+      "themeSearch": "Type a theme",
+      "useTheme": "Use “{{theme}}”",
+      "themeHint": "Themes on the songs listed so far. You can also type one.",
+      "clear": "Clear filters"
+    },
+    "usedCount_one": "Used {{count}}× in {{weeks}} weeks",
+    "usedCount_other": "Used {{count}}× in {{weeks}} weeks",
+    "notUsedRecently": "Not used in {{weeks}} weeks",
+    "lastUsed": {
+      "today": "last used today",
+      "days_one": "last used {{count}} day ago",
+      "days_other": "last used {{count}} days ago",
+      "weeks_one": "last used {{count}} week ago",
+      "weeks_other": "last used {{count}} weeks ago",
+      "months_one": "last used {{count}} month ago",
+      "months_other": "last used {{count}} months ago",
+      "years_one": "last used {{count}} year ago",
+      "years_other": "last used {{count}} years ago",
+      "upcoming": "next scheduled {{date}}"
+    },
+    "neverUsed": "Never scheduled",
+    "inPlan": "In this plan",
+    "added": "Added",
+    "recentWarning_one": "Used within {{count}} day of this plan",
+    "recentWarning_other": "Used within {{count}} days of this plan",
+    "addSong": "Add {{title}}",
+    "adding": "Adding {{title}}",
+    "addAgainTitle": "“{{title}}” is already in this plan",
+    "addAgainBody": "Add it again, for example as a reprise?",
+    "addAgain": "Add again",
+    "insertingAfter": "Adding after “{{title}}”",
+    "insertingAtEnd": "Adding at the end of the order",
+    "insertAtEnd": "Add at the end instead",
+    "placeFailed": "Item added. Check its position in the order and use Move to… if needed.",
+    "emptySuggestedTitle": "No songs in this service’s rotation yet",
+    "emptySuggestedBody": "Songs used with this service type in the last {{weeks}} weeks show up here. Try All A–Z.",
+    "emptyChurchSuggestedBody": "Songs used in the last {{weeks}} weeks show up here. Try All A–Z.",
+    "emptyFilteredTitle": "No songs match",
+    "emptyFilteredBody": "Change the search or remove a filter.",
+    "emptyLibraryTitle": "The song library is empty",
+    "emptyLibraryBody": "Songs added on the Songs tab show up here."
   }
 }
