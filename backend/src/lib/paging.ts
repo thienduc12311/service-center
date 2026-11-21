@@ -29,3 +29,18 @@ export const fetchAllPages = async <T>(loadPage: LoadPage<T>, options: FetchAllP
     if (page.length < pageSize) return rows;
   }
 };
+
+/** `.in()` lists stay well inside URL limits. */
+export const IN_CHUNK_SIZE = 100;
+
+const chunks = <T>(values: readonly T[]): T[][] => {
+  const out: T[][] = [];
+  for (let start = 0; start < values.length; start += IN_CHUNK_SIZE) out.push(values.slice(start, start + IN_CHUNK_SIZE));
+  return out;
+};
+
+export const inChunks = async <T>(ids: readonly string[], load: (chunk: string[]) => PromiseLike<T[] | null>): Promise<T[]> => {
+  const rows: T[] = [];
+  for (const chunk of chunks(ids)) rows.push(...((await load(chunk)) ?? []));
+  return rows;
+};

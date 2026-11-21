@@ -24,7 +24,7 @@ import {
   type ReportTimeSource,
 } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
-import { fetchAllPages } from '../lib/paging.js';
+import { fetchAllPages, inChunks } from '../lib/paging.js';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { attendanceFor } from './attendance.js';
 import { personName } from '../model/availability.model.js';
@@ -62,21 +62,6 @@ export interface ReportContext {
   /** Service role: names come from `people` (the directory view needs a signed-in member). */
   serviceRole: boolean;
 }
-
-/** `.in()` lists stay well inside URL limits. */
-const CHUNK = 100;
-
-const chunks = <T>(values: readonly T[]): T[][] => {
-  const out: T[][] = [];
-  for (let start = 0; start < values.length; start += CHUNK) out.push(values.slice(start, start + CHUNK));
-  return out;
-};
-
-const inChunks = async <T>(ids: readonly string[], load: (chunk: string[]) => PromiseLike<T[] | null>): Promise<T[]> => {
-  const rows: T[] = [];
-  for (const chunk of chunks(ids)) rows.push(...((await load(chunk)) ?? []));
-  return rows;
-};
 
 export const organizationTimezone = async (db: Db, orgId: string): Promise<string> => {
   const org = await unwrap(db.from('organizations').select('timezone').eq('id', orgId).maybeSingle());

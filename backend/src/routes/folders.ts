@@ -14,6 +14,7 @@ import {
 } from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
+import { fetchAllPages } from '../lib/paging.js';
 import { unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { requireAdmin } from '../middleware/organization.js';
@@ -29,8 +30,12 @@ export const foldersRouter: Router = Router();
 
 foldersRouter.get('/', async (req, res) => {
   const [folders, serviceTypes, membership, organization] = await Promise.all([
-    unwrap(req.db.from('service_type_folders').select('*').eq('organization_id', req.orgId).is('archived_at', null)),
-    unwrap(req.db.from('service_types').select('id, folder_id').eq('organization_id', req.orgId).is('archived_at', null)),
+    fetchAllPages(async (from, to) =>
+      unwrap(req.db.from('service_type_folders').select('*').eq('organization_id', req.orgId).is('archived_at', null).order('id').range(from, to)),
+    ),
+    fetchAllPages(async (from, to) =>
+      unwrap(req.db.from('service_types').select('id, folder_id').eq('organization_id', req.orgId).is('archived_at', null).order('id').range(from, to)),
+    ),
     unwrap(
       req.db
         .from('organization_members')
@@ -43,8 +48,8 @@ foldersRouter.get('/', async (req, res) => {
   ]);
   res.json(
     buildFolderTree(
-      folders ?? [],
-      serviceTypes ?? [],
+      folders,
+      serviceTypes,
       membership?.landing_folder_id ?? organization?.default_folder_id ?? null,
     ),
   );

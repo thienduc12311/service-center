@@ -20,6 +20,7 @@ import {
 } from '@service-center/shared';
 import { validateBody } from '../lib/validate.js';
 import { requireAdmin, requireCapability, requireManager, requireRosterEditor } from '../middleware/organization.js';
+import { fetchAllPages } from '../lib/paging.js';
 import { raw, unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { loadScopeAccess, replaceScopeAccess } from '../services/access.js';
@@ -86,10 +87,12 @@ export const mapRosterPerson = (row: TeamRosterPersonRow, role: string): TeamRos
 
 /** Org roles live on organization_members, so fetch them once per request. */
 const roleMap = async (req: Request): Promise<Map<string, string>> => {
-  const rows = await unwrap(
-    req.db.from('organization_members').select('user_id, role').eq('organization_id', req.orgId),
+  const rows = await fetchAllPages(async (from, to) =>
+    unwrap(
+      req.db.from('organization_members').select('user_id, role').eq('organization_id', req.orgId).order('user_id').range(from, to),
+    ),
   );
-  return new Map((rows ?? []).map((r) => [r.user_id, r.role as string]));
+  return new Map(rows.map((r) => [r.user_id, r.role as string]));
 };
 
 const shapeTeams = async (req: Request, teams: RawTeam[]): Promise<TeamWithPositions[]> => {
@@ -112,9 +115,12 @@ const loadTeam = async (req: Request, id: string): Promise<TeamWithPositions> =>
 };
 
 teamsRouter.get('/', async (req, res) => {
-  const teams = (await unwrap(
-    raw(req.db).from('teams').select(TEAM_SELECT).eq('organization_id', req.orgId).order('sort_order'),
-  )) as RawTeam[];
+  const teams = await fetchAllPages(
+    async (from, to) =>
+      (await unwrap(
+        raw(req.db).from('teams').select(TEAM_SELECT).eq('organization_id', req.orgId).order('sort_order').order('id').range(from, to),
+      )) as RawTeam[] | null,
+  );
   res.json(await shapeTeams(req, teams));
 });
 
