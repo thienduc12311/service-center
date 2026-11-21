@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { SONG_SPEEDS, SONG_VOCABULARY_LABEL_KEYS, type SongListItem } from '@service-center/shared';
+import { SONG_SPEEDS, SONG_TYPES, SONG_VOCABULARY_LABEL_KEYS, type SongListItem } from '@service-center/shared';
 import { themeSuggestions } from '../../lib/song-browser';
 import type { Theme } from '../../lib/theme';
 import { useThemedStyles } from '../../lib/useTheme';
@@ -11,7 +11,7 @@ import { SearchField } from '../SearchField';
 import { Chip } from '../ui';
 
 /** Which filter the sheet edits. */
-export type SongFilterKind = 'key' | 'tempo' | 'theme';
+export type SongFilterKind = 'key' | 'tempo' | 'theme' | 'type';
 
 export interface SongFilterSheetProps {
   /** The filter being edited; null keeps the sheet closed. */
@@ -24,21 +24,19 @@ export interface SongFilterSheetProps {
   onClose: () => void;
 }
 
-/** The caption of a stored tempo (`SONG_SPEEDS` are stored in English). */
-export const useSpeedLabel = (): ((speed: string) => string) => {
+/** Song vocabulary values are stored in English. */
+export const useSongFacetLabel = (): ((value: string) => string) => {
   const { t } = useTranslation('songs');
-  return (speed) => {
-    const key = SONG_VOCABULARY_LABEL_KEYS[speed];
-    return key ? t(key) : speed;
+  return (value) => {
+    const key = SONG_VOCABULARY_LABEL_KEYS[value];
+    return key ? t(key) : value;
   };
 };
 
-/** One filter chip's choices: the key grid, the tempo words, or themes to search. */
+/** One filter chip's choices. */
 export const SongFilterSheet = ({ kind, value, songs, onChange, onClose }: SongFilterSheetProps) => {
   const { t } = useTranslation('plans');
-  const title = kind === 'key'
-    ? t('mobileSongBrowser.filters.key')
-    : kind === 'tempo' ? t('mobileSongBrowser.filters.tempo') : t('mobileSongBrowser.filters.theme');
+  const title = t(`mobileSongBrowser.filters.${kind ?? 'key'}`);
   const choose = (next: string | null) => {
     onChange(next);
     onClose();
@@ -57,7 +55,9 @@ export const SongFilterSheet = ({ kind, value, songs, onChange, onClose }: SongF
           />
         </ScrollView>
       ) : null}
-      {kind === 'tempo' ? <TempoChoices value={value} onChoose={choose} /> : null}
+      {kind === 'tempo' || kind === 'type' ? (
+        <FacetChoices kind={kind} value={value} onChoose={choose} />
+      ) : null}
       {kind === 'theme' ? <ThemeChoices value={value} songs={songs} onChoose={choose} /> : null}
     </BottomSheet>
   );
@@ -68,15 +68,20 @@ interface ChoiceListProps {
   onChoose: (value: string | null) => void;
 }
 
-const TempoChoices = ({ value, onChoose }: ChoiceListProps) => {
+interface FacetChoicesProps extends ChoiceListProps {
+  kind: 'tempo' | 'type';
+}
+
+const FacetChoices = ({ kind, value, onChoose }: FacetChoicesProps) => {
   const { t } = useTranslation('plans');
   const styles = useThemedStyles(makeStyles);
-  const speedLabel = useSpeedLabel();
+  const facetLabel = useSongFacetLabel();
+  const options = kind === 'tempo' ? SONG_SPEEDS : SONG_TYPES;
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={t('mobileSongBrowser.filters.tempo')} style={styles.chips}>
-      <Chip label={t('mobileSongBrowser.filters.anyTempo')} active={value === null} onPress={() => onChoose(null)} />
-      {SONG_SPEEDS.map((speed) => (
-        <Chip key={speed} label={speedLabel(speed)} active={value === speed} onPress={() => onChoose(speed)} />
+    <View accessibilityRole="radiogroup" accessibilityLabel={t(`mobileSongBrowser.filters.${kind}`)} style={styles.chips}>
+      <Chip label={t(kind === 'tempo' ? 'mobileSongBrowser.filters.anyTempo' : 'mobileSongBrowser.filters.anyType')} active={value === null} onPress={() => onChoose(null)} />
+      {options.map((option) => (
+        <Chip key={option} label={facetLabel(option)} active={value === option} onPress={() => onChoose(option)} />
       ))}
     </View>
   );

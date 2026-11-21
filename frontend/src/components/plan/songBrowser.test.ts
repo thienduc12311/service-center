@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EMPTY_SONG_BROWSER_FILTERS, activeSongFilterCount, isRecentlyUsed, songBrowserQuery, usageAge } from './songBrowser';
-import { orderWithInsertedItem, advanceInsertPoint } from './insertPoint';
+import { orderWithInsertedItem } from '@service-center/shared';
+import { advanceInsertPoint } from './insertPoint';
 
 const NOW = new Date('2026-11-21T12:00:00Z');
 const context = { planId: 'plan-1', serviceTypeId: 'sunday', now: NOW };
@@ -13,6 +14,7 @@ describe('songBrowserQuery', () => {
       per_page: 20,
       service_type_id: 'sunday',
       scheduled_from: '2026-08-29T12:00:00.000Z',
+      scheduled_to: '2026-11-21T12:00:00.000Z',
     });
   });
 
@@ -42,7 +44,7 @@ describe('songBrowserQuery', () => {
   });
 
   it('orders Recently added by creation and All by title', () => {
-    expect(songBrowserQuery({ ...context, tab: 'recent', q: '', filters: EMPTY_SONG_BROWSER_FILTERS }).sort).toBe('recent');
+    expect(songBrowserQuery({ ...context, tab: 'recent', q: '', filters: EMPTY_SONG_BROWSER_FILTERS }).sort).toBe('recently_added');
     expect(songBrowserQuery({ ...context, tab: 'all', q: '', filters: EMPTY_SONG_BROWSER_FILTERS }).sort).toBe('title');
   });
 

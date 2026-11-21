@@ -39,14 +39,15 @@ export interface SongBrowserFilters {
   /** One of `SONG_SPEEDS` (stored in English; only the caption is translated). */
   speed: string | null;
   theme: string | null;
+  songType: string | null;
   hideRecentlyUsed: boolean;
 }
 
-export const NO_SONG_FILTERS: SongBrowserFilters = { key: null, speed: null, theme: null, hideRecentlyUsed: false };
+export const NO_SONG_FILTERS: SongBrowserFilters = { key: null, speed: null, theme: null, songType: null, hideRecentlyUsed: false };
 
 /** How many filter chips are switched on (the tab is not a filter). */
 export const activeSongFilterCount = (filters: SongBrowserFilters): number =>
-  [filters.key, filters.speed, filters.theme].filter(Boolean).length + (filters.hideRecentlyUsed ? 1 : 0);
+  [filters.key, filters.speed, filters.theme, filters.songType].filter(Boolean).length + (filters.hideRecentlyUsed ? 1 : 0);
 
 /** What the browser knows about the plan it adds to. */
 export interface SongBrowserContext {
@@ -86,14 +87,18 @@ export const songBrowserQuery = ({ tab, filters, search, context }: SongBrowserQ
   const query: SongBrowserQuery = {
     archive: 'active',
     plan_id: context.planId,
-    sort: tab === 'suggested' ? 'most_used' : tab,
+    sort: tab === 'suggested' ? 'most_used' : tab === 'recent' ? 'recently_added' : 'title',
   };
   if (q) query.q = q;
   if (context.serviceTypeId) query.service_type_id = context.serviceTypeId;
-  if (tab === 'suggested' && !q) query.scheduled_from = weeksBefore(context.openedAt, SONG_USAGE_WINDOW_WEEKS);
+  if (tab === 'suggested' && !q) {
+    query.scheduled_from = weeksBefore(context.openedAt, SONG_USAGE_WINDOW_WEEKS);
+    query.scheduled_to = context.openedAt;
+  }
   if (filters.key) query.key = filters.key;
   if (filters.speed) query.speed = filters.speed;
   if (filters.theme) query.theme = filters.theme;
+  if (filters.songType) query.song_type = filters.songType;
   if (filters.hideRecentlyUsed) query.not_scheduled_since = weeksBefore(context.openedAt, HIDE_USED_WEEKS);
   return query;
 };

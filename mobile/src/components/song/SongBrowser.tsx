@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
+import { hashKey, useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   SONG_USAGE_WINDOW_WEEKS,
@@ -10,7 +10,7 @@ import {
   type SongListItem,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
-import { queryKeys } from '../../lib/query-keys';
+import { keepScopedData, queryKeys } from '../../lib/query-keys';
 import {
   HIDE_USED_WEEKS,
   NO_SONG_FILTERS,
@@ -30,7 +30,7 @@ import { useTheme, useThemedStyles } from '../../lib/useTheme';
 import { SearchField } from '../SearchField';
 import { Button, Chip, EmptyState, ErrorNotice, Loading } from '../ui';
 import { SongBrowserRow, type SongRowPlanState } from './SongBrowserRow';
-import { SongFilterSheet, useSpeedLabel, type SongFilterKind } from './SongFilterSheet';
+import { SongFilterSheet, useSongFacetLabel, type SongFilterKind } from './SongFilterSheet';
 
 export interface SongBrowserProps {
   plan: Pick<PlanDetail, 'id' | 'service_type_id' | 'service_date'>;
@@ -56,7 +56,7 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
   const { queryScope } = useAuth();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const speedLabel = useSpeedLabel();
+  const facetLabel = useSongFacetLabel();
 
   const [openedAt] = useState(() => new Date().toISOString());
   const [tab, setTab] = useState<SongBrowserTab>('suggested');
@@ -71,16 +71,21 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
   );
   const query = useMemo(() => songBrowserQuery({ tab, filters, search: settled, context }), [context, filters, settled, tab]);
 
+  const queryKey = queryKeys.songLibrary(queryScope, query);
   const songs = useInfiniteQuery({
-    queryKey: queryKeys.songLibrary(queryScope, query),
+    queryKey,
     queryFn: ({ pageParam }: { pageParam: number }) =>
       api.listSongs({ ...query, page: pageParam, per_page: SONG_BROWSER_PAGE_SIZE }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => nextSongLibraryPage(lastPage),
     enabled: Boolean(queryScope),
     // Calm search: the previous results stay until the new ones arrive.
-    placeholderData: keepPreviousData,
+    placeholderData: keepScopedData(queryScope),
   });
+  // Remount only the list when new results replace the previous query's rows.
+  const resultsKey = hashKey(queryKey);
+  const [listKey, setListKey] = useState(resultsKey);
+  if (!songs.isPlaceholderData && listKey !== resultsKey) setListKey(resultsKey);
   const rows = useMemo(() => mergeSongLibraryPages(songs.data?.pages ?? []), [songs.data]);
   const total = songs.data?.pages[songs.data.pages.length - 1]?.total ?? null;
   const refreshing = songs.isPlaceholderData && songs.isFetching;
@@ -89,11 +94,12 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
 
   const setFilter = <K extends keyof SongBrowserFilters>(name: K, value: SongBrowserFilters[K]) =>
     setFilters((current) => ({ ...current, [name]: value }));
-  const editingValue = editing === 'key' ? filters.key : editing === 'tempo' ? filters.speed : editing === 'theme' ? filters.theme : null;
+  const editingValue = editing === 'key' ? filters.key : editing === 'tempo' ? filters.speed : editing === 'theme' ? filters.theme : editing === 'type' ? filters.songType : null;
   const applyEditing = (value: string | null) => {
     if (editing === 'key') setFilter('key', value);
     if (editing === 'tempo') setFilter('speed', value);
     if (editing === 'theme') setFilter('theme', value);
+    if (editing === 'type') setFilter('songType', value);
   };
 
   const planState = (song: SongListItem): SongRowPlanState =>
@@ -129,19 +135,17 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
           />
           {refreshing ? <ActivityIndicator size="small" color={theme.color.inkFaint} /> : null}
         </View>
+        <View accessibilityRole="radiogroup" accessibilityLabel={t('mobileSongBrowser.viewsLabel')} style={styles.tabs}>
+          {SONG_BROWSER_TABS.map((value) => (
+            <Chip key={value} label={t(`mobileSongBrowser.tabs.${value}`)} active={tab === value} onPress={() => setTab(value)} />
+          ))}
+        </View>
         <ScrollView
           horizontal
-          showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           style={styles.chipScroller}
           contentContainerStyle={styles.chips}
         >
-          <View accessibilityRole="radiogroup" accessibilityLabel={t('mobileSongBrowser.viewsLabel')} style={styles.chipGroup}>
-            {SONG_BROWSER_TABS.map((value) => (
-              <Chip key={value} label={t(`mobileSongBrowser.tabs.${value}`)} active={tab === value} onPress={() => setTab(value)} />
-            ))}
-          </View>
-          <View style={styles.chipDivider} />
           <View accessibilityLabel={t('mobileSongBrowser.filtersLabel')} style={styles.chipGroup}>
             <Chip
               toggle
@@ -151,7 +155,7 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
             />
             <Chip
               toggle
-              label={filters.speed ? t('mobileSongBrowser.filters.tempoValue', { speed: speedLabel(filters.speed) }) : t('mobileSongBrowser.filters.tempo')}
+              label={filters.speed ? t('mobileSongBrowser.filters.tempoValue', { speed: facetLabel(filters.speed) }) : t('mobileSongBrowser.filters.tempo')}
               active={Boolean(filters.speed)}
               onPress={() => setEditing('tempo')}
             />
@@ -160,6 +164,12 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
               label={filters.theme ? t('mobileSongBrowser.filters.themeValue', { theme: filters.theme }) : t('mobileSongBrowser.filters.theme')}
               active={Boolean(filters.theme)}
               onPress={() => setEditing('theme')}
+            />
+            <Chip
+              toggle
+              label={filters.songType ? t('mobileSongBrowser.filters.typeValue', { type: facetLabel(filters.songType) }) : t('mobileSongBrowser.filters.type')}
+              active={Boolean(filters.songType)}
+              onPress={() => setEditing('type')}
             />
             <Chip
               toggle
@@ -176,6 +186,7 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
       </View>
 
       <FlatList
+        key={listKey}
         data={rows}
         keyExtractor={(song) => song.id}
         style={styles.flex}
@@ -184,7 +195,7 @@ export const SongBrowser = ({ plan, addedSongIds, pendingSongId, busy, onAdd, no
         keyboardDismissMode="on-drag"
         onEndReachedThreshold={0.5}
         onEndReached={() => {
-          if (songs.hasNextPage && !songs.isFetchingNextPage && !songs.isFetchNextPageError) void songs.fetchNextPage();
+          if (!songs.isPlaceholderData && songs.hasNextPage && !songs.isFetchingNextPage && !songs.isFetchNextPageError) void songs.fetchNextPage();
         }}
         ListHeaderComponent={firstPageFailed ? (
           <View style={styles.retry}>
@@ -251,7 +262,7 @@ const makeStyles = (theme: Theme) =>
     chipScroller: { marginHorizontal: -theme.space.lg, flexGrow: 0 },
     chips: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm, paddingHorizontal: theme.space.lg },
     chipGroup: { flexDirection: 'row', alignItems: 'center', gap: theme.space.sm },
-    chipDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', marginVertical: theme.space.xs, backgroundColor: theme.color.borderStrong },
+    tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.sm },
     list: { paddingHorizontal: theme.space.lg, paddingBottom: theme.space.hero },
     retry: { gap: theme.space.md, paddingVertical: theme.space.md },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },

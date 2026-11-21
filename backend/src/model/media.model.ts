@@ -66,7 +66,9 @@ export const usageCountsOf = (usage: readonly MediaUsage[]): MediaUsageCounts =>
   last_used_on: usage[0]?.service_date ?? null,
 });
 
-export const toMediaSummary = (row: MediaRow, today: string, counts: MediaUsageCounts): MediaSummary => ({
+type MediaSummaryRow = Pick<MediaRow, Exclude<keyof MediaSummary, keyof MediaUsageCounts | 'is_archived'>>;
+
+export const toMediaSummary = (row: MediaSummaryRow, today: string, counts: MediaUsageCounts): MediaSummary => ({
   id: row.id,
   title: row.title,
   creator: row.creator,
@@ -86,7 +88,7 @@ export const toMediaSummary = (row: MediaRow, today: string, counts: MediaUsageC
 });
 
 /** One row of `public.list_media`: the media row plus its usage, counted in SQL. */
-export type MediaListRow = MediaRow & MediaUsageCounts & { is_archived: boolean };
+export type MediaListRow = MediaSummaryRow & MediaUsageCounts;
 
 /** What `public.list_media` returns. */
 export interface MediaListResult {
@@ -106,22 +108,23 @@ export interface MediaListRpcQuery {
   limit?: number;
 }
 
-/**
- * Shape check on the RPC result: the fields the summary is built from. Other
- * media columns pass through (the row is the table's own projection).
- */
-const mediaListRowSchema = z
-  .object({
-    id: z.string().uuid(),
-    title: z.string(),
-    archived_at: z.string().nullable(),
-    archive_on: z.string().nullable(),
-    revision: z.number().int(),
-    is_archived: z.boolean(),
-    usage_count: z.number().int().nonnegative(),
-    last_used_on: z.string().nullable(),
-  })
-  .passthrough();
+const mediaListRowSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  creator: z.string().nullable(),
+  duration_seconds: z.number().int().nonnegative().nullable(),
+  themes: z.array(z.string()),
+  tags: z.array(z.string()),
+  notes: z.string().nullable(),
+  thumbnail_file_id: z.string().uuid().nullable(),
+  archived_at: z.string().nullable(),
+  archive_on: z.string().nullable(),
+  revision: z.number().int(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  usage_count: z.number().int().nonnegative(),
+  last_used_on: z.string().nullable(),
+});
 
 const mediaListResultSchema = z.object({
   media: z.array(mediaListRowSchema),
@@ -131,4 +134,4 @@ const mediaListResultSchema = z.object({
 
 /** Validates a `public.list_media` payload (throws on a malformed one). */
 export const parseMediaListResult = (payload: unknown): MediaListResult =>
-  mediaListResultSchema.parse(payload) as unknown as MediaListResult;
+  mediaListResultSchema.parse(payload);

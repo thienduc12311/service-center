@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type {
   AttendanceConflict,
+  Paginated,
+  PlanSummary,
   StaffingMatrixAction,
   StaffingMatrixFilters,
   StaffingMatrixPreview,
@@ -14,9 +16,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { FIRST_PAGE, hasPreviousPage, nextPage, pageNumber, previousPage, type CursorStack } from '../lib/cursor-stack';
 import {
   defaultMatrixFilters,
-  fitPlanLimit,
   isPlanLimitError,
-  nextPlanWindow,
   STAFFING_MATRIX_PLAN_LIMIT,
 } from '../lib/staffing-window';
 import { useAuth } from '../providers/AuthProvider';
@@ -50,8 +50,7 @@ export const StaffingMatrixPage = () => {
   const pages = paging.search === search ? paging.stack : FIRST_PAGE;
   const setPages = (stack: CursorStack) => setPaging({ search, stack });
   const resetPages = () => setPages(FIRST_PAGE);
-  /** The end of the range the user chose, while the matrix walks it 12 plans at a time. */
-  const [requestedEnd, setRequestedEnd] = useState<string | null>(null);
+  const [planPage, setPlanPage] = useState<Paginated<PlanSummary> | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<StaffingMatrixPreview | null>(null);
   const [commitKey, setCommitKey] = useState('');
@@ -61,37 +60,50 @@ export const StaffingMatrixPage = () => {
   const [visibility, setVisibility] = useState<'prepared' | 'released'>('prepared');
   const [notify, setNotify] = useState(false);
   const gridRef = useRef<HTMLTableElement>(null);
-  const matrixFilters = useMemo<StaffingMatrixFilters>(() => ({ ...filters, search: search || null }), [filters, search]);
+  const matrixFilters = useMemo<StaffingMatrixFilters>(() => ({
+    ...filters,
+    plan_ids: planPage?.data.map((plan) => plan.id) ?? filters.plan_ids,
+    search: search || null,
+  }), [filters, planPage, search]);
   const input = useMemo(
     () => ({ filters: matrixFilters, ...(pages.current ? { cursor: pages.current } : {}), page_size: 25 }),
     [matrixFilters, pages],
   );
   const matrix = useStaffingMatrix(input);
   const planLimitHit = isPlanLimitError(matrix.error);
-  /** Changing the range by hand drops any window the matrix was walking. */
-  const changeRange = (next: StaffingMatrixFilters) => {
-    resetPages();
-    setRequestedEnd(null);
-    setFilters({ ...next, plan_ids: [] });
-  };
-  // Narrows a range to the plans that fit, read from the plan list (oldest first, one past the limit).
+  // The plan list orders by service date and id, so plans at the same instant
+  // can span pages. Pin each page by ID within the original date range.
   const fitWindow = useMutation({
-    mutationFn: async (target: StaffingMatrixFilters): Promise<StaffingMatrixFilters> => {
-      const serviceTypeId = target.service_type_ids.length === 1 ? target.service_type_ids[0] : undefined;
-      const plans = await api.listPlans({
-        from: target.from, to: target.to, order: 'asc', page: 1, per_page: STAFFING_MATRIX_PLAN_LIMIT + 1,
+    mutationFn: (page: number): Promise<Paginated<PlanSummary>> => {
+      const serviceTypeId = filters.service_type_ids.length === 1 ? filters.service_type_ids[0] : undefined;
+      return api.listPlans({
+        from: filters.from, to: filters.to, order: 'asc', page, per_page: STAFFING_MATRIX_PLAN_LIMIT,
         ...(serviceTypeId ? { service_type_id: serviceTypeId } : {}),
       });
-      return fitPlanLimit(target, plans.data);
-    },
-    onSuccess: (next, target) => {
-      resetPages();
-      if (next !== target) setRequestedEnd((current) => current ?? target.to);
-      setFilters(next);
     },
   });
-  const lastPlan = matrix.data?.plans.at(-1);
-  const laterPlans = Boolean(requestedEnd && lastPlan && Date.parse(lastPlan.service_date) < Date.parse(requestedEnd));
+  const showPlanPage = (page: number) => fitWindow.mutate(page, {
+    onSuccess: (next) => {
+      if (next.data.length > 0) {
+        resetPages();
+        setSelected(new Set());
+        setPlanPage(next);
+      } else {
+        // If plans were removed while paging, keep the current columns.
+        setPlanPage((current) => current && { ...current, total: next.total });
+      }
+    },
+  });
+  const resetPlanPages = () => {
+    fitWindow.reset();
+    setPlanPage(null);
+    resetPages();
+  };
+  const changeRange = (next: StaffingMatrixFilters) => {
+    resetPlanPages();
+    setFilters({ ...next, plan_ids: [] });
+  };
+  const laterPlans = planPage && planPage.page * planPage.per_page < planPage.total;
   const views = useStaffingMatrixViews();
   const teams = useTeams();
   const serviceTypes = useServiceTypes();
@@ -204,7 +216,7 @@ export const StaffingMatrixPage = () => {
         </div>
         <div className="flex flex-wrap items-end gap-2 border-t border-app-border pt-4">
           <label className="field min-w-0 flex-1 basis-48">{t('matrix.findPerson')}<input className="input" type="search" value={personSearch} onChange={(e) => setPersonSearch(e.target.value)} /></label>
-          <label className="field min-w-0 flex-1 basis-48 sm:flex-none">{t('matrix.savedView')}<select className="input" value="" onChange={(e) => { const view = views.data?.find((item) => item.id === e.target.value); if (view) { resetPages(); setRequestedEnd(null); setFilters(view.filters); setPersonSearch(view.filters.search ?? ''); setTeamId(view.filters.team_ids[0] ?? ''); } }}><option value="">{t('matrix.chooseEllipsis')}</option>{(views.data ?? []).map((view) => <option key={view.id} value={view.id}>{view.name}</option>)}</select></label>
+          <label className="field min-w-0 flex-1 basis-48 sm:flex-none">{t('matrix.savedView')}<select className="input" value="" onChange={(e) => { const view = views.data?.find((item) => item.id === e.target.value); if (view) { resetPlanPages(); setFilters(view.filters); setPersonSearch(view.filters.search ?? ''); setTeamId(view.filters.team_ids[0] ?? ''); } }}><option value="">{t('matrix.chooseEllipsis')}</option>{(views.data ?? []).map((view) => <option key={view.id} value={view.id}>{view.name}</option>)}</select></label>
           <input aria-label={t('matrix.newViewName')} className="input min-w-0 flex-1 basis-40 sm:w-48 sm:flex-none" placeholder={t('matrix.viewName')} value={viewName} onChange={(e) => setViewName(e.target.value)} />
           <Button variant="secondary" icon="check" disabled={!viewName.trim()} loading={saveView.isPending} onClick={() => saveView.mutate()}>{t('matrix.saveView')}</Button>
         </div>
@@ -214,21 +226,21 @@ export const StaffingMatrixPage = () => {
       {planLimitHit && (
         <Notice tone="warning">
           <p>{t('matrix.planLimit', { count: STAFFING_MATRIX_PLAN_LIMIT })}</p>
-          <Button className="mt-2" size="sm" loading={fitWindow.isPending} onClick={() => fitWindow.mutate(filters)}>
+          <Button className="mt-2" size="sm" loading={fitWindow.isPending} onClick={() => showPlanPage(1)}>
             {t('matrix.planLimitAction', { count: STAFFING_MATRIX_PLAN_LIMIT })}
           </Button>
         </Notice>
       )}
-      {requestedEnd && !planLimitHit && (
+      {planPage && !planLimitHit && (
         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-          <span>{t('matrix.planWindow', { count: STAFFING_MATRIX_PLAN_LIMIT, end: date(requestedEnd, 'medium') })}</span>
-          {laterPlans && lastPlan && (
+          <span>{t('matrix.planWindow', { count: STAFFING_MATRIX_PLAN_LIMIT, end: date(filters.to, 'medium') })}</span>
+          {laterPlans && (
             <Button
               variant="secondary"
               size="sm"
               icon="chevronRight"
               loading={fitWindow.isPending}
-              onClick={() => fitWindow.mutate(nextPlanWindow(filters, lastPlan.service_date, requestedEnd))}
+              onClick={() => showPlanPage(planPage.page + 1)}
             >
               {t('matrix.laterPlans', { count: STAFFING_MATRIX_PLAN_LIMIT })}
             </Button>

@@ -82,7 +82,7 @@ export const updateSongSchema = songFieldsSchema.partial().extend({
  * (never-scheduled songs last), then title. `most_used`: highest `usage_count`
  * first, then title.
  */
-export const songListSortSchema = z.enum(['title', 'recent', 'last_used', 'most_used']);
+export const songListSortSchema = z.enum(['title', 'recent', 'recently_added', 'last_used', 'most_used']);
 export type SongListSort = z.infer<typeof songListSortSchema>;
 
 /** The window `usage_count` covers: plans in the 12 weeks before now. */
@@ -104,7 +104,7 @@ export const listSongsQuerySchema = paginationSchema.extend({
   scheduled_from: z.string().datetime({ offset: true }).optional(),
   scheduled_to: z.string().datetime({ offset: true }).optional(),
   /**
-   * Scopes `usage_count` (and the `most_used` sort) and the
+   * Scopes `usage_count`, the `most_used` and `last_used` sorts, and the
    * `scheduled_from`/`scheduled_to` filters to one service type. Does not
    * filter rows by itself; `last_scheduled_at` stays organization-wide.
    */

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { ApiError, listMediaQuerySchema, type MediaSummary } from '@service-center/shared';
 import { queryKeys } from './query-keys';
 import { orderWriteOutcome } from './plan-order-edit';
-import { MEDIA_LIST_CAP, canLinkMedia, linkableMedia, mediaLinkBody, mediaListCapped, mediaListRequest, mediaSummaryLine } from './media-library';
+import { canLinkMedia, linkableMedia, mediaLinkBody, mediaListRequest, mediaSummaryLine } from './media-library';
 import {
   SCAN_MAX_PAGES,
   canAddScanPage,
@@ -67,8 +67,14 @@ describe('media browsing and linking', () => {
 
   it('offers only active bundles in the picker', () => {
     expect(linkableMedia([media(), media({ id: 'm2', is_archived: true })]).map((row) => row.id)).toEqual(['m1']);
-    expect(mediaListCapped(Array.from({ length: MEDIA_LIST_CAP - 1 }, (_, index) => media({ id: `m${index}` })))).toBe(false);
-    expect(mediaListCapped(Array.from({ length: MEDIA_LIST_CAP }, (_, index) => media({ id: `m${index}` })))).toBe(true);
+  });
+
+  it('requests active results from the server before the cap and uses the server truncation flag', () => {
+    const picker = source('app/plan/media/[id].tsx');
+    expect(listMediaQuerySchema.parse(mediaListRequest(' loop ', false))).toEqual({ q: 'loop', include_archived: false });
+    expect(picker).toContain('queryKey: queryKeys.mediaList(queryScope, settled, false)');
+    expect(picker).toContain('queryFn: () => api.mediaList(mediaListRequest(settled, false))');
+    expect(picker).toContain('list.data?.truncated ?');
   });
 
   it('reads a refused link the way the order editor does', () => {

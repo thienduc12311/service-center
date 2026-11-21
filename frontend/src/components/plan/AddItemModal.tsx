@@ -11,7 +11,7 @@ import {
   type PlanItemType,
 } from '@service-center/shared';
 import { useInvalidateOrg } from '../../hooks/queries';
-import { Button, ErrorNotice, Modal } from '../ui';
+import { Button, ErrorNotice, Modal, Notice } from '../ui';
 import { INSERT_AT_END, type OrderInsertPoint } from './insertPoint';
 import { usePlanItemInsert } from './usePlanItemInsert';
 
@@ -38,7 +38,13 @@ export const AddItemModal = ({ open, planId, insertPoint = INSERT_AT_END, onAdde
   const [title, setTitle] = useState('');
   const [length, setLength] = useState('');
   const [description, setDescription] = useState('');
+  const [placementWarning, setPlacementWarning] = useState<string | null>(null);
   const [formError, setFormError] = useState<LocalizedError | null>(null);
+
+  const close = () => {
+    setPlacementWarning(null);
+    onClose();
+  };
 
   // The last unanswered add: sending the same draft again reuses its key, so
   // a retry after a lost response returns that item instead of a second one.
@@ -55,20 +61,25 @@ export const AddItemModal = ({ open, planId, insertPoint = INSERT_AT_END, onAdde
       pending.current = body;
       return insert(body, insertPoint);
     },
-    onSuccess: async ({ item }) => {
+    onSuccess: async ({ item, placed }) => {
       pending.current = null;
       await invalidate();
       setTitle('');
       setLength('');
       setDescription('');
-      onAdded?.(item.id);
-      onClose();
+      if (placed) {
+        onAdded?.(item.id);
+        close();
+      } else {
+        setPlacementWarning(item.title);
+      }
     },
   });
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (create.isPending) return;
+    setPlacementWarning(null);
     const draft: NewPlanItemDraft = { itemType, title, song: null, keyOverride: null, length, description };
     const problem = validateNewPlanItemDraft(draft);
     setFormError(problem ? new LocalizedError({ key: `plans:editItem.errors.${problem}` }) : null);
@@ -76,7 +87,7 @@ export const AddItemModal = ({ open, planId, insertPoint = INSERT_AT_END, onAdde
   };
 
   return (
-    <Modal open={open} title={t('addItem.title')} onClose={onClose}>
+    <Modal open={open} title={t('addItem.title')} onClose={close}>
       <form onSubmit={submit} className="space-y-4">
         <div className="flex flex-wrap gap-2" role="group" aria-label={t('editItem.type')}>
           {OTHER_ITEM_TYPES.map((value) => (
@@ -142,10 +153,11 @@ export const AddItemModal = ({ open, planId, insertPoint = INSERT_AT_END, onAdde
           </>
         )}
 
+        {placementWarning && <Notice tone="warning">{t('songBrowser.notPlaced', { title: placementWarning })}</Notice>}
         <ErrorNotice error={formError ?? create.error} />
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={close}>
             {t('common:actions.cancel')}
           </Button>
           <Button type="submit" loading={create.isPending}>

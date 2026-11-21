@@ -59,7 +59,7 @@ export type SongBrowserQuery = Omit<Partial<ListSongsQuery>, 'page'>;
 
 const TAB_SORT: Record<SongBrowserTab, NonNullable<ListSongsQuery['sort']>> = {
   suggested: 'most_used',
-  recent: 'recent',
+  recent: 'recently_added',
   all: 'title',
 };
 
@@ -78,7 +78,7 @@ export const songBrowserQuery = ({ tab, q, filters, planId, serviceTypeId, now }
     per_page: SONG_BROWSER_PAGE_SIZE,
     ...(serviceTypeId ? { service_type_id: serviceTypeId } : {}),
     ...(tab === 'suggested' && !search
-      ? { scheduled_from: new Date(now.getTime() - SONG_USAGE_WINDOW_WEEKS * WEEK_MS).toISOString() }
+      ? { scheduled_from: new Date(now.getTime() - SONG_USAGE_WINDOW_WEEKS * WEEK_MS).toISOString(), scheduled_to: now.toISOString() }
       : {}),
     ...(search ? { q: search } : {}),
     ...(filters.key ? { key: filters.key } : {}),

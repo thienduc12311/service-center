@@ -56,10 +56,10 @@ import { PLAN_TABS, buildPlanTeams, type PlanTab } from '../components/plan/type
 import { useFormatters } from '../i18n';
 
 /**
- * Room for the song browser beside the workspace on wide screens: the panel
- * is 26rem; whatever margin the centered page already has beside it counts.
+ * Reserve room for the 26rem drawer and 1rem gap. The shell's 2rem content
+ * padding and centering within the area beside the 16rem rail already count.
  */
-const SONG_BROWSER_ROOM = 'lg:pr-[max(0px,calc(24rem_-_max(0px,calc((100vw_-_80rem)_/_2))))]';
+const SONG_BROWSER_ROOM = 'xl:pr-[max(0px,calc(25rem_-_max(0px,calc((100vw_-_96rem)_/_2))))]';
 
 const PLAN_CHAT_RESTRICTED = new LocalizedError({ key: 'plans:planDetail.errors.planChatRestricted' });
 
@@ -425,7 +425,9 @@ export const PlanDetailPage = () => {
         <ErrorNotice error={openChat.error ? PLAN_CHAT_RESTRICTED : null} />
       </div>
 
-      <div className="mt-8 grid gap-8 border-t border-app-border pt-6 lg:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]">
+      <div className={`mt-8 grid gap-8 border-t border-app-border pt-6 ${
+        songBrowserOpen ? '' : 'lg:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)]'
+      }`}>
         <PlanSidebar
           plan={detail}
           canEditPlan={canEditPlan}
@@ -440,7 +442,7 @@ export const PlanDetailPage = () => {
           onEditNeededPositions={openNeededPositions}
         />
 
-        <div className="order-first min-w-0 lg:order-last">
+        <div className={`order-first min-w-0 ${songBrowserOpen ? '' : 'lg:order-last'}`}>
           {/* F14: stage layouts are for the plan's editors and leaders (RLS decides). */}
           {/* F16: attendance for team schedulers; public sharing for the plan's editors. */}
           <Tabs

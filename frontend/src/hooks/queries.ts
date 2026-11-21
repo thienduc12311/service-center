@@ -31,6 +31,7 @@ import { api } from '../lib/api';
 import { MESSAGES_PAGE_SIZE, nextMessagesCursor } from '../lib/message-paging';
 import { useAuth } from '../providers/AuthProvider';
 import { useBroadcastRefresh } from './useBroadcastRefresh';
+import { scopedQuery, useQueryScope } from './scopedQuery';
 
 /**
  * Every key is namespaced by organization so switching orgs can never surface
@@ -202,12 +203,11 @@ export const useServiceTypes = () => {
 };
 
 export const useSongs = (query: { q?: string; sort?: string; page?: number; per_page?: number }) => {
-  const org = useOrg();
+  const { org, authorization } = useQueryScope();
   return useQuery({
-    queryKey: keys.songs(org, query),
+    ...scopedQuery(keys.songs(org, query), authorization),
     queryFn: () => api.listSongs(query),
     enabled: Boolean(org),
-    placeholderData: (previous) => previous,
   });
 };
 
@@ -216,14 +216,13 @@ export const useSongs = (query: { q?: string; sort?: string; page?: number; per_
  * browser's source. Earlier results stay on screen while a new search loads.
  */
 export const useSongPages = (query: Omit<Partial<ListSongsQuery>, 'page'>, enabled = true) => {
-  const org = useOrg();
+  const { org, authorization } = useQueryScope();
   const pages = useInfiniteQuery({
-    queryKey: [...keys.songs(org, query), 'pages'] as const,
+    ...scopedQuery([...keys.songs(org, query), 'pages'], authorization),
     queryFn: ({ pageParam }) => api.listSongs({ ...query, page: pageParam }),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.per_page < last.total ? last.page + 1 : undefined),
     enabled: Boolean(org) && enabled,
-    placeholderData: (previous) => previous,
   });
   const rows = useMemo(() => {
     // A song can shift between pages while paging (new usage); list it once.
@@ -253,22 +252,20 @@ export const useSongSchedule = (
   id: string | undefined,
   query: { limit: number; arrangement_id?: string },
 ) => {
-  const org = useOrg();
+  const { org, authorization } = useQueryScope();
   return useQuery({
-    queryKey: keys.songSchedule(org, id ?? '', query),
+    ...scopedQuery(keys.songSchedule(org, id ?? '', query), authorization, [id]),
     queryFn: () => api.getSongSchedule(id!, query),
     enabled: Boolean(org && id),
-    placeholderData: (previous) => previous,
   });
 };
 
 export const usePlans = (query: Record<string, string | number | undefined>, enabled = true) => {
-  const org = useOrg();
+  const { org, authorization } = useQueryScope();
   return useQuery({
-    queryKey: keys.plans(org, query),
+    ...scopedQuery(keys.plans(org, query), authorization),
     queryFn: () => api.listPlans(query),
     enabled: Boolean(org) && enabled,
-    placeholderData: (previous) => previous,
   });
 };
 
@@ -278,15 +275,13 @@ export const usePlans = (query: Record<string, string | number | undefined>, ena
  * beyond the first page stay reachable (W2-PLANS-D10).
  */
 export const usePlanPages = (query: Omit<ListPlansRequest, 'page'>, enabled = true) => {
-  const org = useOrg();
+  const { org, authorization } = useQueryScope();
   return useInfiniteQuery({
-    queryKey: [...keys.plans(org, query), 'pages'] as const,
+    ...scopedQuery([...keys.plans(org, query), 'pages'], authorization),
     queryFn: ({ pageParam }) => api.listPlans({ ...query, page: pageParam }),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.per_page < last.total ? last.page + 1 : undefined),
     enabled: Boolean(org) && enabled,
-    // A new search keeps the last results on screen until its first page arrives.
-    placeholderData: (previous) => previous,
   });
 };
 
@@ -300,12 +295,11 @@ export const usePlan = (id: string | undefined) => {
 };
 
 export const useStaffingMatrix = (input: StaffingMatrixQueryInput, enabled = true) => {
-  const org = useOrg();
+  const { org, authorization } = useQueryScope();
   return useQuery({
-    queryKey: keys.staffingMatrix(org, input),
+    ...scopedQuery(keys.staffingMatrix(org, input), authorization),
     queryFn: () => api.staffingMatrix(input),
     enabled: Boolean(org) && enabled,
-    placeholderData: (previous) => previous,
   });
 };
 
@@ -329,12 +323,11 @@ export const useStaffingMatrixViews = () => {
 };
 
 export const useCalendar = (query: CalendarQueryRequest) => {
-  const org = useOrg();
+  const { org, authorization } = useQueryScope();
   return useQuery({
-    queryKey: keys.calendar(org, query),
+    ...scopedQuery(keys.calendar(org, query), authorization),
     queryFn: () => api.calendar(query),
     enabled: Boolean(org),
-    placeholderData: (previous) => previous,
   });
 };
 
@@ -537,9 +530,9 @@ export interface PeoplePageOptions {
  * keep using `usePeople`.
  */
 export const usePeoplePage = (filters: PeoplePageFilters, options: PeoplePageOptions = {}) => {
-  const org = useOrg();
+  const { org, authorization } = useQueryScope();
   const query = useInfiniteQuery({
-    queryKey: keys.peoplePage(org, filters),
+    ...scopedQuery(keys.peoplePage(org, filters), authorization, [filters.teamId || null, filters.includeArchived]),
     queryFn: ({ pageParam }) =>
       api.listPeoplePage({
         limit: PEOPLE_PAGE_SIZE,
@@ -551,8 +544,6 @@ export const usePeoplePage = (filters: PeoplePageFilters, options: PeoplePageOpt
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: Boolean(org) && (options.enabled ?? true),
-    // Keep the last results on screen while a new search loads, instead of a skeleton per keystroke.
-    placeholderData: (previous) => previous,
   });
   return {
     ...query,
@@ -576,13 +567,11 @@ export const ROSTER_AUDIT_PAGE = 50;
 export const ROSTER_AUDIT_MAX = 200;
 
 export const useRosterAudit = (personId: string | null, enabled = true, limit: number = ROSTER_AUDIT_PAGE) => {
-  const org = useOrg();
+  const { org, authorization } = useQueryScope();
   return useQuery({
-    queryKey: [...keys.rosterAudit(org, personId), limit] as const,
+    ...scopedQuery([...keys.rosterAudit(org, personId), limit], authorization, [personId]),
     queryFn: () => api.rosterAudit({ ...(personId ? { person_id: personId } : {}), limit }),
     enabled: Boolean(org) && enabled,
-    // Raising the limit keeps the shorter list on screen until the longer one arrives.
-    placeholderData: (previous) => previous,
   });
 };
 
@@ -777,8 +766,8 @@ export const useConversations = (visible: boolean) => {
 };
 
 export const useConversation = (id: string | undefined) => {
-  const org = useOrg();
-  const queryKey = keys.conversation(org, id ?? '');
+  const { org, authorization } = useQueryScope();
+  const { queryKey } = scopedQuery(keys.conversation(org, id ?? ''), authorization);
   const query = useQuery({
     queryKey,
     queryFn: () => api.getConversation(id!),
@@ -788,7 +777,7 @@ export const useConversation = (id: string | undefined) => {
     retry: false,
   });
   useBroadcastRefresh('conversation', id && conversationAccess(query.error) !== 'unavailable' ? [id] : [], { queryKey });
-  return query;
+  return { ...query, queryKey };
 };
 
 /** F10: templates the caller may use; RLS narrows them to their plans.edit scope. */
@@ -904,13 +893,11 @@ export const useRehearsalManifest = (planId: string | undefined) => {
 };
 
 export const useMediaList = (query: ListMediaRequest) => {
-  const org = useOrg();
+  const { org, authorization } = useQueryScope();
   return useQuery({
-    queryKey: keys.mediaList(org, query),
+    ...scopedQuery(keys.mediaList(org, query), authorization),
     queryFn: () => api.mediaList(query),
     enabled: Boolean(org),
-    // Keep the last results on screen while a new search loads.
-    placeholderData: (previous) => previous,
   });
 };
 

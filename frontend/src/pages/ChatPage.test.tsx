@@ -18,6 +18,7 @@ vi.mock('../lib/api', () => ({
     postConversationMessage: vi.fn(),
     conversationMessages: vi.fn(),
     markConversationRead: vi.fn(),
+    blockUser: vi.fn(),
   },
 }));
 vi.mock('../providers/AuthProvider', () => ({
@@ -194,6 +195,47 @@ describe('web chat thread history and search', () => {
 
     await act(async () => answer.resolve({ data: [], next_before: null }));
     expect(await screen.findByText('No messages match.')).toBeTruthy();
+  });
+
+  it('drops a blocked author from loaded history and reply quotes before either page refreshes', async () => {
+    const blocked = {
+      ...message('m-blocked', 'Private older message'), author_id: 'other-account', author_name: 'Dana',
+      is_mine: false, created_at: '2026-11-19T10:00:00Z',
+    };
+    const kept = { ...message('m-kept', 'Unrelated history'), created_at: '2026-11-19T11:00:00Z' };
+    const reply = { ...message('m-reply', 'A reply to Dana'), reply_to_id: blocked.id };
+    const user = renderChat(undefined, {
+      ...thread, messages: { data: [reply], next_before: 'cursor-older' },
+    });
+    const historyRefresh = deferred<Awaited<ReturnType<typeof api.conversationMessages>>>();
+    const threadRefresh = deferred<ConversationDetail>();
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.mocked(api.conversationMessages)
+      .mockResolvedValueOnce({ data: [blocked, kept], next_before: null })
+      .mockReturnValue(historyRefresh.promise);
+    vi.mocked(api.blockUser).mockResolvedValue({
+      blocker_id: 'account-1', blocked_id: blocked.author_id, created_at: new Date().toISOString(),
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Load older messages' }));
+    const replyEntry = (await screen.findByText(reply.body)).closest('li')!;
+    const blockedEntry = (await screen.findByText(blocked.body, { exact: true })).closest('li')!;
+    expect(within(replyEntry).getByText(/Private older message/)).toBeTruthy();
+    vi.mocked(api.getConversation).mockReturnValue(threadRefresh.promise);
+
+    await user.click(within(blockedEntry).getByRole('button', { name: /Dana/ }));
+    await user.click(within(blockedEntry).getByRole('menuitem', { name: 'Block Dana' }));
+
+    await waitFor(() => expect(screen.queryByText(/Private older message/)).toBeNull());
+    expect(api.blockUser).toHaveBeenCalledWith(blocked.author_id);
+    expect(screen.getByText(kept.body)).toBeTruthy();
+    expect(screen.getByText(reply.body)).toBeTruthy();
+    await waitFor(() => expect(api.conversationMessages).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      historyRefresh.resolve({ data: [kept], next_before: null });
+      threadRefresh.resolve({ ...thread, messages: { data: [reply], next_before: 'cursor-older' } });
+    });
+    expect(screen.queryByText(/Private older message/)).toBeNull();
   });
 });
 

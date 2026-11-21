@@ -71,8 +71,13 @@ const filterValuesFrom = (params: URLSearchParams): SongLibraryFilterValues => {
 /** Selected songs by id, kept across pages so a bulk edit can span several. */
 type SongSelection = ReadonlyMap<string, SongListItem>;
 
+interface SongSelectionUpdate {
+  next: SongSelection;
+  skipped: number;
+}
+
 /** Adds songs to a selection up to the bulk limit; reports how many did not fit. */
-const addToSelection = (current: SongSelection, songs: readonly SongListItem[]): { next: SongSelection; skipped: number } => {
+const addToSelection = (current: SongSelection, songs: readonly SongListItem[]): SongSelectionUpdate => {
   const next = new Map(current);
   let skipped = 0;
   for (const song of songs) {

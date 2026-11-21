@@ -126,11 +126,12 @@ describe('GET /songs (large-list contract)', () => {
     expect(response.body.data[0]).toMatchObject({ usage_count: 3, in_plan: true, last_scheduled_at: '2026-11-14T10:00:00+00:00' });
   });
 
-  it('accepts last_used and rejects unknown sorts and malformed scopes', async () => {
+  it('accepts last_used and recently_added and rejects unknown sorts and malformed scopes', async () => {
     const log: FakeDbLog = { queries: [], rpcs: [] };
     const db = fakeDb({}, { list_curated_songs: { data: [], page: 1, per_page: 25, total: 0 } }, log);
     const app = await mount('/songs', load, db);
     expect((await request(app).get('/songs').query({ sort: 'last_used' })).status).toBe(200);
+    expect((await request(app).get('/songs').query({ sort: 'recently_added' })).status).toBe(200);
     expect((await request(app).get('/songs').query({ sort: 'popular' })).status).toBe(422);
     expect((await request(app).get('/songs').query({ plan_id: 'nope' })).status).toBe(422);
     expect((await request(app).get('/songs').query({ service_type_id: 'nope' })).status).toBe(422);

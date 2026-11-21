@@ -19,6 +19,19 @@ const privateRoot = (scope: ProtectedQueryScope | null) =>
     scope?.generation ?? null,
   ] as const;
 
+interface PreviousQuery {
+  queryKey: readonly unknown[];
+}
+
+type ScopedPlaceholder = <T>(previous: T | undefined, previousQuery: PreviousQuery | undefined) => T | undefined;
+
+/** Retain debounced results only within the active account, church, and session generation. */
+export const keepScopedData = (scope: ProtectedQueryScope | null): ScopedPlaceholder => {
+  const prefix = privateRoot(scope);
+  return (previous, previousQuery) =>
+    scope && prefix.every((part, index) => part === previousQuery?.queryKey[index]) ? previous : undefined;
+};
+
 export const queryKeys = {
   privateRoot,
   organization: (scope: ProtectedQueryScope | null) =>
@@ -153,8 +166,10 @@ export const queryKeys = {
     [...privateRoot(scope), 'conversations', 'detail', conversationId, 'history'] as const,
   conversationSend: (scope: ProtectedQueryScope | null, conversationId: string) =>
     [...privateRoot(scope), 'conversations', 'send', conversationId] as const,
+  conversationSearches: (scope: ProtectedQueryScope | null, conversationId: string) =>
+    [...queryKeys.conversation(scope, conversationId), 'search'] as const,
   conversationSearch: (scope: ProtectedQueryScope | null, conversationId: string, query: string) =>
-    [...privateRoot(scope), 'conversations', 'detail', conversationId, 'search', query] as const,
+    [...queryKeys.conversationSearches(scope, conversationId), query] as const,
   /** MOB-019: current participants of one conversation, the only people worth mentioning. */
   conversationMentionCandidates: (scope: ProtectedQueryScope | null, conversationId: string | null | undefined) =>
     [...privateRoot(scope), 'conversations', 'mention-candidates', conversationId ?? null] as const,

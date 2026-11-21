@@ -31,6 +31,10 @@ insert into public.songs (id, organization_id, title, author, ccli_number) value
   (pg_temp.fx('backslash'), pg_temp.fx('org'), 'LLS back\slash', null, null),
   (pg_temp.fx('never'), pg_temp.fx('org'), 'LLS Never Played', null, null);
 
+-- Creation and update order disagree for these two songs.
+update public.songs set created_at = now() - interval '1 day' where id = pg_temp.fx('chua');
+update public.songs set created_at = now() - interval '2 days' where id = pg_temp.fx('nguyen');
+
 insert into public.plans (id, organization_id, service_type_id, title, service_date, status) values
   (pg_temp.fx('plan_old'), pg_temp.fx('org'), pg_temp.fx('sunday'), 'LLS Old', now() - interval '20 weeks', 'draft'),
   (pg_temp.fx('plan_sun1'), pg_temp.fx('org'), pg_temp.fx('sunday'), 'LLS Sunday 1', now() - interval '3 weeks', 'draft'),
@@ -154,6 +158,15 @@ begin
   t := pg_temp.song_titles('{"sort":"last_used","per_page":200}');
   if t <> array['LLS Chúa Là Tình Yêu', 'LLS Ơn Trời', 'LLS 100% Grace', 'LLS a_b Song', 'LLS back\slash', 'LLS Never Played'] then
     raise exception 'last_used order (never-scheduled last): %', t; end if;
+
+  t := pg_temp.song_titles(jsonb_build_object('sort', 'last_used', 'q', 'lls',
+    'service_type_id', pg_temp.fx('sunday'), 'per_page', 200));
+  if t[1:3] <> array['LLS Chúa Là Tình Yêu', 'LLS 100% Grace', 'LLS Ơn Trời'] then
+    raise exception 'last_used order limited to Sunday: %', t; end if;
+
+  t := pg_temp.song_titles('{"q":"lls","sort":"recently_added","per_page":200}');
+  if t[5:6] <> array['LLS Chúa Là Tình Yêu', 'LLS Ơn Trời'] then
+    raise exception 'recently added must order by creation date: %', t; end if;
 
   -- not_scheduled_since: chua (future) and nguyen (2 weeks ago) are excluded at 4 weeks ago; percent (20 weeks) and never stay.
   t := pg_temp.song_titles(jsonb_build_object('per_page', 200, 'not_scheduled_since', now() - interval '4 weeks'));

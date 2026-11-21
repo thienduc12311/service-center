@@ -56,12 +56,17 @@ const shownStatus = (row: AttendanceSheetRow, draft: AttendanceDraft): Attendanc
 const matchesFilter = (filter: AttendanceFilter, status: AttendanceStatus | null): boolean =>
   filter === 'all' || (filter === 'unmarked' ? status === null : status === filter);
 
+interface AttendanceTeam {
+  id: string;
+  name: string;
+}
+
 /**
  * The team a row is listed under: the team it is marked through, else its
  * first role. A person on two teams appears once, so there is one set of
  * buttons per person.
  */
-const rowTeam = (row: AttendanceSheetRow): { id: string; name: string } => {
+const rowTeam = (row: AttendanceSheetRow): AttendanceTeam => {
   const role = row.roles.find((candidate) => candidate.team_id === row.mark_team_id) ?? row.roles[0];
   return role ? { id: role.team_id, name: role.team_name } : { id: '', name: '' };
 };

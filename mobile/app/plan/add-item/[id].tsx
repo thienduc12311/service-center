@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import {
   LocalizedError,
   PLAN_ITEM_TYPES,
   newPlanItemRequest,
+  placePlanItem,
   validateNewPlanItemDraft,
   type CreatePlanItemRequest,
   type NewPlanItemDraft,
@@ -17,13 +18,6 @@ import {
 import { api } from '../../../src/lib/api';
 import { queryKeys } from '../../../src/lib/query-keys';
 import { orderWriteOutcome, PlanItemAddAttempts, type PlanItemAddOwner } from '../../../src/lib/plan-order-edit';
-import {
-  cursorAfterFailed,
-  cursorAfterPlaced,
-  insertStep,
-  type InsertCursor,
-  type InsertPlacement,
-} from '../../../src/lib/plan-insert';
 import { songAddDraft } from '../../../src/lib/song-browser';
 import { newIdempotencyKey } from '../../../src/lib/idempotency';
 import { useDiscardGuard } from '../../../src/lib/useDiscardGuard';
@@ -64,7 +58,7 @@ interface AddRequest {
 
 interface AddResult {
   itemId: string;
-  placement: InsertPlacement;
+  placed: boolean;
 }
 
 /** The item new ones go after, as shown above the list. */
@@ -140,11 +134,6 @@ function AddItems({ plan, afterItemId }: AddItemsProps) {
 
   const initialAnchor = afterItemId ? plan.items.find((item) => item.id === afterItemId) : undefined;
   const [anchor, setAnchor] = useState<InsertAnchor | null>(initialAnchor ? { id: initialAnchor.id, title: initialAnchor.title } : null);
-  // Set on the first add from the order as loaded; then kept from each answer.
-  const cursor = useRef<InsertCursor | null>(null);
-  const currentCursor = (): InsertCursor =>
-    cursor.current ?? { afterItemId: anchor?.id ?? null, order: plan.items.map((item) => item.id) };
-
   const owner = useMemo<PlanItemAddOwner | null>(
     () => (queryScope ? { userId: queryScope.userId, organizationId: queryScope.organizationId } : null),
     [queryScope],
@@ -164,27 +153,13 @@ function AddItems({ plan, afterItemId }: AddItemsProps) {
     mutationFn: async (request: AddRequest): Promise<AddResult> => {
       const created = await api.addPlanItem(plan.id, addAttempts.next(request.owner, plan.id, request.body));
       addAttempts.settle(request.owner, plan.id);
-      const before = currentCursor();
-      const step = insertStep(before, created.id);
-      if (step.kind === 'none') {
-        cursor.current = step.cursor;
-        return { itemId: created.id, placement: step.placement };
-      }
-      try {
-        const saved = await api.reorderPlanItems(plan.id, step.itemIds, created.content_revision);
-        cursor.current = cursorAfterPlaced(created.id, saved.map((row) => row.id));
-        return { itemId: created.id, placement: 'placed' };
-      } catch {
-        // The add stands; only its position was refused (the order changed
-        // meanwhile). It stays at the end, the screen says so, and later adds append.
-        cursor.current = cursorAfterFailed(before, created.id);
-        return { itemId: created.id, placement: 'failed' };
-      }
+      const placed = anchor === null || await placePlanItem(api, plan.id, created.id, anchor.id);
+      return { itemId: created.id, placed };
     },
     onSuccess: (result, request) => {
       setLastRequest(null);
-      setPlaceFailed(result.placement === 'failed');
-      setAnchor(cursor.current?.afterItemId === result.itemId ? { id: result.itemId, title: request.title } : null);
+      setPlaceFailed(!result.placed);
+      setAnchor((current) => current && result.placed ? { id: result.itemId, title: request.title } : null);
       setAddedCount((count) => count + 1);
       if (request.songId) {
         const songId = request.songId;
@@ -228,11 +203,11 @@ function AddItems({ plan, afterItemId }: AddItemsProps) {
       { owner, body: newPlanItemRequest(draft, t('itemKind.song')), title: title.trim(), songId: null },
       {
         onSuccess: (result) => {
-          if (result.placement !== 'failed') {
+          if (result.placed) {
             guard.leave();
             return;
           }
-          // Saved, but at the end: stay so the notice is read; the form is done with.
+          // Saved with unconfirmed placement. Keep the notice visible and clear the form.
           setTitle('');
           setLength('');
           setDescription('');
@@ -245,11 +220,7 @@ function AddItems({ plan, afterItemId }: AddItemsProps) {
     if (lastRequest) add.mutate(lastRequest);
   };
 
-  const appendInstead = () => {
-    const current = currentCursor();
-    cursor.current = { afterItemId: null, order: current.order };
-    setAnchor(null);
-  };
+  const appendInstead = () => setAnchor(null);
 
   const done = () => router.back();
   const screenTitle = itemType !== 'song'
@@ -262,7 +233,7 @@ function AddItems({ plan, afterItemId }: AddItemsProps) {
         <View style={styles.anchor}>
           <Icon name="move" size={15} color={theme.color.brandText} />
           <Text style={styles.anchorText} numberOfLines={2}>{t('mobileSongBrowser.insertingAfter', { title: anchor.title })}</Text>
-          <Button title={t('mobileSongBrowser.insertAtEnd')} variant="quiet" onPress={appendInstead} />
+          <Button title={t('mobileSongBrowser.insertAtEnd')} variant="quiet" disabled={add.isPending} onPress={appendInstead} />
         </View>
       ) : null}
       {placeFailed ? (

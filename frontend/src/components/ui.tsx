@@ -597,7 +597,7 @@ const isAvailableForFocus = (element: HTMLElement): boolean => {
 
 const tabOrder = (element: HTMLElement): number => element.tabIndex || Number.POSITIVE_INFINITY;
 
-const tabbableElements = (dialog: HTMLDivElement): HTMLElement[] => {
+export const tabbableElements = (dialog: HTMLElement): HTMLElement[] => {
   const candidates = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
     .filter((element) => element.tabIndex >= 0 && isAvailableForFocus(element));
 

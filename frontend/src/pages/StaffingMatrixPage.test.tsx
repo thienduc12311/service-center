@@ -93,12 +93,40 @@ describe('web staffing matrix paging', () => {
     expect(lastInput().cursor).toBeUndefined();
   });
 
-  it('turns the 12-plan refusal into a one-click narrower range', async () => {
-    const plans = Array.from({ length: 13 }, (_, index) => ({ id: id(100 + index + 1), service_date: planDate(index + 1) }) as PlanSummary);
-    vi.mocked(api.listPlans).mockResolvedValue({ data: plans, page: 1, per_page: 13, total: 20 });
-    vi.mocked(api.staffingMatrix).mockImplementation(async (input) => {
-      if (input.filters.to !== planDate(12)) throw new ApiError(400, 'Narrow the filters to 12 plans or fewer', 'bad_request');
-      return page([1], null, [1, 12]);
+  it('pages through all 25 plans at the same instant after a 12-plan refusal', async () => {
+    const plans = page([1], null, Array.from({ length: 25 }, (_, index) => index + 1))
+      .plans.map((plan) => ({ ...plan, service_date: planDate(1) }));
+    const summaries = plans.map(({ id: planId, title, service_date }): PlanSummary => ({
+      id: planId,
+      title,
+      service_date,
+      organization_id: 'org-1',
+      service_type_id: null,
+      service_type: null,
+      location: null,
+      notes: null,
+      status: 'draft',
+      content_revision: 1,
+      staffing_revision: 1,
+      created_by: null,
+      created_at: service_date,
+      updated_at: service_date,
+      times: [],
+      counts: { items: 0, songs: 0, confirmed: 0, unconfirmed: 0, declined: 0, prepared: 0 },
+    }));
+    vi.mocked(api.listPlans).mockImplementation(async (query) => {
+      const pageNumber = Number(query?.page);
+      const perPage = Number(query?.per_page);
+      return {
+        data: summaries.slice((pageNumber - 1) * perPage, pageNumber * perPage),
+        page: pageNumber,
+        per_page: perPage,
+        total: plans.length,
+      };
+    });
+    vi.mocked(api.staffingMatrix).mockImplementation(async ({ filters }) => {
+      if (filters.plan_ids.length === 0) throw new ApiError(400, 'Narrow the filters to 12 plans or fewer', 'bad_request');
+      return { ...page([1], null), plans: plans.filter((plan) => filters.plan_ids.includes(plan.id)) };
     });
     const user = renderMatrix();
 
@@ -107,9 +135,21 @@ describe('web staffing matrix paging', () => {
     await user.click(action);
 
     expect(await screen.findByText('Plan 12')).toBeTruthy();
-    expect(api.listPlans).toHaveBeenCalledWith(expect.objectContaining({ order: 'asc', per_page: 13 }));
-    expect(lastInput().filters.to).toBe(planDate(12));
+    const { from, to } = lastInput().filters;
+    expect(lastInput().filters.plan_ids).toEqual(plans.slice(0, 12).map((plan) => plan.id));
     expect(screen.getByText(/Showing 12 plans at a time/)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Next 12 plans' })).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Next 12 plans' }));
+    expect(await screen.findByText('Plan 13')).toBeTruthy();
+    expect(lastInput().filters.plan_ids).toEqual(plans.slice(12, 24).map((plan) => plan.id));
+    expect(screen.queryByText('Plan 12')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Next 12 plans' }));
+    expect(await screen.findByText('Plan 25')).toBeTruthy();
+    expect(lastInput().filters.plan_ids).toEqual([id(125)]);
+    expect(screen.queryByRole('button', { name: 'Next 12 plans' })).toBeNull();
+    expect(vi.mocked(api.listPlans).mock.calls.map(([query]) => query)).toEqual(
+      [1, 2, 3].map((number) => ({ from, to, order: 'asc', page: number, per_page: 12 })),
+    );
   });
 });

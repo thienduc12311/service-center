@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   LocalizedError,
@@ -22,7 +22,7 @@ import {
   type PlanItemType,
 } from '@service-center/shared';
 import { api } from '../../../src/lib/api';
-import { queryKeys } from '../../../src/lib/query-keys';
+import { keepScopedData, queryKeys } from '../../../src/lib/query-keys';
 import {
   PERSON_CHOICE_LIMIT,
   labeledKeyText,
@@ -148,7 +148,7 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
     queryKey: queryKeys.songs(queryScope, `pick:${songSearch}`),
     queryFn: () => api.listSongs({ ...(songSearch ? { q: songSearch } : {}), archive: 'active', sort: 'title', per_page: SONG_PICK_LIMIT }),
     enabled: Boolean(queryScope && changingSong),
-    placeholderData: keepPreviousData,
+    placeholderData: keepScopedData(queryScope),
   });
   // One server page of People per (debounced) search; the plan's own people come first.
   const personSearch = useDebouncedValue(personQuery.trim());
@@ -156,7 +156,7 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
     queryKey: queryKeys.peoplePicker(queryScope, `leader:${personSearch}`),
     queryFn: () => api.listPeoplePage({ limit: PERSON_CHOICE_LIMIT, ...(personSearch ? { q: personSearch } : {}) }),
     enabled: Boolean(queryScope && draft.leaderMode === 'person'),
-    placeholderData: (previous) => previous,
+    placeholderData: keepScopedData(queryScope),
   });
   const teams = useQuery({
     queryKey: queryKeys.teams(queryScope),

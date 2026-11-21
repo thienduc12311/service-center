@@ -34,6 +34,7 @@ import {
   type ConversationReportReason,
   type ConversationSummary,
   type DiscussionMention,
+  type DiscussionPage,
   type MentionCandidate,
   type MentionResolution,
 } from '@service-center/shared';
@@ -340,10 +341,21 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
   });
   const block = useMutation({
     mutationFn: (message: ConversationMessage) => api.blockUser(message.author_id),
-    onSuccess: (row) => {
+    onSuccess: async ({ blocked_id }, message) => {
       if (!isCurrentGeneration(generation)) return;
-      // The server stops returning them; drop what is already on screen too.
-      patchMessages((messages) => messages.filter((message) => message.author_id !== row.blocked_id));
+      // Discard reads started before the server recorded the block.
+      await queryClient.cancelQueries({ queryKey });
+      if (!isCurrentGeneration(generation)) return;
+      const withoutBlocked = (messages: ConversationMessage[]): ConversationMessage[] =>
+        messages.filter((entry) => entry.author_id !== blocked_id);
+      patchMessages(withoutBlocked);
+      queryClient.setQueriesData<DiscussionPage<ConversationMessage>>(
+        { queryKey: queryKeys.conversationSearches(queryScope, conversationId) },
+        (page) => page && ({ ...page, data: withoutBlocked(page.data) }),
+      );
+      setDraft((current) => current.replyToId && (
+        current.replyToId === message.id || byId.get(current.replyToId)?.author_id === blocked_id
+      ) ? { ...current, replyToId: null } : current);
       setReportingId(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.blockedUsers(queryScope?.userId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.privateRoot(queryScope) });

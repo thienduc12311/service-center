@@ -225,7 +225,7 @@ describe('team cards and search', () => {
 describe('add team members', () => {
   const band = team('team-band', 'Worship Band', {
     positions: [position('pos-bass', 'team-band', 'Bass'), position('pos-keys', 'team-band', 'Keys')],
-    members: [member('p-an', 'An Nguyen', 'pos-bass')],
+    members: [member('p-an', 'An Nguyen', 'pos-bass'), member('p-minh', 'Minh Pham')],
   });
   const people = [
     rosterPerson('p-an', 'An Nguyen'),
@@ -255,6 +255,7 @@ describe('add team members', () => {
     expect(options.map((option) => option.textContent)).toEqual([expect.stringContaining('Mai Tran')]);
     await user.click(options[0]!);
 
+    await user.click(within(dialog).getByRole('radio', { name: 'Keys' }));
     await user.type(picker, 'minh');
     await user.click(await within(dialog).findByRole('option', { name: /Minh Pham/ }));
 
@@ -262,7 +263,6 @@ describe('add team members', () => {
     expect(within(queued).getByText('Mai Tran')).toBeTruthy();
     expect(within(queued).getByText('Minh Pham')).toBeTruthy();
 
-    await user.click(within(dialog).getByRole('radio', { name: 'Keys' }));
     expect(api.addTeamMember).not.toHaveBeenCalled();
 
     await user.click(within(dialog).getByRole('button', { name: 'Add 2 as Keys' }));
@@ -273,13 +273,38 @@ describe('add team members', () => {
     ]);
   });
 
-  it('never offers current members, and a queued person can be taken back out', async () => {
+  it('allows a second position and prevents a duplicate when the chosen position changes', async () => {
+    vi.mocked(api.addTeamMember).mockResolvedValue(undefined);
     const { user, dialog } = await openAddMember();
     const picker = within(dialog).getByRole('combobox', { name: 'Find people' });
+    await user.type(picker, 'minh');
+    expect(await within(dialog).findByText('No members match.')).toBeTruthy();
+    await user.clear(picker);
+    await user.click(within(dialog).getByRole('radio', { name: 'Keys' }));
+    await user.type(picker, 'an nguyen');
+    await user.click(await within(dialog).findByRole('option', { name: /An Nguyen/ }));
+    expect(within(dialog).getByRole('button', { name: 'Add 1 as Keys' }).hasAttribute('disabled')).toBe(false);
+
+    await user.click(within(dialog).getByRole('radio', { name: 'Bass' }));
+    expect(within(dialog).getByRole('button', { name: 'Add 0 as Bass' }).hasAttribute('disabled')).toBe(true);
     await user.type(picker, 'an nguyen');
     expect(await within(dialog).findByText('No members match.')).toBeTruthy();
+    expect(api.addTeamMember).not.toHaveBeenCalled();
 
     await user.clear(picker);
+    await user.click(within(dialog).getByRole('radio', { name: 'Keys' }));
+    await user.type(picker, 'an nguyen');
+    await user.click(await within(dialog).findByRole('option', { name: /An Nguyen/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Add 1 as Keys' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(vi.mocked(api.addTeamMember).mock.calls).toEqual([
+      ['team-band', { person_id: 'p-an', position_id: 'pos-keys' }],
+    ]);
+  });
+
+  it('allows a queued person to be taken back out', async () => {
+    const { user, dialog } = await openAddMember();
+    const picker = within(dialog).getByRole('combobox', { name: 'Find people' });
     await user.type(picker, 'mai tran');
     await user.click(await within(dialog).findByRole('option', { name: /Mai Tran/ }));
     await user.click(within(dialog).getByRole('button', { name: 'Don’t add Mai Tran' }));

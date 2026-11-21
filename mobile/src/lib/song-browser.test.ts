@@ -23,6 +23,7 @@ describe('songBrowserQuery', () => {
       sort: 'most_used',
       service_type_id: 'sunday',
       scheduled_from: '2026-08-29T12:00:00.000Z',
+      scheduled_to: '2026-11-21T12:00:00.000Z',
     });
   });
 
@@ -40,20 +41,21 @@ describe('songBrowserQuery', () => {
 
   it('Recently added and A–Z sort the library without the rotation window', () => {
     expect(songBrowserQuery({ tab: 'recent', filters: NO_SONG_FILTERS, search: '', context })).toEqual({
-      archive: 'active', plan_id: 'plan-1', sort: 'recent', service_type_id: 'sunday',
+      archive: 'active', plan_id: 'plan-1', sort: 'recently_added', service_type_id: 'sunday',
     });
     expect(songBrowserQuery({ tab: 'title', filters: NO_SONG_FILTERS, search: '', context }).sort).toBe('title');
   });
 
   it('maps each filter chip to its parameter; "hide used" looks back 3 weeks', () => {
-    const filters = { key: 'G', speed: 'Slow', theme: 'Grace', hideRecentlyUsed: true };
+    const filters = { key: 'G', speed: 'Slow', theme: 'Grace', songType: 'Hymn', hideRecentlyUsed: true };
     expect(songBrowserQuery({ tab: 'title', filters, search: '', context })).toMatchObject({
       key: 'G',
       speed: 'Slow',
       theme: 'Grace',
+      song_type: 'Hymn',
       not_scheduled_since: '2026-10-31T12:00:00.000Z',
     });
-    expect(activeSongFilterCount(filters)).toBe(4);
+    expect(activeSongFilterCount(filters)).toBe(5);
     expect(activeSongFilterCount(NO_SONG_FILTERS)).toBe(0);
   });
 });

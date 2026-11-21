@@ -5,7 +5,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { useTranslation } from 'react-i18next';
 import { PEOPLE_PAGE_SIZE, flattenPeoplePages, rosterDetailLines, rosterDisplayName, uuid, type TeamWithPositions } from '@service-center/shared';
 import { api } from '../../src/lib/api';
-import { queryKeys } from '../../src/lib/query-keys';
+import { keepScopedData, queryKeys } from '../../src/lib/query-keys';
 import { canOpenPeopleDetails, directoryName, teamManageTarget } from '../../src/lib/directory';
 import { needsListSearch } from '../../src/lib/list-search';
 import {
@@ -265,7 +265,7 @@ function AddMembersSheet({ visible, team, onClose, onAdded }: AddMembersSheetPro
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
     // Keep the last results on screen while the next search loads.
-    placeholderData: (previous) => previous,
+    placeholderData: keepScopedData(queryScope),
     enabled: Boolean(queryScope && visible),
   });
   const candidates = useMemo(

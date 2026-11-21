@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useMutationState, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
@@ -17,10 +17,12 @@ import {
   type ConversationMessage,
   type ConversationReportReason,
   type ConversationSummary,
+  type DiscussionPage,
 } from '@service-center/shared';
 import { api, getStoredOrganizationId } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { keys, useConversation, useConversations, useMentionCandidates, useTeams } from '../hooks/queries';
+import { scopedQuery, useQueryScope } from '../hooks/scopedQuery';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { matchesSearch } from '../lib/search';
 import { useAuth } from '../providers/AuthProvider';
@@ -99,16 +101,6 @@ interface OutgoingMessage extends DiscussionSubmission {
   createdAt: string;
 }
 
-/**
- * Messages older than the thread's newest page, loaded with "Load older".
- * The polled newest page replaces itself; these stay until the thread closes.
- */
-interface OlderMessages {
-  messages: ConversationMessage[];
-  /** Cursor for the page before these; undefined until the first older page loads. */
-  nextBefore: string | null | undefined;
-}
-
 /** Where the thread was scrolled before older messages were added above it. */
 interface ScrollAnchor {
   height: number;
@@ -119,10 +111,12 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   const { t } = useTranslation(['messages', 'common']);
   const format = useFormatters();
   const errorText = useErrorText();
-  const { organizationId, session } = useAuth();
+  const { session } = useAuth();
+  const { org: organizationId, authorization } = useQueryScope();
   const client = useQueryClient();
   const detail = useConversation(conversationId);
-  const threadKey = keys.conversation(organizationId, conversationId);
+  const threadKey = detail.queryKey;
+  const searchKey = [...threadKey, 'search'] as const;
   const accountId = session?.user.id;
   const sendKey = ['conversation-send', organizationId, accountId, conversationId];
   const candidates = useMentionCandidates(detail.data ? { conversation_id: conversationId } : null);
@@ -132,30 +126,33 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   // Ask once typing settles, and keep the last results on screen meanwhile.
   const searchTerm = useDebouncedValue(search.trim());
   const results = useQuery({
-    queryKey: [...threadKey, 'search', searchTerm],
+    ...scopedQuery([...searchKey, searchTerm], authorization, [conversationId]),
     queryFn: () => api.conversationMessages(conversationId, { q: searchTerm, limit: 30 }),
     enabled: Boolean(detail.data && !detail.error) && searchTerm.length >= CONVERSATION_SEARCH_MIN,
     refetchInterval: CONVERSATION_THREAD_POLL_MS,
-    placeholderData: (previous) => previous,
   });
-  const [older, setOlder] = useState<OlderMessages>({ messages: [], nextBefore: undefined });
+  const [historyStart, setHistoryStart] = useState<string | null>(null);
+  const historyPrefix = [...threadKey, 'history'] as const;
+  const historyKey = [...historyPrefix, historyStart] as const;
+  const older = useInfiniteQuery({
+    queryKey: historyKey,
+    queryFn: ({ pageParam }) => api.conversationMessages(conversationId, { before: pageParam, limit: CONVERSATION_PAGE_SIZE }),
+    initialPageParam: historyStart ?? undefined,
+    getNextPageParam: (page) => page.next_before ?? undefined,
+    enabled: Boolean(historyStart && detail.data && !detail.error),
+    retry: false,
+  });
+  const olderMessages = older.data?.pages.flatMap((page) => page.data) ?? [];
   const scrollAnchor = useRef<ScrollAnchor | null>(null);
-  const patchOlder = (message: ConversationMessage) => setOlder((current) => (
-    current.messages.some((known) => known.id === message.id)
-      ? { ...current, messages: mergeConversationPages(current.messages, [message]) }
-      : current
-  ));
-  const loadOlder = useMutation({
-    mutationFn: (before: string) => api.conversationMessages(conversationId, { before, limit: CONVERSATION_PAGE_SIZE }),
-    onSuccess: (page) => {
-      const element = scroller.current;
-      if (element) scrollAnchor.current = { height: element.scrollHeight, top: element.scrollTop };
-      setOlder((current) => ({
-        messages: mergeConversationPages(current.messages, page.data),
-        nextBefore: page.next_before,
-      }));
-    },
-  });
+  const patchOlder = (message: ConversationMessage) => {
+    client.setQueryData<InfiniteData<DiscussionPage<ConversationMessage>>>(historyKey, (current) => current && ({
+      ...current,
+      pages: current.pages.map((page) => ({
+        ...page,
+        data: page.data.map((known) => known.id === message.id ? message : known),
+      })),
+    }));
+  };
   const refreshList = () => client.invalidateQueries({ queryKey: keys.conversations(organizationId) });
   const refresh = () => Promise.all([
     refreshList(),
@@ -213,7 +210,7 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
     if (!element || !anchor) return;
     element.scrollTop = anchor.top + (element.scrollHeight - anchor.height);
     scrollAnchor.current = null;
-  }, [older.messages.length]);
+  }, [olderMessages.length]);
 
   const mute = useMutation({ mutationFn: (muted: boolean) => api.muteConversation(conversationId, muted), onSuccess: refresh });
   const remove = useMutation({
@@ -226,9 +223,24 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   });
   const block = useMutation({
     mutationFn: (message: ConversationMessage) => api.blockUser(message.author_id),
-    onSuccess: () => {
+    onSuccess: async ({ blocked_id }) => {
       setReporting(null);
-      // Their messages and comments disappear everywhere, not only here.
+      setReplyTo((message) => message?.author_id === blocked_id ? null : message);
+      // An in-flight read may still contain messages from before the block.
+      await client.cancelQueries({ queryKey: threadKey });
+      const withoutBlocked = (page: DiscussionPage<ConversationMessage>): DiscussionPage<ConversationMessage> => ({
+        ...page,
+        data: page.data.filter((message) => message.author_id !== blocked_id),
+      });
+      client.setQueryData<ConversationDetail>(threadKey, (current) => current && ({
+        ...current,
+        messages: withoutBlocked(current.messages),
+      }));
+      client.setQueriesData<DiscussionPage<ConversationMessage>>({ queryKey: searchKey }, (page) => page && withoutBlocked(page));
+      client.setQueriesData<InfiniteData<DiscussionPage<ConversationMessage>>>(
+        { queryKey: historyPrefix },
+        (current) => current && ({ ...current, pages: current.pages.map(withoutBlocked) }),
+      );
       void client.invalidateQueries({ queryKey: keys.all(organizationId) });
     },
   });
@@ -242,7 +254,8 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
   });
 
   if (detail.isLoading) return <div className="p-4"><SkeletonList rows={4} /></div>;
-  if (!detail.data || conversationAccess(detail.error) === 'unavailable') {
+  const unavailable = [detail.error, older.error, results.error].some((error) => conversationAccess(error) === 'unavailable');
+  if (!detail.data || unavailable) {
     return (
       <div className="grid flex-1 place-items-center p-4">
         <EmptyState
@@ -255,13 +268,20 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
     );
   }
   const { conversation, messages, reports } = detail.data;
-  const thread = mergeConversationPages(older.messages, messages.data);
+  const thread = mergeConversationPages(olderMessages, messages.data);
   const byId = new Map(thread.map((message) => [message.id, message]));
   const searching = search.trim().length >= CONVERSATION_SEARCH_MIN;
   // Results for exactly what is typed, not the previous search kept on screen.
   const searchSettled = searching && searchTerm === search.trim() && results.isSuccess && !results.isPlaceholderData;
   const shown = searching ? results.data?.data ?? [] : thread;
-  const olderBefore = older.nextBefore === undefined ? messages.next_before : older.nextBefore;
+  const canLoadOlder = historyStart ? !older.data || older.hasNextPage : Boolean(messages.next_before);
+  const loadOlder = () => {
+    const element = scroller.current;
+    if (element) scrollAnchor.current = { height: element.scrollHeight, top: element.scrollTop };
+    if (!historyStart) setHistoryStart(messages.next_before);
+    else if (!older.data) void older.refetch();
+    else void older.fetchNextPage();
+  };
   const shownOutgoing = searching ? [] : outgoing;
   const quoteFor = (parentId: string | null) => {
     if (!parentId) return null;
@@ -338,12 +358,12 @@ const ConversationThread = ({ conversationId }: ConversationThreadProps) => {
         )}
 
         <div className="mb-3 empty:hidden">
-          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? block.error ?? loadOlder.error ?? results.error ?? detail.error} />
+          <ErrorNotice error={remove.error ?? restore.error ?? resolve.error ?? mute.error ?? block.error ?? older.error ?? results.error ?? detail.error} />
         </div>
-        {!searching && olderBefore && (
+        {!searching && canLoadOlder && (
           <div className="mb-3 flex flex-col items-center gap-2 text-xs text-slate-400">
             <span>{t('conversation.showingLatest', { count: thread.length })}</span>
-            <Button variant="secondary" size="sm" loading={loadOlder.isPending} onClick={() => loadOlder.mutate(olderBefore)}>
+            <Button variant="secondary" size="sm" loading={older.isFetching} onClick={loadOlder}>
               {t('conversation.loadOlder')}
             </Button>
           </div>
@@ -463,6 +483,7 @@ export const ChatPage = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
   const { user, can, organizationId } = useAuth();
+  const { authorization } = useQueryScope();
   const client = useQueryClient();
   const wide = useSyncExternalStore(subscribeToPaneWidth, showBothPanes);
   const conversations = useConversations(!conversationId || wide);
@@ -603,7 +624,10 @@ export const ChatPage = () => {
           )}
         </aside>
         <section className={`card flex min-h-[28rem] min-w-0 flex-col overflow-hidden lg:h-[calc(100dvh-14rem)] ${conversationId ? '' : 'hidden lg:flex'}`}>
-          {conversationId ? <ConversationThread key={conversationId} conversationId={conversationId} /> : (
+          {conversationId ? <ConversationThread
+            key={JSON.stringify([organizationId, authorization, conversationId])}
+            conversationId={conversationId}
+          /> : (
             <div className="grid flex-1 place-items-center p-6">
               <EmptyState compact icon="chat" title={t('chatPage.choose')} />
             </div>

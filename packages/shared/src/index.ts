@@ -40,6 +40,7 @@ export * from './lib/staffing-proposals.js';
 export * from './lib/plan-templates.js';
 export * from './lib/plan-order.js';
 export * from './lib/plan-item-draft.js';
+export * from './lib/plan-item-placement.js';
 export * from './lib/song-authoring.js';
 export * from './lib/chart-editor.js';
 export * from './lib/plan-time-draft.js';

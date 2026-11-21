@@ -136,9 +136,10 @@ grant select on public.people_owner_search to authenticated;
 -- New query keys:
 --   q                    accent-insensitive, multi-word (AND), literal text,
 --                        over title, author and CCLI number
---   sort                 + 'last_used' (last_scheduled_at desc nulls last, title)
+--   sort                 + 'recently_added' (created_at desc, title)
+--                        + 'last_used' (latest scheduled in scope desc nulls last, title)
 --                        + 'most_used' (usage_count desc, title)
---   service_type_id      scopes usage_count and scheduled_from/scheduled_to
+--   service_type_id      scopes usage_count, last_used sort and scheduled_from/scheduled_to
 --   not_scheduled_since  only songs with no plan on/after that instant
 --                        (never-scheduled songs included)
 --   plan_id              rows get in_plan = true when that plan has the song
@@ -168,6 +169,8 @@ language sql stable security invoker set search_path = '' as $$
   ), usage as (
     select i.song_id,
       max(p.service_date) as last_scheduled_at,
+      max(p.service_date) filter
+        (where v.service_type_id is null or p.service_type_id = v.service_type_id) as sort_last_used_at,
       count(distinct p.id) filter (where p.service_date >= v.usage_from and p.service_date < now()
         and (v.service_type_id is null or p.service_type_id = v.service_type_id)) as usage_count,
       coalesce(bool_or(p.id = v.plan_id), false) as in_plan,
@@ -180,7 +183,7 @@ language sql stable security invoker set search_path = '' as $$
      where p.organization_id = p_org and i.song_id is not null
      group by i.song_id
   ), filtered as (
-    select s.*, u.last_scheduled_at, coalesce(u.usage_count, 0) as usage_count, coalesce(u.in_plan, false) as in_plan
+    select s.*, u.last_scheduled_at, u.sort_last_used_at, coalesce(u.usage_count, 0) as usage_count, coalesce(u.in_plan, false) as in_plan
       from public.songs s
      cross join params v
       left join usage u on u.song_id = s.id
@@ -207,7 +210,8 @@ language sql stable security invoker set search_path = '' as $$
   ), ordered as (
     select f.*, row_number() over (order by
       case when v.sort = 'recent' then f.updated_at end desc,
-      case when v.sort = 'last_used' then f.last_scheduled_at end desc nulls last,
+      case when v.sort = 'recently_added' then f.created_at end desc,
+      case when v.sort = 'last_used' then f.sort_last_used_at end desc nulls last,
       case when v.sort = 'most_used' then f.usage_count end desc,
       case when v.sort <> 'recent' then f.title end,
       f.id) as rn
@@ -218,7 +222,7 @@ language sql stable security invoker set search_path = '' as $$
   )
   select jsonb_build_object('page', v.page, 'per_page', v.per_page, 'total', (select count(*) from filtered),
     'data', coalesce((select jsonb_agg(
-        (to_jsonb(pg) - 'rn' - 'search_text') || jsonb_build_object('arrangements', coalesce((
+        (to_jsonb(pg) - 'rn' - 'search_text' - 'sort_last_used_at') || jsonb_build_object('arrangements', coalesce((
           select jsonb_agg(to_jsonb(a) order by a.is_default desc, a.name, a.id)
             from public.arrangements a where a.song_id = pg.id
              and (v.archive <> 'active' or a.archived_at is null)), '[]'::jsonb))

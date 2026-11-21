@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Switch, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import {
@@ -16,7 +16,7 @@ import {
   type StructuredTextContext,
 } from '@service-center/shared';
 import { api } from '../../../src/lib/api';
-import { queryKeys } from '../../../src/lib/query-keys';
+import { keepScopedData, queryKeys } from '../../../src/lib/query-keys';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { Avatar, Button, Card, ErrorNotice, Field, Label, Loading, Screen, SegmentedControl, Tag, screenPadding } from '../../../src/components/ui';
 import { PressableScale } from '../../../src/components/motion';
@@ -126,7 +126,7 @@ export default function SchedulePeopleScreen() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     enabled: Boolean(queryScope),
-    placeholderData: keepPreviousData,
+    placeholderData: keepScopedData(queryScope),
   });
   // The toggle's honest counts, independent of the search.
   const teamCount = useQuery({

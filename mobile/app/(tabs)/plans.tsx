@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   PLAN_STATUS_ACCENTS,
@@ -15,7 +15,7 @@ import {
   type PlanSummary,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
-import { queryKeys } from '../../src/lib/query-keys';
+import { keepScopedData, queryKeys } from '../../src/lib/query-keys';
 import { useAuth } from '../../src/providers/AuthProvider';
 import {
   Button,
@@ -85,7 +85,7 @@ export default function PlansScreen() {
     getNextPageParam: (lastPage) => nextPlanPage(lastPage),
     enabled: Boolean(queryScope),
     // A new search keeps the last results on screen until its first page arrives.
-    placeholderData: keepPreviousData,
+    placeholderData: keepScopedData(queryScope),
   });
 
   // Answers, releases and edits made from a plan change its counts; read the

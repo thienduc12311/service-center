@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   MUSICAL_KEYS,
@@ -15,7 +15,7 @@ import {
 import { api } from '../../lib/api';
 import { useInvalidateOrg, useSongPages } from '../../hooks/queries';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-import { Button, ErrorNotice, IconButton, Notice, Segmented } from '../ui';
+import { Button, ErrorNotice, IconButton, Notice, Segmented, tabbableElements } from '../ui';
 import { SongSearchList, songListSource, type SongRowState } from './SongSearchList';
 import {
   EMPTY_SONG_BROWSER_FILTERS,
@@ -49,12 +49,18 @@ interface AddedSong {
   itemId: string;
   title: string;
   previousPoint: OrderInsertPoint;
-  /** False when it stayed at the end of the order instead of the insert point. */
-  placed: boolean;
 }
 
 /** How long the "Added · Undo" toast stays. */
 const TOAST_MS = 8000;
+
+const sideBySide = () => window.matchMedia?.('(min-width: 80rem)');
+const isDrawerModal = () => !sideBySide()?.matches;
+const subscribeToDrawerWidth = (onChange: () => void) => {
+  const width = sideBySide();
+  width?.addEventListener('change', onChange);
+  return () => width?.removeEventListener('change', onChange);
+};
 
 const chipClass = (active: boolean): string =>
   `input h-8 w-auto py-0 pr-7 pl-2.5 text-xs ${active ? '!border-brand-400 !bg-brand-50 !text-brand-800 dark:!bg-brand-500/15 dark:!text-brand-100' : ''}`;
@@ -71,6 +77,7 @@ const chipClass = (active: boolean): string =>
 export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAddOther, onClose, now: nowProp }: SongBrowserPanelProps) => {
   const { t } = useTranslation(['plans', 'songs', 'common']);
   const titleId = useId();
+  const modal = useSyncExternalStore(subscribeToDrawerWidth, isDrawerModal);
   const invalidate = useInvalidateOrg();
   const insert = usePlanItemInsert(plan.id);
   // Fixed for the visit, so the query (and its cache key) stays stable.
@@ -99,8 +106,8 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
   // The last unanswered add per song: a retry reuses its idempotency key.
   const pendingBodies = useRef(new Map<string, CreatePlanItemRequest>());
 
-  // Focus the search on open; give focus back to whatever opened the panel.
-  useEffect(() => {
+  // Capture the opener before the search field's autofocus effect runs.
+  useLayoutEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     return () => {
       if (opener?.isConnected) opener.focus({ preventScroll: true });
@@ -148,7 +155,7 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
         const result = await insert(body, at);
         pendingBodies.current.delete(song.id);
         setPoint(advanceInsertPoint(at, result.item.id));
-        const entry: AddedSong = { songId: song.id, itemId: result.item.id, title: song.title, previousPoint: at, placed: result.placed };
+        const entry: AddedSong = { songId: song.id, itemId: result.item.id, title: song.title, previousPoint: at };
         setAdded((current) => [...current, entry]);
         setToast(entry);
         setError(null);
@@ -207,9 +214,19 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
     setFilters((current) => ({ ...current, [key]: value }));
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === 'Escape' && !event.defaultPrevented) {
+    if (event.defaultPrevented || event.nativeEvent.isComposing) return;
+    if (event.key === 'Escape') {
       event.preventDefault();
       onClose();
+    }
+    if (!modal || event.key !== 'Tab') return;
+
+    const elements = tabbableElements(event.currentTarget);
+    const first = elements[0];
+    const last = elements.at(-1);
+    if (event.target === (event.shiftKey ? first : last)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first)?.focus();
     }
   };
 
@@ -272,10 +289,10 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
   return (
     <section
       role="dialog"
-      aria-modal="false"
+      aria-modal={modal}
       aria-labelledby={titleId}
       onKeyDown={onKeyDown}
-      className="animate-slide-in-right fixed inset-0 z-40 flex flex-col bg-app-surface shadow-2xl shadow-slate-950/20 md:inset-y-0 md:left-auto md:w-[26rem] md:border-l md:border-app-border"
+      className="animate-slide-in-right fixed inset-0 z-40 flex flex-col bg-app-surface shadow-2xl shadow-slate-950/20 xl:inset-y-0 xl:left-auto xl:w-[26rem] xl:border-l xl:border-app-border"
     >
       <header className="flex items-start justify-between gap-3 border-b border-app-border px-5 pt-4 pb-3">
         <div className="min-w-0">

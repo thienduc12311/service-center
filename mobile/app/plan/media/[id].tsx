@@ -5,8 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { LocalizedError, uuid, type MediaSummary, type PlanDetail, type PlanItemDetail, type PlanItemSaveResult } from '@service-center/shared';
 import { api } from '../../../src/lib/api';
-import { queryKeys } from '../../../src/lib/query-keys';
-import { canLinkMedia, linkableMedia, mediaLinkBody, mediaListCapped, mediaListRequest, mediaSummaryLine } from '../../../src/lib/media-library';
+import { keepScopedData, queryKeys } from '../../../src/lib/query-keys';
+import { canLinkMedia, linkableMedia, mediaLinkBody, mediaListRequest, mediaSummaryLine } from '../../../src/lib/media-library';
 import { useDebouncedValue } from '../../../src/hooks/useDebouncedValue';
 import { orderWriteOutcome } from '../../../src/lib/plan-order-edit';
 import { useAuth } from '../../../src/providers/AuthProvider';
@@ -87,13 +87,11 @@ const LinkMedia = ({ plan, item }: LinkMediaProps) => {
   const settled = useDebouncedValue(query.trim(), SEARCH_DELAY_MS);
 
   const allowed = canLinkMedia(item, can('plans.edit', { serviceTypeId: plan.service_type_id }));
-  // Archived bundles are asked for too: the server drops them after its cap,
-  // so only the whole answer says whether the cap was reached.
   const list = useQuery({
-    queryKey: queryKeys.mediaList(queryScope, settled, true),
-    queryFn: () => api.mediaList(mediaListRequest(settled, true)),
+    queryKey: queryKeys.mediaList(queryScope, settled, false),
+    queryFn: () => api.mediaList(mediaListRequest(settled, false)),
     enabled: Boolean(queryScope && allowed),
-    placeholderData: (previous) => previous,
+    placeholderData: keepScopedData(queryScope),
   });
 
   const save = useMutation({
@@ -125,7 +123,6 @@ const LinkMedia = ({ plan, item }: LinkMediaProps) => {
   }
 
   const rows = linkableMedia(list.data?.media ?? []);
-  const capped = mediaListCapped(list.data?.media ?? []);
 
   const renderMedia = ({ item: media, index }: { item: MediaSummary; index: number }) => {
     const linked = item.media?.id === media.id;
@@ -198,7 +195,7 @@ const LinkMedia = ({ plan, item }: LinkMediaProps) => {
           list.isLoading ? <Loading /> : list.error ? null : <Text style={styles.muted}>{t('mobileMedia.noneFound')}</Text>
         }
         ListFooterComponent={
-          capped ? <Text style={[styles.muted, styles.footer]}>{t('mobileMedia.refineSearch', { count: rows.length })}</Text> : null
+          list.data?.truncated ? <Text style={[styles.muted, styles.footer]}>{t('mobileMedia.refineSearch', { count: rows.length })}</Text> : null
         }
       />
     </Screen>

@@ -38,15 +38,17 @@ class PartialAddError extends Error {
 const isPickable = (person: RosterPerson): person is RosterPerson & { person_id: string } =>
   Boolean(person.person_id) && !person.archived;
 
+const peopleAtPosition = (team: TeamWithPositions, positionId: string | null): Set<string> =>
+  new Set(team.members.filter((member) => member.position_id === positionId).map((member) => member.person_id));
+
 /**
- * Adds people to a team: search the roster (current members left out), queue
- * one or more people as chips, choose a position, then press Add. Nothing is
- * added until Add is pressed, so scrolling or keyboarding cannot add anyone.
+ * Queue roster people for a position they do not already hold on this team.
+ * Nothing is added until Add is pressed.
  */
 export const AddTeamMembersModal = ({ team, onClose, onAdded }: AddTeamMembersModalProps) => {
   const { t } = useTranslation(['teams', 'common']);
   const people = usePeople();
-  const [queued, setQueued] = useState<readonly string[]>([]);
+  const [pickedIds, setPickedIds] = useState<readonly string[]>([]);
   const [positionId, setPositionId] = useState<string | null>(null);
 
   const options = useMemo<MemberOption[]>(
@@ -60,10 +62,15 @@ export const AddTeamMembersModal = ({ team, onClose, onAdded }: AddTeamMembersMo
     [people.data],
   );
   const byId = useMemo(() => new Map(options.map((option) => [option.id, option])), [options]);
-  const excluded = useMemo(
-    () => new Set([...team.members.map((member) => member.person_id), ...queued]),
-    [team.members, queued],
-  );
+  const existing = peopleAtPosition(team, positionId);
+  const queued = pickedIds.filter((id) => !existing.has(id));
+  const excluded = new Set([...existing, ...queued]);
+
+  const changePosition = (next: string | null) => {
+    const nextExisting = peopleAtPosition(team, next);
+    setPickedIds((current) => current.filter((id) => !nextExisting.has(id)));
+    setPositionId(next);
+  };
 
   const add = useMutation({
     mutationFn: async ({ teamId, personIds, positionId: position }: AddMembersRequest) => {
@@ -82,7 +89,7 @@ export const AddTeamMembersModal = ({ team, onClose, onAdded }: AddTeamMembersMo
     },
     onError: async (error) => {
       if (error instanceof PartialAddError) {
-        setQueued(error.failedIds);
+        setPickedIds(error.failedIds);
         await onAdded();
       }
     },
@@ -117,10 +124,14 @@ export const AddTeamMembersModal = ({ team, onClose, onAdded }: AddTeamMembersMo
       <div className="space-y-4">
         <p className="text-sm text-slate-500 dark:text-slate-400">{t('teamsPage.addMember.hint')}</p>
 
+        {team.positions.length > 0 && (
+          <PositionPicker team={team} value={positionId} onChange={changePosition} disabled={add.isPending} />
+        )}
+
         <MemberCombobox
           options={options}
           value=""
-          onChange={(id) => id && setQueued((current) => (current.includes(id) ? current : [...current, id]))}
+          onChange={(id) => id && setPickedIds((current) => (current.includes(id) ? current : [...current, id]))}
           label={t('teamsPage.addMember.searchLabel')}
           placeholder={t('teamsPage.addMember.searchPlaceholder')}
           excludeIds={excluded}
@@ -148,7 +159,7 @@ export const AddTeamMembersModal = ({ team, onClose, onAdded }: AddTeamMembersMo
                       size="sm"
                       label={t('teamsPage.addMember.unqueue', { name })}
                       disabled={add.isPending}
-                      onClick={() => setQueued((current) => current.filter((other) => other !== id))}
+                      onClick={() => setPickedIds((current) => current.filter((other) => other !== id))}
                     />
                   </li>
                 );
@@ -156,10 +167,6 @@ export const AddTeamMembersModal = ({ team, onClose, onAdded }: AddTeamMembersMo
             </ul>
           )}
         </div>
-
-        {team.positions.length > 0 && (
-          <PositionPicker team={team} value={positionId} onChange={setPositionId} disabled={add.isPending} />
-        )}
 
         <ErrorNotice error={add.error instanceof PartialAddError ? add.error.reason : add.error} />
       </div>
