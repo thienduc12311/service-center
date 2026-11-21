@@ -1,0 +1,11 @@
+import * as L from './lib.mjs';
+const { rec, login, URL_, ANON, sql, ids, sleep } = L;
+const s = await login('s');
+const rt = (await s.client.auth.getSession()).data.session.refresh_token;
+const key0 = sql(`select key from private.org_realtime_keys where organization_id='${ids.org.A}'`);
+await s.client.auth.signOut({ scope: 'global' });
+await sleep(300);
+const r = await fetch(`${URL_}/auth/v1/token?grant_type=refresh_token`, { method: 'POST', headers: { apikey: ANON, 'content-type': 'application/json' }, body: JSON.stringify({ refresh_token: rt }) });
+rec('sess', 'ss.tok.refresh', 's', 'refresh with refresh token revoked by global sign-out', '4xx, no new token', `HTTP ${r.status}`, r.status >= 400);
+rec('sess', 'ss.global.rot2', 'db', 'global sign-out (single session) rotates org key', 'changed', sql(`select key from private.org_realtime_keys where organization_id='${ids.org.A}'`) !== key0 ? 'rotated' : 'NOT rotated', sql(`select key from private.org_realtime_keys where organization_id='${ids.org.A}'`) !== key0);
+process.exit(0);
