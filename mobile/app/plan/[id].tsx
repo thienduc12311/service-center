@@ -18,6 +18,7 @@ import {
   serviceTimesOf,
   type AssignmentReleasePreview,
   type PlanItemDetail,
+  canOpenPlanChat,
 } from '@service-center/shared';
 import { api } from '../../src/lib/api';
 import { queryKeys } from '../../src/lib/query-keys';
@@ -137,6 +138,9 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
   const canSchedulePlan = can('scheduling.manage', target);
   // MOB-017: the website shows Attendance to schedulers of the service type or of any team.
   const canTakeAttendance = canSchedulePlan || (orgTeams.data ?? []).some((team) => canScheduleTeam(team.id));
+
+  // Only offer the chat to people the server will let in (leaders and people scheduled on the plan).
+  const canChat = canOpenPlanChat(canEditPlan || canSchedulePlan, detail?.assignments ?? [], user?.profile.id);
 
   // Website parity: each step saves that one position; positions not sent are kept.
   const openChat = useMutation({
@@ -383,13 +387,15 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
               onPress={() => router.push({ pathname: '/plan/live/[id]', params: { id: detail.id } })}
             />
             {/* MOB-019: the website's "Plan chat"; the server decides who takes part. */}
-            <QuickAction
-              icon="chat"
-              accent={theme.accent.blue}
-              title={t('messages:mobileChat.planChat')}
-              loading={openChat.isPending}
-              onPress={() => openChat.mutate()}
-            />
+            {canChat ? (
+              <QuickAction
+                icon="chat"
+                accent={theme.accent.blue}
+                title={t('messages:mobileChat.planChat')}
+                loading={openChat.isPending}
+                onPress={() => openChat.mutate()}
+              />
+            ) : null}
             {canEditPlan ? (
               <QuickAction
                 icon="schedule"

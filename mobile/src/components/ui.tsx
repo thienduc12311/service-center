@@ -208,7 +208,9 @@ export const Button = ({
     <PressableScale
       onPress={onPress}
       disabled={isDisabled}
+      accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityState={{ busy: loading }}
       style={[styles.button, surface[variant], isDisabled && styles.buttonDisabled, style]}
     >
       {loading ? (
