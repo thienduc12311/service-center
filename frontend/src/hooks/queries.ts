@@ -445,6 +445,9 @@ export const useSongbook = (id: string | undefined) => {
     queryKey: keys.songbook(org, id ?? ''),
     queryFn: () => api.getSongbook(id!),
     enabled: Boolean(org && id),
+    // document_url is signed for SONGBOOK_DOCUMENT_URL_TTL_SECONDS; never
+    // hand a cached (possibly expired) one to the viewer on return.
+    gcTime: 0,
   });
 };
 

@@ -5,6 +5,7 @@ import type {
   AssignmentRequestSnapshotItemRow,
   AssignmentRequestSnapshotRow,
   AssignmentRow,
+  AssignmentSnapshotState,
   AssignmentStatus,
   AssignmentTimeResponseRow,
   Database,
@@ -542,7 +543,7 @@ describe('previewLink', () => {
   const linkDb = (
     stored: typeof notification | null,
     snapshotRow: AssignmentRequestSnapshotRow | null = snapshot,
-    state: 'current' | 'stale' | 'expired' = 'current',
+    state: AssignmentSnapshotState = 'current',
   ): DbHandler =>
     (call) => {
       switch (call.target) {

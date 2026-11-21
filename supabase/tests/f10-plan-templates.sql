@@ -100,11 +100,19 @@ begin
   end if;
 end $$;
 
--- plan_active_people: members without edit/schedule rights and outsiders get nothing.
+-- plan_active_people reads the plan under the caller's own RLS: a member only
+-- gets ids they can already read on it (no gate on edit rights over the
+-- source, which copies into another service type do not have); outsiders get
+-- nothing.
 set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
 do $$ begin
-  if cardinality(private.plan_active_people(pg_temp.fx('source'))) <> 0 then
-    raise exception 'a plain member can enumerate Persons of a plan';
+  if exists (
+    select 1 from unnest(private.plan_active_people(pg_temp.fx('source'))) v(id)
+     where v.id not in (select a.person_id from public.assignments a where a.plan_id = pg_temp.fx('source'))
+       and v.id not in (select i.leader_person_id from public.plan_items i
+                         where i.plan_id = pg_temp.fx('source') and i.leader_person_id is not null)
+  ) then
+    raise exception 'a member got Person ids they cannot read on the plan';
   end if;
 end $$;
 set local request.jwt.claim.sub = '99999999-9999-4999-8999-999999999999';

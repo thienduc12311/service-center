@@ -164,7 +164,7 @@ export const retryMessage = async (
   id: string,
   personIds: readonly string[] | undefined,
 ): Promise<{ requeued: number }> => {
-  await loadMessage(caller, id);
+  await loadSentMessage(caller, id);
   const requeued = (await unwrap(raw(caller.db).rpc('retry_operational_message', {
     p_message: id,
     p_person_ids: personIds && personIds.length > 0 ? personIds : null,

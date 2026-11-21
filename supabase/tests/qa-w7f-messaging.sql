@@ -193,6 +193,49 @@ select pg_temp.fx('org'), pg_temp.fx('riley_u'), 'conversation_message', 'Sam in
  where m.body = 'SECRET-HARD text';
 delete from public.conversation_messages where body = 'SECRET-HARD text';
 select pg_temp.check((select body from public.notifications where title = 'Sam in Band chat') is null, 'hard-deleted message clears the snippet');
+delete from public.notifications where conversation_id = pg_temp.fx('band_chat');
+
+-- Review follow-up: an edit that changes the excerpted text clears it; an
+-- edit past the excerpt keeps it.
+set local role authenticated;
+select pg_temp.act_as('sam_u');
+insert into w7f_fx values ('conv_msg_edit', gen_random_uuid()), ('conv_msg_tail', gen_random_uuid()),
+  ('conv_msg_race', gen_random_uuid());
+select public.post_conversation_message(pg_temp.fx('conv_msg_edit'), pg_temp.fx('band_chat'), 'SECRET-PHONE 555-0100', null, null);
+select public.post_conversation_message(pg_temp.fx('conv_msg_tail'), pg_temp.fx('band_chat'), 'SECRET-TAIL   start of a long message', null, null);
+select public.post_conversation_message(pg_temp.fx('conv_msg_race'), pg_temp.fx('band_chat'), 'SECRET-RACE text', null, null);
+reset role;
+insert into public.notifications (organization_id, user_id, type, title, body, conversation_id, created_by, dedupe_key)
+select pg_temp.fx('org'), pg_temp.fx('riley_u'), 'conversation_message', 'Sam in Band chat', n.snippet,
+       pg_temp.fx('band_chat'), pg_temp.fx('sam_u'), e.id::text || ':' || pg_temp.fx('riley')::text
+  from (values ('conv_msg_edit', 'SECRET-PHONE 555-0100'), ('conv_msg_tail', 'SECRET-TAIL start of a…')) n(msg, snippet)
+  join public.delivery_effects e on e.conversation_message_id = pg_temp.fx(n.msg);
+select pg_temp.check((select count(*) from public.notifications where body like 'SECRET-%') = 2,
+  'excerpts matching the message (whitespace collapsed, cut with …) are kept on insert');
+set local role authenticated;
+select pg_temp.act_as('sam_u');
+select public.edit_conversation_message(pg_temp.fx('conv_msg_edit'), 'SECRET-PHONE removed');
+select public.edit_conversation_message(pg_temp.fx('conv_msg_tail'), 'SECRET-TAIL start of a different ending');
+reset role;
+select pg_temp.check(not exists (select 1 from public.notifications where body like '%555-0100%'),
+  'an edit that changes the excerpted text clears the excerpt');
+select pg_temp.check(exists (select 1 from public.notifications where body = 'SECRET-TAIL start of a…'),
+  'an edit past the excerpt keeps it');
+
+-- Review follow-up: the worker read the message, then it was deleted before
+-- the notification insert; the late insert carries no excerpt.
+set local role authenticated;
+select pg_temp.act_as('sam_u');
+select public.delete_conversation_message(pg_temp.fx('conv_msg_race'));
+reset role;
+insert into public.notifications (organization_id, user_id, type, title, body, conversation_id, created_by, dedupe_key)
+select pg_temp.fx('org'), pg_temp.fx('riley_u'), 'conversation_message', 'Sam in Band chat', 'SECRET-RACE text',
+       pg_temp.fx('band_chat'), pg_temp.fx('sam_u'), e.id::text || ':' || pg_temp.fx('riley')::text
+  from public.delivery_effects e where e.conversation_message_id = pg_temp.fx('conv_msg_race');
+select pg_temp.check(exists (select 1 from public.notifications n join public.delivery_effects e
+                               on n.dedupe_key = e.id::text || ':' || pg_temp.fx('riley')::text
+                              where e.conversation_message_id = pg_temp.fx('conv_msg_race') and n.body is null),
+  'a notification inserted after the message was deleted has no excerpt');
 
 select 'qa-w7f-messaging: ok' as result;
 rollback;

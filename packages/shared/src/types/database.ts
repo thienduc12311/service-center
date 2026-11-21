@@ -206,6 +206,8 @@ export type PlanItemType = 'song' | 'header' | 'item';
 /** How often plans for a service type come round. Drives the suggested next service date. */
 export type PlanRecurrence = 'weekly' | 'biweekly' | 'monthly' | 'occasionally';
 export type AssignmentStatus = 'unconfirmed' | 'confirmed' | 'declined';
+/** Whether an assignment request snapshot still matches the live assignments (`assignment_snapshot_state`). */
+export type AssignmentSnapshotState = 'current' | 'stale' | 'expired';
 export type NotificationType =
   | 'assignment_scheduled'
   | 'assignment_reminder'
@@ -1556,7 +1558,7 @@ export type Database = {
       };
       assignment_snapshot_state: {
         Args: { p_snapshot: string };
-        Returns: 'current' | 'stale' | 'expired';
+        Returns: AssignmentSnapshotState;
       };
       replace_plan_times: {
         Args: { p_plan_id: string; p_times: unknown; p_expected_revision?: number | null };
