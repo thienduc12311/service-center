@@ -32,13 +32,17 @@ describe('GET /teams roster profiles (W8-NAT-D1)', () => {
   });
   const from = vi.fn((table: string) => {
     const chain: Record<string, unknown> = {};
+    // 'archived' has a membership but no roster row: `team_roster_people` hides archived People.
     const result = table === 'organization_members'
       ? [{ user_id: 'u1', role: 'member' }]
-      : [{ id: TEAM, organization_id: 'org', sort_order: 0, positions: [],
-          memberships: [{ id: 'm1', person_id: PERSON, user_id: 'u1', position_id: null },
-                        { id: 'm2', person_id: 'missing', user_id: null, position_id: null }] }];
+      : table === 'team_memberships'
+        ? [{ id: 'm1', team_id: TEAM, person_id: PERSON, user_id: 'u1', position_id: null },
+           { id: 'm2', team_id: TEAM, person_id: 'archived', user_id: null, position_id: null }]
+        : [{ id: TEAM, organization_id: 'org', sort_order: 0, positions: [] }];
     Object.assign(chain, {
-      select: () => chain, eq: () => chain, order: () => chain, range: () => chain,
+      select: () => chain, eq: () => chain, in: () => chain, order: () => chain, range: () => chain, maybeSingle: () => ({
+        then: (resolve: (value: Resolved<unknown>) => unknown) => resolve({ data: Array.isArray(result) ? result[0] : result, error: null }),
+      }),
       then: (resolve: (value: Resolved<unknown>) => unknown) => resolve({ data: result, error: null }),
     });
     return chain;
@@ -65,6 +69,16 @@ describe('GET /teams roster profiles (W8-NAT-D1)', () => {
       id: PERSON, full_name: 'Ada Lovelace', avatar_url: null, email: 'ada@example.test',
       phone: '+1 555 0100', date_of_birth: '1990-04-05', role: 'member',
     });
-    expect(team?.members[1]?.profile).toBeNull();
+    expect(team?.members).toHaveLength(1);
+  });
+
+  it('leaves an archived Person off the roster and its count, on the list and on one team (W9-WEB-D1 / W9-NAT-D1)', async () => {
+    const list = await request(app).get('/teams');
+    const one = await request(app).get(`/teams/${TEAM}`);
+    expect(one.status).toBe(200);
+    for (const team of [(list.body as TeamWithPositions[])[0], one.body as TeamWithPositions]) {
+      expect(team?.members.map((member) => member.person_id)).toEqual([PERSON]);
+      expect(team?.members.every((member) => member.profile !== null)).toBe(true);
+    }
   });
 });

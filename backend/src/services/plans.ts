@@ -10,6 +10,7 @@ import type {
   TeamPositionRow,
 } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
+import { inChunks } from '../lib/paging.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { NO_CONTACT, contactsFor } from './contacts.js';
 import { attendanceFor } from './attendance.js';
@@ -167,9 +168,8 @@ export const fetchPlanDetail = async (db: Db, orgId: string, planId: string): Pr
   const withMedia = detail.items.some((item) => Boolean(item.media));
   const [contacts, directory, attendance, defaults, organization] = await Promise.all([
     contactsFor(db, orgId, userIds),
-    personIds.length
-      ? unwrap(db.from('people_directory').select('*').in('id', personIds))
-      : Promise.resolve([]),
+    // A large plan names hundreds of people: URL-safe `.in()` chunks.
+    inChunks(personIds, (ids) => unwrap(db.from('people_directory').select('*').in('id', ids))),
     attendanceFor(db, detail.assignments.map((assignment) => assignment.id)),
     defaultArrangementsFor(db, inheriting),
     withMedia

@@ -13,7 +13,7 @@ import type {
 } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
-import { fetchAllPages } from '../lib/paging.js';
+import { fetchAllPages, inChunks } from '../lib/paging.js';
 import {
   assignLegacyTimeIds,
   groupAttendance,
@@ -149,7 +149,7 @@ const describeImpact = async (db: Db, assignments: readonly PlanTimeImpactAssign
   const teamIds = [...new Set(assignments.flatMap((assignment) => (assignment.team_id ? [assignment.team_id] : [])))];
   const positionIds = [...new Set(assignments.flatMap((assignment) => (assignment.position_id ? [assignment.position_id] : [])))];
   const [people, teams, positions] = await Promise.all([
-    unwrap(db.from('people_directory').select('id, first_name, last_name').in('id', personIds)),
+    inChunks(personIds, (ids) => unwrap(db.from('people_directory').select('id, first_name, last_name').in('id', ids))),
     teamIds.length ? unwrap(db.from('teams').select('id, name').in('id', teamIds)) : Promise.resolve([]),
     positionIds.length ? unwrap(db.from('team_positions').select('id, name').in('id', positionIds)) : Promise.resolve([]),
   ]);

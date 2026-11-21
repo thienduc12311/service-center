@@ -16,6 +16,7 @@ import {
   type StaffingMatrixWarning,
 } from '@service-center/shared';
 import { raw, unwrap } from '../lib/supabase.js';
+import { fetchAllPages, IN_CHUNK_SIZE } from '../lib/paging.js';
 import { HttpError } from '../lib/errors.js';
 import { checkConflicts } from './attendance.js';
 import { preferenceWarnings } from './availability.js';
@@ -121,23 +122,38 @@ const mapPlan = (plan: MatrixPlanRow, selectedTeamIds: readonly string[]): Staff
 
 const rosterPersonIds = async (req: Request, teamIds: readonly string[]): Promise<string[] | null> => {
   if (!teamIds.length) return null;
-  const memberships = await unwrap(req.db.from('team_memberships').select('person_id').in('team_id', [...teamIds]));
-  return [...new Set((memberships ?? []).map((row) => row.person_id).filter((id): id is string => Boolean(id)))];
+  const memberships = await fetchAllPages((from, to) =>
+    unwrap(req.db.from('team_memberships').select('person_id').in('team_id', [...teamIds]).order('id').range(from, to)));
+  // Sorted like Postgres sorts lowercase uuids, so chunks can be read in cursor order.
+  return [...new Set(memberships.map((row) => row.person_id).filter((id): id is string => Boolean(id)))].sort();
 };
 
 const loadPeople = async (req: Request, input: StaffingMatrixQueryInput): Promise<{ rows: MatrixPersonRow[]; next: string | null }> => {
   const eligibleIds = await rosterPersonIds(req, input.filters.team_ids);
   if (eligibleIds?.length === 0) return { rows: [], next: null };
-  let query = req.db.from('people_directory').select('id, first_name, last_name, avatar_url, campus')
-    // Only People who can actually be scheduled: not archived, active membership (W2-STAFF-D2).
-    .eq('organization_id', req.orgId).eq('schedulable', true).order('id').limit(input.page_size + 1);
-  if (input.cursor) query = query.gt('id', input.cursor);
-  if (eligibleIds) query = query.in('id', eligibleIds);
-  if (input.filters.search) {
-    const escaped = input.filters.search.replace(/[%_,]/g, '');
-    query = query.or(`first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%`);
+  const loadPage = async (ids: readonly string[] | null): Promise<MatrixPersonRow[]> => {
+    let query = req.db.from('people_directory').select('id, first_name, last_name, avatar_url, campus')
+      // Only People who can actually be scheduled: not archived, active membership (W2-STAFF-D2).
+      .eq('organization_id', req.orgId).eq('schedulable', true).order('id').limit(input.page_size + 1);
+    if (input.cursor) query = query.gt('id', input.cursor);
+    if (ids) query = query.in('id', [...ids]);
+    if (input.filters.search) {
+      const escaped = input.filters.search.replace(/[%_,]/g, '');
+      query = query.or(`first_name.ilike.%${escaped}%,last_name.ilike.%${escaped}%`);
+    }
+    return ((await unwrap(query)) ?? []) as MatrixPersonRow[];
+  };
+  let rows: MatrixPersonRow[] = [];
+  if (!eligibleIds) rows = await loadPage(null);
+  else {
+    // A big team's roster does not fit one `.in()` list: walk it in sorted chunks
+    // past the cursor until the page (plus the look-ahead row) is full.
+    const after = input.cursor ? eligibleIds.filter((id) => id > input.cursor!) : eligibleIds;
+    for (let start = 0; start < after.length && rows.length <= input.page_size; start += IN_CHUNK_SIZE) {
+      rows.push(...(await loadPage(after.slice(start, start + IN_CHUNK_SIZE))));
+    }
+    rows = rows.slice(0, input.page_size + 1);
   }
-  const rows = ((await unwrap(query)) ?? []) as MatrixPersonRow[];
   return { rows: rows.slice(0, input.page_size), next: rows.length > input.page_size ? rows[input.page_size - 1]!.id : null };
 };
 
@@ -149,11 +165,14 @@ export const loadStaffingMatrix = async (req: Request, input: StaffingMatrixQuer
   const { rows: peopleRows, next } = await loadPeople(req, { ...input, filters: { ...input.filters, team_ids: selectedTeams } });
   const planIds = plans.map((plan) => plan.id);
   const personIds = peopleRows.map((person) => person.id);
-  let assignmentQuery = raw(req.db).from('assignments').select(
-    'id, plan_id, person_id, team_id, position_id, status, visibility, request_revision, attendance_mode, team:teams(name), position:team_positions(name), attendance_times:assignment_attendance_times(plan_time_id)',
-  ).in('plan_id', planIds);
-  if (selectedTeams.length) assignmentQuery = assignmentQuery.in('team_id', selectedTeams);
-  const assignments = ((await unwrap(assignmentQuery)) ?? []) as unknown as MatrixAssignmentRow[];
+  // Up to 12 plans of big teams can pass PostgREST's 1000-row cap: every page.
+  const assignments = await fetchAllPages(async (from, to) => {
+    let assignmentQuery = raw(req.db).from('assignments').select(
+      'id, plan_id, person_id, team_id, position_id, status, visibility, request_revision, attendance_mode, team:teams(name), position:team_positions(name), attendance_times:assignment_attendance_times(plan_time_id)',
+    ).in('plan_id', planIds);
+    if (selectedTeams.length) assignmentQuery = assignmentQuery.in('team_id', selectedTeams);
+    return (await unwrap(assignmentQuery.order('id').range(from, to))) as unknown as MatrixAssignmentRow[] | null;
+  });
 
   const cutoff = new Date(Date.now() - 90 * 86_400_000).toISOString();
   const recent = personIds.length

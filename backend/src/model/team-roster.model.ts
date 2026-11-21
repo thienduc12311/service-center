@@ -6,6 +6,28 @@ export type RosterPeople = Map<string, TeamRosterPersonRow>;
 /** Org roles of members, keyed by user id. */
 export type RoleByUser = Map<string, OrgRole>;
 
+/** The `team_memberships` columns a team roster needs. */
+export interface TeamMembershipRef {
+  id: string;
+  team_id: string;
+  person_id: string;
+  user_id: string | null;
+  position_id: string | null;
+}
+
+/** Memberships grouped by team id. */
+export type MembershipsByTeam = Map<string, TeamMembershipRef[]>;
+
+export const groupMemberships = (rows: readonly TeamMembershipRef[]): MembershipsByTeam => {
+  const byTeam: MembershipsByTeam = new Map();
+  for (const row of rows) {
+    const list = byTeam.get(row.team_id);
+    if (list) list.push(row);
+    else byTeam.set(row.team_id, [row]);
+  }
+  return byTeam;
+};
+
 export const rosterKey = (teamId: string, personId: string): string => `${teamId}:${personId}`;
 
 export const toRosterPeople = (rows: readonly TeamRosterPersonRow[]): RosterPeople =>
