@@ -191,6 +191,7 @@ import type {
   AccessMoveChange,
   CapabilityExplanation,
   EffectiveAccess,
+  RealtimeResourceTopics,
   RealtimeTopicKey,
   FolderTree,
   ScopeAccess,
@@ -250,6 +251,7 @@ import type { CreatePlanItemRequest, UpdatePlanItemRequest, UpdatePlanRequest } 
 import type { PlanScheduleResponse } from '../types/plan-order.js';
 import type { LivePlanRuns, LiveRunHistory, LiveRunState } from '../types/live.js';
 import type { CorrectLiveRunTimeInput, CreateLiveRunRequest, LiveRunActionInput } from '../schemas/live.js';
+import type { RealtimeResourceTopicsInput } from '../schemas/realtime.js';
 import type { CreatePersonInput, UpdatePersonInput } from '../schemas/people.js';
 import type {
   IdentityReconciliation,
@@ -1304,6 +1306,9 @@ export class ServiceCenterApi {
   // ------------------------------------------------------------- access --
   /** The caller's effective access in the active organization. */
   realtimeKey = () => this.request<RealtimeTopicKey>('GET', '/api/v1/realtime/key');
+  /** Topic names for the resources the caller may currently subscribe to (absent = no access). */
+  realtimeTopics = (body: RealtimeResourceTopicsInput) =>
+    this.request<RealtimeResourceTopics>('POST', '/api/v1/realtime/topics', body);
   myAccess = () => this.request<EffectiveAccess>('GET', '/api/v1/access/me');
   /** Administrators: every member's role, access mode and explicit grants. */
   listAccessMembers = () => this.request<AccessMember[]>('GET', '/api/v1/access/members');

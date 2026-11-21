@@ -3,11 +3,12 @@ import type { PokeObserver } from './realtime-pokes.js';
 import type { RealtimeTopicKey } from '../types/domain.js';
 
 /**
- * Private Realtime topics end in a per-organization key that the API serves to active members
+ * Private Realtime topics carry a per-organization key that the API serves to active members
  * only and the database rotates when a member is removed (see
  * `20261127000400_w8_realtime_revocation.sql`). A removed member's open socket therefore stops
  * receiving, and a client that is told to rekey (`org:<id>:<key>` poke) refetches the key; a
- * removed member's refetch is refused.
+ * removed member's refetch is refused. Resource topics themselves come from the API
+ * (`realtime-resource-topics.ts`), which also follows this key.
  */
 export type RealtimeKeyState =
   | { status: 'loading' }
@@ -46,16 +47,11 @@ const KEY = /^[0-9a-f]{64}$/;
 
 export const isRealtimeKey = (value: unknown): value is string => typeof value === 'string' && KEY.test(value);
 
-/** `<resource>:<id>:<key>` for each valid id, distinct and in a stable order. */
-export const keyedPokeTopics = (resource: string, ids: readonly string[], key: string | null): string[] =>
-  key && isRealtimeKey(key)
-    ? [...new Set(ids.filter((id) => UUID.test(id)))].sort().map((id) => `${resource}:${id}:${key}`)
-    : [];
-
 export const organizationControlTopic = (organizationId: string, key: string): string | null =>
   UUID.test(organizationId) && isRealtimeKey(key) ? `org:${organizationId}:${key}` : null;
 
-const isRevocation = (error: unknown): boolean =>
+/** The API refused: the caller was removed, deactivated or signed out. */
+export const isRevocation = (error: unknown): boolean =>
   error instanceof ApiError && (error.status === 401 || error.status === 403 || error.status === 404);
 
 export const createRealtimeKeyStore = (options: RealtimeKeyStoreOptions): RealtimeKeyStore => {

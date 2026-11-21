@@ -677,3 +677,20 @@ export interface ClearReadNotificationsResult extends UnreadNotificationCount {
 export interface RealtimeTopicKey {
   key: string;
 }
+
+/**
+ * `POST /api/v1/realtime/topics` — the private topic names the caller may subscribe to right now,
+ * by resource id. A resource the caller cannot use is absent (never an error), so someone who
+ * lost access to one conversation learns nothing about it. A conversation topic carries a
+ * per-conversation key that rotates when access to that conversation is lost; clients refetch on
+ * a `rekey` poke.
+ */
+export interface RealtimeResourceTopics {
+  topics: Record<string, string>;
+}
+
+/** One row of the `realtime_resource_topics` database function. */
+export interface RealtimeResourceTopicRow {
+  resource_id: string;
+  topic: string;
+}

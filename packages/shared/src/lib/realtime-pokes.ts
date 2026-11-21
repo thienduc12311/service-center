@@ -1,13 +1,31 @@
-import { keyedPokeTopics } from './realtime-keys.js';
+import type { RealtimeResource } from '../schemas/realtime.js';
 
 /** Realtime only signals that a caller should re-read the authenticated API. */
-export type PokeResource = 'conversation' | 'live_run' | 'live_plan';
+export type PokeResource = RealtimeResource;
 export const POKE_FALLBACK_MS = 60_000;
 export const POKE_EVENT = 'changed';
 // Leave room for a thread outside the list and for channels still leaving.
 export const CONVERSATION_LIST_TOPIC_LIMIT = 90;
 
-type PokeListener = () => void;
+/**
+ * `rekey`: the topic this socket is on has been retired because access changed. Anyone who still
+ * has access must ask the API for the current topic; a poke carries no other data.
+ */
+export type PokeSignal = 'rekey';
+export type PokeListener = (signal?: PokeSignal) => void;
+
+/** A broadcast message as the Realtime client hands it over; only `payload.event` is read. */
+export interface PokeMessage {
+  [key: string]: unknown;
+  payload?: unknown;
+}
+
+/** The signal a received poke carries, if any. */
+export const pokeSignalOf = (message: PokeMessage | undefined): PokeSignal | undefined => {
+  const payload = message?.payload;
+  if (typeof payload !== 'object' || payload === null) return undefined;
+  return (payload as { event?: unknown }).event === 'rekey' ? 'rekey' : undefined;
+};
 type CloseChannel = () => Promise<unknown>;
 type OpenChannel = (topic: string, notify: PokeListener) => CloseChannel;
 
@@ -32,33 +50,33 @@ interface PokeTransport<Channel extends PokeChannel> {
   remove: (channel: Channel) => Promise<unknown>;
 }
 
-/** Comma-joined topics (`<resource>:<id>:<org key>`); empty until the organization key is known. */
-export const pokeTopics = (resource: PokeResource, ids: readonly string[], key: string | null): string =>
-  keyedPokeTopics(resource, ids, key).join(',');
+/** Creates an observer; `onRekey` runs at once when a retired topic announces a rekey. */
+export type PokeObserverFactory = (refresh: () => Promise<unknown>, onRekey?: () => void) => PokeObserver;
 
 /**
  * Supabase returns the same channel object for repeated calls with a topic.
  * Share it between observers, and wait for leave before reusing a topic.
  */
-export const createPokeSubscriptions = (open: OpenChannel) => {
+export const createPokeSubscriptions = (open: OpenChannel): PokeObserverFactory => {
   const byTopic = new Map<string, TopicSubscription>();
 
   const connect = (topic: string, listeners: Set<PokeListener>) => {
-    const close = open(topic, () => {
-      for (const notify of listeners) notify();
+    const close = open(topic, (signal) => {
+      for (const notify of listeners) notify(signal);
     });
     byTopic.set(topic, { listeners, close, closing: false });
   };
 
-  return (refresh: () => Promise<unknown>): PokeObserver => {
+  return (refresh, onRekey): PokeObserver => {
     let active = true;
     let topics = new Set<string>();
     let dirty = false;
     let refreshing = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
-    const notify = () => {
+    const notify: PokeListener = (signal) => {
       if (!active) return;
+      if (signal === 'rekey') onRekey?.();
       dirty = true;
       if (refreshing || timer !== undefined) return;
       // One read for a burst of changes or simultaneous joins on a list.

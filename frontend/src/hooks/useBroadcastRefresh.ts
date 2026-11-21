@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useQueryClient, type QueryFilters } from '@tanstack/react-query';
-import { createRealtimeKeyStore, createRealtimePokeSubscriptions, pokeTopics, POKE_EVENT, REALTIME_KEY_LOADING, type PokeObserver, type PokeResource, type RealtimeKeyState } from '@service-center/shared';
+import { createRealtimeKeyStore, createRealtimePokeSubscriptions, createResourceSubscription, pokeSignalOf, POKE_EVENT, REALTIME_KEY_LOADING, type PokeResource, type RealtimeKeyState, type ResourceSubscription } from '@service-center/shared';
 import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../providers/AuthProvider';
@@ -8,7 +8,7 @@ import { useAuth } from '../providers/AuthProvider';
 const observe = createRealtimePokeSubscriptions({
   authorize: () => supabase.realtime.setAuth(),
   open: (topic, notify) => supabase.channel(topic, { config: { private: true } })
-    .on('broadcast', { event: POKE_EVENT }, notify),
+    .on('broadcast', { event: POKE_EVENT }, (message) => notify(pokeSignalOf(message))),
   remove: (channel) => supabase.removeChannel(channel),
 });
 
@@ -39,31 +39,38 @@ export const useBroadcastRefresh = (resource: PokeResource, ids: readonly string
   const userId = session?.user.id;
   const visible = useSyncExternalStore(subscribeToVisibility, pageVisible);
   const keyState = useRealtimeKey(visible ? organizationId : null);
-  const topics = pokeTopics(resource, ids, keyState.status === 'ready' ? keyState.key : null);
-  const observer = useRef<PokeObserver | null>(null);
+  const organizationKey = keyState.status === 'ready' ? keyState.key : null;
+  const idList = ids.join(',');
+  const subscription = useRef<ResourceSubscription | null>(null);
   const latestFilters = useRef(filters);
   latestFilters.current = filters;
 
   useEffect(() => {
     if (!visible || !userId || !organizationId) return;
     let active = true;
-    const subscription = observe(async () => {
-      const current = latestFilters.current;
-      if (client.isFetching(current)) {
-        // Let an earlier read finish, then read again for a poke received in flight.
-        await client.refetchQueries({ ...current, type: 'active', fetchStatus: 'fetching' }, { cancelRefetch: false });
-      }
-      if (active) await client.invalidateQueries(current, { cancelRefetch: false });
+    const created = createResourceSubscription({
+      resource,
+      observe,
+      // The API decides which topics this person may join, on every request.
+      fetchTopics: (input) => api.realtimeTopics(input),
+      refresh: async () => {
+        const current = latestFilters.current;
+        if (client.isFetching(current)) {
+          // Let an earlier read finish, then read again for a poke received in flight.
+          await client.refetchQueries({ ...current, type: 'active', fetchStatus: 'fetching' }, { cancelRefetch: false });
+        }
+        if (active) await client.invalidateQueries(current, { cancelRefetch: false });
+      },
     });
-    observer.current = subscription;
+    subscription.current = created;
     return () => {
       active = false;
-      subscription.dispose();
-      observer.current = null;
+      created.dispose();
+      subscription.current = null;
     };
-  }, [client, organizationId, userId, visible]);
+  }, [client, organizationId, resource, userId, visible]);
 
   useEffect(() => {
-    observer.current?.setTopics(topics ? topics.split(',') : []);
-  }, [client, organizationId, topics, userId, visible]);
+    subscription.current?.update(idList ? idList.split(',') : [], organizationKey);
+  }, [client, idList, organizationId, organizationKey, resource, userId, visible]);
 };

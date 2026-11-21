@@ -85,9 +85,72 @@ Residual windows:
 - Rotation is organization-wide, so every other member refetches one small response per removal or
   sign-out. A device sign-out rotates the key of all the user's organizations.
 - Revocations that are not membership or session changes (leaving a team, being unscheduled) do not
-  rotate the key: the poke topic stays readable to the member for that resource until they rejoin,
-  but pokes carry only an id and event, and the API checks access on every read.
+  rotate the organization key; see "Per-resource topic keys" below, which closes that gap for
+  conversations.
 - Hosted projects: the `auth.sessions` trigger needs the `postgres` role to hold TRIGGER on
   `auth.sessions`; confirm with `select has_table_privilege('postgres', 'auth.sessions', 'TRIGGER')`.
   If it cannot be created, the migration fails loudly and session deletion then relies on the 900 s
   token lifetime plus the API key check.
+
+## Per-resource topic keys (W8-INT-D5 follow-up)
+
+The organization key does not change when someone loses access to a single team or plan, so that
+person's open socket kept receiving pokes for that conversation and they could rejoin with the key they
+already knew. Rotating the organization key on every roster or assignment change would make every connected
+client refetch on every scheduling action, so the loss is scoped to the resource.
+
+What grants access to each topic kind (checked against `private.can_access_conversation` and the row
+security of `plans` and `live_runs`):
+
+- `conversation`: an active, adult, unarchived person who is on the team or may schedule or manage it
+  (team conversation), or is a plan leader or has a released, not-declined assignment (plan conversation).
+  Per-resource, and what changes.
+- `live_plan`, `live_run`: any active member of the organization (`is_org_member`). A removed assignee can
+  still read the plan and its run through the API, so there is nothing per-resource to revoke; these
+  topics keep the organization key only. This is a product rule, not an oversight: tightening it would
+  mean restricting plan reads themselves.
+
+Decision: a conversation topic is `conversation:<id>:<organization key>:<conversation key>`.
+
+- `private.conversation_realtime_keys` (one row per conversation, 244-bit key, row security on, no policy,
+  cascade-deleted with the conversation) is created the first time a member is issued the topic. No row
+  means nobody holds a topic, so there is nothing to poke or rotate.
+- `public.realtime_resource_topics(org, resource, ids)` returns the topics the caller may use right now
+  (active membership plus `can_access_conversation` per id; plans and runs of the organization for the
+  live kinds). `POST /api/v1/realtime/topics` calls it with the caller's token on every request; a resource
+  without access is absent from the answer, never an error. The existing key endpoint and the
+  organization key rotation are unchanged. Clients ask the API for topics instead of building them, and
+  ask again when the organization key changes or a `rekey` poke arrives
+  (`createResourceSubscription` in `packages/shared`, used by web and mobile `useBroadcastRefresh`).
+- The join policy requires both keys to be current, an active member and conversation access.
+- The conversation key rotates in the same transaction as the loss, after one id-free `rekey` poke on the
+  old topic. Triggers: team membership deleted; assignment deleted, declined, un-released, or moved to
+  another person or plan (only when the old row granted access); person archived, unlinked from the
+  account or marked a child (conversations they were on); plan or team moved to another service type;
+  team-scoped scheduling or management grant removed. Organization-wide, service-type and folder grants,
+  service-type folder moves and leaving the legacy scheduler mode rotate the organization key instead:
+  they are rare and could reach many conversations.
+- Write amplification: rotation touches only a conversation that has a key row (somebody opened it) and
+  happens at most once per conversation per transaction, and only when access is lost (inserts, releases
+  and confirmations do nothing). Bulk scheduling therefore adds no writes; bulk removal costs one poke and
+  one update per affected conversation.
+
+Rejected: rotating the organization key on every roster change (cost on every client), one table
+polymorphic over all kinds (no per-resource rights exist for the live kinds), and keeping client-built
+topics (the client could not learn a new key without a lookup that checks access).
+
+Residual windows:
+
+- A person who loses access can still receive the one id-free `rekey` poke on the old topic (their socket
+  is still joined to it) and then nothing; they cannot rejoin. A person who had already copied the topic
+  could join it until the commit; afterwards joins are refused.
+- Access is lost through the triggers listed above. A loss not covered by a trigger is limited to the
+  API and RLS checks on every read, with pokes continuing until the next rotation or the organization
+  key changes. Role and access-mode changes of an organization member rotate the organization key, which
+  covers capabilities that come from the role; no uncovered path is known, but a future way of granting
+  conversation access needs its own trigger (the SQL suite `qa-wave8-realtime-resource-revocation.sql`
+  lists the covered ones).
+- A conversation key is created lazily on first issue, and a poke sent between the key's creation and the
+  client's join is missed; clients refetch their data after every join, so they converge.
+- Clients from before this change use three-part conversation topics the policy now refuses and rely on
+  the 60 s fallback refresh until updated.
