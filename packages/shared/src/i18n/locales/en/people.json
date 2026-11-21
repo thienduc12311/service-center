@@ -22,6 +22,7 @@
     "empty": "Nobody here yet",
     "searchLabel": "Search people",
     "searchPlaceholder": "Search by name, email, phone or campus",
+    "searchPlaceholderMember": "Search by name or campus",
     "noMatch": "Nobody matches that search.",
     "loadMore": "Load more people"
   },
@@ -205,7 +206,7 @@
     "noTeams": "Not on any team.",
     "noTags": "No tags.",
     "editTags": "Edit tags",
-    "ownerOnlyNote": "Only the church owner can open someone's personal details. You can change your own name and phone in Settings."
+    "ownerOnlyNote": "Only the church owner can open someone's full profile. On a team roster you see each teammate's name, email, phone and birthday (children show a name only). You can change your own name and phone in Settings."
   },
   "joinRequests": {
     "title": "Join requests",

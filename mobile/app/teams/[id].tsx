@@ -124,6 +124,13 @@ export default function TeamScreen() {
   const positionName = (positionId: string | null): string | null =>
     team.positions.find((position) => position.id === positionId)?.name ?? null;
 
+  const openLink = (href: string): void => {
+    Linking.openURL(href).catch((error: unknown) => {
+      console.warn('[teams] could not open a roster link', error);
+      Alert.alert(t('teams:mobileTeams.openLinkFailed'));
+    });
+  };
+
   const confirmRemove = (member: TeamMember): void => {
     const name = memberName(member);
     Alert.alert(t('mobileTeams.removeTitle', { name, team: team.name }), t('mobileTeams.removeMessage'), [
@@ -174,7 +181,7 @@ export default function TeamScreen() {
                           <Text
                             key={line.kind}
                             style={styles.muted}
-                            onPress={line.href ? () => void Linking.openURL(line.href ?? '') : undefined}
+                            onPress={line.href ? () => openLink(line.href ?? '') : undefined}
                             accessibilityRole={line.href ? 'link' : undefined}
                           >
                             {line.value}

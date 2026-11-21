@@ -101,7 +101,7 @@ export default function DirectoryScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         onEndReached={() => {
-          if (people.hasNextPage && !people.isFetchingNextPage) void people.fetchNextPage();
+          if (people.hasNextPage && !people.isFetching) void people.fetchNextPage();
         }}
         onEndReachedThreshold={0.5}
         ListFooterComponent={

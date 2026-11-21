@@ -26,3 +26,21 @@ export const canOpenPlanChat = (
     || (profileId != null
       && assignments.some((assignment) =>
         assignment.user_id === profileId && assignment.visibility === 'released' && assignment.status !== 'declined')));
+
+/** The parts of a loaded plan that decide whether its chat is offered. */
+export interface PlanChatPlan {
+  assignments: readonly PlanChatAssignment[];
+  viewer_is_adult_person?: boolean;
+}
+
+/**
+ * `canOpenPlanChat` for a screen that may still be loading its plan. Before the plan arrives
+ * `viewer_is_adult_person` is unknown, so an org-wide leader would otherwise be offered a chat
+ * a child leader cannot open: show nothing until the plan is here.
+ */
+export const canOfferPlanChat = (
+  plan: PlanChatPlan | undefined,
+  isPlanLeader: boolean,
+  profileId: string | null | undefined,
+): boolean =>
+  plan !== undefined && canOpenPlanChat(isPlanLeader, plan.assignments, profileId, plan.viewer_is_adult_person);

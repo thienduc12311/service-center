@@ -106,9 +106,7 @@ export function ChatList({ header }: ChatListProps) {
             ) : null}
           </Card>
           <ErrorNotice error={open.error ?? conversations.error} />
-          {list.length ? (
-            <SectionHeader title={t('common:nav.chat')} count={list.length} />
-          ) : null}
+          {list.length ? <SectionHeader title={t('common:nav.chat')} /> : null}
         </View>
       }
       ListEmptyComponent={
@@ -119,7 +117,7 @@ export function ChatList({ header }: ChatListProps) {
         )
       }
       onEndReached={() => {
-        if (conversations.hasNextPage && !conversations.isFetchingNextPage) void conversations.fetchNextPage();
+        if (conversations.hasNextPage && !conversations.isFetching) void conversations.fetchNextPage();
       }}
       onEndReachedThreshold={0.5}
       ListFooterComponent={
