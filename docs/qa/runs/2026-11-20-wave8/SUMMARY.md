@@ -54,10 +54,10 @@ Every P1 was checked against source by the coordinator.
 - **Data/API contract:** W8-PERF-D1 one song title >200 chars (owner via PostgREST) makes the library list 500 with Zod internals — add DB check constraints matching the shared schemas.
 - **UI:** W8-WEB-D1 forced SVG logo upload shows only "Something went wrong" (`frontend/src/pages/SettingsPage.tsx:511`); W8-NAT-D2 "Ask for a replacement" and attendance "Save" missing from the AX tree, Decline sheet button under the tab bar; W8-NAT-D3 "Plan chat" offered to a non-participant → "Conversation not available".
 
-## Product decisions needed
+## Product decisions (decided 2026-11-21)
 
-- W8-NAT-D1: native team roster shows "Unknown" for every teammate to a non-owner (`profile: null` from the API, likely the owner-only People privacy). Decide what a non-owner may see (display name only?) — then fix the UI either way.
-- W8-INT-D5: a deactivated member's open Realtime socket stays live until token expiry (≤ 900 s); ADR 0005 says that case has no window. Either kick sockets on deactivation or correct the ADR. Same family: after global sign-out an open socket kept receiving 839 s and a new join with the signed-out unexpired token was accepted (documented residual of W7-JRN-D3).
+- W8-NAT-D1: native team roster shows "Unknown" for every teammate to a non-owner (`profile: null` from the API, owner-only People privacy). **Decided:** a non-owner viewing a team roster sees each teammate's name and basic information — email, phone and date of birth. Other private People fields stay owner-only.
+- W8-INT-D5: a deactivated member's open Realtime socket stays live until token expiry (≤ 900 s); ADR 0005 says that case has no window. **Decided:** close the connection on deactivation (server-enforced, not client-cooperative) and keep ADR 0005's statement true. Same family: after global sign-out an open socket kept receiving 839 s (documented residual of W7-JRN-D3) — covered too if the same mechanism applies.
 
 ## Deferred
 
