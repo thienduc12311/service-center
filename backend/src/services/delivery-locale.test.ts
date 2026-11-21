@@ -83,7 +83,7 @@ const seed = (): void => {
     { id: 'as-an', plan_id: 'plan-1', person_id: 'person-an', status: 'confirmed', visibility: 'released', team: { name: 'Ban nhạc' }, position: { name: 'Keys' } },
     { id: 'as-sam', plan_id: 'plan-1', person_id: 'person-sam', status: 'confirmed', visibility: 'released', team: { name: 'Band' }, position: { name: 'Bass' } },
   ];
-  tables.plans = [{ id: 'plan-1', organization_id: 'org-1', title: 'Sunday Worship', service_date: '2026-11-01', location: null }];
+  tables.plans = [{ id: 'plan-1', organization_id: 'org-1', title: 'Sunday Worship', service_date: '2026-11-01', location: null, status: 'published' }];
   tables.organizations = [{ id: 'org-1', name: 'Grace Church', timezone: 'America/Chicago' }];
   tables.reminder_jobs = [{ id: 'job-1', occurrence_starts_at: '2026-11-01T14:30:00Z', timezone: 'America/Chicago' }];
 };

@@ -16,6 +16,7 @@ import {
   type AssignmentReleasePreview,
   type SetResponseOwnerInput,
   type AssignmentNotificationSendResult,
+  type CreateAssignmentsResult,
   type CreateAssignmentsInput,
   type NotifyPlanInput,
   type RespondToAssignmentInput,
@@ -49,7 +50,8 @@ import { fetchAllPages, inChunks } from '../lib/paging.js';
 import type { ReleasePreviewAssignment } from '../model/release.model.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { createResponses, latestDeclineReasons } from '../services/assignment-responses.js';
-import { effectIdForKey, notifyPlanAssignments } from '../services/deliveries.js';
+import { effectIdForKey, notificationSendResult, notifyPlanAssignments } from '../services/deliveries.js';
+import { isHeldUntilPublish } from '../model/plan-publish.model.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
 import { releasePlanAssignments } from '../services/releases.js';
 
@@ -127,7 +129,7 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
   const plan = await unwrap(
     req.db
       .from('plans')
-      .select('id')
+      .select('id, status')
       .eq('id', planId)
       .eq('organization_id', req.orgId)
       .maybeSingle(),
@@ -168,7 +170,9 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
 
   // One transaction: same-organization and team-scope checks, the inserts
   // (people already on the plan are skipped) and, when notifying, the request
-  // effect for released rows. Prepared rows are never notified here.
+  // effect for released rows. Prepared rows are never notified here, and
+  // nothing is sent on a draft plan (ADR-0006): publishing asks them.
+  const heldUntilPublish = isHeldUntilPublish(plan.status);
   const effectKey = `assignments:${plan.id}:${idempotency_key ?? randomUUID()}`;
   const created = await unwrap(
     req.db.rpc('schedule_plan_assignments', {
@@ -191,12 +195,18 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
     }),
   );
 
-  if (notify && (created ?? []).some((row) => row.visibility === 'released')) {
+  if (notify && !heldUntilPublish && (created ?? []).some((row) => row.visibility === 'released')) {
     await deliverEffectNow(await effectIdForKey(req.db, req.orgId, effectKey));
   }
 
   const warnings = await recordPreferenceOverrides(req, plan.id, created ?? [], preference_override_reason ?? null);
-  res.status(201).json({ created: created ?? [], conflicts: check.conflicts, warnings });
+  const result: CreateAssignmentsResult = {
+    created: created ?? [],
+    conflicts: check.conflicts,
+    warnings,
+    ...(heldUntilPublish ? { held_until_publish: true } : {}),
+  };
+  res.status(201).json(result);
 });
 
 /**
@@ -263,9 +273,15 @@ planNotifyRouter.post('/', requireCapability('scheduling.manage'), validateBody(
   const planId = param(req, 'planId');
   const { idempotency_key } = req.body as NotifyPlanInput;
   const plan = await unwrap(
-    req.db.from('plans').select('id').eq('id', planId).eq('organization_id', req.orgId).maybeSingle(),
+    req.db.from('plans').select('id, status').eq('id', planId).eq('organization_id', req.orgId).maybeSingle(),
   );
   if (!plan) throw HttpError.notFound('Plan not found');
+  // ADR-0006: a draft plan sends nothing; publishing asks everyone released.
+  if (isHeldUntilPublish(plan.status)) {
+    const held: AssignmentNotificationSendResult = { ...(await notificationSendResult(req.db, null)), held_until_publish: true };
+    res.json(held);
+    return;
+  }
 
   // Only released requests are ever reminded; prepared ones were never sent.
   const pending = await unwrap(
