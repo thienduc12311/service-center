@@ -37,7 +37,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireCapability, requireManager } from '../middleware/organization.js';
-import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { raw, unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import {
   PLAN_SUMMARY_SELECT,
@@ -185,11 +185,14 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
 
   // Do this after the versioned time replacement so a stale time editor cannot
   // partially apply unrelated plan fields before receiving its 409.
-  if (Object.keys(plan).length > 0) {
+  // The plan's own date follows its earliest service time inside the database
+  // (plan_times trigger, same transaction as the time write: W7-NAT-D2).
+  const planFields = plan;
+  if (Object.keys(planFields).length > 0) {
     const updated = await unwrap(
       req.db
         .from('plans')
-        .update(plan)
+        .update(planFields)
         .eq('id', planId)
         .eq('organization_id', req.orgId)
         .select('id')
@@ -208,7 +211,10 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
 });
 
 plansRouter.delete('/:id', requireCapability('plans.edit'), async (req, res) => {
-  await unwrap(req.db.from('plans').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId));
+  await unwrapDeleted(
+    req.db.from('plans').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId).select('id'),
+    'Plan not found',
+  );
   res.status(204).end();
 });
 

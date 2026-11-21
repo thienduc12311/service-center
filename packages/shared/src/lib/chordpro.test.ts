@@ -100,6 +100,13 @@ describe('transposition', () => {
     const source = '{title: Test}\n[G]Amazing [C]grace';
     expect(transposeChordPro(source, 2)).toBe('{title: Test}\n[A]Amazing [D]grace');
   });
+
+  it('rewrites the {key: …} directive with the chords (W7-JRN-D4)', () => {
+    expect(transposeChordPro('{key: G}\n[G]Amazing', 2)).toBe('{key: A}\n[A]Amazing');
+    expect(transposeChordPro('{k:Am}\n[Am]x', 3, 'flats')).toBe('{k:Cm}\n[Cm]x');
+    expect(transposeChordPro('{KEY: Bb}', 2, 'flats')).toBe('{KEY: C}');
+    expect(transposeChordPro('{key: G}', 0)).toBe('{key: G}');
+  });
 });
 
 describe('parseChordPro', () => {

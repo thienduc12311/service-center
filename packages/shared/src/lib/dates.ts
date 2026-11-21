@@ -93,8 +93,11 @@ export const parseDuration = (input: string): number | null => {
   const trimmed = input.trim();
   if (!trimmed) return null;
   if (/^\d+$/.test(trimmed)) return Number(trimmed);
-  const parts = trimmed.split(':').map((p) => Number(p));
-  if (parts.some((p) => Number.isNaN(p))) return null;
+  // m:ss or h:mm:ss; digits only, and every part after the first is below 60.
+  const raw = trimmed.split(':');
+  if (raw.length > 3 || raw.some((p) => !/^\d+$/.test(p))) return null;
+  const parts = raw.map(Number);
+  if (parts.slice(1).some((p) => p >= 60)) return null;
   return parts.reduce((acc, part) => acc * 60 + part, 0);
 };
 

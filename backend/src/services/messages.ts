@@ -9,11 +9,13 @@ import {
   type OperationalMessageDetail,
   type OperationalMessageRow,
   type OperationalMessageSummary,
+  type OperationalMessageView,
   type SaveMessageTemplateInput,
   type SendOperationalMessageInput,
   type SendOperationalMessageResult,
 } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
+import { beforeFilter } from '../lib/keyset.js';
 import { raw, unwrap } from '../lib/supabase.js';
 import { groupMessageOutcomes, type CollaborationCaller, type MessageOutcomeRow } from '../model/collaboration.model.js';
 import { deliverEffectNow } from './delivery-worker.js';
@@ -44,15 +46,42 @@ export const previewMessage = async (caller: CollaborationCaller, audience: Mess
     p_audience: audiencePayload(audience),
   }))) as MessageAudiencePreview;
 
-const loadMessage = async (caller: CollaborationCaller, id: string): Promise<OperationalMessageRow> => {
+/** The sender/administrator row carries the audit columns; the recipient view does not. */
+const isFullRow = (message: OperationalMessageView | OperationalMessageRow): message is OperationalMessageRow =>
+  'audience' in message;
+
+/**
+ * Senders and administrators read the stored row (RLS admits only them).
+ * Anyone else who received the message gets the recipient-safe columns from
+ * `my_received_messages` (W7-MSG-D6) -- RLS cannot hide audit columns.
+ */
+const loadMessage = async (caller: CollaborationCaller, id: string): Promise<OperationalMessageView | OperationalMessageRow> => {
   const row = await unwrap(
     caller.db.from('operational_messages').select('*').eq('id', id).eq('organization_id', caller.orgId).maybeSingle(),
   );
-  if (!row) throw HttpError.notFound('Message not found');
-  return row;
+  if (row) return row;
+  const received = await unwrap(
+    raw(caller.db).rpc('my_received_messages', { p_organization_id: caller.orgId }).eq('id', id).maybeSingle(),
+  ) as OperationalMessageView | null;
+  if (!received) throw HttpError.notFound('Message not found');
+  return received;
+};
+
+/** The full row for a message just sent, which only its sender can have. */
+const loadSentMessage = async (caller: CollaborationCaller, id: string): Promise<OperationalMessageRow> => {
+  const message = await loadMessage(caller, id);
+  if (!isFullRow(message)) throw HttpError.notFound('Message not found');
+  return message;
 };
 
 export const sendMessage = async (caller: CollaborationCaller, input: SendOperationalMessageInput): Promise<SendOperationalMessageResult> => {
+  if (input.template_id) {
+    // An archived template can no longer be chosen (W7-MSG-D8); an unreadable one is left to the database's 404.
+    const template = await unwrap(
+      caller.db.from('message_templates').select('archived_at').eq('id', input.template_id).eq('organization_id', caller.orgId).maybeSingle(),
+    );
+    if (template?.archived_at) throw HttpError.unprocessable('That template has been archived');
+  }
   const rows = (await unwrap(raw(caller.db).rpc('send_operational_message', {
     p_organization_id: caller.orgId,
     p_audience: audiencePayload(input.audience),
@@ -66,7 +95,7 @@ export const sendMessage = async (caller: CollaborationCaller, input: SendOperat
   const result = rows?.[0];
   if (!result) throw new HttpError(500, 'The message was not stored');
   if (!result.replayed) await deliverEffectNow(result.effect_id);
-  return { message: await loadMessage(caller, result.message_id), replayed: result.replayed };
+  return { message: await loadSentMessage(caller, result.message_id), replayed: result.replayed };
 };
 
 const senderNames = async (caller: CollaborationCaller, ids: readonly string[]): Promise<Map<string, string | null>> => {
@@ -83,21 +112,26 @@ export const listMessages = async (
   caller: CollaborationCaller,
   query: ListOperationalMessagesQuery,
 ): Promise<OperationalMessageSummary[]> => {
-  let select = caller.db.from('operational_messages').select('*').eq('organization_id', caller.orgId);
-  if (query.plan_id) select = select.eq('plan_id', query.plan_id);
-  if (query.box === 'received') {
-    const mine = (await unwrap(
-      caller.db.from('operational_message_recipients').select('message_id')
-        .eq('organization_id', caller.orgId).eq('profile_id', caller.userId).eq('status', 'included'),
-    )) ?? [];
-    if (mine.length === 0) return [];
-    select = select.in('id', mine.map((row) => row.message_id));
-  } else if (!(await isAdmin(caller))) {
-    select = select.eq('created_by', caller.userId);
-  }
-  const rows = (await unwrap(select.order('created_at', { ascending: false }).limit(query.limit))) ?? [];
+  const rows: Array<OperationalMessageView | OperationalMessageRow> = query.box === 'received'
+    ? await listReceived(caller, query)
+    : await listSent(caller, query);
   const names = await senderNames(caller, rows.map((row) => row.created_by));
   return rows.map((row) => ({ ...row, sender_name: names.get(row.created_by) ?? null, sent_by_me: row.created_by === caller.userId }));
+};
+
+const listReceived = async (caller: CollaborationCaller, query: ListOperationalMessagesQuery): Promise<OperationalMessageView[]> => {
+  let select = raw(caller.db).rpc('my_received_messages', { p_organization_id: caller.orgId });
+  if (query.plan_id) select = select.eq('plan_id', query.plan_id);
+  if (query.before) select = select.or(beforeFilter(query.before));
+  return ((await unwrap(select.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(query.limit))) ?? []) as OperationalMessageView[];
+};
+
+const listSent = async (caller: CollaborationCaller, query: ListOperationalMessagesQuery): Promise<OperationalMessageRow[]> => {
+  let select = caller.db.from('operational_messages').select('*').eq('organization_id', caller.orgId);
+  if (query.plan_id) select = select.eq('plan_id', query.plan_id);
+  if (!(await isAdmin(caller))) select = select.eq('created_by', caller.userId);
+  if (query.before) select = select.or(beforeFilter(query.before));
+  return (await unwrap(select.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(query.limit))) ?? [];
 };
 
 export const getMessage = async (caller: CollaborationCaller, id: string): Promise<OperationalMessageDetail> => {
@@ -111,8 +145,7 @@ export const getMessage = async (caller: CollaborationCaller, id: string): Promi
   const renderedForMe = values
     ? { subject: renderMessageTemplate(message.subject, values), body: renderMessageTemplate(message.body, values) }
     : null;
-  const canSee = message.created_by === caller.userId || (await isAdmin(caller));
-  if (!canSee) {
+  if (!isFullRow(message)) {
     return { message, sender_name: names.get(message.created_by) ?? null, can_retry: false, rendered_for_me: renderedForMe };
   }
   const rows = (await unwrap(raw(caller.db).rpc('operational_message_outcomes', { p_message: id }))) as MessageOutcomeRow[] | null;
@@ -131,7 +164,7 @@ export const retryMessage = async (
   id: string,
   personIds: readonly string[] | undefined,
 ): Promise<{ requeued: number }> => {
-  await loadMessage(caller, id);
+  await loadSentMessage(caller, id);
   const requeued = (await unwrap(raw(caller.db).rpc('retry_operational_message', {
     p_message: id,
     p_person_ids: personIds && personIds.length > 0 ? personIds : null,
@@ -183,8 +216,12 @@ export const updateTemplate = async (
   if (input.expected_revision !== undefined) update = update.eq('revision', input.expected_revision);
   const row = await unwrap(update.select('*').maybeSingle());
   if (row) return row;
-  const current = await unwrap(caller.db.from('message_templates').select('id').eq('id', id).maybeSingle());
-  if (current && input.expected_revision !== undefined) {
+  const current = await unwrap(
+    caller.db.from('message_templates').select('id, revision').eq('id', id).eq('organization_id', caller.orgId).is('archived_at', null).maybeSingle(),
+  );
+  // Stale only when the revision really moved; a visible template the caller may not
+  // edit is a 404, like any other row RLS hides from writes (W7-MSG-D7).
+  if (current && input.expected_revision !== undefined && current.revision !== input.expected_revision) {
     throw new HttpError(409, 'This template changed since you opened it', 'template_stale');
   }
   throw HttpError.notFound('Template not found');

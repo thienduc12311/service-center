@@ -11,6 +11,7 @@ import {
   type EffectiveAccessEntry,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
+import { useAuth } from '../../providers/AuthProvider';
 import {
   changeMemberGrant,
   scopeKey,
@@ -40,6 +41,7 @@ interface SchedulerModeProps {
 /** Church-wide vs only-granted-areas for a scheduler. */
 const SchedulerMode = ({ member }: SchedulerModeProps) => {
   const { t } = useTranslation('settings');
+  const { role } = useAuth();
   const invalidate = useInvalidateOrg();
   const setMode = useMutation({
     mutationFn: (mode: AccessMode) => api.updateMemberAccess(member.user_id, { access_mode: mode }),
@@ -49,6 +51,17 @@ const SchedulerMode = ({ member }: SchedulerModeProps) => {
     { value: 'legacy', label: t('access.mode.legacy') },
     { value: 'scoped', label: t('access.mode.scoped') },
   ];
+
+  // Membership rows are owner-only in the database, so only an owner may switch the mode.
+  if (role !== 'owner') {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm font-medium">{t(`access.mode.${member.access_mode}`)}</p>
+        <p className="text-xs text-slate-500">{t(`memberAccess.modeHint.${member.access_mode}`)}</p>
+        <p className="text-xs text-slate-500">{t('memberAccess.modeOwnerOnly')}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">

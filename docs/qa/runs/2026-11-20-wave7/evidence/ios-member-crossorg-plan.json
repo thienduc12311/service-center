@@ -1,0 +1,168 @@
+[
+    {
+        "enabled": true,
+        "AXUniqueId": null,
+        "frame": {
+            "x": 0,
+            "y": 0,
+            "width": 402,
+            "height": 874
+        },
+        "AXLabel": "Expo Go",
+        "AXValue": null,
+        "role_description": "application",
+        "children": [
+            {
+                "AXUniqueId": "BackButton",
+                "AXValue": null,
+                "role_description": "back button",
+                "AXLabel": "Back",
+                "enabled": true,
+                "frame": {
+                    "width": 90,
+                    "y": 62,
+                    "x": 16,
+                    "height": 44
+                },
+                "children": [],
+                "type": "Button"
+            },
+            {
+                "AXUniqueId": null,
+                "role_description": "heading",
+                "type": "Heading",
+                "AXLabel": "Plan",
+                "frame": {
+                    "x": 184.33333333333334,
+                    "width": 33,
+                    "height": 19.33333333333333,
+                    "y": 74.33333333333333
+                },
+                "AXValue": null,
+                "enabled": true,
+                "children": []
+            },
+            {
+                "children": [],
+                "AXValue": null,
+                "AXLabel": "Plan not found",
+                "AXUniqueId": null,
+                "role_description": "text",
+                "frame": {
+                    "y": 152,
+                    "x": 61,
+                    "width": 305,
+                    "height": 20
+                },
+                "type": "StaticText",
+                "enabled": true
+            },
+            {
+                "role_description": "button",
+                "AXUniqueId": null,
+                "AXValue": null,
+                "enabled": true,
+                "type": "Button",
+                "AXLabel": "Try again",
+                "frame": {
+                    "x": 24,
+                    "width": 354,
+                    "y": 196,
+                    "height": 48
+                },
+                "children": []
+            },
+            {
+                "role_description": "image",
+                "AXValue": null,
+                "children": [],
+                "frame": {
+                    "height": 26,
+                    "x": 344,
+                    "width": 26,
+                    "y": 71
+                },
+                "enabled": true,
+                "AXUniqueId": "gearshape.fill",
+                "type": "Image",
+                "AXLabel": "Gear Shape, Filled"
+            },
+            {
+                "children": [],
+                "role_description": "text",
+                "AXUniqueId": null,
+                "AXLabel": "4:10\u202fPM",
+                "enabled": true,
+                "AXValue": null,
+                "frame": {
+                    "width": 37,
+                    "y": 21.666666666666686,
+                    "height": 21.66666666666667,
+                    "x": 63.33333333333334
+                },
+                "type": "StaticText"
+            },
+            {
+                "frame": {
+                    "width": 94.66666666666666,
+                    "height": 36.66666666666666,
+                    "x": 153.66666666666666,
+                    "y": 13.999999999999996
+                },
+                "type": "GenericElement",
+                "role_description": "",
+                "AXValue": null,
+                "AXUniqueId": null,
+                "AXLabel": "Dynamic Island, Empty",
+                "enabled": true,
+                "children": []
+            },
+            {
+                "role_description": "",
+                "AXLabel": "Cellular",
+                "children": [],
+                "AXValue": "No signal",
+                "enabled": true,
+                "frame": {
+                    "y": 25,
+                    "width": 20.666666666666686,
+                    "height": 13.666666666666664,
+                    "x": 277
+                },
+                "type": "GenericElement",
+                "AXUniqueId": null
+            },
+            {
+                "AXUniqueId": "3 of 3 Wi-Fi bars",
+                "frame": {
+                    "x": 306.6666666666667,
+                    "width": 17.333333333333314,
+                    "height": 12.666666666666664,
+                    "y": 26
+                },
+                "type": "GenericElement",
+                "AXLabel": null,
+                "role_description": "",
+                "AXValue": "SSID, 3 of 3 Wi-Fi bars",
+                "children": [],
+                "enabled": true
+            },
+            {
+                "enabled": true,
+                "AXValue": "Not charging",
+                "children": [],
+                "AXUniqueId": null,
+                "frame": {
+                    "y": 25.333333333333314,
+                    "height": 13.666666666666664,
+                    "width": 29.333333333333314,
+                    "x": 333
+                },
+                "type": "GenericElement",
+                "role_description": "",
+                "AXLabel": "100% battery power"
+            }
+        ],
+        "type": "Application"
+    }
+]

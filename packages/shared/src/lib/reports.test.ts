@@ -85,6 +85,20 @@ describe('participation', () => {
     expect(band).toMatchObject({ assignments: 3, people: 2, person_plans: 3 });
   });
 
+  it('totals unknown attendance in the summary (W7-JRN-D1)', () => {
+    const { summary } = buildParticipationReport({
+      filters: filters(),
+      plans,
+      assignments,
+      people,
+      attendance: [
+        { plan_id: 'p1', plan_time_id: 'p1-service', person_id: 'ana', status: 'unknown', time_kind: 'service' },
+        { plan_id: 'p2', plan_time_id: 'p2-service', person_id: 'ana', status: 'unknown', time_kind: 'service' },
+      ],
+    });
+    expect(summary.unknown).toBe(2);
+  });
+
   it('counts attendance once per person per time and never from confirmation', () => {
     const { rows } = buildParticipationReport({
       filters: filters(),

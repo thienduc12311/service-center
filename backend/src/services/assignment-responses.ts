@@ -11,6 +11,7 @@ import {
   type PlanTimeRow,
   type RespondToAssignmentSnapshotsInput,
 } from '@service-center/shared';
+import { chunk } from '../lib/chunk.js';
 import { raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import type {
@@ -346,6 +347,11 @@ export const createResponses = ({ serviceDb, deliver }: ResponseDependencies): R
         unwrap(serviceDb.from('assignment_request_snapshots').select('*').eq('id', notification.snapshot_id).maybeSingle()),
       ]);
       if (!snapshot || snapshot.superseded_at || snapshot.consumed_at) throw ANSWER_ERRORS.requestStale();
+      // W2-RESP-D4: apply the same currency test the answer applies, so the
+      // person is never shown (and asked to answer) a request it will refuse.
+      const state = await unwrap(serviceDb.rpc('assignment_snapshot_state', { p_snapshot: snapshot.id }));
+      if (state === 'expired') throw ANSWER_ERRORS.linkExpired();
+      if (state !== 'current') throw ANSWER_ERRORS.requestStale();
       // The token was verified above, so this snapshot is the holder's to read.
       const review = await loadReview(serviceDb, snapshot);
       const serviceTime =
@@ -397,14 +403,20 @@ export const latestDeclineReasons = async (
 ): Promise<Map<string, string>> => {
   const reasons = new Map<string, string>();
   if (assignmentIds.length === 0) return reasons;
-  const rows = await unwrap(
-    db
-      .from('assignment_responses')
-      .select('assignment_id, response_note, created_at')
-      .in('assignment_id', [...assignmentIds])
-      .eq('status', 'declined')
-      .order('created_at', { ascending: false }),
+  const batches = await Promise.all(
+    chunk(assignmentIds).map((ids) =>
+      unwrap(
+        db
+          .from('assignment_responses')
+          .select('assignment_id, response_note, created_at')
+          .in('assignment_id', ids)
+          .eq('status', 'declined')
+          .order('created_at', { ascending: false }),
+      ),
+    ),
   );
+  // Each batch is newest first; assignments never span batches, so merging keeps that per assignment.
+  const rows = batches.flatMap((batch) => batch ?? []);
   const seen = new Set<string>();
   for (const row of rows ?? []) {
     // Newest first: only the latest decline counts, even when it had no reason.

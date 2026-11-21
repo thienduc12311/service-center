@@ -146,6 +146,7 @@ describe('planItemDraftFrom / planItemChangesFrom', () => {
     expect(validatePlanItemDraft({ ...draft, songId: null })).toBe('songRequired');
     expect(validatePlanItemDraft({ ...draft, itemType: 'item', title: ' ' })).toBe('titleRequired');
     expect(validatePlanItemDraft({ ...draft, length: '4:x' })).toBe('lengthFormat');
+    for (const bad of ['99:99', '1:75', '1:2:3:4']) expect(validatePlanItemDraft({ ...draft, length: bad })).toBe('lengthFormat');
     expect(validatePlanItemDraft({ ...draft, length: '10:00:01' })).toBe('lengthRange');
     expect(validatePlanItemDraft({ ...draft, inheritSequence: false, sequence: Array(61).fill('V').join(',') })).toBe('sequenceTooLong');
     expect(validatePlanItemDraft({ ...draft, inheritSequence: false, sequence: 'x'.repeat(21) })).toBe('sequenceStepTooLong');
@@ -220,6 +221,7 @@ describe('newPlanItemRequest', () => {
     expect(validateNewPlanItemDraft(base)).toBe('songRequired');
     expect(validateNewPlanItemDraft({ ...base, itemType: 'item' })).toBe('titleRequired');
     expect(validateNewPlanItemDraft({ ...base, song, length: 'abc' })).toBe('lengthFormat');
+    for (const bad of ['99:99', '1:75', '1:2:3:4']) expect(validateNewPlanItemDraft({ ...base, song, length: bad })).toBe('lengthFormat');
     expect(validateNewPlanItemDraft({ ...base, itemType: 'header', title: 'H', length: 'abc' })).toBeNull();
   });
 });

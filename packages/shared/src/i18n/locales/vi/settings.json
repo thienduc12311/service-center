@@ -770,6 +770,7 @@
       "legacy": "Có thể phân công cho mọi loại buổi nhóm và mọi ban trong hội thánh.",
       "scoped": "Chỉ phân công được ở những nơi họ có quyền bên dưới."
     },
+    "modeOwnerOnly": "Chỉ chủ sở hữu mới có thể thay đổi phạm vi phân công.",
     "permissions": "Quyền",
     "noPermissions": "Chưa được cấp quyền nào.",
     "addPermission": "Thêm quyền",

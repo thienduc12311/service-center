@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import {
 } from '@service-center/shared';
 import { api } from '../src/lib/api';
 import { notificationKeys } from '../src/lib/notification-keys';
+import { displayedUnreadCount } from '../src/lib/notification-unread';
 import { useUndoableNotificationDelete } from '../src/lib/useUndoableNotificationDelete';
 import { useAuth } from '../src/providers/AuthProvider';
 import { useNotifications } from '../src/providers/NotificationsProvider';
@@ -37,7 +38,7 @@ const PAGE_SIZE = 30;
 /** Everything the bell has collected, newest first. */
 export default function NotificationsScreen() {
   const { queryScope, generation, isCurrentGeneration } = useAuth();
-  const { unread, refresh, push } = useNotifications();
+  const { unread: bellUnread, refresh, push } = useNotifications();
   const router = useRouter();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -81,6 +82,16 @@ export default function NotificationsScreen() {
     [feed.data, removal.pending],
   );
   const hasRead = items.some((item) => item.read_at);
+  const unread = displayedUnreadCount(bellUnread, items);
+
+  // The bell count is a separate query; re-read it whenever the feed settles so
+  // the two agree without waiting for the 60 s poll. `refresh` changes identity
+  // with every count update, so it is read through a ref to avoid a refetch loop.
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+  useEffect(() => {
+    if (feed.dataUpdatedAt) void refreshRef.current();
+  }, [feed.dataUpdatedAt]);
 
   const confirmClearRead = (): void => {
     Alert.alert(t('notifications.clearReadTitle'), t('notifications.clearReadBody'), [

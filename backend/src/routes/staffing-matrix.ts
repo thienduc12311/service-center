@@ -14,7 +14,7 @@ import {
 } from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { fromPostgrestError } from '../lib/errors.js';
-import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { raw, unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { validateBody } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
@@ -71,7 +71,7 @@ staffingMatrixRouter.post('/views', validateBody(saveStaffingMatrixViewSchema), 
 });
 
 staffingMatrixRouter.delete('/views/:viewId', async (req, res) => {
-  await unwrap(req.db.from('staffing_matrix_views').delete().eq('id', param(req, 'viewId'))
-    .eq('organization_id', req.orgId).eq('owner_id', req.auth.userId));
+  await unwrapDeleted(req.db.from('staffing_matrix_views').delete().eq('id', param(req, 'viewId'))
+    .eq('organization_id', req.orgId).eq('owner_id', req.auth.userId).select('id'), 'View not found');
   res.status(204).end();
 });

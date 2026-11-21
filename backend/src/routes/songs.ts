@@ -23,7 +23,7 @@ import {
 } from '@service-center/shared';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
-import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { raw, unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import {
   SONG_SELECT,
@@ -168,7 +168,10 @@ songsRouter.patch('/:id', requireCapability('songs.manage'), validateBody(update
 });
 
 songsRouter.delete('/:id', requireCapability('songs.manage'), async (req, res) => {
-  await unwrap(req.db.from('songs').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId));
+  await unwrapDeleted(
+    req.db.from('songs').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId).select('id'),
+    'Song not found',
+  );
   res.status(204).end();
 });
 
@@ -213,7 +216,7 @@ arrangementsRouter.patch('/:id', requireCapability('songs.manage'), validateBody
 });
 
 arrangementsRouter.delete('/:id', requireCapability('songs.manage'), async (req, res) => {
-  await unwrap(req.db.from('arrangements').delete().eq('id', param(req, 'id')));
+  await unwrapDeleted(req.db.from('arrangements').delete().eq('id', param(req, 'id')).select('id'), 'Arrangement not found');
   res.status(204).end();
 });
 

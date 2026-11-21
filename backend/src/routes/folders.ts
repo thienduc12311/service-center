@@ -14,7 +14,7 @@ import {
 } from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
-import { unwrap, unwrapOne } from '../lib/supabase.js';
+import { unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { requireAdmin } from '../middleware/organization.js';
 import { buildFolderTree } from '../model/folder.model.js';
@@ -89,8 +89,9 @@ foldersRouter.patch('/:id', requireAdmin, validateBody(updateFolderSchema), asyn
 
 /** Refused (400) while the folder still holds folders or service types. */
 foldersRouter.delete('/:id', requireAdmin, async (req, res) => {
-  await unwrap(
-    req.db.from('service_type_folders').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId),
+  await unwrapDeleted(
+    req.db.from('service_type_folders').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId).select('id'),
+    'Folder not found',
   );
   res.status(204).end();
 });

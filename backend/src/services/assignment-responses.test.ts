@@ -5,6 +5,7 @@ import type {
   AssignmentRequestSnapshotItemRow,
   AssignmentRequestSnapshotRow,
   AssignmentRow,
+  AssignmentSnapshotState,
   AssignmentStatus,
   AssignmentTimeResponseRow,
   Database,
@@ -539,9 +540,15 @@ describe('previewLink', () => {
     previous_expires_at: '2098-01-01T00:00:00.000Z',
   };
 
-  const linkDb = (stored: typeof notification | null, snapshotRow: AssignmentRequestSnapshotRow | null = snapshot): DbHandler =>
+  const linkDb = (
+    stored: typeof notification | null,
+    snapshotRow: AssignmentRequestSnapshotRow | null = snapshot,
+    state: AssignmentSnapshotState = 'current',
+  ): DbHandler =>
     (call) => {
       switch (call.target) {
+        case 'rpc/assignment_snapshot_state':
+          return { rows: state };
         case 'assignment_notifications':
           return { rows: stored ? [stored] : [] };
         case 'plans':
@@ -617,6 +624,23 @@ describe('previewLink', () => {
     });
     expect(h.service.targets()).not.toContain('assignment_request_snapshot_items');
   });
+
+  it('refuses as stale a request whose times changed after it was sent (W2-RESP-D4)', async () => {
+    const h = harness({ service: linkDb(notification, snapshot, 'stale') });
+    await expect(h.responses.previewLink('live-token')).rejects.toMatchObject({
+      status: 409,
+      code: 'assignment_request_stale',
+    });
+    expect(h.service.targets()).not.toContain('assignment_request_snapshot_items');
+  });
+
+  it('refuses as expired a request whose snapshot has expired (W2-RESP-D4)', async () => {
+    const h = harness({ service: linkDb(notification, snapshot, 'expired') });
+    await expect(h.responses.previewLink('live-token')).rejects.toMatchObject({
+      status: 410,
+      code: 'assignment_notification_expired',
+    });
+  });
 });
 
 // ------------------------------------------------------ decline reasons ---
@@ -636,6 +660,16 @@ describe('latestDeclineReasons', () => {
     expect(calls[0]!.target).toBe('assignment_responses');
     expect(calls[0]!.params.get('order')).toBe('created_at.desc');
     expect(calls[0]!.params.get('status')).toBe('eq.declined');
+  });
+
+  it('splits a long id list so the request URL stays short (W7-RESP-D5)', async () => {
+    const { db, calls } = fakeDatabase(() => ({ rows: [] }));
+    const ids = Array.from({ length: 250 }, (_, index) => `a${index}`);
+    await latestDeclineReasons(db, ids);
+    expect(calls).toHaveLength(3);
+    for (const call of calls) {
+      expect((call.params.get('assignment_id') ?? '').split(',').length).toBeLessThanOrEqual(100);
+    }
   });
 
   it('does not query for an empty list', async () => {

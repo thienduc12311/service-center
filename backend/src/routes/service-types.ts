@@ -20,7 +20,7 @@ import {
 } from '@service-center/shared';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireAdmin, requireCapability } from '../middleware/organization.js';
-import { unwrap, unwrapOne } from '../lib/supabase.js';
+import { unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { setUpServiceType } from '../services/service-type-setup.js';
 import { loadScopeAccess, replaceScopeAccess } from '../services/access.js';
@@ -90,8 +90,9 @@ serviceTypesRouter.patch('/:id', requireCapability('plans.edit'), validateBody(s
 });
 
 serviceTypesRouter.delete('/:id', requireCapability('plans.edit'), async (req, res) => {
-  await unwrap(
-    req.db.from('service_types').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId),
+  await unwrapDeleted(
+    req.db.from('service_types').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId).select('id'),
+    'Service type not found',
   );
   res.status(204).end();
 });

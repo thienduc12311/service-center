@@ -1,5 +1,7 @@
+import { encodeKeysetCursor } from '@service-center/shared';
 import type {
   ConversationMessage,
+  KeysetRow,
   ConversationMessageRow,
   DeliveryChannel,
   DeliveryStatus,
@@ -94,14 +96,14 @@ export const toConversationMessage = (
 
 /**
  * Rows are fetched newest first with one extra row: when it exists there
- * are older rows, and the cursor is the oldest shown `created_at`.
+ * are older rows, and the cursor is the oldest shown `created_at~id`.
  * Returned oldest first, the order a thread is read in.
  */
-export const pageOf = <T extends { created_at: string }>(rows: readonly T[], limit: number): DiscussionPage<T> => {
+export const pageOf = <T extends KeysetRow>(rows: readonly T[], limit: number): DiscussionPage<T> => {
   const shown = rows.slice(0, limit);
   return {
     data: [...shown].reverse(),
-    next_before: rows.length > limit ? shown[shown.length - 1]?.created_at ?? null : null,
+    next_before: rows.length > limit && shown.length > 0 ? encodeKeysetCursor(shown[shown.length - 1]!) : null,
   };
 };
 

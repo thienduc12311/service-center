@@ -196,6 +196,8 @@ end $$;
 
 reset role;
 -- Copy carries the F11 fields and repairs a legacy mismatched arrangement.
+-- W7F-COPY: runs as the non-owner scheduler Jordan; item leaders survive even
+-- though people_owner_privacy hides other Persons from them.
 do $$ begin
   perform set_config('request.jwt.claim.sub', '22222222-2222-4222-8222-222222222222', true);
   set local role authenticated;

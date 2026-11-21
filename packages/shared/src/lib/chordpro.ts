@@ -95,14 +95,19 @@ export const semitonesBetween = (from: string, to: string): number | null => {
   return (((b - a) % 12) + 12) % 12;
 };
 
-/** Rewrites every [chord] in a ChordPro document, leaving directives alone. */
+/** Rewrites every [chord] and the `{key: …}` directive in a ChordPro document. */
 export const transposeChordPro = (
   source: string,
   semitones: number,
   prefer: 'sharps' | 'flats' = 'sharps',
 ): string => {
   if (semitones === 0) return source;
-  return source.replace(/\[([^\]]+)\]/g, (match, token: string) => {
+  // `{key: G}` / `{k: Am}` describe the song's key, so they move with the chords.
+  const withKey = source.replace(/\{(\s*(?:key|k)\s*:\s*)([^}\s]+)(\s*)\}/gi, (match, head: string, key: string, tail: string) => {
+    const transposed = transposeChord(key, semitones, prefer);
+    return transposed === key ? match : `{${head}${transposed}${tail}}`;
+  });
+  return withKey.replace(/\[([^\]]+)\]/g, (match, token: string) => {
     const transposed = transposeChord(token, semitones, prefer);
     return transposed === token ? match : `[${transposed}]`;
   });

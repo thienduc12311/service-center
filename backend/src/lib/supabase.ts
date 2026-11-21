@@ -70,3 +70,15 @@ export const unwrapOne = async <T>(query: PromiseLike<PostgrestLike<T>>): Promis
   if (data === null || data === undefined) throw HttpError.notFound();
   return data as NonNullable<T>;
 };
+
+/**
+ * For `.delete()...select('id')`. A delete that matches nothing (wrong id,
+ * another organization, or hidden by RLS) is a 404, never a silent 204.
+ */
+export const unwrapDeleted = async (
+  query: PromiseLike<PostgrestLike<readonly unknown[] | null>>,
+  notFoundMessage = 'Not found',
+): Promise<void> => {
+  const deleted = await unwrap(query);
+  if (!deleted || deleted.length === 0) throw HttpError.notFound(notFoundMessage);
+};

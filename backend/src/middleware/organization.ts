@@ -62,10 +62,12 @@ export const withOrganization = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const requested =
+    const requestedRaw =
       (req.header('X-Organization-Id') ?? (req.query.organization_id as string | undefined))?.trim() ||
       null;
-    if (requested && !isUuid(requested)) throw HttpError.badRequest('Invalid X-Organization-Id header');
+    if (requestedRaw && !isUuid(requestedRaw)) throw HttpError.badRequest('Invalid X-Organization-Id header');
+    // UUIDs are case-insensitive; ids are stored and compared lower-case (W7-ACC-D10).
+    const requested = requestedRaw?.toLowerCase() ?? null;
 
     const { memberships, disabledOrganizations } = await loadMyOrganizationContext(
       req.db, req.auth.userId, requested ? { p_org: requested } : {},
@@ -126,6 +128,15 @@ export const requireManager = (req: Request, _res: Response, next: NextFunction)
 };
 
 /** Owners and admins only: membership, access and organization settings. */
+/** Owner-only actions; `message` says what the caller may not do. */
+export const requireOwner = (message: string) => (req: Request, _res: Response, next: NextFunction): void => {
+  if (req.orgRole !== 'owner') {
+    next(HttpError.forbidden(message));
+    return;
+  }
+  next();
+};
+
 export const requireAdmin = (req: Request, _res: Response, next: NextFunction): void => {
   if (!isAdmin(req.orgRole)) {
     next(HttpError.forbidden('Only organization admins can do that'));

@@ -13,7 +13,7 @@ import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
-import { requireAdmin } from '../middleware/organization.js';
+import { requireAdmin, requireOwner } from '../middleware/organization.js';
 import {
   explainAccess,
   listAccessMembers,
@@ -25,10 +25,18 @@ import {
 
 /**
  * F01 access review and administration. Reading your own access is open to
- * every member; everything else is owner/admin only, and the database
+ * every member; everything else is owner/admin only (changing a member’s
+ * access mode is owner only), and the database
  * functions enforce the same rule independently.
  */
 export const accessRouter: Router = Router();
+
+/**
+ * Membership rows are owner-only in the database (`members_owner_update`), so
+ * an admin's update would match nothing and read as a 404. Refuse it up front
+ * with the same rule instead.
+ */
+const requireAccessOwner = requireOwner('Only the organization owner can change how someone’s access works');
 
 accessRouter.get('/me', (req, res) => {
   res.json(req.access);
@@ -42,8 +50,8 @@ accessRouter.get('/members/:userId', requireAdmin, async (req, res) => {
   res.json(await loadMemberAccess(req.db, req.orgId, param(req, 'userId')));
 });
 
-/** Opt a scheduler into scoped access (or back to legacy organization-wide). */
-accessRouter.patch('/members/:userId', requireAdmin, validateBody(updateMemberAccessSchema), async (req, res) => {
+/** Opt a scheduler into scoped access (or back to legacy organization-wide). Owner only. */
+accessRouter.patch('/members/:userId', requireAccessOwner, validateBody(updateMemberAccessSchema), async (req, res) => {
   const { access_mode } = req.body as UpdateMemberAccessInput;
   res.json(await setAccessMode({ db: req.db, orgId: req.orgId, userId: param(req, 'userId'), accessMode: access_mode }));
 });

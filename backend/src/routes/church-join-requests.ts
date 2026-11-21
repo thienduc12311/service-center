@@ -1,4 +1,4 @@
-import { Router, type NextFunction, type Request, type Response } from 'express';
+import { Router, type Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import {
   churchJoinRequestParamsSchema,
@@ -10,9 +10,8 @@ import {
   type DeclineChurchJoinRequestInput,
 } from '@service-center/shared';
 import { config } from '../config.js';
-import { HttpError } from '../lib/errors.js';
 import { parseOrThrow, parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
-import { requireCapability } from '../middleware/organization.js';
+import { requireCapability, requireOwner } from '../middleware/organization.js';
 import {
   approveJoinRequest,
   declineJoinRequest,
@@ -69,15 +68,7 @@ churchJoinRequestsRouter.post('/:id/withdraw', async (req, res) => {
  */
 export const churchJoinRequestsOwnerRouter: Router = Router();
 
-const requireOwner = (req: Request, _res: Response, next: NextFunction): void => {
-  if (req.orgRole !== 'owner') {
-    next(HttpError.forbidden('Only the church owner can review join requests'));
-    return;
-  }
-  next();
-};
-
-churchJoinRequestsOwnerRouter.use(requireOwner, requireCapability('people.manage'));
+churchJoinRequestsOwnerRouter.use(requireOwner('Only the church owner can review join requests'), requireCapability('people.manage'));
 
 const owner = (req: Request): ChurchOwnerCaller => ({ db: req.db, userId: req.auth.userId, organizationId: req.orgId });
 

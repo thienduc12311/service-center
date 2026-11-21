@@ -56,8 +56,14 @@ import { addLocalDays, localDateAt, possibleInstantsForLocalDateTime } from './t
 export const REPORT_ROW_LIMIT = 2000;
 /** Most plans one report reads. */
 export const REPORT_PLAN_LIMIT = 500;
-/** Download links for a finished export last this long. */
-export const REPORT_EXPORT_URL_TTL_SECONDS = 300;
+/**
+ * Download links for a finished export last this long: the browser saves the
+ * file as soon as the link is issued, and every click asks for a new one.
+ * Residual window after access is revoked: docs/operations/session-and-url-lifetimes.md.
+ */
+export const REPORT_EXPORT_URL_TTL_SECONDS = 60;
+/** The song book preview iframe loads its document once per page view. */
+export const SONGBOOK_DOCUMENT_URL_TTL_SECONDS = 120;
 /** A finished export file is kept this long, then deleted. */
 export const REPORT_EXPORT_RETENTION_HOURS = 24;
 export const REPORT_EXPORT_MAX_ATTEMPTS = 3;
@@ -403,6 +409,7 @@ export const buildParticipationReport = (input: {
     person_plans: rows.reduce((sum, row) => sum + row.person_plans, 0),
     present: rows.reduce((sum, row) => sum + row.present, 0),
     absent: rows.reduce((sum, row) => sum + row.absent, 0),
+    unknown: rows.reduce((sum, row) => sum + row.unknown, 0),
     teams: [...teamAcc.values()]
       .map(({ total, people: teamPeople, personPlans }) => ({ ...total, people: teamPeople.size, person_plans: personPlans.size }))
       .sort((a, b) => a.team_name.localeCompare(b.team_name)),

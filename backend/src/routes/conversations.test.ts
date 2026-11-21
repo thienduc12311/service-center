@@ -46,10 +46,11 @@ const summary: ConversationSummary = {
 
 let createApp: (fetchDb: typeof fetch) => Express;
 beforeAll(async () => {
-  const { conversationsRouter } = await import('./collaboration.js');
+  const { conversationsRouter, planItemCommentsRouter } = await import('./collaboration.js');
   const { errorHandler } = await import('../middleware/error-handler.js');
   createApp = (fetchDb) => {
     const app = express();
+    app.use(express.json());
     const db = createClient<Database>('http://db.example.test', 'test-key', {
       auth: { autoRefreshToken: false, persistSession: false },
       global: { fetch: fetchDb },
@@ -61,6 +62,7 @@ beforeAll(async () => {
       next();
     });
     app.use('/conversations', conversationsRouter);
+    app.use('/plan-items', planItemCommentsRouter);
     app.use(errorHandler);
     return app;
   };
@@ -165,5 +167,58 @@ describe('Conversation reads', () => {
       expect(response.body).toEqual({ error: 'Conversation not found', code: 'not_found' });
       expect(fetchDb.mock.calls.map(([input]) => new URL(String(input)).pathname)).toEqual(['/rest/v1/rpc/my_conversation']);
     }
+  });
+});
+
+describe('Conversation writes in another organization (W7-MSG-D2)', () => {
+  it('answer 404 and change nothing when the thread is not in the active organization', async () => {
+    const fetchDb = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/rest/v1/conversations') return Response.json([]);
+      if (url.pathname === '/rest/v1/conversation_message_reports') return Response.json([]);
+      throw new Error(`Unexpected database call: ${url.pathname}`);
+    });
+    const app = createApp(fetchDb);
+    const base = `/conversations/${threadId}`;
+    const reportId = 'bbbbbbbb-0000-4000-8000-000000000020';
+    const messageId = message.id;
+    const attempts = [
+      request(app).post(`${base}/messages`).send({ id: messageId, body: 'hi' }),
+      request(app).patch(`${base}/messages/${messageId}`).send({ body: 'edited' }),
+      request(app).delete(`${base}/messages/${messageId}`),
+      request(app).post(`${base}/messages/${messageId}/restore`),
+      request(app).post(`${base}/messages/${messageId}/report`).send({ reason: 'spam' }),
+      request(app).post(`${base}/read`).send({ read_at: '2026-11-20T10:00:00Z' }),
+      request(app).put(`${base}/mute`).send({ muted: true }),
+      request(app).post(`${base}/reports/${reportId}/resolve`).send({ action: 'dismiss' }),
+    ];
+    for (const attempt of attempts) {
+      const response = await attempt;
+      expect(response.status).toBe(404);
+    }
+    const urls = fetchDb.mock.calls.map(([input]) => new URL(String(input)));
+    // A cheap row lookup, never the unread-counting summary RPC.
+    expect([...new Set(urls.map((url) => url.pathname))]).toEqual(['/rest/v1/conversations', '/rest/v1/conversation_message_reports']);
+    for (const url of urls) expect(url.searchParams.get('organization_id')).toBe(`eq.${orgId}`);
+  });
+});
+
+describe('Item comment writes through the wrong item (W7-MSG-D10)', () => {
+  it('answer 404 before the edit or delete function runs', async () => {
+    const itemId = 'bbbbbbbb-0000-4000-8000-000000000010';
+    const commentId = 'bbbbbbbb-0000-4000-8000-000000000011';
+    const fetchDb = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname === '/rest/v1/plan_items') return Response.json({ id: itemId, plan_id: 'ffffffff-0000-4000-8000-000000000001' });
+      if (url.pathname === '/rest/v1/rpc/can_read_item_thread') return Response.json(true);
+      if (url.pathname === '/rest/v1/plan_item_comments') return Response.json(null);
+      throw new Error(`Unexpected database call: ${url.pathname}`);
+    });
+    const app = createApp(fetchDb);
+    const path = `/plan-items/${itemId}/comments/${commentId}`;
+    expect((await request(app).patch(path).send({ body: 'wrong path edit' })).status).toBe(404);
+    expect((await request(app).delete(path).send({})).status).toBe(404);
+    const paths = fetchDb.mock.calls.map(([input]) => new URL(String(input)).pathname);
+    expect(paths.some((entry) => entry.startsWith('/rest/v1/rpc/edit_item_comment') || entry.startsWith('/rest/v1/rpc/delete_item_comment'))).toBe(false);
   });
 });

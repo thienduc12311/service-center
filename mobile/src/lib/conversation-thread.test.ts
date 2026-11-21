@@ -1,5 +1,5 @@
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
-import type { ConversationMessage, DiscussionPage } from '@service-center/shared';
+import { encodeKeysetCursor, type ConversationMessage, type DiscussionPage } from '@service-center/shared';
 import { describe, expect, it } from 'vitest';
 import { conversationWindow, readConversationHistory, type ConversationHistory } from './conversation-thread';
 import { queryKeys } from './query-keys';
@@ -83,5 +83,15 @@ describe('conversation thread history', () => {
     const expanded = await readConversationHistory({ before: stamp(7), previous: result, expand: true, loadPage });
     expect(seen.at(-1)).toBe(stamp(2));
     expect(expanded.data.map((row) => row.id)).toEqual(['1', '2', '3', '4', '5', '6']);
+  });
+
+  it('keeps the row a composite history cursor points at when new rows push it off the newest page', () => {
+    const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+    const row = (second: number) => message(second, { id: uuid(second) });
+    const cursor = (second: number) => encodeKeysetCursor({ created_at: stamp(second), id: uuid(second) });
+    const history: ConversationHistory = { before: cursor(3), data: [row(1), row(2)], next_before: null };
+    const shown = [row(1), row(2), row(3), row(4), row(5)];
+    const newest: DiscussionPage<ConversationMessage> = { data: [row(5), row(6)], next_before: cursor(5) };
+    expect(conversationWindow(newest, history, shown).map((m) => m.id)).toEqual([1, 2, 3, 4, 5, 6].map(uuid));
   });
 });

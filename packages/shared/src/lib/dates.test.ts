@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addMonths, monthGrid, nextOccurrence, startOfMonth, toISODate } from './dates.js';
+import { addMonths, monthGrid, nextOccurrence, parseDuration, startOfMonth, toISODate } from './dates.js';
 
 describe('date helpers', () => {
   it('do not mutate caller-owned Date instances', () => {
@@ -33,5 +33,19 @@ describe('date helpers', () => {
     expect(toISODate(nextOccurrence(sunday, 'monthly'))).toBe('2026-10-13');
     // No fixed rhythm, so it still offers a sensible next date to edit.
     expect(toISODate(nextOccurrence(sunday, 'occasionally'))).toBe('2026-09-20');
+  });
+});
+
+describe('parseDuration', () => {
+  it('accepts seconds, m:ss and h:mm:ss', () => {
+    expect(parseDuration('285')).toBe(285);
+    expect(parseDuration('4:45')).toBe(285);
+    expect(parseDuration(' 0:05 ')).toBe(5);
+    expect(parseDuration('1:02:03')).toBe(3723);
+    expect(parseDuration('90:00')).toBe(5400);
+  });
+
+  it.each(['99:99', '1:75', '1:60', '1:2:3:4', '1:99:00', '1::2', '1:', 'a:10', '-1:30', ''])('rejects %j', (input) => {
+    expect(parseDuration(input)).toBeNull();
   });
 });

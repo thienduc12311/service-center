@@ -27,7 +27,10 @@ create or replace function pg_temp.as_user(p text) returns void language sql as 
   select set_config('request.jwt.claim.sub', (select id::text from f14_fx where k = p), true);
   select set_config('request.jwt.claims', json_build_object('sub', (select id::text from f14_fx where k = p), 'role', 'authenticated')::text, true);
 $$;
-create or replace function pg_temp.person(p text) returns uuid language sql stable as $$
+-- security definer: fixture lookup must not run under the caller's RLS. Since
+-- 20261109000000_owner_people_permissions (people_owner_privacy) a non-owner
+-- (Jordan) sees only their own people row, so Riley's id would resolve to null.
+create or replace function pg_temp.person(p text) returns uuid language sql stable security definer as $$
   select pe.id from public.people pe where pe.organization_id = pg_temp.fx('org') and pe.profile_id = pg_temp.fx(p)
 $$;
 
