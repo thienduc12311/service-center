@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import express, { type Express, type Router } from 'express';
 import request from 'supertest';
 import type { Db } from '../lib/supabase.js';
-import { pagedDb, uuid, type FakeRow } from './paged-fake.js';
+import { pagedDb, uuid, type FakeLog, type FakeRow } from './paged-fake.js';
 
 process.env.NODE_ENV ||= 'test';
 process.env.SUPABASE_URL ||= 'http://127.0.0.1:54321';
@@ -47,18 +47,68 @@ describe('GET /teams past the 1000-row cap (W8-PERF-D2)', () => {
   });
 
   it('resolves the role of an org member past row 1000', async () => {
-    const base = pagedDb({
-      teams: [{ id: 't1', organization_id: 'org', sort_order: 0, positions: [], memberships: [{ id: 'm1', person_id: 'p1', user_id: uuid(COUNT - 1), position_id: null }] }],
-      organization_members: rowsOf((i) => ({ user_id: uuid(i), role: i === COUNT - 1 ? 'admin' : 'member' })),
-    });
-    const db = {
-      from: (table: string) => (base as unknown as { from: (name: string) => unknown }).from(table),
-      rpc: () => Promise.resolve({ data: [{ team_id: 't1', person_id: 'p1', first_name: 'Ada', last_name: 'L', avatar_url: null, email: null, phone: null, birthdate: null }], error: null }),
-    } as unknown as Db;
+    const db = pagedDb(
+      {
+        teams: [{ id: 't1', organization_id: 'org', sort_order: 0, positions: [], memberships: [{ id: 'm1', person_id: 'p1', user_id: uuid(COUNT - 1), position_id: null }] }],
+        organization_members: rowsOf((i) => ({ user_id: uuid(i), role: i === COUNT - 1 ? 'admin' : 'member' })),
+      },
+      [],
+      { team_roster_people: [{ team_id: 't1', person_id: 'p1', first_name: 'Ada', last_name: 'L', avatar_url: null, email: null, phone: null, birthdate: null }] },
+    );
     const app = await mount('/teams', async () => (await import('./teams.js')).teamsRouter, db);
     const response = await request(app).get('/teams');
     const [team] = response.body as Array<{ members: Array<{ profile: { role: string } | null }> }>;
     expect(team?.members[0]?.profile?.role).toBe('admin');
+  });
+
+  it('names a teammate whose roster row is past row 1000 of team_roster_people', async () => {
+    const memberships = rowsOf((i) => ({ id: `m${i}`, person_id: uuid(i), user_id: null, position_id: null }));
+    const roster = rowsOf((i) => ({
+      team_id: 't1', person_id: uuid(i), first_name: `P${i}`, last_name: null, avatar_url: null, email: null, phone: null, birthdate: null,
+    }));
+    const log: FakeLog = { inCalls: [], rpcCalls: [] };
+    const db = pagedDb(
+      { teams: [{ id: 't1', organization_id: 'org', sort_order: 0, positions: [], memberships }], organization_members: [] },
+      log.inCalls,
+      { team_roster_people: roster },
+      log,
+    );
+    const app = await mount('/teams', async () => (await import('./teams.js')).teamsRouter, db);
+    const response = await request(app).get('/teams');
+    expect(response.status).toBe(200);
+    const [team] = response.body as Array<{ members: Array<{ person_id: string; profile: { full_name: string } | null }> }>;
+    expect(team?.members).toHaveLength(COUNT);
+    expect(team?.members.every((member) => member.profile !== null)).toBe(true);
+    expect(team?.members.at(-1)?.profile?.full_name).toBe(`P${COUNT - 1}`);
+    const rosterCalls = log.rpcCalls.filter((call) => call.fn === 'team_roster_people');
+    expect(rosterCalls.length).toBeGreaterThan(1);
+    expect(rosterCalls[0]?.order).toEqual(['team_id', 'person_id']);
+  });
+
+  it('loads one team without the whole organization roster or role map', async () => {
+    const TEAM = uuid(9001);
+    const log: FakeLog = { inCalls: [], rpcCalls: [] };
+    const db = pagedDb(
+      {
+        teams: [{ id: TEAM, organization_id: 'org', sort_order: 0, positions: [], memberships: [{ id: 'm1', person_id: 'p1', user_id: 'u1', position_id: null }] }],
+        organization_members: [{ user_id: 'u1', role: 'scheduler' }, ...rowsOf((i) => ({ user_id: uuid(i), role: 'member' }))],
+      },
+      log.inCalls,
+      {
+        team_roster_people: [
+          { team_id: 't2', person_id: 'p9', first_name: 'Other', last_name: null, avatar_url: null, email: null, phone: null, birthdate: null },
+          { team_id: TEAM, person_id: 'p1', first_name: 'Ada', last_name: null, avatar_url: null, email: null, phone: null, birthdate: null },
+        ],
+      },
+      log,
+    );
+    const app = await mount('/teams', async () => (await import('./teams.js')).teamsRouter, db);
+    const response = await request(app).get(`/teams/${TEAM}`);
+    expect(response.status).toBe(200);
+    const team = response.body as { members: Array<{ profile: { full_name: string; role: string } | null }> };
+    expect(team.members[0]?.profile).toMatchObject({ full_name: 'Ada', role: 'scheduler' });
+    expect(log.rpcCalls[0]?.eq).toEqual([['team_id', TEAM]]);
+    expect(log.inCalls).toEqual([['u1']]);
   });
 });
 

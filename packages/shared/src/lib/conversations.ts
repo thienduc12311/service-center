@@ -1,5 +1,6 @@
 import { POKE_FALLBACK_MS } from './realtime-pokes.js';
 import { ApiError } from './api-client.js';
+import { base64UrlDecode, base64UrlEncode } from './base64url.js';
 import type { NotificationRow, NotificationType } from '../types/database.js';
 import type { ConversationListPage, ConversationMessage, ConversationSummary } from '../types/collaboration.js';
 
@@ -173,17 +174,6 @@ export interface ConversationListCursor {
   created: string;
   id: string;
 }
-
-const base64UrlEncode = (text: string): string =>
-  btoa(String.fromCharCode(...new TextEncoder().encode(text)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-
-const base64UrlDecode = (value: string): string => {
-  const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
-  return new TextDecoder().decode(Uint8Array.from(atob(padded), (char) => char.charCodeAt(0)));
-};
 
 export const encodeConversationCursor = (cursor: ConversationListCursor): string =>
   base64UrlEncode(JSON.stringify(cursor));

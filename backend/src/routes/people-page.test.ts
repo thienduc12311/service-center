@@ -38,6 +38,21 @@ const members: Row[] = [
 ];
 
 const unquote = (value: string): string => value.replace(/^"|"$/g, '').replace(/\\(["\\])/g, '$1');
+/** A literal regex as `literalSearchPattern` builds it, back to plain text. */
+const unescapeRegex = (value: string): string => value.replace(/\\(.)/gu, '$1');
+
+/** Login-profile contact of member 6: what the People list displays for them (their People row has a stale email and no phone). */
+const profileContact: Record<string, { email: string | null; phone: string | null }> = {
+  [uuid(1006)]: { email: 'login.six@example.test', phone: '+1 555 0606' },
+};
+/** `people_owner_search`: the People row plus contact_email/contact_phone preferring the login profile. */
+const ownerSearchRows = (): Row[] =>
+  people.map((row) => {
+    const login = typeof row.profile_id === 'string' ? profileContact[row.profile_id] : undefined;
+    return { ...row, contact_email: login?.email ?? row.email, contact_phone: login?.phone ?? row.phone };
+  });
+/** Every `or=` filter the fake received. */
+const orFilters: string[] = [];
 
 class FakeQuery implements PromiseLike<{ data: Row[]; error: null }> {
   private rows: Row[];
@@ -55,12 +70,14 @@ class FakeQuery implements PromiseLike<{ data: Row[]; error: null }> {
   }
   gt(): this { return this; }
   or(filter: string): this {
-    const ilike = [...filter.matchAll(/(\w+)\.ilike\.("(?:[^"\\]|\\.)*")/g)];
-    if (ilike.length) {
-      const needle = unquote(ilike[0]![2]!).replace(/^%|%$/g, '');
-      this.rows = this.rows.filter((r) => ilike.some((m) => String(r[m[1]!] ?? '').toLowerCase().includes(needle)));
+    orFilters.push(filter);
+    const imatch = [...filter.matchAll(/(\w+)\.imatch\.("(?:[^"\\]|\\.)*")/g)];
+    if (imatch.length) {
+      const needle = unescapeRegex(unquote(imatch[0]![2]!)).toLowerCase();
+      this.rows = this.rows.filter((r) => imatch.some((m) => String(r[m[1]!] ?? '').toLowerCase().includes(needle)));
       return this;
     }
+    if (/\.(i?like)\./.test(filter)) throw new Error(`Search must not use like patterns: ${filter}`);
     const gt = /^sort_name\.gt\.("(?:[^"\\]|\\.)*"),and\(sort_name\.eq\.("(?:[^"\\]|\\.)*"),id\.gt\.([0-9a-f-]+)\)$/.exec(filter);
     if (!gt) throw new Error(`Unexpected or filter: ${filter}`);
     const [, name, , id] = gt.map((part, index) => (index === 1 || index === 2 ? unquote(part!) : part)) as string[];
@@ -103,6 +120,7 @@ describe('GET /people/page', () => {
     from: (table: string) => {
       tables.push(table);
       if (table === 'people' || table === 'people_directory') return new FakeQuery(table, people, null);
+      if (table === 'people_owner_search') return new FakeQuery(table, ownerSearchRows(), null);
       if (table === 'organization_members') return new FakeQuery(table, members, null);
       return new FakeQuery(table, [], null);
     },
@@ -170,6 +188,30 @@ describe('GET /people/page', () => {
     const ids = await readAll({ q: 'zebra' });
     expect(ids).toEqual([uuid(33)]);
     expect(await readAll({ q: 'p41@example' })).toEqual([uuid(41)]);
+  });
+
+  it('owner search matches the contact the list displays (login profile first), not a stale People email', async () => {
+    role = 'owner';
+    tables.length = 0;
+    expect(await readAll({ q: '555 0606' })).toEqual([uuid(6)]);
+    expect(await readAll({ q: 'LOGIN.SIX@' })).toEqual([uuid(6)]);
+    expect(await readAll({ q: 'p6@example' })).toEqual([]);
+    expect(tables).toContain('people_owner_search');
+    expect(tables).not.toContain('people');
+  });
+
+  it('treats *, %, _, commas and parens in a search as literal text', async () => {
+    role = 'owner';
+    for (const q of ['*', '%', '_', 'name0_', 'zebra,id.gt.0', 'zebra)', '(zebra']) {
+      const response = await request(app).get('/people/page').query({ q, limit: 100 });
+      expect(response.status).toBe(200);
+      expect((response.body as RosterPersonPage).items).toEqual([]);
+    }
+    orFilters.length = 0;
+    await request(app).get('/people/page').query({ q: 'a*b%c_d,(e)' });
+    expect(orFilters[0]).toBe(
+      ['sort_name', 'campus', 'contact_email', 'contact_phone'].map((field) => `${field}.imatch."a\\\\*b\\\\%c\\\\_d\\\\,\\\\(e\\\\)"`).join(','),
+    );
   });
 
   it('shapes a has-login member like GET /people', async () => {

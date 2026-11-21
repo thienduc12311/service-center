@@ -26,12 +26,22 @@ const bearer = (req: Request): string | null => {
   return token.length > 0 ? token : null;
 };
 
+/** Auth answered, but too slowly (408) or too often asked (429): not a verdict on the token. */
+const AUTH_BUSY_STATUSES: ReadonlySet<number> = new Set([408, 429]);
+
+/** The parts of an Auth error that tell an outage from a verdict. */
+interface AuthFailure {
+  name?: string;
+  status?: number;
+}
+
 /**
- * True when Auth failed to answer (network, timeout, 5xx) rather than judging
- * the token. A 4xx from Auth (expired, revoked, malformed, banned) is a verdict.
+ * True when Auth failed to answer (network, timeout, 408/429, 5xx) rather
+ * than judging the token. Any other 4xx from Auth (expired, revoked,
+ * malformed, banned) is a verdict and ends the session.
  */
-const isAuthOutage = (error: { name?: string; status?: number }): boolean =>
-  error.name === 'AuthRetryableFetchError' || !error.status || error.status >= 500;
+const isAuthOutage =(error: AuthFailure): boolean =>
+  error.name === 'AuthRetryableFetchError' || !error.status || error.status >= 500 || AUTH_BUSY_STATUSES.has(error.status);
 
 /** Verifies the Supabase JWT and attaches a user-scoped database client. */
 export const requireAuth = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {

@@ -49,11 +49,43 @@ export const toActiveMembers = async (
     }));
 };
 
-/** Quotes a value for a PostgREST `or=` filter. */
+/** Quotes a value for a PostgREST `or=` filter: commas, parens and quotes stay data. */
 const quote = (value: string): string => `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
-/** `%`/`_` are LIKE wildcards; commas, quotes and parens are or-filter syntax (handled by quote). */
-const likePattern = (text: string): string => `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+/**
+ * The search term as a literal case-insensitive regex (`imatch`, Postgres
+ * `~*`). Not `ilike`: PostgREST turns every `*` in a like pattern into `%`,
+ * so "a*b" matched like "a%b" and a lone `*` matched everyone. Every
+ * character that is not a letter, digit or space is backslash-escaped, which
+ * Postgres regexes read as that literal character (`%`, `_`, `*`, `.`, ...).
+ */
+export const literalSearchPattern = (text: string): string => text.replace(/[^\p{L}\p{N}\s]/gu, (char) => `\\${char}`);
+
+/**
+ * Where a page comes from and what a search matches. Owner: `people` for the
+ * plain list; `people_owner_search` when searching, so email/phone match the
+ * contact the list displays (the login profile's, else the People row's).
+ * Everyone else: the `people_directory` projection (name and campus only).
+ */
+interface PeopleSource {
+  from: 'people' | 'people_owner_search' | 'people_directory';
+  columns: string;
+  searchFields: readonly string[];
+}
+
+const ROSTER_RECORD_COLUMNS = 'id, profile_id, first_name, last_name, avatar_url, email, phone, campus, archived_at, sort_name';
+
+const sourceFor = (caller: PeoplePageCaller, searching: boolean): PeopleSource => {
+  if (!caller.canReadPrivate) return { from: 'people_directory', columns: '*', searchFields: ['sort_name', 'campus'] };
+  if (searching) {
+    return {
+      from: 'people_owner_search',
+      columns: ROSTER_RECORD_COLUMNS,
+      searchFields: ['sort_name', 'campus', 'contact_email', 'contact_phone'],
+    };
+  }
+  return { from: 'people', columns: `${PERSON_COLUMNS}, sort_name`, searchFields: [] };
+};
 
 const loadBase = async (
   caller: PeoplePageCaller,
@@ -61,16 +93,15 @@ const loadBase = async (
   after: { sort_name: string; id: string } | null,
   count: number,
 ): Promise<PageRow[]> => {
-  const columns = caller.canReadPrivate ? `${PERSON_COLUMNS}, sort_name` : '*';
+  const source = sourceFor(caller, Boolean(query.q));
   let builder = raw(caller.db)
-    .from(caller.canReadPrivate ? 'people' : 'people_directory')
-    .select(columns)
+    .from(source.from)
+    .select(source.columns)
     .eq('organization_id', caller.orgId);
   if (!query.include_archived) builder = builder.is('archived_at', null);
   if (query.q) {
-    const pattern = quote(likePattern(query.q.toLowerCase()));
-    const fields = caller.canReadPrivate ? ['sort_name', 'email', 'phone', 'campus'] : ['sort_name', 'campus'];
-    builder = builder.or(fields.map((field) => `${field}.ilike.${pattern}`).join(','));
+    const pattern = quote(literalSearchPattern(query.q));
+    builder = builder.or(source.searchFields.map((field) => `${field}.imatch.${pattern}`).join(','));
   }
   if (after) {
     builder = builder.or(`sort_name.gt.${quote(after.sort_name)},and(sort_name.eq.${quote(after.sort_name)},id.gt.${after.id})`);
