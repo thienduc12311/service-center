@@ -28,12 +28,15 @@ values ('aaaaaaaa-0000-4000-8000-0000000000b3', '55555555-5555-4555-8555-5555555
 insert into public.people (id, organization_id, first_name, email)
 values ('f0a7a0a7-0000-4000-8000-0000000000d2', 'aaaaaaaa-0000-4000-8000-0000000000b3', 'Elsewhere', 'elsewhere@example.test');
 
--- The view exposes only the listed columns.
+-- The view exposes only the listed columns. search_text (folded name, campus
+-- and contact) and listed (20261129000000_large_list_search) derive only from
+-- columns already listed here.
 do $$ begin
   if exists (select 1 from information_schema.columns
      where table_schema = 'public' and table_name = 'people_owner_search'
        and column_name not in ('id','organization_id','profile_id','first_name','last_name','avatar_url',
-                               'email','phone','campus','archived_at','sort_name','contact_email','contact_phone')) then
+                               'email','phone','campus','archived_at','sort_name','contact_email','contact_phone',
+                               'search_text','listed')) then
     raise exception 'people_owner_search exposes extra columns';
   end if;
 end $$;
