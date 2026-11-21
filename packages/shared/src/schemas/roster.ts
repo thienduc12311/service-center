@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { idempotencyKey, nonEmpty, uuid } from './common.js';
+import { PEOPLE_CURSOR_MAX } from '../lib/people-cursor.js';
 
 const tag = z.string().trim().min(1).max(60).transform((value) => value.toLowerCase());
 
@@ -52,8 +53,8 @@ export const PEOPLE_PAGE_MAX = 100;
 /** `GET /people/page`: keyset-paged People list with server-side search. */
 export const listPeoplePageQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(PEOPLE_PAGE_MAX).default(PEOPLE_PAGE_SIZE),
-  /** Opaque `next_cursor` of the previous page. */
-  cursor: z.string().min(1).max(400).optional(),
+  /** Opaque `next_cursor` of the previous page (base64url; long non-Latin names fit). */
+  cursor: z.string().min(1).max(PEOPLE_CURSOR_MAX).optional(),
   /** Case-insensitive match on name, email, phone or campus (email/phone only where the caller may read them). */
   q: z.string().trim().max(100).optional(),
   include_archived: z
