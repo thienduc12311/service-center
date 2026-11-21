@@ -21,7 +21,15 @@ const rosterRows: TeamRosterPersonRow[] = [{
 
 describe('GET /teams roster profiles (W8-NAT-D1)', () => {
   let app: Express;
-  const rpc = vi.fn((_fn: string, _args: object): Promise<Resolved<TeamRosterPersonRow[]>> => Promise.resolve({ data: rosterRows, error: null }));
+  /** `team_roster_people` is paged (`order` + `range`), so the fake result is a chain. */
+  const rpc = vi.fn((_fn: string, _args: object) => {
+    const chain: Record<string, unknown> = {};
+    Object.assign(chain, {
+      eq: () => chain, order: () => chain, range: () => chain,
+      then: (resolve: (value: Resolved<TeamRosterPersonRow[]>) => unknown) => resolve({ data: rosterRows, error: null }),
+    });
+    return chain;
+  });
   const from = vi.fn((table: string) => {
     const chain: Record<string, unknown> = {};
     const result = table === 'organization_members'

@@ -13,6 +13,7 @@ import type {
 } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
+import { fetchAllPages } from '../lib/paging.js';
 import {
   assignLegacyTimeIds,
   groupAttendance,
@@ -26,9 +27,16 @@ import {
 } from '../model/attendance.model.js';
 import { personName, type PersonNameRow } from '../model/availability.model.js';
 
+/** Assignment ids per `assignment_attendance_for` call (the function accepts at most 2000). */
+export const ATTENDANCE_ID_CHUNK = 500;
+
 /**
  * F04: the one attendance resolver, read through the caller's RLS (or the
  * service role for the feed). Every surface that shows "which times" uses it.
+ * Each assignment yields one row per time it covers, so a chunk's answer can
+ * pass PostgREST's 1000-row cap: every call is paged on the result's unique
+ * key `(assignment_id, plan_time_id)` (at most one untimed row, with a null
+ * time, per assignment).
  */
 export const attendanceFor = async (
   db: Db,
@@ -36,10 +44,18 @@ export const attendanceFor = async (
 ): Promise<Map<string, AttendanceInterval[]>> => {
   if (assignmentIds.length === 0) return new Map();
   const rows: AttendanceInterval[] = [];
-  for (let start = 0; start < assignmentIds.length; start += 2000) {
-    const chunk = assignmentIds.slice(start, start + 2000);
-    const data = await unwrap(db.rpc('assignment_attendance_for', { p_assignment_ids: [...chunk] }));
-    rows.push(...((data ?? []) as AttendanceInterval[]));
+  for (let start = 0; start < assignmentIds.length; start += ATTENDANCE_ID_CHUNK) {
+    const chunk = assignmentIds.slice(start, start + ATTENDANCE_ID_CHUNK);
+    const page = await fetchAllPages(async (from, to) =>
+      unwrap(
+        db
+          .rpc('assignment_attendance_for', { p_assignment_ids: [...chunk] })
+          .order('assignment_id')
+          .order('plan_time_id', { nullsFirst: false })
+          .range(from, to),
+      ),
+    );
+    rows.push(...page);
   }
   return groupAttendance(rows);
 };
@@ -187,29 +203,6 @@ export interface ApplyPlanTimesInput {
   notify: boolean;
   effectKey: string;
 }
-
-/** Commits the time list atomically: times, selections, stale requests and re-sends. */
-export const applyPlanTimes = async (
-  ctx: PlanTimesContext,
-  input: ApplyPlanTimesInput,
-): Promise<PlanTimeChangeResult> => {
-  const result = (await unwrap(
-    raw(ctx.db).rpc('apply_plan_time_changes', {
-      p_plan_id: ctx.planId,
-      p_times: toTimePayload(input.times),
-      p_expected_revision: input.expectedRevision,
-      p_impact_hash: input.impactHash,
-      p_orphan_resolutions: [...input.orphanResolutions],
-      p_notify: input.notify,
-      p_effect_key: input.effectKey,
-    }),
-  )) as PlanTimeChangeResult & { impact: RawImpact };
-  return {
-    invalidated_requests: result.invalidated_requests,
-    notified_assignment_ids: result.notified_assignment_ids ?? [],
-    effect_id: result.effect_id ?? null,
-  };
-};
 
 /** The plan columns a PATCH may change next to (or without) a time list. */
 export type PlanFieldsPatch = Pick<
