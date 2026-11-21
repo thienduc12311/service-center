@@ -79,7 +79,17 @@
     "prepareCount_one": "Prepare {{count}}",
     "prepareCount_other": "Prepare {{count}}",
     "scheduleCount_one": "Schedule {{count}}",
-    "scheduleCount_other": "Schedule {{count}}"
+    "scheduleCount_other": "Schedule {{count}}",
+    "newPlanPositionChip": "+ New for this plan",
+    "selectedLabel": "People you picked",
+    "unselect": "Remove {{name}}",
+    "scopeLabel": "Whose names to list",
+    "scopeTeam": "Team members",
+    "scopeEveryone": "Everyone",
+    "onPlan": "already on this plan",
+    "noMatches": "Nobody matches that search.",
+    "noTeamMembers": "Nobody is on this team yet. Switch to Everyone to find people.",
+    "noPeople": "No people to schedule yet."
   },
   "preferenceWarning": {
     "frequency": "Serving more often than preferred",

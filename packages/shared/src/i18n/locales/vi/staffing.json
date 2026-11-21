@@ -71,7 +71,17 @@
     "prepare": "Chuẩn bị",
     "schedule": "Phân công",
     "prepareCount_other": "Chuẩn bị {{count}}",
-    "scheduleCount_other": "Phân công {{count}}"
+    "scheduleCount_other": "Phân công {{count}}",
+    "newPlanPositionChip": "+ Vị trí mới cho chương trình này",
+    "selectedLabel": "Những người đã chọn",
+    "unselect": "Bỏ chọn {{name}}",
+    "scopeLabel": "Hiển thị những ai",
+    "scopeTeam": "Thành viên ban",
+    "scopeEveryone": "Mọi người",
+    "onPlan": "đã có trong chương trình",
+    "noMatches": "Không có ai khớp với tìm kiếm.",
+    "noTeamMembers": "Ban này chưa có thành viên. Chuyển sang Mọi người để tìm.",
+    "noPeople": "Chưa có ai để phân công."
   },
   "preferenceWarning": {
     "frequency": "Phục vụ thường xuyên hơn mong muốn",
