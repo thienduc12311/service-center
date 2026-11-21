@@ -8,7 +8,8 @@
 --                 until published.
 --   C. W8-PERF-D1 song text columns reject values past the shared Zod limits.
 --   D. W8-RES-D4 / W8-RT-D1  update_plan_with_times is atomic (a failing field
---                 write rolls back the times), and with both service_date and
+--                 write rolls back the times, checked with a top-level failing
+--                 statement inside a savepoint), and with both service_date and
 --                 times the times win.
 --   E. W8-RES-D5  create_plan replays an identical idempotency key and refuses
 --                 the same key with a different payload (PT409,
@@ -140,29 +141,49 @@ select public.create_plan(pg_temp.fx('org'),
   null, false, null, null) as id;
 grant select on w8_plan to authenticated, service_role;
 
+-- The time list every atomicity call below sends: rename the service time and move it.
+create temporary table w8_patch as
+select p.content_revision as rev,
+       jsonb_build_array(jsonb_build_object('id', t.id, 'kind', 'service', 'name', 'Moved',
+         'starts_at', (date_trunc('hour', now()) + interval '730 days')::text,
+         'ends_at', (date_trunc('hour', now()) + interval '730 days 1 hour')::text, 'sort_order', 0)) as times
+  from public.plans p join public.plan_times t on t.plan_id = p.id
+ where p.id = (select id from w8_plan);
+grant select on w8_patch to authenticated, service_role;
+
+-- Control: the times write on its own does persist, so "no 'Moved' time" below is evidence of a
+-- rollback and not of a times write that never happened.
+savepoint w8_times_alone;
+select public.apply_plan_time_changes((select id from w8_plan), (select times from w8_patch),
+  (select rev from w8_patch), null, '[]'::jsonb, true, null);
+select pg_temp.check((select count(*) from public.plan_times where plan_id = (select id from w8_plan) and name = 'Moved') = 1,
+  'the times write alone persists');
+rollback to savepoint w8_times_alone;
+
+-- Times plus a failing field write (invalid status) as ONE top-level statement, not wrapped in a
+-- PL/pgSQL exception block (whose subtransaction would roll back the times even for a
+-- non-atomic implementation). The statement must fail; the savepoint lets the script go on.
+savepoint w8_atomic;
+\set ON_ERROR_STOP 0
+select public.update_plan_with_times((select id from w8_plan), jsonb_build_object('status', 'bogus'),
+  (select times from w8_patch), (select rev from w8_patch));
+\set ON_ERROR_STOP 1
+rollback to savepoint w8_atomic;
+select pg_temp.check(:'LAST_ERROR_SQLSTATE' = '22P02', 'the invalid status failed the whole call (22P02)');
+select pg_temp.check((select count(*) from public.plan_times where plan_id = (select id from w8_plan) and name = 'Moved') = 0,
+  'times were not persisted when the field write failed');
+select pg_temp.check((select content_revision from public.plans where id = (select id from w8_plan)) = (select rev from w8_patch),
+  'revision unchanged, so a retry with expected_revision is not a false 409');
+
 do $$
 declare
   v_plan  uuid := (select id from w8_plan);
-  v_rev   bigint;
+  v_rev   bigint := (select rev from w8_patch);
   v_tid   uuid;
   v_first timestamptz;
   v_new   timestamptz := date_trunc('hour', now()) + interval '730 days';
 begin
-  select content_revision into v_rev from public.plans where id = v_plan;
   select id into v_tid from public.plan_times where plan_id = v_plan;
-
-  -- Failing field write (invalid status) must roll back the times in the same call.
-  begin
-    perform public.update_plan_with_times(v_plan, jsonb_build_object('status', 'bogus'),
-      jsonb_build_array(jsonb_build_object('id', v_tid, 'kind', 'service', 'name', 'Moved', 'starts_at', v_new::text, 'ends_at', (v_new + interval '1 hour')::text, 'sort_order', 0)),
-      v_rev);
-    raise exception 'W8 check failed: invalid status accepted';
-  exception when invalid_text_representation then null;
-  end;
-  perform pg_temp.check((select count(*) from public.plan_times where plan_id = v_plan and name = 'Moved') = 0,
-    'times were not persisted when the field write failed');
-  perform pg_temp.check((select content_revision from public.plans where id = v_plan) = v_rev,
-    'revision unchanged, so a retry with expected_revision is not a false 409');
 
   -- Both service_date and times: times win.
   perform public.update_plan_with_times(v_plan,
