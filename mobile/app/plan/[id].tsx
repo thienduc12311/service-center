@@ -140,7 +140,7 @@ function PlanWorkspace({ id }: PlanWorkspaceProps) {
   const canTakeAttendance = canSchedulePlan || (orgTeams.data ?? []).some((team) => canScheduleTeam(team.id));
 
   // Only offer the chat to people the server will let in (leaders and people scheduled on the plan).
-  const canChat = canOpenPlanChat(canEditPlan || canSchedulePlan, detail?.assignments ?? [], user?.profile.id);
+  const canChat = canOpenPlanChat(canEditPlan || canSchedulePlan, detail?.assignments ?? [], user?.profile.id, detail?.viewer_is_adult_person);
 
   // Website parity: each step saves that one position; positions not sent are kept.
   const openChat = useMutation({

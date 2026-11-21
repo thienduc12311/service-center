@@ -265,7 +265,7 @@ export const PlanDetailPage = () => {
   const canEditPlan = can('plans.edit', target);
   const canScheduleTeam = (teamId: string): boolean => can('scheduling.manage', { ...target, teamId });
   // Only offer the chat to people the server will let in (leaders and people scheduled on the plan).
-  const canChat = canOpenPlanChat(canEditPlan || can('scheduling.manage', target), detail.assignments, user?.profile.id);
+  const canChat = canOpenPlanChat(canEditPlan || can('scheduling.manage', target), detail.assignments, user?.profile.id, detail.viewer_is_adult_person);
   const canSchedule = can('scheduling.manage', target) || (teams.data ?? []).some((team) => canScheduleTeam(team.id));
   const organizationName =
     user?.memberships.find((membership) => membership.organization.id === organizationId)

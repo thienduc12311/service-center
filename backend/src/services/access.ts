@@ -11,6 +11,7 @@ import type {
   ReplaceScopeGrantsInput,
   ScopeAccess,
 } from '@service-center/shared';
+import { fetchAllPages } from '../lib/paging.js';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { mapEffectiveAccess, mapScopeAccess, parseExplanation, type NamedGrant } from '../model/access.model.js';
@@ -59,18 +60,25 @@ interface MemberWithProfile {
 
 export const listAccessMembers = async (db: Db, orgId: string): Promise<AccessMember[]> => {
   const [members, grants] = await Promise.all([
-    unwrap(
-      raw(db)
-        .from('organization_members')
-        .select('user_id, role, access_mode, profile:profiles(full_name, avatar_url)')
-        .eq('organization_id', orgId)
-        .eq('status', 'active'),
-    ) as unknown as Promise<MemberWithProfile[]>,
-    unwrap(db.from('access_grants').select('*').eq('organization_id', orgId)),
+    fetchAllPages(
+      async (from, to) =>
+        (await unwrap(
+          raw(db)
+            .from('organization_members')
+            .select('user_id, role, access_mode, profile:profiles(full_name, avatar_url)')
+            .eq('organization_id', orgId)
+            .eq('status', 'active')
+            .order('user_id')
+            .range(from, to),
+        )) as unknown as MemberWithProfile[] | null,
+    ),
+    fetchAllPages(async (from, to) =>
+      unwrap(db.from('access_grants').select('*').eq('organization_id', orgId).order('id').range(from, to)),
+    ),
   ]);
   const byUser = new Map<string, AccessGrantRow[]>();
-  for (const grant of grants ?? []) byUser.set(grant.user_id, [...(byUser.get(grant.user_id) ?? []), grant]);
-  return (members ?? [])
+  for (const grant of grants) byUser.set(grant.user_id, [...(byUser.get(grant.user_id) ?? []), grant]);
+  return members
     .map((member) => ({
       user_id: member.user_id,
       full_name: member.profile?.full_name ?? null,

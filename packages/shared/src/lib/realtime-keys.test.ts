@@ -4,14 +4,12 @@ import {
   REALTIME_KEY_LOADING,
   REALTIME_KEY_RETRY_MS,
   createRealtimeKeyStore,
-  keyedPokeTopics,
   organizationControlTopic,
 } from './realtime-keys.js';
 import type { PokeObserver } from './realtime-pokes.js';
 import type { RealtimeTopicKey } from '../types/domain.js';
 
 const ORG = '11111111-1111-4111-8111-111111111111';
-const ID = '22222222-2222-4222-8222-222222222222';
 const KEY_ONE = 'a1'.repeat(32);
 const KEY_TWO = 'b2'.repeat(32);
 
@@ -38,14 +36,9 @@ const harness = (first: Promise<RealtimeTopicKey>): Harness => {
   return { fetchKey, topics, disposed, store, get refresh() { return state.refresh; } };
 };
 
-describe('keyed poke topics', () => {
-  it('appends the key to each valid, distinct id', () => {
-    expect(keyedPokeTopics('live_run', [ID, 'bad', ID], KEY_ONE)).toEqual([`live_run:${ID}:${KEY_ONE}`]);
-  });
-
-  it('yields no topic without a well-formed key', () => {
-    expect(keyedPokeTopics('live_run', [ID], null)).toEqual([]);
-    expect(keyedPokeTopics('live_run', [ID], 'short')).toEqual([]);
+describe('organization control topic', () => {
+  it('needs a well-formed organization id and key', () => {
+    expect(organizationControlTopic(ORG, KEY_ONE)).toBe(`org:${ORG}:${KEY_ONE}`);
     expect(organizationControlTopic(ORG, 'short')).toBeNull();
     expect(organizationControlTopic('bad', KEY_ONE)).toBeNull();
   });

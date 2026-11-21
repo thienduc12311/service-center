@@ -527,6 +527,12 @@ export interface PlanDetail extends PlanSummary {
   /** Only positions a manager has actually asked for; absent means "none needed". */
   position_needs: PlanPositionNeed[];
   total_length_seconds: number;
+  /**
+   * Set by `GET /plans/:id` only: whether the caller is a non-archived roster
+   * person who is not a `child` (the database's `is_adult_person`). Children
+   * are not conversation participants, so plan chat is hidden from them.
+   */
+  viewer_is_adult_person?: boolean;
 }
 
 /** One of the ready-made teams the "add teams you lead" step offers. */
@@ -676,4 +682,21 @@ export interface ClearReadNotificationsResult extends UnreadNotificationCount {
  */
 export interface RealtimeTopicKey {
   key: string;
+}
+
+/**
+ * `POST /api/v1/realtime/topics` — the private topic names the caller may subscribe to right now,
+ * by resource id. A resource the caller cannot use is absent (never an error), so someone who
+ * lost access to one conversation learns nothing about it. A conversation topic carries a
+ * per-conversation key that rotates when access to that conversation is lost; clients refetch on
+ * a `rekey` poke.
+ */
+export interface RealtimeResourceTopics {
+  topics: Record<string, string>;
+}
+
+/** One row of the `realtime_resource_topics` database function. */
+export interface RealtimeResourceTopicRow {
+  resource_id: string;
+  topic: string;
 }

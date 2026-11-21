@@ -1,3 +1,4 @@
+import { fetchAllPages } from '../lib/paging.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { param } from '../lib/params.js';
@@ -36,10 +37,13 @@ const listQuerySchema = z.object({
 
 serviceTypesRouter.get('/', validateQuery(listQuerySchema), async (req, res) => {
   const { include_archived } = parsedQuery<z.infer<typeof listQuerySchema>>(res);
-  let query = req.db.from('service_types').select('*').eq('organization_id', req.orgId);
-  if (!include_archived) query = query.is('archived_at', null);
-  const rows = await unwrap(query.order('sort_order').order('name'));
-  res.json(rows ?? []);
+  const rows = await fetchAllPages(async (from, to) => {
+    // Built per page: PostgREST builders mutate their URL, so one can't be reused.
+    let query = req.db.from('service_types').select('*').eq('organization_id', req.orgId);
+    if (!include_archived) query = query.is('archived_at', null);
+    return unwrap(query.order('sort_order').order('name').order('id').range(from, to));
+  });
+  res.json(rows);
 });
 
 serviceTypesRouter.post('/', requireCapability('plans.edit'), validateBody(serviceTypeSchema), async (req, res) => {
