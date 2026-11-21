@@ -10,26 +10,48 @@ process.env.SUPABASE_ANON_KEY ||= 'test-anon-key-that-is-long-enough';
 process.env.SUPABASE_SERVICE_ROLE_KEY ||= 'test-service-role-key-long-enough';
 process.env.CRON_SECRET ||= 'test-worker-secret-long-enough';
 
+/**
+ * W8-RES-D4 / W8-RT-D1: `PATCH /plans/:id` writes the plan fields and the time
+ * list as ONE transaction. The fake database below behaves like
+ * `update_plan_with_times` (revision check, then both writes or neither), so
+ * these tests assert what a client observes: the saved plan, an unchanged plan
+ * after a failure, and a retry with the same `expected_revision` succeeding.
+ * The real transaction semantics are asserted in supabase/tests/qa-wave8-db.sql.
+ */
+
+/** A plan time as the fake stores it. */
+interface StoredTime {
+  id: string;
+  kind: string;
+  name: string | null;
+  starts_at: string;
+  ends_at: string | null;
+}
+
+/** The plan as the fake database holds it. */
+interface StoredPlan {
+  id: string;
+  organization_id: string;
+  title: string;
+  location: string | null;
+  content_revision: number;
+  times: StoredTime[];
+}
+
+/** One way to make the next combined write fail after the fields were applied. */
+type InjectedFailure = 'times' | null;
+
+const store = vi.hoisted(() => ({ plan: null as StoredPlan | null, failNext: null as InjectedFailure, plainUpdates: 0 }));
+
 vi.mock('../services/plans.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../services/plans.js')>()),
-  fetchPlanDetail: vi.fn(async (_db: Db, _org: string, id: string) => ({ id })),
+  fetchPlanDetail: vi.fn(async () => structuredClone(store.plan)),
 }));
 vi.mock('../services/delivery-worker.js', () => ({ deliverEffectNow: vi.fn(async () => undefined) }));
 
-/**
- * W8-RES-D4 / W8-RT-D1: `PATCH /plans/:id` writes the plan fields and the time
- * list through ONE rpc (`update_plan_with_times`), never two independent
- * writes. The real transaction semantics are asserted in
- * supabase/tests/qa-wave8-db.sql.
- */
-
 const ORG = '00000000-0000-4000-8000-000000000001';
 const PLAN = '00000000-0000-4000-8000-0000000000c1';
-
-interface RpcCall {
-  name: string;
-  args: Record<string, unknown>;
-}
+const TIME = '00000000-0000-4000-8000-0000000000d1';
 
 interface RpcFailure {
   code: string;
@@ -37,28 +59,53 @@ interface RpcFailure {
   hint?: string;
 }
 
-interface FakeState {
-  rpcs: RpcCall[];
-  plainUpdates: number;
-  rpcError: RpcFailure | null;
+interface RpcResult {
+  data: { invalidated_requests: number; notified_assignment_ids: string[]; effect_id: string | null } | null;
+  error: RpcFailure | null;
 }
 
-const fakeDb = (state: FakeState): Db => {
-  const single = { data: { id: PLAN, location: null, organization_id: ORG, content_revision: 7 }, error: null };
+/** The arguments `update_plan_with_times` receives. */
+interface UpdatePlanWithTimesArgs {
+  p_fields: Partial<Pick<StoredPlan, 'title' | 'location'>>;
+  p_times: StoredTime[] | null;
+  p_expected_revision: number | null;
+}
+
+/** Mirrors update_plan_with_times: revision check, then fields and times together or not at all. */
+const updatePlanWithTimes = (args: UpdatePlanWithTimesArgs): RpcResult => {
+  const current = store.plan;
+  if (!current) return { data: null, error: { code: 'PT404', message: 'Plan not found' } };
+  if (args.p_expected_revision !== null && args.p_expected_revision !== current.content_revision) {
+    return { data: null, error: { code: 'PT409', message: 'The plan changed since you opened it', hint: 'plan_changed' } };
+  }
+  const draft: StoredPlan = { ...structuredClone(current), ...args.p_fields };
+  if (args.p_times) {
+    if (store.failNext === 'times') {
+      store.failNext = null;
+      // The transaction rolls back: the draft (with the new fields) is discarded.
+      return { data: null, error: { code: '23514', message: 'new row for relation "plan_times" violates check constraint' } };
+    }
+    draft.times = args.p_times.map(({ id, kind, name, starts_at, ends_at }) => ({ id, kind, name, starts_at, ends_at }));
+  }
+  draft.content_revision = current.content_revision + 1;
+  store.plan = draft;
+  return { data: { invalidated_requests: 0, notified_assignment_ids: [], effect_id: null }, error: null };
+};
+
+const fakeDb = (): Db => {
   const chain: Record<string, unknown> = {};
   chain.select = () => chain;
   chain.eq = () => chain;
-  chain.single = () => Promise.resolve(single);
+  chain.single = () => Promise.resolve({ data: structuredClone(store.plan), error: null });
   chain.update = () => {
-    state.plainUpdates += 1;
+    store.plainUpdates += 1;
     return chain;
   };
   return {
     from: () => chain,
-    rpc: (name: string, args: Record<string, unknown>) => {
-      state.rpcs.push({ name, args });
-      if (state.rpcError) return Promise.resolve({ data: null, error: state.rpcError });
-      return Promise.resolve({ data: { invalidated_requests: 0, notified_assignment_ids: [], effect_id: null }, error: null });
+    rpc: (name: string, args: UpdatePlanWithTimesArgs) => {
+      if (name !== 'update_plan_with_times') return Promise.resolve({ data: null, error: { code: 'XX000', message: `unexpected ${name}` } });
+      return Promise.resolve(updatePlanWithTimes(args));
     },
   } as unknown as Db;
 };
@@ -72,8 +119,9 @@ const editorAccess: EffectiveAccess = {
   entries: [{ capability: 'plans.edit', scope_type: 'organization', scope_id: null, source: 'role:admin', grant_id: null }],
 };
 
+const TIMES = [{ id: TIME, kind: 'service', name: 'Main', starts_at: '2026-12-06T09:00:00.000Z', ends_at: '2026-12-06T10:00:00.000Z' }];
+
 describe('PATCH /plans/:id is atomic', () => {
-  let state: FakeState;
   let app: Express;
 
   beforeAll(async () => {
@@ -83,7 +131,7 @@ describe('PATCH /plans/:id is atomic', () => {
     app.use(express.json());
     app.use((req: Request, _res: Response, next: NextFunction) => {
       req.auth = { userId: 'user-1', email: 'sam@example.test', accessToken: 'token' };
-      req.db = fakeDb(state);
+      req.db = fakeDb();
       req.orgId = ORG;
       req.access = editorAccess;
       next();
@@ -93,46 +141,44 @@ describe('PATCH /plans/:id is atomic', () => {
   });
 
   beforeEach(() => {
-    state = { rpcs: [], plainUpdates: 0, rpcError: null };
+    store.plan = { id: PLAN, organization_id: ORG, title: 'Sunday', location: null, content_revision: 7, times: [] };
+    store.failNext = null;
+    store.plainUpdates = 0;
   });
 
-  const TIMES = [
-    {
-      id: '00000000-0000-4000-8000-0000000000d1',
-      kind: 'service',
-      name: 'Main',
-      starts_at: '2026-12-06T09:00:00.000Z',
-      ends_at: '2026-12-06T10:00:00.000Z',
-    },
-  ];
+  const patch = (body: Record<string, unknown>) => request(app).patch(`/api/v1/plans/${PLAN}`).send(body);
 
-  it('sends fields and times in a single rpc and performs no separate plans update', async () => {
-    const res = await request(app)
-      .patch(`/api/v1/plans/${PLAN}`)
-      .send({ title: 'Advent', service_date: '2026-12-13T09:00:00.000Z', times: TIMES, expected_revision: 7 });
+  it('saves the fields and the time list together and answers the saved plan', async () => {
+    const res = await patch({ title: 'Advent', times: TIMES, expected_revision: 7 });
     expect(res.status).toBe(200);
-    expect(state.plainUpdates).toBe(0);
-    expect(state.rpcs).toHaveLength(1);
-    const call = state.rpcs[0];
-    expect(call?.name).toBe('update_plan_with_times');
-    expect(call?.args.p_fields).toMatchObject({ title: 'Advent', service_date: '2026-12-13T09:00:00.000Z' });
-    expect(call?.args.p_expected_revision).toBe(7);
-    expect(Array.isArray(call?.args.p_times)).toBe(true);
+    expect(res.body).toMatchObject({ title: 'Advent', content_revision: 8, times: [{ id: TIME, name: 'Main' }] });
+    expect(store.plan).toMatchObject({ title: 'Advent', times: [{ id: TIME }] });
+    expect(store.plainUpdates).toBe(0);
   });
 
-  it('passes a null time list when only fields change', async () => {
-    const res = await request(app).patch(`/api/v1/plans/${PLAN}`).send({ title: 'Renamed' });
+  it('leaves the times alone when only fields change', async () => {
+    store.plan = { ...store.plan!, times: TIMES.map((time) => ({ ...time })) };
+    const res = await patch({ title: 'Renamed' });
     expect(res.status).toBe(200);
-    expect(state.rpcs).toHaveLength(1);
-    expect(state.rpcs[0]?.args.p_times).toBeNull();
-    expect(state.rpcs[0]?.args.p_fields).toEqual({ title: 'Renamed' });
+    expect(res.body).toMatchObject({ title: 'Renamed', times: [{ id: TIME }] });
   });
 
-  it('surfaces a failed combined write as one error (nothing was split off)', async () => {
-    state.rpcError = { code: 'PT409', message: 'The plan changed since you opened it', hint: 'plan_changed' };
-    const res = await request(app).patch(`/api/v1/plans/${PLAN}`).send({ title: 'Advent', times: TIMES, expected_revision: 3 });
+  it('keeps the old title when the time list fails, and the same retry then succeeds (no false 409)', async () => {
+    store.failNext = 'times';
+    const failed = await patch({ title: 'Advent', times: TIMES, expected_revision: 7 });
+    expect(failed.status).toBeGreaterThanOrEqual(400);
+    expect(store.plan).toMatchObject({ title: 'Sunday', content_revision: 7, times: [] });
+
+    const retried = await patch({ title: 'Advent', times: TIMES, expected_revision: 7 });
+    expect(retried.status).toBe(200);
+    expect(retried.body).toMatchObject({ title: 'Advent', content_revision: 8, times: [{ id: TIME }] });
+  });
+
+  it('refuses a stale revision with 409 and changes nothing', async () => {
+    const res = await patch({ title: 'Advent', times: TIMES, expected_revision: 3 });
     expect(res.status).toBe(409);
-    expect(state.rpcs).toHaveLength(1);
-    expect(state.plainUpdates).toBe(0);
+    expect(res.body.code).toBe('plan_revision_stale');
+    expect(store.plan).toMatchObject({ title: 'Sunday', content_revision: 7, times: [] });
+    expect(store.plainUpdates).toBe(0);
   });
 });
