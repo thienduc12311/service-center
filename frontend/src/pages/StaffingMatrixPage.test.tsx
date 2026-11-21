@@ -38,7 +38,7 @@ const page = (people: number[], nextCursor: string | null, plans = [1]): Staffin
   people: people.map((n) => ({ id: id(n), full_name: `Person ${n}`, avatar_url: null, campus: null, recent_serving_count: 0, last_served_at: null })),
   assignments: [],
   conflicts: [],
-  next_cursor: nextCursor,
+  next_cursor: nextCursor, prev_cursor: null,
 });
 
 const renderMatrix = () => {
