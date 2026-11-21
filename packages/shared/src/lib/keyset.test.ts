@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { encodeKeysetCursor, keysetBeforeFilter, parseKeysetCursor } from './keyset.js';
+import { encodeKeysetCursor, isBeforeKeysetCursor, keysetBeforeFilter, parseKeysetCursor } from './keyset.js';
 import { listNotificationsQuerySchema } from '../schemas/notification.js';
 import { discussionPageQuerySchema } from '../schemas/collaboration.js';
 
@@ -24,5 +24,16 @@ describe('keyset cursor', () => {
   it('builds a compound filter only when the cursor has an id', () => {
     expect(keysetBeforeFilter({ created_at: '2026-11-20T22:07:16Z', id: null })).toBe('created_at.lt."2026-11-20T22:07:16Z"');
     expect(keysetBeforeFilter({ created_at: '2026-11-20T22:07:16Z', id: ID })).toContain(`id.lt.${ID}`);
+  });
+
+  it('orders rows against a cursor on (created_at, id), as the before filter does', () => {
+    const at = '2026-11-20T22:07:16.512152+00:00';
+    const cursor = encodeKeysetCursor({ created_at: at, id: ID });
+    expect(isBeforeKeysetCursor({ created_at: at, id: ID }, cursor)).toBe(false);
+    expect(isBeforeKeysetCursor({ created_at: at, id: '11111111-1111-4111-8111-111111111111' }, cursor)).toBe(true);
+    expect(isBeforeKeysetCursor({ created_at: at, id: '33333333-3333-4333-8333-333333333333' }, cursor)).toBe(false);
+    expect(isBeforeKeysetCursor({ created_at: '2026-11-20T22:07:16.000000+00:00', id: ID }, cursor)).toBe(true);
+    // A legacy timestamp-only cursor excludes the whole timestamp.
+    expect(isBeforeKeysetCursor({ created_at: at, id: '11111111-1111-4111-8111-111111111111' }, at)).toBe(false);
   });
 });

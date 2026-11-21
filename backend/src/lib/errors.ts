@@ -141,8 +141,10 @@ export const fromPostgrestError = (error: {
     // NUL bytes / unencodable text and lone surrogates that slipped past validation.
     case '22P05':
     case '22021':
-    case 'PGRST102':
       return HttpError.unprocessable('Text contains unsupported characters');
+    // PostgREST's general "invalid request body" (malformed JSON, mismatched bulk keys).
+    case 'PGRST102':
+      return HttpError.badRequest('Invalid request body');
     case '22007':
     case '22008':
       return HttpError.badRequest('Invalid date or time');

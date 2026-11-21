@@ -128,6 +128,15 @@ export const requireManager = (req: Request, _res: Response, next: NextFunction)
 };
 
 /** Owners and admins only: membership, access and organization settings. */
+/** Owner-only actions; `message` says what the caller may not do. */
+export const requireOwner = (message: string) => (req: Request, _res: Response, next: NextFunction): void => {
+  if (req.orgRole !== 'owner') {
+    next(HttpError.forbidden(message));
+    return;
+  }
+  next();
+};
+
 export const requireAdmin = (req: Request, _res: Response, next: NextFunction): void => {
   if (!isAdmin(req.orgRole)) {
     next(HttpError.forbidden('Only organization admins can do that'));

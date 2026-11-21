@@ -7,12 +7,36 @@ export const notFoundHandler = (req: Request, res: Response): void => {
   res.status(404).json({ error: `No route for ${req.method} ${req.path}`, code: 'not_found' });
 };
 
-/** The `type` body-parser attaches to its errors, or null for any other error. */
-const bodyParserErrorType = (err: unknown): string | null => {
+/** What the client is told about a body-parser failure: never the parser's own message. */
+interface BodyParserFailure {
+  status: number;
+  error: string;
+  code: string;
+}
+
+const UNSUPPORTED_ENCODING: BodyParserFailure = { status: 415, error: 'Request body encoding is not supported', code: 'unsupported_media_type' };
+
+const BODY_PARSER_FAILURES: Readonly<Record<string, BodyParserFailure>> = {
+  'entity.parse.failed': { status: 400, error: 'Request body is not valid JSON', code: 'invalid_json' },
+  'entity.too.large': { status: 413, error: 'Request body is too large', code: 'payload_too_large' },
+  'encoding.unsupported': UNSUPPORTED_ENCODING,
+  'charset.unsupported': UNSUPPORTED_ENCODING,
+  'request.aborted': { status: 400, error: 'Request body was not received completely', code: 'request_aborted' },
+  'request.size.invalid': { status: 400, error: 'Request body does not match its Content-Length', code: 'bad_request' },
+};
+
+/**
+ * body-parser errors carry a `type`; known ones get a fixed answer, any other
+ * client-side one keeps the parser's 4xx status with a generic message.
+ */
+const bodyParserFailure = (err: unknown): BodyParserFailure | null => {
   if (typeof err !== 'object' || err === null || !('type' in err) || typeof err.type !== 'string') return null;
-  return ['entity.parse.failed', 'entity.too.large', 'encoding.unsupported', 'charset.unsupported', 'request.aborted'].includes(err.type)
-    ? err.type
-    : null;
+  const known = BODY_PARSER_FAILURES[err.type];
+  if (known) return known;
+  if ('status' in err && typeof err.status === 'number' && err.status >= 400 && err.status < 500) {
+    return { status: err.status, error: 'Invalid request body', code: 'bad_request' };
+  }
+  return null;
 };
 
 export const errorHandler = (
@@ -32,13 +56,9 @@ export const errorHandler = (
   }
 
   // body-parser failures: never echo the parser's message (W7-ACC-D6, W7-RESP-D3).
-  const bodyError = bodyParserErrorType(err);
-  if (bodyError === 'entity.too.large') {
-    res.status(413).json({ error: 'Request body is too large', code: 'payload_too_large' });
-    return;
-  }
-  if (bodyError) {
-    res.status(400).json({ error: 'Request body is not valid JSON', code: 'invalid_json' });
+  const bodyFailure = bodyParserFailure(err);
+  if (bodyFailure) {
+    res.status(bodyFailure.status).json({ error: bodyFailure.error, code: bodyFailure.code });
     return;
   }
 

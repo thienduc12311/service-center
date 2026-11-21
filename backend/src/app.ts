@@ -119,7 +119,6 @@ export const createApp = (): Express => {
   };
   app.use('/api/v1/imports', express.json({ limit: '2mb' }), importBodyError);
   app.use(express.json());
-  app.use(rejectUnsupportedText);
   if (!config.isTest) {
     // Bearer-token paths (response links, invitations, feeds) are logged by shape only.
     morgan.token<express.Request>('url', (req) => redactTokenPath(req.originalUrl ?? req.url ?? ''));
@@ -134,6 +133,8 @@ export const createApp = (): Express => {
       legacyHeaders: false,
     }),
   );
+  // After logging and rate limiting, so rejected bodies are still logged and throttled.
+  app.use(rejectUnsupportedText);
 
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', version: config.version });

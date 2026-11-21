@@ -1,4 +1,4 @@
-import { Router, type NextFunction, type Request, type Response } from 'express';
+import { Router } from 'express';
 import {
   explainCapabilityQuerySchema,
   replaceScopeGrantsSchema,
@@ -13,7 +13,7 @@ import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
-import { requireAdmin } from '../middleware/organization.js';
+import { requireAdmin, requireOwner } from '../middleware/organization.js';
 import {
   explainAccess,
   listAccessMembers,
@@ -36,13 +36,7 @@ export const accessRouter: Router = Router();
  * an admin's update would match nothing and read as a 404. Refuse it up front
  * with the same rule instead.
  */
-const requireOwner = (req: Request, _res: Response, next: NextFunction): void => {
-  if (req.orgRole !== 'owner') {
-    next(HttpError.forbidden('Only the organization owner can change how someone’s access works'));
-    return;
-  }
-  next();
-};
+const requireAccessOwner = requireOwner('Only the organization owner can change how someone’s access works');
 
 accessRouter.get('/me', (req, res) => {
   res.json(req.access);
@@ -57,7 +51,7 @@ accessRouter.get('/members/:userId', requireAdmin, async (req, res) => {
 });
 
 /** Opt a scheduler into scoped access (or back to legacy organization-wide). Owner only. */
-accessRouter.patch('/members/:userId', requireOwner, validateBody(updateMemberAccessSchema), async (req, res) => {
+accessRouter.patch('/members/:userId', requireAccessOwner, validateBody(updateMemberAccessSchema), async (req, res) => {
   const { access_mode } = req.body as UpdateMemberAccessInput;
   res.json(await setAccessMode({ db: req.db, orgId: req.orgId, userId: param(req, 'userId'), accessMode: access_mode }));
 });

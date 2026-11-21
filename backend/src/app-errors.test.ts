@@ -35,6 +35,12 @@ describe('request error mapping', () => {
     expect(res.body.code).toBe('payload_too_large');
   });
 
+  it('answers an unsupported body charset with 415, not invalid JSON', async () => {
+    const res = await request(app).post('/api/v1/teams').set('Content-Type', 'application/json; charset=latin1').send('{"name":"x"}');
+    expect(res.status).toBe(415);
+    expect(res.body.code).toBe('unsupported_media_type');
+  });
+
   it('rejects NUL bytes and lone surrogates before they reach Postgres', async () => {
     for (const body of ['{"name":"a\\u0000b"}', '{"body":"x\\ud800y"}', '{"nested":[{"k":"\\u0000"}]}']) {
       const res = await post('/api/v1/teams').send(body);
@@ -52,7 +58,7 @@ describe('request error mapping', () => {
   });
 
   it('maps leftover database text errors to 422', () => {
-    for (const code of ['22P05', '22021', 'PGRST102']) {
+    for (const code of ['22P05', '22021']) {
       const error = fromPostgrestError({ code, message: 'unsupported Unicode escape sequence' });
       expect(error.status).toBe(422);
       expect(error.message).not.toMatch(/Unicode/);
