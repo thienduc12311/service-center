@@ -29,7 +29,25 @@
       "hint": "Bất kỳ ai trong danh sách thành viên đều có thể tham gia ban, dù có tài khoản hay không. Thành viên đã lưu trữ không hiển thị.",
       "positionFor": "Vị trí cho {{name}}",
       "addAs": "Thêm với vị trí…",
-      "noPosition": "Không có vị trí"
+      "noPosition": "Không có vị trí",
+      "searchLabel": "Tìm người",
+      "searchPlaceholder": "Tìm theo tên hoặc email",
+      "queued_other": "Sẽ thêm ({{count}})",
+      "queuedLabel": "Những người sẽ được thêm",
+      "nobodyQueued": "Tìm ở trên rồi chọn một hoặc nhiều người. Chưa ai được thêm cho đến khi bạn bấm Thêm.",
+      "unqueue": "Bỏ {{name}} khỏi danh sách sẽ thêm",
+      "position": "Vị trí",
+      "submit_other": "Thêm {{count}} người",
+      "submitAs_other": "Thêm {{count}} người vào vị trí {{position}}"
+    },
+    "positionsCount_other": "{{count}} vị trí",
+    "collapseAll": "Thu gọn tất cả",
+    "search": {
+      "label": "Tìm theo tên ban hoặc thành viên",
+      "placeholder": "Tìm ban hoặc người",
+      "noMatch": "Không có ban hoặc thành viên nào khớp với từ khóa này.",
+      "shownOf": "{{shown}}/{{total}}",
+      "matchingMembers_other": "{{count}} thành viên khớp"
     }
   },
   "teamForm": {

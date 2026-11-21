@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   SONG_LIBRARY_PAGE_SIZE,
   parseSongLibraryFilters,
@@ -8,9 +8,12 @@ import {
   songLibraryFilterCount,
   songLibraryKeys,
   type ListSongsQuery,
+  type SongLibraryFilterName,
   type SongLibraryFilterValues,
+  type SongListItem,
 } from '@service-center/shared';
 import { useSongs } from '../hooks/queries';
+import { useUrlEnum, useUrlNumber, useUrlPatch, useUrlSearch } from '../hooks/useUrlState';
 import { useAuth } from '../providers/AuthProvider';
 import { Badge, Button, EmptyState, ErrorNotice, ListErrorNotice, listFailed, PageHeader, Segmented, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
@@ -45,6 +48,41 @@ const TEXT_FILTERS: TextFilter[] = [
 /** How the library list is ordered. */
 type SongSort = 'title' | 'recent';
 
+/** The library filters' URL parameters, in form order. */
+const FILTER_PARAMS: readonly SongLibraryFilterName[] = [
+  'archive', 'key', 'theme', 'song_type', 'style', 'speed', 'author', 'bpm_min', 'bpm_max', 'scheduled_from', 'scheduled_to',
+];
+
+const SORTS: readonly SongSort[] = ['title', 'recent'];
+
+/** `songBulkPreviewSchema` accepts at most this many songs per bulk edit. */
+const SONG_BULK_LIMIT = 100;
+
+/** Reads the filters back out of the URL, exactly as the form typed them. */
+const filterValuesFrom = (params: URLSearchParams): SongLibraryFilterValues => {
+  const values: SongLibraryFilterValues = {};
+  for (const name of FILTER_PARAMS) {
+    const value = params.get(name);
+    if (value) values[name] = value;
+  }
+  return values;
+};
+
+/** Selected songs by id, kept across pages so a bulk edit can span several. */
+type SongSelection = ReadonlyMap<string, SongListItem>;
+
+/** Adds songs to a selection up to the bulk limit; reports how many did not fit. */
+const addToSelection = (current: SongSelection, songs: readonly SongListItem[]): { next: SongSelection; skipped: number } => {
+  const next = new Map(current);
+  let skipped = 0;
+  for (const song of songs) {
+    if (next.has(song.id)) continue;
+    if (next.size >= SONG_BULK_LIMIT) { skipped += 1; continue; }
+    next.set(song.id, song);
+  }
+  return { next, skipped };
+};
+
 export const SongsPage = () => {
   const { t } = useTranslation(['songs', 'common']);
   const formatters = useFormatters();
@@ -52,21 +90,53 @@ export const SongsPage = () => {
   // The song library is organization-wide; leading a team never implies it.
   const canManage = canAnywhere('songs.manage');
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
-  const [sort, setSort] = useState<SongSort>('title');
+  const [params] = useSearchParams();
+  const patchUrl = useUrlPatch();
+  const search = useUrlSearch('q', { page: null });
+  const [sort, setSort] = useUrlEnum<SongSort>('sort', SORTS, 'title');
+  const [page, setPage] = useUrlNumber('page', 1, { min: 1 });
   const [adding, setAdding] = useState(false);
-  const [filters, setFilters] = useState<Partial<ListSongsQuery>>({});
-  const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<SongSelection>(() => new Map());
+  const [overLimit, setOverLimit] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [filterError, setFilterError] = useState<Error | null>(null);
+  const [formError, setFormError] = useState<Error | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const filterValues = filterValuesFrom(params);
+  // The URL can be hand-edited or stale: an unreadable filter set is reported and ignored.
+  const parsedFilters = parseSongLibraryFilters(filterValues);
+  const filters: Partial<ListSongsQuery> = parsedFilters.ok ? parsedFilters.query : {};
+  const filterError = formError ?? (parsedFilters.ok ? null : parsedFilters.error);
   // Parsing fills in the library scope, sort and paging, so those never count as a filter.
   const activeFilterCount = songLibraryFilterCount(filters);
-  const songs = useSongs({ ...filters, q: query || undefined, sort, page, per_page: SONG_LIBRARY_PAGE_SIZE });
-  const resetPage = () => { setPage(1); setSelected([]); setEditing(false); };
+  const songs = useSongs({ ...filters, q: search.query || undefined, sort, page, per_page: SONG_LIBRARY_PAGE_SIZE });
+  const total = songs.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / SONG_LIBRARY_PAGE_SIZE));
+  // A stale link past the last page lands on the last page instead of an empty one.
+  useEffect(() => {
+    if (songs.data && !songs.isPlaceholderData && page > pageCount) patchUrl({ page: pageCount > 1 ? pageCount : null }, { replace: true });
+  }, [songs.data, songs.isPlaceholderData, page, pageCount, patchUrl]);
+
+  const applyFilters = (values: SongLibraryFilterValues) => {
+    const patch: Record<string, string | null> = { page: null };
+    for (const name of FILTER_PARAMS) patch[name] = values[name]?.trim() || null;
+    patchUrl(patch);
+  };
+  const select = (songsToAdd: readonly SongListItem[]) => {
+    const { next, skipped } = addToSelection(selected, songsToAdd);
+    setSelected(next);
+    setOverLimit(skipped > 0);
+  };
+  const unselect = (ids: readonly string[]) => {
+    const next = new Map(selected);
+    for (const id of ids) next.delete(id);
+    setSelected(next);
+    setOverLimit(false);
+  };
+  const clearSelection = () => { setSelected(new Map()); setOverLimit(false); };
 
   const rows = songs.data?.data ?? [];
+  const pageSelected = rows.filter((row) => selected.has(row.id)).length;
+  const offPage = selected.size - pageSelected;
 
   return (
     <div>
@@ -95,8 +165,8 @@ export const SongsPage = () => {
           <input
             type="search"
             className="input pl-9"
-            value={query}
-            onChange={(event) => { setQuery(event.target.value); resetPage(); }}
+            value={search.text}
+            onChange={(event) => search.setText(event.target.value)}
             placeholder={t('songsPage.searchPlaceholder')}
             aria-label={t('songsPage.searchLabel')}
           />
@@ -105,7 +175,7 @@ export const SongsPage = () => {
           <Segmented<SongSort>
             label={t('songsPage.sortLabel')}
             value={sort}
-            onChange={(value) => { setSort(value); resetPage(); }}
+            onChange={(value) => setSort(value, { page: null })}
             items={[
               { value: 'title', label: t('songsPage.sortTitle') },
               { value: 'recent', label: t('songsPage.sortRecent') },
@@ -130,7 +200,7 @@ export const SongsPage = () => {
       </div>
 
       {/* Hidden rather than unmounted, so reopening shows the filters still applied. */}
-      <form hidden={!showFilters} className="card animate-fade-in mb-4 p-4 sm:p-5" onSubmit={(event) => {
+      <form key={FILTER_PARAMS.map((name) => filterValues[name] ?? '').join('|')} hidden={!showFilters} className="card animate-fade-in mb-4 p-4 sm:p-5" onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         const input: SongLibraryFilterValues = Object.fromEntries(
@@ -138,16 +208,17 @@ export const SongsPage = () => {
         );
         // The same rules as the app: blanks dropped, dates as UTC day starts.
         const parsed = parseSongLibraryFilters(input);
-        if (!parsed.ok) { setFilterError(parsed.error); return; }
-        setFilterError(null); setFilters(parsed.query); resetPage();
-      }} onReset={() => { setFilterError(null); setFilters({}); resetPage(); }}>
+        if (!parsed.ok) { setFormError(parsed.error); return; }
+        // `active` is the library's default scope; leave it out of the URL.
+        setFormError(null); applyFilters({ ...input, archive: input.archive === 'active' ? '' : input.archive });
+      }} onReset={() => { setFormError(null); applyFilters({}); }}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="field">{t('songsPage.filters.library')}<select name="archive" className="input"><option value="active">{t('songsPage.filters.activeSongs')}</option><option value="archived">{t('songsPage.filters.archivedSongs')}</option><option value="all">{t('songsPage.filters.allSongs')}</option></select></label>
-          {TEXT_FILTERS.map((filter) => <label key={filter.name} className="field">{t(filter.label)}<input className="input" name={filter.name} /></label>)}
-          <label className="field">{t('songsPage.filters.bpmMin')}<input className="input" name="bpm_min" type="number" min="20" max="300" /></label>
-          <label className="field">{t('songsPage.filters.bpmMax')}<input className="input" name="bpm_max" type="number" min="20" max="300" /></label>
-          <label className="field">{t('songsPage.filters.scheduledFrom')}<input className="input" name="scheduled_from" type="date" /></label>
-          <label className="field">{t('songsPage.filters.scheduledTo')}<input className="input" name="scheduled_to" type="date" /></label>
+          <label className="field">{t('songsPage.filters.library')}<select name="archive" className="input" defaultValue={filterValues.archive ?? 'active'}><option value="active">{t('songsPage.filters.activeSongs')}</option><option value="archived">{t('songsPage.filters.archivedSongs')}</option><option value="all">{t('songsPage.filters.allSongs')}</option></select></label>
+          {TEXT_FILTERS.map((filter) => <label key={filter.name} className="field">{t(filter.label)}<input className="input" name={filter.name} defaultValue={filterValues[filter.name] ?? ''} /></label>)}
+          <label className="field">{t('songsPage.filters.bpmMin')}<input className="input" name="bpm_min" type="number" min="20" max="300" defaultValue={filterValues.bpm_min ?? ''} /></label>
+          <label className="field">{t('songsPage.filters.bpmMax')}<input className="input" name="bpm_max" type="number" min="20" max="300" defaultValue={filterValues.bpm_max ?? ''} /></label>
+          <label className="field">{t('songsPage.filters.scheduledFrom')}<input className="input" name="scheduled_from" type="date" defaultValue={filterValues.scheduled_from ?? ''} /></label>
+          <label className="field">{t('songsPage.filters.scheduledTo')}<input className="input" name="scheduled_to" type="date" defaultValue={filterValues.scheduled_to ?? ''} /></label>
         </div>
         <div className="mt-5 flex justify-end gap-2 border-t border-app-border pt-4">
           <Button type="reset" variant="ghost">{t('common:actions.clear')}</Button>
@@ -156,17 +227,28 @@ export const SongsPage = () => {
       </form>
       <div className="space-y-3">
         <ErrorNotice error={filterError ?? (listFailed(songs) ? null : songs.error)} />
-        {canManage && selected.length > 0 && !editing && (
-          <div className="surface-inset flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-              {t('common:count.selected', { count: selected.length })}
-            </span>
-            <Button size="sm" icon="pencil" onClick={() => setEditing(true)}>
-              {t('songsPage.editSelected', { count: selected.length })}
-            </Button>
+        {canManage && selected.size > 0 && !editing && (
+          <div className="surface-inset flex flex-wrap items-center justify-between gap-3 px-4 py-2.5" role="region" aria-label={t('songsPage.selection.label')}>
+            <div className="min-w-0 text-sm">
+              <span className="font-medium text-slate-700 dark:text-slate-200">
+                {t('common:count.selected', { count: selected.size })}
+              </span>
+              {offPage > 0 && (
+                <span className="ml-2 text-slate-500 dark:text-slate-400">{t('songsPage.selection.offPage', { count: offPage })}</span>
+              )}
+              {overLimit && (
+                <p role="status" className="mt-0.5 text-xs text-amber-700 dark:text-amber-300">{t('songsPage.selection.limit', { max: SONG_BULK_LIMIT })}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={clearSelection}>{t('songsPage.selection.clear')}</Button>
+              <Button size="sm" icon="pencil" onClick={() => setEditing(true)}>
+                {t('songsPage.editSelected', { count: selected.size })}
+              </Button>
+            </div>
           </div>
         )}
-        {canManage && editing && <SongBulkEditor songs={rows.filter((row) => selected.includes(row.id))} onDone={() => { setEditing(false); setSelected([]); }} />}
+        {canManage && editing && <SongBulkEditor songs={[...selected.values()]} onDone={() => { setEditing(false); clearSelection(); }} />}
       </div>
 
       <div className="mt-3">
@@ -180,7 +262,19 @@ export const SongsPage = () => {
               <table className="w-full min-w-[40rem] text-sm">
                 <thead>
                   <tr className="border-b border-app-border bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900/60 dark:text-slate-400">
-                    {canManage && <th scope="col" className="w-10 px-4 py-2.5"><span className="sr-only">{t('common:actions.select')}</span></th>}
+                    {canManage && (
+                      <th scope="col" className="w-10 px-4 py-2.5">
+                        <input
+                          ref={(input) => { if (input) input.indeterminate = pageSelected > 0 && pageSelected < rows.length; }}
+                          type="checkbox"
+                          className="size-4 rounded border-slate-300 accent-brand-600"
+                          aria-label={t('songsPage.selection.selectPage')}
+                          checked={rows.length > 0 && pageSelected === rows.length}
+                          disabled={editing}
+                          onChange={(event) => (event.target.checked ? select(rows) : unselect(rows.map((row) => row.id)))}
+                        />
+                      </th>
+                    )}
                     <th scope="col" className="px-4 py-2.5 font-semibold">{t('songsPage.columns.title')}</th>
                     <th scope="col" className="px-4 py-2.5 font-semibold">{t('songsPage.columns.bpm')}</th>
                     <th scope="col" className="px-4 py-2.5 font-semibold">{t('songsPage.columns.keys')}</th>
@@ -190,7 +284,7 @@ export const SongsPage = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {rows.map((song) => {
-                    const checked = selected.includes(song.id);
+                    const checked = selected.has(song.id);
                     const keys = songLibraryKeys(song);
                     return (
                       <tr
@@ -205,7 +299,7 @@ export const SongsPage = () => {
                               aria-label={t('songsPage.selectSong', { title: song.title })}
                               checked={checked}
                               disabled={editing}
-                              onChange={(event) => setSelected((current) => event.target.checked ? [...current, song.id] : current.filter((id) => id !== song.id))}
+                              onChange={(event) => (event.target.checked ? select([song]) : unselect([song.id]))}
                             />
                           </td>
                         )}
@@ -252,7 +346,7 @@ export const SongsPage = () => {
         ) : (
           <EmptyState
             icon="music"
-            title={query ? t('songsPage.emptySearch') : t('songsPage.empty')}
+            title={search.query || activeFilterCount ? t('songsPage.emptySearch') : t('songsPage.empty')}
             description={t('songsPage.emptyDescription')}
             action={canManage ? <Button icon="plus" onClick={() => setAdding(true)}>{t('songsPage.addSong')}</Button> : undefined}
           />
@@ -260,9 +354,9 @@ export const SongsPage = () => {
       </div>
 
       <div className="my-5 flex items-center justify-end gap-2">
-        <Button size="sm" variant="secondary" icon="chevronLeft" disabled={page <= 1 || songs.isFetching || editing} onClick={() => { setPage(page - 1); setSelected([]); }}>{t('songsPage.previousPage')}</Button>
-        <span className="px-2 text-sm text-slate-500 tabular-nums dark:text-slate-400">{t('songsPage.page', { page })}</span>
-        <Button size="sm" variant="secondary" disabled={!songs.data || page * SONG_LIBRARY_PAGE_SIZE >= songs.data.total || songs.isFetching || editing} onClick={() => { setPage(page + 1); setSelected([]); }}>
+        <Button size="sm" variant="secondary" icon="chevronLeft" disabled={page <= 1 || songs.isFetching || editing} onClick={() => setPage(page - 1)}>{t('songsPage.previousPage')}</Button>
+        <span className="px-2 text-sm text-slate-500 tabular-nums dark:text-slate-400">{t('songsPage.pageOf', { page, pages: pageCount })}</span>
+        <Button size="sm" variant="secondary" disabled={!songs.data || page >= pageCount || songs.isFetching || editing} onClick={() => setPage(page + 1)}>
           {t('common:actions.next')}
           <Icon name="chevronRight" className="size-3.5" />
         </Button>

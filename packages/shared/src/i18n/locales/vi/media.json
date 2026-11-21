@@ -31,7 +31,10 @@
     "alt": "Ảnh đại diện của {{title}}",
     "none": "Chưa có ảnh đại diện.",
     "selectLabel": "Ảnh dùng làm ảnh đại diện",
-    "uploadHint": "Hãy tải một ảnh lên ở phần Tệp để dùng tại đây."
+    "uploadHint": "Hãy tải một ảnh lên ở phần Tệp để dùng tại đây.",
+    "searchPlaceholder": "Tìm ảnh theo tiêu đề",
+    "searchLabel": "Tìm ảnh",
+    "noMatch": "Không có ảnh nào khớp với từ khóa này."
   },
   "form": {
     "title": "Tiêu đề",
@@ -214,7 +217,9 @@
     "noItemFilesDescription": "Tệp của bài hát và các mục mà bạn được phép xem sẽ hiện ở đây.",
     "noFiles": "Không có tệp.",
     "allDefaultsLinked": "Mọi tệp mặc định của loại buổi nhóm này đã có trong chương trình.",
-    "defaultPinHint": "Chương trình giữ phiên bản bạn thêm lúc này, kể cả khi tệp mặc định được thay sau đó."
+    "defaultPinHint": "Chương trình giữ phiên bản bạn thêm lúc này, kể cả khi tệp mặc định được thay sau đó.",
+    "onlyWithFiles_other": "Chỉ hiện mục có tệp ({{count}}/{{total}})",
+    "noItemFilesYet": "Chưa có mục nào có tệp."
   },
   "rehearsal": {
     "unavailable": "Bản thu này không còn dành cho bạn. Các mục khác vẫn phát được.",

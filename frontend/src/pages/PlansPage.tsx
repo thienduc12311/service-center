@@ -5,6 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { PLAN_STATUS_LABELS, type ListPlansRequest, type PlanStatus } from '@service-center/shared';
 import { api } from '../lib/api';
 import { usePlanPages, useServiceTypes, useInvalidateOrg } from '../hooks/queries';
+import { useUrlEnum, useUrlString } from '../hooks/useUrlState';
+import { groupBy, localMonthKey } from '../lib/grouping';
+import { useFormatters } from '../i18n';
 import { useAuth } from '../providers/AuthProvider';
 import {
   Button,
@@ -24,6 +27,14 @@ import { PlanListCard } from '../components/plan/PlanListCard';
 
 const PLAN_STATUSES = Object.keys(PLAN_STATUS_LABELS) as PlanStatus[];
 
+/** The status filter: one status, or '' for every status. */
+type StatusFilter = PlanStatus | '';
+const STATUS_FILTERS: readonly StatusFilter[] = ['', ...PLAN_STATUSES];
+
+/** Which side of "now" the list shows. */
+type PlanWindow = 'upcoming' | 'past';
+const PLAN_WINDOWS: readonly PlanWindow[] = ['upcoming', 'past'];
+
 /** Datetime-local inputs are local-time strings; the API wants ISO instants. */
 const toIso = (localValue: string): string => new Date(localValue).toISOString();
 
@@ -42,21 +53,26 @@ export const PlansPage = () => {
   const canSchedule = canAnywhere('scheduling.manage');
   const navigate = useNavigate();
   const invalidate = useInvalidateOrg();
+  const format = useFormatters();
   const serviceTypes = useServiceTypes();
-  const [status, setStatus] = useState('');
-  const [showPast, setShowPast] = useState(false);
+  const [status, setStatus] = useUrlEnum<StatusFilter>('status', STATUS_FILTERS, '');
+  const [planWindow, setPlanWindow] = useUrlEnum<PlanWindow>('when', PLAN_WINDOWS, 'upcoming');
+  const [serviceTypeFilter, setServiceTypeFilter] = useUrlString('type', '', { replace: false });
+  const showPast = planWindow === 'past';
   const [creating, setCreating] = useState(false);
   const [openedAt] = useState(() => new Date().toISOString());
 
   // Past is bounded to plans before the page was opened (W2-PLANS-D10).
   const listQuery: Omit<ListPlansRequest, 'page'> = {
-    ...(status ? { status: status as PlanStatus } : {}),
+    ...(status ? { status } : {}),
+    ...(serviceTypeFilter ? { service_type_id: serviceTypeFilter } : {}),
     ...(showPast ? { to: openedAt, order: 'desc' } : { from: openedAt, order: 'asc' }),
     per_page: 50,
   };
   const plans = usePlanPages(listQuery);
   const loadedPlans = plans.data?.pages.flatMap((page) => page.data) ?? [];
   const totalPlans = plans.data?.pages[0]?.total;
+  const months = groupBy(loadedPlans, (plan) => localMonthKey(plan.service_date));
 
   const [title, setTitle] = useState('');
   const [serviceDate, setServiceDate] = useState(defaultServiceDate);
@@ -150,14 +166,14 @@ export const PlansPage = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Segmented
           label={t('plansPage.past')}
-          value={showPast ? 'past' : 'upcoming'}
-          onChange={(value) => setShowPast(value === 'past')}
+          value={planWindow}
+          onChange={setPlanWindow}
           items={[
             { value: 'upcoming', label: t('mobilePlans.window.upcoming') },
             { value: 'past', label: t('plansPage.past') },
           ]}
         />
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {totalPlans !== undefined && (
             <span className="text-sm text-slate-500 tabular-nums dark:text-slate-400">
               {t('common:count.plans', { count: totalPlans })}
@@ -167,7 +183,7 @@ export const PlansPage = () => {
             aria-label={t('plansPage.filterStatus')}
             className="input w-40"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => setStatus(STATUS_FILTERS.find((value) => value === e.target.value) ?? '')}
           >
             <option value="">{t('plansPage.allStatuses')}</option>
             {PLAN_STATUSES.map((value) => (
@@ -176,6 +192,21 @@ export const PlansPage = () => {
               </option>
             ))}
           </select>
+          {((serviceTypes.data?.length ?? 0) > 1 || serviceTypeFilter) && (
+            <select
+              aria-label={t('plansPage.filterServiceType')}
+              className="input w-48"
+              value={serviceTypeFilter}
+              onChange={(e) => setServiceTypeFilter(e.target.value)}
+            >
+              <option value="">{t('plansPage.allServiceTypes')}</option>
+              {(serviceTypes.data ?? []).map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
@@ -187,13 +218,23 @@ export const PlansPage = () => {
         <ListErrorNotice query={plans} />
       ) : loadedPlans.length ? (
         <div className="space-y-3">
-          <ul className="space-y-3">
-            {loadedPlans.map((plan) => (
-              <li key={plan.id}>
-                <PlanListCard plan={plan} showServiceType showDeclined />
-              </li>
-            ))}
-          </ul>
+          {months.map((month) => (
+            <section key={month.key} aria-labelledby={`plans-month-${month.key}`} className="space-y-3">
+              <h2
+                id={`plans-month-${month.key}`}
+                className="section-label pt-1"
+              >
+                {format.date(month.items[0]!.service_date, 'monthYear')}
+              </h2>
+              <ul className="space-y-3">
+                {month.items.map((plan) => (
+                  <li key={plan.id}>
+                    <PlanListCard plan={plan} showServiceType showDeclined />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
           {plans.hasNextPage && (
             <div className="flex justify-center">
               <Button variant="secondary" loading={plans.isFetchingNextPage} onClick={() => void plans.fetchNextPage()}>

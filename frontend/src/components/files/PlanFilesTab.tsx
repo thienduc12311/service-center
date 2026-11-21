@@ -45,6 +45,7 @@ export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
   const [adding, setAdding] = useState<{ owner: FileOwnerRef; mode: AddFileMode } | null>(null);
   const [linking, setLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [onlyWithFiles, setOnlyWithFiles] = useState(false);
 
   const pin = useMutation({
     mutationFn: ({ linkId, body }: { linkId: string; body: SetFileLinkPinInput }) => api.setFileLinkPin(linkId, body),
@@ -119,7 +120,9 @@ export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
 
   const planLevel = entries.filter((entry) => entry.plan_item_id === null && !(entry.file.archived_at && !entry.link));
   const items = plan.items.filter((item) => item.item_type !== 'header');
-  const anyItemFiles = items.some((item) => entries.some((entry) => entry.plan_item_id === item.id));
+  const itemIdsWithFiles = new Set(entries.flatMap((entry) => (entry.plan_item_id ? [entry.plan_item_id] : [])));
+  const itemsWithFiles = items.filter((item) => itemIdsWithFiles.has(item.id)).length;
+  const anyItemFiles = itemsWithFiles > 0;
 
   return (
     <div className="space-y-6">
@@ -146,7 +149,23 @@ export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
       </section>
 
       <section className="card p-5">
-        <h2 className="mb-2 font-semibold">{t('planFiles.items')}</h2>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-semibold">{t('planFiles.items')}</h2>
+          {canEdit && items.length > 0 && (
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-slate-300 accent-brand-600"
+                checked={onlyWithFiles}
+                onChange={(event) => setOnlyWithFiles(event.target.checked)}
+              />
+              {t('planFiles.onlyWithFiles', { count: itemsWithFiles, total: items.length })}
+            </label>
+          )}
+        </div>
+        {canEdit && onlyWithFiles && !anyItemFiles && items.length > 0 && (
+          <p className="py-2 text-sm text-slate-500">{t('planFiles.noItemFilesYet')}</p>
+        )}
         {!items.length && <p className="text-sm text-slate-500">{t('planFiles.noItems')}</p>}
         {items.length > 0 && !anyItemFiles && !canEdit && (
           <EmptyState title={t('planFiles.noItemFilesTitle')} description={t('planFiles.noItemFilesDescription')} />
@@ -154,7 +173,8 @@ export const PlanFilesTab = ({ plan }: PlanFilesTabProps) => {
         <ul className="space-y-5">
           {items.map((item) => {
             const list = entries.filter((entry) => entry.plan_item_id === item.id);
-            if (!list.length && !canEdit) return null;
+            // Without edit rights there is nothing to do on an empty item; the filter hides it too.
+            if (!list.length && (!canEdit || onlyWithFiles)) return null;
             return (
               <li key={item.id}>
                 <div className="flex items-center justify-between gap-3">

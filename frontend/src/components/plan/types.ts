@@ -98,3 +98,46 @@ export const buildPlanTeams = ({
       };
     });
 };
+
+/** Requests that still hold a place: everything except a decline. */
+const holdsPlace = (assignment: AssignmentDetail): boolean => assignment.status !== 'declined';
+
+/** Awaiting an answer: released and not yet confirmed or declined. */
+const isAwaitingReply = (assignment: AssignmentDetail): boolean =>
+  assignment.status === 'unconfirmed' && assignment.visibility === 'released';
+
+/** Places a position still needs filled: asked for, minus everyone not declined. */
+export const openPlaces = (position: PlanTeamPositionView): number =>
+  Math.max(0, position.needed - position.scheduled.filter(holdsPlace).length);
+
+/**
+ * A gap is something a scheduler still has to act on: an unfilled place, a
+ * decline, or a request nobody has answered yet.
+ */
+export const positionHasGap = (position: PlanTeamPositionView): boolean =>
+  openPlaces(position) > 0 ||
+  position.scheduled.some((assignment) => assignment.status === 'declined' || isAwaitingReply(assignment));
+
+/** Requests on the team with no position that need attention (declined or unanswered). */
+export const unpositionedGaps = (team: PlanTeamView): AssignmentDetail[] =>
+  team.unpositioned.filter((assignment) => assignment.status === 'declined' || isAwaitingReply(assignment));
+
+/** The one-line staffing summary of a team on a plan ("3/5 confirmed · 2 open"). */
+export interface PlanTeamSummary {
+  confirmed: number;
+  /** Places on the team: each position's need or its headcount, whichever is larger. */
+  places: number;
+  /** Unfilled places across the team's positions. */
+  open: number;
+  /** Positions (plus unpositioned requests) with a gap. */
+  gaps: number;
+}
+
+export const summarizePlanTeam = (team: PlanTeamView): PlanTeamSummary => ({
+  confirmed: team.confirmed,
+  places:
+    team.positions.reduce((sum, position) => sum + Math.max(position.needed, position.scheduled.filter(holdsPlace).length), 0) +
+    team.unpositioned.filter(holdsPlace).length,
+  open: team.positions.reduce((sum, position) => sum + openPlaces(position), 0),
+  gaps: team.positions.filter(positionHasGap).length + unpositionedGaps(team).length,
+});

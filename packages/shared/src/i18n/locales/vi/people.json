@@ -24,7 +24,14 @@
     "searchPlaceholder": "Tìm theo tên, email, số điện thoại hoặc cơ sở",
     "searchPlaceholderMember": "Tìm theo tên hoặc cơ sở",
     "noMatch": "Không có ai khớp với tìm kiếm này.",
-    "loadMore": "Tải thêm người"
+    "loadMore": "Tải thêm người",
+    "selection": {
+      "label": "Người đã chọn",
+      "hidden_other": "({{count}} người không có trong kết quả này)",
+      "clear": "Bỏ chọn tất cả",
+      "remove": "Bỏ chọn {{name}}",
+      "selectLoaded_other": "Chọn {{count}} người đang hiển thị"
+    }
   },
   "person": {
     "addTitle": "Thêm thành viên",

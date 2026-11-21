@@ -5,7 +5,14 @@ import type { AssignmentDetail } from '@service-center/shared';
 import { Avatar, Button, EmptyState, Notice } from '../ui';
 import { Icon } from '../icons';
 import { assignmentDot } from '../../lib/format';
-import type { PlanTeamPositionView, PlanTeamView } from './types';
+import {
+  positionHasGap,
+  summarizePlanTeam,
+  unpositionedGaps,
+  type PlanTeamPositionView,
+  type PlanTeamSummary,
+  type PlanTeamView,
+} from './types';
 import { attendanceSummary } from './attendance';
 
 /** "All times" stays explicit so a later-added time's effect is visible. */
@@ -38,6 +45,9 @@ export interface TeamsTabProps {
   onToggleAllTeams: () => void;
 }
 
+/** Up to this many teams start open; a longer list starts collapsed to its summaries. */
+const OPEN_BY_DEFAULT_MAX = 4;
+
 export const TeamsTab = ({
   teams,
   canScheduleTeam,
@@ -57,12 +67,42 @@ export const TeamsTab = ({
   onToggleAllTeams,
 }: TeamsTabProps) => {
   const { t } = useTranslation(['staffing', 'common']);
+  const [onlyGaps, setOnlyGaps] = useState(false);
+  // Teams the user opened or closed against the default.
+  const [toggled, setToggled] = useState<ReadonlySet<string>>(() => new Set());
+  const summaries = new Map(teams.map((team) => [team.team.id, summarizePlanTeam(team)]));
+  const teamsWithGaps = teams.filter((team) => (summaries.get(team.team.id)?.gaps ?? 0) > 0);
+  const shownTeams = onlyGaps ? teamsWithGaps : teams;
+  const openByDefault = teams.length <= OPEN_BY_DEFAULT_MAX;
+  // Editing needs and the gaps filter open every team they show.
+  const isOpen = (teamId: string): boolean =>
+    editingNeeds || onlyGaps || (toggled.has(teamId) ? !openByDefault : openByDefault);
+  const toggle = (teamId: string) =>
+    setToggled((current) => {
+      const next = new Set(current);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
+      return next;
+    });
   return (
   <div>
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <Button variant="ghost" size="sm" icon="team" onClick={onToggleAllTeams}>
-        {showAllTeams ? t('teamsTab.showServiceTeams') : t('teamsTab.showAllTeams')}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="ghost" size="sm" icon="team" onClick={onToggleAllTeams}>
+          {showAllTeams ? t('teamsTab.showServiceTeams') : t('teamsTab.showAllTeams')}
+        </Button>
+        {teams.length > 0 && (
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+            <input
+              type="checkbox"
+              className="size-4 rounded border-slate-300 accent-brand-600"
+              checked={onlyGaps}
+              onChange={(event) => setOnlyGaps(event.target.checked)}
+            />
+            {t('teamsTab.onlyGaps', { count: teamsWithGaps.length })}
+          </label>
+        )}
+      </div>
       {(canEditPlan || teams.some((team) => canScheduleTeam(team.team.id))) && (
         <div className="flex flex-wrap items-center gap-2">
           {editingNeeds ? (
@@ -96,12 +136,19 @@ export const TeamsTab = ({
         title={t('teamsTab.emptyTitle')}
         description={t('teamsTab.emptyDescription')}
       />
+    ) : shownTeams.length === 0 ? (
+      <EmptyState icon="check" title={t('teamsTab.noGapsTitle')} description={t('teamsTab.noGapsDescription')} />
     ) : (
       <div className="grid items-start gap-4 md:grid-cols-2 2xl:grid-cols-3">
-        {teams.map((team) => (
+        {shownTeams.map((team) => (
           <TeamColumn
             key={team.team.id}
             team={team}
+            summary={summaries.get(team.team.id) ?? summarizePlanTeam(team)}
+            open={isOpen(team.team.id)}
+            canToggle={!editingNeeds && !onlyGaps}
+            onToggle={() => toggle(team.team.id)}
+            onlyGaps={onlyGaps}
             canManage={canScheduleTeam(team.team.id)}
             canEditNeeds={canEditPlan || canScheduleTeam(team.team.id)}
             onRelease={onRelease}
@@ -123,6 +170,13 @@ export const TeamsTab = ({
 
 interface TeamColumnProps {
   team: PlanTeamView;
+  summary: PlanTeamSummary;
+  open: boolean;
+  /** False while every team is forced open (editing needs, or the gaps filter). */
+  canToggle: boolean;
+  onToggle: () => void;
+  /** Show only positions and requests that need attention. */
+  onlyGaps: boolean;
   canManage: boolean;
   canEditNeeds: boolean;
   onRelease: (assignments: AssignmentDetail[]) => void;
@@ -138,6 +192,11 @@ interface TeamColumnProps {
 
 const TeamColumn = ({
   team,
+  summary,
+  open,
+  canToggle,
+  onToggle,
+  onlyGaps,
   canManage,
   canEditNeeds,
   onRelease,
@@ -151,24 +210,45 @@ const TeamColumn = ({
   overrideReasons,
 }: TeamColumnProps) => {
   const { t } = useTranslation(['staffing', 'common']);
+  const positions = onlyGaps ? team.positions.filter(positionHasGap) : team.positions;
+  const unpositioned = onlyGaps ? unpositionedGaps(team) : team.unpositioned;
   // Outside the editor a position only shows when it is staffed or wanted, so
   // a team can have positions and still have nothing worth drawing.
   const hasVisibleRows =
     editingNeeds ||
-    team.unpositioned.length > 0 ||
-    team.positions.some((position) => position.scheduled.length > 0 || position.needed > 0);
+    unpositioned.length > 0 ||
+    positions.some((position) => position.scheduled.length > 0 || position.needed > 0);
+  const bodyId = `plan-team-${team.team.id}`;
 
   return (
-  <section className="card min-w-0 overflow-hidden">
-    <header className="border-t-[3px] border-b border-b-app-border px-4 py-3" style={{ borderTopColor: team.team.color }}>
-      <div className="flex items-center gap-2">
-        <span
-          className="size-2.5 rounded-full"
-          style={{ backgroundColor: team.team.color }}
-          aria-hidden="true"
-        />
-        <h3 className="font-semibold text-slate-900 dark:text-white">{team.team.name}</h3>
-      </div>
+  <section className="card min-w-0 overflow-hidden" aria-labelledby={`${bodyId}-title`}>
+    <header className={`border-t-[3px] px-4 py-3 ${open ? 'border-b border-b-app-border' : ''}`} style={{ borderTopColor: team.team.color }}>
+      <h3 id={`${bodyId}-title`} className="font-semibold text-slate-900 dark:text-white">
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 text-left disabled:cursor-default"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          disabled={!canToggle}
+          onClick={onToggle}
+        >
+          <span
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: team.team.color }}
+            aria-hidden="true"
+          />
+          <span className="min-w-0 flex-1 truncate">{team.team.name}</span>
+          {canToggle && <Icon name="chevronDown" className={`size-4 shrink-0 text-slate-400 transition ${open ? 'rotate-180' : ''}`} />}
+        </button>
+      </h3>
+      <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+        {summary.places > 0
+          ? t('teamsTab.summary', { confirmed: summary.confirmed, places: summary.places })
+          : t('teamsTab.summaryNobody')}
+        {summary.open > 0 && (
+          <span className="text-amber-700 dark:text-amber-300"> · {t('teamsTab.openPlaces', { count: summary.open })}</span>
+        )}
+      </p>
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 tabular-nums dark:text-slate-400">
         <span title={t('common:assignmentStatus.confirmed')} className="inline-flex items-center gap-1">
           <Icon name="check" className="size-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -197,7 +277,7 @@ const TeamColumn = ({
       )}
     </header>
 
-    {team.positions.length === 0 && team.unpositioned.length === 0 ? (
+    {!open ? null : team.positions.length === 0 && team.unpositioned.length === 0 ? (
       <p className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
         {t('teamsTab.noPositions')}
       </p>
@@ -206,8 +286,8 @@ const TeamColumn = ({
         {t('teamsTab.nothingNeeded')}
       </p>
     ) : (
-      <div>
-        {team.positions.map((position) => (
+      <div id={bodyId}>
+        {positions.map((position) => (
           <PositionBlock
             key={position.position.id}
             position={position}
@@ -223,13 +303,13 @@ const TeamColumn = ({
           />
         ))}
 
-        {team.unpositioned.length > 0 && (
+        {unpositioned.length > 0 && (
           <div>
             <p className="bg-slate-50 px-4 py-1.5 text-xs font-medium text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
               {t('teamsTab.noPosition')}
             </p>
             <ul className="row-list">
-              {team.unpositioned.map((assignment) => (
+              {unpositioned.map((assignment) => (
                 <ScheduledPerson
                   key={assignment.id}
                   assignment={assignment}

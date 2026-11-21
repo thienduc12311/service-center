@@ -24,7 +24,16 @@
     "searchPlaceholder": "Search by name, email, phone or campus",
     "searchPlaceholderMember": "Search by name or campus",
     "noMatch": "Nobody matches that search.",
-    "loadMore": "Load more people"
+    "loadMore": "Load more people",
+    "selection": {
+      "label": "Selected people",
+      "hidden_one": "({{count}} not in these results)",
+      "hidden_other": "({{count}} not in these results)",
+      "clear": "Clear selection",
+      "remove": "Unselect {{name}}",
+      "selectLoaded_one": "Select the {{count}} shown",
+      "selectLoaded_other": "Select all {{count}} shown"
+    }
   },
   "person": {
     "addTitle": "Add person",

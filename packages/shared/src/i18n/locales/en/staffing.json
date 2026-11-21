@@ -33,7 +33,15 @@
     "reviewAndRelease_one": "Review and release {{count}}",
     "reviewAndRelease_other": "Review and release {{count}}",
     "willBeNotified": "These people will be notified:",
-    "release": "Release"
+    "release": "Release",
+    "onlyGaps_one": "Only gaps ({{count}} team)",
+    "onlyGaps_other": "Only gaps ({{count}} teams)",
+    "noGapsTitle": "No gaps",
+    "noGapsDescription": "Every needed position is filled and every request has an answer.",
+    "summary": "{{confirmed}}/{{places}} confirmed",
+    "summaryNobody": "Nobody scheduled yet",
+    "openPlaces_one": "{{count}} open place",
+    "openPlaces_other": "{{count}} open places"
   },
   "schedulePeople": {
     "title": "Schedule people",

@@ -507,6 +507,8 @@ export const usePeoplePage = (filters: PeoplePageFilters) => {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: Boolean(org),
+    // Keep the last results on screen while a new search loads, instead of a skeleton per keystroke.
+    placeholderData: (previous) => previous,
   });
   return { ...query, data: query.data ? flattenPeoplePages(query.data.pages) : undefined };
 };
@@ -832,7 +834,13 @@ export const useRehearsalManifest = (planId: string | undefined) => {
 
 export const useMediaList = (query: ListMediaRequest) => {
   const org = useOrg();
-  return useQuery({ queryKey: keys.mediaList(org, query), queryFn: () => api.mediaList(query), enabled: Boolean(org) });
+  return useQuery({
+    queryKey: keys.mediaList(org, query),
+    queryFn: () => api.mediaList(query),
+    enabled: Boolean(org),
+    // Keep the last results on screen while a new search loads.
+    placeholderData: (previous) => previous,
+  });
 };
 
 export const useMediaDetail = (mediaId: string | null | undefined) => {

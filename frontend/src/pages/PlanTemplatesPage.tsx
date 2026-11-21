@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -6,10 +6,15 @@ import {
   ApiError,
   type PlanTemplateContent,
   type PlanTemplateDetail,
+  type PlanTemplateKind,
+  type PlanTemplateSummary,
   type PlanTemplateTime,
 } from '@service-center/shared';
 import { api } from '../lib/api';
 import { useInvalidateOrg, usePlanTemplate, usePlanTemplates } from '../hooks/queries';
+import { useUrlBoolean, useUrlPatch } from '../hooks/useUrlState';
+import { groupBy } from '../lib/grouping';
+import { matchesSearch } from '../lib/search';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters } from '../i18n';
 import { Badge, Button, EmptyState, ErrorNotice, IconButton, ListErrorNotice, listFailed, Loading, Notice, PageHeader, SkeletonList } from '../components/ui';
@@ -17,6 +22,31 @@ import { Icon } from '../components/icons';
 import { useTemplateNames } from '../components/templates/useTemplateNames';
 
 const MUTED_TONE = 'bg-slate-50 text-slate-600 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300';
+
+/** Kinds in the order the library lists them: whole plans before reusable sections. */
+const KIND_ORDER: readonly PlanTemplateKind[] = ['plan', 'section'];
+
+/** Templates of one service type (or of every type), split by kind. */
+interface TemplateServiceTypeGroup {
+  /** Service type id; '' for templates that apply to every service type. */
+  key: string;
+  name: string | null;
+  kinds: { kind: PlanTemplateKind; templates: PlanTemplateSummary[] }[];
+}
+
+/**
+ * Groups the library by service type (named types A–Z, then "all service
+ * types"), and each type by kind. Template order within a kind is kept.
+ */
+const groupTemplates = (templates: readonly PlanTemplateSummary[]): TemplateServiceTypeGroup[] =>
+  groupBy(templates, (template) => template.service_type?.id ?? '')
+    .map((group) => ({
+      key: group.key,
+      name: group.items[0]?.service_type?.name ?? null,
+      kinds: KIND_ORDER.map((kind) => ({ kind, templates: group.items.filter((template) => template.kind === kind) }))
+        .filter((entry) => entry.templates.length > 0),
+    }))
+    .sort((a, b) => (a.name === null ? 1 : b.name === null ? -1 : a.name.localeCompare(b.name)));
 
 /** Moves one entry of a list; out-of-range moves are ignored. */
 const move = <T,>(list: readonly T[], index: number, by: number): T[] => {
@@ -246,12 +276,23 @@ export const PlanTemplatesPage = () => {
   const fmt = useFormatters();
   const { canAnywhere } = useAuth();
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
-  const [includeArchived, setIncludeArchived] = useState(false);
+  const [params] = useSearchParams();
+  const patchUrl = useUrlPatch();
+  const [includeArchived, setIncludeArchived] = useUrlBoolean('archived');
+  const [filter, setFilter] = useState('');
   const [revision, setRevision] = useState<number | null>(null);
   const selectedId = params.get('template');
   const templates = usePlanTemplates({ include_archived: includeArchived }, canAnywhere('plans.edit'));
   const detail = usePlanTemplate(selectedId, revision);
+  const groups = useMemo(
+    () =>
+      groupTemplates(
+        (templates.data ?? []).filter((template) =>
+          matchesSearch(filter, [template.name, template.description, template.service_type?.name]),
+        ),
+      ),
+    [templates.data, filter],
+  );
 
   if (!canAnywhere('plans.edit')) {
     return <EmptyState icon="document" title={t('library.noAccessTitle')} description={t('library.noAccessDescription')} />;
@@ -259,7 +300,7 @@ export const PlanTemplatesPage = () => {
 
   const select = (id: string) => {
     setRevision(null);
-    setParams({ template: id });
+    patchUrl({ template: id });
   };
 
   return (
@@ -287,37 +328,64 @@ export const PlanTemplatesPage = () => {
         />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <ul className="card row-list h-fit overflow-hidden">
-            {templates.data.map((template) => (
-              <li key={template.id}>
-                <button
-                  type="button"
-                  onClick={() => select(template.id)}
-                  aria-current={selectedId === template.id ? 'true' : undefined}
-                  className={`relative block w-full px-4 py-3 text-left text-sm transition ${selectedId === template.id ? 'bg-brand-50 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-brand-600 dark:bg-brand-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
-                >
-                  <span className="flex items-center gap-2 font-medium text-slate-900 dark:text-white">
-                    <Icon name={template.kind === 'plan' ? 'plans' : 'document'} className="size-4 shrink-0 text-slate-400" />
-                    {template.name}
-                    {template.archived_at && <Badge tone={MUTED_TONE}>{t('library.archivedBadge')}</Badge>}
-                  </span>
-                  <span className="mt-0.5 block pl-6 text-xs text-slate-500 dark:text-slate-400">
-                    {[
-                      t('library.summary', {
-                        kind: t(`kind.${template.kind}`),
-                        serviceType: template.service_type?.name ?? t('library.allServiceTypes'),
-                        revision: template.current_revision,
-                      }),
-                      t('count.items', { count: template.counts.items }),
-                      ...(template.kind === 'plan'
-                        ? [t('count.times', { count: template.counts.times }), t('count.people', { count: template.counts.roster })]
-                        : []),
-                    ].join(' · ')}
-                  </span>
-                </button>
-              </li>
+          <div className="h-fit space-y-3">
+            <div className="relative">
+              <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                className="input !pl-9"
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+                placeholder={t('library.filterPlaceholder')}
+                aria-label={t('library.filterLabel')}
+              />
+            </div>
+            {groups.length === 0 ? (
+              <p className="surface-inset px-3 py-2.5 text-sm text-slate-500 dark:text-slate-400">{t('library.noMatch')}</p>
+            ) : groups.map((group) => (
+              <section key={group.key || 'all'} aria-label={group.name ?? t('library.allServiceTypes')} className="card overflow-hidden">
+                <h2 className="border-b border-app-border bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-800 dark:bg-slate-900/50 dark:text-slate-100">
+                  {group.name ?? t('library.allServiceTypes')}
+                </h2>
+                {group.kinds.map((entry) => (
+                  <div key={entry.kind}>
+                    <h3 className="section-label px-4 pt-2.5 pb-1">{t(`library.kindGroup.${entry.kind}`)}</h3>
+                    <ul className="row-list">
+                      {entry.templates.map((template) => (
+                        <li key={template.id}>
+                          <button
+                            type="button"
+                            onClick={() => select(template.id)}
+                            aria-current={selectedId === template.id ? 'true' : undefined}
+                            className={`relative block w-full px-4 py-3 text-left text-sm transition ${selectedId === template.id ? 'bg-brand-50 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-brand-600 dark:bg-brand-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+                          >
+                            <span className="flex items-center gap-2 font-medium text-slate-900 dark:text-white">
+                              <Icon name={template.kind === 'plan' ? 'plans' : 'document'} className="size-4 shrink-0 text-slate-400" />
+                              {template.name}
+                              {template.archived_at && <Badge tone={MUTED_TONE}>{t('library.archivedBadge')}</Badge>}
+                            </span>
+                            <span className="mt-0.5 block pl-6 text-xs text-slate-500 dark:text-slate-400">
+                              {[
+                                t('library.summary', {
+                                  kind: t(`kind.${template.kind}`),
+                                  serviceType: template.service_type?.name ?? t('library.allServiceTypes'),
+                                  revision: template.current_revision,
+                                }),
+                                t('count.items', { count: template.counts.items }),
+                                ...(template.kind === 'plan'
+                                  ? [t('count.times', { count: template.counts.times }), t('count.people', { count: template.counts.roster })]
+                                  : []),
+                              ].join(' · ')}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </section>
             ))}
-          </ul>
+          </div>
           <div className="card min-w-0 p-5">
             {!selectedId ? (
               <EmptyState compact icon="document" title={t('library.chooseTemplate')} />
