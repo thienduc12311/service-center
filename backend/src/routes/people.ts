@@ -21,6 +21,7 @@ import {
   type ProfileRow,
   type PublicProfileRow,
 } from '@service-center/shared';
+import { fetchAllPages } from '../lib/paging.js';
 import { param } from '../lib/params.js';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireAdmin, requireCapability } from '../middleware/organization.js';
@@ -100,13 +101,18 @@ interface MemberWithPublicProfile extends Omit<ActiveMemberRow, 'profile'> {
  */
 peopleRouter.get('/', validateQuery(listPeopleQuerySchema), async (req, res) => {
   const { include_archived } = parsedQuery<ListPeopleQuery>(res);
-  const rawMembers = (await unwrap(
-    raw(req.db)
-      .from('organization_members')
-      .select(`role, status, profile:profiles(${PUBLIC_PROFILE_COLUMNS})`)
-      .eq('organization_id', req.orgId)
-      .neq('status', 'inactive'),
-  )) as unknown as MemberWithPublicProfile[];
+  const rawMembers = await fetchAllPages(
+    async (from, to) =>
+      (await unwrap(
+        raw(req.db)
+          .from('organization_members')
+          .select(`role, status, profile:profiles(${PUBLIC_PROFILE_COLUMNS})`)
+          .eq('organization_id', req.orgId)
+          .neq('status', 'inactive')
+          .order('id')
+          .range(from, to),
+      )) as unknown as MemberWithPublicProfile[] | null,
+  );
   const contacts = await contactsFor(req.db, req.orgId, rawMembers.map((member) => member.profile?.id).filter(Boolean));
   const members: ActiveMemberRow[] = rawMembers
     .filter((member) => member.profile)
@@ -121,8 +127,17 @@ peopleRouter.get('/', validateQuery(listPeopleQuerySchema), async (req, res) => 
     }));
 
   const people: RosterPersonRecord[] = canReadPrivate(req)
-    ? ((await unwrap(raw(req.db).from('people').select(PERSON_COLUMNS).eq('organization_id', req.orgId))) as unknown as RosterPersonRecord[])
-    : ((await unwrap(req.db.from('people_directory').select('*').eq('organization_id', req.orgId))) ?? []).map((row) => ({
+    ? await fetchAllPages(
+        async (from, to) =>
+          (await unwrap(
+            raw(req.db).from('people').select(PERSON_COLUMNS).eq('organization_id', req.orgId).order('id').range(from, to),
+          )) as unknown as RosterPersonRecord[] | null,
+      )
+    : (
+        await fetchAllPages(async (from, to) =>
+          unwrap(req.db.from('people_directory').select('*').eq('organization_id', req.orgId).order('id').range(from, to)),
+        )
+      ).map((row) => ({
         ...row,
         email: null,
         phone: null,

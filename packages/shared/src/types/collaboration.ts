@@ -312,6 +312,14 @@ export interface ConversationSummary {
   open_reports: number;
 }
 
+/** Keyset page of the caller's conversations, most recently active first. */
+export interface ConversationListPage {
+  items: ConversationSummary[];
+  /** Pass as `cursor` for the next page; null on the last page. */
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
 export type ConversationMessageRow = {
   id: string;
   organization_id: string;

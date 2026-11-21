@@ -1,5 +1,7 @@
 import type {
   ConversationDetail,
+  ConversationListPage,
+  ConversationListRow,
   ConversationMessage,
   ConversationMessageReportRow,
   ConversationMessageRow,
@@ -8,6 +10,7 @@ import type {
   ConversationSummary,
   DiscussionPage,
   DiscussionPageQuery,
+  ListConversationsQuery,
   MentionCandidate,
   OpenConversationInput,
   PlanItemComment,
@@ -19,6 +22,7 @@ import type {
   ReportConversationMessageInput,
   ResolveConversationReportInput,
 } from '@service-center/shared';
+import { decodeConversationCursor, toConversationListPage } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
 import { beforeFilter } from '../lib/keyset.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
@@ -168,8 +172,23 @@ export const mentionCandidates = async (
 
 // ----------------------------------------------------------- conversations --
 
-export const listConversations = async (caller: CollaborationCaller): Promise<ConversationSummary[]> =>
-  ((await unwrap(raw(caller.db).rpc('my_conversations', { p_organization_id: caller.orgId }))) as ConversationSummary[] | null) ?? [];
+/**
+ * One keyset page of the caller's conversations (W8-PERF-D3). Asks the
+ * database for `limit + 1` rows so `has_more` is exact, then hands the cursor
+ * of the last returned row to the client. An unreadable cursor is a 400.
+ */
+export const listConversations = async (caller: CollaborationCaller, query: ListConversationsQuery): Promise<ConversationListPage> => {
+  const after = query.cursor ? decodeConversationCursor(query.cursor) : null;
+  if (query.cursor && !after) throw HttpError.badRequest('Invalid cursor');
+  const rows = (await unwrap(raw(caller.db).rpc('my_conversations_page', {
+    p_organization_id: caller.orgId,
+    p_limit: query.limit + 1,
+    p_after_last: after ? (after.last ?? '-infinity') : null,
+    p_after_created: after?.created ?? null,
+    p_after_id: after?.id ?? null,
+  }))) as ConversationListRow[] | null;
+  return toConversationListPage(rows ?? [], query.limit);
+};
 
 const conversationSummary = async (caller: CollaborationCaller, conversationId: string): Promise<ConversationSummary> => {
   const rows = await unwrap(caller.db.rpc('my_conversation', {

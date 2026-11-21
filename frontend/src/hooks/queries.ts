@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-query';
 import {
   conversationAccess,
+  flattenConversationPages,
   CONVERSATION_LIST_POLL_MS,
   CONVERSATION_LIST_TOPIC_LIMIT,
   CONVERSATION_THREAD_POLL_MS,
@@ -657,19 +658,26 @@ export const useMessageTemplates = (enabled = true) => {
   return useQuery({ queryKey: keys.messageTemplates(org), queryFn: () => api.messageTemplates(), enabled: Boolean(org) && enabled });
 };
 
-/** Known conversations each have their own authorization; polling also discovers new ones. */
+/**
+ * Known conversations each have their own authorization; polling also
+ * discovers new ones. Keyset-paged (W8-PERF-D3): `data` is every page loaded
+ * so far, and `fetchNextPage` keeps going until `hasNextPage` is false.
+ */
 export const useConversations = (visible: boolean) => {
   const org = useOrg();
-  const queryKey = keys.conversations(org);
-  const query = useQuery({
+  const queryKey = [...keys.conversations(org), 'pages'] as const;
+  const query = useInfiniteQuery({
     queryKey,
-    queryFn: () => api.conversations(),
+    queryFn: ({ pageParam }) => api.conversations({ cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: Boolean(org && visible),
     staleTime: 0,
     refetchInterval: CONVERSATION_LIST_POLL_MS,
     refetchOnWindowFocus: 'always',
   });
-  const data = conversationAccess(query.error) === 'unavailable' ? undefined : query.data;
+  const loaded = query.data ? flattenConversationPages(query.data.pages) : undefined;
+  const data = conversationAccess(query.error) === 'unavailable' ? undefined : loaded;
   useBroadcastRefresh('conversation', visible ? data?.slice(0, CONVERSATION_LIST_TOPIC_LIMIT).map((conversation) => conversation.id) ?? [] : [], { queryKey, exact: true });
   return { ...query, data };
 };

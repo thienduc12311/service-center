@@ -343,6 +343,7 @@ import type {
 } from '../schemas/plan-templates.js';
 import type {
   ConversationDetail,
+  ConversationListPage,
   ConversationMessage,
   ConversationReport,
   ConversationSummary,
@@ -365,6 +366,7 @@ import type {
   ConversationMessagesQuery,
   CreateNoteCategoryInput,
   DiscussionPageQuery,
+  ListConversationsQuery,
   ListOperationalMessagesQuery,
   OpenConversationInput,
   PostConversationMessageInput,
@@ -1579,7 +1581,8 @@ export class ServiceCenterApi {
     this.request<void>('DELETE', `/api/v1/message-templates/${id}`);
 
   // --------------------------------------------------- F09 conversations --
-  conversations = () => this.request<ConversationSummary[]>('GET', '/api/v1/conversations');
+  conversations = (query?: Partial<ListConversationsQuery>) =>
+    this.request<ConversationListPage>('GET', '/api/v1/conversations', undefined, query as Query);
   /** Opens (creating on first use) the conversation for a team or plan. */
   openConversation = (body: OpenConversationInput) =>
     this.request<ConversationSummary>('POST', '/api/v1/conversations/open', body);

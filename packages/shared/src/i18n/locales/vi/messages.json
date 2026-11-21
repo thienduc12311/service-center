@@ -86,6 +86,7 @@
     }
   },
   "chatPage": {
+    "loadMore": "Tải thêm cuộc trò chuyện",
     "title": "Trò chuyện",
     "subtitle": "Trò chuyện của ban và chương trình.",
     "openTeamChat": "Mở trò chuyện của ban",

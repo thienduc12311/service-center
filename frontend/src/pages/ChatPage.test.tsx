@@ -55,7 +55,7 @@ const renderChat = () => {
   vi.stubGlobal('matchMedia', () => ({
     matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }));
-  vi.mocked(api.conversations).mockResolvedValue([thread.conversation]);
+  vi.mocked(api.conversations).mockResolvedValue({ items: [thread.conversation], next_cursor: null, has_more: false });
   vi.mocked(api.getConversation).mockResolvedValue(thread);
   vi.mocked(api.listTeams).mockResolvedValue([]);
   vi.mocked(api.mentionCandidates).mockResolvedValue([]);

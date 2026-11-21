@@ -222,3 +222,57 @@ describe('Item comment writes through the wrong item (W7-MSG-D10)', () => {
     expect(paths.some((entry) => entry.startsWith('/rest/v1/rpc/edit_item_comment') || entry.startsWith('/rest/v1/rpc/delete_item_comment'))).toBe(false);
   });
 });
+
+describe('Conversation list paging (W8-PERF-D3)', () => {
+  const row = (n: number): ConversationSummary & { created_at: string } => ({
+    ...summary,
+    id: `bbbbbbbb-0000-4000-8000-${String(n).padStart(12, '0')}`,
+    title: `Chat ${n}`,
+    created_at: '2026-11-01T00:00:00.000Z',
+  });
+
+  /** A database with 230 conversations that honours the paging arguments like the SQL function. */
+  const pagingDb = () => {
+    const all = Array.from({ length: 230 }, (_, index) => row(index + 1));
+    return vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname !== '/rest/v1/rpc/my_conversations_page') throw new Error(`Unexpected database call: ${url.pathname}`);
+      const args = JSON.parse(String(init?.body)) as { p_limit: number; p_after_id: string | null };
+      const start = args.p_after_id ? all.findIndex((entry) => entry.id === args.p_after_id) + 1 : 0;
+      return Response.json(all.slice(start, start + args.p_limit));
+    });
+  };
+
+  it('reaches every conversation past the old 100-row cap without loss or repeats', async () => {
+    const app = createApp(pagingDb());
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    let pages = 0;
+    do {
+      const result: request.Response = await request(app).get('/conversations').query({ limit: 100, ...(cursor ? { cursor } : {}) });
+      expect(result.status).toBe(200);
+      seen.push(...(result.body.items as ConversationSummary[]).map((item) => item.id));
+      expect(result.body.items[0]).not.toHaveProperty('created_at');
+      cursor = result.body.next_cursor as string | null;
+      expect(result.body.has_more).toBe(cursor !== null);
+      pages += 1;
+    } while (cursor && pages < 10);
+    expect(pages).toBe(3);
+    expect(seen).toHaveLength(230);
+    expect(new Set(seen).size).toBe(230);
+  });
+
+  it('asks the database for one extra row and sends the cursor of the last returned row', async () => {
+    const fetchDb = pagingDb();
+    await request(createApp(fetchDb)).get('/conversations').query({ limit: 20 });
+    const [, init] = fetchDb.mock.calls[0] ?? [];
+    expect(JSON.parse(String(init?.body))).toMatchObject({ p_organization_id: orgId, p_limit: 21, p_after_id: null });
+  });
+
+  it('rejects a cursor it did not issue', async () => {
+    const fetchDb = pagingDb();
+    const result = await request(createApp(fetchDb)).get('/conversations').query({ cursor: 'forged' });
+    expect(result.status).toBe(400);
+    expect(fetchDb).not.toHaveBeenCalled();
+  });
+});

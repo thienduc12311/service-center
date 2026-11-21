@@ -44,6 +44,13 @@ export const discussionPageQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
 });
 
+/** `GET /conversations`: keyset paging over the caller's conversations (W8-PERF-D3). */
+export const listConversationsQuerySchema = z.object({
+  /** Opaque `next_cursor` of the previous page. */
+  cursor: z.string().min(1).max(400).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
 /** `id` is chosen by the client so a retried post is one logical comment. */
 export const postItemCommentSchema = z.object({
   id: uuid,
@@ -172,6 +179,7 @@ export type CreateNoteCategoryInput = z.infer<typeof createNoteCategorySchema>;
 export type UpdateNoteCategoryInput = z.infer<typeof updateNoteCategorySchema>;
 export type MentionCandidatesQuery = z.infer<typeof mentionCandidatesQuerySchema>;
 export type DiscussionPageQuery = z.infer<typeof discussionPageQuerySchema>;
+export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
 export type PostItemCommentInput = z.infer<typeof postItemCommentSchema>;
 export type EditDiscussionInput = z.infer<typeof editDiscussionSchema>;
 export type DeleteDiscussionInput = z.infer<typeof deleteDiscussionSchema>;

@@ -1,7 +1,7 @@
 import { POKE_FALLBACK_MS } from './realtime-pokes.js';
 import { ApiError } from './api-client.js';
 import type { NotificationRow, NotificationType } from '../types/database.js';
-import type { ConversationMessage, ConversationSummary } from '../types/collaboration.js';
+import type { ConversationListPage, ConversationMessage, ConversationSummary } from '../types/collaboration.js';
 
 /**
  * F09 / MOB-019: team and plan conversation rules shared by the website and
@@ -159,3 +159,89 @@ export const chatStartableTeams = <T extends ChatTeam>(
 ): T[] =>
   teams.filter((team) =>
     (profileId != null && team.members.some((member) => member.user_id === profileId)) || canManageTeam(team));
+
+// ------------------------------------------------- list paging (W8-PERF-D3) --
+
+/**
+ * Sort key of one conversation in the list: most recent message first (none
+ * last), then newest conversation, then id so the order is total and a page
+ * boundary never splits or repeats a tie. The database orders identically.
+ */
+export interface ConversationListCursor {
+  /** `last_message_at` of the last row shown, null when it has no messages. */
+  last: string | null;
+  created: string;
+  id: string;
+}
+
+const base64UrlEncode = (text: string): string =>
+  btoa(String.fromCharCode(...new TextEncoder().encode(text)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+const base64UrlDecode = (value: string): string => {
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  return new TextDecoder().decode(Uint8Array.from(atob(padded), (char) => char.charCodeAt(0)));
+};
+
+export const encodeConversationCursor = (cursor: ConversationListCursor): string =>
+  base64UrlEncode(JSON.stringify(cursor));
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isTimestamp = (value: unknown): value is string => typeof value === 'string' && !Number.isNaN(Date.parse(value));
+
+/** Null when the cursor was not produced by `encodeConversationCursor`. */
+export const decodeConversationCursor = (value: string): ConversationListCursor | null => {
+  try {
+    const parsed: unknown = JSON.parse(base64UrlDecode(value));
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const { last, created, id } = parsed as Record<string, unknown>;
+    if (!(last === null || isTimestamp(last)) || !isTimestamp(created) || typeof id !== 'string' || !UUID_PATTERN.test(id)) {
+      return null;
+    }
+    return { last, created, id };
+  } catch {
+    // Not valid base64 or JSON: the caller maps a null cursor to a 400.
+    return null;
+  }
+};
+
+/** A conversation row plus the creation time the cursor needs (never sent to clients). */
+export interface ConversationListRow extends ConversationSummary {
+  created_at: string;
+}
+
+/**
+ * Turns `limit + 1` rows from the database into one API page. The extra row
+ * only proves another page exists; the cursor points at the last row returned.
+ */
+export const toConversationListPage = (rows: readonly ConversationListRow[], limit: number): ConversationListPage => {
+  const shown = rows.slice(0, limit);
+  const hasMore = rows.length > limit;
+  const lastRow = shown.at(-1);
+  return {
+    items: shown.map((row): ConversationSummary => {
+      const { created_at: _createdAt, ...summary } = row;
+      return summary;
+    }),
+    has_more: hasMore,
+    next_cursor: hasMore && lastRow
+      ? encodeConversationCursor({ last: lastRow.last_message_at, created: lastRow.created_at, id: lastRow.id })
+      : null,
+  };
+};
+
+/** Every conversation across loaded pages, without repeats if a refetch shifted a boundary. */
+export const flattenConversationPages = (pages: readonly ConversationListPage[]): ConversationSummary[] => {
+  const seen = new Set<string>();
+  const out: ConversationSummary[] = [];
+  for (const page of pages) {
+    for (const item of page.items) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      out.push(item);
+    }
+  }
+  return out;
+};
