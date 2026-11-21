@@ -412,9 +412,6 @@ const CalendarDayModal = ({ day, events, layerEvents, onClose }: CalendarDayModa
             ))}
           </ul>
         )}
-        <div className="flex justify-end">
-          <Button variant="secondary" onClick={onClose}>{t('common:actions.close')}</Button>
-        </div>
       </div>
     </Modal>
   );

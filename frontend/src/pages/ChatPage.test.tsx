@@ -16,6 +16,8 @@ vi.mock('../lib/api', () => ({
     listTeams: vi.fn(),
     mentionCandidates: vi.fn(),
     postConversationMessage: vi.fn(),
+    conversationMessages: vi.fn(),
+    markConversationRead: vi.fn(),
   },
 }));
 vi.mock('../providers/AuthProvider', () => ({
@@ -55,12 +57,12 @@ type ConversationsPage = Awaited<ReturnType<typeof api.conversationsPage>>;
 
 const renderChat = (listPage: (cursor: string | undefined) => ConversationsPage = () => (
   { items: [thread.conversation], next_cursor: null, has_more: false }
-)) => {
+), detail: ConversationDetail = thread) => {
   vi.stubGlobal('matchMedia', () => ({
     matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }));
   vi.mocked(api.conversationsPage).mockImplementation(async (query) => listPage(query?.cursor));
-  vi.mocked(api.getConversation).mockResolvedValue(thread);
+  vi.mocked(api.getConversation).mockResolvedValue(detail);
   vi.mocked(api.listTeams).mockResolvedValue([]);
   vi.mocked(api.mentionCandidates).mockResolvedValue([]);
   render(
@@ -159,5 +161,55 @@ describe('web chat list paging', () => {
     expect(await screen.findByText('Worship band')).toBeTruthy();
     expect(vi.mocked(api.conversationsPage).mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ cursor: 'cursor-1' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Load more conversations' })).toBeNull());
+  });
+});
+
+describe('web chat thread history and search', () => {
+  it('loads older messages above the newest page with the thread cursor', async () => {
+    const user = renderChat(undefined, {
+      ...thread, messages: { data: [{ ...message('m-new', 'Newest message'), created_at: '2026-11-20T10:00:00Z' }], next_before: 'cursor-older' },
+    });
+    vi.mocked(api.conversationMessages).mockResolvedValue({
+      data: [{ ...message('m-old', 'Older message'), created_at: '2026-11-19T10:00:00Z' }], next_before: null,
+    });
+    await user.click(await screen.findByRole('button', { name: 'Load older messages' }));
+    expect(await screen.findByText('Older message')).toBeTruthy();
+    expect(api.conversationMessages).toHaveBeenCalledWith('thread-1', { before: 'cursor-older', limit: 30 });
+    expect(screen.getByText('Newest message')).toBeTruthy();
+    const bodies = screen.getAllByText(/message$/).map((node) => node.textContent);
+    expect(bodies.indexOf('Older message')).toBeLessThan(bodies.indexOf('Newest message'));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Load older messages' })).toBeNull());
+  });
+
+  it('shows "Searching" rather than "No matches" until the debounced search answers', async () => {
+    const user = renderChat();
+    const answer = deferred<Awaited<ReturnType<typeof api.conversationMessages>>>();
+    vi.mocked(api.conversationMessages).mockReturnValue(answer.promise);
+    await user.type(await screen.findByRole('textbox', { name: 'Search this conversation' }), 'setlist');
+
+    expect(screen.queryByText('No messages match.')).toBeNull();
+    expect(screen.getByRole('status').textContent).toContain('Searching');
+    await waitFor(() => expect(api.conversationMessages).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(api.conversationMessages).mock.calls[0]?.[1]).toEqual({ q: 'setlist', limit: 30 });
+
+    await act(async () => answer.resolve({ data: [], next_before: null }));
+    expect(await screen.findByText('No messages match.')).toBeTruthy();
+  });
+});
+
+describe('web chat conversation list filters', () => {
+  it('narrows the loaded conversations by name and by unread', async () => {
+    const band = { ...thread.conversation, id: 'thread-2', title: 'Worship band', unread_count: 2 };
+    const user = renderChat(() => ({ items: [thread.conversation, band], next_cursor: null, has_more: false }));
+    const list = (await screen.findByRole('link', { name: /Worship band/ })).closest('ul')!;
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search conversations' }), 'prod');
+    expect(within(list).queryByRole('link', { name: /Worship band/ })).toBeNull();
+    expect(within(list).getByRole('link', { name: /Production/ })).toBeTruthy();
+
+    await user.clear(screen.getByRole('searchbox', { name: 'Search conversations' }));
+    await user.click(screen.getByRole('button', { name: 'Unread' }));
+    expect(within(list).queryByRole('link', { name: /Production/ })).toBeNull();
+    expect(within(list).getByRole('link', { name: /Worship band/ })).toBeTruthy();
   });
 });
