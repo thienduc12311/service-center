@@ -10,6 +10,8 @@ import { fileErrorForDisplay, groupPlanFiles, planFileBadges, planFileEntryKey }
 import { useInvalidateFiles } from '../../lib/useFileUpload';
 import { useAuth } from '../../providers/AuthProvider';
 import { Button, Card, EmptyState, ErrorNotice, Loading, SectionHeader } from '../ui';
+import { SearchField } from '../SearchField';
+import { matchesSearch, needsListSearch } from '../../lib/list-search';
 import { FileRow } from './FileRow';
 import type { Theme } from '../../lib/theme';
 import { useThemedStyles } from '../../lib/useTheme';
@@ -163,16 +165,24 @@ const LinkDefaults = ({ planId, serviceTypeId, linkedIds, onDone }: LinkDefaults
       onDone();
     },
   });
+  const [query, setQuery] = useState('');
   const options = (defaults.data?.files ?? []).filter(
     (file) => !file.archived_at && !linkedIds.has(file.id) && (file.current_version || file.kind === 'link'),
   );
+  // A long list of defaults gets a search box; a short one stays as it is.
+  const searchable = needsListSearch(options.length);
+  const shown = searchable ? options.filter((file) => matchesSearch(query, [file.title])) : options;
 
   return (
     <View style={styles.defaults}>
       {defaults.isLoading ? <Loading /> : null}
       <ErrorNotice error={defaults.error} />
       {defaults.data && !options.length ? <Text style={styles.muted}>{t('planFiles.allDefaultsLinked')}</Text> : null}
-      {options.map((file) => (
+      {searchable ? (
+        <SearchField value={query} onChangeText={setQuery} placeholder={t('mobileFiles.searchDefaults', { count: options.length })} />
+      ) : null}
+      {searchable && shown.length === 0 ? <Text style={styles.muted}>{t('mobileFiles.noDefaultMatch')}</Text> : null}
+      {shown.map((file) => (
         <View key={file.id} style={styles.defaultRow}>
           <Text style={styles.defaultTitle}>{file.title}</Text>
           <Button
