@@ -84,7 +84,7 @@ Administrators only, as today. en + vi strings.
 
 ## Commit 2 — Draft plans are quiet; publishing notifies
 
-### Migration `…_publish_notifies.sql`
+### Migration `20261129000010_publish_notifies.sql`
 
 - `private.enqueue_assignment_requests`: when the plan is not `published`, return `null` and
   queue nothing. Check every caller (`grep -n enqueue_assignment_requests supabase/migrations`
@@ -96,13 +96,13 @@ Administrators only, as today. en + vi strings.
 - Reminder materialization (`private.desired_plan_reminders` / `recompute_plan_reminders`): no
   jobs for non-published plans; a status change recomputes the plan's reminders (trigger on
   `update of status`).
-- New `public.publish_plan(p_plan uuid, p_notify boolean, p_effect_key text)` returning
+- New `public.publish_plan_notify(p_plan uuid, p_notify boolean, p_effect_key text)` returning
   `(plan public.plans, effect_id uuid)`: checks `can_edit_plan`, sets `status = 'published'`,
   and when `p_notify` and the service date (org time zone) is today or later, enqueues an
   `assignment_request` effect for every assignment on the plan with `visibility = 'released'`,
   `status <> 'declined'`, `notified_at is null`, skipping the per-team
   `can_schedule_on_plan` filter (plan-level act, ADR-0006). Idempotent on `p_effect_key`.
-- `public.publish_plan_preview(p_plan uuid)`: counts who would be emailed and who has no
+- `public.publish_plan_notify_preview(p_plan uuid)`: counts who would be emailed and who has no
   address, via `person_delivery_readiness`.
 
 ### Dispatcher (`backend/src/services/delivery-dispatch.ts`)
@@ -116,7 +116,7 @@ Administrators only, as today. en + vi strings.
 
 ### API
 
-- `PATCH /plans/:id` with `status: 'published'` goes through `publish_plan` (keep the route; add
+- `PATCH /plans/:id` with `status: 'published'` goes through `publish_plan_notify` (keep the route; add
   optional `notify` (default `true`) and `idempotency_key` to the Zod schema in
   `packages/shared/src/schemas/plan.ts`). Deliver the effect with `deliverEffectNow` and return
   the `AssignmentNotificationSendResult` alongside the plan, like notify does today.
@@ -145,7 +145,7 @@ Administrators only, as today. en + vi strings.
 
 ## Commit 3 — Mention emails
 
-### Migration `…_mention_emails.sql`
+### Migration `20261129000100_mention_emails.sql`
 
 - `alter table public.person_reminder_preferences add column mention_email boolean not null default true;`
 - New `delivery_template` value is not needed: mention emails are `email` deliveries on the
@@ -214,3 +214,33 @@ response for manual sharing.
 3. Deploy commit 3. Mention emails go out immediately until the worker cron lands.
 4. Later, `feature/delivery-worker-cron`: set `CRON_SECRET`, create the Vault secrets, confirm
    runs and that Settings no longer warns.
+
+## As built (2026-11-21)
+
+Implemented on `feature/email-notifications`. Differences from the plan above:
+
+- **Function names.** `public.publish_plan` already exists (F16 public sharing), so the RPCs are
+  `publish_plan_notify` / `publish_plan_notify_preview`.
+- **Preview address check.** The preview repeats `person_delivery_readiness`'s address test inline,
+  because a plan-only editor holds neither `scheduling.manage` nor `people.view_private`. Only
+  names leave the function.
+- **Post functions dropped and recreated.** `post_conversation_message` / `post_item_comment` gained
+  `p_mention_email_delay_seconds`, so the old signatures were dropped to avoid two PostgREST
+  overloads.
+- **Collapse counts unread mentions only.** `mention_email_batch` returns the person's mentions in the
+  thread since their last sent mention email that are still unread, so reading the first mention
+  doesn't cancel a later collapsed one.
+- **Opt-out while queued** skips the email as `channel_not_used`.
+- **SQL fixture.** `supabase/tests/delivery-outbox.sql` now publishes its fixture plan, since it
+  scheduled on a draft. `supabase/tests/f09-notes-messages-chat.sql` expects the extra email
+  delivery for mentions.
+
+Known limitations:
+
+- `notified_at` is set only when an email is provider-accepted. People with no email address, and
+  every run in simulated mode, therefore count as "never notified": unpublish → publish asks them
+  again in the app.
+- A retry of a mention email after a newer mention changed its body can end `ambiguous
+  provider_duplicate_key` (Resend's idempotency key). A mention landing while an earlier email is
+  mid-send can be counted twice.
+- `packages/shared/src/types/database.ts` was edited by hand, not regenerated.
