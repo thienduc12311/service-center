@@ -182,6 +182,12 @@
     "removeLabel": "Gỡ {{name}} khỏi {{team}}",
     "removeTitle": "Gỡ {{name}} khỏi {{team}}?",
     "removeMessage": "Các chương trình cũ vẫn giữ lịch sử. Có thể thêm lại họ sau.",
-    "refineSearch": "Đang hiện 50 người đầu tiên. Hãy tìm để thu hẹp danh sách."
+    "refineSearch": "Đang hiện 50 người đầu tiên. Hãy tìm để thu hẹp danh sách.",
+    "addPeople": "Thêm người",
+    "searchMembers": "Tìm thành viên",
+    "positionGroup_other": "{{position}} · {{count}}",
+    "onTeam": "Đã ở trong đội",
+    "addQueued_other": "Thêm {{count}} người",
+    "added": "Đã thêm. Chọn thêm người hoặc nhấn Xong."
   }
 }

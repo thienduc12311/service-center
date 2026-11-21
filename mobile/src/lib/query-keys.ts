@@ -226,6 +226,9 @@ export const queryKeys = {
   /** W8 paging: the People list screen's keyset pages (search and archive are server-side); under `people`, so roster writes refresh it. */
   directoryPage: (scope: ProtectedQueryScope | null, includeArchived: boolean, q: string) =>
     [...privateRoot(scope), 'people', 'directory-page', includeArchived, q] as const,
+  /** Server-searched People pages for a picker (team add, item leader); under `people`, so roster writes refresh it. */
+  peoplePicker: (scope: ProtectedQueryScope | null, q: string) =>
+    [...privateRoot(scope), 'people', 'picker-page', q] as const,
   /** MOB-031: the directory with or without archived people; invalidate `people` after any roster write. */
   directory: (scope: ProtectedQueryScope | null, includeArchived: boolean) =>
     [...privateRoot(scope), 'people', 'directory', includeArchived] as const,
