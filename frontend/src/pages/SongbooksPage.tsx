@@ -7,7 +7,7 @@ import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useSongbooks, useSongs, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Button, EmptyState, ErrorNotice, Modal, PageHeader, SkeletonList } from '../components/ui';
+import { Button, EmptyState, ErrorNotice, ListErrorNotice, listFailed, Modal, PageHeader, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
 
 export const SongbooksPage = () => {
@@ -67,8 +67,8 @@ export const SongbooksPage = () => {
         subtitle={t('songbooksPage.subtitle')}
         actions={canManage ? <Button icon="plus" onClick={() => setOpen(true)}>{t('songbooksPage.create')}</Button> : undefined}
       />
-      <div className="mb-4 empty:hidden"><ErrorNotice error={books.error} /></div>
-      {books.isLoading ? <SkeletonList rows={3} /> : books.data?.length ? (
+      {!listFailed(books) && <div className="mb-4 empty:hidden"><ErrorNotice error={books.error} /></div>}
+      {books.isLoading ? <SkeletonList rows={3} /> : listFailed(books) ? <ListErrorNotice query={books} /> : books.data?.length ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {books.data.map((book) => (
             <Link key={book.id} to={`/songbooks/${book.id}`} className="card card-interactive group flex flex-col p-5">

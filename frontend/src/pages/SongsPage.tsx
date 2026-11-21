@@ -12,7 +12,7 @@ import {
 } from '@service-center/shared';
 import { useSongs } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Badge, Button, EmptyState, ErrorNotice, PageHeader, Segmented, SkeletonList } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, ListErrorNotice, listFailed, PageHeader, Segmented, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
 import { SongBulkEditor } from '../components/song/SongBulkEditor';
 import { AddSongModal } from '../components/AddSongModal';
@@ -155,7 +155,7 @@ export const SongsPage = () => {
         </div>
       </form>
       <div className="space-y-3">
-        <ErrorNotice error={filterError ?? songs.error} />
+        <ErrorNotice error={filterError ?? (listFailed(songs) ? null : songs.error)} />
         {canManage && selected.length > 0 && !editing && (
           <div className="surface-inset flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -172,6 +172,8 @@ export const SongsPage = () => {
       <div className="mt-3">
         {songs.isLoading ? (
           <SkeletonList rows={6} />
+        ) : listFailed(songs) ? (
+          <ListErrorNotice query={songs} />
         ) : rows.length ? (
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">

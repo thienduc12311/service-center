@@ -9,6 +9,7 @@ import {
   canOpenPerson,
   directoryBadges,
   directoryName,
+  directorySearchPlaceholderKey,
   filterDirectory,
   hasPersonChanges,
   ownPersonId,
@@ -70,6 +71,13 @@ describe('owner-only personal details', () => {
   it('lets only the owner open records or manage people (admin and people.manage grants included)', () => {
     expect(canOpenPeopleDetails('owner')).toBe(true);
     for (const role of ['admin', 'scheduler', 'member', null] as const) expect(canOpenPeopleDetails(role)).toBe(false);
+  });
+
+  it('uses the website role-specific People search hint (W9-NAT-D3)', () => {
+    expect(directorySearchPlaceholderKey('owner')).toBe('list.searchPlaceholder');
+    for (const role of ['admin', 'scheduler', 'member', null] as const) {
+      expect(directorySearchPlaceholderKey(role)).toBe('list.searchPlaceholderMember');
+    }
   });
 });
 

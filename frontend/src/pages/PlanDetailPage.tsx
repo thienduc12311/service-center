@@ -331,7 +331,9 @@ export const PlanDetailPage = () => {
           publish.mutate(detail.status === 'published' ? 'draft' : 'published')
         }
         onNotify={() => notify.mutate(crypto.randomUUID())}
+        deleting={removePlan.isPending}
         onDelete={() => {
+          if (removePlan.isPending) return;
           if (window.confirm(t('planDetail.deleteConfirm', { title: detail.title }))) {
             removePlan.mutate();
           }

@@ -23,6 +23,8 @@ export interface PlanWorkspaceHeaderProps {
   onTogglePublished: () => void;
   onNotify: () => void;
   onDelete: () => void;
+  /** A delete request is in flight: the delete action is disabled so it cannot be sent twice. */
+  deleting?: boolean;
 }
 
 /** A square nav target sized to match `IconButton size="sm"`, with a hairline ring. */
@@ -59,6 +61,7 @@ export const PlanWorkspaceHeader = ({
   onTogglePublished,
   onNotify,
   onDelete,
+  deleting = false,
 }: PlanWorkspaceHeaderProps) => {
   const { t } = useTranslation(['plans', 'common']);
   const format = useFormatters();
@@ -170,6 +173,7 @@ export const PlanWorkspaceHeader = ({
                     <MenuItem
                       icon="trash"
                       tone="danger"
+                      disabled={deleting}
                       onClick={() => {
                         onDelete();
                         close();

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMySchedule, useRespondToAssignment } from '../hooks/queries';
-import { Badge, Button, DateTile, EmptyState, ErrorNotice, PageHeader, SkeletonList } from '../components/ui';
+import { Badge, Button, DateTile, EmptyState, ErrorNotice, ListErrorNotice, listFailed, PageHeader, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
 import { assignmentTone } from '../lib/format';
 import { useFormatters } from '../i18n';
@@ -32,10 +32,12 @@ export const MySchedulePage = () => {
         }
       />
 
-      <ErrorNotice error={respond.error ?? schedule.error} />
+      <ErrorNotice error={respond.error ?? (listFailed(schedule) ? null : schedule.error)} />
 
       {schedule.isLoading ? (
         <SkeletonList rows={4} />
+      ) : listFailed(schedule) ? (
+        <ListErrorNotice query={schedule} />
       ) : schedule.data?.length ? (
         <ul className="space-y-3">
           {schedule.data.map((entry) => {

@@ -430,9 +430,18 @@ export const EmptyState = ({
   </div>
 );
 
+export interface ErrorNoticeProps {
+  error: unknown;
+  /** Offers a "Try again" action, e.g. a failed list query's `refetch`. */
+  onRetry?: () => void;
+  /** Shows the retry action as busy (and disabled) while it runs. */
+  retrying?: boolean;
+}
+
 /** Shows any thrown value as localized, user-safe text (never raw database/provider errors). */
-export const ErrorNotice = ({ error }: { error: unknown }) => {
+export const ErrorNotice = ({ error, onRetry, retrying = false }: ErrorNoticeProps) => {
   const errorText = useErrorText();
+  const { t } = useTranslation();
   if (!error) return null;
   const message = errorText(error);
   return (
@@ -441,10 +450,36 @@ export const ErrorNotice = ({ error }: { error: unknown }) => {
       className="flex items-start gap-2.5 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30"
     >
       <Icon name="alert" className="mt-px size-4" />
-      <span className="min-w-0">{message}</span>
+      <span className="min-w-0 flex-1">{message}</span>
+      {onRetry && (
+        <Button variant="secondary" size="sm" loading={retrying} onClick={onRetry} className="-my-1">
+          {t('actions.retry')}
+        </Button>
+      )}
     </div>
   );
 };
+
+/** The query fields `ListErrorNotice` reads; any TanStack Query result fits. */
+export interface ListQueryState {
+  error: unknown;
+  data: unknown;
+  isFetching: boolean;
+  refetch: () => unknown;
+}
+
+/** True when a list query failed before it loaded any data: show the error, never the empty state. */
+export const listFailed = (query: Pick<ListQueryState, 'error' | 'data'>): boolean =>
+  Boolean(query.error) && query.data === undefined;
+
+/**
+ * A failed list request: the localized error plus "Try again". Render it in
+ * place of the list's empty state, which would otherwise claim there is
+ * nothing to show when the list simply did not load.
+ */
+export const ListErrorNotice = ({ query }: { query: ListQueryState }) => (
+  <ErrorNotice error={query.error} retrying={query.isFetching} onRetry={() => void query.refetch()} />
+);
 
 type NoticeTone = 'info' | 'warning' | 'success';
 

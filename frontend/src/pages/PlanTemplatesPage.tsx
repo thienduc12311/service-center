@@ -12,7 +12,7 @@ import { api } from '../lib/api';
 import { useInvalidateOrg, usePlanTemplate, usePlanTemplates } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters } from '../i18n';
-import { Badge, Button, EmptyState, ErrorNotice, IconButton, Loading, Notice, PageHeader, SkeletonList } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, IconButton, ListErrorNotice, listFailed, Loading, Notice, PageHeader, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
 import { useTemplateNames } from '../components/templates/useTemplateNames';
 
@@ -278,8 +278,8 @@ export const PlanTemplatesPage = () => {
           </div>
         }
       />
-      <ErrorNotice error={templates.error} />
-      {templates.isLoading ? <SkeletonList rows={3} /> : !templates.data?.length ? (
+      {!listFailed(templates) && <ErrorNotice error={templates.error} />}
+      {templates.isLoading ? <SkeletonList rows={3} /> : listFailed(templates) ? <ListErrorNotice query={templates} /> : !templates.data?.length ? (
         <EmptyState
           icon="document"
           title={t('library.emptyTitle')}

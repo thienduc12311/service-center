@@ -83,4 +83,20 @@ describe('web People list', () => {
     expect(vi.mocked(api.listPeoplePage).mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ cursor: 'cursor-1' }));
     expect(screen.queryByRole('button', { name: 'Load more people' })).toBeNull();
   });
+
+  it('shows a failed load with Try again instead of the empty state (W9-WEB-D2)', async () => {
+    vi.mocked(api.listPeoplePage)
+      .mockRejectedValueOnce(new Error('503 Service Unavailable'))
+      .mockResolvedValue({ items: [person('p-1', 'An Nguyen')], next_cursor: null });
+    const user = renderPeople();
+
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(screen.queryByText('Nobody here yet')).toBeNull();
+
+    await user.click(retry);
+    expect(await screen.findByText('An Nguyen')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(api.listPeoplePage).toHaveBeenCalledTimes(2);
+  });
 });

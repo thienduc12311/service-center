@@ -17,6 +17,8 @@ import {
   PageHeader,
   Segmented,
   SkeletonList,
+  ListErrorNotice,
+  listFailed,
 } from '../components/ui';
 import { PlanListCard } from '../components/plan/PlanListCard';
 
@@ -177,10 +179,12 @@ export const PlansPage = () => {
         </div>
       </div>
 
-      <ErrorNotice error={plans.error} />
+      {!listFailed(plans) && <ErrorNotice error={plans.error} />}
 
       {plans.isLoading ? (
         <SkeletonList rows={4} />
+      ) : listFailed(plans) ? (
+        <ListErrorNotice query={plans} />
       ) : loadedPlans.length ? (
         <div className="space-y-3">
           <ul className="space-y-3">

@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   ASSIGNMENT_RESPONSE_REASON_MAX_LENGTH,
@@ -372,6 +373,23 @@ const ResponsibilityRow = ({ item, responses, canRespond }: ResponsibilityRowPro
     />
   );
 
+  const errorBlock = draft.error ? (
+    <View style={styles.errorWrap} accessibilityLiveRegion="polite">
+      <View style={styles.errorRow}>
+        <Icon name="alert" size={16} color={theme.accent.red.fg} />
+        <Text style={styles.errorText}>{failureText(draft.error)}</Text>
+      </View>
+      {draft.error.kind === 'network' && draft.request ? (
+        <Button
+          title={t('common:actions.retry')}
+          variant="secondary"
+          loading={draft.pending}
+          onPress={() => responses.retry(item.assignmentId)}
+        />
+      ) : null}
+    </View>
+  ) : null;
+
   return (
     <View style={styles.row}>
       <View style={styles.header}>
@@ -410,33 +428,6 @@ const ResponsibilityRow = ({ item, responses, canRespond }: ResponsibilityRowPro
         </View>
       ) : null}
 
-      {canRespond && mode === 'declining' ? (
-        <View style={styles.review}>
-          <Text style={styles.reviewText}>{t('responses.declineConfirm', { position: label })}</Text>
-          {reasonField}
-          {tooLong ? (
-            <Text style={styles.warning}>{t('responses.reasonTooLong', { max: ASSIGNMENT_RESPONSE_REASON_MAX_LENGTH })}</Text>
-          ) : null}
-          <View style={styles.actionRow}>
-            <Button
-              title={t('common:actions.cancel')}
-              variant="secondary"
-              style={styles.flex}
-              disabled={draft.pending}
-              onPress={() => responses.cancel(item.assignmentId)}
-            />
-            <Button
-              title={t('common:actions.decline')}
-              variant="danger"
-              style={styles.flex}
-              loading={draft.pending}
-              disabled={tooLong}
-              onPress={() => responses.respond(item.assignmentId, item.status, 'declined')}
-            />
-          </View>
-        </View>
-      ) : null}
-
       {canRespond && item.status === 'confirmed' && mode === 'idle' ? (
         <Button
           title={t('responses.withdrawOpen')}
@@ -446,24 +437,39 @@ const ResponsibilityRow = ({ item, responses, canRespond }: ResponsibilityRowPro
         />
       ) : null}
 
-      {canRespond && mode === 'withdrawing' ? (
-        <View style={styles.review}>
-          <Text style={styles.reviewText}>{t('responses.withdrawConfirm', { position: label })}</Text>
-          <Text style={styles.note}>{t('responses.withdrawExplain')}</Text>
+      {/* A sheet, not inline: on a lower card the inline actions sat under the tab bar (W9-NAT-D2). */}
+      {canRespond && mode !== 'idle' ? (
+        <ResponseSheet
+          busy={draft.pending}
+          onDismiss={() => responses.cancel(item.assignmentId)}
+        >
+          {mode === 'declining' ? (
+            <Text style={styles.reviewText} accessibilityRole="header">
+              {t('responses.declineConfirm', { position: label })}
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.reviewText} accessibilityRole="header">
+                {t('responses.withdrawConfirm', { position: label })}
+              </Text>
+              <Text style={styles.note}>{t('responses.withdrawExplain')}</Text>
+            </>
+          )}
           {reasonField}
           {tooLong ? (
             <Text style={styles.warning}>{t('responses.reasonTooLong', { max: ASSIGNMENT_RESPONSE_REASON_MAX_LENGTH })}</Text>
           ) : null}
+          {errorBlock}
           <View style={styles.actionRow}>
             <Button
-              title={t('responses.keep')}
+              title={mode === 'declining' ? t('common:actions.cancel') : t('responses.keep')}
               variant="secondary"
               style={styles.flex}
               disabled={draft.pending}
               onPress={() => responses.cancel(item.assignmentId)}
             />
             <Button
-              title={t('responses.withdraw')}
+              title={mode === 'declining' ? t('common:actions.decline') : t('responses.withdraw')}
               variant="danger"
               style={styles.flex}
               loading={draft.pending}
@@ -471,28 +477,56 @@ const ResponsibilityRow = ({ item, responses, canRespond }: ResponsibilityRowPro
               onPress={() => responses.respond(item.assignmentId, item.status, 'declined')}
             />
           </View>
-        </View>
+        </ResponseSheet>
       ) : null}
 
       {canRespond && item.status === 'declined' ? <ReplacementEntry item={item} /> : null}
 
-      {draft.error ? (
-        <View style={styles.errorWrap} accessibilityLiveRegion="polite">
-          <View style={styles.errorRow}>
-            <Icon name="alert" size={16} color={theme.accent.red.fg} />
-            <Text style={styles.errorText}>{failureText(draft.error)}</Text>
-          </View>
-          {draft.error.kind === 'network' && draft.request ? (
-            <Button
-              title={t('common:actions.retry')}
-              variant="secondary"
-              loading={draft.pending}
-              onPress={() => responses.retry(item.assignmentId)}
-            />
-          ) : null}
-        </View>
-      ) : null}
+      {mode === 'idle' || !canRespond ? errorBlock : null}
     </View>
+  );
+};
+
+/** Dims the screen behind the response sheet (the same in light and dark). */
+const SHEET_BACKDROP = 'rgba(15, 23, 42, 0.45)';
+
+interface ResponseSheetProps {
+  /** The answer is being sent: the sheet cannot be dismissed. */
+  busy: boolean;
+  onDismiss: () => void;
+  children: ReactNode;
+}
+
+/**
+ * A bottom sheet over the whole screen (above the tab bar), padded for the
+ * home indicator and lifted by the keyboard, for the decline/withdraw review.
+ */
+const ResponseSheet = ({ busy, onDismiss, children }: ResponseSheetProps) => {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  const insets = useSafeAreaInsets();
+  const dismiss = () => {
+    if (!busy) onDismiss();
+  };
+  return (
+    <Modal visible transparent animationType="slide" statusBarTranslucent onRequestClose={dismiss}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.sheetRoot}>
+        <Pressable
+          style={styles.sheetBackdrop}
+          onPress={dismiss}
+          accessible={false}
+          importantForAccessibility="no"
+        />
+        <View
+          accessibilityViewIsModal
+          style={[styles.sheet, { paddingBottom: insets.bottom + theme.space.lg }]}
+        >
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetContent}>
+            {children}
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 };
 
@@ -573,6 +607,16 @@ const makeStyles = (theme: Theme) =>
     batchTime: { gap: theme.space.sm },
     reviewText: { ...theme.type.body, color: theme.color.ink },
     reasonInput: { minHeight: 72, textAlignVertical: 'top' },
+    sheetRoot: { flex: 1, justifyContent: 'flex-end' },
+    sheetBackdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: SHEET_BACKDROP },
+    sheet: {
+      backgroundColor: theme.color.surface,
+      borderTopLeftRadius: theme.radius.lg + 2,
+      borderTopRightRadius: theme.radius.lg + 2,
+      paddingTop: theme.space.lg,
+      maxHeight: '90%',
+    },
+    sheetContent: { gap: theme.space.md, paddingHorizontal: theme.space.lg },
     actionRow: { flexDirection: 'row', gap: theme.space.md },
     errorWrap: { gap: theme.space.sm },
     errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.space.sm },

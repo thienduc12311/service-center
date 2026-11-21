@@ -12,7 +12,7 @@ import {
 } from '@service-center/shared';
 import { useInvalidateMedia, useMediaDetail, useMediaList } from '../hooks/queries';
 import { api } from '../lib/api';
-import { Badge, Button, EmptyState, ErrorNotice, Modal, PageHeader, SkeletonList } from '../components/ui';
+import { Badge, Button, EmptyState, ErrorNotice, ListErrorNotice, listFailed, Modal, PageHeader, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
 import { FilesPanel } from '../components/files/FilesPanel';
 import { useErrorText, useFormatters } from '../i18n';
@@ -68,8 +68,8 @@ export const MediaLibraryPage = () => {
       </div>
       {list.isLoading ? (
         <SkeletonList rows={4} />
-      ) : list.error ? (
-        <ErrorNotice error={list.error} />
+      ) : listFailed(list) ? (
+        <ListErrorNotice query={list} />
       ) : rows.length === 0 ? (
         <EmptyState icon="media" title={t('library.emptyTitle')} description={t('library.emptyDescription')} />
       ) : (

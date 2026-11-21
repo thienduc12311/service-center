@@ -6,7 +6,7 @@ import { canEditTeamRoster, rosterDetailLines, rosterDisplayName, type TeamRow, 
 import { api } from '../lib/api';
 import { usePeople, useTeams, useInvalidateOrg } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
-import { Avatar, Button, EmptyState, ErrorNotice, IconButton, Menu, MenuItem, Modal, PageHeader, SectionHeader, SkeletonList } from '../components/ui';
+import { Avatar, Button, EmptyState, ErrorNotice, IconButton, ListErrorNotice, listFailed, Menu, MenuItem, Modal, PageHeader, SectionHeader, SkeletonList } from '../components/ui';
 import { Icon } from '../components/icons';
 import { TeamEditor } from '../components/TeamEditor';
 import { TeamPolicyModal } from '../components/TeamPolicyModal';
@@ -128,11 +128,13 @@ export const TeamsPage = () => {
       />
 
       <div className="mb-4 empty:hidden">
-        <ErrorNotice error={teams.error ?? addMember.error ?? removeMember.error} />
+        <ErrorNotice error={(listFailed(teams) ? null : teams.error) ?? addMember.error ?? removeMember.error} />
       </div>
 
       {teams.isLoading ? (
         <SkeletonList rows={4} />
+      ) : listFailed(teams) ? (
+        <ListErrorNotice query={teams} />
       ) : teams.data?.length ? (
         <>
           <SectionHeader title={t('teamsPage.title')} meta={teams.data.length} />
