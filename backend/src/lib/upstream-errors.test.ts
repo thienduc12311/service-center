@@ -76,3 +76,15 @@ describe('upstreamLogEntry: no personal data in the server log', () => {
     expect(entry.message).toBe('Failing row contains ([redacted]).');
   });
 });
+
+describe('fromPostgrestError: constraint errors keep row values server-side', () => {
+  it.each([
+    ['23505', 409, 'Key (email)=(ada@example.test) already exists.'],
+    ['23503', 400, 'Key (person_id)=(11111111-1111-4111-8111-111111111111) is not present in table "people".'],
+    ['23514', 400, 'Failing row contains (Ada, ada@example.test, +1 555 0100, 1990-01-01).'],
+  ])('%s answers %i without details', (code, status, details) => {
+    const mapped = fromPostgrestError({ code, message: 'constraint', details });
+    expect(mapped).toMatchObject({ status });
+    expect(mapped.details).toBeUndefined();
+  });
+});

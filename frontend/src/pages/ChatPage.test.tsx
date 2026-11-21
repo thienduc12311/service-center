@@ -11,7 +11,7 @@ import { ChatPage } from './ChatPage';
 vi.mock('../lib/api', () => ({
   getStoredOrganizationId: () => 'org-1',
   api: {
-    conversations: vi.fn(),
+    conversationsPage: vi.fn(),
     getConversation: vi.fn(),
     listTeams: vi.fn(),
     mentionCandidates: vi.fn(),
@@ -51,7 +51,7 @@ const deferred = <T,>() => {
   return { promise, resolve, reject };
 };
 
-type ConversationsPage = Awaited<ReturnType<typeof api.conversations>>;
+type ConversationsPage = Awaited<ReturnType<typeof api.conversationsPage>>;
 
 const renderChat = (listPage: (cursor: string | undefined) => ConversationsPage = () => (
   { items: [thread.conversation], next_cursor: null, has_more: false }
@@ -59,7 +59,7 @@ const renderChat = (listPage: (cursor: string | undefined) => ConversationsPage 
   vi.stubGlobal('matchMedia', () => ({
     matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }));
-  vi.mocked(api.conversations).mockImplementation(async (query) => listPage(query?.cursor));
+  vi.mocked(api.conversationsPage).mockImplementation(async (query) => listPage(query?.cursor));
   vi.mocked(api.getConversation).mockResolvedValue(thread);
   vi.mocked(api.listTeams).mockResolvedValue([]);
   vi.mocked(api.mentionCandidates).mockResolvedValue([]);
@@ -157,7 +157,7 @@ describe('web chat list paging', () => {
 
     await user.click(more);
     expect(await screen.findByText('Worship band')).toBeTruthy();
-    expect(vi.mocked(api.conversations).mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ cursor: 'cursor-1' }));
+    expect(vi.mocked(api.conversationsPage).mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ cursor: 'cursor-1' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Load more conversations' })).toBeNull());
   });
 });

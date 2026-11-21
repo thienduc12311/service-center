@@ -195,12 +195,14 @@ export const fromPostgrestError = (error: PostgrestErrorLike): HttpError => {
     case '55P03':
     case '40P01':
       return HttpError.conflict('Library is busy; retry the same reviewed request');
+    // Postgres puts row and key values in `details` for class 23 ("Key (email)=(…)",
+    // "Failing row contains (…)"), including columns the caller never sent: keep it server-side.
     case '23505':
-      return HttpError.conflict('That record already exists', error.details);
+      return HttpError.conflict('That record already exists');
     case '23503':
-      return HttpError.badRequest('Referenced record does not exist', error.details);
+      return HttpError.badRequest('Referenced record does not exist');
     case '23514':
-      return HttpError.badRequest('A value failed a database constraint', error.details);
+      return HttpError.badRequest('A value failed a database constraint');
     // Malformed uuid/number/date literals that slipped past request
     // validation: the caller's input, never the engine's message.
     case '22P02':

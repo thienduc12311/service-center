@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useQueryClient, type QueryFilters } from '@tanstack/react-query';
 import { createRealtimeKeyStore, createRealtimePokeSubscriptions, createResourceSubscription, pokeSignalOf, POKE_EVENT, REALTIME_KEY_LOADING, type PokeResource, type RealtimeKeyState, type ResourceSubscription } from '@service-center/shared';
-import { api, getStoredOrganizationId } from '../lib/api';
+import { api } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../providers/AuthProvider';
 
@@ -14,11 +14,8 @@ const observe = createRealtimePokeSubscriptions({
 
 /** Topic names carry the organization key, which the API withholds from a removed member. */
 const keyStore = createRealtimeKeyStore({
-  fetchKey: async (organizationId) => {
-    // ApiClient.realtimeKey cannot pin an organization yet: refuse to fetch when the active one moved on.
-    if (getStoredOrganizationId() !== organizationId) throw new Error('Active organization changed');
-    return api.realtimeKey();
-  },
+  // Pin the request to the organization the key is for, whatever church is active now.
+  fetchKey: (organizationId) => api.realtimeKey({ organizationId }),
   observe,
 });
 

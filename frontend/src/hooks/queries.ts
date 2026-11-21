@@ -689,7 +689,7 @@ export const useConversations = (visible: boolean) => {
   const queryKey = [...keys.conversations(org), 'pages'] as const;
   const query = useInfiniteQuery({
     queryKey,
-    queryFn: ({ pageParam }) => api.conversations({ cursor: pageParam }),
+    queryFn: ({ pageParam }) => api.conversationsPage({ cursor: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: Boolean(org && visible),

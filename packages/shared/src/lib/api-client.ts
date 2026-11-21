@@ -1309,7 +1309,9 @@ export class ServiceCenterApi {
 
   // ------------------------------------------------------------- access --
   /** The caller's effective access in the active organization. */
-  realtimeKey = () => this.request<RealtimeTopicKey>('GET', '/api/v1/realtime/key');
+  /** The organization's Realtime topic key; `scope` pins the church so a switch mid-request can't swap keys. */
+  realtimeKey = (scope?: RequestScope) =>
+    this.request<RealtimeTopicKey>('GET', '/api/v1/realtime/key', undefined, undefined, scope);
   /** Topic names for the resources the caller may currently subscribe to (absent = no access). */
   realtimeTopics = (body: RealtimeResourceTopicsInput) =>
     this.request<RealtimeResourceTopics>('POST', '/api/v1/realtime/topics', body);
