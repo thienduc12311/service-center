@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canOpenPlanChat, type PlanChatAssignment } from '@service-center/shared';
+import { canOfferPlanChat, canOpenPlanChat, type PlanChatAssignment } from '@service-center/shared';
 
 const assignment = (overrides: Partial<PlanChatAssignment>): PlanChatAssignment => ({
   user_id: 'me',
@@ -44,5 +44,11 @@ describe('canOpenPlanChat', () => {
   it('hides it on the live pages until the plan has loaded (no assignments, no leader grant)', () => {
     expect(canOpenPlanChat(false, [], undefined, undefined)).toBe(false);
     expect(canOpenPlanChat(false, [], 'me', false)).toBe(false);
+  });
+
+  it('does not offer it to a leader before the plan has loaded, then follows viewer_is_adult_person', () => {
+    expect(canOfferPlanChat(undefined, true, 'me')).toBe(false);
+    expect(canOfferPlanChat({ assignments: [], viewer_is_adult_person: true }, true, 'me')).toBe(true);
+    expect(canOfferPlanChat({ assignments: [], viewer_is_adult_person: false }, true, 'me')).toBe(false);
   });
 });

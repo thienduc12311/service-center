@@ -169,6 +169,7 @@
     "joinTeams": "Thêm tôi vào các ban đã chọn."
   },
   "mobileTeams": {
+    "openLinkFailed": "Không mở được liên kết này.",
     "entry": "Các ban",
     "entryDescription": "Ai phục vụ ở đâu, và ở vị trí nào.",
     "youManage": "Bạn có thể thay đổi danh sách này",

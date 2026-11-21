@@ -8,7 +8,7 @@ import {
   ApiError,
   LIVE_FALLBACK_POLL_MS,
   LIVE_STATUS_ACCENTS,
-  canOpenPlanChat,
+  canOfferPlanChat,
   effectiveTransitionTimes,
   formatLiveDuration,
   liveRunSchedule,
@@ -140,11 +140,10 @@ export default function LiveScreen() {
   });
   // Same rule as the plan screen: only offer the chat to people the server will let in.
   const planTarget = { serviceTypeId: plan.data?.service_type_id };
-  const canChat = canOpenPlanChat(
+  const canChat = canOfferPlanChat(
+    plan.data,
     can('plans.edit', planTarget) || can('scheduling.manage', planTarget),
-    plan.data?.assignments ?? [],
     user?.profile.id,
-    plan.data?.viewer_is_adult_person,
   );
   const runsKey = queryKeys.liveRuns(queryScope, planId);
   const runs = useQuery({

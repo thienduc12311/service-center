@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPokeSubscriptions, createRealtimePokeSubscriptions, pokeSignalOf, type PokeListener } from './realtime-pokes.js';
+import { REKEY_JITTER_MS, JOIN_RETRY_MAX_MS, createPokeSubscriptions, createRealtimePokeSubscriptions, joinRetryDelay, pokeSignalOf, type PokeListener } from './realtime-pokes.js';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const secondId = '22222222-2222-4222-8222-222222222222';
@@ -18,12 +18,12 @@ describe('private poke subscriptions', () => {
     expect(pokeSignalOf(undefined)).toBeUndefined();
   });
 
-  it('runs the rekey callback at once and still refreshes the data', async () => {
+  it('runs the rekey callback after a random delay under the jitter cap and still refreshes the data', async () => {
     const notifiers = new Map<string, PokeListener>();
     const observe = createPokeSubscriptions((key, notify) => {
       notifiers.set(key, notify);
       return async () => undefined;
-    });
+    }, { random: () => 0.5 });
     const refresh = vi.fn(async () => undefined);
     const onRekey = vi.fn();
     const observer = observe(refresh, onRekey);
@@ -31,9 +31,13 @@ describe('private poke subscriptions', () => {
     notifiers.get(topic)?.();
     expect(onRekey).not.toHaveBeenCalled();
     notifiers.get(topic)?.('rekey');
+    await vi.advanceTimersByTimeAsync(REKEY_JITTER_MS / 2 - 1);
+    expect(onRekey).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
     expect(onRekey).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(50);
-    expect(refresh).toHaveBeenCalledTimes(1);
+    // One for the plain poke before, one after the delayed rekey.
+    expect(refresh).toHaveBeenCalledTimes(2);
     observer.dispose();
   });
 
@@ -122,26 +126,62 @@ describe('private poke subscriptions', () => {
     left();
   });
 
-  it('checks API access once after a failed join and refreshes again on reconnect', async () => {
+  it('re-asks the API with growing, capped delays while joins keep failing, and resets on success', async () => {
     let updateStatus = (_status: string) => {};
     const channel = { subscribe: (onStatus: (status: string) => void) => { updateStatus = onStatus; } };
     const observe = createRealtimePokeSubscriptions({
       authorize: async () => undefined,
       open: () => channel,
       remove: async () => undefined,
-    });
+    }, { random: () => 0 });
     const refresh = vi.fn(async () => undefined);
-    const observer = observe(refresh);
+    const onRekey = vi.fn();
+    const observer = observe(refresh, onRekey);
     observer.setTopics([topic]);
     await vi.advanceTimersByTimeAsync(0);
+    // random 0: delay is half the ceiling, 2s * 2^n / 2 => 1s, 2s, 4s ...
     updateStatus('CHANNEL_ERROR');
-    await vi.advanceTimersByTimeAsync(50);
-    updateStatus('TIMED_OUT');
+    updateStatus('TIMED_OUT'); // ignored while a retry is pending
+    await vi.advanceTimersByTimeAsync(999);
+    expect(onRekey).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(onRekey).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(50);
     expect(refresh).toHaveBeenCalledTimes(1);
+    updateStatus('CHANNEL_ERROR');
+    await vi.advanceTimersByTimeAsync(1_999);
+    expect(onRekey).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(onRekey).toHaveBeenCalledTimes(2);
+    // A good join resets the backoff.
     updateStatus('SUBSCRIBED');
     await vi.advanceTimersByTimeAsync(50);
-    expect(refresh).toHaveBeenCalledTimes(2);
+    updateStatus('CHANNEL_ERROR');
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(onRekey).toHaveBeenCalledTimes(3);
     observer.dispose();
+  });
+
+  it('never retries tighter than the base delay or looser than the cap', () => {
+    expect(joinRetryDelay(0, () => 0)).toBeGreaterThan(0);
+    for (const failures of [0, 3, 10, 50]) {
+      expect(joinRetryDelay(failures, () => 1)).toBeLessThanOrEqual(JOIN_RETRY_MAX_MS);
+    }
+    expect(joinRetryDelay(50, () => 0)).toBe(JOIN_RETRY_MAX_MS / 2);
+  });
+
+  it('stops a pending retry on dispose', async () => {
+    const notifiers = new Map<string, PokeListener>();
+    const observe = createPokeSubscriptions((key, notify) => {
+      notifiers.set(key, notify);
+      return async () => undefined;
+    }, { random: () => 0 });
+    const onRekey = vi.fn();
+    const observer = observe(vi.fn(async () => undefined), onRekey);
+    observer.setTopics([topic]);
+    notifiers.get(topic)?.('join-failed');
+    observer.dispose();
+    await vi.advanceTimersByTimeAsync(JOIN_RETRY_MAX_MS);
+    expect(onRekey).not.toHaveBeenCalled();
   });
 });

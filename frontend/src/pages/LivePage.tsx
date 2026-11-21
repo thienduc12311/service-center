@@ -4,7 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LocalizedError,
-  canOpenPlanChat,
+  canOfferPlanChat,
   type LiveCountdownPolicy,
   type LiveRunState,
   type LiveServiceTimeOption,
@@ -53,11 +53,10 @@ export const LivePage = () => {
   const runs = useLivePlanRuns(planId);
   // Same rule as the plan page: only offer the chat to people the server will let in.
   const planTarget = { serviceTypeId: plan.data?.service_type_id };
-  const canChat = canOpenPlanChat(
+  const canChat = canOfferPlanChat(
+    plan.data,
     can('plans.edit', planTarget) || can('scheduling.manage', planTarget),
-    plan.data?.assignments ?? [],
     user?.profile.id,
-    plan.data?.viewer_is_adult_person,
   );
   const live = useLiveRun(runId);
   const [policy, setPolicy] = useState<LiveCountdownPolicy>('item');
