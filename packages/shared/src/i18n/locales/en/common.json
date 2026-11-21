@@ -198,5 +198,15 @@
   "list": {
     "showingOf": "Showing {{shown}} of {{total}}",
     "refineSearch": "Showing the first {{shown}} — refine your search to see others"
+  },
+  "optionPicker": {
+    "search": "Search",
+    "noMatches": "No matches",
+    "choose": "Choose…",
+    "change": "Change…",
+    "selectedNames_one": "{{count}} selected: {{names}}",
+    "selectedNames_other": "{{count}} selected: {{names}}",
+    "optionCount_one": "{{count}} option",
+    "optionCount_other": "{{count}} options"
   }
 }

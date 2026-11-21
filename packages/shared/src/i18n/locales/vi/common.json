@@ -186,5 +186,13 @@
   "list": {
     "showingOf": "Đang hiển thị {{shown}} / {{total}}",
     "refineSearch": "Đang hiển thị {{shown}} kết quả đầu tiên — hãy tìm cụ thể hơn để xem thêm"
+  },
+  "optionPicker": {
+    "search": "Tìm kiếm",
+    "noMatches": "Không có kết quả phù hợp",
+    "choose": "Chọn…",
+    "change": "Đổi…",
+    "selectedNames_other": "Đã chọn {{count}}: {{names}}",
+    "optionCount_other": "{{count}} lựa chọn"
   }
 }

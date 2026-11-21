@@ -116,8 +116,9 @@ export const queryKeys = {
   /** MOB-018: prefix for every F09 targeted-message list and detail; invalidate this after a send or retry. */
   messagesAll: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'messages'] as const,
+  /** Keyset pages (`before` cursor) of one box, newest first. */
   messageList: (scope: ProtectedQueryScope | null, box: 'sent' | 'received') =>
-    [...privateRoot(scope), 'messages', 'list', box] as const,
+    [...privateRoot(scope), 'messages', 'pages', box] as const,
   /** MOB-018: one message — the sender's per-channel outcomes, or a recipient's own copy. */
   message: (scope: ProtectedQueryScope | null, messageId: string | null | undefined) =>
     [...privateRoot(scope), 'messages', 'detail', messageId ?? null] as const,
