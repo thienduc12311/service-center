@@ -101,7 +101,7 @@ do $$ begin
 end $$;
 
 -- People list paging: sort_name is the generated, granted, indexed keyset column
--- (needs supabase/migrations/20261127000200_w8_people_sort_name.sql loaded first).
+-- (needs supabase/migrations/20261127000500_w8_people_sort_name.sql loaded first).
 reset role;
 do $$
 declare v int;
