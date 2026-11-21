@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LocalizedError,
+  canOpenPlanChat,
   type LiveCountdownPolicy,
   type LiveRunState,
   type LiveServiceTimeOption,
@@ -46,10 +47,18 @@ export const LivePage = () => {
   const [params, setParams] = useSearchParams();
   const runId = params.get('run');
   const navigate = useNavigate();
-  const { organizationId } = useAuth();
+  const { organizationId, can, user } = useAuth();
   const queryClient = useQueryClient();
   const plan = usePlan(planId);
   const runs = useLivePlanRuns(planId);
+  // Same rule as the plan page: only offer the chat to people the server will let in.
+  const planTarget = { serviceTypeId: plan.data?.service_type_id };
+  const canChat = canOpenPlanChat(
+    can('plans.edit', planTarget) || can('scheduling.manage', planTarget),
+    plan.data?.assignments ?? [],
+    user?.profile.id,
+    plan.data?.viewer_is_adult_person,
+  );
   const live = useLiveRun(runId);
   const [policy, setPolicy] = useState<LiveCountdownPolicy>('item');
   const [stage, setStage] = useState(false);
@@ -93,9 +102,11 @@ export const LivePage = () => {
         back={{ to: `/plans/${planId}`, label: t('live.page.back') }}
         title={plan.data?.title ? t('live.page.title', { title: plan.data.title }) : t('live.page.titleFallback')}
         actions={
-          <Button variant="secondary" icon="chat" loading={openChat.isPending} onClick={() => openChat.mutate()}>
-            {t('live.page.planChat')}
-          </Button>
+          canChat ? (
+            <Button variant="secondary" icon="chat" loading={openChat.isPending} onClick={() => openChat.mutate()}>
+              {t('live.page.planChat')}
+            </Button>
+          ) : undefined
         }
       />
       <ErrorNotice error={openChat.error ? new LocalizedError({ key: 'media:live.page.planChatDenied' }) : null} />
