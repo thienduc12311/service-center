@@ -189,24 +189,33 @@ export interface MessageTemplateList {
   can_manage_shared: boolean;
 }
 
-export type OperationalMessageRow = {
+/** The columns a message recipient may read (W7-MSG-D6). */
+export type OperationalMessageView = {
   id: string;
   organization_id: string;
   plan_id: string | null;
+  subject: string;
+  body: string;
+  /** Names captured at send time; the recipient's rendered text is built from them. */
+  variables: MessageVariableSnapshot;
+  created_by: string;
+  created_at: string;
+}
+
+/** Sender-side audit columns; only the sender and administrators receive them. */
+export type OperationalMessageAudit = {
   audience: MessageAudience;
   audience_hash: string;
   request_hash: string;
-  subject: string;
-  body: string;
-  variables: MessageVariableSnapshot;
   template_id: string | null;
   template_revision: number | null;
   recipient_count: number;
   excluded_count: number;
   idempotency_key: string;
-  created_by: string;
-  created_at: string;
 }
+
+/** The full stored row, as the sender and administrators read it. */
+export type OperationalMessageRow = OperationalMessageView & OperationalMessageAudit;
 
 /** Variable values captured at send time (recipient names live on each recipient row). */
 export interface MessageVariableSnapshot {
@@ -259,7 +268,8 @@ export interface MessageRecipientOutcome {
 }
 
 export interface OperationalMessageDetail {
-  message: OperationalMessageRow;
+  /** The full row for the sender/administrators; the recipient-safe view for a recipient. */
+  message: OperationalMessageView | OperationalMessageRow;
   sender_name: string | null;
   /** Sender/administrator view only; absent for a recipient. */
   outcomes?: MessageRecipientOutcome[];
@@ -268,7 +278,7 @@ export interface OperationalMessageDetail {
   rendered_for_me?: { subject: string; body: string } | null;
 }
 
-export interface OperationalMessageSummary extends OperationalMessageRow {
+export interface OperationalMessageSummary extends OperationalMessageView, Partial<OperationalMessageAudit> {
   sender_name: string | null;
   /** The caller sent it (not merely received it). */
   sent_by_me: boolean;

@@ -239,13 +239,16 @@ export const useRehearsalPlayer = (
     const element = media.current;
     if (!element || !track) return;
     if (!isInlineTrack(track)) return;
+    if (!element.paused) {
+      element.pause();
+      return;
+    }
     if (signed && Date.now() > signed.expiresAt - RENEW_MARGIN_MS) {
-      // Renew first: the old URL may expire mid-play.
+      // Renew before resuming: the old URL may expire mid-play.
       void load(track, true, element.currentTime);
       return;
     }
-    if (element.paused) void element.play().catch(() => setStatus('paused'));
-    else element.pause();
+    void element.play().catch(() => setStatus('paused'));
   }, [media, track, signed, load]);
 
   const handlers = useMemo(

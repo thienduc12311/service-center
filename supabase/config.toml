@@ -28,7 +28,10 @@ file_size_limit = "50MiB"
 enabled = true
 site_url = "http://localhost:5173"
 additional_redirect_urls = ["http://localhost:5173", "servicecenter://auth-callback", "exp://127.0.0.1:8081"]
-jwt_expiry = 3600
+# W7-JRN-D3: 15 minutes bounds what a signed-out token can still read where the
+# session check cannot run (Realtime). Hosted projects: set the same value in
+# Dashboard > Authentication > Sessions (JWT expiry). See docs/adr/0005-*.md.
+jwt_expiry = 900
 enable_refresh_token_rotation = true
 enable_signup = true
 

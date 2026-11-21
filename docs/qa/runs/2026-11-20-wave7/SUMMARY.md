@@ -120,3 +120,21 @@ Branch `feature/qa-wave7-fixes` (merges of `feature/qa-wave7-fixes-{ui,api,db}` 
 - W2-RESP-D4 (respond-link preview shows times the respond call rejects as stale).
 - Atomic `service_date` update (see W7-NAT-D2 row).
 - Fixture side effect of retest: owner insert/delete of `newcomer` in `qa-20261120-acc-a` may have left an auto-created Person row.
+
+### Follow-ups (branch `feature/qa-wave7-followups`)
+
+Five parallel fix agents in separate worktrees, merged and re-verified together. Migrations `20261126000000`–`20261126000300` (plus coordinator perf fix `20261126000002`) applied to local Supabase without reset. `npm run typecheck` clean; workspace tests 599 + 401 + 49 + 395 + 72 PASS; `bash supabase/tests/run-all.sh` **52 passed, 0 failed**; live API re-check 24/24 PASS (wave 7 set + follow-ups) with callers' own tokens.
+
+| ID | Fix | Where |
+|---|---|---|
+| W7-MSG-D6 | Recipients lose SELECT on `operational_messages`; they read through `my_received_messages(org)` (recipient-safe columns only). Live: base-table read `[]`, received list has no audit keys | `20261126000000_w7f_message_recipient_read_path.sql`, `backend/src/services/messages.ts` |
+| W7-MSG-D4 | Notification `body` nulled when the message is deleted/hidden; conversation notifications hidden from users who can no longer open the conversation | `20261126000001_w7f_notification_snippet_access.sql` |
+| (perf) | The D4 policy ran the conversation check per row (~0.2 ms/row). Now once per statement via a materialized initplan: unread count 22 → 2.8 ms, feed page 21 → 1.2 ms | `20261126000002_w7f_notification_access_once_per_statement.sql` |
+| W7-NAT-D2 (atomic) | `plans.service_date` follows the earliest service time via statement-level triggers on `plan_times`, in the same transaction for every write path; second API write removed | `20261126000100_w7f_plan_date_follows_times.sql`, `backend/src/routes/plans.ts` |
+| W2-RESP-D4 | Respond-link preview applies the same currency test as respond (`assignment_snapshot_state`): stale 409, expired 410 | `20261126000101_w7f_snapshot_currency.sql`, respond route |
+| W7-ACC-D7 | Signed download URLs 300 → 60 s (files, offline packs, report exports), song book 3600 → 120 s; clients already renew | `backend/src/services/files.ts`, `report-exports.ts`, `routes/songbooks.ts`, `docs/operations/session-and-url-lifetimes.md` |
+| W7-JRN-D3 | PostgREST pre-request hook + restrictive `storage.objects` policy reject a JWT whose `session_id` no longer exists (~8 µs/request); `jwt_expiry` 3600 → 900. Live: old token after global sign-out → 401 on table and RPC; new session, anon, service role unaffected. Residual: open Realtime socket until expiry | `20261126000200_w7f_session_liveness.sql`, `supabase/config.toml`, `docs/adr/0005-session-liveness-and-token-lifetime.md` |
+| New — template/duplicate data loss | Since `people_owner_privacy`, a non-owner scheduler's "save template from plan" lost the roster and "duplicate plan" dropped item leaders (functions read `people` under caller RLS). New `private.plan_active_people(plan)` returns only referenced Person IDs to callers who can edit/schedule the plan | `20261126000300_w7f_copy_without_people_visibility.sql` |
+| SQL suites | f08, f10, f11, f14, f15, i18n-preferred-language, member-avatars repaired to be self-contained; `supabase/tests/run-all.sh` runs every suite in begin/rollback | `supabase/tests/` |
+
+Ops notes: `jwt_expiry = 900` needs a local stack restart and the same value on the hosted project. The pre-request hook is set on the `authenticator` role by the migration.

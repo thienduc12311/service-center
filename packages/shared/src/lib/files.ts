@@ -47,8 +47,15 @@ export type FileMimeType = (typeof FILE_MIME_TYPES)[number];
 export const FILE_MAX_BYTES = 26_214_400;
 /** Upload intents (and Supabase signed upload URLs) last two hours. */
 export const FILE_UPLOAD_TTL_SECONDS = 7200;
-/** Download links are short; ask again for a new one (access is rechecked). */
-export const FILE_DOWNLOAD_TTL_SECONDS = 300;
+/**
+ * Download links are short; ask again for a new one (access is rechecked at
+ * issuance with the caller's token). A signed URL cannot be revoked, so this
+ * is the residual window after a member is removed or a file is deleted
+ * (docs/operations/session-and-url-lifetimes.md). Clients open or fetch at
+ * once and renew ~20 s before expiry (web player, mobile player, offline
+ * pack download), so one minute is enough.
+ */
+export const FILE_DOWNLOAD_TTL_SECONDS = 60;
 export const FILE_DOCUMENT_MAX_CHARS = 100_000;
 
 /** Browsers leave some types blank or vary them; map by extension as a fallback. */

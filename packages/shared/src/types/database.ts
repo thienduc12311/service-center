@@ -60,6 +60,7 @@ import type {
   NoteCategoryRow,
   OperationalMessageRecipientRow,
   OperationalMessageRow,
+  OperationalMessageView,
   PlanItemCommentMentionRow,
   PlanItemCommentRow,
   PlanNoteRow,
@@ -205,6 +206,8 @@ export type PlanItemType = 'song' | 'header' | 'item';
 /** How often plans for a service type come round. Drives the suggested next service date. */
 export type PlanRecurrence = 'weekly' | 'biweekly' | 'monthly' | 'occasionally';
 export type AssignmentStatus = 'unconfirmed' | 'confirmed' | 'declined';
+/** Whether an assignment request snapshot still matches the live assignments (`assignment_snapshot_state`). */
+export type AssignmentSnapshotState = 'current' | 'stale' | 'expired';
 export type NotificationType =
   | 'assignment_scheduled'
   | 'assignment_reminder'
@@ -1308,6 +1311,10 @@ export type Database = {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
     };
     Functions: {
+      my_received_messages: {
+        Args: { p_organization_id: string };
+        Returns: OperationalMessageView[];
+      };
       my_conversation: {
         Args: { p_organization_id: string; p_conversation_id: string };
         Returns: ConversationSummary[];
@@ -1548,6 +1555,10 @@ export type Database = {
       respond_via_assignment_link: {
         Args: { p_token_hash: string; p_status: AssignmentStatus };
         Returns: Array<{ outcome: 'ok' | 'not_found' | 'used' | 'expired' | 'stale'; assignments_updated: number; effect_id: string | null }>;
+      };
+      assignment_snapshot_state: {
+        Args: { p_snapshot: string };
+        Returns: AssignmentSnapshotState;
       };
       replace_plan_times: {
         Args: { p_plan_id: string; p_times: unknown; p_expected_revision?: number | null };

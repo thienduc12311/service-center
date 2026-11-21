@@ -37,6 +37,14 @@ insert into public.plan_times (id, plan_id, kind, name, starts_at, ends_at, sort
   ((select id from f08 where k = 'd_service'), (select id from f08 where k = 'plan_d'), 'service', 'Service',
    now() + interval '310 days', now() + interval '310 days 1 hour', 1);
 
+-- Isolation: materialize_due_reminders drains at most 50 queued plans per call,
+-- oldest first. A local database keeps a backlog of other plans in
+-- reminder_recompute_queue (no worker runs locally), so this fixture's plans
+-- would never reach the front. Drop the unrelated backlog inside this
+-- transaction (rolled back with everything else); only this suite's plans stay.
+delete from public.reminder_recompute_queue
+ where plan_id not in (select id from f08 where k like 'plan\_%');
+
 -- ============================================================ release =====
 set local role authenticated;
 set local request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222';

@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { createSongbookSchema, type CreateSongbookInput, type SongbookDetail } from '@service-center/shared';
+import {
+  createSongbookSchema,
+  SONGBOOK_DOCUMENT_URL_TTL_SECONDS,
+  type CreateSongbookInput,
+  type SongbookDetail,
+} from '@service-center/shared';
 import { param } from '../lib/params.js';
 import { validateBody } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
@@ -41,7 +46,7 @@ songbooksRouter.get('/:id', async (req, res) => {
 
   book.items = [...(book.items ?? [])].sort((a, b) => a.sort_order - b.sort_order);
   if (book.source_storage_path) {
-    const { data } = await req.db.storage.from('songbooks').createSignedUrl(book.source_storage_path, 3600);
+    const { data } = await req.db.storage.from('songbooks').createSignedUrl(book.source_storage_path, SONGBOOK_DOCUMENT_URL_TTL_SECONDS);
     book.document_url = data?.signedUrl ?? null;
   }
   res.json(book);

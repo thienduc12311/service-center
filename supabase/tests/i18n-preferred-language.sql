@@ -39,9 +39,13 @@ begin
      or (select column_default from information_schema.columns where table_schema = 'public' and table_name = 'people' and column_name = 'preferred_language') is not null then
     raise exception 'preferred_language must be nullable without a default';
   end if;
-  -- No forced backfill: existing people stay Automatic.
-  if exists (select 1 from public.people where preferred_language is not null) then
-    raise exception 'existing people were assigned an explicit language';
+  -- No forced backfill: a Person created without a language stays Automatic.
+  -- (Self-contained: the old check scanned every people row, which fails as soon
+  -- as anyone in the shared database picks a language.)
+  insert into public.people (id, organization_id, first_name) values (gen_random_uuid(), 'aaaaaaaa-0000-4000-8000-000000000001', 'I18n default probe');
+  if (select preferred_language from public.people where first_name = 'I18n default probe'
+        and organization_id = 'aaaaaaaa-0000-4000-8000-000000000001') is not null then
+    raise exception 'a new Person was assigned an explicit language';
   end if;
   -- Not exposed in the member-wide directory projection.
   if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'people_directory' and column_name = 'preferred_language') then

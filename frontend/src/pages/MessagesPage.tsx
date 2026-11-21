@@ -104,7 +104,7 @@ export const MessagesPage = () => {
                   <span className="block truncate font-medium text-slate-900 group-hover:text-brand-700 dark:text-white dark:group-hover:text-brand-200">{message.subject}</span>
                   <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
                     {t('messagesPage.listMeta', {
-                      summary: message.sent_by_me
+                      summary: message.sent_by_me && message.recipient_count !== undefined
                         ? t('messagesPage.recipients', { count: message.recipient_count })
                         : message.sender_name
                           ? t('messagesPage.from', { name: message.sender_name })
@@ -191,7 +191,7 @@ export const MessageDetailPage = () => {
         <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('messageDetail.variablesNote')}</p>
       )}
 
-      {outcomes && (
+      {outcomes && 'recipient_count' in row && (
         <section className="mt-8 space-y-3">
           <SectionHeader
             className="!mb-0"

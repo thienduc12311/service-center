@@ -113,7 +113,7 @@ export default function MessageDetailScreen() {
         ) : null}
         {message.error ? <ErrorNotice error={message.error} /> : null}
 
-        {outcomes ? (
+        {outcomes && 'recipient_count' in row ? (
           <View style={styles.section}>
             <SectionHeader
               title={row.excluded_count
