@@ -154,9 +154,18 @@ end;
 $$;
 revoke all on function private.rotate_on_session_delete() from public, anon, authenticated;
 
-create trigger auth_sessions_realtime_rotate
-  after delete on auth.sessions
-  for each row execute function private.rotate_on_session_delete();
+-- Hosted projects may not let the migration role add triggers to auth tables. Membership
+-- changes above still rotate the key, so a missing privilege must not fail the migration;
+-- it leaves only the sign-out rotation unavailable and says so.
+do $$
+begin
+  create trigger auth_sessions_realtime_rotate
+    after delete on auth.sessions
+    for each row execute function private.rotate_on_session_delete();
+exception when insufficient_privilege then
+  raise warning 'auth.sessions trigger not created (insufficient privilege): sign-out will not rotate realtime keys';
+end;
+$$;
 
 -- Join policy: the key in the topic must be current, the caller an active member, and the
 -- resource readable by the caller (plan and run reads go through row security).
