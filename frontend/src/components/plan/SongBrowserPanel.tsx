@@ -119,7 +119,7 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
   };
 
   const run = (task: () => Promise<void>) => {
-    chain.current = chain.current.then(task);
+    chain.current = chain.current.then(task).catch((failure: unknown) => setError(failure));
   };
 
   const addSong = (song: SongListItem, arrangement: BrowserArrangement | null) => {
