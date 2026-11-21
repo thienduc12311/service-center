@@ -9,6 +9,7 @@ import {
   type PushTransportMode,
 } from '@service-center/shared';
 import { adminDb, raw, unwrap } from '../lib/supabase.js';
+import { inChunks } from '../lib/paging.js';
 import { renderIcs, type IcsEvent } from '../lib/ics.js';
 import { config } from '../config.js';
 import {
@@ -195,14 +196,17 @@ const stillSchedulesAny = async (userId: string, assignmentIds: readonly string[
  */
 const eligibleAssignments = async (effect: DeliveryEffect, personId: string): Promise<RecipientAssignment[]> => {
   if (effect.assignmentIds.length === 0) return [];
-  let query = raw(adminDb)
-    .from('assignments')
-    .select('id, plan_id, person_id, status, visibility, response_owner_id, team:teams(name), position:team_positions(name)')
-    .in('id', effect.assignmentIds)
-    .eq('person_id', personId)
-    .eq('visibility', 'released');
-  if (effect.planId) query = query.eq('plan_id', effect.planId);
-  const rows = (await unwrap(query)) as unknown as RecipientAssignment[];
+  // A whole-plan release carries up to 500 assignment ids: URL-safe `.in()` chunks.
+  const rows = await inChunks(effect.assignmentIds, async (ids) => {
+    let query = raw(adminDb)
+      .from('assignments')
+      .select('id, plan_id, person_id, status, visibility, response_owner_id, team:teams(name), position:team_positions(name)')
+      .in('id', ids)
+      .eq('person_id', personId)
+      .eq('visibility', 'released');
+    if (effect.planId) query = query.eq('plan_id', effect.planId);
+    return (await unwrap(query)) as unknown as RecipientAssignment[] | null;
+  });
   // A pending reminder is only for positions still waiting for an answer; a
   // service reminder only for confirmed ones; a request is never sent for a
   // position the person has already declined. Prepared positions are never

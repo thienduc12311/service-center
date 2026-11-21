@@ -28,6 +28,7 @@ import {
 } from '@service-center/shared';
 import { isUuid, param } from '../lib/params.js';
 import { raw, unwrap, unwrapOne } from '../lib/supabase.js';
+import { inChunks } from '../lib/paging.js';
 import { validateBody } from '../lib/validate.js';
 
 /** A claim row with its opportunity embedded, before the claimant name is attached. */
@@ -111,10 +112,9 @@ opportunityClaimsRouter.get('/', requireCapability('scheduling.manage'), async (
   if (planId) query = query.eq('opportunity.plan_id', planId);
   const claims = ((await unwrap(query.order('created_at', { ascending: false }).limit(200))) ?? []) as ClaimWithOpportunity[];
   const personIds = [...new Set(claims.map((claim) => claim.person_id))];
-  const people = personIds.length
-    ? ((await unwrap(req.db.from('people_directory').select('id, first_name, last_name')
-      .eq('organization_id', req.orgId).in('id', personIds))) ?? []) as ClaimantName[]
-    : [];
+  // Up to 200 claimants: URL-safe `.in()` chunks.
+  const people = await inChunks(personIds, async (ids) => (await unwrap(req.db.from('people_directory').select('id, first_name, last_name')
+    .eq('organization_id', req.orgId).in('id', ids))) as ClaimantName[] | null);
   const names = new Map(people.map((person) => [person.id, [person.first_name, person.last_name].filter(Boolean).join(' ')]));
   res.json(claims.map((claim): OpportunityClaimDetail => ({ ...claim, person_name: names.get(claim.person_id) ?? '' })));
 });

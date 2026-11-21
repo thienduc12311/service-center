@@ -50,6 +50,9 @@ export class PagedFakeQuery implements PromiseLike<FakeResult> {
     return this;
   }
   is(): this { return this; }
+  gte(): this { return this; }
+  lte(): this { return this; }
+  not(): this { return this; }
   order(column: string): this {
     this.rpcCall?.order.push(column);
     return this;

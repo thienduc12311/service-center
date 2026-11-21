@@ -18,7 +18,16 @@ import {
 import { validateBody } from '../lib/validate.js';
 import { requireAdmin, requireCapability, requireManager, requireRosterEditor } from '../middleware/organization.js';
 import { fetchAllPages, inChunks } from '../lib/paging.js';
-import { mapRosterPerson, rosterKey, toRosterPeople, type RoleByUser, type RosterPeople } from '../model/team-roster.model.js';
+import {
+  groupMemberships,
+  mapRosterPerson,
+  rosterKey,
+  toRosterPeople,
+  type MembershipsByTeam,
+  type RoleByUser,
+  type RosterPeople,
+  type TeamMembershipRef,
+} from '../model/team-roster.model.js';
 import { raw, unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { loadScopeAccess, replaceScopeAccess } from '../services/access.js';
@@ -27,42 +36,72 @@ export const teamsRouter: Router = Router();
 
 // Names and contact details come from `team_roster_people` (basic info for any
 // member), never from a `people` join: People rows are owner-only (W8-NAT-D1).
+// Memberships are not embedded: an embedded array is capped at PostgREST's
+// `max_rows` like any select, so a big team lost members silently (W9-DATA-D1).
 const TEAM_SELECT = `
   *,
-  positions:team_positions(*),
-  memberships:team_memberships(id, person_id, user_id, position_id)
+  positions:team_positions(*)
 `;
 
 type RawTeam = Record<string, unknown> & {
   positions?: Array<Record<string, unknown>>;
-  memberships?: Array<{
-    id: string;
-    person_id: string;
-    user_id: string | null;
-    position_id: string | null;
-  }>;
 };
 
-/** Roles live on organization_members, so they are stitched in separately. */
-export const shapeTeam = (team: RawTeam, roles: RoleByUser, people: RosterPeople): TeamWithPositions => {
+/**
+ * Roles live on organization_members, so they are stitched in separately.
+ * A membership whose person `team_roster_people` does not return (an archived
+ * Person) is left out, so rosters and their counts show only active people
+ * (W9-WEB-D1 / W9-NAT-D1). The membership row is kept as history; restoring the
+ * Person brings it back.
+ */
+export const shapeTeam = (
+  team: RawTeam,
+  memberships: readonly TeamMembershipRef[],
+  roles: RoleByUser,
+  people: RosterPeople,
+): TeamWithPositions => {
   // A team's normal list only; plan-only positions (F02) live on their plan.
   const positions = (team.positions ?? [])
     .filter((position) => position.plan_id === null || position.plan_id === undefined)
     .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
   const teamId = String(team.id);
-  const members = (team.memberships ?? []).map((m) => {
+  const members = memberships.flatMap((m) => {
     const person = people.get(rosterKey(teamId, m.person_id));
-    return {
+    if (!person) return [];
+    return [{
       person_id: m.person_id,
       user_id: m.user_id,
       position_id: m.position_id,
       membership_id: m.id,
-      profile: person ? mapRosterPerson(person, (m.user_id ? roles.get(m.user_id) : undefined) ?? 'member') : null,
-    };
+      profile: mapRosterPerson(person, (m.user_id ? roles.get(m.user_id) : undefined) ?? 'member'),
+    }];
   });
-  const { memberships: _ignored, ...rest } = team;
-  return { ...rest, positions, members } as unknown as TeamWithPositions;
+  return { ...team, positions, members } as unknown as TeamWithPositions;
 };
+
+const MEMBERSHIP_COLUMNS = 'id, team_id, person_id, user_id, position_id';
+
+/** One team's memberships, every page. */
+const teamMemberships = (req: Request, teamId: string): Promise<TeamMembershipRef[]> =>
+  fetchAllPages(async (from, to) =>
+    unwrap(req.db.from('team_memberships').select(MEMBERSHIP_COLUMNS).eq('team_id', teamId).order('id').range(from, to)),
+  );
+
+/** Every membership of every team in the organization, every page, grouped by team. */
+const orgMemberships = async (req: Request): Promise<MembershipsByTeam> =>
+  groupMemberships(
+    await fetchAllPages(
+      async (from, to) =>
+        (await unwrap(
+          raw(req.db)
+            .from('team_memberships')
+            .select(`${MEMBERSHIP_COLUMNS}, team:teams!inner(organization_id)`)
+            .eq('team.organization_id', req.orgId)
+            .order('id')
+            .range(from, to),
+        )) as TeamMembershipRef[] | null,
+    ),
+  );
 
 /** Every member's org role, for the whole-organization team list. */
 const orgRoleMap = async (req: Request): Promise<RoleByUser> => {
@@ -97,8 +136,8 @@ const rosterPeople = async (req: Request, teamId?: string): Promise<RosterPeople
 };
 
 const shapeTeams = async (req: Request, teams: RawTeam[]): Promise<TeamWithPositions[]> => {
-  const [roles, people] = await Promise.all([orgRoleMap(req), rosterPeople(req)]);
-  return teams.map((team) => shapeTeam(team, roles, people));
+  const [memberships, roles, people] = await Promise.all([orgMemberships(req), orgRoleMap(req), rosterPeople(req)]);
+  return teams.map((team) => shapeTeam(team, memberships.get(String(team.id)) ?? [], roles, people));
 };
 
 /** One team: only its members' roles and roster rows, never the whole organization's. */
@@ -107,9 +146,10 @@ const loadTeam = async (req: Request, id: string): Promise<TeamWithPositions> =>
     raw(req.db).from('teams').select(TEAM_SELECT).eq('id', id).eq('organization_id', req.orgId).maybeSingle(),
   )) as RawTeam | null;
   if (!team) throw HttpError.notFound('Team not found');
-  const userIds = (team.memberships ?? []).flatMap((m) => (m.user_id ? [m.user_id] : []));
+  const memberships = await teamMemberships(req, id);
+  const userIds = memberships.flatMap((m) => (m.user_id ? [m.user_id] : []));
   const [roles, people] = await Promise.all([roleMapFor(req, userIds), rosterPeople(req, id)]);
-  return shapeTeam(team, roles, people);
+  return shapeTeam(team, memberships, roles, people);
 };
 
 teamsRouter.get('/', async (req, res) => {

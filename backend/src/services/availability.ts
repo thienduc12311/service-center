@@ -23,6 +23,7 @@ import {
   type ScheduleDelegationRow,
 } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
+import { fetchAllPages, inChunks } from '../lib/paging.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import {
   busyElsewhereWarnings,
@@ -236,11 +237,14 @@ const summarize = async (ctx: AvailabilityContext, rows: readonly AvailabilityRe
   const teamIds = [...new Set(rows.flatMap((row) => row.team_id ? [row.team_id] : []))];
   const [teams, recipients] = await Promise.all([
     teamIds.length ? unwrap(ctx.db.from('teams').select('id, name').in('id', teamIds)) : Promise.resolve([]),
-    unwrap(ctx.db.from('availability_request_recipients').select('request_id, responded_at').in('request_id', rows.map((r) => r.id))),
+    // A request to a big team has hundreds of recipients: every page counts.
+    fetchAllPages((from, to) => unwrap(ctx.db.from('availability_request_recipients').select('request_id, responded_at')
+      .in('request_id', rows.map((r) => r.id)).not('responded_at', 'is', null)
+      .order('request_id').order('person_id').range(from, to))),
   ]);
   const teamName = new Map((teams ?? []).map((team) => [team.id, team.name]));
   const responded = new Map<string, number>();
-  for (const recipient of recipients ?? []) {
+  for (const recipient of recipients) {
     if (recipient.responded_at) responded.set(recipient.request_id, (responded.get(recipient.request_id) ?? 0) + 1);
   }
   return rows.map((row) => toRequestSummary(row, row.team_id ? teamName.get(row.team_id) ?? null : null, responded.get(row.id) ?? 0));
@@ -264,19 +268,20 @@ export const listAvailabilityRequests = async (ctx: AvailabilityContext, teamId?
 export const availabilityRequestDetail = async (ctx: AvailabilityContext, id: string): Promise<AvailabilityRequestDetail> => {
   const request = await unwrap(ctx.db.from('availability_requests').select('*').eq('id', id).eq('organization_id', ctx.orgId).maybeSingle());
   if (!request) throw HttpError.notFound('Request not found');
-  const recipients = (await unwrap(
+  const recipients = await fetchAllPages(async (from, to) => (await unwrap(
     raw(ctx.db).from('availability_request_recipients')
       .select('person_id, responded_at, response_kind, person:people(first_name, last_name)')
-      .eq('request_id', id),
-  )) as unknown as RecipientWithPerson[];
+      .eq('request_id', id)
+      .order('person_id')
+      .range(from, to),
+  )) as unknown as RecipientWithPerson[] | null);
   if (recipients.length < request.recipient_count && request.created_by !== ctx.userId
       && !canAccessAnywhere(ctx.access, 'scheduling.manage')) {
     // A recipient reading someone else's request detail sees only themselves; the leader view needs access.
     throw HttpError.notFound('Request not found');
   }
-  const reviews = (await unwrap(
-    ctx.db.from('person_availability_reviews').select('person_id, reviewed_at').in('person_id', recipients.map((r) => r.person_id)),
-  )) ?? [];
+  const reviews = await inChunks(recipients.map((r) => r.person_id), (ids) =>
+    unwrap(ctx.db.from('person_availability_reviews').select('person_id, reviewed_at').in('person_id', ids)));
   const reviewByPerson = new Map(reviews.map((review) => [review.person_id, review]));
   const [summary] = await summarize(ctx, [request]);
   return {

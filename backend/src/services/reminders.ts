@@ -19,6 +19,7 @@ import {
 } from '@service-center/shared';
 import { HttpError } from '../lib/errors.js';
 import { raw, unwrap, unwrapOne, type Db } from '../lib/supabase.js';
+import { inChunks } from '../lib/paging.js';
 import { personDisplayName, toPlanReminderJob } from '../model/reminder.model.js';
 
 /** The caller's identity and access, as the routes know it. */
@@ -181,10 +182,9 @@ export const planDeliveryHistory = async (caller: ReminderCaller, planId: string
   const reminderRows = (jobs ?? []) as ReminderJobRow[];
 
   const personIds = [...new Set([...forPeople.map((row) => row.recipient_person_id), ...reminderRows.map((row) => row.person_id)])];
-  const directory = personIds.length
-    ? await unwrap(caller.db.from('people_directory').select('id, first_name, last_name').in('id', personIds))
-    : [];
-  const names = new Map((directory ?? []).map((person) => [person.id, personDisplayName(person)]));
+  const directory = await inChunks(personIds, (ids) =>
+    unwrap(caller.db.from('people_directory').select('id, first_name, last_name').in('id', ids)));
+  const names = new Map(directory.map((person) => [person.id, personDisplayName(person)]));
   const canRetry = isAdmin(caller.orgRole);
 
   const history: PlanDeliveryHistoryItem[] = forPeople.map((row) => ({

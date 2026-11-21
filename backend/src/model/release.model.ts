@@ -40,3 +40,12 @@ export function planReleaseItems(
 export function planReleaseBatchKey(planId: string, clientKey: string): string {
   return `plan-release:${planId}:${createHash('sha256').update(clientKey).digest('hex')}`;
 }
+
+/** A prepared request as the single-plan release preview reads it. */
+export interface ReleasePreviewAssignment {
+  id: string;
+  person_id: string;
+  request_revision: number;
+  team: { name: string } | null;
+  position: { name: string } | null;
+}
