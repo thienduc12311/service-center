@@ -273,7 +273,12 @@
     "markLabel": "Mark {{name}} {{status}}",
     "hideHistory": "Hide history",
     "role": "{{team}} · {{position}}",
-    "orphanedTitle": "Kept from earlier (no longer scheduled at this time)"
+    "orphanedTitle": "Kept from earlier (no longer scheduled at this time)",
+    "searchNames": "Filter by name",
+    "noNameMatch": "No one on this sheet matches that name.",
+    "teamGroup_one": "{{team}} · {{count}} person",
+    "teamGroup_other": "{{team}} · {{count}} people",
+    "otherTeam": "Other"
   },
   "mobileReport": {
     "screenTitle": "Schedule report",

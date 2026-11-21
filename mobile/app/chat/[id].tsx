@@ -62,6 +62,7 @@ import {
 } from '../../src/components/ui';
 import { Icon } from '../../src/components/icons';
 import { MessageBody, MentionPicker, mentionsMe, useMentionInput } from '../../src/components/mentions';
+import { recentAuthorIds } from '../../src/lib/mention-suggestions';
 import { PressableScale } from '../../src/components/motion';
 import { useErrorText, useFormatters } from '../../src/i18n';
 import { type Theme } from '../../src/lib/theme';
@@ -598,6 +599,7 @@ function ConversationThread({ conversationId }: ConversationThreadProps) {
         <Composer
           conversation={conversation}
           candidates={candidates.data ?? []}
+          recentAuthorIds={recentAuthorIds(known)}
           draft={draft}
           setDraft={setDraft}
           replyTo={replyTo}
@@ -967,6 +969,8 @@ function OutgoingMessageEntry({ sent, pending, error, parent, onRetry, onDismiss
 interface ComposerProps {
   conversation: ConversationSummary;
   candidates: readonly MentionCandidate[];
+  /** Who spoke most recently, offered first for an empty `@`. */
+  recentAuthorIds: readonly string[];
   draft: ConversationDraft;
   setDraft: (update: (current: ConversationDraft) => ConversationDraft) => void;
   replyTo: ConversationMessage | null;
@@ -979,7 +983,7 @@ interface ComposerProps {
  * button) opens a picker; Return sends, or picks the top match while the
  * picker is open.
  */
-function Composer({ conversation, candidates, draft, setDraft, replyTo, onSend }: ComposerProps) {
+function Composer({ conversation, candidates, recentAuthorIds: recentIds, draft, setDraft, replyTo, onSend }: ComposerProps) {
   const { t } = useTranslation(['messages', 'common']);
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -988,6 +992,8 @@ function Composer({ conversation, candidates, draft, setDraft, replyTo, onSend }
     text: draft.body,
     onChangeText: (body) => setDraft((current) => ({ ...current, body })),
     candidates,
+    // The person being replied to first, then whoever spoke last.
+    priorityIds: replyTo?.author_person_id ? [replyTo.author_person_id, ...recentIds] : recentIds,
     pickedIds: draft.mentionIds,
     onPicked: (personId) => setDraft((current) => ({ ...current, mentionIds: [...current.mentionIds, personId] })),
   });

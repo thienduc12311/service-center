@@ -8,11 +8,12 @@ import { api } from '../lib/api';
 import { useConversations } from '../lib/useConversations';
 import { queryKeys } from '../lib/query-keys';
 import { useAuth } from '../providers/AuthProvider';
-import { Button, Card, Chip, EmptyState, ErrorNotice, IconWell, ListRow, Loading, SectionHeader, Tag, screenPadding } from './ui';
+import { Button, Card, EmptyState, ErrorNotice, IconWell, ListRow, Loading, SectionHeader, Tag, screenPadding } from './ui';
 import { useFormatters } from '../i18n';
 import { conversationTitle } from '../lib/conversation-labels';
 import { type Theme } from '../lib/theme';
 import { useTheme, useThemedStyles } from '../lib/useTheme';
+import { SearchableOptionPicker } from './SearchableOptionSheet';
 
 export interface ChatListProps {
   /** Shown above the list's own header, e.g. the Messages tab's title and switch. */
@@ -96,11 +97,16 @@ export function ChatList({ header }: ChatListProps) {
                 ) : startable.length === 0 ? (
                   <Text style={styles.muted}>{t('mobileChat.noTeams')}</Text>
                 ) : (
-                  <View style={styles.chips}>
-                    {startable.map((team) => (
-                      <Chip key={team.id} label={team.name} active={false} onPress={() => open.mutate(team.id)} />
-                    ))}
-                  </View>
+                  <SearchableOptionPicker
+                    title={t('mobileChat.openTeamChat')}
+                    options={startable.map((team) => ({ value: team.id, label: team.name }))}
+                    selected={[]}
+                    mode="single"
+                    chooseLabel={t('mobileChat.chooseTeam')}
+                    onChange={(next) => {
+                      if (next[0]) open.mutate(next[0]);
+                    }}
+                  />
                 )}
               </View>
             ) : null}

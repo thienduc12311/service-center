@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { LocalizedError, uuid, type PlanDetail, type PlanItemDetail, type PlanItemSaveResult } from '@service-center/shared';
+import { LocalizedError, uuid, type MediaSummary, type PlanDetail, type PlanItemDetail, type PlanItemSaveResult } from '@service-center/shared';
 import { api } from '../../../src/lib/api';
 import { queryKeys } from '../../../src/lib/query-keys';
-import { canLinkMedia, linkableMedia, mediaLinkBody, mediaListRequest, mediaSummaryLine } from '../../../src/lib/media-library';
+import { canLinkMedia, linkableMedia, mediaLinkBody, mediaListCapped, mediaListRequest, mediaSummaryLine } from '../../../src/lib/media-library';
+import { useDebouncedValue } from '../../../src/hooks/useDebouncedValue';
 import { orderWriteOutcome } from '../../../src/lib/plan-order-edit';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { Button, Card, EmptyState, ErrorNotice, Field, Label, ListRow, Loading, Screen, screenPadding } from '../../../src/components/ui';
@@ -83,17 +84,16 @@ const LinkMedia = ({ plan, item }: LinkMediaProps) => {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [query, setQuery] = useState('');
-  const [settled, setSettled] = useState('');
-  useEffect(() => {
-    const timer = setTimeout(() => setSettled(query.trim()), SEARCH_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [query]);
+  const settled = useDebouncedValue(query.trim(), SEARCH_DELAY_MS);
 
   const allowed = canLinkMedia(item, can('plans.edit', { serviceTypeId: plan.service_type_id }));
+  // Archived bundles are asked for too: the server drops them after its cap,
+  // so only the whole answer says whether the cap was reached.
   const list = useQuery({
-    queryKey: queryKeys.mediaList(queryScope, settled, false),
-    queryFn: () => api.mediaList(mediaListRequest(settled, false)),
+    queryKey: queryKeys.mediaList(queryScope, settled, true),
+    queryFn: () => api.mediaList(mediaListRequest(settled, true)),
     enabled: Boolean(queryScope && allowed),
+    placeholderData: (previous) => previous,
   });
 
   const save = useMutation({
@@ -125,74 +125,108 @@ const LinkMedia = ({ plan, item }: LinkMediaProps) => {
   }
 
   const rows = linkableMedia(list.data?.media ?? []);
+  const capped = mediaListCapped(list.data?.media ?? []);
+
+  const renderMedia = ({ item: media, index }: { item: MediaSummary; index: number }) => {
+    const linked = item.media?.id === media.id;
+    const summary = mediaSummaryLine(media);
+    return (
+      <View style={[styles.groupRow, index === 0 && styles.groupFirst, index === rows.length - 1 && styles.groupLast]}>
+        <ListRow divided={index > 0}>
+          <View style={styles.row}>
+            <View style={styles.flex}>
+              <Text style={styles.body}>{media.title}</Text>
+              {summary ? <Text style={styles.muted}>{summary}</Text> : null}
+            </View>
+            <Button
+              title={linked ? t('linkMedia.linkedButton') : t('linkMedia.link')}
+              variant={linked ? 'primary' : 'secondary'}
+              accessibilityLabel={`${linked ? t('linkMedia.linkedButton') : t('linkMedia.link')}: ${media.title}`}
+              disabled={linked || save.isPending}
+              loading={save.isPending && save.variables === media.id}
+              onPress={() => save.mutate(media.id)}
+            />
+          </View>
+        </ListRow>
+      </View>
+    );
+  };
 
   return (
     <Screen>
       <Stack.Screen options={{ title: t('linkMedia.title', { title: item.title }) }} />
-      <ScrollView contentContainerStyle={[screenPadding(theme), styles.stack]} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-        {item.media ? (
-          <Card>
-            <Text style={styles.body}>
-              {t(item.media.archived ? 'linkMedia.linkedArchived' : 'linkMedia.linked', { title: item.media.title }).replace(/<\/?\d>/g, '')}
-            </Text>
-            <Button
-              title={t('linkMedia.removeLink')}
-              variant="secondary"
-              disabled={save.isPending}
-              loading={save.isPending && save.variables === null}
-              onPress={() => save.mutate(null)}
-            />
-          </Card>
-        ) : null}
+      <FlatList
+        data={rows}
+        keyExtractor={(media) => media.id}
+        renderItem={renderMedia}
+        contentContainerStyle={[screenPadding(theme), styles.list]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        ListHeaderComponent={
+          <View style={styles.stack}>
+            {item.media ? (
+              <Card>
+                <Text style={styles.body}>
+                  {t(item.media.archived ? 'linkMedia.linkedArchived' : 'linkMedia.linked', { title: item.media.title }).replace(/<\/?\d>/g, '')}
+                </Text>
+                <Button
+                  title={t('linkMedia.removeLink')}
+                  variant="secondary"
+                  disabled={save.isPending}
+                  loading={save.isPending && save.variables === null}
+                  onPress={() => save.mutate(null)}
+                />
+              </Card>
+            ) : null}
 
-        {outcome === 'stale' ? (
-          <Text accessibilityRole="alert" style={styles.warning}>{t('mobileMedia.stale')}</Text>
-        ) : outcome === 'uncertain' ? (
-          <Text accessibilityRole="alert" style={styles.warning}>{t('mobileMedia.uncertain')}</Text>
-        ) : outcome === 'gone' ? (
-          <Text accessibilityRole="alert" style={styles.warning}>{t('mobileMedia.linkGone')}</Text>
-        ) : (
-          <ErrorNotice error={save.error} />
-        )}
+            {outcome === 'stale' ? (
+              <Text accessibilityRole="alert" style={styles.warning}>{t('mobileMedia.stale')}</Text>
+            ) : outcome === 'uncertain' ? (
+              <Text accessibilityRole="alert" style={styles.warning}>{t('mobileMedia.uncertain')}</Text>
+            ) : outcome === 'gone' ? (
+              <Text accessibilityRole="alert" style={styles.warning}>{t('mobileMedia.linkGone')}</Text>
+            ) : (
+              <ErrorNotice error={save.error} />
+            )}
 
-        <Field label={t('linkMedia.find')} value={query} onChangeText={setQuery} placeholder={t('form.title')} autoCorrect={false} />
-        <Card>
-          <Label>{t('library.title')}</Label>
-          {list.isLoading ? <Loading /> : null}
-          <ErrorNotice error={list.error} />
-          {!list.isLoading && !list.error && rows.length === 0 ? (
-            <Text style={styles.muted}>{t('mobileMedia.noneFound')}</Text>
-          ) : null}
-          {rows.map((media, index) => {
-            const linked = item.media?.id === media.id;
-            return (
-              <ListRow key={media.id} divided={index > 0}>
-                <View style={styles.row}>
-                  <View style={styles.flex}>
-                    <Text style={styles.body}>{media.title}</Text>
-                    {mediaSummaryLine(media) ? <Text style={styles.muted}>{mediaSummaryLine(media)}</Text> : null}
-                  </View>
-                  <Button
-                    title={linked ? t('linkMedia.linkedButton') : t('linkMedia.link')}
-                    variant={linked ? 'primary' : 'secondary'}
-                    accessibilityLabel={`${linked ? t('linkMedia.linkedButton') : t('linkMedia.link')}: ${media.title}`}
-                    disabled={linked || save.isPending}
-                    loading={save.isPending && save.variables === media.id}
-                    onPress={() => save.mutate(media.id)}
-                  />
-                </View>
-              </ListRow>
-            );
-          })}
-        </Card>
-      </ScrollView>
+            <Field label={t('linkMedia.find')} value={query} onChangeText={setQuery} placeholder={t('form.title')} autoCorrect={false} />
+            <Label>{t('library.title')}</Label>
+            <ErrorNotice error={list.error} />
+          </View>
+        }
+        ListEmptyComponent={
+          list.isLoading ? <Loading /> : list.error ? null : <Text style={styles.muted}>{t('mobileMedia.noneFound')}</Text>
+        }
+        ListFooterComponent={
+          capped ? <Text style={[styles.muted, styles.footer]}>{t('mobileMedia.refineSearch', { count: rows.length })}</Text> : null
+        }
+      />
     </Screen>
   );
 };
 
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
-    stack: { gap: theme.space.lg },
+    stack: { gap: theme.space.lg, marginBottom: theme.space.sm },
+    list: { gap: 0 },
+    footer: { paddingVertical: theme.space.md },
+    groupRow: {
+      backgroundColor: theme.color.surface,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: theme.color.border,
+      paddingHorizontal: theme.space.md,
+    },
+    groupFirst: {
+      borderTopWidth: 1,
+      borderTopLeftRadius: theme.radius.lg + 2,
+      borderTopRightRadius: theme.radius.lg + 2,
+    },
+    groupLast: {
+      borderBottomWidth: 1,
+      borderBottomLeftRadius: theme.radius.lg + 2,
+      borderBottomRightRadius: theme.radius.lg + 2,
+    },
     flex: { flex: 1 },
     row: { flexDirection: 'row', alignItems: 'center', gap: theme.space.md },
     body: { ...theme.type.body, color: theme.color.ink },

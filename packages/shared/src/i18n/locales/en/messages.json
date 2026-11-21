@@ -350,7 +350,30 @@
     "textPreview": "Text to hand off",
     "detailTitle": "Message",
     "retryUncertain": "The server did not answer the retry. Pull down to refresh the outcomes before retrying again.",
-    "received": "Received"
+    "received": "Received",
+    "loadOlder": "Load older messages",
+    "allLoaded": "That’s every message.",
+    "reviewRecipients_one": "Review {{count}} recipient",
+    "reviewRecipients_other": "Review {{count}} recipients",
+    "reviewTitle": "Recipients",
+    "namesAndMore_one": "{{names}} and {{count}} more",
+    "namesAndMore_other": "{{names}} and {{count}} more",
+    "unreachableCount_one": "{{count}} person can’t be reached (no sign-in or email).",
+    "unreachableCount_other": "{{count}} people can’t be reached (no sign-in or email).",
+    "searchRecipients": "Search by name",
+    "includeAll": "Include everyone",
+    "excludeAll": "Leave everyone out",
+    "includeShown": "Include those shown",
+    "excludeShown": "Leave out those shown",
+    "noRecipientMatch": "No one matches that search.",
+    "textChoosePeople": "Choose people to text",
+    "textChangePeople": "Change who to text",
+    "textChosen_one": "Texting {{count}}: {{names}}",
+    "textChosen_other": "Texting {{count}}: {{names}}",
+    "selectAll": "Select everyone",
+    "clearAll": "Clear selection",
+    "selectShown": "Select those shown",
+    "clearShown": "Unselect those shown"
   },
   "mobileChat": {
     "entry": "Chat",
@@ -380,7 +403,8 @@
     "blockTitle": "Block {{name}}?",
     "blockMessage": "You won't see messages or comments from {{name}}, and they won't notify you. {{name}} isn't told. You can unblock them in Settings → Blocked people.",
     "blockConfirm": "Block",
-    "blockAfterReport": "You can also block {{name}} so you no longer see anything they write."
+    "blockAfterReport": "You can also block {{name}} so you no longer see anything they write.",
+    "chooseTeam": "Choose a team…"
   },
   "mobileInbox": {
     "description": "Team and plan chat, and messages from your leaders."

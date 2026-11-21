@@ -17,6 +17,7 @@ import { commentNeedsNewId, mergeCommentPages, threadAccess } from '../../../src
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { NoteList } from '../../../src/components/PlanNotes';
 import { MessageBody, MentionPicker, mentionsMe, useMentionInput } from '../../../src/components/mentions';
+import { recentAuthorIds } from '../../../src/lib/mention-suggestions';
 import {
   Avatar,
   Button,
@@ -225,7 +226,7 @@ function ItemNotes({ planId, item }: ItemNotesProps) {
                   ))
                 )}
                 <ErrorNotice error={remove.error ?? loadOlder.error} />
-                <CommentComposer itemId={item.id} candidates={candidates.data ?? []} onPosted={refreshThread} />
+                <CommentComposer itemId={item.id} candidates={candidates.data ?? []} recentAuthorIds={recentAuthorIds(known)} onPosted={refreshThread} />
                 <Text style={styles.hint}>{t('itemDiscussion.mentionNote')}</Text>
               </View>
             )}
@@ -325,6 +326,8 @@ function CommentEntry({ itemId, comment, canDelete, onDelete, onEdited }: Commen
 interface CommentComposerProps {
   itemId: string;
   candidates: readonly MentionCandidate[];
+  /** Who commented most recently, offered first for an empty `@`. */
+  recentAuthorIds: readonly string[];
   onPosted: () => Promise<unknown>;
 }
 
@@ -334,7 +337,7 @@ interface CommentComposerProps {
  * draft keeps one client id until the server confirms it, so sending again
  * after no answer cannot post a second copy; the text survives a failed send.
  */
-function CommentComposer({ itemId, candidates, onPosted }: CommentComposerProps) {
+function CommentComposer({ itemId, candidates, recentAuthorIds: recentIds, onPosted }: CommentComposerProps) {
   const { t } = useTranslation(['messages', 'common']);
   const { generation, isCurrentGeneration } = useAuth();
   const errorText = useErrorText();
@@ -347,6 +350,7 @@ function CommentComposer({ itemId, candidates, onPosted }: CommentComposerProps)
     text: body,
     onChangeText: setBody,
     candidates,
+    priorityIds: recentIds,
     pickedIds,
     onPicked: (personId) => setPickedIds((current) => [...current, personId]),
   });

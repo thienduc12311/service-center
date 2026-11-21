@@ -15,6 +15,7 @@ import {
   ownPersonId,
   parseTagText,
   personEditBody,
+  personDetailBadges,
   personEditDraft,
   teamManageTarget,
   teamsForPerson,
@@ -111,6 +112,19 @@ describe('directory rows', () => {
     expect(directoryBadges(row())).toEqual(['noLogin']);
     expect(directoryBadges(row({ invite_pending: true }))).toEqual(['inviteSent']);
     expect(directoryBadges(row({ archived: true, has_login: true }))).toEqual(['archived']);
+  });
+
+  it('reads the same badges from an opened record, without the directory', () => {
+    const invitation = { id: 'i1', email: 'r@example.com', role: 'member' as const, expires_at: '2026-12-01T00:00:00Z' };
+    expect(personDetailBadges({ archived_at: null, profile_id: null, pending_invitation: null })).toEqual(['noLogin']);
+    expect(personDetailBadges({ archived_at: null, profile_id: null, pending_invitation: invitation })).toEqual(['inviteSent']);
+    expect(personDetailBadges({ archived_at: '2026-01-01T00:00:00Z', profile_id: 'u1', pending_invitation: null })).toEqual(['archived']);
+    expect(personDetailBadges({ archived_at: null, profile_id: 'u1', pending_invitation: null })).toEqual([]);
+  });
+
+  it('opens one Person from its record and reads the directory only after a 404', () => {
+    const personScreen = source('app/people/[id].tsx');
+    expect(personScreen).toContain('enabled: Boolean(queryScope && id && owner) && recordGone');
   });
 });
 

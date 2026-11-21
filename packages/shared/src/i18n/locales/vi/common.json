@@ -194,5 +194,13 @@
     "noMatches": "Không có kết quả phù hợp.",
     "clear": "Bỏ chọn {{name}}",
     "change": "Đổi {{label}}, hiện là {{name}}"
+  },
+  "optionPicker": {
+    "search": "Tìm kiếm",
+    "noMatches": "Không có kết quả phù hợp",
+    "choose": "Chọn…",
+    "change": "Đổi…",
+    "selectedNames_other": "Đã chọn {{count}}: {{names}}",
+    "optionCount_other": "{{count}} lựa chọn"
   }
 }

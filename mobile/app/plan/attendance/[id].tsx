@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
@@ -28,7 +28,9 @@ import {
 } from '@service-center/shared';
 import { api } from '../../../src/lib/api';
 import { queryKeys } from '../../../src/lib/query-keys';
-import { attendanceWriteOutcome, type AttendanceWriteOutcome } from '../../../src/lib/attendance-edit';
+import { attendanceSections, attendanceWriteOutcome, type AttendanceSection, type AttendanceWriteOutcome } from '../../../src/lib/attendance-edit';
+import { needsListSearch } from '../../../src/lib/list-search';
+import { SearchField } from '../../../src/components/SearchField';
 import { newIdempotencyKey } from '../../../src/lib/idempotency';
 import { useDiscardGuard } from '../../../src/lib/useDiscardGuard';
 import { useAuth } from '../../../src/providers/AuthProvider';
@@ -57,6 +59,9 @@ const RESPONSE_KEYS: Record<AssignmentStatus, 'responses.confirmed' | 'responses
   unconfirmed: 'responses.pending',
   declined: 'responses.declined',
 };
+
+/** Past this many people the sheet gets a name filter. */
+const ATTENDANCE_SEARCH_THRESHOLD = 10;
 
 /** The idempotency key of the batch being saved, and the content it was minted for. */
 interface BatchKey {
@@ -135,6 +140,7 @@ function AttendanceSheetView({ planId, planTitle }: AttendanceSheetViewProps) {
   const [superseded, setSuperseded] = useState<SupersededAttendanceMark[] | null>(null);
   const [saved, setSaved] = useState<AttendanceBatchResult | null>(null);
   const [historyOpen, setHistoryOpen] = useState<ReadonlySet<string>>(new Set());
+  const [nameQuery, setNameQuery] = useState('');
   // One key per batch content: a retry after no answer replays the first
   // result, and a different batch never reuses a key.
   const batchKey = useRef<BatchKey | null>(null);
@@ -255,6 +261,7 @@ function AttendanceSheetView({ planId, planTitle }: AttendanceSheetViewProps) {
   }
 
   const timeName = (time: AttendanceTimeOption) => time.name ?? t(`attendance.timeKinds.${time.kind}`);
+  const sections = attendanceSections(data.rows, nameQuery, t('mobileAttendance.otherTeam'));
 
   return (
     <Screen>
@@ -264,59 +271,66 @@ function AttendanceSheetView({ planId, planTitle }: AttendanceSheetViewProps) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={headerHeight}
       >
-        <ScrollView contentContainerStyle={screenPadding(theme)} keyboardShouldPersistTaps="handled">
-          <View style={styles.header}>
-            <Text style={styles.planTitle}>{planTitle}</Text>
-            <Text style={styles.muted}>{t('attendance.intro')}</Text>
-          </View>
-  
-          {data.times.length > 1 ? (
-            <View style={styles.section}>
-              <Label>{t('attendance.planTime')}</Label>
-              <View accessibilityRole="radiogroup" style={styles.wrap}>
-                {data.times.map((time) => (
-                  <Chip
-                    key={time.id}
-                    label={t('attendance.timeOption', { name: timeName(time), time: format.dateTime(time.starts_at) })}
-                    active={time.id === data.time.id}
-                    onPress={() => switchTime(time)}
-                  />
-                ))}
+        <SectionList<AttendanceSheetRow, AttendanceSection>
+          sections={sections}
+          keyExtractor={(row) => row.person_id}
+          contentContainerStyle={[screenPadding(theme), styles.list]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          stickySectionHeadersEnabled={false}
+          ListHeaderComponent={
+            <View style={styles.listHeader}>
+              <View style={styles.header}>
+                <Text style={styles.planTitle}>{planTitle}</Text>
+                <Text style={styles.muted}>{t('attendance.intro')}</Text>
               </View>
-            </View>
-          ) : (
-            <Text style={styles.muted}>
-              {t('attendance.timeOption', { name: timeName(data.time), time: format.dateTime(data.time.starts_at) })}
-            </Text>
-          )}
-          {sheet.isFetching ? <Loading /> : null}
-          {sheet.error ? <ErrorNotice error={sheet.error} /> : null}
-  
-          <AttendanceCounts sheet={data} />
-  
-          {saved ? (
-            <Text accessibilityRole="alert" style={styles.success}>
-              {saved.replayed ? t('attendance.savedReplayed') : t('attendance.saved', { count: saved.applied })}
-            </Text>
-          ) : null}
-          {superseded ? (
-            <View accessibilityRole="alert" style={styles.warning}>
-              <Text style={styles.warningText}>{t('attendance.staleKept')}</Text>
-              {superseded.map((mark) => (
-                <Text key={mark.personId} style={styles.warningText}>• {supersededText(t, mark)}</Text>
-              ))}
-            </View>
-          ) : null}
-  
-          {data.rows.length === 0 ? (
-            <Card>
-              <Text style={styles.muted}>
-                {data.hidden_people ? t('attendance.nobodyOnYourTeams') : t('attendance.nobody')}
-              </Text>
-            </Card>
-          ) : (
-            <>
-              {data.can_mark_any ? (
+
+              {data.times.length > 1 ? (
+                <View style={styles.section}>
+                  <Label>{t('attendance.planTime')}</Label>
+                  <View accessibilityRole="radiogroup" style={styles.wrap}>
+                    {data.times.map((time) => (
+                      <Chip
+                        key={time.id}
+                        label={t('attendance.timeOption', { name: timeName(time), time: format.dateTime(time.starts_at) })}
+                        active={time.id === data.time.id}
+                        onPress={() => switchTime(time)}
+                      />
+                    ))}
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.muted}>
+                  {t('attendance.timeOption', { name: timeName(data.time), time: format.dateTime(data.time.starts_at) })}
+                </Text>
+              )}
+              {sheet.isFetching ? <Loading /> : null}
+              {sheet.error ? <ErrorNotice error={sheet.error} /> : null}
+
+              <AttendanceCounts sheet={data} />
+
+              {saved ? (
+                <Text accessibilityRole="alert" style={styles.success}>
+                  {saved.replayed ? t('attendance.savedReplayed') : t('attendance.saved', { count: saved.applied })}
+                </Text>
+              ) : null}
+              {superseded ? (
+                <View accessibilityRole="alert" style={styles.warning}>
+                  <Text style={styles.warningText}>{t('attendance.staleKept')}</Text>
+                  {superseded.map((mark) => (
+                    <Text key={mark.personId} style={styles.warningText}>• {supersededText(t, mark)}</Text>
+                  ))}
+                </View>
+              ) : null}
+
+              {data.rows.length === 0 ? (
+                <Card>
+                  <Text style={styles.muted}>
+                    {data.hidden_people ? t('attendance.nobodyOnYourTeams') : t('attendance.nobody')}
+                  </Text>
+                </Card>
+              ) : null}
+              {data.rows.length > 0 && data.can_mark_any ? (
                 <View style={styles.section}>
                   <Label>{t('attendance.markEveryone')}</Label>
                   <View style={styles.wrap}>
@@ -337,54 +351,63 @@ function AttendanceSheetView({ planId, planTitle }: AttendanceSheetViewProps) {
                   </View>
                 </View>
               ) : null}
-              <Card>
-                {data.rows.map((row, index) => (
-                  <View key={row.person_id}>
-                    {index > 0 ? <Divider /> : null}
-                    <AttendanceRowView
-                      row={row}
-                      choice={draft[row.person_id]?.status}
-                      onChoose={(status) => choose(row, status)}
-                      historyOpen={historyOpen.has(row.person_id)}
-                      onToggleHistory={() => toggleHistory(row.person_id)}
-                    />
-                    {historyOpen.has(row.person_id) ? (
-                      <AttendanceHistoryList planId={planId} timeId={data.time.id} personId={row.person_id} />
-                    ) : null}
-                  </View>
-                ))}
-              </Card>
-            </>
+              {needsListSearch(data.rows.length, ATTENDANCE_SEARCH_THRESHOLD) ? (
+                <SearchField value={nameQuery} onChangeText={setNameQuery} placeholder={t('mobileAttendance.searchNames')} />
+              ) : null}
+              {data.rows.length > 0 && sections.length === 0 ? (
+                <Text style={styles.muted}>{t('mobileAttendance.noNameMatch')}</Text>
+              ) : null}
+            </View>
+          }
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.groupTitle}>{t('mobileAttendance.teamGroup', { team: section.title, count: section.data.length })}</Text>
           )}
-  
-          {data.hidden_people > 0 ? (
-            <Text style={styles.muted}>{t('attendance.hiddenPeople', { count: data.hidden_people })}</Text>
-          ) : null}
-          {data.orphaned_records.length > 0 ? (
-            <Card>
-              <Label>{t('mobileAttendance.orphanedTitle')}</Label>
-              {data.orphaned_records.map((record, index) => (
-                <View key={record.id}>
-                  {index > 0 ? <Divider /> : null}
-                  <View style={styles.orphan}>
-                    <Text style={styles.personName}>{record.person_name}</Text>
-                    <Tag label={t(`attendance.status.${record.status}`)} accent={theme.accent[ATTENDANCE_STATUS_ACCENTS[record.status]]} />
-                    <View style={styles.flex} />
-                    <Button
-                      title={historyOpen.has(record.person_id) ? t('mobileAttendance.hideHistory') : t('attendance.history')}
-                      variant="quiet"
-                      onPress={() => toggleHistory(record.person_id)}
-                    />
-                  </View>
-                  {historyOpen.has(record.person_id) ? (
-                    <AttendanceHistoryList planId={planId} timeId={data.time.id} personId={record.person_id} />
-                  ) : null}
-                </View>
-              ))}
-            </Card>
-          ) : null}
-  
-        </ScrollView>
+          renderItem={({ item: row, index, section }) => (
+            <View style={[styles.groupRow, index === 0 && styles.groupFirst, index === section.data.length - 1 && styles.groupLast]}>
+              {index > 0 ? <Divider /> : null}
+              <AttendanceRowView
+                row={row}
+                choice={draft[row.person_id]?.status}
+                onChoose={(status) => choose(row, status)}
+                historyOpen={historyOpen.has(row.person_id)}
+                onToggleHistory={() => toggleHistory(row.person_id)}
+              />
+              {historyOpen.has(row.person_id) ? (
+                <AttendanceHistoryList planId={planId} timeId={data.time.id} personId={row.person_id} />
+              ) : null}
+            </View>
+          )}
+          ListFooterComponent={
+            <View style={styles.listFooter}>
+              {data.hidden_people > 0 ? (
+                <Text style={styles.muted}>{t('attendance.hiddenPeople', { count: data.hidden_people })}</Text>
+              ) : null}
+              {data.orphaned_records.length > 0 ? (
+                <Card>
+                  <Label>{t('mobileAttendance.orphanedTitle')}</Label>
+                  {data.orphaned_records.map((record, index) => (
+                    <View key={record.id}>
+                      {index > 0 ? <Divider /> : null}
+                      <View style={styles.orphan}>
+                        <Text style={styles.personName}>{record.person_name}</Text>
+                        <Tag label={t(`attendance.status.${record.status}`)} accent={theme.accent[ATTENDANCE_STATUS_ACCENTS[record.status]]} />
+                        <View style={styles.flex} />
+                        <Button
+                          title={historyOpen.has(record.person_id) ? t('mobileAttendance.hideHistory') : t('attendance.history')}
+                          variant="quiet"
+                          onPress={() => toggleHistory(record.person_id)}
+                        />
+                      </View>
+                      {historyOpen.has(record.person_id) ? (
+                        <AttendanceHistoryList planId={planId} timeId={data.time.id} personId={record.person_id} />
+                      ) : null}
+                    </View>
+                  ))}
+                </Card>
+              ) : null}
+            </View>
+          }
+        />
   
         {/* Docked under the sheet (the website's review dialog), so it stays in view above the keyboard. */}
         {dirty ? (
@@ -625,6 +648,27 @@ const AttendanceHistoryList = ({ planId, timeId, personId }: AttendanceHistoryLi
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     flex: { flex: 1 },
+    list: { gap: 0 },
+    listHeader: { gap: theme.space.lg, marginBottom: theme.space.sm },
+    listFooter: { gap: theme.space.lg, marginTop: theme.space.lg },
+    groupTitle: { ...theme.type.label, color: theme.color.inkMuted, paddingTop: theme.space.md, paddingBottom: theme.space.xs },
+    groupRow: {
+      backgroundColor: theme.color.surface,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: theme.color.border,
+      paddingHorizontal: theme.space.md,
+    },
+    groupFirst: {
+      borderTopWidth: 1,
+      borderTopLeftRadius: theme.radius.lg + 2,
+      borderTopRightRadius: theme.radius.lg + 2,
+    },
+    groupLast: {
+      borderBottomWidth: 1,
+      borderBottomLeftRadius: theme.radius.lg + 2,
+      borderBottomRightRadius: theme.radius.lg + 2,
+    },
     errorWrap: { padding: theme.space.xl, gap: theme.space.md },
     header: { gap: theme.space.xs },
     planTitle: { ...theme.type.title, color: theme.color.ink },

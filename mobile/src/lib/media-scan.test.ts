@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { ApiError, listMediaQuerySchema, type MediaSummary } from '@service-center/shared';
 import { queryKeys } from './query-keys';
 import { orderWriteOutcome } from './plan-order-edit';
-import { canLinkMedia, linkableMedia, mediaLinkBody, mediaListRequest, mediaSummaryLine } from './media-library';
+import { MEDIA_LIST_CAP, canLinkMedia, linkableMedia, mediaLinkBody, mediaListCapped, mediaListRequest, mediaSummaryLine } from './media-library';
 import {
   SCAN_MAX_PAGES,
   canAddScanPage,
@@ -67,6 +67,8 @@ describe('media browsing and linking', () => {
 
   it('offers only active bundles in the picker', () => {
     expect(linkableMedia([media(), media({ id: 'm2', is_archived: true })]).map((row) => row.id)).toEqual(['m1']);
+    expect(mediaListCapped(Array.from({ length: MEDIA_LIST_CAP - 1 }, (_, index) => media({ id: `m${index}` })))).toBe(false);
+    expect(mediaListCapped(Array.from({ length: MEDIA_LIST_CAP }, (_, index) => media({ id: `m${index}` })))).toBe(true);
   });
 
   it('reads a refused link the way the order editor does', () => {

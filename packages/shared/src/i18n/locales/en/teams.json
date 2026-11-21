@@ -207,6 +207,14 @@
     "removeLabel": "Remove {{name}} from {{team}}",
     "removeTitle": "Remove {{name}} from {{team}}?",
     "removeMessage": "Past plans keep their history. They can be added again later.",
-    "refineSearch": "Showing the first 50. Search to narrow the list."
+    "refineSearch": "Showing the first 50. Search to narrow the list.",
+    "addPeople": "Add people",
+    "searchMembers": "Search members",
+    "positionGroup_one": "{{position}} · {{count}}",
+    "positionGroup_other": "{{position}} · {{count}}",
+    "onTeam": "On this team",
+    "addQueued_one": "Add {{count}} person",
+    "addQueued_other": "Add {{count}} people",
+    "added": "Added. Choose more people or tap Done."
   }
 }

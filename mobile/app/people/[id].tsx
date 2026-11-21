@@ -15,6 +15,7 @@ import {
   personEditBody,
   personEditDraft,
   canOpenPeopleDetails,
+  personDetailBadges,
   tagText,
   teamManageTarget,
   teamsForPerson,
@@ -59,17 +60,20 @@ export default function PersonScreen() {
   const personId = uuid.safeParse(single(params.id));
   const id = personId.success ? personId.data : null;
 
-  const directory = useQuery({
-    queryKey: queryKeys.directory(queryScope, true),
-    queryFn: () => api.listPeople({ include_archived: true }),
-    enabled: Boolean(queryScope && id && owner),
-  });
   const record = useQuery({
     queryKey: queryKeys.person(queryScope, id),
     queryFn: () => api.getPerson(id ?? ''),
     enabled: Boolean(queryScope && id && owner),
   });
-  const row = directory.data?.find((entry) => entry.person_id === id) ?? null;
+  const recordGone = record.error instanceof ApiError && record.error.status === 404;
+  // The record is the source; the directory (archived included) is read only
+  // when the record has gone, to fall back to its row — never to show one person.
+  const directory = useQuery({
+    queryKey: queryKeys.directory(queryScope, true),
+    queryFn: () => api.listPeople({ include_archived: true }),
+    enabled: Boolean(queryScope && id && owner) && recordGone,
+  });
+  const row = recordGone ? (directory.data?.find((entry) => entry.person_id === id) ?? null) : null;
 
   if (!owner) return <Redirect href="/people" />;
 
@@ -81,15 +85,14 @@ export default function PersonScreen() {
       </Screen>
     );
   }
-  if (record.isLoading || directory.isLoading) {
+  if (record.isLoading || (recordGone && directory.isLoading)) {
     return (
       <Screen>
         <Loading />
       </Screen>
     );
   }
-  const privateRecord = record.error instanceof ApiError && record.error.status === 404;
-  if (privateRecord && !row) {
+  if (recordGone && !row) {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('list.title') }} />
@@ -97,7 +100,7 @@ export default function PersonScreen() {
       </Screen>
     );
   }
-  if ((record.error && !privateRecord) || (!record.data && !row)) {
+  if ((record.error && !recordGone) || (!record.data && !row)) {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('list.title') }} />
@@ -116,7 +119,7 @@ export default function PersonScreen() {
       refreshing={record.isRefetching}
       onRefresh={() => {
         void record.refetch();
-        void directory.refetch();
+        if (recordGone) void directory.refetch();
       }}
     />
   );
@@ -296,11 +299,9 @@ const PersonView = ({ personId, person, row, refreshing, onRefresh }: PersonView
           <Text style={styles.title}>{name}</Text>
           <View style={styles.tags}>
             {role ? <Tag label={t(`common:roles.${role}`)} accent={theme.accent.blue} /> : null}
-            {row
-              ? directoryBadges(row).map((badge) => (
-                  <Tag key={badge} label={badgeLabel[badge]} accent={badge === 'archived' ? theme.accent.yellow : theme.accent.neutral} />
-                ))
-              : null}
+            {(person ? personDetailBadges(person) : row ? directoryBadges(row) : []).map((badge) => (
+              <Tag key={badge} label={badgeLabel[badge]} accent={badge === 'archived' ? theme.accent.yellow : theme.accent.neutral} />
+            ))}
             {isSelf ? <Tag label={t('mobileDirectory.you')} accent={theme.accent.green} /> : null}
           </View>
         </Card>

@@ -268,7 +268,11 @@
     "markLabel": "Đánh dấu {{name}} {{status}}",
     "hideHistory": "Ẩn lịch sử",
     "role": "{{team}} · {{position}}",
-    "orphanedTitle": "Giữ lại từ trước (không còn được phân công vào giờ này)"
+    "orphanedTitle": "Giữ lại từ trước (không còn được phân công vào giờ này)",
+    "searchNames": "Lọc theo tên",
+    "noNameMatch": "Không có ai trong danh sách này trùng với tên đó.",
+    "teamGroup_other": "{{team}} · {{count}} người",
+    "otherTeam": "Khác"
   },
   "mobileReport": {
     "screenTitle": "Báo cáo lịch phục vụ",

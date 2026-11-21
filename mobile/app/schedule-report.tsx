@@ -33,7 +33,6 @@ import { useFormatters } from '../src/i18n';
 import {
   Button,
   Card,
-  Chip,
   Divider,
   EmptyState,
   ErrorNotice,
@@ -46,6 +45,7 @@ import {
 } from '../src/components/ui';
 import { statusAccent, type Theme } from '../src/lib/theme';
 import { useTheme, useThemedStyles } from '../src/lib/useTheme';
+import { SearchableOptionPicker } from '../src/components/SearchableOptionSheet';
 
 /** How often the exports list is re-read while one is queued or building (the website's interval). */
 const EXPORT_POLL_MS = 5000;
@@ -196,38 +196,24 @@ export default function ScheduleReportScreen() {
           {!rangeOk ? <Meta>{t('mobileReport.rangeOrder')}</Meta> : null}
 
           <Label>{t('filters.serviceType')}</Label>
-          <View style={styles.row}>
-            <Chip
-              label={t('filters.allVisible')}
-              active={!draft.service_type_ids?.length}
-              onPress={() => setDraft({ ...draft, service_type_ids: [] })}
-            />
-            {(serviceTypes.data ?? []).map((serviceType) => (
-              <Chip
-                key={serviceType.id}
-                label={serviceType.name}
-                active={draft.service_type_ids?.[0] === serviceType.id}
-                onPress={() => setDraft({ ...draft, service_type_ids: [serviceType.id] })}
-              />
-            ))}
-          </View>
+          <SearchableOptionPicker
+            title={t('filters.serviceType')}
+            options={(serviceTypes.data ?? []).map((serviceType) => ({ value: serviceType.id, label: serviceType.name }))}
+            selected={draft.service_type_ids?.slice(0, 1) ?? []}
+            mode="single"
+            emptyOptionLabel={t('filters.allVisible')}
+            onChange={(next) => setDraft({ ...draft, service_type_ids: next })}
+          />
 
           <Label>{t('filters.team')}</Label>
-          <View style={styles.row}>
-            <Chip
-              label={t('filters.allVisible')}
-              active={!draft.team_ids?.length}
-              onPress={() => setDraft({ ...draft, team_ids: [] })}
-            />
-            {(teams.data ?? []).map((team) => (
-              <Chip
-                key={team.id}
-                label={team.name}
-                active={draft.team_ids?.[0] === team.id}
-                onPress={() => setDraft({ ...draft, team_ids: [team.id] })}
-              />
-            ))}
-          </View>
+          <SearchableOptionPicker
+            title={t('filters.team')}
+            options={(teams.data ?? []).map((team) => ({ value: team.id, label: team.name }))}
+            selected={draft.team_ids?.slice(0, 1) ?? []}
+            mode="single"
+            emptyOptionLabel={t('filters.allVisible')}
+            onChange={(next) => setDraft({ ...draft, team_ids: next })}
+          />
 
           <View style={styles.switchRow}>
             <Text style={styles.label}>{t('filters.includeRehearsals')}</Text>

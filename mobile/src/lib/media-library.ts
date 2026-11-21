@@ -43,3 +43,13 @@ export const mediaLinkBody = (mediaId: string | null, plan: Pick<PlanDetail, 'co
 
 /** Pickers offer only bundles that are not archived; an item already using one keeps it. */
 export const linkableMedia = (media: readonly MediaSummary[]): MediaSummary[] => media.filter((row) => !row.is_archived);
+
+/**
+ * The most bundles one `mediaList` read returns (`backend/src/services/media.ts`,
+ * ordered by title). Archived bundles are dropped after that cap, so a picker
+ * asks for them too and counts the whole answer.
+ */
+export const MEDIA_LIST_CAP = 200;
+
+/** Whether a list read (archived included) may have stopped at the cap: some matches may be missing. */
+export const mediaListCapped = (media: readonly MediaSummary[]): boolean => media.length >= MEDIA_LIST_CAP;

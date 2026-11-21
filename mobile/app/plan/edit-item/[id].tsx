@@ -24,11 +24,16 @@ import {
 import { api } from '../../../src/lib/api';
 import { queryKeys } from '../../../src/lib/query-keys';
 import {
+  PERSON_CHOICE_LIMIT,
   labeledKeyText,
-  leaderPersonChoices,
-  leaderPositionChoices,
+  leaderPersonSuggestions,
+  leaderPositionOptions,
   orderWriteOutcome,
+  planPeopleChoices,
+  staffedTeamIds,
 } from '../../../src/lib/plan-order-edit';
+import { useDebouncedValue } from '../../../src/hooks/useDebouncedValue';
+import { SearchableOptionPicker } from '../../../src/components/SearchableOptionSheet';
 import { useDiscardGuard } from '../../../src/lib/useDiscardGuard';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { ArrangementPicker } from '../../../src/components/ArrangementPicker';
@@ -138,10 +143,13 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
     queryFn: () => api.listSongs({ q: songQuery || undefined, per_page: 100 }),
     enabled: Boolean(queryScope && changingSong),
   });
+  // One server page of People per (debounced) search; the plan's own people come first.
+  const personSearch = useDebouncedValue(personQuery.trim());
   const people = useQuery({
-    queryKey: queryKeys.people(queryScope),
-    queryFn: () => api.listPeople(),
+    queryKey: queryKeys.peoplePicker(queryScope, `leader:${personSearch}`),
+    queryFn: () => api.listPeoplePage({ limit: PERSON_CHOICE_LIMIT, ...(personSearch ? { q: personSearch } : {}) }),
     enabled: Boolean(queryScope && draft.leaderMode === 'person'),
+    placeholderData: (previous) => previous,
   });
   const teams = useQuery({
     queryKey: queryKeys.teams(queryScope),
@@ -169,16 +177,27 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
     return [...new Set(labels)].filter((label) => label.length <= 20);
   }, [chosenArrangement]);
 
-  const positions = useMemo(
-    () => leaderPositionChoices(teams.data ?? [], plan.plan_positions, {
+  const positionOptions = useMemo(
+    () => leaderPositionOptions(teams.data ?? [], plan.plan_positions, {
       teamPosition: (team, position) => t('common:format.teamPosition', { team, position }),
       planPosition: (team, position) => t('editItem.positionThisPlan', { team, position }),
+      planPositionShort: (position) => t('mobileOrder.positionThisPlanShort', { position }),
       unknownTeam: t('common:fallback.team'),
     }),
     [plan.plan_positions, t, teams.data],
   );
-  const personChoices = leaderPersonChoices(people.data ?? [], personQuery, draft.leaderPersonId, t('common:fallback.unnamed'));
-  const leaderOffRoster = Boolean(
+  const leadingTeams = useMemo(() => staffedTeamIds(plan.assignments), [plan.assignments]);
+  const planPeople = useMemo(() => planPeopleChoices(plan.assignments, t('common:fallback.unnamed')), [plan.assignments, t]);
+  const { choices: personChoices, truncated: personsTruncated } = leaderPersonSuggestions({
+    planPeople,
+    results: people.data?.items ?? [],
+    query: personSearch,
+    selectedPersonId: draft.leaderPersonId,
+    hasMore: Boolean(people.data?.next_cursor),
+    unnamed: t('common:fallback.unnamed'),
+  });
+  // The chosen leader is not among these suggestions (another search, or off the roster): keep showing them.
+  const leaderNotListed = Boolean(
     draft.leaderPersonId && people.data && !personChoices.some((choice) => choice.id === draft.leaderPersonId),
   );
 
@@ -435,24 +454,44 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
                   />
                   {people.isLoading ? <Loading /> : null}
                   <ErrorNotice error={people.error} />
+                  {!personSearch && planPeople.length ? <Text style={styles.hint}>{t('mobileOrder.onPlanFirst')}</Text> : null}
                   <View accessibilityRole="radiogroup" accessibilityLabel={t('editItem.personWhoLeads')} style={styles.chips}>
-                    {leaderOffRoster ? (
-                      <Chip label={item.leader_person?.full_name ?? t('editItem.currentLeader')} active onPress={() => undefined} />
+                    {leaderNotListed ? (
+                      <Chip
+                        label={draft.leaderPersonId === item.leader_person_id
+                          ? (item.leader_person?.full_name ?? t('editItem.currentLeader'))
+                          : t('editItem.currentLeader')}
+                        active
+                        onPress={() => undefined}
+                      />
                     ) : null}
                     {personChoices.map((choice) => (
-                      <Chip key={choice.id} label={choice.label} active={draft.leaderPersonId === choice.id} onPress={() => set('leaderPersonId', choice.id)} />
+                      <Chip
+                        key={choice.id}
+                        label={choice.onPlan ? t('mobileOrder.onPlanName', { name: choice.label }) : choice.label}
+                        active={draft.leaderPersonId === choice.id}
+                        onPress={() => set('leaderPersonId', choice.id)}
+                      />
                     ))}
                   </View>
+                  {people.data && personChoices.length === 0 ? <Text style={styles.hint}>{t('mobileOrder.noPersonMatch')}</Text> : null}
+                  {personsTruncated ? (
+                    <Text style={styles.hint}>{t('common:list.refineSearch', { shown: personChoices.length })}</Text>
+                  ) : null}
                 </View>
               ) : null}
               {draft.leaderMode === 'position' ? (
                 <View style={styles.group}>
                   <ErrorNotice error={teams.error} />
-                  <View accessibilityRole="radiogroup" accessibilityLabel={t('editItem.positionWhoLeads')} style={styles.chips}>
-                    {positions.map((position) => (
-                      <Chip key={position.id} label={position.label} active={draft.leaderPositionId === position.id} onPress={() => set('leaderPositionId', position.id)} />
-                    ))}
-                  </View>
+                  <SearchableOptionPicker
+                    title={t('editItem.positionWhoLeads')}
+                    options={positionOptions}
+                    selected={draft.leaderPositionId ? [draft.leaderPositionId] : []}
+                    mode="single"
+                    leadingGroupKeys={leadingTeams}
+                    searchPlaceholder={t('mobileOrder.searchPositions')}
+                    onChange={(next) => set('leaderPositionId', next[0] ?? '')}
+                  />
                   <Text style={styles.hint}>{t('editItem.positionFollowsHint')}</Text>
                 </View>
               ) : null}

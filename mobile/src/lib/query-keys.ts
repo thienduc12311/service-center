@@ -116,8 +116,9 @@ export const queryKeys = {
   /** MOB-018: prefix for every F09 targeted-message list and detail; invalidate this after a send or retry. */
   messagesAll: (scope: ProtectedQueryScope | null) =>
     [...privateRoot(scope), 'messages'] as const,
+  /** Keyset pages (`before` cursor) of one box, newest first. */
   messageList: (scope: ProtectedQueryScope | null, box: 'sent' | 'received') =>
-    [...privateRoot(scope), 'messages', 'list', box] as const,
+    [...privateRoot(scope), 'messages', 'pages', box] as const,
   /** MOB-018: one message — the sender's per-channel outcomes, or a recipient's own copy. */
   message: (scope: ProtectedQueryScope | null, messageId: string | null | undefined) =>
     [...privateRoot(scope), 'messages', 'detail', messageId ?? null] as const,
@@ -225,6 +226,9 @@ export const queryKeys = {
   /** W8 paging: the People list screen's keyset pages (search and archive are server-side); under `people`, so roster writes refresh it. */
   directoryPage: (scope: ProtectedQueryScope | null, includeArchived: boolean, q: string) =>
     [...privateRoot(scope), 'people', 'directory-page', includeArchived, q] as const,
+  /** Server-searched People pages for a picker (team add, item leader); under `people`, so roster writes refresh it. */
+  peoplePicker: (scope: ProtectedQueryScope | null, q: string) =>
+    [...privateRoot(scope), 'people', 'picker-page', q] as const,
   /** MOB-031: the directory with or without archived people; invalidate `people` after any roster write. */
   directory: (scope: ProtectedQueryScope | null, includeArchived: boolean) =>
     [...privateRoot(scope), 'people', 'directory', includeArchived] as const,
