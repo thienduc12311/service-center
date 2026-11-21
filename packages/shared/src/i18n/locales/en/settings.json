@@ -269,6 +269,16 @@
     "recipientChannel": "{{name}} · {{channel}}",
     "unknownPerson": "Unknown person",
     "deletedPlan": "Deleted plan",
+    "noPlanContext": {
+      "assignment_request": "Scheduling request",
+      "assignment_reminder": "Response reminder",
+      "scheduler_response": "Response update",
+      "availability_request": "Availability request",
+      "service_reminder": "Service reminder",
+      "item_comment": "Item discussion",
+      "operational_message": "Message",
+      "conversation_message": "Team chat"
+    },
     "details_one": "{{plan}} · {{date}} · {{count}} attempt",
     "details_other": "{{plan}} · {{date}} · {{count}} attempts",
     "retry": "Retry",

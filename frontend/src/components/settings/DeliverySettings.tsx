@@ -70,7 +70,10 @@ const DeliveryRowView = ({ delivery }: { delivery: DeliveryListItem }) => {
         </p>
         <p className="text-slate-500">
           {t('delivery.details', {
-            plan: current.plan_title ?? t('delivery.deletedPlan'),
+            // Chats, availability requests and church-wide messages have no plan.
+            plan: current.plan_id
+              ? current.plan_title ?? t('delivery.deletedPlan')
+              : t(`delivery.noPlanContext.${current.template}`),
             date: date(current.created_at),
             count: current.attempts,
           })}

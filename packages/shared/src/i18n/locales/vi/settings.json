@@ -265,6 +265,16 @@
     "recipientChannel": "{{name}} · {{channel}}",
     "unknownPerson": "Người không xác định",
     "deletedPlan": "Chương trình đã xóa",
+    "noPlanContext": {
+      "assignment_request": "Yêu cầu phân công",
+      "assignment_reminder": "Nhắc trả lời",
+      "scheduler_response": "Cập nhật phản hồi",
+      "availability_request": "Yêu cầu lịch rảnh",
+      "service_reminder": "Nhắc buổi lễ",
+      "item_comment": "Thảo luận mục",
+      "operational_message": "Tin nhắn",
+      "conversation_message": "Trò chuyện nhóm"
+    },
     "details_other": "{{plan}} · {{date}} · {{count}} lần thử",
     "retry": "Gửi lại",
     "channel": {
