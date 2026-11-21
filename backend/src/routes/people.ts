@@ -138,17 +138,22 @@ peopleRouter.get('/', validateQuery(listPeopleQuerySchema), async (req, res) => 
         phone: null,
       }));
 
-  const pendingInvitations = await unwrap(
-    req.db
-      .from('person_invitations')
-      .select('person_id')
-      .eq('organization_id', req.orgId)
-      .is('accepted_at', null)
-      .is('revoked_at', null)
-      .gt('expires_at', new Date().toISOString()),
+  const now = new Date().toISOString();
+  const pendingInvitations = await fetchAllPages(async (from, to) =>
+    unwrap(
+      req.db
+        .from('person_invitations')
+        .select('person_id')
+        .eq('organization_id', req.orgId)
+        .is('accepted_at', null)
+        .is('revoked_at', null)
+        .gt('expires_at', now)
+        .order('id')
+        .range(from, to),
+    ),
   );
 
-  res.json(mergeRoster(members, people ?? [], pendingInvitations ?? [], include_archived));
+  res.json(mergeRoster(members, people, pendingInvitations, include_archived));
 });
 
 /**

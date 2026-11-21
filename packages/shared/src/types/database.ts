@@ -1070,6 +1070,19 @@ export type PeopleDirectoryRow = Pick<
   schedulable: boolean;
 };
 
+/**
+ * `people_owner_search` (owner only): the People-list columns plus the contact
+ * the list displays, preferring the login profile over the People row.
+ */
+export type PeopleOwnerSearchRow = Pick<
+  PersonRow,
+  'id' | 'organization_id' | 'profile_id' | 'first_name' | 'last_name' | 'avatar_url' | 'email' | 'phone' | 'campus' | 'archived_at'
+> & {
+  sort_name: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+};
+
 /** A person's private record as API roles may select it (no medical note). */
 export type PersonSelectableRow = Omit<PersonRow, 'medical_note'>;
 
@@ -1321,6 +1334,7 @@ export type Database = {
     };
     Views: {
       people_directory: { Row: PeopleDirectoryRow; Relationships: [] };
+      people_owner_search: { Row: PeopleOwnerSearchRow; Relationships: [] };
     };
     Functions: {
       my_received_messages: {

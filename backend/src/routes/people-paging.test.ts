@@ -31,15 +31,22 @@ const rows: FakeRow[] = Array.from({ length: PEOPLE_COUNT }, (_, index) => ({
   archived_at: null,
 }));
 
+/** A pending `person_invitations` row, as GET /people selects it. */
+interface FakeInvitation {
+  person_id: string;
+}
+
+const invitations: FakeInvitation[] = rows.map((row) => ({ person_id: row.id }));
+
 interface FakeResult {
-  data: FakeRow[];
+  data: Array<FakeRow | FakeInvitation>;
   error: null;
 }
 
 /** A PostgREST stand-in that, like the real server, never returns more than 1000 rows per request. */
 class FakeQuery implements PromiseLike<FakeResult> {
   private window: [number, number] = [0, PAGE_CAP - 1];
-  constructor(private readonly source: FakeRow[]) {}
+  constructor(private readonly source: Array<FakeRow | FakeInvitation>) {}
   select(): this { return this; }
   eq(): this { return this; }
   neq(): this { return this; }
@@ -64,7 +71,8 @@ describe('GET /people past the 1000-row PostgREST cap (W8-PERF-D2)', () => {
   let app: Express;
   let role: OrgRole = 'owner';
   const db = {
-    from: (table: string) => new FakeQuery(table === 'people' || table === 'people_directory' ? rows : []),
+    from: (table: string) =>
+      new FakeQuery(table === 'people' || table === 'people_directory' ? rows : table === 'person_invitations' ? invitations : []),
     rpc: () => new FakeQuery([]),
   } as unknown as Db;
 
@@ -95,4 +103,12 @@ describe('GET /people past the 1000-row PostgREST cap (W8-PERF-D2)', () => {
       expect(new Set(ids).size).toBe(PEOPLE_COUNT);
     });
   }
+
+  it('marks a pending invitation past row 1000 of person_invitations', async () => {
+    role = 'owner';
+    const response = await request(app).get('/people');
+    const people = response.body as Array<{ id: string; invite_pending: boolean }>;
+    expect(people.find((person) => person.id === rows.at(-1)?.id)?.invite_pending).toBe(true);
+    expect(people.every((person) => person.invite_pending)).toBe(true);
+  });
 });
