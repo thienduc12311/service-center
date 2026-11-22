@@ -110,7 +110,7 @@ begin
     end if;
     if found then
       -- Same key, another request: never hand back the first file as if it
-      -- were this one. Files created before 20261201000200 have no stored
+      -- were this one. Files created before 20261201000110 have no stored
       -- hash and keep replaying (their request is not recoverable).
       select request_hash into v_stored from private.file_content_requests where attachment_id = v_file.id;
       if v_file.kind <> p_kind or (v_stored is not null and v_stored <> v_hash) then

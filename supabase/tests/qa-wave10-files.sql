@@ -1,8 +1,8 @@
 -- QA wave 10 file fixes. Fails on the schema before the named migration:
---   D5 (20261201000300_attachment_object_requires_live_intent): a signed upload
+--   D5 (20261201000120_attachment_object_requires_live_intent): a signed upload
 --      PUT after abandon / expiry is refused. Storage writes a signed upload as
 --      the table owner (RLS bypassed), simulated here with a BYPASSRLS role.
---   D6 (20261201000200_file_content_request_hash): a link or document create
+--   D6 (20261201000110_file_content_request_hash): a link or document create
 --      that reuses an idempotency key with another payload is PT409
 --      idempotency_key_reused; the same payload still replays.
 -- Run against the seeded local database (Jordan: scheduler of the seeded

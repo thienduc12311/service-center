@@ -1,4 +1,4 @@
--- W10-FGH-D4 regression suite (20261201000400_songbook_song_delete_guard).
+-- W10-FGH-D4 regression suite (20261201000130_songbook_song_delete_guard).
 -- Fails on the schema before that migration:
 --   A. deleting a song a songbook lists is refused with 23503 (the API's
 --      409 song_in_use) and the songbook keeps the song.
