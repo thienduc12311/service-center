@@ -7,6 +7,7 @@ import type {
   GenerationDateProblem,
   GenerationPlanPreview,
   PlanGenerationPreview,
+  PlanGenerationResult,
   PlanSeriesRequest,
   PlanTemplateSummary,
   ServiceTypeRow,
@@ -26,7 +27,13 @@ vi.mock('../lib/api', () => ({
 }));
 vi.mock('../lib/supabase', () => ({ supabase: {} }));
 vi.mock('../providers/AuthProvider', () => ({
-  useAuth: () => ({ organizationId: 'org-1', canAnywhere: () => true, can: () => true }),
+  useAuth: () => ({
+    organizationId: 'org-1',
+    canAnywhere: () => true,
+    can: () => true,
+    // A zone no test machine runs in, so a time read in the browser's zone would show.
+    user: { profile: { id: 'user-1' }, memberships: [{ organization: { id: 'org-1', timezone: 'Pacific/Kiritimati' } }] },
+  }),
 }));
 
 const template = {
@@ -203,5 +210,28 @@ describe('GeneratePlansPage recurrence', () => {
     await user.click(screen.getByRole('button', { name: 'Review plans' }));
     await waitFor(() => expect(screen.getByText(/Network down|went wrong/i)).toBeTruthy());
     expect(api.generatePlans).not.toHaveBeenCalled();
+  });
+
+  it('shows the review and the created plans in the organization’s timezone, not the browser’s', async () => {
+    const user = userEvent.setup();
+    // 17:00 UTC on 9 May is 07:00 on 10 May in Kiritimati (UTC+14).
+    vi.mocked(api.previewPlanGeneration).mockResolvedValue({ ...previewOf(['2027-05-09']), timezone: 'Pacific/Kiritimati' });
+    vi.mocked(api.generatePlans).mockResolvedValue({
+      batch_id: 'batch-1',
+      plan_ids: ['plan-1'],
+      replayed: false,
+      plans: [{ id: 'plan-1', title: 'Communion Sunday', service_date: '2027-05-09T17:00:00.000Z' }],
+    } as unknown as PlanGenerationResult);
+    renderPage();
+    await chooseTemplate();
+    await user.click(screen.getByRole('button', { name: 'Review plans' }));
+    await screen.findByText('1 plan to create');
+    expect(screen.getByText(/May 10.*7:00\sAM/)).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Create 1 draft plan' }));
+    const link = (await screen.findByText('Communion Sunday', { selector: 'span' })).closest('a')!;
+    expect(link.textContent).toMatch(/May 10.*7:00\sAM/);
+    // The date tile reads the same day.
+    expect(link.querySelector('[aria-hidden="true"]')!.textContent).toContain('10');
   });
 });

@@ -52,7 +52,11 @@ export const GeneratePlansPage = () => {
   const { t } = useTranslation(['templates', 'common']);
   const fmt = useFormatters();
   const structured = useStructuredText();
-  const { canAnywhere, can } = useAuth();
+  const { canAnywhere, can, user, organizationId } = useAuth();
+  // Plans are dated in the organization's timezone, so their times read in it too.
+  const orgTimeZone =
+    user?.memberships.find((membership) => membership.organization.id === organizationId)?.organization.timezone ??
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
   const invalidate = useInvalidateOrg();
   const people = usePeople();
   const templates = usePlanTemplates({ kind: 'plan' }, canAnywhere('plans.edit'));
@@ -165,12 +169,12 @@ export const GeneratePlansPage = () => {
           {created.plans.map((plan) => (
             <li key={plan.id}>
               <Link to={`/plans/${plan.id}`} className="card card-interactive flex items-center gap-4 p-3 sm:p-4">
-                <DateTile value={plan.service_date} />
+                <DateTile value={plan.service_date} timeZone={orgTimeZone} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold text-slate-900 dark:text-white">{plan.title}</span>
                   <span className="mt-0.5 inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                     <Icon name="clock" className="size-3.5" />
-                    {fmt.dateTime(plan.service_date)}
+                    {fmt.dateTime(plan.service_date, { timeZone: orgTimeZone })}
                   </span>
                 </span>
                 <Icon name="chevronRight" className="size-4 shrink-0 text-slate-300 dark:text-slate-600" />
@@ -346,7 +350,7 @@ export const GeneratePlansPage = () => {
                         if (moveTo && moveTo !== plan.local_date) editDate({ ...edit, local_date: seriesDate, skip: false, move_to: moveTo });
                       }}
                     />
-                    <span className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400"><Icon name="clock" className="size-3.5" />{fmt.dateTime(plan.service_date)}</span>
+                    <span className="inline-flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400"><Icon name="clock" className="size-3.5" />{fmt.dateTime(plan.service_date, { timeZone: preview.timezone })}</span>
                     {plan.existing_plans.length > 0 && (
                       <Badge tone={WARN_TONE}>{t('generate.alreadyHas', { titles: fmt.list(plan.existing_plans.map((existing) => existing.title)) })}</Badge>
                     )}
