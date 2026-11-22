@@ -15,17 +15,58 @@ const TOKEN_PATH_PREFIXES = [
   '/api/v1/public/set-lists/',
 ] as const;
 
-/** `/api/v1/assignment-responses/abc123/respond?x` → `/api/v1/assignment-responses/[token]/respond` */
+/** Stands in for a dropped query string, so the log still shows there was one. */
+const REDACTED_QUERY = '?[redacted]';
+
+/** Percent-decoded when well formed: `%2F`-style spellings must not dodge a prefix. */
+const decodePath = (path: string): string => {
+  try {
+    return decodeURIComponent(path);
+  } catch (error) {
+    if (error instanceof URIError) return path;
+    throw error;
+  }
+};
+
+/**
+ * The URL as a request log may show it (W10-SEC-D3):
+ *
+ * - Express matches routes case-insensitively, so a token prefix is matched on
+ *   the lower-cased, percent-decoded path (`/API/V1/INVITATIONS/<t>` routes and
+ *   must be redacted too); the token segment becomes `[token]`.
+ * - The query string is never logged — any parameter may carry a secret
+ *   (`?access_token=<JWT>`, `?token=`) or personal search text.
+ *
+ * `/api/v1/assignment-responses/abc123/respond?x` → `/api/v1/assignment-responses/[token]/respond`
+ */
 export const redactTokenPath = (url: string): string => {
-  const path = url.split('?')[0] ?? url;
+  const queryStart = url.indexOf('?');
+  const path = queryStart === -1 ? url : url.slice(0, queryStart);
+  const query = queryStart === -1 ? '' : REDACTED_QUERY;
+  const normalized = decodePath(path).toLowerCase();
   for (const prefix of TOKEN_PATH_PREFIXES) {
-    if (!path.startsWith(prefix)) continue;
-    const rest = path.slice(prefix.length);
+    if (!normalized.startsWith(prefix)) continue;
+    const rest = normalized.slice(prefix.length);
     const slash = rest.indexOf('/');
     const segment = slash === -1 ? rest : rest.slice(0, slash);
     const suffix = slash === -1 ? '' : rest.slice(slash);
     const extension = segment.endsWith('.ics') ? '.ics' : '';
     return `${prefix}[token]${extension}${suffix}`;
   }
-  return url;
+  return `${path}${query}`;
+};
+
+/**
+ * The `Referer` a request log may show: its origin only. The page that sent
+ * the request can carry a token in its path or query (`/respond?token=…`).
+ */
+export const redactReferrer = (referrer: string | undefined): string | undefined => {
+  if (!referrer) return undefined;
+  try {
+    const { origin } = new URL(referrer);
+    return origin === 'null' ? '[redacted]' : origin;
+  } catch (error) {
+    if (error instanceof TypeError) return '[redacted]';
+    throw error;
+  }
 };

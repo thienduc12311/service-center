@@ -38,8 +38,12 @@ interface StoredPlan {
   times: StoredTime[];
 }
 
-/** One way to make the next combined write fail after the fields were applied. */
-type InjectedFailure = 'times' | null;
+/**
+ * One way to make the next combined write fail after the fields were applied:
+ * `times` breaks the time list; `conflict` makes the new times double-book
+ * someone (W10-CD-D1), which only a reason (with the capability) gets past.
+ */
+type InjectedFailure = 'times' | 'conflict' | null;
 
 const store = vi.hoisted(() => ({ plan: null as StoredPlan | null, failNext: null as InjectedFailure, plainUpdates: 0 }));
 
@@ -56,6 +60,7 @@ const TIME = '00000000-0000-4000-8000-0000000000d1';
 interface RpcFailure {
   code: string;
   message: string;
+  details?: string;
   hint?: string;
 }
 
@@ -69,6 +74,7 @@ interface UpdatePlanWithTimesArgs {
   p_fields: Partial<Pick<StoredPlan, 'title' | 'location'>>;
   p_times: StoredTime[] | null;
   p_expected_revision: number | null;
+  p_conflict_override_reason: string | null;
 }
 
 /** Mirrors update_plan_with_times: revision check, then fields and times together or not at all. */
@@ -84,6 +90,16 @@ const updatePlanWithTimes = (args: UpdatePlanWithTimesArgs): RpcResult => {
       store.failNext = null;
       // The transaction rolls back: the draft (with the new fields) is discarded.
       return { data: null, error: { code: '23514', message: 'new row for relation "plan_times" violates check constraint' } };
+    }
+    if (store.failNext === 'conflict' && !args.p_conflict_override_reason) {
+      const conflict = {
+        candidate_key: 'a1', person_id: '00000000-0000-4000-8000-0000000000e1', kind: 'overlapping_commitment', severity: 'blocking',
+        plan_time_id: TIME, interval_source: 'plan_time', starts_at: '2026-12-06T09:00:00.000Z', ends_at: '2026-12-06T10:00:00.000Z',
+        other_plan_id: null, other_assignment_id: null, other_plan_time_id: null, other_time_kind: null, detail: null, redacted: true,
+      };
+      return { data: null, error: {
+        code: 'PT409', message: 'These times would double-book Sam Lee.', hint: 'scheduling_conflict', details: JSON.stringify([conflict]),
+      } };
     }
     draft.times = args.p_times.map(({ id, kind, name, starts_at, ends_at }) => ({ id, kind, name, starts_at, ends_at }));
   }
@@ -180,5 +196,19 @@ describe('PATCH /plans/:id is atomic', () => {
     expect(res.body.code).toBe('plan_revision_stale');
     expect(store.plan).toMatchObject({ title: 'Sunday', content_revision: 7, times: [] });
     expect(store.plainUpdates).toBe(0);
+  });
+
+  it('refuses times that double-book someone with 409 naming them, and saves with an override reason (W10-CD-D1)', async () => {
+    store.failNext = 'conflict';
+    const refused = await patch({ title: 'Advent', times: TIMES, expected_revision: 7 });
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('scheduling_conflict');
+    expect(refused.body.error).toContain('Sam Lee');
+    expect(refused.body.details).toEqual([expect.objectContaining({ person_id: '00000000-0000-4000-8000-0000000000e1', severity: 'blocking' })]);
+    expect(store.plan).toMatchObject({ title: 'Sunday', content_revision: 7, times: [] });
+
+    const overridden = await patch({ title: 'Advent', times: TIMES, expected_revision: 7, conflict_override_reason: '  Sam leads both  ' });
+    expect(overridden.status).toBe(200);
+    expect(overridden.body).toMatchObject({ title: 'Advent', times: [{ id: TIME }] });
   });
 });

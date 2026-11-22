@@ -33,6 +33,22 @@ export const isInstantString = (value: string): boolean => {
  * strings that are not a real calendar instant before they reach Postgres.
  */
 export const instantString = z.string().trim().refine(isInstantString, 'Enter a valid date and time');
+
+/** A time of day followed by `Z` or a `±hh[:mm]` offset at the end of an ISO 8601 string. */
+const ZONED_TIME_PATTERN = /T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}(?::?\d{2})?)$/i;
+
+/**
+ * W10-CD-D2: a stored plan instant must say which instant it is. A date-only
+ * or zone-less value (`2040-08-04`, `2040-08-18T10:00:00`) was taken as UTC,
+ * so the organization-local day drifted; it is refused (422) instead of being
+ * guessed, as spec rule 8 allows ("store instants in UTC … reject or
+ * explicitly resolve"). Clients resolve wall-clock input in the organization
+ * time zone and send the offset, as the web and mobile apps already do.
+ */
+export const zonedInstantString = instantString.refine(
+  (value) => ZONED_TIME_PATTERN.test(value.replace(' ', 'T')),
+  'Include a time and a UTC offset, for example 2040-08-04T10:00:00-05:00',
+);
 export const musicalKey = z.string().trim().max(8);
 /**
  * A client-generated key that makes a create/copy/notify request safe to
@@ -40,8 +56,16 @@ export const musicalKey = z.string().trim().max(8);
  */
 export const idempotencyKey = z.string().trim().min(8).max(200);
 
+/**
+ * The deepest page a list may ask for. Far beyond any real list (200 x 100,000
+ * rows), but small enough that `(page - 1) * per_page` stays an exact safe
+ * integer: an absurd page is refused with 422 instead of echoing `1e+21` over
+ * the first page or failing with 500 (W10-SEC-D1/D2).
+ */
+export const MAX_PAGE = 100_000;
+
 export const paginationSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(1).max(MAX_PAGE).default(1),
   per_page: z.coerce.number().int().min(1).max(200).default(50),
 });
 

@@ -1469,6 +1469,8 @@ export class ServiceCenterApi {
     this.request<AssignmentRespondResult>('POST', `/api/v1/assignment-responses/${encodeURIComponent(token)}/respond`, body);
   getCalendarFeed = () => this.request<CalendarFeedTokenResponse>('GET', '/api/v1/me/calendar-feed');
   rotateCalendarFeed = () => this.request<CalendarFeedTokenResponse>('POST', '/api/v1/me/calendar-feed', {});
+  /** Turns the personal feed off without a replacement; the old URL stops serving. Idempotent. */
+  revokeCalendarFeed = () => this.request<void>('DELETE', '/api/v1/me/calendar-feed');
 
   // ---------------------------------------------------------- blockouts --
   listBlockouts = (query?: Query) =>

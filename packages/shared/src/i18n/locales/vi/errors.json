@@ -53,6 +53,8 @@
     "note_stale": "Ghi chú này đã thay đổi kể từ khi bạn mở. Hãy tải phiên bản mới nhất và thử lại.",
     "song_revision_stale": "Bài hát này đã thay đổi kể từ khi bạn mở. Chưa có gì được lưu — hãy tải phiên bản mới nhất và thử lại.",
     "arrangement_revision_stale": "Bản phối này đã thay đổi kể từ khi bạn mở. Chưa có gì được lưu — hãy tải phiên bản mới nhất và thử lại.",
+    "song_in_use": "Bài hát này vẫn đang được dùng trong một chương trình hoặc sách bài hát nên không thể xóa. Hãy gỡ bài khỏi đó trước, hoặc lưu trữ bài hát.",
+    "arrangement_in_use": "Bản phối này đang được dùng trong một chương trình nên không thể xóa. Hãy gỡ bản phối khỏi các chương trình đó trước.",
     "library_changed": "Mục thư viện này đã thay đổi kể từ khi bạn mở. Chưa có gì được lưu — hãy tải lại và thử lại.",
     "attendance_revision_stale": "Người khác đã thay đổi điểm danh cho giờ này. Hãy tải lại để xem điểm danh mới nhất.",
     "audience_changed": "Danh sách người nhận đã thay đổi kể từ lúc xem trước. Chưa có gì được gửi — hãy xem lại.",
@@ -77,6 +79,7 @@
     "requester_already_member": "Người này đã là thành viên của hội thánh. Hãy từ chối yêu cầu để xoá khỏi danh sách.",
     "password_required": "Hãy chọn mật khẩu để tạo tài khoản.",
     "account_unconfirmed": "Đã có người bắt đầu tạo tài khoản với email này nhưng chưa xác nhận. Hãy dùng “Quên mật khẩu” ở trang đăng nhập để nhận lại tài khoản, rồi mở lại lời mời này.",
+    "invitation_accept_in_progress": "Lời mời này đang được chấp nhận. Hãy chờ một chút, rồi mở lại lời mời hoặc đăng nhập.",
     "invitation_sign_in_required": "Hãy đăng nhập bằng tài khoản của email này, rồi mở lại lời mời này để tham gia.",
     "person_email_locked": "Email của người này là email họ đã dùng để nhận lời mời, nên không thể thay đổi ở đây."
   },

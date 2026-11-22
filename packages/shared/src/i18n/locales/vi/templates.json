@@ -12,6 +12,7 @@
   },
   "skipReasons": {
     "song_missing": "bài hát của mục này đã bị xóa",
+    "song_archived": "bài hát của mục này đã được lưu trữ; hãy khôi phục để xếp vào chương trình",
     "position_missing": "ban hoặc vị trí này không còn nữa",
     "person_unavailable": "thành viên đã được lưu trữ hoặc không còn trong Hội thánh",
     "not_permitted": "bạn không phân công cho ban đó ở đây"
@@ -31,13 +32,14 @@
     "date_taken": "Đã có một chương trình {{serviceType}} khác vào {{date}}.",
     "date_taken_noType": "Đã có một chương trình khác cùng loại buổi nhóm vào {{date}}.",
     "confirmed_kept_other": "{{count}} câu trả lời đã xác nhận vẫn giữ nguyên cho ngày mới.",
-    "conflicts_other": "Có {{count}} trường hợp trùng giữa người và chương trình ở giờ mới; hệ thống không từ chối.",
+    "conflicts_other": "Có {{count}} trường hợp trùng giữa người và chương trình ở giờ mới. Không thể lưu trừ khi bạn có quyền bỏ qua xung đột và ghi lý do.",
     "itemDiscussionRemoved": {
       "moved_other": "{{count}} mục được chuyển có ghi chú hoặc bình luận; những nội dung này ở lại với mục cũ và bị xóa.",
       "destination_other": "{{count}} mục ở chương trình đích có ghi chú hoặc bình luận sẽ bị xóa cùng với mục.",
       "current_other": "{{count}} mục hiện tại có ghi chú hoặc bình luận sẽ bị xóa cùng với mục."
     },
     "arrangement_missing_other": "{{count}} mục dùng bản phối không còn tồn tại; các mục này dùng bản phối mặc định của bài hát.",
+    "arrangement_archived_other": "{{count}} mục dùng bản phối đã được lưu trữ; các mục này dùng bản phối mặc định của bài hát.",
     "times_added_other": "Chương trình giữ nguyên {{count}} giờ hiện có; các giờ trong mẫu được thêm vào.",
     "already_applied_other": "Mẫu này đã được áp dụng cho chương trình này {{count}} lần. Áp dụng lại sẽ thêm nội dung một lần nữa."
   },

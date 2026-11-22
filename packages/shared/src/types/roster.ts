@@ -139,7 +139,8 @@ export type PersonIdentityReconciliationRow = {
   organization_id: string;
   profile_id: string | null;
   person_id: string;
-  candidate_person_id: string;
+  /** Null once a decided report's candidate was removed (merged away). */
+  candidate_person_id: string | null;
   reason: IdentityReconciliationReason;
   status: IdentityReconciliationStatus;
   resolved_by: string | null;

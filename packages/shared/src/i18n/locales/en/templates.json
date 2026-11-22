@@ -12,6 +12,7 @@
   },
   "skipReasons": {
     "song_missing": "its song was deleted",
+    "song_archived": "its song is archived; restore it to schedule it",
     "position_missing": "its team or position no longer exists",
     "person_unavailable": "the person is archived or no longer in the organization",
     "not_permitted": "you do not schedule that team here"
@@ -32,8 +33,8 @@
     "date_taken_noType": "Another plan of this service type is already on {{date}}.",
     "confirmed_kept_one": "{{count}} confirmed answer stays confirmed for the new date.",
     "confirmed_kept_other": "{{count}} confirmed answers stay confirmed for the new date.",
-    "conflicts_one": "{{count}} person/plan overlap at the new time; it is not refused.",
-    "conflicts_other": "{{count}} person/plan overlaps at the new time; they are not refused.",
+    "conflicts_one": "{{count}} person/plan overlap at the new time. Saving is refused unless you may override conflicts and give a reason.",
+    "conflicts_other": "{{count}} person/plan overlaps at the new time. Saving is refused unless you may override conflicts and give a reason.",
     "itemDiscussionRemoved": {
       "moved_one": "{{count}} moved item has notes or comments; those stay with the old item and are removed.",
       "moved_other": "{{count}} moved items have notes or comments; those stay with the old items and are removed.",
@@ -44,6 +45,8 @@
     },
     "arrangement_missing_one": "{{count}} item uses an arrangement that no longer exists; it keeps the song default.",
     "arrangement_missing_other": "{{count}} items use an arrangement that no longer exists; they keep the song default.",
+    "arrangement_archived_one": "{{count}} item uses an archived arrangement; it keeps the song default.",
+    "arrangement_archived_other": "{{count}} items use an archived arrangement; they keep the song default.",
     "times_added_one": "The plan keeps its {{count}} time; the template's are added.",
     "times_added_other": "The plan keeps its {{count}} times; the template's are added.",
     "already_applied_one": "This template was already applied to this plan {{count}} time. Applying again adds its content again.",

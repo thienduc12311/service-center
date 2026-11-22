@@ -7,13 +7,26 @@ const localDate = z.string().refine((value) => parseLocalDate(value) !== null, '
 export const proposalLockSchema = z.object({ plan_id: uuid, position_id: uuid, person_id: uuid });
 export const proposalExclusionSchema = z.object({ plan_id: uuid, position_id: uuid, person_id: uuid });
 
+type ProposalSlotRef = z.infer<typeof proposalLockSchema>;
+
+/** Reviewer edits as both create and recompute accept them. */
+interface ProposalEditLists {
+  locks: ProposalSlotRef[];
+  exclusions: ProposalSlotRef[];
+}
+
+/** A lock and an exclusion for the same person and slot contradict each other (create and recompute alike). */
+const noLockedExclusion = (value: ProposalEditLists): boolean =>
+  !value.locks.some((lock) => value.exclusions.some((ex) =>
+    ex.plan_id === lock.plan_id && ex.position_id === lock.position_id && ex.person_id === lock.person_id));
+const lockedExclusionIssue = {
+  message: 'A person cannot be both locked and excluded for the same position', path: ['exclusions'],
+};
+
 const editsSchema = z.object({
   locks: z.array(proposalLockSchema).max(400).default([]),
   exclusions: z.array(proposalExclusionSchema).max(400).default([]),
-}).refine((value) => !value.locks.some((lock) => value.exclusions.some((ex) =>
-  ex.plan_id === lock.plan_id && ex.position_id === lock.position_id && ex.person_id === lock.person_id)), {
-  message: 'A person cannot be both locked and excluded for the same position', path: ['exclusions'],
-});
+}).refine(noLockedExclusion, lockedExclusionIssue);
 
 /** `POST /scheduling/proposals` — capture a snapshot and run the engine (no staffing effects). */
 export const createStaffingProposalSchema = z.object({
@@ -25,7 +38,7 @@ export const createStaffingProposalSchema = z.object({
   rotation_ids: z.array(uuid).max(20).optional(),
   locks: z.array(proposalLockSchema).max(400).default([]),
   exclusions: z.array(proposalExclusionSchema).max(400).default([]),
-});
+}).refine(noLockedExclusion, lockedExclusionIssue);
 
 /** `POST /scheduling/proposals/:id/recompute` — rerun on the same snapshot with reviewer edits. */
 export const recomputeStaffingProposalSchema = z.object({

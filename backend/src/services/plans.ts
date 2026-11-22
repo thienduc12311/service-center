@@ -9,6 +9,7 @@ import type {
   PlanSummary,
   TeamPositionRow,
 } from '@service-center/shared';
+import { planItemsTotalSeconds } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
 import { inChunks } from '../lib/paging.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
@@ -143,7 +144,8 @@ export const shapePlanDetail = (row: RawPlan): PlanDetail => {
     assignments,
     plan_positions: planPositions,
     position_needs: shapePositionNeeds(row.position_needs),
-    total_length_seconds: items.reduce((sum, item) => sum + (item.length_seconds ?? 0), 0),
+    // Same rule as the running-order schedule: headers take no time (W10-CD-D3).
+    total_length_seconds: planItemsTotalSeconds(items),
   };
 };
 

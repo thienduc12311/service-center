@@ -1,7 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import request from 'supertest';
+import { randomBytes } from 'node:crypto';
 import type { Db } from '../lib/supabase.js';
+import { hashInviteToken } from '../services/invitations.js';
 
 process.env.NODE_ENV ||= 'test';
 process.env.SUPABASE_URL ||= 'http://127.0.0.1:54321';
@@ -27,6 +29,7 @@ interface TokenState {
 interface FakeDbState {
   memberships: { organization_id: string }[];
   tokens: TokenState[];
+  rpcCalls: string[];
 }
 
 type Filter = [column: string, value: unknown];
@@ -81,7 +84,24 @@ const fakeDb = (state: FakeDbState): Db => {
     if (table === 'organization_members') return membersTable();
     throw new Error(`unexpected table ${table}`);
   };
-  return { from } as unknown as Db;
+  /** Mirrors rotate_/revoke_calendar_feed_token (20261201000100). */
+  const revokeLive = (organizationId: string): boolean => {
+    const live = state.tokens.filter((token) => token.organization_id === organizationId && token.user_id === 'user-1' && token.revoked_at === null);
+    for (const token of live) token.revoked_at = new Date().toISOString();
+    return live.length > 0;
+  };
+  const rpc = (name: string, args: { p_org: string }) => {
+    state.rpcCalls.push(name);
+    if (name === 'revoke_calendar_feed_token') return Promise.resolve({ data: revokeLive(args.p_org), error: null });
+    if (name === 'rotate_calendar_feed_token') {
+      revokeLive(args.p_org);
+      const token = randomBytes(32).toString('base64url');
+      state.tokens.push({ id: `token-${state.tokens.length + 1}`, organization_id: args.p_org, user_id: 'user-1', token_hash: hashInviteToken(token), revoked_at: null });
+      return Promise.resolve({ data: token, error: null });
+    }
+    throw new Error(`unexpected rpc ${name}`);
+  };
+  return { from, rpc } as unknown as Db;
 };
 
 describe('/api/v1/me/calendar-feed', () => {
@@ -103,7 +123,7 @@ describe('/api/v1/me/calendar-feed', () => {
   });
 
   const reset = (memberships = [{ organization_id: 'org-1' }]): void => {
-    state = { memberships, tokens: [] };
+    state = { memberships, tokens: [], rpcCalls: [] };
   };
 
   it('reports no link, never a URL, and is not cacheable', async () => {
@@ -139,5 +159,37 @@ describe('/api/v1/me/calendar-feed', () => {
     expect(res.status).toBe(201);
     expect(state.tokens[0]?.organization_id).toBe('org-2');
     expect((await request(app).get('/api/v1/me/calendar-feed').set('X-Organization-Id', 'org-3')).status).toBe(400);
+  });
+  it('never writes token rows with the caller\'s client: the database issues the token (W10-FGH-D7)', async () => {
+    reset();
+    const res = await request(app).post('/api/v1/me/calendar-feed').send({});
+    expect(res.status).toBe(201);
+    expect(state.rpcCalls).toEqual(['rotate_calendar_feed_token']);
+    const token = String(res.body.token);
+    expect(state.tokens).toHaveLength(1);
+    expect(state.tokens[0]?.token_hash).toBe(hashInviteToken(token));
+  });
+
+  it('revokes the feed without a replacement, and a later rotate issues a fresh link (W10-FGH-D8)', async () => {
+    reset();
+    const first = await request(app).post('/api/v1/me/calendar-feed').send({});
+    const revoked = await request(app).delete('/api/v1/me/calendar-feed');
+    expect(revoked.status).toBe(204);
+    expect(state.tokens.every((token) => token.revoked_at !== null)).toBe(true);
+    expect((await request(app).get('/api/v1/me/calendar-feed')).body).toEqual({ url: null, webcal_url: null, active: false });
+    // Revoking again is harmless.
+    expect((await request(app).delete('/api/v1/me/calendar-feed')).status).toBe(204);
+
+    const again = await request(app).post('/api/v1/me/calendar-feed').send({});
+    expect(again.status).toBe(201);
+    expect(again.body.url).not.toBe(first.body.url);
+    expect((await request(app).get('/api/v1/me/calendar-feed')).body.active).toBe(true);
+  });
+
+  it('refuses to revoke without an organization the caller belongs to', async () => {
+    reset([{ organization_id: 'org-1' }, { organization_id: 'org-2' }]);
+    expect((await request(app).delete('/api/v1/me/calendar-feed')).status).toBe(400);
+    expect((await request(app).delete('/api/v1/me/calendar-feed').set('X-Organization-Id', 'org-3')).status).toBe(400);
+    expect(state.rpcCalls).toEqual([]);
   });
 });

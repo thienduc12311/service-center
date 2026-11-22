@@ -8,7 +8,8 @@ vi.hoisted(() => {
 });
 
 import type { Db } from '../lib/supabase.js';
-import { dedupePositionNeeds, fetchViewerIsAdultPerson, shapePositionNeeds } from './plans.js';
+import { computePlanSchedule } from '@service-center/shared';
+import { dedupePositionNeeds, fetchViewerIsAdultPerson, shapePlanDetail, shapePositionNeeds } from './plans.js';
 
 describe('shapePositionNeeds', () => {
   it('reads the team off the joined position', () => {
@@ -60,5 +61,20 @@ describe('fetchViewerIsAdultPerson', () => {
 
   it('is false with no active roster person, like the database function', async () => {
     expect(await fetchViewerIsAdultPerson(dbReturning([]), 'org', 'me')).toBe(false);
+  });
+});
+
+describe('shapePlanDetail total length (W10-CD-D3)', () => {
+  it('leaves header lengths out, matching the running-order schedule total', () => {
+    const items = [
+      { id: 'h', sort_order: 0, item_type: 'header', length_seconds: 999, service_segment: 'service' },
+      { id: 'p', sort_order: 1, item_type: 'item', length_seconds: 300, service_segment: 'pre' },
+      { id: 's', sort_order: 2, item_type: 'song', length_seconds: 600, service_segment: 'service' },
+      { id: 'o', sort_order: 3, item_type: 'item', length_seconds: 120, service_segment: 'post' },
+    ];
+    const detail = shapePlanDetail({ id: 'plan', items, assignments: [], times: [], plan_positions: [], position_needs: [] });
+    const schedule = computePlanSchedule({ items: detail.items, time: null });
+    expect(detail.total_length_seconds).toBe(1020);
+    expect(schedule.pre_seconds + schedule.service_seconds + schedule.post_seconds).toBe(detail.total_length_seconds);
   });
 });

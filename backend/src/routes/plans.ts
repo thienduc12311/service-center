@@ -180,6 +180,7 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
     notify_time_changes,
     notify,
     idempotency_key,
+    conflict_override_reason,
     ...fields
   } = req.body as UpdatePlanInput;
   const planId = param(req, 'id');
@@ -208,6 +209,7 @@ plansRouter.patch('/:id', requireCapability('plans.edit'), validateBody(updatePl
         orphanResolutions: orphan_resolutions,
         notify: notify_time_changes,
         effectKey: `plan-times:${planId}:${randomUUID()}`,
+        conflictOverrideReason: conflict_override_reason?.trim() || null,
       })
     : null;
 

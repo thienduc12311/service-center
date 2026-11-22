@@ -115,3 +115,16 @@ it('marks where new songs go while the browser is open', async () => {
   expect(rows[markerIndex - 1]).toContain('Welcome');
   expect(rows[markerIndex + 1]).toContain('Sermon');
 });
+
+it('lays rows out by the order card width, not the viewport, so controls never sit on titles (W2-PLANS-D11)', async () => {
+  renderOrder();
+  const title = await screen.findByText('Welcome');
+  const row = title.closest('li')!;
+  // Beside the plan sidebar at 1024 px the card is phone-narrow while the
+  // viewport is wide: the four-column row must key off the card (a container
+  // query), and a long title wraps rather than running under the controls.
+  expect(row.closest('.\\@container')).not.toBeNull();
+  expect(row.className).toContain('@xl:grid-cols-');
+  expect(row.className).not.toMatch(/(^|\s)sm:/);
+  expect(title.closest('.wrap-anywhere')).not.toBeNull();
+});
