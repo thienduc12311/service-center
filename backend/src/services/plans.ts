@@ -42,7 +42,8 @@ export const PLAN_DETAIL_SELECT = `
       id, song_id, name, song_key, bpm, sequence, chord_chart,
       chart_columns, chart_font, chart_font_size, chart_chord_color, is_default, length_seconds
     ),
-    media:media(${PLAN_ITEM_MEDIA_COLUMNS})
+    media:media(${PLAN_ITEM_MEDIA_COLUMNS}),
+    item_times:plan_item_times(plan_time_id)
   ),
   assignments:assignments(
     *,

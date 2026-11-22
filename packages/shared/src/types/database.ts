@@ -1,4 +1,4 @@
-import type { PlanItemNotesCarried, PlanItemTimeRef } from './plan-item-details.js';
+import type { PlanItemNotesCarried, PlanItemTimeRef, SongLastUse } from './plan-item-details.js';
 import type { LabeledKey } from '../schemas/arrangement-curation.js';
 import type { ImportJob, ImportJobRow } from '../schemas/imports.js';
 import type { SongBulkPreview, SongCurationEventRow } from './song-curation.js';
@@ -1274,6 +1274,7 @@ export type Database = {
       plans: Table<PlanRow>;
       plan_times: Table<PlanTimeRow>;
       plan_items: Table<PlanItemRow>;
+      plan_item_times: Table<PlanItemTimeRow>;
       plan_position_needs: Table<PlanPositionNeedRow>;
       assignments: Table<AssignmentRow>;
       assignment_attendance_times: Table<AssignmentAttendanceTimeRow>;
@@ -1946,6 +1947,18 @@ export type Database = {
       update_plan_item: {
         Args: { p_plan_id: string; p_item_id: string; p_patch: unknown; p_expected_revision?: number | null };
         Returns: PlanItemSaveResult;
+      };
+      add_plan_item_with_details: {
+        Args: { p_plan_id: string; p_item: unknown; p_idempotency_key?: string | null };
+        Returns: PlanItemCreateResult;
+      };
+      update_plan_item_with_details: {
+        Args: { p_plan_id: string; p_item_id: string; p_patch: unknown; p_expected_revision?: number | null };
+        Returns: PlanItemSaveResult;
+      };
+      song_last_use: {
+        Args: { p_plan_id: string; p_song_id: string };
+        Returns: SongLastUse | null;
       };
       reorder_plan_items: {
         Args: { p_plan_id: string; p_item_ids: string[]; p_expected_revision?: number | null };
