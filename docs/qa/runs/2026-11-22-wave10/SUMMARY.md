@@ -45,12 +45,12 @@ Suites at `f79aa50` (coordinator): `npm run typecheck` clean; `npm run test` 1,9
 - **Planning:** W10-CD-D2 date-only / zone-less plan times stored as UTC; W10-CD-D3 `total_length_seconds` counts header lengths; W10-CD-D4 template preview does not warn about an archived song, apply then 400; W10-CD-D8 scoped scheduler 404 on candidates for a team with no service type; W10-CD-D9 proposal accepts lock + exclusion on the same slot; W10-FGH-D3 chart transposition (flat keys spelled sharp, invalid `to` → 200, slash bass dropped).
 - **Web:** W10-WEB-D1 People "Join requests" error shown with the empty state, no retry (`JoinRequestsSection.tsx:84-100`); W10-WEB-D2 offline first load/search shows false empty states on 8 pages; W10-WEB-D3 publish dialog keeps "Notify people" unticked after Cancel (`PublishPlanModal.tsx:28`); W2-PLANS-D11 plan Order tab at 1024 px overlaps row actions on titles and clips tabs.
 
-## Product decisions needed
+## Product decisions (answered 2026-11-22 — all four go into the fix round)
 
-- W10-CD-D1: time edit / bulk reschedule double-books a person without the override capability (TIME-02, TEMPLATE-03) — warn-only or block?
-- W10-FGH-D9: CSV reports have no UTF-8 BOM; plan §5H REPORT-02 doesn't require one (only §5G IMPORT-01 does).
-- W10-FGH-D4: deleting a song silently removes it from songbooks (dormant API) — refuse like plan references?
-- W10-FGH-D8: no way to revoke the personal calendar feed without rotating it.
+- W10-CD-D1: time edit / bulk reschedule that double-books a person → **block** (409) unless the caller holds the conflict-override capability (with reason, audited).
+- W10-FGH-D9: CSV reports → **add a UTF-8 BOM**.
+- W10-FGH-D4: deleting a song used by a songbook → **refuse** (409 in use), like plan references.
+- W10-FGH-D8: personal calendar feed → **add revoke without rotate**.
 
 ## Deferred
 
