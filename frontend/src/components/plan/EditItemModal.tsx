@@ -7,6 +7,7 @@ import {
   PLAN_ITEM_SEGMENTS,
   appendSequenceStep,
   editableArrangements,
+  editablePlanItemTypes,
   parseChordPro,
   planItemChangesFrom,
   planItemDraftFrom,
@@ -28,6 +29,7 @@ import { KeySelect } from '../KeySelect';
 import { SearchCombobox } from '../SearchCombobox';
 import { SearchableSelect } from '../SearchableSelect';
 import { SongSearchList, songListSource } from './SongSearchList';
+import { EditItemMediaField } from './EditItemMediaField';
 import { leaderPersonChoices, leaderPositionChoices, type LeaderChoiceLabels, type PickerChoices } from './leaderChoices';
 
 /** Rows per page in "Change song". */
@@ -154,7 +156,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
         <fieldset>
           <legend className="label">{t('editItem.type')}</legend>
           <div className="flex flex-wrap gap-2">
-            {(['song', 'item', 'header'] as const).map((value) => (
+            {editablePlanItemTypes(item).map((value) => (
               <label key={value} className={`cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium ${draft.itemType === value ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                 <input type="radio" name="item-type" value={value} checked={draft.itemType === value} onChange={() => set('itemType', value)} className="sr-only" />
                 {t(`itemKind.${value}`)}
@@ -170,6 +172,10 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
           <label className="label" htmlFor="edit-item-title">{t('editItem.fieldTitle')}</label>
           <input id="edit-item-title" className="input" value={draft.title} onChange={(event) => set('title', event.target.value)} maxLength={200} />
         </div>
+
+        {item.item_type === 'media' && draft.itemType === 'media' && (
+          <EditItemMediaField plan={plan} item={item} baseRevision={baseRevision} onSaved={setBaseRevision} />
+        )}
 
         {draft.itemType === 'song' && (
           <div className="space-y-3 rounded-xl border border-app-border p-3">

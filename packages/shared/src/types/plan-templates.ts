@@ -34,6 +34,8 @@ export interface PlanTemplateItem {
   key_override: string | null;
   length_seconds: number;
   description: string | null;
+  /** A media item's bundle; only media items carry it. */
+  media_id?: string | null;
 }
 
 export interface PlanTemplateNeed {

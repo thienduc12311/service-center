@@ -91,6 +91,8 @@ export interface RehearsalMediaRef {
   duration_seconds: number | null;
   /** Archived bundles stay readable where a plan already uses them. */
   archived: boolean;
+  /** The bundle's thumbnail image file, when it has one (absent from older responses). */
+  thumbnail_file_id?: string | null;
 }
 
 export interface RehearsalManifestItem {

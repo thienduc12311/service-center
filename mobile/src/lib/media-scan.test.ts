@@ -57,6 +57,9 @@ describe('media browsing and linking', () => {
     expect(canLinkMedia({ item_type: 'song' }, true)).toBe(false);
     expect(canLinkMedia({ item_type: 'header' }, true)).toBe(false);
     expect(canLinkMedia({ item_type: 'item' }, false)).toBe(false);
+    // A media item always names its media; its media can be changed here too.
+    expect(canLinkMedia({ item_type: 'media' }, true)).toBe(true);
+    expect(canLinkMedia({ item_type: 'media' }, false)).toBe(false);
     expect(mediaLinkBody('6f1c1b3e-2a4d-4e5f-8a9b-0c1d2e3f4a5b', { content_revision: 7 })).toEqual({
       media_id: '6f1c1b3e-2a4d-4e5f-8a9b-0c1d2e3f4a5b',
       expected_revision: 7,
@@ -145,6 +148,15 @@ describe('screens use the shared contracts only', () => {
     expect(detail).toContain("params: { ownerKind: 'media', ownerId: media.id");
     expect(detail).not.toMatch(/updateMedia|createMedia|archiveMedia|deleteMedia/);
     expect(source('app/media/index.tsx')).not.toMatch(/createMedia|updateMedia/);
+  });
+
+  it('renders media items in the order list and never clears a media item’s media', () => {
+    const order = source('src/components/PlanOrder.tsx');
+    expect(order).toContain("item.item_type === 'media' ?");
+    expect(order).toContain("accessibilityLabel={t('itemKind.media')}");
+    expect(order).toContain('planItemCarriesMedia(item.item_type) ?');
+    expect(source('app/plan/media/[id].tsx')).toContain("item.item_type !== 'media' ?");
+    expect(source('app/plan/edit-item/[id].tsx')).toContain('editablePlanItemTypes(item)');
   });
 
   it('refreshes a bundle when its files change', () => {

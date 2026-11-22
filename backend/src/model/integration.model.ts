@@ -126,7 +126,7 @@ const toTime = (value: unknown): ExternalPlanTime | null => {
 
 const toItem = (value: unknown): ExternalPlanItem | null => {
   if (!isRecord(value)) return null;
-  const type = value.type === 'song' || value.type === 'header' ? value.type : 'item';
+  const type = value.type === 'song' || value.type === 'header' || value.type === 'media' ? value.type : 'item';
   return {
     id: str(value.id),
     type,

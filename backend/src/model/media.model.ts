@@ -8,11 +8,11 @@ import {
 } from '@service-center/shared';
 
 /** The media columns a plan item embeds. */
-export const PLAN_ITEM_MEDIA_COLUMNS = 'id, title, creator, duration_seconds, archived_at, archive_on';
+export const PLAN_ITEM_MEDIA_COLUMNS = 'id, title, creator, duration_seconds, archived_at, archive_on, thumbnail_file_id';
 
 export type PlanItemMediaEmbed = Pick<
   MediaRow,
-  'id' | 'title' | 'creator' | 'duration_seconds' | 'archived_at' | 'archive_on'
+  'id' | 'title' | 'creator' | 'duration_seconds' | 'archived_at' | 'archive_on' | 'thumbnail_file_id'
 >;
 
 /** Today's date where the organization is (archive dates are local dates). */
@@ -35,6 +35,7 @@ export const toRehearsalMediaRef = (row: PlanItemMediaEmbed, today: string): Reh
   creator: row.creator,
   duration_seconds: row.duration_seconds,
   archived: isMediaArchived(row, today),
+  thumbnail_file_id: row.thumbnail_file_id ?? null,
 });
 
 /** One row of `plan_items` that uses a bundle, with its plan. */

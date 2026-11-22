@@ -1,5 +1,6 @@
 import {
   formatDuration,
+  planItemCarriesMedia,
   setPlanItemMediaSchema,
   type ListMediaRequest,
   type MediaSummary,
@@ -29,9 +30,12 @@ export const mediaSummaryLine = (media: Pick<MediaSummary, 'creator' | 'duration
     .filter(Boolean)
     .join(' · ');
 
-/** Only a regular order item can carry a bundle (the server refuses songs and headers with 400). */
+/**
+ * A regular item can carry a bundle and a media item always names one (the
+ * server refuses songs and headers with 400).
+ */
 export const canLinkMedia = (item: Pick<PlanItemDetail, 'item_type'>, canEditPlan: boolean): boolean =>
-  canEditPlan && item.item_type === 'item';
+  canEditPlan && planItemCarriesMedia(item.item_type);
 
 /**
  * The link (or clear, with null) body: always checked against the plan

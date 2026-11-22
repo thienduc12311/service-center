@@ -62,7 +62,10 @@
     "noneFound": "Không tìm thấy. <0>Mở thư viện đa phương tiện</0> để thêm.",
     "linkedButton": "Đã liên kết",
     "link": "Liên kết",
-    "stale": "Người khác đã thay đổi chương trình này. Hãy đóng hộp thoại để tải thứ tự mới nhất rồi thử lại — chưa có gì được lưu."
+    "stale": "Người khác đã thay đổi chương trình này. Hãy đóng hộp thoại để tải thứ tự mới nhất rồi thử lại — chưa có gì được lưu.",
+    "changeTitle": "Đa phương tiện cho “{{title}}”",
+    "choose": "Dùng",
+    "chosen": "Đang dùng"
   },
   "filesPanel": {
     "title": "Tệp",
@@ -416,7 +419,8 @@
       "runFor": "{{name}} · {{date}}",
       "earlierRun": "{{name}} · {{status}}",
       "earlierRunStarted": "{{name}} · {{status}} · {{time}}"
-    }
+    },
+    "mediaItem": "Đa phương tiện"
   },
   "stage": {
     "loading": "Đang tải sơ đồ sân khấu…",

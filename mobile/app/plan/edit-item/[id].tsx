@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import {
   LocalizedError,
   PLAN_ITEM_SEGMENTS,
-  PLAN_ITEM_TYPES,
+  editablePlanItemTypes,
   appendSequenceStep,
   editableArrangements,
   parseChordPro,
@@ -272,7 +272,7 @@ function EditItemForm({ plan, item }: EditItemFormProps) {
           <View style={styles.group}>
             <Label>{t('editItem.type')}</Label>
             <SegmentedControl<PlanItemType>
-              options={PLAN_ITEM_TYPES.map((value) => ({ value, label: t(`itemKind.${value}`) }))}
+              options={editablePlanItemTypes(item).map((value) => ({ value, label: t(`itemKind.${value}`) }))}
               value={draft.itemType}
               onChange={(value) => set('itemType', value)}
             />

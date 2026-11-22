@@ -203,7 +203,8 @@ export type OrgRole = 'owner' | 'admin' | 'scheduler' | 'member';
 export type MemberStatus = 'invited' | 'active' | 'inactive' | 'suspended';
 export type PlanStatus = 'draft' | 'published' | 'archived';
 export type PlanTimeKind = 'service' | 'rehearsal' | 'other';
-export type PlanItemType = 'song' | 'header' | 'item';
+/** `media`: the item is one bundle from the media library (and always names it). */
+export type PlanItemType = 'song' | 'header' | 'item' | 'media';
 /** How often plans for a service type come round. Drives the suggested next service date. */
 export type PlanRecurrence = 'weekly' | 'biweekly' | 'monthly' | 'occasionally';
 export type AssignmentStatus = 'unconfirmed' | 'confirmed' | 'declined';
@@ -664,7 +665,10 @@ export type PlanItemRow = {
   leader_position_id: string | null;
   /** F11: before, during or after the service time. */
   service_segment: PlanItemSegment;
-  /** F14: a reusable media bundle linked to a regular item (absent from older responses). */
+  /**
+   * F14: a reusable media bundle linked to a regular item, or the bundle a
+   * `media` item stands for (always set there). Absent from older responses.
+   */
   media_id?: string | null;
   created_at: string;
   updated_at: string;

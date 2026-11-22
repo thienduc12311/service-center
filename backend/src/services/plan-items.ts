@@ -58,12 +58,16 @@ export const updatePlanItem = async ({ db, planId, itemId, input }: UpdatePlanIt
   const current = await unwrap(
     db
       .from('plan_items')
-      .select('item_type, song_id, leader_person_id, leader_position_id')
+      .select('item_type, song_id, leader_person_id, leader_position_id, media_id')
       .eq('id', itemId)
       .eq('plan_id', planId)
       .maybeSingle(),
   );
   if (!current) throw HttpError.notFound('Item not found');
+  // A media item stands for a bundle: only an item that already has one can become one.
+  if (input.item_type === 'media' && current.item_type !== 'media' && !current.media_id) {
+    throw new HttpError(400, 'Choose the media first: link media to this item, then make it a media item', 'media_item_needs_media');
+  }
 
   const { data, error } = await db.rpc('update_plan_item', {
     p_plan_id: planId,

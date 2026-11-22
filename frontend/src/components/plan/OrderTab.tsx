@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next';
 import {
   formatDuration,
   itemIdsAfterDrop,
+  planItemCarriesMedia,
   resolveItemLeader,
   resolvePlanItemChartContext,
   type ItemLeader,
@@ -29,6 +30,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Badge, Button } from '../ui';
 import { Icon } from '../icons';
 import { LinkMediaModal } from '../media/LinkMediaModal';
+import { MediaThumbnail } from '../media/MediaThumbnail';
 import { useFormatters } from '../../i18n';
 import { INSERT_AT_END, type OrderInsertPoint } from './insertPoint';
 import { QuickAddLine } from './QuickAddLine';
@@ -611,7 +613,7 @@ const OrderRow = ({ item, index, selected, onSelect, rowRef, slot, clock, leader
         <button type="button" aria-label={t('orderTab.editItem', { title: item.title })} onClick={onEdit} title={t('common:actions.edit')} className={controlClass}>
           <Icon name="pencil" className="size-4" />
         </button>
-        {item.item_type === 'item' && (
+        {planItemCarriesMedia(item.item_type) && (
           <button type="button" aria-label={t('orderTab.mediaFor', { title: item.title })} onClick={onMedia} title={t('orderTab.media')} className={controlClass}>
             <Icon name="media" className="size-4" />
           </button>
@@ -663,6 +665,11 @@ const OrderRow = ({ item, index, selected, onSelect, rowRef, slot, clock, leader
               <Icon name="music" className="size-3.5 shrink-0 text-brand-500 dark:text-brand-300" />
               {item.title}
             </Link>
+          ) : item.item_type === 'media' ? (
+            <span className="inline-flex min-w-0 items-center gap-2 font-medium text-slate-900 dark:text-white">
+              <MediaThumbnail fileId={item.media?.thumbnail_file_id} alt={t('orderTab.mediaItem', { title: item.media?.title ?? item.title })} />
+              {item.title}
+            </span>
           ) : (
             <span className="font-medium text-slate-900 dark:text-white">{item.title}</span>
           )}
