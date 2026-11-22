@@ -276,10 +276,14 @@ begin
   if not public.is_org_member('aaaaaaaa-0000-4000-8000-000000000001') then
     raise exception 'The super admin is not a member while inside';
   end if;
-  update public.organization_members set platform_access_expires_at = now() + interval '1 year'
-   where user_id = 'ad000000-0000-4000-8000-000000000001';
-  get diagnostics n = row_count;
-  if n <> 0 then raise exception 'The super admin extended their own access through the API'; end if;
+  -- SEC-003 revoked UPDATE on this column from client roles entirely.
+  begin
+    update public.organization_members set platform_access_expires_at = now() + interval '1 year'
+     where user_id = 'ad000000-0000-4000-8000-000000000001';
+    get diagnostics n = row_count;
+    if n <> 0 then raise exception 'The super admin extended their own access through the API'; end if;
+  exception when insufficient_privilege then null;
+  end;
 end;
 $$;
 reset role;

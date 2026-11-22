@@ -1,6 +1,6 @@
 -- QA wave 7 database regression suite. Each section fails on the schema
 -- before the 20261125000000..04 migrations:
---   A. W7-ACC-D1 (P0) only an owner may insert organization_members rows;
+--   A. W7-ACC-D1 (P0) no client role inserts organization_members rows (SEC-003);
 --                     invitation acceptance and church creation still work.
 --   B. W7-MSG-D5      a recipient may change only read_at on their own
 --                     notifications; delete-own still works.
@@ -114,16 +114,12 @@ select pg_temp.expect_error(format(
   'insert into public.organization_members (organization_id, user_id, role, status) values (%L, %L, ''member'', ''active'')',
   pg_temp.fx('org'), pg_temp.fx('outsider')), '42501', null, 'A3 member inserts');
 
+-- SEC-003 (20261130000200): not even an owner inserts directly any more; an
+-- owner could otherwise enrol any user without consent.
 select pg_temp.act_as('owner');
-do $$
-declare n integer;
-begin
-  insert into public.organization_members (organization_id, user_id, role, status)
-  values (pg_temp.fx('org'), pg_temp.fx('outsider'), 'member', 'active');
-  get diagnostics n = row_count;
-  if n <> 1 then raise exception 'A4 owner could not add a member'; end if;
-  delete from public.organization_members where organization_id = pg_temp.fx('org') and user_id = pg_temp.fx('outsider');
-end $$;
+select pg_temp.expect_error(format(
+  'insert into public.organization_members (organization_id, user_id, role, status) values (%L, %L, ''member'', ''active'')',
+  pg_temp.fx('org'), pg_temp.fx('outsider')), '42501', null, 'A4 owner inserts directly');
 
 -- Invitation acceptance (API, service role) still creates the membership.
 reset role;
