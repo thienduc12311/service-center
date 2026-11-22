@@ -286,8 +286,8 @@ describe('recurrence in words', () => {
   const second: PlanSeriesRecurrence = { frequency: 'monthly_weekday', ordinal: 'second', weekday: SUNDAY };
 
   it('says the rule and its end in English', () => {
-    expect(planSeriesSummaryText(second, '2027-05-09', { kind: 'count', count: 10 }, en)).toBe('Every 2nd Sunday, 10 plans');
-    expect(planRecurrenceText({ frequency: 'monthly_weekday', ordinal: 'last', weekday: SUNDAY }, '2027-05-09', en)).toBe('Every last Sunday');
+    expect(planSeriesSummaryText(second, '2027-05-09', { kind: 'count', count: 10 }, en)).toBe('Monthly on the 2nd Sunday, 10 plans');
+    expect(planRecurrenceText({ frequency: 'monthly_weekday', ordinal: 'last', weekday: SUNDAY }, '2027-05-09', en)).toBe('Monthly on the last Sunday');
     expect(planRecurrenceText(weekly(1), '2027-05-09', en)).toBe('Every Sunday');
     expect(planRecurrenceText(weekly(2), '2027-05-09', en)).toBe('Every 2 weeks on Sunday');
     expect(planRecurrenceText({ frequency: 'monthly_day', day_of_month: 15, short_month: 'skip' }, '2027-05-09', en)).toBe('Monthly on day 15');
@@ -300,7 +300,8 @@ describe('recurrence in words', () => {
   });
 
   it('says it in Vietnamese', () => {
-    expect(planSeriesSummaryText(second, '2027-05-09', { kind: 'count', count: 10 }, vi)).toBe('Chủ Nhật thứ hai hằng tháng, 10 chương trình');
+    expect(planSeriesSummaryText(second, '2027-05-09', { kind: 'count', count: 10 }, vi)).toBe('Hằng tháng vào Chủ Nhật thứ hai, 10 chương trình');
+    expect(planRecurrenceText({ frequency: 'monthly_weekday', ordinal: 'last', weekday: SUNDAY }, '2027-05-09', vi)).toBe('Hằng tháng vào Chủ Nhật cuối cùng');
     expect(planRecurrenceText(weekly(2), '2027-05-09', vi)).toBe('2 tuần một lần vào Chủ Nhật');
   });
 });

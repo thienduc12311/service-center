@@ -191,7 +191,7 @@
   "recurrence": {
     "weekly_one": "Every {{weekday}}",
     "weekly_other": "Every {{count}} weeks on {{weekday}}",
-    "monthlyWeekday": "Every {{ordinal}} {{weekday}}",
+    "monthlyWeekday": "Monthly on the {{ordinal}} {{weekday}}",
     "monthlyDay": "Monthly on day {{day}}",
     "monthlyDaySkip": "Monthly on day {{day}}, skipping months without it",
     "monthlyDayClamp": "Monthly on day {{day}}, or the last day of shorter months",

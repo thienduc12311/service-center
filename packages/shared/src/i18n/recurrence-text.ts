@@ -1,6 +1,6 @@
 /**
- * Words a plan-generation recurrence in the viewer's language, e.g. "Every
- * 2nd Sunday, 10 plans". Shared by web and mobile so both say the same.
+ * Words a plan-generation recurrence in the viewer's language, e.g. "Monthly
+ * on the 2nd Sunday, 10 plans". Shared by web and mobile so both say the same.
  */
 import type { PlanSeriesRecurrence } from '../schemas/plan-templates.js';
 import { weekdayOf } from '../lib/plan-recurrence.js';
@@ -13,7 +13,7 @@ export type PlanSeriesEnd = { kind: 'count'; count: number } | { kind: 'until'; 
 const weekdayName = (context: StructuredTextContext, weekday: number): string =>
   weekdayNames(context.locale, 'long')[weekday] ?? '';
 
-/** The rule alone: "Every Sunday", "Every 2 weeks on Sunday", "Every last Sunday", "Monthly on day 31, …". */
+/** The rule alone: "Every Sunday", "Every 2 weeks on Sunday", "Monthly on the last Sunday", "Monthly on day 31, …". */
 export const planRecurrenceText = (rule: PlanSeriesRecurrence, startDate: string, context: StructuredTextContext): string => {
   switch (rule.frequency) {
     case 'weekly':
@@ -45,7 +45,7 @@ export const planSeriesEndText = (end: PlanSeriesEnd, context: StructuredTextCon
     ? context.translate({ key: 'templates:recurrence.plans', values: { count: end.count } })
     : context.translate({ key: 'templates:recurrence.until', values: { date: formatCalendarDate(end.until_date, context.locale, 'medium') } });
 
-/** The whole series in words: "Every 2nd Sunday, 10 plans". */
+/** The whole series in words: "Monthly on the 2nd Sunday, 10 plans". */
 export const planSeriesSummaryText = (
   rule: PlanSeriesRecurrence,
   startDate: string,

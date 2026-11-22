@@ -177,7 +177,7 @@
   },
   "recurrence": {
     "weekly_other": "{{count}} tuần một lần vào {{weekday}}",
-    "monthlyWeekday": "{{weekday}} {{ordinal}} hằng tháng",
+    "monthlyWeekday": "Hằng tháng vào {{weekday}} {{ordinal}}",
     "monthlyDay": "Ngày {{day}} hằng tháng",
     "monthlyDaySkip": "Ngày {{day}} hằng tháng, bỏ qua tháng không có ngày này",
     "monthlyDayClamp": "Ngày {{day}} hằng tháng, hoặc ngày cuối của tháng ngắn hơn",
