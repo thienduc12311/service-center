@@ -1,4 +1,5 @@
 -- QA wave 10 planning fixes (W10-CD-D4, W10-CD-D8).
+-- Needs migrations 20261201000200 and 20261201000201.
 -- Run against the seeded local database. Everything rolls back.
 begin;
 
@@ -73,6 +74,49 @@ begin
               and (song_id = pg_temp.fx('gone_song') or arrangement_id = pg_temp.fx('live_old'))) then
     raise exception 'apply scheduled archived library content';
   end if;
+end $$;
+
+-- ============================================ W10-CD-D8 =================
+-- Jordan becomes a scheduler scoped to service type `st` only. A shared team
+-- (no service type) is scheduled on `st` plans, so its candidates are listed;
+-- a team of another service type stays hidden, as it does for a member.
+reset role;
+insert into w10p_fx values ('st2', gen_random_uuid()), ('shared', gen_random_uuid()), ('other_team', gen_random_uuid());
+insert into public.service_types (id, organization_id, name) values (pg_temp.fx('st2'), pg_temp.fx('org'), 'W10 other type');
+insert into public.teams (id, organization_id, service_type_id, name) values
+  (pg_temp.fx('shared'), pg_temp.fx('org'), null, 'W10 shared band'),
+  (pg_temp.fx('other_team'), pg_temp.fx('org'), pg_temp.fx('st2'), 'W10 other type team');
+insert into public.team_memberships (team_id, person_id)
+select t.id, p.id from public.people p cross join (values (pg_temp.fx('shared')), (pg_temp.fx('other_team'))) t(id)
+ where p.profile_id = '33333333-3333-4333-8333-333333333333';
+update public.organization_members set access_mode = 'scoped'
+ where organization_id = pg_temp.fx('org') and user_id = '22222222-2222-4222-8222-222222222222';
+delete from public.access_grants
+ where organization_id = pg_temp.fx('org') and user_id = '22222222-2222-4222-8222-222222222222';
+insert into public.access_grants (organization_id, user_id, capability, scope_type, service_type_id) values
+  (pg_temp.fx('org'), '22222222-2222-4222-8222-222222222222', 'scheduling.manage', 'service_type', pg_temp.fx('st'));
+
+set local role authenticated;
+set local request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222';
+do $$
+begin
+  if not exists (select 1 from public.team_candidates(pg_temp.fx('shared')) c
+                  where c.profile_id = '33333333-3333-4333-8333-333333333333') then
+    raise exception 'a service-type scheduler must list the shared team''s candidates';
+  end if;
+  begin
+    perform public.team_candidates(pg_temp.fx('other_team'));
+    raise exception 'a scheduler scoped to st listed a team of another service type';
+  exception when no_data_found then null;
+  end;
+end $$;
+
+set local request.jwt.claim.sub = '33333333-3333-4333-8333-333333333333';
+do $$
+begin
+  perform public.team_candidates(pg_temp.fx('shared'));
+  raise exception 'a member listed the shared team''s candidates';
+exception when no_data_found then null;
 end $$;
 
 reset role;
