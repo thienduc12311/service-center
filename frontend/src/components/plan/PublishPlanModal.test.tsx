@@ -58,3 +58,30 @@ it('says nobody will be emailed once "Notify people" is unticked', async () => {
   expect(screen.queryByText('Publishing will email 2 people.')).toBeNull();
   expect(screen.queryByText(/No email address on file/)).toBeNull();
 });
+
+it('ticks "Notify people" again when the dialog reopens after a Cancel (W10-WEB-D3)', async () => {
+  const user = userEvent.setup();
+  vi.mocked(api.planPublishPreview).mockResolvedValue({ will_notify: 2, no_email: [] });
+  const onPublish = vi.fn();
+  const client = new QueryClient();
+  const modal = (open: boolean) => (
+    <QueryClientProvider client={client}>
+      <LanguageProvider>
+        <PublishPlanModal open={open} planId="plan-1" publishing={false} error={null} onClose={vi.fn()} onPublish={onPublish} />
+      </LanguageProvider>
+    </QueryClientProvider>
+  );
+  const { rerender } = render(modal(true));
+
+  await screen.findByText('Publishing will email 2 people.');
+  await user.click(screen.getByRole('checkbox', { name: /Notify people/ }));
+  expect((screen.getByRole('checkbox', { name: /Notify people/ }) as HTMLInputElement).checked).toBe(false);
+
+  rerender(modal(false));
+  rerender(modal(true));
+
+  const notify = (await screen.findByRole('checkbox', { name: /Notify people/ })) as HTMLInputElement;
+  expect(notify.checked).toBe(true);
+  await user.click(screen.getByRole('button', { name: 'Publish' }));
+  expect(onPublish).toHaveBeenCalledExactlyOnceWith(true);
+});
