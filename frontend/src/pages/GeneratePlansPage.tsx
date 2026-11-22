@@ -8,16 +8,21 @@ import {
   LocalizedError,
   MAX_GENERATED_PLANS,
   PLAN_TEMPLATE_COMPONENTS,
+  defaultRecurrence,
+  isSeriesLevelProblem,
+  planSeriesSummaryText,
   type AmbiguousTimeChoice,
   type AttendanceConflict,
   type GenerationDateEdit,
   type PlanGenerationPreview,
+  type PlanSeriesEnd,
+  type PlanSeriesRecurrence,
   type PlanGenerationResult,
   type PlanSeriesRequest,
   type PlanTemplateComponent,
 } from '@service-center/shared';
 import { api } from '../lib/api';
-import { useInvalidateOrg, usePeople, usePlanTemplates } from '../hooks/queries';
+import { useInvalidateOrg, usePeople, usePlanTemplates, useServiceTypes } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters, useStructuredText } from '../i18n';
 import { Badge, Button, DateTile, EmptyState, ErrorNotice, PageHeader, SectionHeader } from '../components/ui';
@@ -25,6 +30,7 @@ import { Icon } from '../components/icons';
 import { ConflictList } from '../components/plan/attendance';
 import { TemplateApplyReview } from '../components/templates/TemplateApplyReview';
 import { TemplateSelect } from '../components/templates/TemplateSelect';
+import { RecurrenceFields } from '../components/templates/RecurrenceFields';
 
 const WARN_TONE = 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300';
 
@@ -52,9 +58,11 @@ export const GeneratePlansPage = () => {
   const templates = usePlanTemplates({ kind: 'plan' }, canAnywhere('plans.edit'));
   const [templateId, setTemplateId] = useState('');
   const [startDate, setStartDate] = useState(nextSunday);
-  const [count, setCount] = useState(4);
-  const [intervalWeeks, setIntervalWeeks] = useState(1);
-  const [endDate, setEndDate] = useState('');
+  const serviceTypes = useServiceTypes();
+  const [recurrence, setRecurrence] = useState<PlanSeriesRecurrence>({ frequency: 'weekly', interval_weeks: 1 });
+  // Until the scheduler picks a rule, it follows the template's service type and the first date.
+  const [recurrenceChosen, setRecurrenceChosen] = useState(false);
+  const [end, setEnd] = useState<PlanSeriesEnd>({ kind: 'count', count: 4 });
   const [excluded, setExcluded] = useState<string[]>([]);
   const [excludeInput, setExcludeInput] = useState('');
   const [edits, setEdits] = useState<GenerationDateEdit[]>([]);
@@ -71,13 +79,21 @@ export const GeneratePlansPage = () => {
     revision_id: template?.current_revision_id ?? '',
     components: components.filter((component) => component !== 'times'),
     start_date: startDate,
-    interval_weeks: intervalWeeks,
-    count,
-    ...(endDate ? { end_date: endDate } : {}),
+    recurrence,
+    ...(recurrence.frequency === 'weekly' ? { interval_weeks: recurrence.interval_weeks } : {}),
+    // "Until a date" asks for every date up to it; the server reports more than the cap.
+    count: end.kind === 'count' ? end.count : MAX_GENERATED_PLANS,
+    ...(end.kind === 'until' && end.until_date ? { end_date: end.until_date } : {}),
     excluded_dates: excluded,
     edits,
     ambiguous_time: ambiguous,
   });
+  const serviceTypeOf = (templateServiceTypeId: string | null | undefined) =>
+    serviceTypes.data?.find((serviceType) => serviceType.id === templateServiceTypeId) ?? null;
+  const defaultFor = (templateServiceTypeId: string | null | undefined, date: string): PlanSeriesRecurrence =>
+    /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? defaultRecurrence(serviceTypeOf(templateServiceTypeId)?.recurrence, date)
+      : { frequency: 'weekly', interval_weeks: 1 };
   const invalidatePreview = () => {
     setPreview(null);
     setAttemptKey(crypto.randomUUID());
@@ -180,7 +196,14 @@ export const GeneratePlansPage = () => {
               placeholder={t('generate.choose')}
               templates={usableTemplates}
               value={templateId}
-              onChange={(id) => { setTemplateId(id); invalidatePreview(); }}
+              onChange={(id) => {
+                setTemplateId(id);
+                if (!recurrenceChosen) {
+                  setRecurrence(defaultFor(templates.data?.find((candidate) => candidate.id === id)?.service_type?.id, startDate));
+                  setEdits([]);
+                }
+                invalidatePreview();
+              }}
               optionLabel={(candidate) => t('apply.optionWithRevision', { name: candidate.name, revision: candidate.current_revision })}
             />
             {template && template.counts.times === 0 && (
@@ -189,27 +212,24 @@ export const GeneratePlansPage = () => {
           </div>
           <div>
             <label className="label" htmlFor="gen-start">{t('generate.firstDate')}</label>
-            <input id="gen-start" type="date" className="input" value={startDate} onChange={(event) => { setStartDate(event.target.value); setEdits([]); invalidatePreview(); }} />
+            <input id="gen-start" type="date" className="input" value={startDate} onChange={(event) => {
+              setStartDate(event.target.value);
+              if (!recurrenceChosen) setRecurrence(defaultFor(template?.service_type?.id, event.target.value));
+              setEdits([]);
+              invalidatePreview();
+            }} />
           </div>
-          <div>
-            <label className="label" htmlFor="gen-interval">{t('generate.repeat')}</label>
-            <select id="gen-interval" className="input" value={intervalWeeks} onChange={(event) => { setIntervalWeeks(Number(event.target.value)); setEdits([]); invalidatePreview(); }}>
-              <option value={1}>{t('generate.everyWeek')}</option>
-              <option value={2}>{t('generate.everyNWeeks', { weeks: 2 })}</option>
-              <option value={3}>{t('generate.everyNWeeks', { weeks: 3 })}</option>
-              <option value={4}>{t('generate.everyNWeeks', { weeks: 4 })}</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="min-w-0">
-              <label className="label" htmlFor="gen-count">{t('generate.howMany')}</label>
-              <input id="gen-count" type="number" min={1} max={MAX_GENERATED_PLANS} className="input" value={count} onChange={(event) => { setCount(Math.min(MAX_GENERATED_PLANS, Math.max(1, Number(event.target.value)))); invalidatePreview(); }} />
-            </div>
-            <div className="min-w-0">
-              <label className="label" htmlFor="gen-end">{t('generate.stopAfter')}</label>
-              <input id="gen-end" type="date" className="input" value={endDate} onChange={(event) => { setEndDate(event.target.value); invalidatePreview(); }} />
-            </div>
-          </div>
+        </div>
+
+        <div className="border-t border-app-border pt-5">
+          <RecurrenceFields
+            startDate={startDate}
+            recurrence={recurrence}
+            end={end}
+            serviceTypeName={recurrenceChosen ? null : serviceTypeOf(template?.service_type?.id)?.name ?? null}
+            onRecurrenceChange={(next) => { setRecurrence(next); setRecurrenceChosen(true); setEdits([]); invalidatePreview(); }}
+            onEndChange={(next) => { setEnd(next); invalidatePreview(); }}
+          />
         </div>
 
         <div className="border-t border-app-border pt-5">
@@ -266,6 +286,11 @@ export const GeneratePlansPage = () => {
             title={t('generate.previewHeading', { count: preview.plans.length })}
             action={<span className="text-xs text-slate-500 dark:text-slate-400">{t('generate.timesIn', { timezone: preview.timezone })}</span>}
           />
+          {preview.plans.length > 0 && (
+            <p className="text-sm text-slate-600 dark:text-slate-300" data-testid="preview-summary">
+              {planSeriesSummaryText(recurrence, startDate, { kind: 'count', count: preview.plans.length }, structured)}
+            </p>
+          )}
           {preview.problems.length > 0 && (
             <ul role="alert" className="space-y-1 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-inset ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-200 dark:ring-rose-500/30">
               {preview.problems.map((problem) => <li key={`${problem.local_date}-${problem.message}`}>{generationProblemText(problem, structured)}</li>)}
@@ -282,7 +307,7 @@ export const GeneratePlansPage = () => {
               })}
             </p>
           )}
-          {preview.problems.filter((problem) => edits.every((edit) => edit.local_date !== problem.local_date)).map((problem) => (
+          {preview.problems.filter((problem) => !isSeriesLevelProblem(problem) && edits.every((edit) => edit.local_date !== problem.local_date)).map((problem) => (
             <div key={`fix-${problem.local_date}`} className="card flex items-center justify-between gap-2 p-3 text-sm">
               <span className="font-medium text-slate-800 dark:text-slate-100">{fmt.calendarDate(problem.local_date, 'medium')}</span>
               <Button variant="secondary" size="sm" onClick={() => editDate({ local_date: problem.local_date, skip: true })}>{t('generate.skipThisDate')}</Button>
