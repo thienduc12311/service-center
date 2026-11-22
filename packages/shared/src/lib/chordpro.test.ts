@@ -70,6 +70,25 @@ describe('chordLinesToChordPro', () => {
     expect(output).toContain('That saved a wretch like[D] me');
   });
 
+  it('recognises section headings in their bracket and colon forms', () => {
+    const out = chordLinesToChordPro('[Verse 1]\nla\nChorus:\nla\n[ Pre-Chorus ] :\nla\nverse]\nla\n[Bridge 2:]\nla');
+
+    expect(out).toContain('{start_of_verse: Verse 1}');
+    expect(out).toContain('{start_of_chorus: Chorus}');
+    expect(out).toContain('{start_of_part: Pre-Chorus}');
+    expect(out).toContain('{start_of_verse: verse}');
+    expect(out).not.toContain('Bridge 2:}');
+  });
+
+  // SEC: a crafted heading-like line used to backtrack exponentially.
+  it('scans a hostile heading-like line in linear time', () => {
+    const started = performance.now();
+    chordLinesToChordPro(`verse${' '.repeat(50_000)}x`);
+    chordLinesToChordPro(`[ chorus ${' '.repeat(50_000)}] ${' '.repeat(50_000)}: x`);
+
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
   it('keeps instrumental chord lines as bare chords', () => {
     const output = chordLinesToChordPro('G C D\n\n');
     expect(output).toContain('[G] [C] [D]');
@@ -122,6 +141,28 @@ describe('parseChordPro', () => {
     expect(song.sections[0]?.label).toBe('Verse 1');
     expect(song.sections[0]?.lines[0]?.lyrics).toBe('Amazing grace');
     expect(song.sections[0]?.lines[0]?.chords).toEqual([{ index: 1, chord: 'G' }]);
+  });
+
+  it('reads directive names and values with surrounding spaces', () => {
+    const song = parseChordPro('{  Title :  Grace: Amazing  }\n{ key:G }\n{ tempo }\n{title: a}b}');
+
+    expect(song.directives).toEqual({ title: 'a}b', key: 'G', tempo: '' });
+  });
+
+  it('treats malformed braces as lyrics', () => {
+    const song = parseChordPro('{a}b}\n{: x}\n{unclosed');
+
+    expect(song.directives).toEqual({});
+    expect(song.sections[0]?.lines.map((line) => line.lyrics)).toEqual(['{a}b}', '{: x}', '{unclosed']);
+  });
+
+  // SEC: a crafted line used to backtrack for seconds to minutes and freeze every reader.
+  it('parses a hostile unclosed directive in linear time', () => {
+    const started = performance.now();
+    parseChordPro(`{${' '.repeat(50_000)}x`);
+    parseChordPro(`{${' '.repeat(50_000)}x${' '.repeat(50_000)}:${' '.repeat(50_000)}`);
+
+    expect(performance.now() - started).toBeLessThan(500);
   });
 });
 
