@@ -84,3 +84,50 @@ Suites at `f79aa50` (coordinator): `npm run typecheck` clean; `npm run test` 1,9
 - `qa-w10-web-*`: people incl. "Nguyễn Thị Ánh", plans, songs, a linked Person with a locked email.
 - `qa-w10-nat-*`: native fixture pair; simulator booted, signed out. Metro, proxies, private API instances, nginx container and browser profiles stopped/deleted.
 - Wave 7 leftover still to drop before any schema diff: `public.qa_resp_seq`.
+
+## Fix round (2026-11-22) — branch `feature/qa-wave10-fixes`
+
+Four Opus 5.5 agents (medium effort), one worktree and branch each, merged with `--no-ff` without conflicts: `fix-identity` (`a973977`), `fix-api` (`6427a12`), `fix-planning` (`fcb3f22`), `fix-web` (`0886d78`). The api branch's migrations `…0200/0300/0400` collided with the planning range and were renumbered `20261201000110/0120/0130` before the merge. The coordinator added `20261201000203` (reschedule preview fallback text). Migrations `20261201000010`–`20261201000203` applied to the local stack with `supabase migration up` (133/133, **no reset**).
+
+| ID | Fix | Where | Live retest ([retest.md](retest.md), API :4200 + web :5180 from this worktree) |
+|---|---|---|---|
+| W10-MAIL-D4 (P1) | Merge marks the report `merged` before deleting the duplicate Person; report kept as audit row (`candidate_person_id` null); route names both people before resolving | `20261201000010_reconciliation_survives_merge.sql`, `backend/src/routes/roster.ts`, `services/roster.ts`; `supabase/tests/reconciliation-merge.sql` | PASS — merge 200 with resolved report, merge committed, keep_separate 200 |
+| W10-MAIL-D1 | Recipient names from `people_directory`; missing name `null`, not `""` | `backend/src/services/deliveries.ts` | PASS — non-owner admin sees names |
+| W10-MAIL-D2 | Send whenever the RPC recorded a request; "held" only if nothing recorded and plan still unpublished after the write | `backend/src/routes/assignments.ts` | PASS — 20 races, no queued rows (window may not have been hit) |
+| W10-MAIL-D5 | Without `INTEGRATION_SECRET_KEY` the webhook step claims nothing and logs it | `backend/src/services/webhook-dispatch.ts`, `docs/operations/delivery-worker.md` | PASS — deliveries stay due, endpoint enabled |
+| W10-NAT-D1 | People list uses the Person's phone first, then the login's, like detail | `backend/src/model/people.ts` | PASS |
+| W10-SEC-D4 | Losers of a concurrent accept get 410 `invitation_used` / 409 `invitation_accept_in_progress` | `20261201000020_auth_email_registered.sql`, invitation route | PASS — never 5xx |
+| W10-SEC-D1/D2 | `page` capped at 100,000 → 422 | `packages/shared/src/schemas/common.ts` | PASS |
+| W10-SEC-D3 | Redaction case- and percent-encoding-insensitive, query string never logged, Referer reduced to origin | backend request logging | PASS (private instance stdout) |
+| W10-FGH-D1, D2 (= W10-CD-D6) | Empty PATCH returns the song/arrangement; in-use delete 409 `song_in_use` / `arrangement_in_use` | `backend/src/routes/songs.ts`, `lib/errors.ts`, en/vi | PASS |
+| W10-FGH-D4 (decision) | Deleting a song a songbook lists → 409, nothing deleted (delete guard extended — a NO ACTION FK broke org deletion) | `20261201000130_songbook_song_delete_guard.sql` | PASS — org delete still works |
+| W10-FGH-D5 | Trigger refuses an attachment object once its intent is abandoned/expired | `20261201000120_attachment_object_requires_live_intent.sql` | PASS against real Storage |
+| W10-FGH-D6 | Request hash on link/document creates; reused key + other payload → 409 (files created before the migration still replay) | `20261201000110_file_content_request_hash.sql` | PASS |
+| W10-FGH-D7, D8 (decision) | Clients can't write feed token rows; `DELETE /me/calendar-feed` 204 turns the feed off; client `revokeCalendarFeed` | `20261201000100_calendar_feed_token_writes.sql`, `backend/src/routes/me.ts`, shared client | PASS |
+| W10-FGH-D9 (decision) | Report CSVs (downloads + export files) start with a UTF-8 BOM | `backend/src/services/reports*` | PASS on the 4 download endpoints; tracked export file not rechecked (needs a worker pass) |
+| W10-CD-D1 (decision: block) | Time edit / reschedule that double-books → 409 `scheduling_conflict` naming people; with reason + `scheduling.override_conflicts` saved and audited in `assignment_conflict_overrides`; reason without capability 403; only moved/added times checked; reschedule checks after the whole batch | `20261201000202_w10_time_change_conflicts.sql`, `20261201000203_w10_reschedule_preview_copy.sql`, `routes/plans.ts`, `schemas/plan.ts` | PASS |
+| W10-CD-D2 | Plan instants without a time and UTC offset → 422 (rejected rather than guessed — spec "reject or explicitly resolve"; apps already send offsets) | shared plan schemas | PASS |
+| W10-CD-D3 | Shared `planItemsTotalSeconds` (headers 0) for detail and schedule | `packages/shared`, backend plans | PASS |
+| W10-CD-D4 | Preview lists archived songs as skipped / archived arrangements fall back with a warning; apply re-runs the preview | `20261201000200_w10_template_archived_library.sql` | PASS |
+| W10-CD-D8 | `team_candidates` serves a service-type scheduler for a team with no service type | `20261201000201_w10_shared_team_candidates.sql` | PASS |
+| W10-CD-D9 | Proposal create shares the recompute lock/exclusion check → 422 | shared staffing-proposal schema | PASS |
+| W10-FGH-D3 | Semitone shift spells for the landing key (G −2 → Bb), invalid `to` 422, slash bass transposed, unknown text kept (still linear) | `packages/shared` chordpro, chart route | PASS |
+| W10-WEB-D1 | Join requests: error + Try again, no empty state | `JoinRequestsSection.tsx` | PASS (browser) |
+| W10-WEB-D2 | Shared list helper shows an offline notice for a paused first load/search and resumes on reconnect | `frontend/src/components/ui.tsx` | PASS (browser; Teams first-load offline not exercised) |
+| W10-WEB-D3 | "Notify people" re-ticked each time the publish dialog opens | `PublishPlanModal.tsx` | PASS (browser) |
+| W2-PLANS-D11 | Order rows switch layout by card width; tab bar scrolls/fades, selected tab in view | plan Order tab | PASS (390 / 1024 / 1440, light + dark) |
+
+Validation on the merged branch: `npm run typecheck` clean; `npm run test` 2,032 passed (696 / 642 / 162 / 460 / 72); `i18n:check` OK; `supabase/tests/run-all.sh` 76/77 — `platform-admin.sql` fails on "Platform access is counted as an account" because the shared local DB's seed church has 7 members (2 added by earlier QA waves) and the test expects 5; environment drift, not a code change (fails the same without the wave 10 migrations).
+
+Deploy order: **migrations before the backend** — the invitation accept code calls `20261201000020`'s function, feed rotate/revoke needs `…0100`, merge needs `…0010` to return 200. `update_plan_with_times` gains a defaulted parameter, so the old API keeps working on the migrated DB.
+
+### Follow-ups from the fix round
+
+- **W10R-D1 (P3, new):** web time-edit and reschedule screens have no conflict-override reason field, so an override-capable user can only override through the API; the time-edit refusal reads confusingly and the reschedule alert doesn't name the person. Same gap on mobile.
+- No web/mobile control yet for "turn off calendar feed" (API + client method exist).
+- Share tab "When" card overflows ~6 px at 1024 px (pre-existing, seen by fix-web).
+- `platform-admin.sql` should count accounts relative to its own fixtures instead of a fixed 5.
+
+### Fixtures added by the fix round
+
+- `qa-w10-fixweb-a` (fix-web browser check), `qa-w10r-{a,b}` (retest: one enabled webhook endpoint with 2 queued deliveries, Orca browser profile `w10r-retest`). Retest worker pass at 15:55:05 UTC completed 50 deliveries of other orgs (global worker).
