@@ -17,7 +17,7 @@ import {
   type PlanTemplateComponent,
 } from '@service-center/shared';
 import { api } from '../lib/api';
-import { useInvalidateOrg, usePeople, usePlanTemplates } from '../hooks/queries';
+import { useInvalidateOrg, usePeople, usePlanTemplates, useServiceTypes } from '../hooks/queries';
 import { useAuth } from '../providers/AuthProvider';
 import { useFormatters, useStructuredText } from '../i18n';
 import { Badge, Button, DateTile, EmptyState, ErrorNotice, PageHeader, SectionHeader } from '../components/ui';
@@ -66,7 +66,14 @@ export const GeneratePlansPage = () => {
   const [created, setCreated] = useState<PlanGenerationResult | null>(null);
 
   const template = templates.data?.find((candidate) => candidate.id === templateId);
-  const usableTemplates = useMemo(() => (templates.data ?? []).filter((candidate) => candidate.current_revision_id), [templates.data]);
+  // Archived service types are left out of the list, and so are their templates.
+  const activeServiceTypes = useServiceTypes();
+  const usableTemplates = useMemo(() => {
+    const active = new Set((activeServiceTypes.data ?? []).map((type) => type.id));
+    return (templates.data ?? []).filter(
+      (candidate) => candidate.current_revision_id && (!candidate.service_type || active.has(candidate.service_type.id)),
+    );
+  }, [templates.data, activeServiceTypes.data]);
   const series = (): PlanSeriesRequest => ({
     revision_id: template?.current_revision_id ?? '',
     components: components.filter((component) => component !== 'times'),
