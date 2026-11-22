@@ -189,6 +189,7 @@ export const TEMPLATE_COMPONENT_LABELS: Record<'times' | 'notes' | 'items' | 'ne
 
 export const TEMPLATE_SKIP_REASON_LABELS: Record<string, string> = {
   song_missing: 'its song was deleted',
+  song_archived: 'its song is archived; restore it to schedule it',
   position_missing: 'its team or position no longer exists',
   person_unavailable: 'the person is archived or no longer in the organization',
   not_permitted: 'you do not schedule that team here',

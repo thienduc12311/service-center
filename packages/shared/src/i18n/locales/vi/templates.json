@@ -12,6 +12,7 @@
   },
   "skipReasons": {
     "song_missing": "bài hát của mục này đã bị xóa",
+    "song_archived": "bài hát của mục này đã được lưu trữ; hãy khôi phục để xếp vào chương trình",
     "position_missing": "ban hoặc vị trí này không còn nữa",
     "person_unavailable": "thành viên đã được lưu trữ hoặc không còn trong Hội thánh",
     "not_permitted": "bạn không phân công cho ban đó ở đây"
@@ -38,6 +39,7 @@
       "current_other": "{{count}} mục hiện tại có ghi chú hoặc bình luận sẽ bị xóa cùng với mục."
     },
     "arrangement_missing_other": "{{count}} mục dùng bản phối không còn tồn tại; các mục này dùng bản phối mặc định của bài hát.",
+    "arrangement_archived_other": "{{count}} mục dùng bản phối đã được lưu trữ; các mục này dùng bản phối mặc định của bài hát.",
     "times_added_other": "Chương trình giữ nguyên {{count}} giờ hiện có; các giờ trong mẫu được thêm vào.",
     "already_applied_other": "Mẫu này đã được áp dụng cho chương trình này {{count}} lần. Áp dụng lại sẽ thêm nội dung một lần nữa."
   },
