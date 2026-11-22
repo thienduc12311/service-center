@@ -10,8 +10,9 @@
 --   * an item pinned to an archived arrangement keeps the song default (an
 --     archived arrangement is never the default) and the preview warns with
 --     code 'arrangement_archived' {count}, like 'arrangement_missing'.
--- Body otherwise identical to 20261104000100_i18n_structured_notices.sql;
--- create or replace keeps the existing grants.
+-- Body otherwise identical to 20261104000100_i18n_structured_notices.sql
+-- including F15's merged-song resolution restored by 20261105000100
+-- (private.canonical_song_content); create or replace keeps the grants.
 
 create or replace function private.plan_template_preview(
   p_org          uuid,
@@ -95,7 +96,7 @@ begin
       'code', 'older_revision', 'params', jsonb_build_object('revision', v_rev.revision, 'latest', v_tpl.current_revision), 'message', format('Revision %s is not the latest (%s).', v_rev.revision, v_tpl.current_revision)));
   end if;
 
-  v_content := v_rev.content;
+  v_content := private.canonical_song_content(v_rev.content);
   select timezone into v_tz from public.organizations where id = p_org;
   if p_plan is not null then
     select * into v_plan from public.plans where id = p_plan;
