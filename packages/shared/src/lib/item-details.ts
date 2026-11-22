@@ -13,8 +13,10 @@ import { formatMessageText, type MessageTextStyle } from './message-format.js';
  *
  * The text is only cut into blocks and styled runs; nothing is interpreted as
  * HTML, so typed markup such as `<script>` stays literal text. A link is kept
- * only for http, https and mailto URLs; any other target (`javascript:`,
- * `data:`, relative paths) shows its label as plain text.
+ * only for http, https and mailto URLs. Any other target (`javascript:`,
+ * `data:`, relative paths) is never a link: it always shows as its label
+ * followed by the target in brackets, both plain text, e.g. `click
+ * (javascript:alert(1))`, so the writer can see what was not linked.
  */
 
 export type ItemDetailsRun =
@@ -33,7 +35,9 @@ export type ItemDetailsBlock =
 const NO_MENTIONS: readonly MentionTarget[] = [];
 const SAFE_HREF = /^(?:https?:\/\/[^\s<>"'`\\]+|mailto:[^\s<>"'`\\/]+@[^\s<>"'`\\]+)$/i;
 const CONTROL = /[\u0000-\u001f\u007f]/;
-const MARKDOWN_LINK = /\[([^\]\n]+)\]\(([^()\s]+)\)/g;
+/** `[label](target)`; the target may hold one level of balanced brackets, e.g. `alert(1)` or `Foo_(bar)`. */
+const MARKDOWN_LINK = /\[([^\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g;
+const PLAIN_STYLE: MessageTextStyle = { bold: false, italic: false, strike: false, code: false };
 const HEADING = /^(#{1,3})\s+(.+?)\s*#*\s*$/;
 const BULLET = /^\s{0,3}[-*+]\s+(.*)$/;
 const NUMBERED = /^\s{0,3}(\d{1,9})[.)]\s+(.*)$/;
@@ -62,10 +66,12 @@ export const parseItemDetailsInline = (line: string): ItemDetailsRun[] => {
   for (const match of line.matchAll(MARKDOWN_LINK)) {
     runs.push(...styledRuns(line.slice(cursor, match.index)));
     const label = match[1]!;
-    const href = safeDetailsHref(match[2]!);
+    const target = match[2]!;
+    const href = safeDetailsHref(target);
     for (const run of styledRuns(label)) {
       runs.push(href ? { kind: 'link', text: run.text, href, style: run.style } : { kind: 'text', text: run.text, style: run.style });
     }
+    if (!href) runs.push({ kind: 'text', text: ` (${target})`, style: PLAIN_STYLE });
     cursor = match.index + match[0].length;
   }
   runs.push(...styledRuns(line.slice(cursor)));

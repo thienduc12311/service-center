@@ -51,6 +51,30 @@ describe('parseItemDetailsInline', () => {
     expect(texts(runs)).toContain('click me');
   });
 
+  it.each([
+    ['[click](javascript:alert(1))', 'click (javascript:alert(1))'],
+    ['[data](data:text/html,<b>x</b>)', 'data (data:text/html,<b>x</b>)'],
+    ['[home](/relative/path)', 'home (/relative/path)'],
+    ['[mail](mailto:javascript:alert(1))', 'mail (mailto:javascript:alert(1))'],
+  ])('shows every unsafe link the same way, label then target as plain text: %s', (markdown, shown) => {
+    const runs = parseItemDetailsInline(markdown);
+    expect(runs.every((run) => run.kind === 'text')).toBe(true);
+    expect(texts(runs)).toBe(shown);
+  });
+
+  it('keeps the label’s own style and leaves the target unstyled', () => {
+    expect(parseItemDetailsInline('[**bad**](javascript:x_y_z)')).toEqual([
+      { kind: 'text', text: 'bad', style: { ...PLAIN, bold: true } },
+      { kind: 'text', text: ' (javascript:x_y_z)', style: PLAIN },
+    ]);
+  });
+
+  it('links a safe target that holds brackets', () => {
+    expect(parseItemDetailsInline('[Foo](https://en.wikipedia.org/wiki/Foo_(bar))')).toEqual([
+      { kind: 'link', text: 'Foo', href: 'https://en.wikipedia.org/wiki/Foo_(bar)', style: PLAIN },
+    ]);
+  });
+
   it('keeps typed HTML as literal text', () => {
     const payload = '<img src=x onerror=alert(1)><script>alert(2)</script>';
     const runs = parseItemDetailsInline(payload);
