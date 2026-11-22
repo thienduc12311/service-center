@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isChartFont } from '../lib/constants.js';
 import { musicalKey, nonEmpty, paginationSchema, uuid } from './common.js';
 
 /** One entry in any of the song's tag vocabularies (themes, types). */
@@ -6,6 +7,16 @@ export const songTag = nonEmpty.max(40);
 
 /** Column layout of the printed chart; mirrored by a database check constraint. */
 export const chartColumnsSchema = z.union([z.literal(1), z.literal(2)]);
+
+/**
+ * One of the fonts the Formatting dialog offers (`CHART_FONT_OPTIONS`). A closed
+ * set because the value is printed into the chart's stylesheet; mirrored by the
+ * `arrangements_chart_font_valid` database check constraint.
+ */
+export const chartFontSchema = z
+  .string()
+  .trim()
+  .refine(isChartFont, 'Choose one of the offered chart fonts');
 
 /** A CSS hex colour, the only form the chart template can print directly. */
 export const hexColor = z
@@ -30,7 +41,7 @@ export const createArrangementSchema = z.object({
    * means "use the chart template's default".
    */
   chart_columns: chartColumnsSchema.optional(),
-  chart_font: z.string().trim().max(120).nullish(),
+  chart_font: chartFontSchema.nullish(),
   chart_font_size: z.number().int().min(6).max(48).nullish(),
   chart_chord_color: hexColor.nullish(),
   is_default: z.boolean().default(false),

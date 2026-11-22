@@ -42,9 +42,16 @@ export const ChartPreview = ({ html, autoRefresh }: ChartPreviewProps) => {
 
   // The document paints its own paper, gutter and page stack, and scrolls
   // itself, so the frame is just a window onto it at whatever size the pane is.
+  //
+  // Sandboxed without `allow-same-origin`: the preview only needs its own
+  // pagination script, and nothing here reaches into the frame, so it runs in
+  // an opaque origin with no access to the app's session or DOM. (The PDF and
+  // print frames cannot do this — they are read and printed from the parent —
+  // and rely on the document's own CSP instead.)
   return (
     <iframe
       title={t('chartEditor.previewTitle')}
+      sandbox="allow-scripts"
       srcDoc={rendered}
       className="block h-full w-full rounded-xl border-0 bg-slate-600"
     />
