@@ -45,6 +45,7 @@ node backend/dist/worker.js --drain
 | `CRON_SECRET` (≥16 chars) | Enables and protects the HTTP worker route. |
 | `DELIVERY_LINK_SECRET` (≥32 chars, optional) | Makes each delivery's response-link token deterministic, so a retried email has an identical body and Resend's idempotency key (`delivery-<id>`, kept by Resend for 24 h) drops a duplicate. Unset: a fresh token per attempt and no idempotency key. Keep it stable; rotating it only affects links minted afterwards. |
 | `RESEND_API_KEY`, `PUSH_ENABLED`, `EXPO_ACCESS_TOKEN` | Real providers. Without them outcomes are `simulated`, never reported as sent. |
+| `INTEGRATION_SECRET_KEY` (32 bytes, base64) | Opens the stored webhook signing secrets (F17). Must be the same key the API used when the endpoints were registered. Unset (or not a valid 32-byte key): the run **skips the webhook step** and logs `[webhooks] skipped: INTEGRATION_SECRET_KEY is not configured` — nothing is claimed, due webhook deliveries stay queued and their endpoints stay enabled, so a correctly configured run sends them. A key that is set but cannot open a stored secret (rotated, tampered) fails that delivery as `secret_unavailable`. |
 
 ## What is and is not guaranteed
 
