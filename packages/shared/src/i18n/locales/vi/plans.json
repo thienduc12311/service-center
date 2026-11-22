@@ -2,7 +2,8 @@
   "itemKind": {
     "song": "Bài hát",
     "item": "Mục tự do",
-    "header": "Tiêu đề"
+    "header": "Tiêu đề",
+    "media": "Đa phương tiện"
   },
   "timeKind": {
     "service": "Buổi nhóm",
@@ -180,7 +181,8 @@
     "addOther": "Tiêu đề hoặc mục",
     "insertAfter": "Thêm vào đây, sau {{title}}",
     "insertAtStart": "Thêm vào đây, ở đầu",
-    "insertingHere": "Bài hát mới sẽ được thêm vào đây"
+    "insertingHere": "Bài hát mới sẽ được thêm vào đây",
+    "mediaItem": "Mục đa phương tiện: {{title}}"
   },
   "leader": {
     "someoneOnRoster": "Một thành viên trong danh sách",
@@ -201,7 +203,11 @@
     "headerPlaceholder": "Phần thờ phượng",
     "itemPlaceholder": "Chào mừng",
     "length": "Thời lượng",
-    "notes": "Ghi chú"
+    "notes": "Ghi chú",
+    "chooseMedia": "Chọn",
+    "chosenMedia": "Đa phương tiện",
+    "changeMedia": "Đổi",
+    "mediaThumbnail": "Ảnh đại diện của {{title}}"
   },
   "editItem": {
     "title": "Sửa “{{title}}”",
@@ -271,9 +277,15 @@
       "sequenceTooLong": "Trình tự có tối đa 60 bước.",
       "sequenceStepTooLong": "Mỗi bước trong trình tự tối đa 20 ký tự.",
       "leaderPersonRequired": "Hãy chọn người dẫn mục này.",
-      "leaderPositionRequired": "Hãy chọn vị trí dẫn mục này."
+      "leaderPositionRequired": "Hãy chọn vị trí dẫn mục này.",
+      "mediaRequired": "Hãy chọn đa phương tiện cho mục này."
     },
-    "useSong": "Dùng {{title}}"
+    "useSong": "Dùng {{title}}",
+    "mediaLabel": "Đa phương tiện",
+    "mediaUnavailable": "Không xem được đa phương tiện",
+    "changeMedia": "Đổi đa phương tiện",
+    "useMedia": "Dùng",
+    "currentMedia": "Đang dùng"
   },
   "editTimes": {
     "title": "Giờ buổi nhóm & buổi tập",
@@ -577,7 +589,8 @@
       "unfilled": "{{position}}: chưa có người",
       "holders": "{{position}}: {{names}}",
       "notYetAsked": "{{name}} (chưa được hỏi)"
-    }
+    },
+    "media": "Đa phương tiện: {{title}}"
   },
   "mobileCreatePlan": {
     "timezoneHint": "Ngày và giờ theo múi giờ {{timezone}}.",

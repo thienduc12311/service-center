@@ -2,7 +2,8 @@
   "itemKind": {
     "song": "Song",
     "item": "Free-form item",
-    "header": "Header"
+    "header": "Header",
+    "media": "Media"
   },
   "timeKind": {
     "service": "Service",
@@ -182,7 +183,8 @@
     "addOther": "Header or item",
     "insertAfter": "Add here, after {{title}}",
     "insertAtStart": "Add here, at the start",
-    "insertingHere": "New songs go here"
+    "insertingHere": "New songs go here",
+    "mediaItem": "Media item: {{title}}"
   },
   "leader": {
     "someoneOnRoster": "Someone on the roster",
@@ -203,7 +205,11 @@
     "headerPlaceholder": "Worship Set",
     "itemPlaceholder": "Welcome",
     "length": "Length",
-    "notes": "Notes"
+    "notes": "Notes",
+    "chooseMedia": "Choose",
+    "chosenMedia": "Media",
+    "changeMedia": "Change",
+    "mediaThumbnail": "Thumbnail of {{title}}"
   },
   "editItem": {
     "title": "Edit “{{title}}”",
@@ -273,9 +279,15 @@
       "sequenceTooLong": "A sequence can have at most 60 steps.",
       "sequenceStepTooLong": "Each sequence step can be at most 20 characters.",
       "leaderPersonRequired": "Choose who leads this item.",
-      "leaderPositionRequired": "Choose the position that leads this item."
+      "leaderPositionRequired": "Choose the position that leads this item.",
+      "mediaRequired": "Choose the media for this item."
     },
-    "useSong": "Use {{title}}"
+    "useSong": "Use {{title}}",
+    "mediaLabel": "Media",
+    "mediaUnavailable": "Media unavailable",
+    "changeMedia": "Change media",
+    "useMedia": "Use",
+    "currentMedia": "Current"
   },
   "editTimes": {
     "title": "Service & rehearsal times",
@@ -591,7 +603,8 @@
       "unfilled": "{{position}}: unfilled",
       "holders": "{{position}}: {{names}}",
       "notYetAsked": "{{name}} (not yet asked)"
-    }
+    },
+    "media": "Media: {{title}}"
   },
   "mobileCreatePlan": {
     "timezoneHint": "Date and time are in {{timezone}}.",

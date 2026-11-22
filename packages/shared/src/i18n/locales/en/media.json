@@ -63,7 +63,10 @@
     "noneFound": "No media found. <0>Open the media library</0> to add some.",
     "linkedButton": "Linked",
     "link": "Link",
-    "stale": "Someone else changed this plan. Close this dialog to load the latest order, then try again — nothing was saved."
+    "stale": "Someone else changed this plan. Close this dialog to load the latest order, then try again — nothing was saved.",
+    "changeTitle": "Media for “{{title}}”",
+    "choose": "Use",
+    "chosen": "Current"
   },
   "filesPanel": {
     "title": "Files",
@@ -426,7 +429,8 @@
       "runFor": "{{name}} · {{date}}",
       "earlierRun": "{{name}} · {{status}}",
       "earlierRunStarted": "{{name}} · {{status}} · {{time}}"
-    }
+    },
+    "mediaItem": "Media"
   },
   "stage": {
     "loading": "Loading stage layouts…",

@@ -3,7 +3,7 @@ import { conflictOverrideReason, idempotencyKey, instantString, musicalKey, nonE
 
 export const planStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const planTimeKindSchema = z.enum(['service', 'rehearsal', 'other']);
-export const planItemTypeSchema = z.enum(['song', 'header', 'item']);
+export const planItemTypeSchema = z.enum(['song', 'header', 'item', 'media']);
 
 export const planTimeSchema = z
   .object({
@@ -134,6 +134,8 @@ export const createPlanItemSchema = z
     title: nonEmpty.max(200).optional(),
     length_seconds: z.number().int().min(0).max(36_000).default(0),
     sort_order: z.number().int().min(0).optional(),
+    /** The media bundle a `media` item stands for (required there); a regular item may link one too. */
+    media_id: uuid.nullish(),
     /**
      * F11: one key per add the editor reviewed, reused on every retry. The
      * same key returns the item the first attempt made (200, not a second
@@ -146,7 +148,12 @@ export const createPlanItemSchema = z
     message: 'A song item needs a song_id',
     path: ['song_id'],
   })
-  .refine((v) => v.item_type === 'song' || Boolean(v.title), {
+  .refine((v) => v.item_type !== 'media' || Boolean(v.media_id), {
+    message: 'A media item needs a media_id',
+    path: ['media_id'],
+  })
+  // A song or media item without a title takes its song's or bundle's.
+  .refine((v) => v.item_type === 'song' || v.item_type === 'media' || Boolean(v.title), {
     message: 'Title is required',
     path: ['title'],
   })

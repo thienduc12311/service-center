@@ -36,9 +36,13 @@ export const planTemplateItemSchema = z
     key_override: musicalKey.nullish().transform((value) => value || null),
     length_seconds: z.number().int().min(0).max(36_000).default(0),
     description: nullableText(4000),
+    /** A media item's bundle (required there; kept only on media items). */
+    media_id: uuid.nullish(),
   })
   .refine((v) => v.item_type !== 'song' || Boolean(v.song_id), { message: 'A song item needs a song', path: ['song_id'] })
-  .refine((v) => v.item_type === 'song' || Boolean(v.title), { message: 'Title is required', path: ['title'] });
+  .refine((v) => v.item_type !== 'media' || Boolean(v.media_id), { message: 'A media item needs media', path: ['media_id'] })
+  // A song or media item without a title takes its song's or bundle's.
+  .refine((v) => v.item_type === 'song' || v.item_type === 'media' || Boolean(v.title), { message: 'Title is required', path: ['title'] });
 
 export const planTemplateNeedSchema = z.object({
   position_id: uuid,

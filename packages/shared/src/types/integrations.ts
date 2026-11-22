@@ -9,6 +9,8 @@
  * appear in a shared type.
  */
 
+import type { PlanItemType } from './database.js';
+
 export type ApiScope = 'plans.read' | 'songs.read';
 
 export type WebhookEventType = 'plan.published' | 'plan.unpublished' | 'plan.deleted';
@@ -206,7 +208,7 @@ export interface ExternalPlanTime {
 
 export interface ExternalPlanItem {
   id: string;
-  type: 'song' | 'header' | 'item';
+  type: PlanItemType;
   title: string;
   position: number;
   length_seconds: number;

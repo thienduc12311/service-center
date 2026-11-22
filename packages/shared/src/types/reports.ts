@@ -6,7 +6,7 @@
  * from, and never changes, a request's answer (confirmation is planned
  * participation). Reports always say which of the two they count.
  */
-import type { AssignmentStatus, PlanStatus, PlanTimeKind } from './database.js';
+import type { AssignmentStatus, PlanItemType, PlanStatus, PlanTimeKind } from './database.js';
 
 // ================================================================ attendance
 
@@ -524,7 +524,7 @@ export interface PlanPublicationView {
 }
 
 export interface PublicPlanItem {
-  kind: 'header' | 'song' | 'item';
+  kind: PlanItemType;
   title: string;
   length_seconds?: number;
   song?: { title: string; author?: string | null; key?: string | null };
@@ -556,7 +556,7 @@ export interface PublicPlanSource {
   };
   times: Array<{ kind: PlanTimeKind; name: string | null; starts_at: string; ends_at: string }>;
   items: Array<{
-    item_type: 'header' | 'song' | 'item';
+    item_type: PlanItemType;
     title: string;
     length_seconds: number;
     song: { title: string; author: string | null } | null;

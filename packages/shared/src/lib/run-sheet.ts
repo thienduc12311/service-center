@@ -6,6 +6,7 @@
  */
 
 import type { PlanNote, NoteCategoryRow } from '../types/collaboration.js';
+import type { PlanItemType } from '../types/database.js';
 import type { PlanDetail } from '../types/domain.js';
 import type { PlanSchedule } from '../types/plan-order.js';
 import { escapeHtml } from './chart-html.js';
@@ -18,7 +19,7 @@ import { formatLocaleFor, type SupportedLocale } from '../i18n/locales.js';
 
 export interface RunSheetRow {
   itemId: string;
-  kind: 'header' | 'song' | 'item';
+  kind: PlanItemType;
   segment: 'pre' | 'service' | 'post';
   /** Local clock time ("10:05"), or null without a service time. */
   start: string | null;
@@ -28,6 +29,8 @@ export interface RunSheetRow {
   arrangementName: string | null;
   sequence: readonly string[];
   description: string | null;
+  /** The media bundle a media item stands for (or a regular item links), by title. */
+  mediaTitle: string | null;
   leader: string | null;
   /** Selected-category notes on this item, as "Category: body". */
   notes: string[];
@@ -126,6 +129,7 @@ export const runSheetDocumentFromPlan = (input: RunSheetInput): { document: RunS
       arrangementName: ready?.arrangement?.name ?? null,
       sequence: ready?.sequence ?? [],
       description: item.description,
+      mediaTitle: item.media?.title ?? null,
       leader,
       notes: printable.filter((note) => note.plan_item_id === item.id).map(noteLine),
     };
@@ -171,6 +175,7 @@ const renderRow = (row: RunSheetRow, t: PlansTranslator): string => {
     return `<tr class="header"><td></td><td></td><th colspan="2" scope="row">${escapeHtml(row.title)}</th></tr>`;
   }
   const details = [
+    row.mediaTitle ? escapeHtml(t('runSheet.media', { title: row.mediaTitle })) : '',
     row.key ? escapeHtml(t('runSheet.key', { key: row.key })) : '',
     row.arrangementName ? escapeHtml(row.arrangementName) : '',
     row.sequence.length ? escapeHtml(row.sequence.join(' · ')) : '',
