@@ -43,25 +43,51 @@ interface AuthFailure {
 const isAuthOutage =(error: AuthFailure): boolean =>
   error.name === 'AuthRetryableFetchError' || !error.status || error.status >= 500 || AUTH_BUSY_STATUSES.has(error.status);
 
+/** The signed-in user behind a verified access token. */
+interface VerifiedSession {
+  userId: string;
+  email: string | null;
+}
+
+/**
+ * Checks an access token with the Auth server (live user and session checks on
+ * every request, PERF-005). Throws 401 for a rejected or blocked session and
+ * 503 when Auth could not answer.
+ */
+const verifyAccessToken = async (token: string): Promise<VerifiedSession> => {
+  const { data, error } = await adminDb.auth.getUser(token);
+  if (error) {
+    // A rejected token ends the session; an Auth outage must not sign people out.
+    if (isAuthOutage(error)) throw new HttpError(503, 'Authentication is temporarily unavailable', 'auth_unavailable');
+    throw HttpError.unauthorized('Invalid or expired session');
+  }
+  if (!data.user) throw HttpError.unauthorized('Invalid or expired session');
+  // A super admin blocked the account; its sessions were ended too, this covers the rest.
+  const bannedUntil = data.user.banned_until ? Date.parse(data.user.banned_until) : Number.NaN;
+  if (bannedUntil > Date.now()) throw new HttpError(401, 'This account is blocked', ACCOUNT_BLOCKED);
+  return { userId: data.user.id, email: data.user.email ?? null };
+};
+
+/**
+ * For public routes that behave differently for a signed-in caller: the
+ * verified user id, or null when no bearer token was sent. A token that is
+ * sent but rejected still fails (401), so a stale session is never mistaken
+ * for "signed out".
+ */
+export const optionalSessionUserId = async (req: Request): Promise<string | null> => {
+  const token = bearer(req);
+  if (!token) return null;
+  return (await verifyAccessToken(token)).userId;
+};
+
 /** Verifies the Supabase JWT and attaches a user-scoped database client. */
 export const requireAuth = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   try {
     const token = bearer(req);
     if (!token) throw HttpError.unauthorized('Missing bearer token');
 
-    // Keep the Auth server's live user and session checks on every request (PERF-005).
-    const { data, error } = await adminDb.auth.getUser(token);
-    if (error) {
-      // A rejected token ends the session; an Auth outage must not sign people out.
-      if (isAuthOutage(error)) throw new HttpError(503, 'Authentication is temporarily unavailable', 'auth_unavailable');
-      throw HttpError.unauthorized('Invalid or expired session');
-    }
-    if (!data.user) throw HttpError.unauthorized('Invalid or expired session');
-    // A super admin blocked the account; its sessions were ended too, this covers the rest.
-    const bannedUntil = data.user.banned_until ? Date.parse(data.user.banned_until) : Number.NaN;
-    if (bannedUntil > Date.now()) throw new HttpError(401, 'This account is blocked', ACCOUNT_BLOCKED);
-
-    req.auth = { userId: data.user.id, email: data.user.email ?? null, accessToken: token };
+    const session = await verifyAccessToken(token);
+    req.auth = { userId: session.userId, email: session.email, accessToken: token };
     req.db = userDb(token);
     next();
   } catch (err) {

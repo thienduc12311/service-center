@@ -556,13 +556,20 @@ export const buildScheduleReport = (input: {
 // ======================================================================= CSV
 
 /**
- * Spreadsheet formula injection: a cell beginning with = + - @ (or a tab/CR)
- * is prefixed with an apostrophe so spreadsheet apps show it as text.
+ * A text cell a spreadsheet would read as a formula: = + - @ (or their
+ * full-width forms, which some apps also accept) first, possibly after
+ * whitespace or a line break that the app trims; or a leading tab/CR/LF.
+ */
+const FORMULA_START = /^(?:[\s　]*[=+\-@＝＋－＠]|[\t\r\n])/;
+
+/**
+ * Spreadsheet formula injection: such a cell is prefixed with an apostrophe
+ * so spreadsheet apps show it as text.
  */
 export const escapeCsvCell = (value: string | number | boolean | null | undefined): string => {
   if (value === null || value === undefined) return '';
   let text = String(value);
-  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  if (typeof value === 'string' && FORMULA_START.test(text)) text = `'${text}`;
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
 

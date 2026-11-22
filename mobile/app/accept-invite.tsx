@@ -24,7 +24,9 @@ type Stage =
   | 'invalid'
   | 'expired'
   | 'already-used'
-  | 'existing-account';
+  | 'existing-account'
+  | 'join'
+  | 'confirm-email';
 
 type FailedStage = Extract<Stage, 'invalid' | 'expired' | 'already-used'>;
 
@@ -60,7 +62,7 @@ export default function AcceptInviteScreen() {
     let active = true;
 
     const load = async (): Promise<void> => {
-      if (session) {
+      if (session && !token) {
         setStage('already-signed-in');
         return;
       }
@@ -72,6 +74,12 @@ export default function AcceptInviteScreen() {
         const result = await api.previewInvitation(token);
         if (!active) return;
         setPreview(result);
+        if (session) {
+          // Signed in as the invited address: join from this session (SEC-002).
+          const signedInAsInvitee = session.user.email?.toLowerCase() === result.email.toLowerCase();
+          setStage(signedInAsInvitee ? 'join' : 'already-signed-in');
+          return;
+        }
         setStage('preview');
       } catch (err) {
         if (!active) return;
@@ -93,19 +101,40 @@ export default function AcceptInviteScreen() {
     setError(null);
     try {
       const result = await api.acceptInvitation(token, { password });
-      if (result.linked_existing_account) {
-        setStage('existing-account');
-        return;
-      }
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: result.email,
         password,
       });
+      // A login made from an invitation link stays unconfirmed until the inbox
+      // owner opens the confirmation email (SEC-002).
+      if (signInError?.code === 'email_not_confirmed') {
+        setStage('confirm-email');
+        return;
+      }
       if (signInError) throw signInError;
       // No manual navigation — the root layout redirects to (tabs) once the
       // new session lands, same as a normal sign-in on the login screen.
     } catch (err) {
+      // The address already has a login: it joins from its own session.
+      if (err instanceof ApiError && err.code === 'invitation_sign_in_required') {
+        setStage('existing-account');
+        return;
+      }
       setError(localizeAuthError(err, 'signIn'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const join = async (): Promise<void> => {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.acceptInvitation(token, {});
+      router.replace('/(tabs)');
+    } catch (err) {
+      setError(err);
     } finally {
       setBusy(false);
     }
@@ -153,6 +182,34 @@ export default function AcceptInviteScreen() {
               <Card>
                 <Text style={styles.body}>{t('invite.existingAccount')}</Text>
                 <Button title={t('invite.goToSignIn')} onPress={() => router.replace('/(auth)/login')} />
+              </Card>
+            </Reveal>
+          ) : null}
+
+          {stage === 'confirm-email' ? (
+            <Reveal index={1}>
+              <Card>
+                <Text style={styles.body}>{t('invite.confirmEmail', { email: preview?.email ?? '' })}</Text>
+                <Button title={t('invite.goToSignIn')} onPress={() => router.replace('/(auth)/login')} />
+              </Card>
+            </Reveal>
+          ) : null}
+
+          {stage === 'join' && preview ? (
+            <Reveal index={1}>
+              <Card>
+                <Text style={styles.body}>
+                  {t('invite.joinSignedInPlain', {
+                    organization: preview.organization_name,
+                    role: t(`common:roles.${preview.role}`),
+                  })}
+                </Text>
+                <ErrorNotice error={error} />
+                <Button
+                  title={t('invite.joinButton', { organization: preview.organization_name })}
+                  onPress={() => void join()}
+                  loading={busy}
+                />
               </Card>
             </Reveal>
           ) : null}

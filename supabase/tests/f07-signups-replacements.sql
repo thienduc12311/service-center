@@ -169,6 +169,14 @@ end $$;
 
 -- A revision change on the second side rolls the whole final action back.
 set local request.jwt.claim.sub='33333333-3333-4333-8333-333333333333';
+
+-- SEC-012: another swap's key does not hand back that swap's row.
+do $$
+begin
+  perform public.create_approved_swap(pg_temp.fx('stale_a'),pg_temp.fx('stale_b'),0,0,now()+interval '7 days','f07-approved-swap');
+  raise exception 'a key reused for a different pair returned the other swap';
+exception when sqlstate 'PT409' then null;
+end $$;
 insert into f07_fx
 select 'stale_swap',id from public.create_approved_swap(pg_temp.fx('stale_a'),pg_temp.fx('stale_b'),0,0,now()+interval '7 days','f07-stale-swap');
 set local request.jwt.claim.sub='22222222-2222-4222-8222-222222222222';

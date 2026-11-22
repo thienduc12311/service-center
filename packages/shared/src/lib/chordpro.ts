@@ -144,6 +144,26 @@ const parseLine = (raw: string): ChordProLine => {
   return { lyrics, chords };
 };
 
+/** A `{name}` or `{name: value}` line, split into its trimmed parts. */
+interface ChordProDirective {
+  name: string;
+  value: string;
+}
+
+/**
+ * Reads a directive line by slicing, not by regex: the old pattern's
+ * overlapping whitespace quantifiers backtracked catastrophically on an
+ * unclosed `{` followed by spaces, freezing every reader of the chart.
+ */
+const parseDirective = (line: string): ChordProDirective | null => {
+  if (line.length < 3 || !line.startsWith('{') || !line.endsWith('}')) return null;
+  const body = line.slice(1, -1);
+  const colon = body.indexOf(':');
+  const name = (colon === -1 ? body : body.slice(0, colon)).trim();
+  if (!name || name.includes('}')) return null;
+  return { name, value: colon === -1 ? '' : body.slice(colon + 1).trim() };
+};
+
 export const parseChordPro = (source: string): ChordProSong => {
   const directives: Record<string, string> = {};
   const sections: ChordProSection[] = [];
@@ -155,11 +175,11 @@ export const parseChordPro = (source: string): ChordProSong => {
 
   for (const rawLine of source.split(/\r?\n/)) {
     const line = rawLine.trimEnd();
-    const directive = /^\{\s*([^:}]+?)\s*(?::\s*(.*?))?\s*\}$/.exec(line.trim());
+    const directive = parseDirective(line.trim());
 
     if (directive) {
-      const rawName = (directive[1] ?? '').toLowerCase();
-      const value = directive[2] ?? '';
+      const rawName = directive.name.toLowerCase();
+      const { value } = directive;
       const name = SECTION_ALIASES[rawName] ?? rawName;
 
       if (rawName.startsWith('start_of_') || rawName === 'soc' || rawName === 'sov' || rawName === 'sob' || rawName === 'sot') {
@@ -222,8 +242,22 @@ export const isChordLine = (line: string): boolean => {
   return chords > 0;
 };
 
-const SECTION_HEADING_RE =
-  /^\s*\[?\s*((?:intro|verse|pre[- ]?chorus|chorus|bridge|tag|outro|instrumental|interlude|refrain|ending|turnaround)\s*\d*)\s*\]?\s*:?\s*$/i;
+const SECTION_NAME_RE =
+  /^(?:intro|verse|pre[- ]?chorus|chorus|bridge|tag|outro|instrumental|interlude|refrain|ending|turnaround)(?:\s*\d+)?$/i;
+
+/**
+ * The label of a `[Verse 1]`, `Chorus:` or `[Bridge] :` heading line, or null.
+ * Brackets and the colon are peeled off first so the one remaining regex has
+ * no adjacent whitespace quantifiers to backtrack across (it used to hang on
+ * `verse` followed by thousands of spaces).
+ */
+const sectionHeading = (line: string): string | null => {
+  let text = line.trim();
+  if (text.endsWith(':')) text = text.slice(0, -1).trimEnd();
+  if (text.startsWith('[')) text = text.slice(1).trimStart();
+  if (text.endsWith(']')) text = text.slice(0, -1).trimEnd();
+  return SECTION_NAME_RE.test(text) ? text : null;
+};
 
 /**
  * Converts a plain "chords above lyrics" chart — the shape most charts are
@@ -253,10 +287,9 @@ export const chordLinesToChordPro = (
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i] ?? '';
 
-    const heading = SECTION_HEADING_RE.exec(line);
-    if (heading?.[1]) {
+    const label = sectionHeading(line);
+    if (label) {
       closeSection();
-      const label = heading[1].trim();
       const type = /chorus/i.test(label) && !/pre/i.test(label)
         ? 'chorus'
         : /bridge/i.test(label)
@@ -277,7 +310,7 @@ export const chordLinesToChordPro = (
     if (isChordLine(line)) {
       const next = lines[i + 1] ?? '';
       // A chord line followed by lyrics merges into one inline line.
-      if (next.trim() && !isChordLine(next) && !SECTION_HEADING_RE.test(next)) {
+      if (next.trim() && !isChordLine(next) && sectionHeading(next) === null) {
         out.push(mergeChordAndLyricLine(line, next));
         i += 1;
       } else {

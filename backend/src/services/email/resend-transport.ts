@@ -20,6 +20,7 @@ import {
 import { schedulerResponseEmail } from './templates/scheduler-response.js';
 import { availabilityRequestEmail } from './templates/availability.js';
 import { config } from '../../config.js';
+import { mailbox } from './mailbox.js';
 import { DeliveryError } from '../../model/delivery.model.js';
 import { invitationEmail } from './templates/invitation.js';
 import { scheduleEmail } from './templates/schedule.js';
@@ -93,21 +94,21 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
     if (isMentionEmail(notification)) {
       const content = mentionEmail(notification);
       return this.deliver({
-        from: `${notification.organizationName} <${config.MAIL_FROM_ADDRESS}>`,
+        from: mailbox(notification.organizationName),
         to: notification.to, subject: content.subject, html: content.html, text: content.text,
       }, options);
     }
     if (isSchedulerResponse(notification)) {
       const content = schedulerResponseEmail(notification);
       return this.deliver({
-        from: `${notification.organizationName ?? config.MAIL_FROM_NAME} <${config.MAIL_FROM_ADDRESS}>`,
+        from: mailbox(notification.organizationName ?? config.MAIL_FROM_NAME),
         to: notification.to, subject: content.subject, html: content.html, text: content.text,
       }, options);
     }
     if (isOperationalMessage(notification)) {
       const content = operationalMessageEmail(notification);
       return this.deliver({
-        from: `${notification.organizationName} <${config.MAIL_FROM_ADDRESS}>`,
+        from: mailbox(notification.organizationName),
         to: notification.to, subject: content.subject, html: content.html, text: content.text,
         ...(notification.replyTo ? { replyTo: notification.replyTo } : {}),
       }, options);
@@ -115,7 +116,7 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
     if (isAvailabilityRequest(notification)) {
       const content = availabilityRequestEmail(notification);
       return this.deliver({
-        from: `${notification.organizationName} <${config.MAIL_FROM_ADDRESS}>`,
+        from: mailbox(notification.organizationName),
         to: notification.to, subject: content.subject, html: content.html, text: content.text,
         ...(notification.replyTo ? { replyTo: notification.replyTo } : {}),
       }, options);
@@ -123,7 +124,7 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
     if (isServiceReminder(notification)) {
       const content = serviceReminderEmail(notification);
       return this.deliver({
-        from: `${notification.organizationName} <${config.MAIL_FROM_ADDRESS}>`,
+        from: mailbox(notification.organizationName),
         to: notification.to, subject: content.subject, html: content.html, text: content.text,
         ...(notification.replyTo ? { replyTo: notification.replyTo } : {}),
       }, options);
@@ -135,7 +136,7 @@ export class ResendTransport implements NotificationTransport, PersonInvitationT
       : undefined;
     const { data, error } = await Promise.race([
       this.client.emails.send({
-        from: `${'respondUrl' in notification ? notification.organizationName ?? config.MAIL_FROM_NAME : config.MAIL_FROM_NAME} <${config.MAIL_FROM_ADDRESS}>`,
+        from: mailbox('respondUrl' in notification ? notification.organizationName ?? config.MAIL_FROM_NAME : config.MAIL_FROM_NAME),
         to: notification.to,
         subject: content.subject,
         html: content.html,

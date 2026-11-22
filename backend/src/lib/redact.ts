@@ -1,12 +1,18 @@
 /**
  * Public routes whose path segment after the prefix is a bearer secret
  * (response links, invitations, calendar feeds). Anyone holding the URL can
- * act on it, so request logs keep only the route shape.
+ * act on it, so request logs keep only the route shape. The first matching
+ * prefix wins, so a longer prefix must come before one it extends
+ * (`calendar-feed/scoped/` before `calendar-feed/`).
  */
 const TOKEN_PATH_PREFIXES = [
   '/api/v1/assignment-responses/',
   '/api/v1/invitations/',
+  '/api/v1/calendar-feed/scoped/',
   '/api/v1/calendar-feed/',
+  // Unlisted publications: the slug is the capability.
+  '/api/v1/public/plans/',
+  '/api/v1/public/set-lists/',
 ] as const;
 
 /** `/api/v1/assignment-responses/abc123/respond?x` → `/api/v1/assignment-responses/[token]/respond` */

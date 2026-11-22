@@ -5,6 +5,9 @@
  * Like the single-chart template, the result is a self-contained HTML
  * document that goes through the browser's print pipeline. Text therefore
  * stays selectable, and the PDF does not depend on a server-side renderer.
+ * It is printed from a same-origin frame, so it follows the same rules as the
+ * chart: text escaped, formatting resolved to known values, and a
+ * Content-Security-Policy that runs only its own pagination script.
  */
 
 import type { PlanDetail } from '../types/domain.js';
@@ -13,10 +16,12 @@ import {
   DEFAULT_CHART_CHORD_COLOR,
   DEFAULT_CHART_FONT,
   DEFAULT_CHART_FONT_SIZE,
+  chartDocumentCspMeta,
   chartDocumentMarkup,
   chartFormattingFromRow,
   chartPageStyles,
   escapeHtml,
+  resolveChartFormatting,
 } from './chart-html.js';
 import { renderChartContext, resolvePlanItemChartContext } from './chart-context.js';
 import { formatDuration } from './dates.js';
@@ -181,11 +186,9 @@ const renderChartSource = (song: ServiceSongBookSong, locale: SupportedLocale, t
   const body = song.hasChart
     ? markup.body
     : `<section class="chart-empty"><p>${escapeHtml(song.unavailableMessage ?? t('songBook.noChart'))}</p></section>`;
-  const font = song.formatting.fontFamily || DEFAULT_CHART_FONT;
-  const fontSize = song.formatting.fontSize ?? DEFAULT_CHART_FONT_SIZE;
-  const chordColor = song.formatting.chordColor || DEFAULT_CHART_CHORD_COLOR;
+  const { columns, fontFamily, fontSize, chordColor } = resolveChartFormatting(song.formatting);
 
-  return `<div class="chart-source" data-columns="${song.formatting.columns}" data-font="${escapeHtml(font)}" data-font-size="${fontSize}" data-chord-color="${escapeHtml(chordColor)}">
+  return `<div class="chart-source" data-columns="${columns}" data-font="${escapeHtml(fontFamily)}" data-font-size="${fontSize}" data-chord-color="${escapeHtml(chordColor)}">
       <template class="chart-cont-header">${markup.continuationHeader}</template>
       <template class="chart-page-footer">${markup.footer}</template>
       ${markup.header}
@@ -366,7 +369,13 @@ const styles = (): string => `
     }
   `;
 
-const paginationScript = (): string => `
+/**
+ * Paginates every chart in the book. A constant, so the Content-Security-Policy
+ * can allow it by hash: any edit to it (or to the defaults it embeds) changes
+ * that hash, so update `SONG_BOOK_PAGINATION_SCRIPT_SHA256` (the
+ * service-song-book test prints the new value).
+ */
+const PAGINATION_SCRIPT = `
 (function () {
   var stage = document.querySelector('.book-stage');
   var pages = document.getElementById('book-pages');
@@ -514,6 +523,9 @@ const paginationScript = (): string => `
 })();
 `;
 
+/** Base64 SHA-256 of `PAGINATION_SCRIPT`, for the document's CSP. */
+export const SONG_BOOK_PAGINATION_SCRIPT_SHA256 = 'dlw6FogToNISM0GWKU7K0NSchVvsC+2EyDVmaU0Rz6o=';
+
 /** Renders the cover and all charts as one standalone printable document. */
 export const renderServiceSongBookHtml = (doc: ServiceSongBookDocument): string => {
   const t = translatorFor(doc.locale, 'songs');
@@ -526,6 +538,7 @@ export const renderServiceSongBookHtml = (doc: ServiceSongBookDocument): string 
 <html lang="${doc.locale}">
   <head>
     <meta charset="utf-8" />
+    ${chartDocumentCspMeta(SONG_BOOK_PAGINATION_SCRIPT_SHA256)}
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(t('songBook.documentTitle', { title: doc.title }))}</title>
     <style>${styles()}</style>
@@ -533,7 +546,7 @@ export const renderServiceSongBookHtml = (doc: ServiceSongBookDocument): string 
   <body>
     <div class="book-stage"><main id="book-pages" class="book-pages">${coverPages}</main></div>
     ${chartSources}
-    <script>${paginationScript()}</script>
+    <script>${PAGINATION_SCRIPT}</script>
   </body>
 </html>
 `;
