@@ -38,6 +38,7 @@ export * from './lib/access.js';
 export * from './lib/avatars.js';
 export * from './lib/staffing-proposals.js';
 export * from './lib/plan-templates.js';
+export * from './lib/plan-recurrence.js';
 export * from './lib/plan-order.js';
 export * from './lib/plan-item-draft.js';
 export * from './lib/plan-item-placement.js';

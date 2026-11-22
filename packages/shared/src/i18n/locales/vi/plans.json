@@ -681,6 +681,7 @@
   "mobileGenerate": {
     "firstDateButton": "Ngày đầu tiên: {{date}}",
     "stopAfterButton": "Dừng sau: {{date}}",
+    "lastDateButton": "Ngày cuối cùng: {{date}}",
     "clearStopAfter": "Không có ngày kết thúc",
     "leaveOutButton": "Chọn ngày để bỏ qua",
     "rename": "Đổi tên",

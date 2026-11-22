@@ -227,6 +227,12 @@ export const templateTimeProblemText = (problem: TemplateTimeProblem, context: S
       return say(context, 'templates:problems.edit_not_in_series', { date: date(context, problem.local_date) });
     case 'no_dates':
       return say(context, 'templates:problems.no_dates');
+    case 'too_many_dates':
+      return say(context, 'templates:problems.too_many_dates', { max: problem.max, date: date(context, problem.end_date) });
+    case 'series_too_long':
+      return say(context, 'templates:problems.series_too_long', { date: date(context, problem.latest_date) });
+    case 'move_out_of_range':
+      return say(context, 'templates:problems.move_out_of_range', { date: date(context, problem.local_date) });
     case 'service_time_skipped':
       return say(context, 'templates:problems.service_time_skipped', { date: date(context, problem.local_date), timeZone: problem.time_zone });
     case 'moved_time_skipped':
@@ -237,6 +243,13 @@ export const templateTimeProblemText = (problem: TemplateTimeProblem, context: S
 /** A date problem from a generation preview; older previews keep their English text. */
 export const generationProblemText = (problem: { message: string; problem?: TemplateTimeProblem }, context: StructuredTextContext): string =>
   problem.problem ? templateTimeProblemText(problem.problem, context) : problem.message;
+
+/**
+ * Problems about the whole series (its end or length) rather than one date:
+ * skipping a date can't fix them, so clients offer no "Skip this date".
+ */
+export const isSeriesLevelProblem = (problem: { problem?: TemplateTimeProblem }): boolean =>
+  problem.problem?.code === 'too_many_dates' || problem.problem?.code === 'series_too_long' || problem.problem?.code === 'no_dates';
 
 const PLAIN_NOTICES = ['other_service_type', 'times_in_use', 'notes_too_long', 'roster_appended', 'reset_silent'] as const;
 type PlainNoticeCode = (typeof PLAIN_NOTICES)[number];

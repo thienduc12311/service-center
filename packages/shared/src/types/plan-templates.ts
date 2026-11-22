@@ -323,6 +323,12 @@ export type TemplateTimeProblem =
   /** An edit names a date the series does not produce. */
   | { code: 'edit_not_in_series'; local_date: string }
   | { code: 'no_dates' }
+  /** "Until a date" would need more than `max` plans; `local_date` is the first one left over. */
+  | { code: 'too_many_dates'; max: number; local_date: string; end_date: string }
+  /** The requested count does not fit within two years of the first date. */
+  | { code: 'series_too_long'; latest_date: string }
+  /** A date was moved more than two years away from the rest of the series. */
+  | { code: 'move_out_of_range'; series_date: string; local_date: string }
   /** Rescheduling: the service time does not exist on the new date. */
   | { code: 'service_time_skipped'; local_date: string; time_zone: string }
   /** Rescheduling: another time of the plan does not exist on the new date. */

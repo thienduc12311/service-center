@@ -699,6 +699,7 @@
   "mobileGenerate": {
     "firstDateButton": "First date: {{date}}",
     "stopAfterButton": "Stop after: {{date}}",
+    "lastDateButton": "Last date: {{date}}",
     "clearStopAfter": "No end date",
     "leaveOutButton": "Choose a date to leave out",
     "rename": "Rename",

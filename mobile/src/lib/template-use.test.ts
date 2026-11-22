@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ApiError,
+  MAX_GENERATED_PLANS,
   planSeriesSchema,
   previewTemplateApplySchema,
   type GenerationPlanPreview,
@@ -112,9 +113,8 @@ describe('generation', () => {
       template: template(),
       components: ['times', 'items', 'needs'],
       startDate: '2026-10-25',
-      intervalWeeks: 1,
-      count: 3,
-      endDate: null,
+      recurrence: { frequency: 'weekly', interval_weeks: 1 },
+      end: { kind: 'count', count: 3 },
       excludedDates: ['2026-11-01'],
       edits: [],
       ambiguous: 'earlier',
@@ -123,6 +123,7 @@ describe('generation', () => {
       revision_id: REVISION,
       components: ['items', 'needs'],
       start_date: '2026-10-25',
+      recurrence: { frequency: 'weekly', interval_weeks: 1 },
       interval_weeks: 1,
       count: 3,
       excluded_dates: ['2026-11-01'],
@@ -130,6 +131,26 @@ describe('generation', () => {
       ambiguous_time: 'earlier',
     });
     expect(planSeriesSchema.parse(request).components).toEqual(['items', 'needs', 'times']);
+  });
+
+  it('sends a monthly rule and an until date the way the website does', () => {
+    const request = seriesRequest({
+      template: template(),
+      components: ['items'],
+      startDate: '2027-05-09',
+      recurrence: { frequency: 'monthly_weekday', ordinal: 'second', weekday: 0 },
+      end: { kind: 'until', until_date: '2027-12-31' },
+      excludedDates: [],
+      edits: [],
+      ambiguous: 'later',
+    });
+    expect(request).toMatchObject({
+      recurrence: { frequency: 'monthly_weekday', ordinal: 'second', weekday: 0 },
+      count: MAX_GENERATED_PLANS,
+      end_date: '2027-12-31',
+    });
+    expect(request).not.toHaveProperty('interval_weeks');
+    expect(planSeriesSchema.safeParse(request).success).toBe(true);
   });
 
   it('keeps one edit per series date and finds a moved plan by its new date', () => {

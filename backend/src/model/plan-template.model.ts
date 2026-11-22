@@ -2,6 +2,7 @@ import {
   expandPlanSeries,
   planTemplateContentSchema,
   resolveTemplateTimes,
+  seriesRecurrence,
   templateCounts,
   type AmbiguousTimeChoice,
   type GenerationDateProblem,
@@ -86,7 +87,7 @@ export const buildGenerationPlans = ({
 }: BuildGenerationPlansInput): GenerationPlanBuild => {
   const expansion = expandPlanSeries({
     start_date: series.start_date,
-    interval_weeks: series.interval_weeks,
+    recurrence: seriesRecurrence(series),
     count: series.count,
     end_date: series.end_date,
     excluded_dates: series.excluded_dates,

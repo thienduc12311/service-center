@@ -3,6 +3,7 @@ import {
   MAX_GENERATED_PLANS,
   localDateAt,
   resolveTemplateTimes,
+  seriesRecurrence,
   shiftPlanToDate,
   type RescheduleCommitInput,
   type RescheduleMode,
@@ -386,6 +387,7 @@ export const generatePlans = async (
       p_idempotency_key: input.idempotency_key,
       p_series: {
         start_date: input.start_date,
+        recurrence: seriesRecurrence(input),
         interval_weeks: input.interval_weeks,
         count: input.count,
         end_date: input.end_date ?? null,
