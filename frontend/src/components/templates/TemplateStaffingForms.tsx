@@ -46,36 +46,41 @@ export const TemplateNeedForm = ({ teams, needs, onAdd }: TemplateNeedFormProps)
   const valid = Boolean(positionId) && !listed.has(positionId) && Number.isInteger(needed) && needed >= 1 && needed <= 99;
 
   return (
-    <div className="surface-inset grid gap-3 p-3 sm:grid-cols-[1fr_1fr_6rem_auto] sm:items-end">
-      <TeamSelect id="template-need-team" teams={teams} value={teamId} onChange={(next) => { setTeamId(next); setPositionId(''); }} />
-      <div>
-        <label className="label" htmlFor="template-need-position">{t('staffing.position')}</label>
-        <select id="template-need-position" className="input" value={positionId} disabled={!team} onChange={(event) => setPositionId(event.target.value)}>
-          <option value="">{t('staffing.choosePosition')}</option>
-          {usualPositions(team).map((position) => (
-            <option key={position.id} value={position.id} disabled={listed.has(position.id)}>
-              {listed.has(position.id) ? t('staffing.alreadyListed', { position: position.name }) : position.name}
-            </option>
-          ))}
-        </select>
+    // Team and position share a row (like the roster form), so "Choose a position" is never cut off.
+    <div className="surface-inset space-y-3 p-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <TeamSelect id="template-need-team" teams={teams} value={teamId} onChange={(next) => { setTeamId(next); setPositionId(''); }} />
+        <div>
+          <label className="label" htmlFor="template-need-position">{t('staffing.position')}</label>
+          <select id="template-need-position" className="input" value={positionId} disabled={!team} onChange={(event) => setPositionId(event.target.value)}>
+            <option value="">{t('staffing.choosePosition')}</option>
+            {usualPositions(team).map((position) => (
+              <option key={position.id} value={position.id} disabled={listed.has(position.id)}>
+                {listed.has(position.id) ? t('staffing.alreadyListed', { position: position.name }) : position.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
-      <div>
-        <label className="label" htmlFor="template-need-count">{t('staffing.count')}</label>
-        <input id="template-need-count" type="number" min={1} max={99} className="input" value={needed} onChange={(event) => setNeeded(Number(event.target.value))} />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="w-28">
+          <label className="label" htmlFor="template-need-count">{t('staffing.count')}</label>
+          <input id="template-need-count" type="number" min={1} max={99} className="input" value={needed} onChange={(event) => setNeeded(Number(event.target.value))} />
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          icon="plus"
+          disabled={!valid}
+          onClick={() => {
+            onAdd({ position_id: positionId, needed });
+            setPositionId('');
+            setNeeded(1);
+          }}
+        >
+          {t('staffing.addNeed')}
+        </Button>
       </div>
-      <Button
-        type="button"
-        variant="secondary"
-        icon="plus"
-        disabled={!valid}
-        onClick={() => {
-          onAdd({ position_id: positionId, needed });
-          setPositionId('');
-          setNeeded(1);
-        }}
-      >
-        {t('staffing.addNeed')}
-      </Button>
     </div>
   );
 };
