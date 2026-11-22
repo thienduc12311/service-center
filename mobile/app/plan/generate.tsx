@@ -8,12 +8,17 @@ import {
   LocalizedError,
   MAX_GENERATED_PLANS,
   PLAN_TEMPLATE_COMPONENTS,
+  defaultRecurrence,
   generationProblemText,
+  isSeriesLevelProblem,
+  planSeriesSummaryText,
   type AmbiguousTimeChoice,
   type GenerationDateEdit,
   type GenerationPlanPreview,
   type PlanGenerationPreview,
   type PlanGenerationResult,
+  type PlanSeriesEnd,
+  type PlanSeriesRecurrence,
   type PlanSeriesRequest,
   type PlanTemplateComponent,
 } from '@service-center/shared';
@@ -25,7 +30,6 @@ import { nextLocalSunday } from '../../src/lib/plan-create';
 import {
   DEFAULT_GENERATE_COMPONENTS,
   canCreateGenerated,
-  clampPlanCount,
   conflictsFromError,
   isStaleTemplateError,
   seriesDateOf,
@@ -59,6 +63,7 @@ import { type Theme } from '../../src/lib/theme';
 import { useTheme, useThemedStyles } from '../../src/lib/useTheme';
 import { useFormatters, useStructuredText } from '../../src/i18n';
 import { SearchableOptionPicker } from '../../src/components/SearchableOptionSheet';
+import { RecurrencePicker } from '../../src/components/RecurrencePicker';
 
 type PickerTarget =
   | { kind: 'start' }
@@ -67,15 +72,14 @@ type PickerTarget =
   /** Move one proposed plan (by its current local date) to another day. */
   | { kind: 'move'; plan: GenerationPlanPreview };
 
-const INTERVALS = ['1', '2', '3', '4'] as const;
-type IntervalValue = (typeof INTERVALS)[number];
 const AMBIGUOUS: readonly AmbiguousTimeChoice[] = ['earlier', 'later'];
 const TEMPLATE_FILTER = { kind: 'plan' as const };
 
 /**
  * MOB-013 Pass B: the website's Create from template page on the same F10
  * contract. Local calendar dates in the organization's timezone, weekly
- * every 1–4 weeks, at most 12 plans; every proposed plan, time and left-out
+ * every 1–8 weeks or monthly (Nth/last weekday or day of month), following
+ * the service type's frequency by default, at most MAX_GENERATED_PLANS; every proposed plan, time and left-out
  * date is reviewed (`previewPlanGeneration`, writes nothing) and the batch is
  * created in one transaction (`generatePlans`) with the preview hash and one
  * idempotency key per review — a retry returns the same plans. New plans
@@ -103,8 +107,10 @@ export default function GeneratePlansScreen() {
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(() => nextLocalSunday(new Date(), timezone));
   const [countText, setCountText] = useState('4');
-  const [intervalWeeks, setIntervalWeeks] = useState<IntervalValue>('1');
-  const [endDate, setEndDate] = useState<string | null>(null);
+  const [recurrence, setRecurrence] = useState<PlanSeriesRecurrence>({ frequency: 'weekly', interval_weeks: 1 });
+  // Until the scheduler picks a rule, it follows the template's service type and the first date.
+  const [recurrenceChosen, setRecurrenceChosen] = useState(false);
+  const [end, setEnd] = useState<PlanSeriesEnd>({ kind: 'count', count: 4 });
   const [excluded, setExcluded] = useState<string[]>([]);
   const [edits, setEdits] = useState<GenerationDateEdit[]>([]);
   const [components, setComponents] = useState<PlanTemplateComponent[]>([...DEFAULT_GENERATE_COMPONENTS]);
@@ -118,15 +124,16 @@ export default function GeneratePlansScreen() {
 
   const usable = usableTemplates(templates.data ?? []);
   const template = usable.find((candidate) => candidate.id === templateId);
-  const count = clampPlanCount(Number(countText), MAX_GENERATED_PLANS);
-
-  const intervalOptions = useMemo<readonly SegmentOption<IntervalValue>[]>(
-    () => INTERVALS.map((value) => ({
-      value,
-      label: value === '1' ? t('generate.everyWeek') : t('generate.everyNWeeks', { weeks: Number(value) }),
-    })),
-    [t],
-  );
+  const serviceTypes = useQuery({
+    queryKey: queryKeys.serviceTypes(queryScope),
+    queryFn: () => api.listServiceTypes(),
+    enabled: Boolean(queryScope && mayGenerate),
+  });
+  const serviceTypeOf = (serviceTypeId: string | null | undefined) =>
+    serviceTypes.data?.find((serviceType) => serviceType.id === serviceTypeId) ?? null;
+  const followDefault = (serviceTypeId: string | null | undefined, date: string) => {
+    if (!recurrenceChosen) setRecurrence(defaultRecurrence(serviceTypeOf(serviceTypeId)?.recurrence, date));
+  };
   const ambiguousOptions = useMemo<readonly SegmentOption<AmbiguousTimeChoice>[]>(
     () => AMBIGUOUS.map((value) => ({
       value,
@@ -146,9 +153,8 @@ export default function GeneratePlansScreen() {
           template,
           components,
           startDate,
-          intervalWeeks: Number(intervalWeeks),
-          count,
-          endDate,
+          recurrence,
+          end,
           excludedDates: excluded,
           edits: nextEdits,
           ambiguous,
@@ -208,10 +214,11 @@ export default function GeneratePlansScreen() {
     const picked = civilDate(value);
     if (target.kind === 'start') {
       setStartDate(picked);
+      followDefault(template?.service_type?.id, picked);
       setEdits([]);
       invalidatePreview();
     } else if (target.kind === 'end') {
-      setEndDate(picked);
+      setEnd({ kind: 'until', until_date: picked < startDate ? startDate : picked });
       invalidatePreview();
     } else if (target.kind === 'exclude') {
       if (!excluded.includes(picked)) setExcluded([...excluded, picked].sort());
@@ -224,7 +231,7 @@ export default function GeneratePlansScreen() {
   const pickerValue = (target: PickerTarget): Date => {
     switch (target.kind) {
       case 'start': return dateForPicker(startDate);
-      case 'end': return dateForPicker(endDate ?? startDate);
+      case 'end': return dateForPicker(end.kind === 'until' ? end.until_date : startDate);
       case 'exclude': return dateForPicker(startDate);
       case 'move': return dateForPicker(target.plan.local_date);
     }
@@ -280,7 +287,8 @@ export default function GeneratePlansScreen() {
 
   const conflicts = conflictsFromError(generate.error);
   const stale = isStaleTemplateError(generate.error);
-  const unfixed = preview?.problems.filter((problem) => edits.every((edit) => edit.local_date !== problem.local_date)) ?? [];
+  const unfixed = preview?.problems.filter((problem) =>
+    !isSeriesLevelProblem(problem) && edits.every((edit) => edit.local_date !== problem.local_date)) ?? [];
 
   return (
     <Screen>
@@ -313,7 +321,13 @@ export default function GeneratePlansScreen() {
               })}
               selected={templateId ? [templateId] : []}
               mode="single"
-              onChange={(next) => { setTemplateId(next[0] ?? null); invalidatePreview(); }}
+              onChange={(next) => {
+                const id = next[0] ?? null;
+                setTemplateId(id);
+                followDefault(usable.find((candidate) => candidate.id === id)?.service_type?.id, startDate);
+                setEdits([]);
+                invalidatePreview();
+              }}
             />
             {template && template.counts.times === 0 ? <Text style={styles.warn}>{t('generate.noTimesHint')}</Text> : null}
           </View>
@@ -326,33 +340,19 @@ export default function GeneratePlansScreen() {
             variant="secondary"
             onPress={() => setPicker({ kind: 'start' })}
           />
-          <Label>{t('generate.repeat')}</Label>
-          <SegmentedControl
-            options={intervalOptions}
-            value={intervalWeeks}
-            onChange={(value) => { setIntervalWeeks(value); setEdits([]); invalidatePreview(); }}
-          />
-          <Field
-            label={t('generate.howMany')}
-            value={countText}
-            keyboardType="number-pad"
-            maxLength={2}
-            onChangeText={(value) => { setCountText(value); invalidatePreview(); }}
-            onEndEditing={() => setCountText(String(count))}
-          />
-          <View style={styles.row}>
-            <Button
-              title={endDate
-                ? t('plans:mobileGenerate.stopAfterButton', { date: format.calendarDate(endDate, 'medium') })
-                : t('generate.stopAfter')}
-              variant="secondary"
-              onPress={() => setPicker({ kind: 'end' })}
-            />
-            {endDate ? (
-              <Button title={t('plans:mobileGenerate.clearStopAfter')} variant="quiet" onPress={() => { setEndDate(null); invalidatePreview(); }} />
-            ) : null}
-          </View>
         </View>
+
+        <RecurrencePicker
+          startDate={startDate}
+          recurrence={recurrence}
+          end={end}
+          countText={countText}
+          onCountTextChange={setCountText}
+          serviceTypeName={recurrenceChosen ? null : serviceTypeOf(template?.service_type?.id)?.name ?? null}
+          onRecurrenceChange={(next) => { setRecurrence(next); setRecurrenceChosen(true); setEdits([]); invalidatePreview(); }}
+          onEndChange={(next) => { setEnd(next); invalidatePreview(); }}
+          onPickLastDate={() => setPicker({ kind: 'end' })}
+        />
 
         <View style={styles.group}>
           <Label>{t('generate.leaveOutHeading')}</Label>
@@ -408,6 +408,11 @@ export default function GeneratePlansScreen() {
         {preview ? (
           <View style={styles.group}>
             <Text style={styles.heading}>{t('generate.previewHeading', { count: preview.plans.length })}</Text>
+            {preview.plans.length > 0 ? (
+              <Text style={styles.body}>
+                {planSeriesSummaryText(recurrence, startDate, { kind: 'count', count: preview.plans.length }, structured)}
+              </Text>
+            ) : null}
             <Text style={styles.muted}>{t('generate.timesIn', { timezone: preview.timezone })}</Text>
             {preview.problems.length > 0 ? (
               <View accessibilityRole="alert" style={styles.problems}>
