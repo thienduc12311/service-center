@@ -32,6 +32,7 @@ import {
   type PlatformAdminRow,
 } from '../model/platform-users.model.js';
 import { removeOwnAvatars } from './account.js';
+import { findConfirmedUserIdByEmail } from './auth-users.js';
 import { platformAdminInvitationEmail } from './email/templates/platform-admin-invitation.js';
 import { sendPlatformEmails } from './platform-email.js';
 import type { PlatformActor } from './platform-admin.js';
@@ -142,17 +143,6 @@ export const listPlatformAdmins = async (): Promise<PlatformAdminRoster> => {
   };
 };
 
-interface ProfileLookup {
-  id: string;
-  full_name: string | null;
-}
-
-const profileByEmail = async (email: string): Promise<ProfileLookup | null> => {
-  // ilike for case-insensitive equality; escape its wildcards.
-  const pattern = email.replace(/[\\%_]/g, (match) => `\\${match}`);
-  return unwrap(adminDb.from('profiles').select('id, full_name').ilike('email', pattern).limit(1).maybeSingle());
-};
-
 const profileName = async (userId: string): Promise<string | null> => {
   const row = await unwrap(adminDb.from('profiles').select('full_name').eq('id', userId).maybeSingle());
   return row?.full_name ?? null;
@@ -169,7 +159,8 @@ export const invitePlatformAdmin = async (
   const row = (await unwrap(
     raw(adminDb).rpc('admin_invite_platform_admin', { p_actor: actor.userId, p_email: input.email, p_days: input.days }),
   )) as PlatformAdminInvitationRow;
-  const [inviterName, existing] = await Promise.all([profileName(actor.userId), profileByEmail(row.email)]);
+  // Accepting needs a confirmed login with this email (accept_platform_admin_invitation).
+  const [inviterName, existing] = await Promise.all([profileName(actor.userId), findConfirmedUserIdByEmail(row.email)]);
 
   await sendPlatformEmails([
     {

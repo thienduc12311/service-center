@@ -5,6 +5,7 @@ import { validateBody } from '../lib/validate.js';
 import { adminDb, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { hashInviteToken } from '../services/invitations.js';
+import { findConfirmedUserIdByEmail } from '../services/auth-users.js';
 import { personDisplayName } from '../model/people.js';
 
 /**
@@ -57,14 +58,14 @@ invitationAcceptRouter.post(
     const invitation = await loadLiveInvitation(token);
     const tokenHash = hashInviteToken(token);
 
-    // Re-check for a race: someone may have created an account with this
+    // An existing login is linked only when its email is confirmed. Never
+    // look this up by `profiles.email`: it is a copy, not proof of the inbox.
+    // Re-checked here for a race: an account may have been created with this
     // email between the preview call and this submission.
-    const existingProfile = await unwrap(
-      adminDb.from('profiles').select('id').eq('email', invitation.email).maybeSingle(),
-    );
+    const existingUserId = await findConfirmedUserIdByEmail(invitation.email);
 
-    const userId = existingProfile
-      ? existingProfile.id
+    const userId = existingUserId
+      ? existingUserId
       : await (async () => {
           // A new account needs a password; an existing one is only linked.
           if (!password) throw new HttpError(422, 'Choose a password to create your account', 'password_required');
@@ -77,6 +78,15 @@ invitationAcceptRouter.post(
             email_confirm: true,
             user_metadata: { full_name: personDisplayName(person) },
           });
+          if (error?.code === 'email_exists') {
+            // An unconfirmed signup holds this address. Its password was chosen
+            // by whoever signed up, so it is not linked; its owner confirms it first.
+            throw new HttpError(
+              409,
+              'An account with this email exists but its email address hasn’t been confirmed. Confirm it from the sign-up email, then open this invitation again.',
+              'account_unconfirmed',
+            );
+          }
           if (error || !data.user) {
             throw new HttpError(502, `Could not create the account: ${error?.message ?? 'unknown error'}`);
           }
@@ -108,7 +118,7 @@ invitationAcceptRouter.post(
       throw HttpError.conflict('This invitation is no longer valid — it may have just been used or expired');
     }
 
-    const result: InvitationAcceptResult = { email: invitation.email, linked_existing_account: Boolean(existingProfile) };
+    const result: InvitationAcceptResult = { email: invitation.email, linked_existing_account: existingUserId !== null };
     res.json(result);
   },
 );

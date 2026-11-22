@@ -21,6 +21,7 @@ import type {
 } from '@service-center/shared';
 import { adminDb, raw, unwrap } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
+import { findConfirmedUserIdByEmail } from './auth-users.js';
 import { config } from '../config.js';
 import {
   mapAdminChurchApplication,
@@ -183,14 +184,13 @@ export const getOrganizationDetail = async (
 };
 
 /**
- * The owner's account: an existing one by email, otherwise Supabase invites
- * them (the account exists from now on; they set a password from the email).
+ * The owner's account: an existing login whose email is confirmed, otherwise
+ * Supabase invites them (the account exists from now on; they set a password
+ * from the email). Never matched on `profiles.email`, which is only a copy.
  */
-const findOrInviteOwner = async (email: string): Promise<string> => {
-  // ilike for case-insensitive equality; escape its wildcards.
-  const pattern = email.replace(/[\\%_]/g, (match) => `\\${match}`);
-  const existing = await unwrap(adminDb.from('profiles').select('id').ilike('email', pattern).limit(1).maybeSingle());
-  if (existing) return existing.id;
+export const findOrInviteOwner = async (email: string): Promise<string> => {
+  const existing = await findConfirmedUserIdByEmail(email);
+  if (existing) return existing;
 
   const { data, error } = await adminDb.auth.admin.inviteUserByEmail(email, { redirectTo: config.APP_URL });
   if (error || !data.user) {
