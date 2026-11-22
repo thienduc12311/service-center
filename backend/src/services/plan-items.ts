@@ -8,6 +8,7 @@ import {
   type PlanItemCreateResult,
   type PlanItemRow,
   type PlanItemSaveResult,
+  type PlanOrderClearResult,
   type PlanOrderSaveResult,
   type PlanScheduleResponse,
   type UpdatePlanItemInput,
@@ -109,6 +110,27 @@ export const deletePlanItem = async (
   });
   if (error) throw fromPostgrestError(error);
   if (!data) throw HttpError.notFound('Item not found');
+  return data;
+};
+
+export interface ClearPlanItemsServiceInput {
+  db: Db;
+  planId: string;
+  expectedRevision?: number;
+}
+
+/**
+ * Removes the whole order in one transaction (`clear_plan_items`): the same
+ * plan lock, permission and cascade as removing items one by one. Refused
+ * with 409 `live_run_active` while the plan runs live.
+ */
+export const clearPlanItems = async ({ db, planId, expectedRevision }: ClearPlanItemsServiceInput): Promise<PlanOrderClearResult> => {
+  const { data, error } = await db.rpc('clear_plan_items', {
+    p_plan_id: planId,
+    p_expected_revision: expectedRevision ?? null,
+  });
+  if (error) throw fromPostgrestError(error);
+  if (!data) throw HttpError.notFound('Plan not found');
   return data;
 };
 

@@ -686,6 +686,12 @@ export interface PlanOrderSaveResult {
   content_revision: number;
 }
 
+/** The whole order cleared: how many items went and the plan's revision after. */
+export interface PlanOrderClearResult {
+  removed: number;
+  content_revision: number;
+}
+
 /** F11: where an item sits relative to the service it belongs to. */
 export type PlanItemSegment = 'pre' | 'service' | 'post';
 
@@ -1940,6 +1946,10 @@ export type Database = {
       delete_plan_item: {
         Args: { p_plan_id: string; p_item_id: string; p_expected_revision?: number | null };
         Returns: PlanOrderSaveResult;
+      };
+      clear_plan_items: {
+        Args: { p_plan_id: string; p_expected_revision?: number | null };
+        Returns: PlanOrderClearResult;
       };
       create_file_upload_intent: {
         Args: {
