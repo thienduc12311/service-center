@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computePlanSchedule,
   describeItemLeader,
+  itemRunsAtTime,
   resolveItemLeader,
   selectServiceTime,
   type LeaderAssignment,
@@ -86,6 +87,21 @@ describe('computePlanSchedule', () => {
     expect(schedule.items).toEqual([]);
     expect(schedule.service_seconds).toBe(60);
     expect(schedule.warnings).toEqual([{ code: 'no_service_time' }]);
+  });
+
+  it('leaves items limited to other service times out of a time\'s run', () => {
+    const items = [item('all', 600), item('nine-only', 900, { item_times: [{ plan_time_id: 't9' }] }), item('b', 300)];
+    const atNine = computePlanSchedule({ items, time: nine });
+    const atEleven = computePlanSchedule({ items, time: eleven });
+    expect(atNine.items.map((row) => row.item_id)).toEqual(['all', 'nine-only', 'b']);
+    expect(atNine.service_seconds).toBe(1800);
+    expect(atEleven.items.map((row) => row.item_id)).toEqual(['all', 'b']);
+    expect(atEleven.items[1]!.starts_at).toBe('2026-11-01T16:10:00.000Z');
+    expect(atEleven.service_seconds).toBe(900);
+    // Without a time every item counts.
+    expect(computePlanSchedule({ items, time: null }).service_seconds).toBe(1800);
+    expect(itemRunsAtTime({ item_times: [] }, 't11')).toBe(true);
+    expect(itemRunsAtTime({}, 't11')).toBe(true);
   });
 
   it('treats rows without a segment (older responses) as service items', () => {

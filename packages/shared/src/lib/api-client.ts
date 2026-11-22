@@ -251,6 +251,7 @@ import type {
   UpdateBlockoutInput,
 } from '../schemas/blockout.js';
 import type { CreatePlanItemRequest, UpdatePlanItemRequest, UpdatePlanRequest } from '../schemas/plan.js';
+import type { AddedPlanItem, SavedPlanItem, SongLastUse } from '../types/plan-item-details.js';
 import type { PlanScheduleResponse } from '../types/plan-order.js';
 import type { LivePlanRuns, LiveRunHistory, LiveRunState } from '../types/live.js';
 import type { CorrectLiveRunTimeInput, CreateLiveRunRequest, LiveRunActionInput } from '../schemas/live.js';
@@ -988,14 +989,20 @@ export class ServiceCenterApi {
    * attempt made. The response adds the plan's new revision.
    */
   addPlanItem = (planId: string, body: CreatePlanItemRequest) =>
-    this.request<PlanItemRow & { content_revision: number }>('POST', `/api/v1/plans/${planId}/items`, body);
+    this.request<AddedPlanItem>('POST', `/api/v1/plans/${planId}/items`, body);
+  /**
+   * The song's most recent earlier use in this plan's service type and how
+   * many of its item notes the caller can read; null when it was not used.
+   */
+  songLastUse = (planId: string, songId: string) =>
+    this.request<SongLastUse | null>('GET', `/api/v1/plans/${planId}/songs/${songId}/last-use`);
   /**
    * F11: edits an item in place. Pass `expected_revision` (the plan's
    * `content_revision`) so a competing edit is a 409 rather than overwritten.
    * The response is the saved row plus the plan's new revision.
    */
   updatePlanItem = (planId: string, itemId: string, body: UpdatePlanItemRequest) =>
-    this.request<PlanItemRow & { content_revision: number }>('PATCH', `/api/v1/plans/${planId}/items/${itemId}`, body);
+    this.request<SavedPlanItem>('PATCH', `/api/v1/plans/${planId}/items/${itemId}`, body);
   deletePlanItem = (planId: string, itemId: string, expectedRevision?: number) =>
     this.request<void>(
       'DELETE',

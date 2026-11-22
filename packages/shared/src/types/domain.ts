@@ -41,6 +41,7 @@ import type { AttendanceConflict, AttendanceInterval } from './attendance.js';
 import type { PreferenceWarning } from './availability.js';
 import type { PlanItemLeaderPerson } from './plan-order.js';
 import type { RehearsalMediaRef } from './rehearsal.js';
+import type { PlanItemTimeRef } from './plan-item-details.js';
 import type { DisabledOrganization } from './platform-admin.js';
 
 /** One rule of effective access: a capability at a scope, and where it comes from. */
@@ -507,6 +508,8 @@ export interface PlanItemDetail extends PlanItemRow {
   leader_person?: PlanItemLeaderPerson | null;
   /** F14: the linked media bundle's summary, when the item links one. */
   media?: RehearsalMediaRef | null;
+  /** Service times the item is limited to; empty (or absent) means every service time. */
+  item_times?: PlanItemTimeRef[];
 }
 
 export interface AssignmentDetail extends AssignmentRow {

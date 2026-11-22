@@ -86,6 +86,21 @@ describe('planItemDraftFrom / planItemChangesFrom', () => {
     expect(planItemChangesFrom(planItemDraftFrom(item), item)).toEqual({});
   });
 
+  it('sends details and the service-time list only when they change', () => {
+    const item = songItem({ details: '## Cue', item_times: [{ plan_time_id: 'b' }, { plan_time_id: 'a' }] });
+    const draft = planItemDraftFrom(item);
+    expect(draft.details).toBe('## Cue');
+    expect(draft.timeIds).toEqual(['a', 'b']);
+    expect(planItemChangesFrom({ ...draft, timeIds: ['b', 'a'] }, item)).toEqual({});
+    expect(planItemChangesFrom({ ...draft, details: '## Cue\n- soft' }, item)).toEqual({ details: '## Cue\n- soft' });
+    expect(planItemChangesFrom({ ...draft, details: '   ' }, item)).toEqual({ details: null });
+    expect(planItemChangesFrom({ ...draft, timeIds: [] }, item)).toEqual({ time_ids: [] });
+    expect(planItemChangesFrom({ ...draft, timeIds: ['a'] }, item)).toEqual({ time_ids: ['a'] });
+    // An item from an older response (no details, no limits) is unchanged by an untouched draft.
+    const legacy = songItem();
+    expect(planItemChangesFrom(planItemDraftFrom(legacy), legacy)).toEqual({});
+  });
+
   it('keeps inherited, empty and explicit sequences distinct', () => {
     const item = songItem();
     const draft = planItemDraftFrom(item);

@@ -110,6 +110,21 @@ export const planItemSegmentSchema = z.enum(['pre', 'service', 'post']);
  */
 export const sequenceOverrideSchema = z.array(nonEmpty.max(20)).max(60).nullable();
 
+/** Longest item details (Markdown); the database enforces the same limit. */
+export const PLAN_ITEM_DETAILS_MAX = 20_000;
+/** Most service times one item can be limited to. */
+export const PLAN_ITEM_TIMES_MAX = 50;
+
+/** Long formatted details (Markdown). Blank or null clears them. */
+export const planItemDetailsSchema = z.string().max(PLAN_ITEM_DETAILS_MAX);
+
+/**
+ * The plan's service times an item is limited to, as the full list. An empty
+ * list means every service time. Only service times of the same plan are
+ * accepted (checked by the database).
+ */
+export const planItemTimeIdsSchema = z.array(uuid).max(PLAN_ITEM_TIMES_MAX);
+
 /** Plan-level item fields shared by create and edit. */
 const planItemFields = {
   song_id: uuid.nullish(),
@@ -122,6 +137,8 @@ const planItemFields = {
   /** …or whoever holds this position on the plan. Never both. */
   leader_position_id: uuid.nullish(),
   service_segment: planItemSegmentSchema.optional(),
+  details: planItemDetailsSchema.nullish(),
+  time_ids: planItemTimeIdsSchema.optional(),
 };
 
 const oneLeader = (v: { leader_person_id?: string | null; leader_position_id?: string | null }) =>
@@ -141,6 +158,12 @@ export const createPlanItemSchema = z
      * `idempotency_key_reused`. Optional so unkeyed clients keep working.
      */
     idempotency_key: idempotencyKey.optional(),
+    /**
+     * A song only: copy the item notes of the song's most recent earlier use
+     * in this service type (only notes the caller can read), in the same
+     * transaction as the add.
+     */
+    carry_notes_from_last_use: z.boolean().optional(),
   })
   .refine((v) => v.item_type !== 'song' || Boolean(v.song_id), {
     message: 'A song item needs a song_id',
