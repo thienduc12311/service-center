@@ -1370,6 +1370,8 @@ export type Database = {
       people_owner_search: { Row: PeopleOwnerSearchRow; Relationships: [] };
     };
     Functions: {
+      rotate_calendar_feed_token: { Args: { p_org: string }; Returns: string };
+      revoke_calendar_feed_token: { Args: { p_org: string }; Returns: boolean };
       my_received_messages: {
         Args: { p_organization_id: string };
         Returns: OperationalMessageView[];

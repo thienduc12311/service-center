@@ -91,6 +91,12 @@ export const requestReportExportSchema = z.object({
 
 // ============================================================ calendar feeds
 
+/**
+ * A personal calendar feed token as `rotate_calendar_feed_token` returns it:
+ * 32 random bytes, base64url (W10-FGH-D7). It goes straight into the feed URL.
+ */
+export const calendarFeedTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+
 export const calendarLayerSchema = z.enum(['blockouts', 'birthdays', 'anniversaries']);
 
 export const createScopedFeedSchema = z
