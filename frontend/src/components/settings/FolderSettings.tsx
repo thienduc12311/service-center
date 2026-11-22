@@ -10,10 +10,7 @@ import { api } from '../../lib/api';
 import { useAccessMembers, useFolderTree, useServiceTypes, useInvalidateOrg } from '../../hooks/queries';
 import { Button, ErrorNotice, Modal, Spinner } from '../ui';
 import { ScopeAccessEditor } from './ScopeAccessEditor';
-
-/** Every folder with its depth, for pickers. */
-const flatten = (nodes: ServiceTypeFolderNode[], depth = 0): Array<{ node: ServiceTypeFolderNode; depth: number }> =>
-  nodes.flatMap((node) => [{ node, depth }, ...flatten(node.children, depth + 1)]);
+import { flattenFolders as flatten } from './folders';
 
 interface PendingMove {
   serviceType: ServiceTypeRow;

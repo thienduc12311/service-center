@@ -346,6 +346,38 @@
     "loses": "{{name}} loses “{{permission}}” on {{serviceType}}",
     "moveAnyway": "Move anyway"
   },
+  "serviceTypes": {
+    "title": "Service types",
+    "description": "Copy a service type to start a similar one, or archive one you no longer plan.",
+    "empty": "No service types yet.",
+    "copyOne": "Copy {{name}}",
+    "archiveOne": "Archive {{name}}",
+    "restoreOne": "Restore {{name}}",
+    "archived": "Archived",
+    "archivedOn": "Archived {{date}}",
+    "archiveTitle": "Archive {{name}}?",
+    "archiveEffect": "Archiving only hides this service type. Nothing is deleted.",
+    "archiveHidden": "It leaves service type lists and pickers: new plans, the plans filter, reports, calendars and settings.",
+    "archiveKept": "Its plans, teams and permissions stay as they are, and its plans can still be opened.",
+    "archiveRestore": "You can restore it from the Archived list at any time.",
+    "archiveConfirm": "Archive",
+    "copy": {
+      "title": "Copy {{name}}",
+      "defaultName": "{{name}} (copy)",
+      "name": "Name",
+      "nameRequired": "Name the copy.",
+      "recurrence": "Plans recur",
+      "folder": "Folder",
+      "folderAdminOnly": "The copy stays in this folder. Only administrators can choose another folder.",
+      "description": "Description",
+      "teams": "Teams that also serve the copy",
+      "teamsHint": "A team keeps one roster for every service type it serves.",
+      "noTeams": "No teams yet.",
+      "notCopied": "People, permissions, plans, templates and default files are not copied. Give access to the copy and add its first plan afterwards.",
+      "denied": "You can’t copy this service type. Copying needs permission to edit plans across the organization.",
+      "submit": "Copy service type"
+    }
+  },
   "identity": {
     "title": "Possible duplicate people",
     "description": "We never combine people just because their details match. Decide here whether two records are the same person.",
