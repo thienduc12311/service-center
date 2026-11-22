@@ -24,6 +24,7 @@ import { requireAdmin, requireCapability } from '../middleware/organization.js';
 import { unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
 import { HttpError, fromPostgrestError } from '../lib/errors.js';
 import { setUpServiceType } from '../services/service-type-setup.js';
+import { copyServiceType } from '../services/service-type-copy.js';
 import { loadScopeAccess, replaceScopeAccess } from '../services/access.js';
 
 export const serviceTypesRouter: Router = Router();
@@ -156,18 +157,15 @@ serviceTypesRouter.post('/:id/archive', requireCapability('plans.edit'), validat
   res.json(updated);
 });
 
-/** Copies settings and (optionally) which teams serve it — never people or grants. */
+/**
+ * Copies settings (name, description, frequency, folder) and which teams serve
+ * it — never people, grants, plans, templates or files. Another folder than
+ * the source's is administrator-only (enforced by `copy_service_type_as`).
+ */
 serviceTypesRouter.post('/:id/copy', requireCapability('plans.edit'), validateBody(copyServiceTypeSchema), async (req, res) => {
-  const { name, include_teams } = req.body as CopyServiceTypeInput;
-  const source = await unwrap(
-    req.db.from('service_types').select('id').eq('id', param(req, 'id')).eq('organization_id', req.orgId).maybeSingle(),
+  res.status(201).json(
+    await copyServiceType({ db: req.db, orgId: req.orgId, sourceId: param(req, 'id'), input: req.body as CopyServiceTypeInput }),
   );
-  if (!source) throw HttpError.notFound('Service type not found');
-  const id = await unwrap(
-    req.db.rpc('copy_service_type', { p_service_type: source.id, p_name: name, p_include_teams: include_teams }),
-  );
-  if (!id) throw HttpError.notFound('Service type not found');
-  res.status(201).json(await unwrapOne(req.db.from('service_types').select('*').eq('id', id).single()));
 });
 
 // --------------------------------------------------------- shared teams ----

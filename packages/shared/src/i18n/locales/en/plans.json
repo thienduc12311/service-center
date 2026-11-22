@@ -123,7 +123,37 @@
     "previousPlan": "Previous plan",
     "nextPlan": "Next plan",
     "addNextPlan": "Add the next plan",
-    "addNextPlanOfType": "Add the next {{serviceType}} plan"
+    "addNextPlanOfType": "Add the next {{serviceType}} plan",
+    "copyPlan": "Copy plan"
+  },
+  "copyPlan": {
+    "title": "Copy plan",
+    "date": "New date",
+    "dateRequired": "Choose a date for the copy.",
+    "planTitle": "Title",
+    "titleRequired": "Give the copy a title.",
+    "copyPeople": "Copy scheduled people",
+    "copyPeopleHint": "Each copied person gets a new, unconfirmed request on the copy. Nobody is told now: the copy is a draft, and people are asked when it is published with “Notify people” on. Only people on teams you can schedule are copied, and archived people are left out.",
+    "willCopy": "What will be copied",
+    "copiesOrder_one": "Order of service ({{count}} item)",
+    "copiesOrder_other": "Order of service ({{count}} items)",
+    "copiesTimes_one": "{{count}} time, moved to the new date",
+    "copiesTimes_other": "{{count}} times, moved to the new date",
+    "copiesNeeds": "Needed positions",
+    "copiesLocation": "Location",
+    "copiesPeople_one": "{{count}} scheduled person, as a new request",
+    "copiesPeople_other": "{{count}} scheduled people, as new requests",
+    "notCopied": "Not copied: answers, notes and discussions, chat, attendance and files added to this plan only. The service type’s default files are linked as for any new plan.",
+    "draftNote": "The copy starts as a draft.",
+    "conflictReasonLabel": "Reason for copying people over the conflicts",
+    "conflictReasonPlaceholder": "Reason for copying anyway (kept with each request)",
+    "noOverride": "Copy without the scheduled people, or ask someone who may schedule over conflicts.",
+    "submit": "Copy plan",
+    "errors": {
+      "permission": "You can’t copy this plan. You need permission to edit plans of this service type.",
+      "reused": "That copy was started with different details. Copy again to make a new one.",
+      "retrySafe": "Trying again is safe: it never makes a second copy."
+    }
   },
   "sidebar": {
     "times": "Times",
