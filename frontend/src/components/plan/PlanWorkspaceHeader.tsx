@@ -23,6 +23,8 @@ export interface PlanWorkspaceHeaderProps {
   onTogglePublished: () => void;
   onNotify: () => void;
   onDelete: () => void;
+  /** Opens "Copy plan"; offered with `canManage`. */
+  onCopy?: () => void;
   /** A delete request is in flight: the delete action is disabled so it cannot be sent twice. */
   deleting?: boolean;
 }
@@ -61,6 +63,7 @@ export const PlanWorkspaceHeader = ({
   onTogglePublished,
   onNotify,
   onDelete,
+  onCopy,
   deleting = false,
 }: PlanWorkspaceHeaderProps) => {
   const { t } = useTranslation(['plans', 'common']);
@@ -167,6 +170,17 @@ export const PlanWorkspaceHeader = ({
                       }}
                     >
                       {t('header.sendNotifications')}
+                    </MenuItem>
+                  )}
+                  {canManage && onCopy && (
+                    <MenuItem
+                      icon="document"
+                      onClick={() => {
+                        onCopy();
+                        close();
+                      }}
+                    >
+                      {t('header.copyPlan')}
                     </MenuItem>
                   )}
                   {canManage && (

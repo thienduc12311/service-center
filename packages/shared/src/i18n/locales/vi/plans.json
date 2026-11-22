@@ -121,7 +121,34 @@
     "previousPlan": "Chương trình trước",
     "nextPlan": "Chương trình sau",
     "addNextPlan": "Thêm chương trình kế tiếp",
-    "addNextPlanOfType": "Thêm chương trình {{serviceType}} kế tiếp"
+    "addNextPlanOfType": "Thêm chương trình {{serviceType}} kế tiếp",
+    "copyPlan": "Sao chép chương trình"
+  },
+  "copyPlan": {
+    "title": "Sao chép chương trình",
+    "date": "Ngày mới",
+    "dateRequired": "Hãy chọn ngày cho bản sao.",
+    "planTitle": "Tiêu đề",
+    "titleRequired": "Hãy đặt tiêu đề cho bản sao.",
+    "copyPeople": "Sao chép những người đã được phân công",
+    "copyPeopleHint": "Mỗi người được sao chép sẽ nhận một yêu cầu mới, chưa xác nhận trong bản sao. Hiện chưa ai được báo: bản sao là bản nháp, và mọi người sẽ được hỏi khi bản sao được công bố với tùy chọn “Thông báo cho mọi người”. Chỉ người thuộc những ban bạn có quyền phân công mới được sao chép, và người đã lưu trữ sẽ bị bỏ qua.",
+    "willCopy": "Những gì sẽ được sao chép",
+    "copiesOrder_other": "Trình tự buổi nhóm ({{count}} mục)",
+    "copiesTimes_other": "{{count}} khung giờ, dời sang ngày mới",
+    "copiesNeeds": "Vị trí cần người",
+    "copiesLocation": "Địa điểm",
+    "copiesPeople_other": "{{count}} người đã được phân công, dưới dạng yêu cầu mới",
+    "notCopied": "Không sao chép: câu trả lời, ghi chú và thảo luận, trò chuyện, điểm danh và các tệp chỉ thêm vào chương trình này. Các tệp mặc định của loại buổi nhóm được liên kết như với mọi chương trình mới.",
+    "draftNote": "Bản sao bắt đầu ở dạng bản nháp.",
+    "conflictReasonLabel": "Lý do vẫn sao chép người dù bị trùng lịch",
+    "conflictReasonPlaceholder": "Lý do vẫn sao chép (được lưu kèm mỗi yêu cầu)",
+    "noOverride": "Hãy sao chép mà không kèm người đã phân công, hoặc nhờ người có quyền phân công khi trùng lịch.",
+    "submit": "Sao chép chương trình",
+    "errors": {
+      "permission": "Bạn không thể sao chép chương trình này. Bạn cần quyền chỉnh sửa chương trình của loại buổi nhóm này.",
+      "reused": "Bản sao đó đã được bắt đầu với thông tin khác. Hãy sao chép lại để tạo bản mới.",
+      "retrySafe": "Có thể thử lại an toàn: sẽ không bao giờ tạo bản sao thứ hai."
+    }
   },
   "sidebar": {
     "times": "Thời gian",
