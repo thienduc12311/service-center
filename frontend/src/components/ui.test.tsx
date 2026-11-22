@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ListErrorNotice, Menu, MenuItem, Modal, listFailed } from './ui';
+import { ListErrorNotice, Menu, MenuItem, Modal, listFailed, listOffline } from './ui';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -323,25 +323,55 @@ describe('Menu keyboard support (APG menu button)', () => {
 });
 
 describe('failed list requests (W9-WEB-D2)', () => {
+  const settled = { isPaused: false, isPlaceholderData: false };
+
   it('treats only a list that never loaded as failed, so the empty state is not shown for it', () => {
-    expect(listFailed({ error: new Error('503'), data: undefined })).toBe(true);
-    expect(listFailed({ error: null, data: undefined })).toBe(false);
-    expect(listFailed({ error: null, data: [] })).toBe(false);
+    expect(listFailed({ ...settled, error: new Error('503'), data: undefined })).toBe(true);
+    expect(listFailed({ ...settled, error: null, data: undefined })).toBe(false);
+    expect(listFailed({ ...settled, error: null, data: [] })).toBe(false);
     // A failed later page or background refresh keeps the rows that loaded.
-    expect(listFailed({ error: new Error('504'), data: [{ id: 'a' }] })).toBe(false);
+    expect(listFailed({ ...settled, error: new Error('504'), data: [{ id: 'a' }] })).toBe(false);
   });
 
   it('shows the error with a Try again action that refetches', async () => {
     const user = userEvent.setup();
     const refetch = vi.fn();
-    render(<ListErrorNotice query={{ error: new Error('503'), data: undefined, isFetching: false, refetch }} />);
+    render(<ListErrorNotice query={{ ...settled, error: new Error('503'), data: undefined, isFetching: false, refetch }} />);
     expect(screen.getByRole('alert').textContent).toContain('error');
     await user.click(screen.getByRole('button', { name: 'actions.retry' }));
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it('disables Try again while the retry is in flight', () => {
-    render(<ListErrorNotice query={{ error: new Error('503'), data: undefined, isFetching: true, refetch: vi.fn() }} />);
+    render(<ListErrorNotice query={{ ...settled, error: new Error('503'), data: undefined, isFetching: true, refetch: vi.fn() }} />);
     expect((screen.getByRole('button', { name: 'actions.retry' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe('offline list requests (W10-WEB-D2)', () => {
+  it('treats a paused first load as not loaded, so the empty state is not shown for it', () => {
+    expect(listOffline({ data: undefined, isPaused: true, isPlaceholderData: false })).toBe(true);
+    expect(listFailed({ error: null, data: undefined, isPaused: true, isPlaceholderData: false })).toBe(true);
+  });
+
+  it('treats a paused search that still shows the previous search as not loaded', () => {
+    expect(listFailed({ error: null, data: [{ id: 'a' }], isPaused: true, isPlaceholderData: true })).toBe(true);
+  });
+
+  it('keeps rows that loaded when a later refresh pauses offline', () => {
+    expect(listFailed({ error: null, data: [{ id: 'a' }], isPaused: true, isPlaceholderData: false })).toBe(false);
+    expect(listFailed({ error: null, data: [], isPaused: true, isPlaceholderData: false })).toBe(false);
+  });
+
+  it('shows an offline notice with Try again instead of an error', async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn();
+    render(
+      <ListErrorNotice query={{ error: null, data: undefined, isFetching: false, isPaused: true, isPlaceholderData: false, refetch }} />,
+    );
+    expect(screen.getByRole('status').textContent).toContain('states.offlineList');
+    expect(screen.queryByRole('alert')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'actions.retry' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 });

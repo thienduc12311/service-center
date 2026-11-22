@@ -465,21 +465,52 @@ export interface ListQueryState {
   error: unknown;
   data: unknown;
   isFetching: boolean;
+  /** Offline: the request waits for the connection (TanStack `fetchStatus === 'paused'`). */
+  isPaused: boolean;
+  /** The rows shown belong to an earlier key (e.g. the previous search), kept while the new one loads. */
+  isPlaceholderData: boolean;
   refetch: () => unknown;
 }
 
-/** True when a list query failed before it loaded any data: show the error, never the empty state. */
-export const listFailed = (query: Pick<ListQueryState, 'error' | 'data'>): boolean =>
-  Boolean(query.error) && query.data === undefined;
+/**
+ * True when a list query is waiting for the connection and has nothing of its
+ * own to show: no rows yet, or only the previous search's rows. TanStack
+ * pauses (not fails) an offline fetch, so it has neither data nor an error.
+ */
+export const listOffline = (query: Pick<ListQueryState, 'data' | 'isPaused' | 'isPlaceholderData'>): boolean =>
+  query.isPaused && (query.data === undefined || query.isPlaceholderData);
 
 /**
- * A failed list request: the localized error plus "Try again". Render it in
- * place of the list's empty state, which would otherwise claim there is
- * nothing to show when the list simply did not load.
+ * True when a list did not load: it failed before it loaded any data, or it
+ * is paused offline. Show `ListErrorNotice`, never the empty state.
  */
-export const ListErrorNotice = ({ query }: { query: ListQueryState }) => (
-  <ErrorNotice error={query.error} retrying={query.isFetching} onRetry={() => void query.refetch()} />
-);
+export const listFailed = (query: Pick<ListQueryState, 'error' | 'data' | 'isPaused' | 'isPlaceholderData'>): boolean =>
+  (Boolean(query.error) && query.data === undefined) || listOffline(query);
+
+/**
+ * A list that did not load: the localized error (or an offline notice) plus
+ * "Try again". Render it in place of the list's empty state, which would
+ * otherwise claim there is nothing to show when the list simply did not load.
+ * An offline list also loads by itself once the connection returns.
+ */
+export const ListErrorNotice = ({ query }: { query: ListQueryState }) => {
+  const { t } = useTranslation();
+  if (listOffline(query)) {
+    return (
+      <div
+        role="status"
+        className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/25"
+      >
+        <Icon name="alert" className="mt-px size-4" />
+        <span className="min-w-0 flex-1">{t('states.offlineList')}</span>
+        <Button variant="secondary" size="sm" onClick={() => void query.refetch()} className="-my-1">
+          {t('actions.retry')}
+        </Button>
+      </div>
+    );
+  }
+  return <ErrorNotice error={query.error} retrying={query.isFetching} onRetry={() => void query.refetch()} />;
+};
 
 type NoticeTone = 'info' | 'warning' | 'success';
 
