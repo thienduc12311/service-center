@@ -34,7 +34,7 @@ import {
 
 const SONG_IN_USE: InUseError = {
   code: 'song_in_use',
-  message: 'This song is used in a plan, so it cannot be deleted. Remove it from those plans or archive it instead.',
+  message: 'This song is still used in a plan or a song book, so it cannot be deleted. Remove it from those first, or archive it instead.',
 };
 const ARRANGEMENT_IN_USE: InUseError = {
   code: 'arrangement_in_use',
