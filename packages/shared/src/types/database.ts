@@ -1854,6 +1854,11 @@ export type Database = {
         Args: { p_token_hash: string; p_new_user_id: string };
         Returns: AcceptPersonInvitationRow[];
       };
+      /** Service role only: whether any login (confirmed or not) holds this email. Never for linking. */
+      auth_email_registered: {
+        Args: { p_email: string };
+        Returns: boolean;
+      };
       /** Service role only: the login whose confirmed email this is, or null. */
       confirmed_user_id_by_email: {
         Args: { p_email: string };

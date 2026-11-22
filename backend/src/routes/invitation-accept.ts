@@ -5,7 +5,7 @@ import { validateBody } from '../lib/validate.js';
 import { adminDb, unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import { hashInviteToken } from '../services/invitations.js';
-import { findConfirmedUserIdByEmail } from '../services/auth-users.js';
+import { findConfirmedUserIdByEmail, isEmailRegistered } from '../services/auth-users.js';
 import { personDisplayName } from '../model/people.js';
 import { optionalSessionUserId } from '../middleware/auth.js';
 import { config } from '../config.js';
@@ -25,7 +25,7 @@ const loadLiveInvitation = async (token: string) => {
   );
   if (!invitation) throw HttpError.notFound('That invitation link is not valid');
   if (invitation.accepted_at || invitation.revoked_at) {
-    throw new HttpError(410, 'This invitation has already been used', 'invitation_used');
+    throw INVITATION_USED();
   }
   if (new Date(invitation.expires_at) <= new Date()) {
     throw new HttpError(410, 'This invitation has expired', 'invitation_expired');
@@ -35,9 +35,40 @@ const loadLiveInvitation = async (token: string) => {
 
 /** The invitation fields an account is created from. */
 interface InvitationForAccount {
+  id: string;
   email: string;
   person_id: string;
 }
+
+const INVITATION_USED = (): HttpError => new HttpError(410, 'This invitation has already been used', 'invitation_used');
+
+/**
+ * W10-SEC-D4: when creating the login fails, a concurrent submission of the
+ * same invitation may have created it a moment earlier. Auth reports that
+ * loser as a bare 500 (unique email index) or, once the winner committed, as
+ * `email_exists`. Answer it cleanly instead of "try again":
+ *   - the invitation has been accepted meanwhile -> 410 invitation_used;
+ *   - an account now holds the address although Auth did not say so (the
+ *     race itself) -> 409 invitation_accept_in_progress.
+ * Null: not a race; the caller reports the original failure.
+ */
+const concurrentAcceptOutcome = async (
+  invitation: InvitationForAccount,
+  authSaidEmailExists: boolean,
+): Promise<HttpError | null> => {
+  const current = await unwrap(
+    adminDb.from('person_invitations').select('accepted_at').eq('id', invitation.id).maybeSingle(),
+  );
+  if (current?.accepted_at) return INVITATION_USED();
+  if (!authSaidEmailExists && (await isEmailRegistered(invitation.email))) {
+    return new HttpError(
+      409,
+      'This invitation is being accepted right now. Wait a moment, then open it again or sign in.',
+      'invitation_accept_in_progress',
+    );
+  }
+  return null;
+};
 
 /**
  * A new login for the invited address, with its email left **unconfirmed**:
@@ -58,6 +89,11 @@ const createUnconfirmedAccount = async (invitation: InvitationForAccount, passwo
     email_confirm: false,
     user_metadata: { full_name: personDisplayName(person) },
   });
+  if (error || !data.user) {
+    // Another submission of this same invitation may have won a moment ago.
+    const raced = await concurrentAcceptOutcome(invitation, error?.code === 'email_exists');
+    if (raced) throw raced;
+  }
   if (error?.code === 'email_exists') {
     // An unconfirmed signup already holds this address, with a password chosen
     // by whoever started it. Never link it: the inbox owner takes it over with
