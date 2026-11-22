@@ -12,7 +12,7 @@ import { api } from '../../lib/api';
 import { keys, useChurchJoinRequests } from '../../hooks/queries';
 import { useAuth } from '../../providers/AuthProvider';
 import { useFormatters } from '../../i18n/useFormatters';
-import { Avatar, Badge, Button, ErrorNotice, Modal, Notice, SectionHeader, SkeletonList } from '../ui';
+import { Avatar, Badge, Button, ErrorNotice, ListErrorNotice, listFailed, Modal, Notice, SectionHeader, SkeletonList } from '../ui';
 
 export interface JoinRequestsSectionProps {
   /** An invitation was sent: the page shows its link to share, like "Send invite". */
@@ -86,7 +86,7 @@ export const JoinRequestsSection = ({ onInvited }: JoinRequestsSectionProps) => 
 
   return (
     <section aria-labelledby="join-requests-title" className="space-y-3">
-      <SectionHeader id="join-requests-title" title={t('joinRequests.title')} meta={pending.length} className="!mb-0" />
+      <SectionHeader id="join-requests-title" title={t('joinRequests.title')} meta={requests.data ? pending.length : undefined} className="!mb-0" />
 
       {slug && (
         <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -104,10 +104,12 @@ export const JoinRequestsSection = ({ onInvited }: JoinRequestsSectionProps) => 
           <p>{t('joinRequests.alreadyInvited', { name: alreadyInvited })}</p>
         </Notice>
       )}
-      <ErrorNotice error={requests.error ?? approve.error} />
+      <ErrorNotice error={(listFailed(requests) ? null : requests.error) ?? approve.error} />
 
       {requests.isLoading ? (
         <SkeletonList rows={1} />
+      ) : listFailed(requests) ? (
+        <ListErrorNotice query={requests} />
       ) : pending.length ? (
         <ul className="card row-list overflow-hidden">
           {pending.map((request) => (
