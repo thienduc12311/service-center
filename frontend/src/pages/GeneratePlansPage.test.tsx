@@ -132,7 +132,7 @@ describe('GeneratePlansPage recurrence', () => {
     await waitFor(() => expect((screen.getByLabelText('Repeats') as HTMLSelectElement).value).toBe('monthly_weekday'));
     expect((screen.getByLabelText('Which week') as HTMLSelectElement).value).toBe('second');
     expect(screen.getByText('Starts with Communion’s usual rhythm.')).toBeTruthy();
-    expect(screen.getByTestId('recurrence-summary').textContent).toBe('Every 2nd Sunday, 4 plans');
+    expect(screen.getByTestId('recurrence-summary').textContent).toBe('Monthly on the 2nd Sunday, 4 plans');
 
     await user.click(screen.getByRole('button', { name: 'Review plans' }));
     await screen.findByText('3 plans to create');
@@ -143,7 +143,7 @@ describe('GeneratePlansPage recurrence', () => {
       count: 4,
     });
     expect(lastRequest().end_date).toBeUndefined();
-    expect(screen.getByTestId('preview-summary').textContent).toBe('Every 2nd Sunday, 3 plans');
+    expect(screen.getByTestId('preview-summary').textContent).toBe('Monthly on the 2nd Sunday, 3 plans');
   });
 
   it('offers the last weekday, a day of month with short-month handling, and an until date', async () => {
@@ -153,7 +153,7 @@ describe('GeneratePlansPage recurrence', () => {
     await chooseTemplate();
 
     await user.selectOptions(await screen.findByLabelText('Which week'), 'last');
-    expect(screen.getByTestId('recurrence-summary').textContent).toBe('Every last Sunday, 4 plans');
+    expect(screen.getByTestId('recurrence-summary').textContent).toBe('Monthly on the last Sunday, 4 plans');
 
     await user.selectOptions(screen.getByLabelText('Repeats'), 'monthly_day');
     expect((screen.getByLabelText('Day of the month') as HTMLSelectElement).value).toBe('9');
@@ -233,5 +233,34 @@ describe('GeneratePlansPage recurrence', () => {
     expect(link.textContent).toMatch(/May 10.*7:00\sAM/);
     // The date tile reads the same day.
     expect(link.querySelector('[aria-hidden="true"]')!.textContent).toContain('10');
+  });
+
+  it('explains a count over the limit or an empty count instead of changing it, and reviews only a usable one', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.previewPlanGeneration).mockResolvedValue(previewOf(['2027-05-09']));
+    renderPage();
+    await chooseTemplate();
+    const count = (await screen.findByLabelText('How many plans')) as HTMLInputElement;
+    const review = () => screen.getByRole('button', { name: 'Review plans' }) as HTMLButtonElement;
+
+    await user.clear(count);
+    expect(count.value).toBe('');
+    expect(screen.getByRole('alert').textContent).toBe('Enter how many plans to create.');
+    expect(review().disabled).toBe(true);
+
+    await user.type(count, '53');
+    expect(count.value).toBe('53');
+    expect(count.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByRole('alert').textContent).toBe('Enter a whole number from 1 to 52.');
+    expect(review().disabled).toBe(true);
+    expect(screen.queryByTestId('recurrence-summary')).toBeNull();
+
+    await user.clear(count);
+    await user.type(count, '6');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('recurrence-summary').textContent).toBe('Monthly on the 2nd Sunday, 6 plans');
+    await user.click(review());
+    await screen.findByText('1 plan to create');
+    expect(lastRequest().count).toBe(6);
   });
 });

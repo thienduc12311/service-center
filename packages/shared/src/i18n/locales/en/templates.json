@@ -141,6 +141,8 @@
     "everyWeek": "Every week",
     "everyNWeeks": "Every {{weeks}} weeks",
     "howMany": "How many plans",
+    "countRequired": "Enter how many plans to create.",
+    "countRange": "Enter a whole number from 1 to {{max}}.",
     "stopAfter": "Stop after (optional)",
     "leaveOutHeading": "Holidays and dates to leave out",
     "includeAgain": "Include {{date}} again",

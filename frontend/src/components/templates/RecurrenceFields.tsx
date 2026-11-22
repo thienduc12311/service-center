@@ -21,6 +21,20 @@ const FREQUENCY_LABEL = {
 const WEEK_INTERVALS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, index) => index + 1);
 
+/** Why a typed plan count can't be used: nothing typed, or not a whole number from 1 to the cap. */
+export type PlanCountProblem = 'required' | 'range';
+
+/** The problem with a count from the "How many plans" field (NaN when it is empty); null when it can be used. */
+export const planCountProblem = (count: number): PlanCountProblem | null => {
+  if (Number.isNaN(count)) return 'required';
+  return Number.isInteger(count) && count >= 1 && count <= MAX_GENERATED_PLANS ? null : 'range';
+};
+
+const COUNT_PROBLEM_KEY = {
+  required: 'generate.countRequired',
+  range: 'generate.countRange',
+} as const satisfies Record<PlanCountProblem, string>;
+
 export interface RecurrenceFieldsProps {
   /** The first date; weekly rules repeat from it, monthly rules start on or after it. */
   startDate: string;
@@ -50,6 +64,7 @@ export const RecurrenceFields = ({
   const structured = useStructuredText();
   const weekdays = weekdayNames(structured.locale, 'long');
   const validStart = /^\d{4}-\d{2}-\d{2}$/.test(startDate);
+  const countProblem = end.kind === 'count' ? planCountProblem(end.count) : null;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -141,7 +156,7 @@ export const RecurrenceFields = ({
 
       <fieldset className="sm:col-span-2">
         <legend className="label">{t('generate.endsLabel')}</legend>
-        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
             <input
               type="radio"
@@ -162,37 +177,46 @@ export const RecurrenceFields = ({
             />
             {t('generate.endsOnDate')}
           </label>
-          {end.kind === 'count' ? (
-            <div className="w-32">
-              <label className="label" htmlFor="gen-count">{t('generate.howMany')}</label>
-              <input
-                id="gen-count"
-                type="number"
-                min={1}
-                max={MAX_GENERATED_PLANS}
-                className="input"
-                value={end.count}
-                onChange={(event) => onEndChange({ kind: 'count', count: Math.min(MAX_GENERATED_PLANS, Math.max(1, Number(event.target.value) || 1)) })}
-              />
-            </div>
-          ) : (
-            <div className="w-full sm:w-48">
-              <label className="label" htmlFor="gen-end">{t('generate.lastDate')}</label>
-              <input
-                id="gen-end"
-                type="date"
-                className="input"
-                min={startDate}
-                value={end.until_date}
-                onChange={(event) => onEndChange({ kind: 'until', until_date: event.target.value })}
-              />
-            </div>
-          )}
         </div>
+        {end.kind === 'count' ? (
+          <div className="mt-3 w-40">
+            <label className="label" htmlFor="gen-count">{t('generate.howMany')}</label>
+            <input
+              id="gen-count"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={MAX_GENERATED_PLANS}
+              className="input"
+              // Empty while typing is allowed: the field says what it needs instead of jumping to 1.
+              value={Number.isNaN(end.count) ? '' : end.count}
+              aria-invalid={countProblem ? true : undefined}
+              aria-describedby={countProblem ? 'gen-count-problem' : undefined}
+              onChange={(event) => onEndChange({ kind: 'count', count: event.target.value === '' ? Number.NaN : Number(event.target.value) })}
+            />
+          </div>
+        ) : (
+          <div className="mt-3 w-full sm:w-48">
+            <label className="label" htmlFor="gen-end">{t('generate.lastDate')}</label>
+            <input
+              id="gen-end"
+              type="date"
+              className="input"
+              min={startDate}
+              value={end.until_date}
+              onChange={(event) => onEndChange({ kind: 'until', until_date: event.target.value })}
+            />
+          </div>
+        )}
+        {countProblem && (
+          <p id="gen-count-problem" role="alert" className="mt-1.5 text-xs text-rose-700 dark:text-rose-300">
+            {t(COUNT_PROBLEM_KEY[countProblem], { max: MAX_GENERATED_PLANS })}
+          </p>
+        )}
         <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t('generate.limitHint', { max: MAX_GENERATED_PLANS })}</p>
       </fieldset>
 
-      {validStart && (end.kind === 'count' || end.until_date) && (
+      {validStart && (end.kind === 'count' ? !countProblem : end.until_date) && (
         <p className="text-sm font-medium text-slate-800 sm:col-span-2 dark:text-slate-100" data-testid="recurrence-summary">
           {planSeriesSummaryText(recurrence, startDate, end, structured)}
         </p>

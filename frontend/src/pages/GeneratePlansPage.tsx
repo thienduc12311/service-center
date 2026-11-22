@@ -30,7 +30,7 @@ import { Icon } from '../components/icons';
 import { ConflictList } from '../components/plan/attendance';
 import { TemplateApplyReview } from '../components/templates/TemplateApplyReview';
 import { TemplateSelect } from '../components/templates/TemplateSelect';
-import { RecurrenceFields } from '../components/templates/RecurrenceFields';
+import { RecurrenceFields, planCountProblem } from '../components/templates/RecurrenceFields';
 
 const WARN_TONE = 'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/15 dark:text-amber-300';
 
@@ -287,7 +287,7 @@ export const GeneratePlansPage = () => {
 
         <ErrorNotice error={review.error} />
         <div className="flex justify-end border-t border-app-border pt-4">
-          <Button icon="sparkle" loading={review.isPending} disabled={!template} onClick={() => review.mutate(series())}>{t('generate.review')}</Button>
+          <Button icon="sparkle" loading={review.isPending} disabled={!template || (end.kind === 'count' && planCountProblem(end.count) !== null)} onClick={() => review.mutate(series())}>{t('generate.review')}</Button>
         </div>
       </div>
 

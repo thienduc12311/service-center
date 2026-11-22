@@ -130,6 +130,8 @@
     "everyWeek": "Hằng tuần",
     "everyNWeeks": "Mỗi {{weeks}} tuần",
     "howMany": "Số chương trình",
+    "countRequired": "Nhập số chương trình cần tạo.",
+    "countRange": "Nhập một số nguyên từ 1 đến {{max}}.",
     "stopAfter": "Dừng sau ngày (không bắt buộc)",
     "leaveOutHeading": "Ngày lễ và các ngày bỏ qua",
     "includeAgain": "Thêm lại ngày {{date}}",
