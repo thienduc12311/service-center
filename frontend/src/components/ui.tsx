@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react';
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode, RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { avatarColor, initials } from '../lib/format';
@@ -310,12 +310,71 @@ export interface TabsProps<T extends string> {
   className?: string;
 }
 
-/** Underlined, horizontally scrolling tab strip for switching page sections. */
+/** Which ends of a horizontally scrolling strip have content out of view. */
+export interface ScrollOverflow {
+  start: boolean;
+  end: boolean;
+}
+
+const NO_OVERFLOW: ScrollOverflow = { start: false, end: false };
+
+/** Fades a strip's hidden ends, so a clipped item reads as "scroll for more". */
+export const overflowMask = ({ start, end }: ScrollOverflow): string | undefined =>
+  start || end
+    ? `linear-gradient(to right, ${start ? 'transparent, #000 2.5rem' : '#000'}, ${end ? '#000 calc(100% - 2.5rem), transparent' : '#000'})`
+    : undefined;
+
+/** Measures whether a horizontally scrolling element hides content past either end; re-measures when `itemCount` changes. */
+const useScrollOverflow = (ref: RefObject<HTMLElement | null>, itemCount: number): ScrollOverflow => {
+  const [overflow, setOverflow] = useState<ScrollOverflow>(NO_OVERFLOW);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const update = () => {
+      const start = element.scrollLeft > 1;
+      const end = element.scrollLeft + element.clientWidth < element.scrollWidth - 1;
+      setOverflow((current) => (current.start === start && current.end === end ? current : { start, end }));
+    };
+    update();
+    element.addEventListener('scroll', update, { passive: true });
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(element);
+    return () => {
+      element.removeEventListener('scroll', update);
+      observer?.disconnect();
+    };
+  }, [ref, itemCount]);
+  return overflow;
+};
+
+/**
+ * Underlined, horizontally scrolling tab strip for switching page sections.
+ * When the tabs don't fit, each hidden end fades out (the scroll cue) and the
+ * selected tab is scrolled into view.
+ */
 export function Tabs<T extends string>({ items, value, onChange, label, className = '' }: TabsProps<T>) {
+  const ref = useRef<HTMLDivElement>(null);
+  const overflow = useScrollOverflow(ref, items.length);
+  const mask = overflowMask(overflow);
+
+  useLayoutEffect(() => {
+    const strip = ref.current;
+    const active = strip?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!strip || !active) return;
+    const bounds = strip.getBoundingClientRect();
+    const tab = active.getBoundingClientRect();
+    if (tab.left < bounds.left) strip.scrollLeft -= bounds.left - tab.left + 40;
+    else if (tab.right > bounds.right) strip.scrollLeft += tab.right - bounds.right + 40;
+  }, [value]);
+
   return (
     <div
+      ref={ref}
       role="tablist"
       aria-label={label}
+      data-overflow-start={overflow.start || undefined}
+      data-overflow-end={overflow.end || undefined}
+      style={mask ? { maskImage: mask, WebkitMaskImage: mask } : undefined}
       className={`scrollbar-none -mx-1 flex gap-1 overflow-x-auto border-b border-app-border px-1 ${className}`}
     >
       {items.map((item) => {

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ListErrorNotice, Menu, MenuItem, Modal, listFailed, listOffline } from './ui';
+import { ListErrorNotice, Menu, MenuItem, Modal, Tabs, listFailed, listOffline, overflowMask } from './ui';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -373,5 +373,30 @@ describe('offline list requests (W10-WEB-D2)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'actions.retry' }));
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Tabs overflow cue (W2-PLANS-D11)', () => {
+  it('fades only the ends that hide tabs', () => {
+    expect(overflowMask({ start: false, end: false })).toBeUndefined();
+    expect(overflowMask({ start: false, end: true })).toBe('linear-gradient(to right, #000, #000 calc(100% - 2.5rem), transparent)');
+    expect(overflowMask({ start: true, end: false })).toBe('linear-gradient(to right, transparent, #000 2.5rem, #000)');
+  });
+
+  it('marks a tab strip that is too narrow for its tabs', () => {
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(600);
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(400);
+    render(
+      <Tabs
+        label="Plan"
+        value="order"
+        onChange={vi.fn()}
+        items={[{ value: 'order', label: 'Order' }, { value: 'share', label: 'Share' }]}
+      />,
+    );
+    const strip = screen.getByRole('tablist');
+    expect(strip.dataset.overflowEnd).toBe('true');
+    expect(strip.dataset.overflowStart).toBeUndefined();
+    expect(strip.style.maskImage).toContain('transparent');
   });
 });
