@@ -30,7 +30,8 @@ const MEDIA_ID = '00000000-0000-4000-8000-0000000000aa';
 const summary = (id: string, title: string, duration: number | null, thumbnail: string | null = null): MediaSummary => ({
   id, title, creator: null, duration_seconds: duration, themes: [], tags: [], notes: null, thumbnail_file_id: thumbnail,
   archive_on: null, archived_at: null, is_archived: false, revision: 1, created_at: STAMP, updated_at: STAMP,
-} as MediaSummary);
+  usage_count: 0, last_used_on: null,
+});
 
 const mediaList = (media: MediaSummary[]): MediaList => ({ media, can_create: true, total: media.length, truncated: false } as MediaList);
 
