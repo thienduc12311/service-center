@@ -18,12 +18,19 @@
  * nothing that needs the app to be running. It does carry one inline script,
  * which is what does the pagination; without it the chart still renders, just
  * as a single unbroken column.
+ *
+ * The document is opened on the app's own origin (a `blob:` tab, a `srcdoc`
+ * frame the PDF writer measures), so nothing an arrangement stores may become
+ * markup or script in it: text is HTML-escaped, formatting is resolved to known
+ * values before it reaches the stylesheet (`resolveChartFormatting`), and a
+ * Content-Security-Policy lets only the template's own script run.
  */
 
 import { translatorFor } from '../i18n/engine.js';
 import type { SupportedLocale } from '../i18n/locales.js';
 import type { ChartColumns } from '../types/database.js';
 import { parseChordPro, renderLineAsText, type ChordProSection } from './chordpro.js';
+import { isChartFont } from './constants.js';
 
 /** Presentation settings for one chart. Null means "use the template default". */
 export interface ChartFormatting {
@@ -46,6 +53,56 @@ export const DEFAULT_CHART_FORMATTING: ChartFormatting = {
   fontSize: null,
   chordColor: null,
 };
+
+/** Formatting with every default applied, each value safe to print into the template. */
+export interface ResolvedChartFormatting {
+  columns: ChartColumns;
+  /** One of `CHART_FONT_VALUES`. */
+  fontFamily: string;
+  fontSize: number;
+  /** A `#rrggbb` colour. */
+  chordColor: string;
+}
+
+/** Mirrors `arrangements_chart_font_size_valid`. */
+const CHART_FONT_SIZE_MIN = 6;
+const CHART_FONT_SIZE_MAX = 48;
+
+/** Mirrors `arrangements_chart_chord_color_valid`. */
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Applies the template defaults and refuses anything the database would not
+ * hold. The values end up inside a `<style>` block and the document's markup,
+ * where HTML escaping is no defence, so this is an allowlist rather than a
+ * sanitiser: a font the Formatting dialog does not offer, a size out of range
+ * or a colour that is not hex all render as the default.
+ */
+export const resolveChartFormatting = (formatting: ChartFormatting): ResolvedChartFormatting => {
+  const { columns, fontFamily, fontSize, chordColor } = formatting;
+  return {
+    columns: columns === 2 ? 2 : 1,
+    fontFamily: fontFamily && isChartFont(fontFamily) ? fontFamily : DEFAULT_CHART_FONT,
+    fontSize:
+      typeof fontSize === 'number' && fontSize >= CHART_FONT_SIZE_MIN && fontSize <= CHART_FONT_SIZE_MAX
+        ? fontSize
+        : DEFAULT_CHART_FONT_SIZE,
+    chordColor: chordColor && HEX_COLOR.test(chordColor) ? chordColor : DEFAULT_CHART_CHORD_COLOR,
+  };
+};
+
+/**
+ * The document's Content-Security-Policy, as a `<meta>` for its `<head>`.
+ *
+ * The document needs nothing from the network and runs exactly one script, its
+ * own pagination, which is allowed by hash. Anything else (an injected
+ * `<script>`, an event-handler attribute, a remote image or stylesheet) is
+ * refused, so even a value that slipped past escaping cannot run code on the
+ * app's origin. Inline styles stay allowed: the template is styled inline, and
+ * the pagination script and the PDF writer set styles on its elements.
+ */
+export const chartDocumentCspMeta = (scriptSha256: string): string =>
+  `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-${scriptSha256}'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'" />`;
 
 /**
  * The paper every chart is laid out on, in inches. US Letter — the same size
@@ -138,9 +195,8 @@ const MIN_COLUMN_CHARACTERS = 8;
  * leaving it to CSS is the whole point: see `wrapChartLine`.
  */
 export const chartColumnCharacters = (formatting: ChartFormatting): number => {
-  const size = formatting.fontSize ?? DEFAULT_CHART_FONT_SIZE;
+  const { columns, fontSize: size } = resolveChartFormatting(formatting);
   const { widthIn, marginIn, columnGapIn } = CHART_PAGE;
-  const { columns } = formatting;
 
   const contentIn = widthIn - marginIn * 2 - columnGapIn * (columns - 1);
   const columnPt = (contentIn / columns) * 72;
@@ -379,10 +435,8 @@ export const chartPageStyles = (): string => {
   `;
 };
 
-const styles = (formatting: ChartFormatting): string => {
-  const font = formatting.fontFamily || DEFAULT_CHART_FONT;
-  const size = formatting.fontSize ?? DEFAULT_CHART_FONT_SIZE;
-  const chordColor = formatting.chordColor || DEFAULT_CHART_CHORD_COLOR;
+const styles = (formatting: ResolvedChartFormatting): string => {
+  const { fontFamily: font, fontSize: size, chordColor } = formatting;
   const { widthIn, heightIn } = CHART_PAGE;
 
   return `
@@ -453,8 +507,13 @@ const styles = (formatting: ChartFormatting): string => {
  * destined for and kept only if the column still fits the page. That is what
  * lets the preview and the PDF break in the same places — both are this same
  * DOM, laid out at the same size.
+ *
+ * The script is a constant (the column count is read from the body's
+ * `data-columns`) so the Content-Security-Policy can allow it by hash. Any
+ * edit to it changes that hash: update `CHART_PAGINATION_SCRIPT_SHA256` (the
+ * chart-html test prints the new value).
  */
-const paginationScript = (columns: number): string => `
+const PAGINATION_SCRIPT = `
 (function () {
   var stage = document.querySelector('.chart-stage');
   var pages = document.getElementById('chart-pages');
@@ -463,7 +522,7 @@ const paginationScript = (columns: number): string => `
   var footerTemplate = document.getElementById('chart-page-footer');
   if (!stage || !pages || !source || !footerTemplate) return;
 
-  var COLUMNS = ${columns};
+  var COLUMNS = Number(document.body.getAttribute('data-columns')) === 2 ? 2 : 1;
 
   var firstHeader = source.querySelector('header.chart-header');
   var blocks = [];
@@ -601,6 +660,9 @@ const paginationScript = (columns: number): string => `
 })();
 `;
 
+/** Base64 SHA-256 of `PAGINATION_SCRIPT`, for the document's CSP. */
+export const CHART_PAGINATION_SCRIPT_SHA256 = 'XUz6XafIsSGCW4HaT601qPcZgqpnxS7lJ+jA44Q0V8o=';
+
 /**
  * Renders one chart as a complete, standalone HTML document.
  *
@@ -609,16 +671,18 @@ const paginationScript = (columns: number): string => `
  */
 export const renderChartHtml = (doc: ChartDocument): string => {
   const markup = chartDocumentMarkup(doc);
+  const formatting = resolveChartFormatting(doc.formatting);
 
   return `<!doctype html>
 <html lang="${doc.locale ?? 'en'}">
   <head>
     <meta charset="utf-8" />
+    ${chartDocumentCspMeta(CHART_PAGINATION_SCRIPT_SHA256)}
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(markup.heading)}</title>
-    <style>${styles(doc.formatting)}</style>
+    <style>${styles(formatting)}</style>
   </head>
-  <body data-columns="${doc.formatting.columns}">
+  <body data-columns="${formatting.columns}">
     <div class="chart-stage"><div id="chart-pages" class="chart-pages"></div></div>
 
     <template id="chart-cont-header">${markup.continuationHeader}</template>
@@ -629,7 +693,7 @@ export const renderChartHtml = (doc: ChartDocument): string => {
       ${markup.body}
     </div>
 
-    <script>${paginationScript(doc.formatting.columns)}</script>
+    <script>${PAGINATION_SCRIPT}</script>
   </body>
 </html>
 `;

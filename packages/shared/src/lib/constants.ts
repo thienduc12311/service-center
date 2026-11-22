@@ -77,7 +77,7 @@ export const SEQUENCE_LABEL_GROUPS: readonly (readonly string[])[] = [
 /** One choice in the Formatting dialog — a display name and the CSS it writes. */
 export interface ChartStyleOption {
   label: string;
-  /** Stored verbatim on the arrangement and dropped into the chart template. */
+  /** Stored verbatim on the arrangement; the chart template prints only listed values. */
   value: string;
 }
 
@@ -92,6 +92,18 @@ export const CHART_FONT_OPTIONS: readonly ChartStyleOption[] = [
   { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
   { label: 'Georgia', value: "Georgia, 'Times New Roman', serif" },
 ];
+
+/**
+ * The only values `arrangements.chart_font` may hold — mirrored by the
+ * `arrangements_chart_font_valid` check constraint
+ * (`20261130000100_arrangement_chart_font_check.sql`), so keep the two in step.
+ * The value is printed into the chart's stylesheet, which is why it is a closed
+ * set rather than free text.
+ */
+export const CHART_FONT_VALUES: readonly string[] = CHART_FONT_OPTIONS.map((font) => font.value);
+
+/** True when the value is one of the fonts the Formatting dialog offers. */
+export const isChartFont = (value: string): boolean => CHART_FONT_VALUES.includes(value);
 
 export const CHART_FONT_SIZES: readonly number[] = [8, 9, 10, 11, 12, 14, 16, 18, 20];
 

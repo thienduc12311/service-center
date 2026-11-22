@@ -1,12 +1,16 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { PlanDetail, PlanItemDetail } from '../types/domain.js';
 import {
+  DEFAULT_CHART_FONT,
+  chartDocumentCspMeta,
   chartDocumentMarkup,
   chartPageStyles,
   renderChartHtml,
   type ChartDocument,
 } from './chart-html.js';
 import {
+  SONG_BOOK_PAGINATION_SCRIPT_SHA256,
   renderServiceSongBookHtml,
   serviceSongBookDocumentFromPlan,
   type ServiceSongBookDocument,
@@ -262,6 +266,39 @@ describe('renderServiceSongBookHtml', () => {
     expect(renderServiceSongBookHtml(missing)).toContain(
       'No chord chart has been added for this song.',
     );
+  });
+
+  it('never prints a font it does not offer, falling back to the default', () => {
+    const book = document();
+    book.songs = [
+      {
+        ...book.songs[0]!,
+        formatting: {
+          columns: 1,
+          fontFamily: '"><script>alert(document.domain)</script>',
+          fontSize: 12,
+          chordColor: '#000000',
+        },
+      },
+    ];
+
+    const html = renderServiceSongBookHtml(book);
+    expect(html).not.toContain('alert(document.domain)');
+    expect(html.match(/<script/g)).toHaveLength(1);
+    expect(html).toContain(`data-font="${DEFAULT_CHART_FONT.replace(/'/g, '&#39;')}"`);
+  });
+
+  it('carries a CSP that allows only its own pagination script', () => {
+    const html = renderServiceSongBookHtml(document());
+    const hashes = Array.from(html.matchAll(/<script>([\s\S]*?)<\/script>/g), (match) =>
+      createHash('sha256').update(match[1] ?? '', 'utf8').digest('base64'),
+    );
+
+    expect(hashes).toHaveLength(1);
+    // A failure here after editing the pagination script: set
+    // SONG_BOOK_PAGINATION_SCRIPT_SHA256 to the expected value.
+    expect(SONG_BOOK_PAGINATION_SCRIPT_SHA256).toBe(hashes[0]);
+    expect(html).toContain(chartDocumentCspMeta(SONG_BOOK_PAGINATION_SCRIPT_SHA256));
   });
 
   it('continues long service orders on additional landscape pages', () => {

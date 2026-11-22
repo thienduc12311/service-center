@@ -1,14 +1,20 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  CHART_PAGINATION_SCRIPT_SHA256,
+  DEFAULT_CHART_FONT,
   DEFAULT_CHART_FORMATTING,
   chartColumnCharacters,
+  chartDocumentCspMeta,
   chartDocumentTitle,
   chartFormattingFromRow,
   escapeHtml,
   renderChartHtml,
+  resolveChartFormatting,
   wrapChartLine,
   type ChartDocument,
 } from './chart-html.js';
+import { CHART_FONT_VALUES } from './constants.js';
 
 const doc = (overrides: Partial<ChartDocument> = {}): ChartDocument => ({
   title: 'Nothing Is Impossible',
@@ -95,8 +101,9 @@ describe('renderChartHtml', () => {
 
     expect(one).toContain('data-columns="1"');
     expect(two).toContain('data-columns="2"');
-    expect(one).toContain('var COLUMNS = 1;');
-    expect(two).toContain('var COLUMNS = 2;');
+    // The pagination script is a constant (so the CSP can allow it by hash)
+    // and takes the column count from the body.
+    expect(one).toContain("document.body.getAttribute('data-columns')");
   });
 
   it('separates two columns by a gap alone, with no rule between them', () => {
@@ -259,5 +266,80 @@ describe('wrapChartLine', () => {
     // Two columns at 12pt hold 35 characters, so this line cannot be one row.
     expect(html.match(/class="row"/g)?.length).toBeGreaterThan(1);
     expect(html).not.toContain('sound that saved a wretch like me');
+  });
+});
+
+const MALICIOUS_FONT = "x;}</style><script>alert(document.domain)</script><style>";
+
+/** The inline script's base64 SHA-256, as a CSP hash source names it. */
+const scriptHashes = (html: string): string[] =>
+  Array.from(html.matchAll(/<script>([\s\S]*?)<\/script>/g), (match) =>
+    createHash('sha256').update(match[1] ?? '', 'utf8').digest('base64'),
+  );
+
+describe('chart document safety', () => {
+  it('never prints a font it does not offer, falling back to the default', () => {
+    const html = renderChartHtml(
+      doc({ formatting: { ...DEFAULT_CHART_FORMATTING, fontFamily: MALICIOUS_FONT } }),
+    );
+
+    expect(html).not.toContain('alert(document.domain)');
+    expect(html.match(/<\/style>/g)).toHaveLength(1);
+    expect(html.match(/<script/g)).toHaveLength(1);
+    expect(html).toContain(`--chart-font: ${DEFAULT_CHART_FONT};`);
+  });
+
+  it('prints every offered font as given', () => {
+    for (const font of CHART_FONT_VALUES) {
+      const html = renderChartHtml(doc({ formatting: { ...DEFAULT_CHART_FORMATTING, fontFamily: font } }));
+      expect(html).toContain(`--chart-font: ${font};`);
+    }
+  });
+
+  it('carries a CSP that allows only its own pagination script', () => {
+    const html = renderChartHtml(doc());
+    const hashes = scriptHashes(html);
+
+    expect(hashes).toHaveLength(1);
+    // A failure here after editing the pagination script: set
+    // CHART_PAGINATION_SCRIPT_SHA256 to the expected value.
+    expect(CHART_PAGINATION_SCRIPT_SHA256).toBe(hashes[0]);
+    expect(html).toContain(chartDocumentCspMeta(CHART_PAGINATION_SCRIPT_SHA256));
+    expect(html).toContain("default-src 'none'");
+    // The policy has to come before anything it governs.
+    expect(html.indexOf('Content-Security-Policy')).toBeLessThan(html.indexOf('<style>'));
+  });
+});
+
+describe('resolveChartFormatting', () => {
+  it('applies the template defaults', () => {
+    expect(resolveChartFormatting(DEFAULT_CHART_FORMATTING)).toEqual({
+      columns: 1,
+      fontFamily: DEFAULT_CHART_FONT,
+      fontSize: 12,
+      chordColor: '#000000',
+    });
+  });
+
+  it('keeps values the database would hold', () => {
+    expect(
+      resolveChartFormatting({ columns: 2, fontFamily: 'Arial, Helvetica, sans-serif', fontSize: 16, chordColor: '#1d4ed8' }),
+    ).toEqual({ columns: 2, fontFamily: 'Arial, Helvetica, sans-serif', fontSize: 16, chordColor: '#1d4ed8' });
+  });
+
+  it('replaces anything else with the default', () => {
+    const hostile = {
+      columns: '1;}</style>' as unknown as 1,
+      fontFamily: 'Comic Sans MS',
+      fontSize: '12pt;}</style>' as unknown as number,
+      chordColor: 'red;}</style>',
+    };
+
+    expect(resolveChartFormatting(hostile)).toEqual(resolveChartFormatting(DEFAULT_CHART_FORMATTING));
+    expect(resolveChartFormatting({ ...DEFAULT_CHART_FORMATTING, fontSize: 1000 }).fontSize).toBe(12);
+  });
+
+  it('defaults to a font that is on the offered list', () => {
+    expect(CHART_FONT_VALUES).toContain(DEFAULT_CHART_FONT);
   });
 });
