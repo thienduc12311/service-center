@@ -40,8 +40,16 @@ export const musicalKey = z.string().trim().max(8);
  */
 export const idempotencyKey = z.string().trim().min(8).max(200);
 
+/**
+ * The deepest page a list may ask for. Far beyond any real list (200 x 100,000
+ * rows), but small enough that `(page - 1) * per_page` stays an exact safe
+ * integer: an absurd page is refused with 422 instead of echoing `1e+21` over
+ * the first page or failing with 500 (W10-SEC-D1/D2).
+ */
+export const MAX_PAGE = 100_000;
+
 export const paginationSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(1).max(MAX_PAGE).default(1),
   per_page: z.coerce.number().int().min(1).max(200).default(50),
 });
 

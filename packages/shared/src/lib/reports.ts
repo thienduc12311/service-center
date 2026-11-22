@@ -640,7 +640,17 @@ export const reportTable = (report: {
   }
 };
 
-/** CSV with a header block: title, generation time, timezone, filters and definitions. */
+/**
+ * Byte order mark that starts every report CSV: Excel reads a file without it
+ * in the system code page, garbling Vietnamese names (W10-FGH-D9).
+ */
+export const CSV_UTF8_BOM = '\uFEFF';
+
+/**
+ * CSV with a header block: title, generation time, timezone, filters and
+ * definitions. Starts with a UTF-8 BOM; cells keep `escapeCsvCell`'s
+ * formula-prefix neutralising.
+ */
 export const reportToCsv = (report: {
   kind: ReportKind;
   title: string;
@@ -669,7 +679,7 @@ export const reportToCsv = (report: {
     ...report.definitions.map((d) => [`Definition: ${d.label}`, d.definition]),
     [],
   ];
-  return toCsv([...header, table.columns, ...table.rows]);
+  return CSV_UTF8_BOM + toCsv([...header, table.columns, ...table.rows]);
 };
 
 export const reportFilename = (kind: ReportKind, filters: Pick<ReportFiltersApplied, 'from' | 'to'>): string =>

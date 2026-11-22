@@ -6,13 +6,13 @@ import {
   updateLanguagePreferenceSchema,
   updateProfileSchema,
   type UpdateLanguagePreferenceInput,
+  calendarFeedTokenSchema,
   type CalendarFeedTokenResponse,
   type CurrentUser,
 } from '@service-center/shared';
 import { parseOrThrow, validateBody } from '../lib/validate.js';
 import { unwrap, unwrapOne } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
-import { generateCalendarFeedToken } from '../services/calendar-feed-tokens.js';
 import { loadMyOrganizationContext } from '../services/organization-context.js';
 import { config } from '../config.js';
 import { mapLanguagePreferenceRow } from '../model/language.model.js';
@@ -120,12 +120,19 @@ meRouter.get('/calendar-feed', async (req, res) => {
 meRouter.post('/calendar-feed', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const organizationId = await activeOrganizationForMe(req);
-  await unwrap(req.db.from('calendar_feed_tokens').update({ revoked_at: new Date().toISOString() }).eq('organization_id', organizationId).eq('user_id', req.auth.userId).is('revoked_at', null));
-  const generated = generateCalendarFeedToken();
-  await unwrap(req.db.from('calendar_feed_tokens').insert({ organization_id: organizationId, user_id: req.auth.userId, token_hash: generated.tokenHash }));
-  const url = `${config.API_URL}/api/v1/calendar-feed/${generated.token}.ics`;
-  const response: CalendarFeedTokenResponse = { url, webcal_url: url.replace(/^https?:\/\//, 'webcal://'), token: generated.token, active: true };
+  // The database revokes the live token and issues the new one (W10-FGH-D7):
+  // clients hold no write privilege on calendar_feed_tokens.
+  const token = calendarFeedTokenSchema.parse(await unwrap(req.db.rpc('rotate_calendar_feed_token', { p_org: organizationId })));
+  const url = `${config.API_URL}/api/v1/calendar-feed/${token}.ics`;
+  const response: CalendarFeedTokenResponse = { url, webcal_url: url.replace(/^https?:\/\//, 'webcal://'), token, active: true };
   res.status(201).json(response);
+});
+
+/** Turns the personal feed off without issuing a replacement (W10-FGH-D8). Idempotent. */
+meRouter.delete('/calendar-feed', async (req, res) => {
+  const organizationId = await activeOrganizationForMe(req);
+  await unwrap(req.db.rpc('revoke_calendar_feed_token', { p_org: organizationId }));
+  res.status(204).end();
 });
 
 /**
