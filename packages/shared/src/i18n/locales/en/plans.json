@@ -182,7 +182,57 @@
     "addOther": "Header or item",
     "insertAfter": "Add here, after {{title}}",
     "insertAtStart": "Add here, at the start",
-    "insertingHere": "New songs go here"
+    "insertingHere": "New songs go here",
+    "dragHandle": "Drag to reorder {{title}}",
+    "clearOrder": "Clear order",
+    "shortcuts": "Keyboard shortcuts",
+    "selected": "{{title}} selected, {{position}} of {{count}}",
+    "drag": {
+      "instructions": "To reorder, press Space or Enter to pick up the item, use the arrow keys to move it, then press Space or Enter again to drop it. Press Escape to cancel.",
+      "start": "Picked up {{title}}.",
+      "over": "{{title}} is over position {{position}} of {{count}}.",
+      "end": "Dropped {{title}} at position {{position}} of {{count}}.",
+      "cancel": "Reordering cancelled. {{title}} is back where it was."
+    }
+  },
+  "quickAdd": {
+    "label": "Quick add",
+    "placeholder": "Welcome 3:00 · Announcements 5m · # Worship",
+    "help": "Type a title and an optional length (3:00, 1:05:00, 5m, 90s), then press Enter. Start with # to add a header. A time-like ending is read as the length, so add a length at the end, e.g. \"John 3:16 5:00\", to keep a reference in the title.",
+    "added": "Added {{title}}.",
+    "preview": {
+      "item": "Item: {{title}} · {{length}}",
+      "itemNoLength": "Item: {{title}} · no length",
+      "header": "Header: {{title}}",
+      "invalid": "Can’t add yet: {{reason}}"
+    },
+    "errors": {
+      "empty": "Type a title first.",
+      "titleRequired": "Add a title before the length.",
+      "titleTooLong": "Keep the title to 200 characters.",
+      "lengthFormat": "Write the length as 3:00, 1:05:00, 5m or 90s.",
+      "lengthRange": "The length can be at most 10 hours."
+    }
+  },
+  "clearOrder": {
+    "title": "Clear the order?",
+    "body_one": "This removes {{count}} item from “{{title}}”, together with its notes, comments and file links. This cannot be undone.",
+    "body_other": "This removes all {{count}} items from “{{title}}”, together with their notes, comments and file links. This cannot be undone.",
+    "confirm": "Clear order"
+  },
+  "orderShortcuts": {
+    "title": "Keyboard shortcuts",
+    "intro": "These work on the order when you are not typing in a field.",
+    "or": "or",
+    "focusQuickAdd": "Go to quick add",
+    "selectNext": "Select the next item",
+    "selectPrevious": "Select the previous item",
+    "moveDown": "Move the selected item down",
+    "moveUp": "Move the selected item up",
+    "edit": "Edit the selected item",
+    "remove": "Remove the selected item (asks first)",
+    "deselect": "Clear the selection",
+    "help": "Show these shortcuts"
   },
   "leader": {
     "someoneOnRoster": "Someone on the roster",

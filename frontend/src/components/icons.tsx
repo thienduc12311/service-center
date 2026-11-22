@@ -45,7 +45,8 @@ export type IconName =
   | 'upload'
   | 'sparkle'
   | 'grid'
-  | 'play';
+  | 'play'
+  | 'grip';
 
 export interface IconProps {
   name: IconName;
@@ -288,6 +289,16 @@ const paths: Record<IconName, ReactElement> = {
       <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
       <rect x="3.5" y="13.5" width="7" height="7" rx="2" />
       <rect x="13.5" y="13.5" width="7" height="7" rx="2" />
+    </>
+  ),
+  grip: (
+    <>
+      <circle cx="9" cy="6" r="1.2" />
+      <circle cx="15" cy="6" r="1.2" />
+      <circle cx="9" cy="12" r="1.2" />
+      <circle cx="15" cy="12" r="1.2" />
+      <circle cx="9" cy="18" r="1.2" />
+      <circle cx="15" cy="18" r="1.2" />
     </>
   ),
   play: <path d="M7.5 4.8v14.4a1 1 0 0 0 1.5.9l11.4-7.2a1 1 0 0 0 0-1.8L9 3.9a1 1 0 0 0-1.5.9z" />,

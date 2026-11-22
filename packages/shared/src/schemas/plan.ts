@@ -182,6 +182,15 @@ export const deletePlanItemQuerySchema = z.object({
   expected_revision: z.coerce.number().int().min(0).optional(),
 });
 
+/**
+ * `DELETE /plans/:id/items?expected_revision=` — clears the whole order. A
+ * stale revision is a 409 `plan_revision_stale`; an already empty order is a
+ * success whatever revision is sent, so a retried clear is not a conflict.
+ */
+export const clearPlanItemsQuerySchema = z.object({
+  expected_revision: z.coerce.number().int().min(0).optional(),
+});
+
 /** F11: which service time a running order is timed against. */
 export const planScheduleQuerySchema = z.object({
   time_id: uuid.optional(),
@@ -244,6 +253,7 @@ export type UpdatePlanItemInput = z.infer<typeof updatePlanItemSchema>;
 export type UpdatePlanItemRequest = z.input<typeof updatePlanItemSchema>;
 export type ReorderPlanItemsInput = z.infer<typeof reorderPlanItemsSchema>;
 export type DeletePlanItemQuery = z.infer<typeof deletePlanItemQuerySchema>;
+export type ClearPlanItemsQuery = z.infer<typeof clearPlanItemsQuerySchema>;
 export type PlanScheduleQuery = z.infer<typeof planScheduleQuerySchema>;
 export type SetPlanPositionNeedsInput = z.infer<typeof setPlanPositionNeedsSchema>;
 export type CalendarQuery = z.infer<typeof calendarQuerySchema>;

@@ -180,7 +180,56 @@
     "addOther": "Tiêu đề hoặc mục",
     "insertAfter": "Thêm vào đây, sau {{title}}",
     "insertAtStart": "Thêm vào đây, ở đầu",
-    "insertingHere": "Bài hát mới sẽ được thêm vào đây"
+    "insertingHere": "Bài hát mới sẽ được thêm vào đây",
+    "dragHandle": "Kéo để sắp xếp lại {{title}}",
+    "clearOrder": "Xóa toàn bộ thứ tự",
+    "shortcuts": "Phím tắt",
+    "selected": "Đã chọn {{title}}, mục {{position}} trên {{count}}",
+    "drag": {
+      "instructions": "Để sắp xếp lại, nhấn Space hoặc Enter để nhấc mục lên, dùng các phím mũi tên để di chuyển, rồi nhấn Space hoặc Enter lần nữa để thả. Nhấn Escape để hủy.",
+      "start": "Đã nhấc {{title}}.",
+      "over": "{{title}} đang ở vị trí {{position}} trên {{count}}.",
+      "end": "Đã thả {{title}} ở vị trí {{position}} trên {{count}}.",
+      "cancel": "Đã hủy sắp xếp. {{title}} trở về chỗ cũ."
+    }
+  },
+  "quickAdd": {
+    "label": "Thêm nhanh",
+    "placeholder": "Chào mừng 3:00 · Thông báo 5m · # Thờ phượng",
+    "help": "Nhập tiêu đề và thời lượng nếu có (3:00, 1:05:00, 5m, 90s), rồi nhấn Enter. Bắt đầu bằng # để thêm tiêu đề phần. Phần cuối có dạng giờ sẽ được hiểu là thời lượng, nên hãy thêm thời lượng ở cuối, ví dụ \"Giăng 3:16 5:00\", để giữ câu Kinh Thánh trong tiêu đề.",
+    "added": "Đã thêm {{title}}.",
+    "preview": {
+      "item": "Mục: {{title}} · {{length}}",
+      "itemNoLength": "Mục: {{title}} · chưa có thời lượng",
+      "header": "Tiêu đề phần: {{title}}",
+      "invalid": "Chưa thêm được: {{reason}}"
+    },
+    "errors": {
+      "empty": "Hãy nhập tiêu đề trước.",
+      "titleRequired": "Hãy thêm tiêu đề trước thời lượng.",
+      "titleTooLong": "Tiêu đề tối đa 200 ký tự.",
+      "lengthFormat": "Hãy ghi thời lượng dạng 3:00, 1:05:00, 5m hoặc 90s.",
+      "lengthRange": "Thời lượng tối đa là 10 giờ."
+    }
+  },
+  "clearOrder": {
+    "title": "Xóa toàn bộ thứ tự?",
+    "body_other": "Thao tác này gỡ {{count}} mục khỏi “{{title}}”, kèm theo ghi chú, bình luận và liên kết tệp của chúng. Không thể hoàn tác.",
+    "confirm": "Xóa toàn bộ thứ tự"
+  },
+  "orderShortcuts": {
+    "title": "Phím tắt",
+    "intro": "Các phím này dùng được trên thứ tự chương trình khi bạn không đang nhập vào ô nào.",
+    "or": "hoặc",
+    "focusQuickAdd": "Chuyển đến ô thêm nhanh",
+    "selectNext": "Chọn mục tiếp theo",
+    "selectPrevious": "Chọn mục trước đó",
+    "moveDown": "Chuyển mục đang chọn xuống",
+    "moveUp": "Chuyển mục đang chọn lên",
+    "edit": "Sửa mục đang chọn",
+    "remove": "Gỡ mục đang chọn (có hỏi lại)",
+    "deselect": "Bỏ chọn",
+    "help": "Hiện các phím tắt này"
   },
   "leader": {
     "someoneOnRoster": "Một thành viên trong danh sách",

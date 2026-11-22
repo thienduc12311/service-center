@@ -178,6 +178,7 @@ import type {
   OrganizationRow,
   PlanItemRow,
   PlanItemSaveResult,
+  PlanOrderClearResult,
   PlanRow,
   ProfileRow,
   ServiceTypeRow,
@@ -1000,6 +1001,16 @@ export class ServiceCenterApi {
     this.request<void>(
       'DELETE',
       `/api/v1/plans/${planId}/items/${itemId}${expectedRevision === undefined ? '' : `?expected_revision=${expectedRevision}`}`,
+    );
+  /**
+   * Removes every item in the order in one step (with their notes, comments
+   * and file links). With a revision, a stale order is a 409; while the plan
+   * runs live it is a 409 `live_run_active`.
+   */
+  clearPlanItems = (planId: string, expectedRevision?: number) =>
+    this.request<PlanOrderClearResult>(
+      'DELETE',
+      `/api/v1/plans/${planId}/items${expectedRevision === undefined ? '' : `?expected_revision=${expectedRevision}`}`,
     );
   /** Replaces the staffing need for every position sent; others are left alone. */
   setPlanPositionNeeds = (planId: string, body: SetPlanPositionNeedsInput) =>
