@@ -77,7 +77,8 @@
     "requester_already_member": "Người này đã là thành viên của hội thánh. Hãy từ chối yêu cầu để xoá khỏi danh sách.",
     "password_required": "Hãy chọn mật khẩu để tạo tài khoản.",
     "account_unconfirmed": "Đã có người bắt đầu tạo tài khoản với email này nhưng chưa xác nhận. Hãy dùng “Quên mật khẩu” ở trang đăng nhập để nhận lại tài khoản, rồi mở lại lời mời này.",
-    "invitation_sign_in_required": "Hãy đăng nhập bằng tài khoản của email này, rồi mở lại lời mời này để tham gia."
+    "invitation_sign_in_required": "Hãy đăng nhập bằng tài khoản của email này, rồi mở lại lời mời này để tham gia.",
+    "person_email_locked": "Email của người này là email họ đã dùng để nhận lời mời, nên không thể thay đổi ở đây."
   },
   "validation": {
     "required": "Trường này là bắt buộc.",

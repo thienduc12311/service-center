@@ -50,6 +50,8 @@ export class HttpError extends Error {
  * code so clients can react (show conflicts, re-preview, refresh).
  */
 const PT409_HINTS: Record<string, string> = {
+  // SEC-013: a linked Person's email is the one they accepted with.
+  person_email_locked: 'person_email_locked',
   scheduling_conflict: 'scheduling_conflict',
   time_impact_stale: 'time_impact_stale',
   time_impact_required: 'time_impact_required',

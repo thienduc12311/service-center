@@ -77,7 +77,8 @@
     "requester_already_member": "This person is already part of the church. Decline the request to clear it.",
     "password_required": "Choose a password to create your account.",
     "account_unconfirmed": "An account was started with this email but never confirmed. Use “Forgot password” on the sign-in page to take it over, then open this invitation again.",
-    "invitation_sign_in_required": "Sign in with the account for this email, then open this invitation again to join."
+    "invitation_sign_in_required": "Sign in with the account for this email, then open this invitation again to join.",
+    "person_email_locked": "This person's email is the one they accepted their invitation with, so it can't be changed here."
   },
   "validation": {
     "required": "This field is required.",
