@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { conflictOverrideReason, idempotencyKey, musicalKey, nonEmpty, uuid } from './common.js';
 import { planItemTypeSchema, planTimeKindSchema } from './plan.js';
+import { parseLocalDate } from '../lib/timezone.js';
+import { MAX_GENERATED_PLANS, MAX_SERIES_EDITS, MAX_SERIES_EXCLUSIONS, seriesHorizon } from '../lib/plan-recurrence.js';
 
 const localDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
 const localTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM');
@@ -123,15 +125,45 @@ export const applyTemplateSchema = previewTemplateApplySchema.extend({
   conflict_override_reason: conflictOverrideReason.nullish(),
 });
 
+/** A `YYYY-MM-DD` that exists on the calendar (no 2027-02-30). */
+const calendarDate = localDate.refine((value) => parseLocalDate(value) !== null, 'Not a calendar date');
+
 /** Changes to one proposed date before anything is created. */
 export const generationDateEditSchema = z.object({
-  local_date: localDate,
+  local_date: calendarDate,
   skip: z.boolean().default(false),
-  move_to: localDate.optional(),
+  move_to: calendarDate.optional(),
   title: z.string().trim().min(1).max(200).optional(),
 });
 
-/** A bounded local-date series: weekly every N weeks, finite count or end date. */
+export const recurrenceOrdinalSchema = z.enum(['first', 'second', 'third', 'fourth', 'last']);
+
+/**
+ * How a generated series repeats. Monthly rules start at their first match
+ * on or after the start date. A day of month that a shorter month lacks
+ * (29–31) is skipped, or clamped to that month's last day when asked.
+ */
+export const planSeriesRecurrenceSchema = z.discriminatedUnion('frequency', [
+  z.object({ frequency: z.literal('weekly'), interval_weeks: z.number().int().min(1).max(8) }),
+  z.object({
+    frequency: z.literal('monthly_weekday'),
+    ordinal: recurrenceOrdinalSchema,
+    /** 0 = Sunday … 6 = Saturday. */
+    weekday: z.number().int().min(0).max(6),
+  }),
+  z.object({
+    frequency: z.literal('monthly_day'),
+    day_of_month: z.number().int().min(1).max(31),
+    short_month: z.enum(['skip', 'clamp']).default('skip'),
+  }),
+]);
+
+/**
+ * A bounded local-date series. `recurrence` picks the rule; without it the
+ * older `interval_weeks` (weekly every N weeks) still applies. It ends after
+ * `count` plans or on `end_date`, whichever comes first, within
+ * MAX_GENERATED_PLANS plans and MAX_SERIES_SPAN_DAYS of the start.
+ */
 export const planSeriesSchema = z
   .object({
     revision_id: uuid,
@@ -141,16 +173,21 @@ export const planSeriesSchema = z
       .max(5)
       .default(['items', 'needs', 'notes'])
       .transform((values) => [...new Set([...values, 'times' as const])].sort()),
-    start_date: localDate,
-    interval_weeks: z.number().int().min(1).max(4).default(1),
-    count: z.number().int().min(1).max(12).default(4),
-    end_date: localDate.optional(),
-    excluded_dates: z.array(localDate).max(52).default([]),
-    edits: z.array(generationDateEditSchema).max(12).default([]),
+    start_date: calendarDate,
+    recurrence: planSeriesRecurrenceSchema.optional(),
+    interval_weeks: z.number().int().min(1).max(8).default(1),
+    count: z.number().int().min(1).max(MAX_GENERATED_PLANS).default(4),
+    end_date: calendarDate.optional(),
+    excluded_dates: z.array(calendarDate).max(MAX_SERIES_EXCLUSIONS).default([]),
+    edits: z.array(generationDateEditSchema).max(MAX_SERIES_EDITS).default([]),
     title: z.string().trim().min(1).max(200).optional(),
     ambiguous_time: ambiguousTimeSchema.default('earlier'),
   })
-  .refine((v) => !v.end_date || v.end_date >= v.start_date, { message: 'End after the start date', path: ['end_date'] });
+  .refine((v) => !v.end_date || v.end_date >= v.start_date, { message: 'End after the start date', path: ['end_date'] })
+  .refine((v) => !v.end_date || !parseLocalDate(v.start_date) || v.end_date <= seriesHorizon(v.start_date), {
+    message: 'End within two years of the start date',
+    path: ['end_date'],
+  });
 
 export const generatePlansSchema = planSeriesSchema.and(
   z.object({
@@ -174,6 +211,9 @@ export type PreviewTemplateApplyRequest = z.input<typeof previewTemplateApplySch
 export type ApplyTemplateInput = z.infer<typeof applyTemplateSchema>;
 export type ApplyTemplateRequest = z.input<typeof applyTemplateSchema>;
 export type GenerationDateEdit = z.infer<typeof generationDateEditSchema>;
+export type RecurrenceOrdinal = z.infer<typeof recurrenceOrdinalSchema>;
+export type PlanSeriesRecurrence = z.infer<typeof planSeriesRecurrenceSchema>;
+export type PlanSeriesRecurrenceRequest = z.input<typeof planSeriesRecurrenceSchema>;
 export type PlanSeriesInput = z.infer<typeof planSeriesSchema>;
 export type PlanSeriesRequest = z.input<typeof planSeriesSchema>;
 export type GeneratePlansInput = z.infer<typeof generatePlansSchema>;

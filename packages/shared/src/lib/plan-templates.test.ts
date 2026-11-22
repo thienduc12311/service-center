@@ -43,7 +43,7 @@ describe('template times', () => {
 describe('plan series', () => {
   const base = {
     start_date: '2027-10-24',
-    interval_weeks: 1,
+    recurrence: { frequency: 'weekly' as const, interval_weeks: 1 },
     count: 4,
     excluded_dates: [] as string[],
     edits: [],
@@ -77,8 +77,8 @@ describe('plan series', () => {
 
   it('stops at the end date and never exceeds the batch cap', () => {
     expect(expandPlanSeries({ ...base, end_date: '2027-11-07' }).dates).toHaveLength(3);
-    expect(expandPlanSeries({ ...base, count: 50 }).dates).toHaveLength(12);
-    expect(planSeriesSchema.safeParse({ revision_id: crypto.randomUUID(), start_date: '2027-10-24', count: 13 }).success).toBe(false);
+    expect(expandPlanSeries({ ...base, count: 80 }).dates).toHaveLength(52);
+    expect(planSeriesSchema.safeParse({ revision_id: crypto.randomUUID(), start_date: '2027-10-24', count: 53 }).success).toBe(false);
   });
 
   it('always generates times and refuses unknown template components', () => {

@@ -15,3 +15,4 @@ export * from './validate.js';
 export * from './errors.js';
 export * from './preference-controller.js';
 export * from './structured-text.js';
+export * from './recurrence-text.js';

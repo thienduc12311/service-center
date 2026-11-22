@@ -153,7 +153,7 @@ describe('template and reschedule problems', () => {
 
   it('words series collisions and keeps legacy problems as written', () => {
     const expansion = expandPlanSeries({
-      start_date: '2026-11-01', interval_weeks: 1, count: 2, end_date: null, excluded_dates: [],
+      start_date: '2026-11-01', recurrence: { frequency: 'weekly', interval_weeks: 1 }, count: 2, end_date: null, excluded_dates: [],
       edits: [{ local_date: '2026-11-08', move_to: '2026-11-01' }], default_title: 'Sunday',
     });
     const collision = expansion.problems[0]!;
