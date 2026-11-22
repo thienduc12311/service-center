@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import request from 'supertest';
-import type { EffectiveAccess, PlanTemplateContent } from '@service-center/shared';
+import type { AccessCapability, EffectiveAccess, PlanTemplateContent } from '@service-center/shared';
 import type { Db } from '../lib/supabase.js';
 
 process.env.NODE_ENV ||= 'test';
@@ -93,7 +93,7 @@ const fakeDb = (): Db => {
   } as unknown as Db;
 };
 
-const access = (capabilities: string[]): EffectiveAccess => ({
+const access = (capabilities: AccessCapability[]): EffectiveAccess => ({
   organization_id: ORG,
   user_id: 'user-1',
   role: 'admin',
@@ -102,7 +102,7 @@ const access = (capabilities: string[]): EffectiveAccess => ({
   entries: capabilities.map((capability) => ({ capability, scope_type: 'organization', scope_id: null, source: 'role:admin', grant_id: null })),
 });
 
-const buildApp = async (capabilities: string[]): Promise<Express> => {
+const buildApp = async (capabilities: AccessCapability[]): Promise<Express> => {
   const { planTemplatesRouter } = await import('./plan-templates.js');
   const { errorHandler } = await import('../middleware/error-handler.js');
   const app = express();
