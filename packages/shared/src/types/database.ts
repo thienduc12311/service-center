@@ -1608,6 +1608,17 @@ export type Database = {
         Args: { p_service_type: string; p_name: string; p_include_teams?: boolean };
         Returns: string;
       };
+      copy_service_type_as: {
+        Args: {
+          p_service_type: string;
+          p_name: string;
+          p_description: string | null;
+          p_recurrence: PlanRecurrence | null;
+          p_folder: string | null;
+          p_team_ids: string[];
+        };
+        Returns: string;
+      };
       team_candidates: {
         Args: { p_team: string };
         Returns: Array<{ person_id: string | null; profile_id: string | null; display_name: string | null; source: 'membership' | 'tag'; eligible: boolean }>;
