@@ -1,6 +1,7 @@
 import type { CreatePlanItemRequest, UpdatePlanItemRequest } from '../schemas/plan.js';
 import type { ArrangementRow, PlanItemRow, PlanItemSegment, PlanItemType } from '../types/database.js';
 import type { MediaRow } from '../types/media.js';
+import type { PlanItemTimeRef } from '../types/plan-item-details.js';
 import { formatDuration, parseDuration } from './dates.js';
 
 /**
@@ -46,6 +47,10 @@ export interface PlanItemDraft {
   leaderPersonId: string;
   leaderPositionId: string;
   segment: PlanItemSegment;
+  /** Long Markdown details; blank is none. */
+  details: string;
+  /** Service times the item is limited to, sorted; empty is every service time. */
+  timeIds: string[];
 }
 
 /** The saved item fields the draft starts from and is compared with. */
@@ -62,7 +67,13 @@ export type PlanItemDraftSource = Pick<
   | 'leader_person_id'
   | 'leader_position_id'
   | 'service_segment'
->;
+  | 'details'
+> & {
+  item_times?: readonly PlanItemTimeRef[] | null;
+};
+
+const sortedTimeIds = (times: readonly PlanItemTimeRef[] | null | undefined): string[] =>
+  (times ?? []).map((time) => time.plan_time_id).sort();
 
 /** Why a draft cannot be saved yet; each is `plans:editItem.errors.<problem>`. */
 export type PlanItemDraftProblem =
@@ -94,6 +105,8 @@ export const planItemDraftFrom = (item: PlanItemDraftSource): PlanItemDraft => (
   leaderPersonId: item.leader_person_id ?? '',
   leaderPositionId: item.leader_position_id ?? '',
   segment: item.service_segment ?? 'service',
+  details: item.details ?? '',
+  timeIds: sortedTimeIds(item.item_times),
 });
 
 /** "Intro, V1 , ,C" → ["Intro", "V1", "C"]. */
@@ -147,6 +160,10 @@ export const planItemChangesFrom = (draft: PlanItemDraft, item: PlanItemDraftSou
   if (person !== item.leader_person_id) changes.leader_person_id = person;
   if (position !== item.leader_position_id) changes.leader_position_id = position;
   if (draft.segment !== (item.service_segment ?? 'service')) changes.service_segment = draft.segment;
+  const details = draft.itemType === 'header' || !draft.details.trim() ? null : draft.details;
+  if (details !== (item.details ?? null)) changes.details = details;
+  const timeIds = [...new Set(draft.timeIds)].sort();
+  if (JSON.stringify(timeIds) !== JSON.stringify(sortedTimeIds(item.item_times))) changes.time_ids = timeIds;
   return changes;
 };
 

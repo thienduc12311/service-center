@@ -422,3 +422,29 @@ it('explains in the help how to keep a reference in the title', async () => {
   await screen.findByRole('textbox', { name: 'Quick add' });
   expect(screen.getByText(/add a length at the end, e\.g\. "John 3:16 5:00", to keep a reference in the title/)).toBeTruthy();
 });
+
+it('badges items limited to some service times and expands their details on demand', async () => {
+  const limited: PlanItemDetail = {
+    ...item('i-3', 'Baptism', 2),
+    item_times: [{ plan_time_id: 't-11' }],
+    details: '## Order\n- **Water** ready\n- [Liturgy](javascript:alert(1))',
+  };
+  const detail = { ...plan, items: [...items, limited] };
+  const serviceTimes = [
+    { id: 't-9', name: '9am', starts_at: '2026-11-22T09:00:00Z' },
+    { id: 't-11', name: '11am', starts_at: '2026-11-22T11:00:00Z' },
+  ];
+  const { user } = renderOrder({ plan: detail, serviceTimes });
+  expect(await screen.findByText('Only 11am')).toBeTruthy();
+  expect(screen.queryByText('Water')).toBeNull();
+  // Items without details offer no toggle.
+  expect(screen.queryByRole('button', { name: 'Show details for Welcome' })).toBeNull();
+
+  await user.click(screen.getByRole('button', { name: 'Show details for Baptism' }));
+  expect(screen.getByRole('heading', { name: 'Order' })).toBeTruthy();
+  expect(screen.getByText('Water').className).toContain('font-semibold');
+  // An unsafe link target is never made a link; it stays as typed text.
+  expect(screen.getByText(/Liturgy/).closest('li')!.querySelector('a')).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Hide details for Baptism' }));
+  expect(screen.queryByText('Water')).toBeNull();
+});

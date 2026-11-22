@@ -1,6 +1,6 @@
 import type { CreatePlanItemInput, PlanItemRow, PlanItemSegment, PlanItemType, UpdatePlanItemInput } from '@service-center/shared';
 
-/** The item columns an edit may write, as sent to `update_plan_item`. */
+/** The item fields an edit may write, as sent to `update_plan_item_with_details`. */
 export interface PlanItemPatch {
   item_type?: PlanItemType;
   title?: string;
@@ -13,6 +13,10 @@ export interface PlanItemPatch {
   leader_person_id?: string | null;
   leader_position_id?: string | null;
   service_segment?: PlanItemSegment;
+  /** Long Markdown details; null or blank clears them. */
+  details?: string | null;
+  /** The full list of service times the item is limited to; empty is every time. */
+  time_ids?: string[];
 }
 
 /** The current item fields an edit is normalized against. */
@@ -30,6 +34,8 @@ const PATCH_KEYS = [
   'leader_person_id',
   'leader_position_id',
   'service_segment',
+  'details',
+  'time_ids',
 ] as const satisfies ReadonlyArray<keyof PlanItemPatch>;
 
 /**
@@ -63,7 +69,7 @@ export const buildPlanItemPatch = (input: UpdatePlanItemInput, current: PlanItem
   return patch;
 };
 
-/** The item an add writes, as sent to `add_plan_item` (and compared on a keyed replay). */
+/** The item an add writes, as sent to `add_plan_item_with_details` (and compared on a keyed replay). */
 export type PlanItemCreateBody = Omit<CreatePlanItemInput, 'idempotency_key'>;
 
 /** The validated add without its key; the key travels separately. */

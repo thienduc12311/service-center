@@ -26,6 +26,29 @@ describe('F11 plan item schemas', () => {
     expect(createPlanItemSchema.safeParse({ item_type: 'item', title: 'x', leader_person_id: id, leader_position_id: other }).success).toBe(false);
   });
 
+  it('accepts details up to 20,000 characters and null to clear them', () => {
+    expect(updatePlanItemSchema.parse({ details: '## Notes\n- **soft**' }).details).toBe('## Notes\n- **soft**');
+    expect(updatePlanItemSchema.parse({ details: null })).toEqual({ details: null });
+    expect(updatePlanItemSchema.safeParse({ details: 'x'.repeat(20_000) }).success).toBe(true);
+    expect(updatePlanItemSchema.safeParse({ details: 'x'.repeat(20_001) }).success).toBe(false);
+    expect(createPlanItemSchema.safeParse({ item_type: 'item', title: 'x', details: 'x'.repeat(20_001) }).success).toBe(false);
+  });
+
+  it('takes the full list of service times; empty is every time', () => {
+    expect(updatePlanItemSchema.parse({ time_ids: [id, other] }).time_ids).toEqual([id, other]);
+    expect(updatePlanItemSchema.parse({ time_ids: [] }).time_ids).toEqual([]);
+    expect(updatePlanItemSchema.safeParse({ time_ids: ['nine'] }).success).toBe(false);
+    expect(updatePlanItemSchema.safeParse({ time_ids: null }).success).toBe(false);
+    expect(updatePlanItemSchema.safeParse({ time_ids: Array.from({ length: 51 }, () => id) }).success).toBe(false);
+  });
+
+  it('takes the carry-notes flag on add only as a boolean', () => {
+    const body = { item_type: 'song', song_id: id, carry_notes_from_last_use: true };
+    expect(createPlanItemSchema.parse(body).carry_notes_from_last_use).toBe(true);
+    expect(createPlanItemSchema.parse({ item_type: 'song', song_id: id }).carry_notes_from_last_use).toBeUndefined();
+    expect(createPlanItemSchema.safeParse({ ...body, carry_notes_from_last_use: 'yes' }).success).toBe(false);
+  });
+
   it('carries optional expected revisions for reorder and delete', () => {
     expect(reorderPlanItemsSchema.parse({ item_ids: [id], expected_revision: 2 }).expected_revision).toBe(2);
     expect(reorderPlanItemsSchema.parse({ item_ids: [id] }).expected_revision).toBeUndefined();

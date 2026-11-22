@@ -56,7 +56,7 @@ import {
   setPlanPositionNeeds,
   shapePlanSummary,
 } from '../services/plans.js';
-import { addPlanItem, clearPlanItems, deletePlanItem, planScheduleFor, reorderPlanItems, updatePlanItem } from '../services/plan-items.js';
+import { addPlanItem, clearPlanItems, deletePlanItem, planScheduleFor, reorderPlanItems, songLastUse, updatePlanItem } from '../services/plan-items.js';
 import { notifyConfirmedAssignmentsForPlan } from './assignments.js';
 import { identifyPlanTimes, previewPlanTimes, updatePlanWithTimes, type PlanFieldsPatch } from '../services/attendance.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
@@ -297,7 +297,20 @@ plansRouter.post('/:id/items', requireCapability('plans.edit'), validateBody(cre
     planId: param(req, 'id'),
     input: req.body as CreatePlanItemInput,
   });
-  res.status(result.replayed ? 200 : 201).json({ ...result.item, content_revision: result.content_revision });
+  res.status(result.replayed ? 200 : 201).json({
+    ...result.item,
+    content_revision: result.content_revision,
+    carried_notes: result.carried_notes ?? null,
+  });
+});
+
+/**
+ * What "Bring notes from last time" would copy for a song added to this plan:
+ * the song's most recent earlier use in the plan's service type and how many
+ * of its item notes the caller can read. `null` when it was not used before.
+ */
+plansRouter.get('/:id/songs/:songId/last-use', requireCapability('plans.edit'), async (req, res) => {
+  res.json(await songLastUse({ db: req.db, orgId: req.orgId, planId: param(req, 'id'), songId: param(req, 'songId') }));
 });
 
 /**

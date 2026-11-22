@@ -214,6 +214,10 @@
     "insertAfter": "Add here, after {{title}}",
     "insertAtStart": "Add here, at the start",
     "insertingHere": "New songs go here",
+    "onlyTimes": "Only {{times}}",
+    "showDetails": "Show details for {{title}}",
+    "hideDetails": "Hide details for {{title}}",
+    "details": "Details",
     "mediaItem": "Media item: {{title}}",
     "dragHandle": "Drag to reorder {{title}}",
     "clearOrder": "Clear order",
@@ -360,14 +364,41 @@
       "sequenceStepTooLong": "Each sequence step can be at most 20 characters.",
       "leaderPersonRequired": "Choose who leads this item.",
       "leaderPositionRequired": "Choose the position that leads this item.",
-      "mediaRequired": "Choose the media for this item."
+      "mediaRequired": "Choose the media for this item.",
+      "timesRequired": "Choose at least one service time, or choose “All service times”.",
+      "detailsTooLong": "Details can be at most 20,000 characters."
     },
     "useSong": "Use {{title}}",
     "mediaLabel": "Media",
     "mediaUnavailable": "Media unavailable",
     "changeMedia": "Change media",
     "useMedia": "Use",
-    "currentMedia": "Current"
+    "currentMedia": "Current",
+    "serviceTimes": "Service times",
+    "allServiceTimes": "All service times",
+    "someServiceTimes": "Only these service times",
+    "noServiceTimes": "This plan has no service times yet, so the item is in every time.",
+    "serviceTimesHint": "An item limited to some times is left out of the other times’ running order and Live.",
+    "details": "Details",
+    "detailsHint": "Longer notes for this item. Bold, italic, headings, lists and links are supported.",
+    "detailsWrite": "Write",
+    "detailsPreview": "Preview",
+    "detailsEmptyPreview": "Nothing to preview yet.",
+    "detailsToolbar": "Formatting",
+    "detailsCount": "{{count}} / {{max}} characters",
+    "format": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "heading": "Heading",
+      "bulleted": "Bulleted list",
+      "numbered": "Numbered list",
+      "link": "Link",
+      "boldText": "bold text",
+      "italicText": "italic text",
+      "headingText": "Heading",
+      "listItem": "List item",
+      "linkText": "link text"
+    }
   },
   "editTimes": {
     "title": "Service & rehearsal times",
@@ -730,7 +761,9 @@
     "moveToPosition": "Move to position {{position}}, now {{title}}",
     "moveToCurrent": "Where it is now",
     "moveToItemNumber": "Item {{number}}",
-    "addSongsAfter": "Add songs after this"
+    "addSongsAfter": "Add songs after this",
+    "details": "Details",
+    "onlyTimes": "Only {{times}}"
   },
   "mobileTimes": {
     "editTimes": "Edit times",
@@ -828,7 +861,12 @@
     "undo": "Undo",
     "notPlaced": "“{{title}}” was added. Check the order to confirm its position.",
     "addOther": "Add a header or item here",
-    "done": "Done"
+    "done": "Done",
+    "carryNotes": "Bring notes from last time ({{date}})",
+    "carryNotesHint_one": "{{count}} note from “{{title}}”",
+    "carryNotesHint_other": "{{count}} notes from “{{title}}”",
+    "notesCarried_one": "{{count}} note brought from last time",
+    "notesCarried_other": "{{count}} notes brought from last time"
   },
   "mobileSongBrowser": {
     "title": "Add songs",

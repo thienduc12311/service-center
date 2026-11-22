@@ -11,6 +11,7 @@ import {
   type PlanOrderClearResult,
   type PlanOrderSaveResult,
   type PlanScheduleResponse,
+  type SongLastUse,
   type UpdatePlanItemInput,
 } from '@service-center/shared';
 import { unwrap, type Db } from '../lib/supabase.js';
@@ -30,13 +31,16 @@ export interface AddPlanItemServiceInput {
 
 /**
  * F11: appends (or places) one item under the plan lock, so concurrent adds
- * get distinct positions. With a key, a retry returns the first item.
+ * get distinct positions. With a key, a retry returns the first item. Its
+ * details, service-time limits and (for a song with
+ * `carry_notes_from_last_use`) the notes of the song's last use are written
+ * in the same transaction.
  */
 export const addPlanItem = async ({ db, orgId, planId, input }: AddPlanItemServiceInput): Promise<PlanItemCreateResult> => {
   const plan = await unwrap(db.from('plans').select('id').eq('id', planId).eq('organization_id', orgId).maybeSingle());
   if (!plan) throw HttpError.notFound('Plan not found');
 
-  const { data, error } = await db.rpc('add_plan_item', {
+  const { data, error } = await db.rpc('add_plan_item_with_details', {
     p_plan_id: plan.id,
     p_item: buildPlanItemCreateBody(input),
     p_idempotency_key: input.idempotency_key ?? null,
@@ -53,7 +57,7 @@ export interface UpdatePlanItemServiceInput {
   input: UpdatePlanItemInput;
 }
 
-/** F11: one revisioned edit of an existing item; same id and position. */
+/** F11: one revisioned edit of an existing item (details and time limits included); same id and position. */
 export const updatePlanItem = async ({ db, planId, itemId, input }: UpdatePlanItemServiceInput): Promise<PlanItemSaveResult> => {
   const current = await unwrap(
     db
@@ -69,7 +73,7 @@ export const updatePlanItem = async ({ db, planId, itemId, input }: UpdatePlanIt
     throw new HttpError(400, 'Choose the media first: link media to this item, then make it a media item', 'media_item_needs_media');
   }
 
-  const { data, error } = await db.rpc('update_plan_item', {
+  const { data, error } = await db.rpc('update_plan_item_with_details', {
     p_plan_id: planId,
     p_item_id: itemId,
     p_patch: buildPlanItemPatch(input, current),
@@ -78,6 +82,26 @@ export const updatePlanItem = async ({ db, planId, itemId, input }: UpdatePlanIt
   if (error) throw fromPostgrestError(error);
   if (!data) throw HttpError.notFound('Item not found');
   return data;
+};
+
+export interface SongLastUseServiceInput {
+  db: Db;
+  orgId: string;
+  planId: string;
+  songId: string;
+}
+
+/**
+ * The song's most recent earlier use in the plan's service type, with how
+ * many of its item notes the caller can read; null when there is none. Read
+ * as the caller, so other plans and notes stay behind RLS.
+ */
+export const songLastUse = async ({ db, orgId, planId, songId }: SongLastUseServiceInput): Promise<SongLastUse | null> => {
+  const plan = await unwrap(db.from('plans').select('id').eq('id', planId).eq('organization_id', orgId).maybeSingle());
+  if (!plan) throw HttpError.notFound('Plan not found');
+  const { data, error } = await db.rpc('song_last_use', { p_plan_id: plan.id, p_song_id: songId });
+  if (error) throw fromPostgrestError(error);
+  return data ?? null;
 };
 
 export interface ReorderPlanItemsServiceInput {

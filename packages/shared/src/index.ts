@@ -88,3 +88,5 @@ export * from './lib/realtime-pokes.js';
 export * from './lib/realtime-keys.js';
 export * from './lib/realtime-resource-topics.js';
 export * from './lib/plan-order-editing.js';
+export * from './types/plan-item-details.js';
+export * from './lib/item-details.js';

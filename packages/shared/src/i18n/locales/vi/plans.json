@@ -209,6 +209,10 @@
     "insertAfter": "Thêm vào đây, sau {{title}}",
     "insertAtStart": "Thêm vào đây, ở đầu",
     "insertingHere": "Bài hát mới sẽ được thêm vào đây",
+    "onlyTimes": "Chỉ {{times}}",
+    "showDetails": "Hiện chi tiết của {{title}}",
+    "hideDetails": "Ẩn chi tiết của {{title}}",
+    "details": "Chi tiết",
     "mediaItem": "Mục đa phương tiện: {{title}}",
     "dragHandle": "Kéo để sắp xếp lại {{title}}",
     "clearOrder": "Xóa toàn bộ thứ tự",
@@ -354,14 +358,41 @@
       "sequenceStepTooLong": "Mỗi bước trong trình tự tối đa 20 ký tự.",
       "leaderPersonRequired": "Hãy chọn người dẫn mục này.",
       "leaderPositionRequired": "Hãy chọn vị trí dẫn mục này.",
-      "mediaRequired": "Hãy chọn đa phương tiện cho mục này."
+      "mediaRequired": "Hãy chọn đa phương tiện cho mục này.",
+      "timesRequired": "Hãy chọn ít nhất một giờ lễ, hoặc chọn “Tất cả các giờ lễ”.",
+      "detailsTooLong": "Chi tiết tối đa 20.000 ký tự."
     },
     "useSong": "Dùng {{title}}",
     "mediaLabel": "Đa phương tiện",
     "mediaUnavailable": "Không xem được đa phương tiện",
     "changeMedia": "Đổi đa phương tiện",
     "useMedia": "Dùng",
-    "currentMedia": "Đang dùng"
+    "currentMedia": "Đang dùng",
+    "serviceTimes": "Giờ lễ",
+    "allServiceTimes": "Tất cả các giờ lễ",
+    "someServiceTimes": "Chỉ các giờ lễ này",
+    "noServiceTimes": "Kế hoạch này chưa có giờ lễ nào, nên mục có trong mọi giờ.",
+    "serviceTimesHint": "Mục chỉ thuộc một số giờ sẽ không có trong trình tự và Live của các giờ khác.",
+    "details": "Chi tiết",
+    "detailsHint": "Ghi chú dài hơn cho mục này. Hỗ trợ chữ đậm, nghiêng, tiêu đề, danh sách và liên kết.",
+    "detailsWrite": "Soạn",
+    "detailsPreview": "Xem trước",
+    "detailsEmptyPreview": "Chưa có gì để xem trước.",
+    "detailsToolbar": "Định dạng",
+    "detailsCount": "{{count}} / {{max}} ký tự",
+    "format": {
+      "bold": "Đậm",
+      "italic": "Nghiêng",
+      "heading": "Tiêu đề",
+      "bulleted": "Danh sách dấu chấm",
+      "numbered": "Danh sách đánh số",
+      "link": "Liên kết",
+      "boldText": "chữ đậm",
+      "italicText": "chữ nghiêng",
+      "headingText": "Tiêu đề",
+      "listItem": "Mục danh sách",
+      "linkText": "văn bản liên kết"
+    }
   },
   "editTimes": {
     "title": "Giờ buổi nhóm & buổi tập",
@@ -712,7 +743,9 @@
     "moveToPosition": "Chuyển đến vị trí {{position}}, hiện là {{title}}",
     "moveToCurrent": "Vị trí hiện tại",
     "moveToItemNumber": "Mục {{number}}",
-    "addSongsAfter": "Thêm bài hát sau mục này"
+    "addSongsAfter": "Thêm bài hát sau mục này",
+    "details": "Chi tiết",
+    "onlyTimes": "Chỉ {{times}}"
   },
   "mobileTimes": {
     "editTimes": "Sửa giờ",
@@ -801,7 +834,10 @@
     "undo": "Hoàn tác",
     "notPlaced": "Đã thêm “{{title}}”. Hãy kiểm tra vị trí của bài trong trình tự.",
     "addOther": "Thêm tiêu đề hoặc mục tại đây",
-    "done": "Xong"
+    "done": "Xong",
+    "carryNotes": "Mang ghi chú từ lần trước ({{date}})",
+    "carryNotesHint_other": "{{count}} ghi chú từ “{{title}}”",
+    "notesCarried_other": "Đã mang {{count}} ghi chú từ lần trước"
   },
   "mobileSongBrowser": {
     "title": "Thêm bài hát",

@@ -16,6 +16,7 @@ import { queryKeys } from '../../../src/lib/query-keys';
 import { commentNeedsNewId, mergeCommentPages, threadAccess } from '../../../src/lib/plan-notes-edit';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { NoteList } from '../../../src/components/PlanNotes';
+import { ItemDetails } from '../../../src/components/ItemDetails';
 import { MessageBody, MentionPicker, mentionsMe, useMentionInput } from '../../../src/components/mentions';
 import { recentAuthorIds } from '../../../src/lib/mention-suggestions';
 import {
@@ -85,7 +86,7 @@ interface ItemNotesProps {
 }
 
 function ItemNotes({ planId, item }: ItemNotesProps) {
-  const { t } = useTranslation(['messages', 'common']);
+  const { t } = useTranslation(['messages', 'plans', 'common']);
   const { queryScope, generation, isCurrentGeneration } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -157,6 +158,15 @@ function ItemNotes({ planId, item }: ItemNotesProps) {
           <IconWell name="chat" accent={theme.accent.blue} size={44} />
           <Text accessibilityRole="header" style={[styles.title, styles.flex]}>{t('itemDiscussion.title', { item: item.title })}</Text>
         </View>
+
+        {item.details?.trim() ? (
+          <View style={styles.section}>
+            <SectionHeader title={t('plans:mobileOrder.details')} />
+            <Card>
+              <ItemDetails markdown={item.details} />
+            </Card>
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <SectionHeader

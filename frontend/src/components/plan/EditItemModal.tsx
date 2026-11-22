@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next';
 import {
   ApiError,
   LocalizedError,
+  PLAN_ITEM_DETAILS_MAX,
   PLAN_ITEM_SEGMENTS,
   appendSequenceStep,
   editableArrangements,
   editablePlanItemTypes,
   parseChordPro,
   planItemChangesFrom,
+  serviceTimesOf,
   planItemDraftFrom,
   validatePlanItemDraft,
   withInheritSequence,
@@ -31,6 +33,9 @@ import { SearchableSelect } from '../SearchableSelect';
 import { SongSearchList, songListSource } from './SongSearchList';
 import { EditItemMediaField } from './EditItemMediaField';
 import { leaderPersonChoices, leaderPositionChoices, type LeaderChoiceLabels, type PickerChoices } from './leaderChoices';
+import { ItemDetailsEditor } from './ItemDetailsEditor';
+import { ItemTimesPicker, type ItemTimeChoice, type ItemTimesMode } from './ItemTimesPicker';
+import { useFormatters } from '../../i18n';
 
 /** Rows per page in "Change song". */
 const CHANGE_SONG_PAGE_SIZE = 10;
@@ -40,6 +45,8 @@ export interface EditItemModalProps {
   item: PlanItemDetail;
   teams: readonly TeamWithPositions[];
   onClose: () => void;
+  /** The organization's IANA zone, for naming service times. */
+  timeZone?: string;
 }
 
 /**
@@ -48,11 +55,17 @@ export interface EditItemModalProps {
  * arrangement is never changed. Saving checks the plan revision the editor
  * opened with, so someone else's change is shown instead of overwritten.
  */
-export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps) => {
+export const EditItemModal = ({ plan, item, teams, onClose, timeZone }: EditItemModalProps) => {
   const { t } = useTranslation(['plans', 'common']);
   const queryClient = useQueryClient();
   const { organizationId, user } = useAuth();
   const [draft, setDraft] = useState<PlanItemDraft>(() => planItemDraftFrom(item));
+  // "All service times" sends an empty list; the checklist keeps its ticks while switching.
+  const [timesMode, setTimesMode] = useState<ItemTimesMode>(() => (draft.timeIds.length > 0 ? 'some' : 'all'));
+  const format = useFormatters();
+  const serviceTimes = useMemo(() => serviceTimesOf(plan.times), [plan.times]);
+  const describeTime = (time: ItemTimeChoice): string =>
+    [time.name ?? t('timeKind.service'), format.time(time.starts_at, timeZone ? { timeZone } : {})].join(' · ');
   const [baseRevision, setBaseRevision] = useState(plan.content_revision);
   const [songQuery, setSongQuery] = useState('');
   const [changingSong, setChangingSong] = useState(false);
@@ -80,8 +93,12 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
     queryFn: () => api.getArrangementMaterials(effectiveArrangementId!),
     enabled: draft.itemType === 'song' && !!effectiveArrangementId,
   });
-  const changes = useMemo(() => planItemChangesFrom(draft, item), [draft, item]);
-  const dirty = Object.keys(changes).length > 0;
+  const changes = useMemo(
+    () => planItemChangesFrom({ ...draft, timeIds: timesMode === 'all' ? [] : draft.timeIds }, item),
+    [draft, item, timesMode],
+  );
+  // Ticking "Only these" with nothing chosen is an unfinished change: Save explains it.
+  const dirty = Object.keys(changes).length > 0 || (timesMode === 'some' && draft.timeIds.length === 0);
   const planChanged = plan.content_revision !== baseRevision;
 
   const arrangements = editableArrangements(song.data?.arrangements ?? [], item.arrangement_id);
@@ -132,7 +149,10 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const problemKey = validatePlanItemDraft(draft);
+    const problemKey =
+      validatePlanItemDraft(draft) ??
+      (timesMode === 'some' && draft.timeIds.length === 0 ? 'timesRequired' : null) ??
+      (draft.details.length > PLAN_ITEM_DETAILS_MAX ? 'detailsTooLong' : null);
     const problem = problemKey ? new LocalizedError({ key: `plans:editItem.errors.${problemKey}` }) : null;
     setFormError(problem);
     if (problem || !dirty) return;
@@ -313,6 +333,19 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
             <textarea id="edit-item-description" className="input" rows={2} maxLength={4000} value={draft.description} onChange={(event) => set('description', event.target.value)} />
           </div>
         )}
+
+        {draft.itemType !== 'header' && (
+          <ItemDetailsEditor value={draft.details} onChange={(value) => set('details', value)} />
+        )}
+
+        <ItemTimesPicker
+          times={serviceTimes}
+          mode={timesMode}
+          onModeChange={setTimesMode}
+          selected={draft.timeIds}
+          onSelectedChange={(ids) => set('timeIds', ids)}
+          describe={describeTime}
+        />
 
         {draft.itemType !== 'header' && (
           <fieldset>

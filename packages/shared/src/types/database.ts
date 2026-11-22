@@ -1,3 +1,4 @@
+import type { PlanItemNotesCarried, PlanItemTimeRef, SongLastUse } from './plan-item-details.js';
 import type { LabeledKey } from '../schemas/arrangement-curation.js';
 import type { ImportJob, ImportJobRow } from '../schemas/imports.js';
 import type { SongBulkPreview, SongCurationEventRow } from './song-curation.js';
@@ -671,19 +672,32 @@ export type PlanItemRow = {
    * `media` item stands for (always set there). Absent from older responses.
    */
   media_id?: string | null;
+  /** Long Markdown details, separate from the short description (absent from older responses). */
+  details?: string | null;
   created_at: string;
   updated_at: string;
 }
 
+/** One service time an item is limited to; an item with none belongs to every time. */
+export type PlanItemTimeRow = {
+  plan_id: string;
+  plan_item_id: string;
+  plan_time_id: string;
+  created_at: string;
+};
+
 /** F11: an item edit and the plan's content revision after it. */
 export interface PlanItemSaveResult {
-  item: PlanItemRow;
+  /** The saved row, with the service times it is limited to when the save returns them. */
+  item: PlanItemRow & { item_times?: PlanItemTimeRef[] };
   content_revision: number;
 }
 
 /** F11: an added item; `replayed` when an earlier attempt with the same key made it. */
 export interface PlanItemCreateResult extends PlanItemSaveResult {
   replayed: boolean;
+  /** Notes brought from the song's last use; null when none were asked for or found. */
+  carried_notes?: PlanItemNotesCarried | null;
 }
 
 /** F11: the plan's content revision after a reorder or removal. */
@@ -1271,6 +1285,7 @@ export type Database = {
       plans: Table<PlanRow>;
       plan_times: Table<PlanTimeRow>;
       plan_items: Table<PlanItemRow>;
+      plan_item_times: Table<PlanItemTimeRow>;
       plan_position_needs: Table<PlanPositionNeedRow>;
       assignments: Table<AssignmentRow>;
       assignment_attendance_times: Table<AssignmentAttendanceTimeRow>;
@@ -1965,6 +1980,18 @@ export type Database = {
       update_plan_item: {
         Args: { p_plan_id: string; p_item_id: string; p_patch: unknown; p_expected_revision?: number | null };
         Returns: PlanItemSaveResult;
+      };
+      add_plan_item_with_details: {
+        Args: { p_plan_id: string; p_item: unknown; p_idempotency_key?: string | null };
+        Returns: PlanItemCreateResult;
+      };
+      update_plan_item_with_details: {
+        Args: { p_plan_id: string; p_item_id: string; p_patch: unknown; p_expected_revision?: number | null };
+        Returns: PlanItemSaveResult;
+      };
+      song_last_use: {
+        Args: { p_plan_id: string; p_song_id: string };
+        Returns: SongLastUse | null;
       };
       reorder_plan_items: {
         Args: { p_plan_id: string; p_item_ids: string[]; p_expected_revision?: number | null };
