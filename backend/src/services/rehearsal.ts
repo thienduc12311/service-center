@@ -3,6 +3,7 @@ import {
   OFFLINE_PACK_DEFAULT_MAX_BYTES,
   OFFLINE_PACK_RECHECK_SECONDS,
   buildRehearsalManifest,
+  planItemCarriesMedia,
   selectOfflinePack,
   type OfflinePackDownload,
   type OfflinePackPlan,
@@ -27,7 +28,7 @@ export const getRehearsalManifest = async (caller: FileCaller, planId: string, n
   ]);
   const media = new Map<string, RehearsalMediaRef>();
   for (const item of plan.items) {
-    if (item.item_type === 'item' && item.media) media.set(item.media.id, item.media);
+    if (planItemCarriesMedia(item.item_type) && item.media) media.set(item.media.id, item.media);
   }
   const mediaFiles = await listMediaFiles(caller, [...media.keys()]);
   return buildRehearsalManifest({ plan, planFiles: planFiles.entries, mediaFiles, media: [...media.values()], now });

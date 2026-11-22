@@ -2,6 +2,7 @@ import {
   buildPublicPlanProjection,
   publicationState,
   publicationVisibleFrom,
+  type PlanItemType,
   type PlanPublicationRow,
   type PlanPublicationView,
   type PlanStatus,
@@ -34,7 +35,7 @@ interface SourcePlanRow {
 }
 
 interface SourceItemRow {
-  item_type: 'header' | 'song' | 'item';
+  item_type: PlanItemType;
   title: string;
   length_seconds: number;
   key_override: string | null;
