@@ -95,6 +95,19 @@ describe('mergeRoster', () => {
     ]);
   });
 
+  it("shows a login's People phone as the detail does, else the login's own (W10-NAT-D1)", () => {
+    const member: ActiveMemberRow = { role: 'member', status: 'active', profile: profile({ phone: null }) };
+    const linked = person({ id: 'person-1', profile_id: 'profile-1', phone: '+1 555 0101' });
+    expect(mergeRoster([member], [linked], [])[0]?.phone).toBe('+1 555 0101');
+
+    const own: ActiveMemberRow = { ...member, profile: profile({ phone: '+1 555 0199' }) };
+    expect(mergeRoster([own], [person({ id: 'person-1', profile_id: 'profile-1' })], [])[0]?.phone).toBe('+1 555 0199');
+    expect(mergeRoster([own], [linked], [])[0]?.phone).toBe('+1 555 0101');
+
+    // A caller without contact access gets null from both sources.
+    expect(mergeRoster([member], [person({ id: 'person-1', profile_id: 'profile-1' })], [])[0]?.phone).toBeNull();
+  });
+
   it('drops a roster row whose linked member is no longer active', () => {
     const roster = mergeRoster([], [person({ profile_id: 'someone-else' })], []);
     expect(roster).toEqual([]);

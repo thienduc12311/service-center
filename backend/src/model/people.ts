@@ -70,7 +70,10 @@ export const mergeRoster = (
         has_login: true,
         full_name: member.profile.full_name,
         email: member.profile.email,
-        phone: member.profile.phone,
+        // The People record's phone first, as GET /people/:id shows it; the
+        // login's own number otherwise (W10-NAT-D1). Callers who may not see
+        // contact details get null for both (people_directory / member_contacts).
+        phone: person?.phone ?? member.profile.phone,
         avatar_url: member.profile.avatar_url,
         role: member.role,
         status: member.status,
