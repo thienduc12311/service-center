@@ -15,6 +15,7 @@ import { Fragment, useState } from 'react';
 import { Badge, Button } from '../ui';
 import { Icon } from '../icons';
 import { LinkMediaModal } from '../media/LinkMediaModal';
+import { ItemDetailsView } from './ItemDetailsView';
 import { useFormatters } from '../../i18n';
 import { INSERT_AT_END, type OrderInsertPoint } from './insertPoint';
 
@@ -101,6 +102,8 @@ export const OrderTab = ({
   const [mediaItem, setMediaItem] = useState<PlanItemDetail | null>(null);
   const slots = new Map(schedule.items.map((slot) => [slot.item_id, slot]));
   const overrun = schedule.warnings.find((warning) => warning.code === 'runs_over');
+  // "Only 9am" badges name each service time as the time picker does.
+  const timeLabels = new Map(serviceTimes.map((time) => [time.id, time.name ?? clock(time.starts_at)]));
   const misplaced = new Set(schedule.warnings.flatMap((warning) => (warning.code === 'segment_out_of_order' && warning.item_id ? [warning.item_id] : [])));
 
   return (
@@ -219,6 +222,7 @@ export const OrderTab = ({
                 onDiscuss={() => onDiscussItem(item)}
                 onMedia={() => setMediaItem(item)}
                 noteCount={itemNoteCounts.get(item.id) ?? 0}
+                timeLabels={timeLabels}
                 onInsertAfter={() => onAddSongs({ kind: 'after', itemId: item.id })}
                 onInsertBefore={index === 0 ? () => onAddSongs({ kind: 'after', itemId: null }) : undefined}
               />
@@ -251,6 +255,8 @@ interface OrderRowProps {
   onDiscuss: () => void;
   onMedia: () => void;
   noteCount: number;
+  /** Service time id → its short name, for the "Only …" badge. */
+  timeLabels: ReadonlyMap<string, string>;
   /** Opens the song browser adding right after this item. */
   onInsertAfter: () => void;
   /** First row only: opens the song browser adding before it. */
@@ -308,8 +314,18 @@ const ROW_GRID =
 const controlClass =
   'inline-grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200';
 
-const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy, isFirst, isLast, onMove, onEdit, onRemove, onDiscuss, onMedia, noteCount, onInsertAfter, onInsertBefore }: OrderRowProps) => {
+const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy, isFirst, isLast, onMove, onEdit, onRemove, onDiscuss, onMedia, noteCount, timeLabels, onInsertAfter, onInsertBefore }: OrderRowProps) => {
   const { t } = useTranslation(['plans', 'common']);
+  const format = useFormatters();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const limitedTo = (item.item_times ?? []).flatMap((time) => {
+    const label = timeLabels.get(time.plan_time_id);
+    return label ? [label] : [];
+  });
+  const timesBadge = limitedTo.length > 0 && (
+    <Badge tone="bg-violet-50 text-violet-700 ring-violet-600/20">{t('orderTab.onlyTimes', { times: format.list(limitedTo) })}</Badge>
+  );
+  const hasDetails = item.item_type !== 'header' && Boolean(item.details?.trim());
   const insertButtons = canManage && (
     <>
       {onInsertBefore && <InsertButton edge="inside-top" label={t('orderTab.insertAtStart')} onClick={onInsertBefore} />}
@@ -361,8 +377,9 @@ const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy
         {insertButtons}
         <span />
         <span className="hidden sm:block" />
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+        <h3 className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
           {item.title}
+          {timesBadge}
         </h3>
         {controls}
       </li>
@@ -405,6 +422,7 @@ const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy
               {misplaced ? t(`orderTab.segmentBadgeMisplaced.${segment}`) : t(`orderTab.segmentBadge.${segment}`)}
             </Badge>
           )}
+          {timesBadge}
           {context.status === 'ready' && context.arrangement?.bpm && (
             <span className="text-xs text-slate-400">{t('orderTab.bpm', { bpm: context.arrangement.bpm })}</span>
           )}
@@ -417,6 +435,21 @@ const OrderRow = ({ item, index, slot, clock, leader, misplaced, canManage, busy
           </p>
         )}
         {item.description && <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{item.description}</p>}
+        {hasDetails && (
+          <button
+            type="button"
+            aria-expanded={detailsOpen}
+            aria-label={t(detailsOpen ? 'orderTab.hideDetails' : 'orderTab.showDetails', { title: item.title })}
+            onClick={() => setDetailsOpen((open) => !open)}
+            className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-300"
+          >
+            <Icon name="chevronDown" className={`size-3.5 transition ${detailsOpen ? '' : '-rotate-90'}`} />
+            {t('orderTab.details')}
+          </button>
+        )}
+        {hasDetails && detailsOpen && (
+          <ItemDetailsView markdown={item.details} className="mt-1.5 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900/50" />
+        )}
         {leader && (
           <p className={`mt-0.5 inline-flex items-center gap-1 text-xs ${leader.unfilled ? 'text-amber-700 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400'}`}>
             <Icon name="person" className="size-3 shrink-0" />

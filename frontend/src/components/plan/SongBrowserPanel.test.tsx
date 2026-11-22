@@ -18,7 +18,7 @@ import { SongBrowserPanel } from './SongBrowserPanel';
 import { INSERT_AT_END, type OrderInsertPoint } from './insertPoint';
 
 vi.mock('../../lib/api', () => ({
-  api: { listSongs: vi.fn(), addPlanItem: vi.fn(), getPlan: vi.fn(), reorderPlanItems: vi.fn(), deletePlanItem: vi.fn() },
+  api: { listSongs: vi.fn(), addPlanItem: vi.fn(), getPlan: vi.fn(), reorderPlanItems: vi.fn(), deletePlanItem: vi.fn(), songLastUse: vi.fn() },
 }));
 vi.mock('../../lib/supabase', () => ({ supabase: {} }));
 vi.mock('../../providers/AuthProvider', () => ({ useAuth: () => ({ organizationId: 'org-1' }) }));
@@ -157,6 +157,7 @@ beforeEach(() => {
   vi.mocked(api.listSongs).mockResolvedValue(
     page([song('s-1', 'Goodness of God'), song('s-2', 'Build My Life', { in_plan: true, default_key: 'Bb' }), song('s-3', 'Chúa Là Tình Yêu', { last_scheduled_at: '2026-11-15T10:00:00Z' })], 43),
   );
+  vi.mocked(api.songLastUse).mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -292,4 +293,39 @@ it('sends the search and filter chips to the server', async () => {
     }),
   );
   expect(vi.mocked(api.listSongs).mock.calls.at(-1)?.[0]).not.toHaveProperty('scheduled_from');
+});
+
+it('offers notes from the song\'s last use, checked by default, and sends the choice with the add', async () => {
+  vi.mocked(api.songLastUse).mockImplementation(async (_plan, songId) =>
+    songId === 's-1'
+      ? { plan_id: 'plan-0', plan_title: 'Sunday Nov 15', service_date: '2026-11-15T10:00:00Z', item_id: 'item-0', note_count: 2 }
+      : null,
+  );
+  vi.mocked(api.addPlanItem).mockResolvedValue({ ...created('new-1', 4), carried_notes: { count: 2, source_plan_id: 'plan-0', service_date: '2026-11-15T10:00:00Z' } });
+  const user = renderPanel();
+  await user.click(await screen.findByRole('button', { name: 'Show arrangements of Goodness of God' }));
+  const option = await screen.findByRole('checkbox', { name: /Bring notes from last time \(.*2026.*\)/ });
+  expect((option as HTMLInputElement).checked).toBe(true);
+  expect(screen.getByText('2 notes from “Sunday Nov 15”')).toBeTruthy();
+  expect(api.songLastUse).toHaveBeenCalledWith('plan-1', 's-1');
+
+  await user.click(screen.getByRole('button', { name: 'Add Goodness of God' }));
+  await waitFor(() => expect(api.addPlanItem).toHaveBeenCalledWith('plan-1', expect.objectContaining({ song_id: 's-1', carry_notes_from_last_use: true })));
+  expect((await screen.findByRole('status')).textContent).toContain('2 notes brought from last time');
+});
+
+it('does not bring notes when unticked, and shows no option when the last use had none', async () => {
+  vi.mocked(api.songLastUse).mockImplementation(async (_plan, songId) => ({
+    plan_id: 'plan-0', plan_title: 'Last week', service_date: '2026-11-15T10:00:00Z', item_id: 'item-0', note_count: songId === 's-1' ? 1 : 0,
+  }));
+  vi.mocked(api.addPlanItem).mockResolvedValue(created('new-1', 4));
+  const user = renderPanel();
+  await user.click(await screen.findByRole('button', { name: 'Show arrangements of Goodness of God' }));
+  await user.click(await screen.findByRole('checkbox', { name: /Bring notes from last time/ }));
+  await user.click(screen.getByRole('button', { name: 'Add Goodness of God' }));
+  await waitFor(() => expect(api.addPlanItem).toHaveBeenCalledWith('plan-1', expect.objectContaining({ song_id: 's-1', carry_notes_from_last_use: false })));
+
+  await user.click(screen.getByRole('button', { name: 'Show arrangements of Chúa Là Tình Yêu' }));
+  await waitFor(() => expect(api.songLastUse).toHaveBeenCalledWith('plan-1', 's-3'));
+  expect(screen.queryAllByRole('checkbox', { name: /Bring notes from last time/ })).toHaveLength(0);
 });

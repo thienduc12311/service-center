@@ -125,3 +125,97 @@ it('changes the song from the server-searched list, showing author and key, with
   expect(screen.queryByRole('searchbox', { name: 'Find a song' })).toBeNull();
   expect(await screen.findByText('Chúa Là Tình Yêu')).toBeTruthy();
 });
+
+const TIMES: PlanDetail['times'] = [
+  { id: 't-9', plan_id: 'plan-1', kind: 'service', name: '9am', starts_at: '2026-11-22T09:00:00Z', ends_at: '2026-11-22T10:00:00Z', created_at: STAMP, sort_order: 0, ics_sequence: 0 },
+  { id: 't-11', plan_id: 'plan-1', kind: 'service', name: '11am', starts_at: '2026-11-22T11:00:00Z', ends_at: '2026-11-22T12:00:00Z', created_at: STAMP, sort_order: 1, ics_sequence: 0 },
+  { id: 't-r', plan_id: 'plan-1', kind: 'rehearsal', name: 'Run-through', starts_at: '2026-11-21T18:00:00Z', ends_at: '2026-11-21T20:00:00Z', created_at: STAMP, sort_order: 2, ics_sequence: 0 },
+] as PlanDetail['times'];
+
+const renderModal = (target: PlanItemDetail, detail: PlanDetail = { ...plan, times: TIMES }) => {
+  vi.mocked(api.getSong).mockResolvedValue(song('s-1', 'Goodness of God', 'Bethel'));
+  vi.mocked(api.listPeople).mockResolvedValue([]);
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <LanguageProvider>
+        <EditItemModal plan={detail} item={target} teams={[]} onClose={vi.fn()} timeZone="UTC" />
+      </LanguageProvider>
+    </QueryClientProvider>,
+  );
+  return userEvent.setup();
+};
+
+it('limits an item to chosen service times (never rehearsals) and back to all', async () => {
+  vi.mocked(api.updatePlanItem).mockResolvedValue({ ...item, content_revision: 2 });
+  const user = renderModal(item);
+  expect((await screen.findByRole('radio', { name: 'All service times' }) as HTMLInputElement).checked).toBe(true);
+  await user.click(screen.getByRole('radio', { name: 'Only these service times' }));
+  expect(screen.getByRole('checkbox', { name: /9am/ })).toBeTruthy();
+  expect(screen.getByRole('checkbox', { name: /11am/ })).toBeTruthy();
+  expect(screen.queryByRole('checkbox', { name: /Run-through/ })).toBeNull();
+
+  // Nothing ticked: refused before saving.
+  await user.click(screen.getByRole('button', { name: 'Save changes' }));
+  expect(await screen.findByText('Choose at least one service time, or choose “All service times”.')).toBeTruthy();
+  expect(api.updatePlanItem).not.toHaveBeenCalled();
+
+  await user.click(screen.getByRole('checkbox', { name: /11am/ }));
+  await user.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(api.updatePlanItem).toHaveBeenCalledWith('plan-1', 'i-1', { time_ids: ['t-11'], expected_revision: 1 }));
+});
+
+it('clears a limit with "All service times"', async () => {
+  vi.mocked(api.updatePlanItem).mockResolvedValue({ ...item, content_revision: 2 });
+  const user = renderModal({ ...item, item_times: [{ plan_time_id: 't-9' }] });
+  expect((await screen.findByRole('checkbox', { name: /9am/ }) as HTMLInputElement).checked).toBe(true);
+  await user.click(screen.getByRole('radio', { name: 'All service times' }));
+  await user.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() => expect(api.updatePlanItem).toHaveBeenCalledWith('plan-1', 'i-1', { time_ids: [], expected_revision: 1 }));
+});
+
+it('says when the plan has no service times', async () => {
+  renderModal(item, { ...plan, times: [] });
+  expect(await screen.findByText('This plan has no service times yet, so the item is in every time.')).toBeTruthy();
+});
+
+it('writes details with the toolbar, previews them safely and saves them', async () => {
+  vi.mocked(api.updatePlanItem).mockResolvedValue({ ...item, content_revision: 2 });
+  const user = renderModal(item);
+  const details = await screen.findByRole('textbox', { name: 'Details' });
+  await user.click(screen.getByRole('button', { name: 'Heading' }));
+  expect((details as HTMLTextAreaElement).value).toBe('## Heading');
+  await user.clear(details);
+  await user.click(details);
+  // Pasted: typing would read "[" as a key descriptor.
+  await user.paste('Start **soft** see [chart](https://example.com/c) <img src=x onerror=alert(1)>');
+
+  await user.click(screen.getByRole('radio', { name: 'Preview' }));
+  const preview = screen.getByRole('region', { name: 'Preview' });
+  expect(preview.querySelector('span.font-semibold')?.textContent).toBe('soft');
+  const link = preview.querySelector('a')!;
+  expect(link.getAttribute('href')).toBe('https://example.com/c');
+  expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+  expect(preview.querySelector('img')).toBeNull();
+  expect(preview.textContent).toContain('<img src=x onerror=alert(1)>');
+
+  await user.click(screen.getByRole('button', { name: 'Save changes' }));
+  await waitFor(() =>
+    expect(api.updatePlanItem).toHaveBeenCalledWith('plan-1', 'i-1', {
+      details: 'Start **soft** see [chart](https://example.com/c) <img src=x onerror=alert(1)>',
+      expected_revision: 1,
+    }),
+  );
+});
+
+it('shows an empty preview and refuses details over the limit', async () => {
+  const user = renderModal(item);
+  await user.click(await screen.findByRole('radio', { name: 'Preview' }));
+  expect(screen.getByText('Nothing to preview yet.')).toBeTruthy();
+  await user.click(screen.getByRole('radio', { name: 'Write' }));
+  const details = screen.getByRole('textbox', { name: 'Details' });
+  await user.click(details);
+  await user.paste('x'.repeat(20_001));
+  await user.click(screen.getByRole('button', { name: 'Save changes' }));
+  expect(await screen.findByText('Details can be at most 20,000 characters.')).toBeTruthy();
+  expect(api.updatePlanItem).not.toHaveBeenCalled();
+});

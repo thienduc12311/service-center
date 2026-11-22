@@ -550,6 +550,7 @@ export const PlanDetailPage = () => {
           item={editingItem}
           teams={teams.data ?? []}
           onClose={() => setEditingItemId(null)}
+          timeZone={timeZone}
         />
       )}
       {dialog === 'print-order' && (
