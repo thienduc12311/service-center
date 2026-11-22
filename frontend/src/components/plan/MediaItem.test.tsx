@@ -105,7 +105,7 @@ it('shows a media row with its thumbnail and a way to change its media', async (
   const props: OrderTabProps = {
     plan, canManage: true, schedule: computePlanSchedule({ items: plan.items, time: null }), timeZone: 'UTC', serviceTimes: [],
     selectedTimeId: null, onSelectTime: vi.fn(), positionNames: new Map(), busy: false, onAddSongs: vi.fn(), onAddOther: vi.fn(),
-    insertPoint: null, onEditItem: vi.fn(), onMoveItem: vi.fn(), onRemoveItem: vi.fn(), onPrint: vi.fn(), onDiscussItem: vi.fn(),
+    insertPoint: null, onEditItem: vi.fn(), onMoveItem: vi.fn(), onReorderItems: vi.fn(), onRemoveItem: vi.fn(), onPrint: vi.fn(), onDiscussItem: vi.fn(),
     itemNoteCounts: new Map(),
   };
   const user = userEvent.setup();

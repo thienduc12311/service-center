@@ -108,7 +108,7 @@ describe('media items', () => {
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ item_type: 'media', media_id: MEDIA, title: 'Countdown video', content_revision: 8 });
     expect(store.calls).toEqual([
-      { name: 'add_plan_item', args: expect.objectContaining({ p_item: expect.objectContaining({ item_type: 'media', media_id: MEDIA, length_seconds: 300 }) }) },
+      { name: 'add_plan_item_with_details', args: expect.objectContaining({ p_item: expect.objectContaining({ item_type: 'media', media_id: MEDIA, length_seconds: 300 }) }) },
     ]);
   });
 
@@ -141,6 +141,6 @@ describe('media items', () => {
     store.current = { ...store.current, media_id: MEDIA };
     const ok = await request(editor).patch(`/api/v1/plans/${PLAN}/items/${ITEM}`).send({ item_type: 'media' });
     expect(ok.status).toBe(200);
-    expect(store.calls[0]).toMatchObject({ name: 'update_plan_item', args: { p_patch: { item_type: 'media', song_id: null } } });
+    expect(store.calls[0]).toMatchObject({ name: 'update_plan_item_with_details', args: { p_patch: { item_type: 'media', song_id: null } } });
   });
 });

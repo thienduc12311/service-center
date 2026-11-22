@@ -75,7 +75,8 @@ interface TemplateEditorProps {
 type ItemFormTarget = { mode: 'edit'; index: number } | { mode: 'add'; type: PlanItemType };
 
 /** Item kinds the order offers to add, in button order. */
-const ADDABLE_ITEM_TYPES: readonly PlanItemType[] = ['song', 'item', 'header'];
+// Media items need a library pick, which the template editor does not offer yet.
+const ADDABLE_ITEM_TYPES = ['song', 'item', 'header'] as const satisfies readonly PlanItemType[];
 const TIME_KINDS: readonly PlanTimeKind[] = ['service', 'rehearsal', 'other'];
 
 /** A new template time: on the service date, 10:00 for an hour. */
