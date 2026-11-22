@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -65,6 +65,9 @@ export const CopyServiceTypeModal = ({ source, onClose, onCopied }: CopyServiceT
   const sourceFolder = folders.find(({ node }) => node.id === source.folder_id)?.node.name ?? null;
   const name = form.name.trim();
 
+  // Set synchronously on submit: `copy.isPending` only changes after a re-render, so a
+  // double click would otherwise send a second copy (the API has no idempotency key here).
+  const sending = useRef(false);
   const copy = useMutation({
     mutationFn: () => {
       const body: CopyServiceTypeRequest = {
@@ -81,6 +84,10 @@ export const CopyServiceTypeModal = ({ source, onClose, onCopied }: CopyServiceT
       onCopied?.(created);
       onClose();
     },
+    // A failed copy may be sent again; a successful one closes the dialog.
+    onError: () => {
+      sending.current = false;
+    },
   });
 
   const toggleTeam = (teamId: string, on: boolean) =>
@@ -93,7 +100,8 @@ export const CopyServiceTypeModal = ({ source, onClose, onCopied }: CopyServiceT
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!name || form.teamIds === null || copy.isPending) return;
+    if (!name || form.teamIds === null || sending.current) return;
+    sending.current = true;
     copy.mutate();
   };
 

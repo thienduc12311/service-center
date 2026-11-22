@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, type AccessCapability, type AccessTarget, type FolderTree, type ServiceTypeRow, type TeamWithPositions } from '@service-center/shared';
@@ -174,6 +174,29 @@ describe('CopyServiceTypeModal', () => {
       team_ids: ['band', 'kids'],
     });
     await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it('sends one copy for a double click, and allows a retry after a failure', async () => {
+    let finish: (copy: ServiceTypeRow) => void = () => {};
+    vi.mocked(api.copyServiceType)
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockImplementationOnce(() => new Promise<ServiceTypeRow>((resolve) => { finish = resolve; }));
+    const onClose = vi.fn();
+    wrap(<CopyServiceTypeModal source={sunday} onClose={onClose} />);
+    await waitFor(() => expect((screen.getByRole('checkbox', { name: 'Band' }) as HTMLInputElement).checked).toBe(true));
+    const submit = screen.getByRole('button', { name: 'Copy service type' });
+
+    // The first attempt fails; the form can be sent again.
+    fireEvent.click(submit);
+    expect(await screen.findByRole('alert')).toBeTruthy();
+
+    // Two clicks before React re-renders: still one request.
+    fireEvent.click(submit);
+    fireEvent.click(submit);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Copy service type' })).toHaveProperty('disabled', true));
+    finish(serviceType('copy', 'Sunday Service (copy)'));
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(api.copyServiceType).toHaveBeenCalledTimes(2);
   });
 
   it('needs a name', async () => {
