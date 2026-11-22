@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { formatDuration, type PublicPlanProjection } from '@service-center/shared';
 import { useFormatters } from '../i18n';
+import { Icon } from './icons';
 
 export interface PublicPlanViewProps {
   projection: PublicPlanProjection;
@@ -37,6 +38,12 @@ export const PublicPlanView = ({ projection }: PublicPlanViewProps) => {
           ) : (
             <li key={index} className="flex justify-between gap-3 px-4 py-2.5">
               <span className="min-w-0 text-slate-800 dark:text-slate-100">
+                {item.kind === 'media' && (
+                  <span className="mr-1.5 inline-flex align-[-2px] text-sky-600 dark:text-sky-300">
+                    <Icon name="media" className="size-3.5" />
+                    <span className="sr-only">{t('publicPlan.mediaItem')}: </span>
+                  </span>
+                )}
                 {item.song?.title ?? item.title}
                 {item.song?.author && <span className="text-slate-500"> — {item.song.author}</span>}
                 {item.song?.key && <span className="ml-2 text-xs text-slate-500">{t('publicPlan.songKey', { key: item.song.key })}</span>}

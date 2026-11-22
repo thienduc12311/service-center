@@ -67,6 +67,12 @@ export const LiveStageDisplay = ({ live, onClose }: LiveStageDisplayProps) => {
           <p className="text-4xl text-slate-400">{live.connection === 'revoked' ? t('live.stage.unavailable') : t('common:states.loading')}</p>
         ) : view.current ? (
           <>
+            {view.current.item_type === 'media' && (
+              <p className="inline-flex items-center gap-3 text-3xl text-sky-300">
+                <Icon name="media" className="size-8" />
+                {t('live.mediaItem')}
+              </p>
+            )}
             <p className="text-4xl font-semibold leading-tight tracking-tight text-balance sm:text-6xl">{view.current.title}</p>
             <Countdown view={view} large />
             {state.run.status === 'paused' && <p className="text-3xl text-amber-400">{t('live.status.paused')}</p>}
