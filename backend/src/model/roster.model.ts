@@ -92,5 +92,18 @@ export const withReconciliationNames = (
   rows.map((row) => ({
     ...row,
     person_name: names.get(row.person_id) ?? 'Removed person',
-    candidate_name: names.get(row.candidate_person_id) ?? 'Removed person',
+    candidate_name: (row.candidate_person_id ? names.get(row.candidate_person_id) : undefined) ?? 'Removed person',
   }));
+
+/**
+ * A just-resolved report, named as it was before the decision: a merge
+ * removes the candidate, so its name only exists in the earlier read.
+ */
+export const withNamesBeforeResolution = (
+  row: PersonIdentityReconciliationRow,
+  before: IdentityReconciliation,
+): IdentityReconciliation => ({
+  ...row,
+  person_name: before.person_name,
+  candidate_name: before.candidate_name,
+});

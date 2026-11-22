@@ -42,6 +42,11 @@ interface Fixture {
   resendCalls: ResendCall[];
   acceptCalls: AcceptCall[];
   profileReads: number;
+  /** What auth_email_registered answers (a concurrent accept created the login). */
+  emailRegistered: boolean;
+  /** accepted_at the invitation re-read after a failed createUser returns. */
+  acceptedMeanwhile: string | null;
+  invitationReads: number;
 }
 
 const fixture = vi.hoisted((): Fixture => {
@@ -59,6 +64,9 @@ const fixture = vi.hoisted((): Fixture => {
     resendCalls: [],
     acceptCalls: [],
     profileReads: 0,
+    emailRegistered: false,
+    acceptedMeanwhile: null,
+    invitationReads: 0,
   };
 });
 
@@ -84,7 +92,11 @@ vi.mock('../lib/supabase.js', async (importOriginal) => {
     return {
       select: () => ({
         eq: () => {
-          if (table === 'person_invitations') return single(INVITATION);
+          if (table === 'person_invitations') {
+            fixture.invitationReads += 1;
+            // The first read is the live check; later ones see a concurrent accept.
+            return single(fixture.invitationReads === 1 ? INVITATION : { ...INVITATION, accepted_at: fixture.acceptedMeanwhile });
+          }
           if (table === 'people') return single({ first_name: 'Ivy', last_name: 'Invitee', preferred_language: null });
           if (table === 'organizations') return single({ name: 'Riverside' });
           throw new Error(`unexpected table ${table}`);
@@ -97,6 +109,7 @@ vi.mock('../lib/supabase.js', async (importOriginal) => {
       fixture.lookups.push(args.p_email ?? '');
       return Promise.resolve({ data: fixture.confirmedUserId, error: null });
     }
+    if (fn === 'auth_email_registered') return Promise.resolve({ data: fixture.emailRegistered, error: null });
     if (fn === 'accept_person_invitation') {
       fixture.acceptCalls.push({ p_token_hash: args.p_token_hash ?? '', p_new_user_id: args.p_new_user_id ?? '' });
       return Promise.resolve({ data: [{ out_status: 'linked' }], error: null });
@@ -141,6 +154,9 @@ beforeEach(() => {
   fixture.resendCalls = [];
   fixture.acceptCalls = [];
   fixture.profileReads = 0;
+  fixture.emailRegistered = false;
+  fixture.acceptedMeanwhile = null;
+  fixture.invitationReads = 0;
 });
 
 describe('POST /api/v1/invitations/:token/accept', () => {
@@ -214,5 +230,43 @@ describe('POST /api/v1/invitations/:token/accept', () => {
     expect(res.body.code).toBe('account_unconfirmed');
     expect(fixture.acceptCalls).toEqual([]);
     expect(fixture.resendCalls).toEqual([]);
+  });
+  describe('concurrent accepts of one invitation (W10-SEC-D4)', () => {
+    // Auth's answer to the loser of the race: the unique email index, no code.
+    const raceError: AuthErrorFake = { message: 'duplicate key value violates unique constraint', code: '' };
+
+    it('answers 409 in progress while the winner is still linking', async () => {
+      fixture.createUserError = raceError;
+      fixture.emailRegistered = true;
+      const res = await request(app).post('/api/v1/invitations/tok/accept').send({ password: 'long-enough-pw' });
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('invitation_accept_in_progress');
+      expect(fixture.acceptCalls).toEqual([]);
+    });
+
+    it('answers 410 used once the winner has accepted', async () => {
+      fixture.createUserError = raceError;
+      fixture.emailRegistered = true;
+      fixture.acceptedMeanwhile = '2026-11-22T10:00:00Z';
+      const res = await request(app).post('/api/v1/invitations/tok/accept').send({ password: 'long-enough-pw' });
+      expect(res.status).toBe(410);
+      expect(res.body.code).toBe('invitation_used');
+    });
+
+    it('answers 410 rather than "account unconfirmed" when the winner already accepted', async () => {
+      fixture.createUserError = { message: 'already registered', code: 'email_exists' };
+      fixture.acceptedMeanwhile = '2026-11-22T10:00:00Z';
+      const res = await request(app).post('/api/v1/invitations/tok/accept').send({ password: 'long-enough-pw' });
+      expect(res.status).toBe(410);
+      expect(res.body.code).toBe('invitation_used');
+    });
+
+    it('still reports a genuine Auth failure as 502', async () => {
+      fixture.createUserError = { message: 'upstream down', code: '' };
+      const err = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const res = await request(app).post('/api/v1/invitations/tok/accept').send({ password: 'long-enough-pw' });
+      err.mockRestore();
+      expect(res.status).toBe(502);
+    });
   });
 });

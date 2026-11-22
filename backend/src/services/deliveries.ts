@@ -22,26 +22,54 @@ import { pushTransport } from './expo-push.js';
 import { deliverEffectNow } from './delivery-worker.js';
 
 /** A delivery row with the joins the outcome views need. */
-type DeliveryWithJoins = DeliveryRow & {
+export type DeliveryWithJoins = DeliveryRow & {
   recipient: { full_name: string | null } | null;
-  recipient_person: { first_name: string; last_name: string | null } | null;
   effect: { template: DeliveryTemplate; plan_id: string | null; plan: { title: string } | null } | null;
 };
 
+/** Display names of recipient Persons, keyed by Person id. */
+export type RecipientPersonNames = ReadonlyMap<string, string>;
+
+interface DirectoryNameRow {
+  id: string;
+  first_name: string;
+  last_name: string | null;
+}
+
+// Person names come from people_directory, not an embed of `people`: `people`
+// is readable by the owner only, so the embed was null (a blank name) for
+// every other administrator or scheduler who may see the delivery.
 const DELIVERY_SELECT = `
   *,
   recipient:profiles!deliveries_recipient_id_fkey(full_name),
-  recipient_person:people!deliveries_recipient_person_id_fkey(first_name, last_name),
   effect:delivery_effects!inner(template, plan_id, plan:plans(title))
 `;
 
-export const toDeliveryOutcome = (row: DeliveryWithJoins): DeliveryOutcome => ({
+/** Names the recipient Persons of these rows through the member-visible directory. */
+export const recipientPersonNames = async (
+  db: Db,
+  rows: readonly Pick<DeliveryRow, 'recipient_person_id'>[],
+): Promise<RecipientPersonNames> => {
+  const ids = [...new Set(rows.map((row) => row.recipient_person_id).filter((id): id is string => Boolean(id)))];
+  if (!ids.length) return new Map();
+  const people = ((await unwrap(
+    db.from('people_directory').select('id, first_name, last_name').in('id', ids),
+  )) ?? []) as DirectoryNameRow[];
+  return new Map(
+    people.map((person) => [person.id, [person.first_name, person.last_name].filter(Boolean).join(' ')]),
+  );
+};
+
+const recipientName = (row: DeliveryWithJoins, personNames: RecipientPersonNames): string | null =>
+  row.recipient?.full_name?.trim()
+  || (row.recipient_person_id ? personNames.get(row.recipient_person_id) : undefined)
+  || null;
+
+export const toDeliveryOutcome = (row: DeliveryWithJoins, personNames: RecipientPersonNames): DeliveryOutcome => ({
   id: row.id,
   recipient_id: row.recipient_id,
   recipient_person_id: row.recipient_person_id,
-  recipient_name: row.recipient?.full_name
-    ?? [row.recipient_person?.first_name, row.recipient_person?.last_name].filter(Boolean).join(' ')
-    ?? null,
+  recipient_name: recipientName(row, personNames),
   channel: row.channel,
   status: row.status,
   attempts: row.attempts,
@@ -53,8 +81,8 @@ export const toDeliveryOutcome = (row: DeliveryWithJoins): DeliveryOutcome => ({
   retryable: isRetryableDelivery(row.status),
 });
 
-const toDeliveryListItem = (row: DeliveryWithJoins): DeliveryListItem => ({
-  ...toDeliveryOutcome(row),
+const toDeliveryListItem = (row: DeliveryWithJoins, personNames: RecipientPersonNames): DeliveryListItem => ({
+  ...toDeliveryOutcome(row, personNames),
   template: row.effect?.template ?? 'assignment_request',
   plan_id: row.effect?.plan_id ?? null,
   plan_title: row.effect?.plan?.title ?? null,
@@ -71,7 +99,8 @@ export const effectOutcomes = async (db: Db, effectId: string): Promise<Delivery
       .order('recipient_id')
       .order('channel'),
   )) as unknown as DeliveryWithJoins[];
-  return rows.map(toDeliveryOutcome);
+  const personNames = await recipientPersonNames(db, rows);
+  return rows.map((row) => toDeliveryOutcome(row, personNames));
 };
 
 /** The notify-style response: per-recipient outcomes plus the old aggregate. */
@@ -150,8 +179,9 @@ export const listDeliveries = async (db: Db, orgId: string, query: ListDeliverie
     request.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(query.limit + 1),
   )) as unknown as DeliveryWithJoins[];
   const page = rows.slice(0, query.limit);
+  const personNames = await recipientPersonNames(db, page);
   return {
-    data: page.map(toDeliveryListItem),
+    data: page.map((row) => toDeliveryListItem(row, personNames)),
     next_before: rows.length > query.limit ? page[page.length - 1]?.created_at ?? null : null,
   };
 };
@@ -198,5 +228,5 @@ export const retryDelivery = async (db: Db, orgId: string, deliveryId: string): 
     raw(db).from('deliveries').select(DELIVERY_SELECT).eq('id', deliveryId).maybeSingle(),
   )) as unknown as DeliveryWithJoins | null;
   if (!row) throw HttpError.notFound('Delivery not found');
-  return toDeliveryListItem(row);
+  return toDeliveryListItem(row, await recipientPersonNames(db, [row]));
 };

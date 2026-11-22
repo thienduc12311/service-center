@@ -34,6 +34,7 @@ import {
   type CheckAssignmentConflictsInput,
   type ConflictCheckResult,
   type PlanTimeRow,
+  type PlanStatus,
   type SetAssignmentAttendanceInput,
 } from '@service-center/shared';
 import { preferenceWarnings } from '../services/availability.js';
@@ -112,6 +113,15 @@ const recordPreferenceOverrides = async (
   return warnings;
 };
 
+/** The plan's status as committed now, for decisions made after a write. */
+const planStatusNow = async (req: Request, planId: string): Promise<PlanStatus> => {
+  const plan = await unwrap(
+    req.db.from('plans').select('status').eq('id', planId).eq('organization_id', req.orgId).maybeSingle(),
+  );
+  if (!plan) throw HttpError.notFound('Plan not found');
+  return plan.status;
+};
+
 // ---------------------------------------------- schedule people onto a plan --
 planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validateBody(createAssignmentsSchema), async (req, res) => {
   const planId = param(req, 'planId');
@@ -171,8 +181,9 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
   // One transaction: same-organization and team-scope checks, the inserts
   // (people already on the plan are skipped) and, when notifying, the request
   // effect for released rows. Prepared rows are never notified here, and
-  // nothing is sent on a draft plan (ADR-0006): publishing asks them.
-  const heldUntilPublish = isHeldUntilPublish(plan.status);
+  // nothing is sent on a draft plan (ADR-0006): publishing asks them. Whether
+  // the request was held is decided from what the RPC committed, not from the
+  // status read above: a publish can commit in between (W10-MAIL-D2).
   const effectKey = `assignments:${plan.id}:${idempotency_key ?? randomUUID()}`;
   const created = await unwrap(
     req.db.rpc('schedule_plan_assignments', {
@@ -195,9 +206,11 @@ planAssignmentsRouter.post('/', requireCapability('scheduling.manage'), validate
     }),
   );
 
-  if (notify && !heldUntilPublish && (created ?? []).some((row) => row.visibility === 'released')) {
-    await deliverEffectNow(await effectIdForKey(req.db, req.orgId, effectKey));
-  }
+  const effectId = notify && (created ?? []).some((row) => row.visibility === 'released')
+    ? await effectIdForKey(req.db, req.orgId, effectKey)
+    : null;
+  if (effectId) await deliverEffectNow(effectId);
+  const heldUntilPublish = !effectId && isHeldUntilPublish(await planStatusNow(req, plan.id));
 
   const warnings = await recordPreferenceOverrides(req, plan.id, created ?? [], preference_override_reason ?? null);
   const result: CreateAssignmentsResult = {

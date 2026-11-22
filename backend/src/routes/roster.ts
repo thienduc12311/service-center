@@ -10,7 +10,6 @@ import {
   resolveReconciliationSchema,
   type CreateGuestInput,
   type DeliveryReadinessInput,
-  type PersonIdentityReconciliationRow,
   type ResolveReconciliationInput,
   rosterAuditQuerySchema,
   setTagGroupSchema,
@@ -35,7 +34,7 @@ import {
   loadReconciliations,
   loadRosterAudit,
   loadTagCatalog,
-  nameReconciliations,
+  resolveReconciliation,
 } from '../services/roster.js';
 
 /**
@@ -183,11 +182,7 @@ rosterRouter.post(
   validateBody(resolveReconciliationSchema),
   async (req, res) => {
     const { action } = req.body as ResolveReconciliationInput;
-    const { data, error } = await req.db.rpc('resolve_person_reconciliation', { p_id: param(req, 'id'), p_action: action });
-    if (error?.code === 'PT409') throw new HttpError(409, error.message, 'reconciliation_blocked');
-    if (error) throw fromPostgrestError(error);
-    const [named] = await nameReconciliations(req.db, [data as PersonIdentityReconciliationRow]);
-    res.json(named);
+    res.json(await resolveReconciliation({ db: req.db, orgId: req.orgId, id: param(req, 'id'), action }));
   },
 );
 
