@@ -18,6 +18,7 @@ import {
   publicationVisibleFrom,
   reportRangeInstants,
   reportToCsv,
+  CSV_UTF8_BOM,
   REPORT_DEFINITIONS,
 } from './reports.js';
 
@@ -266,6 +267,18 @@ describe('formats', () => {
     expect(csv).toContain('Generated at (UTC),2026-11-30T12:00:00.000Z');
     expect(csv).toContain('Definition: Occurrences');
     expect(csv).toContain("'=SUM(A1),,1,1,,2026-11-08,2026-11-08");
+  });
+
+  it('starts with a UTF-8 BOM so spreadsheets read Vietnamese text, and still neutralises formulas (W10-FGH-D9)', () => {
+    const built = buildSongUsageReport({ filters: filters(), plans, items: [{ plan_id: 'p1', item_id: 'i', song_id: 's', title: 'Ân điển =1+1', author: '@Tác giả', key: null }] });
+    const csv = reportToCsv({
+      kind: 'song_usage', title: 'Song usage', generated_at: '2026-11-30T12:00:00.000Z', filters: filters(),
+      definitions: REPORT_DEFINITIONS.song_usage, scope_note: null, truncated: false, rows: built.rows,
+    });
+    expect(csv.startsWith(`${CSV_UTF8_BOM}Report,Song usage\r\n`)).toBe(true);
+    expect(csv.indexOf(CSV_UTF8_BOM, 1)).toBe(-1);
+    expect([...new TextEncoder().encode(csv).slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(csv).toContain("Ân điển =1+1,'@Tác giả,1,1,");
   });
 
   it('resolves local report dates in the organization timezone', () => {
