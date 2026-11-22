@@ -87,9 +87,21 @@
     },
     "invitation": {
       "subject": "Join {{organization}}",
+      "preheader": "{{organization}} invited you to plan services together in Service Center.",
+      "heading": "You're invited to join {{organization}}",
       "lead": "You have been invited to join {{organization}}.",
+      "body": "Service Center is where your team sees its schedule, answers requests, and gets ready for each service.",
       "linkText": "Join the organization: {{url}}",
-      "link": "Join the organization"
+      "link": "Join the organization",
+      "linkFallback": "Button not working? Paste this link into your browser:",
+      "getAppHeading": "Get the app",
+      "getAppBody": "Install Service Center on your phone to see your schedule and answer requests on the go.",
+      "appStore": "Download on the App Store",
+      "googlePlay": "Get it on Google Play",
+      "comingSoon": "Coming soon",
+      "storeText": "{{store}}: {{url}}",
+      "storeComingSoonText": "{{store}}: coming soon",
+      "footer": "You received this email because someone at {{organization}} invited you. If you weren't expecting it, you can ignore it."
     },
     "mention": {
       "subject": "{{author}} mentioned you in {{place}}",

@@ -83,9 +83,21 @@
     },
     "invitation": {
       "subject": "Tham gia {{organization}}",
+      "preheader": "{{organization}} đã mời bạn cùng chuẩn bị các buổi nhóm trên Service Center.",
+      "heading": "Bạn được mời tham gia {{organization}}",
       "lead": "Bạn đã được mời tham gia {{organization}}.",
+      "body": "Service Center là nơi ban của bạn xem lịch phục vụ, trả lời yêu cầu và chuẩn bị cho mỗi buổi nhóm.",
       "linkText": "Tham gia hội thánh: {{url}}",
-      "link": "Tham gia hội thánh"
+      "link": "Tham gia hội thánh",
+      "linkFallback": "Nút không hoạt động? Dán liên kết này vào trình duyệt:",
+      "getAppHeading": "Tải ứng dụng",
+      "getAppBody": "Cài Service Center trên điện thoại để xem lịch và trả lời yêu cầu mọi lúc mọi nơi.",
+      "appStore": "Tải về trên App Store",
+      "googlePlay": "Tải về trên Google Play",
+      "comingSoon": "Sắp ra mắt",
+      "storeText": "{{store}}: {{url}}",
+      "storeComingSoonText": "{{store}}: sắp ra mắt",
+      "footer": "Bạn nhận được email này vì có người tại {{organization}} đã mời bạn. Nếu bạn không mong đợi email này, bạn có thể bỏ qua."
     },
     "mention": {
       "subject": "{{author}} đã nhắc đến bạn trong {{place}}",
