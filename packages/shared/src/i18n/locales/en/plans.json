@@ -198,8 +198,14 @@
   "quickAdd": {
     "label": "Quick add",
     "placeholder": "Welcome 3:00 · Announcements 5m · # Worship",
-    "help": "Type a title and an optional length (3:00, 1:05:00, 5m, 90s), then press Enter. Start with # to add a header.",
+    "help": "Type a title and an optional length (3:00, 1:05:00, 5m, 90s), then press Enter. Start with # to add a header. A time-like ending is read as the length, so add a length at the end, e.g. \"John 3:16 5:00\", to keep a reference in the title.",
     "added": "Added {{title}}.",
+    "preview": {
+      "item": "Item: {{title}} · {{length}}",
+      "itemNoLength": "Item: {{title}} · no length",
+      "header": "Header: {{title}}",
+      "invalid": "Can’t add yet: {{reason}}"
+    },
     "errors": {
       "empty": "Type a title first.",
       "titleRequired": "Add a title before the length.",

@@ -1,11 +1,14 @@
 import { useId, useRef, useState, type FormEvent, type Ref } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
+  formatDuration,
   keyedPlanItemRequest,
   parseQuickAddLine,
   quickAddRequest,
   type CreatePlanItemRequest,
+  type QuickAddParseResult,
   type QuickAddProblem,
 } from '@service-center/shared';
 import { api } from '../../lib/api';
@@ -30,6 +33,7 @@ export const QuickAddLine = ({ planId, inputRef }: QuickAddLineProps) => {
   const invalidate = useInvalidateOrg();
   const helpId = useId();
   const problemId = useId();
+  const previewId = useId();
   const [value, setValue] = useState('');
   const [problem, setProblem] = useState<QuickAddProblem | null>(null);
   const [lastAdded, setLastAdded] = useState<string | null>(null);
@@ -49,6 +53,12 @@ export const QuickAddLine = ({ planId, inputRef }: QuickAddLineProps) => {
       await invalidate();
     },
   });
+
+  // How the line will be read, before Enter: a reference like "John 3:16" at
+  // the end is otherwise easy to lose to the length.
+  const parsed: QuickAddParseResult | null = value.trim() ? parseQuickAddLine(value) : null;
+  const preview = parsed === null || problem ? null : describeQuickAdd(parsed, t);
+  const describedBy = [problem ? problemId : null, preview ? previewId : null, helpId].filter(Boolean).join(' ');
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -80,7 +90,7 @@ export const QuickAddLine = ({ planId, inputRef }: QuickAddLineProps) => {
             if (problem) setProblem(null);
           }}
           placeholder={t('quickAdd.placeholder')}
-          aria-describedby={problem ? `${problemId} ${helpId}` : helpId}
+          aria-describedby={describedBy}
           aria-invalid={problem ? true : undefined}
           aria-busy={add.isPending}
           maxLength={260}
@@ -88,6 +98,12 @@ export const QuickAddLine = ({ planId, inputRef }: QuickAddLineProps) => {
           enterKeyHint="enter"
         />
       </div>
+      {/* Not a live region: read with the field, not on every keystroke. */}
+      {preview && (
+        <p id={previewId} data-testid="quick-add-preview" className="mt-1 pl-6 text-xs font-medium text-slate-700 dark:text-slate-200">
+          {preview}
+        </p>
+      )}
       <p id={helpId} className="mt-1 pl-6 text-xs text-slate-500 dark:text-slate-400">
         {t('quickAdd.help')}
       </p>
@@ -106,4 +122,13 @@ export const QuickAddLine = ({ planId, inputRef }: QuickAddLineProps) => {
       )}
     </form>
   );
+};
+
+/** "Item: Reading: John · 3:16", "Header: Worship", "Item: Psalm 23 · no length". */
+const describeQuickAdd = (parsed: QuickAddParseResult, t: TFunction<'plans'>): string => {
+  if (!parsed.ok) return t('quickAdd.preview.invalid', { reason: t(`quickAdd.errors.${parsed.problem}`) });
+  const { entry } = parsed;
+  if (entry.itemType === 'header') return t('quickAdd.preview.header', { title: entry.title });
+  if (entry.lengthSeconds === null) return t('quickAdd.preview.itemNoLength', { title: entry.title });
+  return t('quickAdd.preview.item', { title: entry.title, length: formatDuration(entry.lengthSeconds) });
 };

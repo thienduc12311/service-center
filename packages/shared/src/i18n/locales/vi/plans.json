@@ -196,8 +196,14 @@
   "quickAdd": {
     "label": "Thêm nhanh",
     "placeholder": "Chào mừng 3:00 · Thông báo 5m · # Thờ phượng",
-    "help": "Nhập tiêu đề và thời lượng nếu có (3:00, 1:05:00, 5m, 90s), rồi nhấn Enter. Bắt đầu bằng # để thêm tiêu đề phần.",
+    "help": "Nhập tiêu đề và thời lượng nếu có (3:00, 1:05:00, 5m, 90s), rồi nhấn Enter. Bắt đầu bằng # để thêm tiêu đề phần. Phần cuối có dạng giờ sẽ được hiểu là thời lượng, nên hãy thêm thời lượng ở cuối, ví dụ \"Giăng 3:16 5:00\", để giữ câu Kinh Thánh trong tiêu đề.",
     "added": "Đã thêm {{title}}.",
+    "preview": {
+      "item": "Mục: {{title}} · {{length}}",
+      "itemNoLength": "Mục: {{title}} · chưa có thời lượng",
+      "header": "Tiêu đề phần: {{title}}",
+      "invalid": "Chưa thêm được: {{reason}}"
+    },
     "errors": {
       "empty": "Hãy nhập tiêu đề trước.",
       "titleRequired": "Hãy thêm tiêu đề trước thời lượng.",

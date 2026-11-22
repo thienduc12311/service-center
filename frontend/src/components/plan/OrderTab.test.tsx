@@ -394,3 +394,31 @@ it('offers no clear action for an empty order', async () => {
   await screen.findByRole('textbox', { name: 'Quick add' });
   expect(screen.queryByRole('button', { name: 'Clear order' })).toBeNull();
 });
+
+// ----------------------------------------------------------- quick add preview --
+
+it.each([
+  ['Reading: John 3:16', 'Item: Reading: John · 3:16'],
+  ['Sermon 35:00', 'Item: Sermon · 35:00'],
+  ['# Worship', 'Header: Worship'],
+  ['Psalm 23', 'Item: Psalm 23 · no length'],
+  ['John 3:16 5:00', 'Item: John 3:16 · 5:00'],
+  ['Welcome 3:75', 'Can’t add yet: Write the length as 3:00, 1:05:00, 5m or 90s.'],
+])('previews %j as %j before Enter, without a live region', async (line, text) => {
+  const { user } = renderOrder();
+  const field = await screen.findByRole('textbox', { name: 'Quick add' });
+  expect(screen.queryByTestId('quick-add-preview')).toBeNull();
+  await user.type(field, line);
+  const preview = screen.getByTestId('quick-add-preview');
+  expect(preview.textContent).toBe(text);
+  expect(field.getAttribute('aria-describedby')!.split(' ')).toContain(preview.id);
+  expect(preview.getAttribute('aria-live')).toBeNull();
+  expect(preview.getAttribute('role')).toBeNull();
+  expect(api.addPlanItem).not.toHaveBeenCalled();
+});
+
+it('explains in the help how to keep a reference in the title', async () => {
+  renderOrder();
+  await screen.findByRole('textbox', { name: 'Quick add' });
+  expect(screen.getByText(/add a length at the end, e\.g\. "John 3:16 5:00", to keep a reference in the title/)).toBeTruthy();
+});
