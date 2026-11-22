@@ -5,6 +5,7 @@ import type {
   GlobalSearchResults,
   PersonRosterEvent,
   PersonRosterEventRow,
+  ResolveReconciliationInput,
   RosterTagCatalog,
 } from '@service-center/shared';
 import { raw, unwrap, type Db } from '../lib/supabase.js';
@@ -13,8 +14,10 @@ import {
   searchPattern,
   toSearchGroup,
   withActorNames,
+  withNamesBeforeResolution,
   withReconciliationNames,
 } from '../model/roster.model.js';
+import { HttpError, fromPostgrestError } from '../lib/errors.js';
 
 export interface RosterScope {
   db: Db;
@@ -221,12 +224,44 @@ export const nameReconciliations = async (
   db: Db,
   rows: readonly PersonIdentityReconciliationRow[],
 ): Promise<IdentityReconciliation[]> => {
-  const ids = [...new Set(rows.flatMap((row) => [row.person_id, row.candidate_person_id]))];
+  const ids = [
+    ...new Set(rows.flatMap((row) => [row.person_id, row.candidate_person_id]).filter((id): id is string => Boolean(id))),
+  ];
   const people = ids.length ? ((await unwrap(db.from('people_directory').select('id, first_name, last_name').in('id', ids))) ?? []) : [];
   return withReconciliationNames(
     rows,
     new Map(people.map((p) => [p.id, [p.first_name, p.last_name].filter(Boolean).join(' ')])),
   );
+};
+
+export interface ResolveReconciliationRequest extends RosterScope {
+  id: string;
+  action: ResolveReconciliationInput['action'];
+}
+
+/**
+ * Applies an administrator's decision and answers with the decided report.
+ * Both Persons are named first: a merge removes the candidate, so its name
+ * is only available before the decision.
+ */
+export const resolveReconciliation = async ({
+  db,
+  orgId,
+  id,
+  action,
+}: ResolveReconciliationRequest): Promise<IdentityReconciliation> => {
+  const report = (await unwrap(
+    db.from('person_identity_reconciliations').select('*').eq('organization_id', orgId).eq('id', id).maybeSingle(),
+  )) as PersonIdentityReconciliationRow | null;
+  if (!report) throw HttpError.notFound();
+  const [before] = await nameReconciliations(db, [report]);
+
+  const { data, error } = await db.rpc('resolve_person_reconciliation', { p_id: id, p_action: action });
+  if (error?.code === 'PT409') throw new HttpError(409, error.message, 'reconciliation_blocked');
+  if (error) throw fromPostgrestError(error);
+  const resolved = data as PersonIdentityReconciliationRow | null;
+  if (!resolved?.id || !before) throw HttpError.notFound();
+  return withNamesBeforeResolution(resolved, before);
 };
 
 /** Open reports first, then the most recently decided. Administrators only (RLS). */
