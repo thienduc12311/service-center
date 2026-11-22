@@ -9,10 +9,12 @@ import { LanguageProvider } from '../../i18n/LanguageProvider';
 import { api } from '../../lib/api';
 import { LinkMediaModal } from '../media/LinkMediaModal';
 import { AddItemModal } from './AddItemModal';
+import { EditItemModal } from './EditItemModal';
 import { OrderTab, type OrderTabProps } from './OrderTab';
 
 vi.mock('../../lib/api', () => ({
-  api: { addPlanItem: vi.fn(), getPlan: vi.fn(), reorderPlanItems: vi.fn(), mediaList: vi.fn(), fileDownload: vi.fn(), setPlanItemMedia: vi.fn() },
+  api: { addPlanItem: vi.fn(), getPlan: vi.fn(), reorderPlanItems: vi.fn(), mediaList: vi.fn(), fileDownload: vi.fn(), setPlanItemMedia: vi.fn(),
+    listPeople: vi.fn(), updatePlanItem: vi.fn() },
 }));
 vi.mock('../../lib/supabase', () => ({ supabase: {} }));
 vi.mock('../../providers/AuthProvider', () => ({
@@ -26,6 +28,7 @@ afterEach(() => {
 
 const STAMP = '2026-01-01T00:00:00Z';
 const MEDIA_ID = '00000000-0000-4000-8000-0000000000aa';
+const OTHER_MEDIA_ID = '00000000-0000-4000-8000-0000000000bb';
 
 const summary = (id: string, title: string, duration: number | null, thumbnail: string | null = null): MediaSummary => ({
   id, title, creator: null, duration_seconds: duration, themes: [], tags: [], notes: null, thumbnail_file_id: thumbnail,
@@ -122,6 +125,35 @@ it('shows a media row with its thumbnail and a way to change its media', async (
   // A media item always names its media: it can be changed, not removed.
   expect(within(dialog).queryByRole('button', { name: 'Remove link' })).toBeNull();
   expect(await within(dialog).findByRole('button', { name: 'Current' })).toHaveProperty('disabled', true);
+});
+
+it('says a media change in the item editor was saved and offers the new media’s title and length', async () => {
+  vi.mocked(api.mediaList).mockResolvedValue(mediaList([summary(MEDIA_ID, 'Countdown video', 300), summary(OTHER_MEDIA_ID, 'Bumper', 45)]));
+  vi.mocked(api.listPeople).mockResolvedValue([]);
+  vi.mocked(api.setPlanItemMedia).mockResolvedValue({ content_revision: 5 } as Awaited<ReturnType<typeof api.setPlanItemMedia>>);
+  vi.mocked(api.updatePlanItem).mockResolvedValue({} as Awaited<ReturnType<typeof api.updatePlanItem>>);
+  const user = userEvent.setup();
+  const onClose = vi.fn();
+  wrap(<EditItemModal plan={plan} item={mediaItem} teams={[]} onClose={onClose} />);
+  expect(await screen.findByText('No changes yet')).toBeTruthy();
+
+  await user.click(screen.getByRole('button', { name: 'Change media' }));
+  const bumper = (await screen.findByText('Bumper')).closest('li')!;
+  await user.click(within(bumper).getByRole('button', { name: 'Use' }));
+
+  const notice = await screen.findByText('Media changed to “Bumper” and saved.');
+  expect(notice.closest('[role="status"]')!.textContent).toContain('The item’s title and length were not changed.');
+  expect(api.setPlanItemMedia).toHaveBeenCalledWith('plan-1', 'i-m', { media_id: OTHER_MEDIA_ID, expected_revision: 4 });
+  expect(screen.queryByText('No changes yet')).toBeNull();
+  expect(screen.getByText('Media saved. No other changes yet')).toBeTruthy();
+
+  await user.click(screen.getByRole('button', { name: 'Use its title and length (0:45)' }));
+  expect(screen.getByRole('textbox', { name: 'Title' })).toHaveProperty('value', 'Bumper');
+  expect(screen.queryByRole('button', { name: /Use its title/ })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Save changes' }));
+  // Saved against the revision the media change produced.
+  await waitFor(() => expect(api.updatePlanItem).toHaveBeenCalledOnce());
+  expect(api.updatePlanItem).toHaveBeenCalledWith('plan-1', 'i-m', expect.objectContaining({ title: 'Bumper', length_seconds: 45, expected_revision: 5 }));
 });
 
 it('never downloads a thumbnail a media item does not have', async () => {

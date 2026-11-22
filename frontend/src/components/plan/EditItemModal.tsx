@@ -67,6 +67,8 @@ export const EditItemModal = ({ plan, item, teams, onClose, timeZone }: EditItem
   const describeTime = (time: ItemTimeChoice): string =>
     [time.name ?? t('timeKind.service'), format.time(time.starts_at, timeZone ? { timeZone } : {})].join(' · ');
   const [baseRevision, setBaseRevision] = useState(plan.content_revision);
+  // A media change saves at once, so "No changes yet" would be untrue after one.
+  const [mediaSaved, setMediaSaved] = useState(false);
   const [songQuery, setSongQuery] = useState('');
   const [changingSong, setChangingSong] = useState(false);
   const [formError, setFormError] = useState<LocalizedError | null>(null);
@@ -194,7 +196,18 @@ export const EditItemModal = ({ plan, item, teams, onClose, timeZone }: EditItem
         </div>
 
         {item.item_type === 'media' && draft.itemType === 'media' && (
-          <EditItemMediaField plan={plan} item={item} baseRevision={baseRevision} onSaved={setBaseRevision} />
+          <EditItemMediaField
+            plan={plan}
+            item={item}
+            baseRevision={baseRevision}
+            onSaved={(revision) => {
+              setBaseRevision(revision);
+              setMediaSaved(true);
+            }}
+            draftTitle={draft.title}
+            draftLength={draft.length}
+            onUseMediaDetails={(details) => setDraft((current) => ({ ...current, title: details.title, length: details.length ?? current.length }))}
+          />
         )}
 
         {draft.itemType === 'song' && (
@@ -406,7 +419,7 @@ export const EditItemModal = ({ plan, item, teams, onClose, timeZone }: EditItem
         )}
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          {!dirty && <span className="mr-auto text-xs text-slate-500 dark:text-slate-400">{t('editItem.noChanges')}</span>}
+          {!dirty && <span className="mr-auto text-xs text-slate-500 dark:text-slate-400">{t(mediaSaved ? 'editItem.mediaSavedNoOtherChanges' : 'editItem.noChanges')}</span>}
           <Button type="button" variant="secondary" onClick={close}>{t('common:actions.cancel')}</Button>
           <Button type="submit" loading={save.isPending} disabled={!dirty || stale}>{t('common:actions.saveChanges')}</Button>
         </div>
