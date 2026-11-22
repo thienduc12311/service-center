@@ -11,7 +11,14 @@ import { FLAT_KEYS, SHARP_KEYS } from './constants.js';
 export interface ParsedChord {
   root: string;
   suffix: string;
+  /** The bass note after `/` when it is one (`G/B` → `B`); null otherwise. */
   bass: string | null;
+  /**
+   * Everything after the first `/`, verbatim (`B`, `Bb7`, `Q`); null without
+   * a slash. Text past a recognised bass note, or an unrecognised bass, is
+   * kept as written rather than dropped.
+   */
+  slash: string | null;
 }
 
 export interface ChordPosition {
@@ -47,14 +54,24 @@ const CHORD_TOKEN_RE =
 const CHORD_LINE_NOISE_RE = /^(\||\|\||:\||\|:|x\d+|\(?\d+x\)?|N\.?C\.?|-|\/+)$/i;
 
 export const parseChord = (token: string): ParsedChord | null => {
-  const [chordPart, bassPart] = token.split('/');
+  const slashAt = token.indexOf('/');
+  const chordPart = slashAt === -1 ? token : token.slice(0, slashAt);
+  const slash = slashAt === -1 ? null : token.slice(slashAt + 1);
   if (!chordPart) return null;
   const rootMatch = ROOT_RE.exec(chordPart);
   if (!rootMatch) return null;
   const root = rootMatch[0];
   const suffix = chordPart.slice(root.length);
-  const bass = bassPart && ROOT_RE.test(bassPart) ? bassPart : null;
-  return { root, suffix, bass };
+  const bass = slash ? (ROOT_RE.exec(slash)?.[0] ?? null) : null;
+  return { root, suffix, bass, slash };
+};
+
+/** `/bass` for output: a recognised bass note goes through `note`, the rest is kept verbatim. */
+const slashText = (chord: ParsedChord, note: (bass: string) => string | null): string => {
+  if (chord.slash === null) return '';
+  if (!chord.bass) return `/${chord.slash}`;
+  const mapped = note(chord.bass);
+  return mapped === null ? `/${chord.slash}` : `/${mapped}${chord.slash.slice(chord.bass.length)}`;
 };
 
 export const isChordToken = (token: string): boolean =>
@@ -82,8 +99,7 @@ export const transposeChord = (
   const parsed = parseChord(token);
   if (!parsed || semitones === 0) return token;
   const root = shiftNote(parsed.root, semitones, prefer);
-  const bass = parsed.bass ? `/${shiftNote(parsed.bass, semitones, prefer)}` : '';
-  return `${root}${parsed.suffix}${bass}`;
+  return `${root}${parsed.suffix}${slashText(parsed, (bass) => shiftNote(bass, semitones, prefer))}`;
 };
 
 /** Semitone distance from one key to another; null when either is unknown. */
@@ -426,6 +442,20 @@ export const preferredAccidental = (key: string | null | undefined): 'sharps' | 
   return FLAT_KEY_ROOTS.has(relative) ? 'flats' : 'sharps';
 };
 
+/** Major-key pitch classes written with flats: Db, Eb, F, Ab, Bb (F#/Gb is written F#). */
+const FLAT_MAJOR_PITCHES = new Set([1, 3, 5, 8, 10]);
+
+/** Sharps or flats for the key `semitones` away from `key`, whatever spelling it lands on. */
+export const conventionalAccidental = (key: string, semitones: number): 'sharps' | 'flats' => {
+  const parsed = parseKey(key);
+  if (!parsed) return 'sharps';
+  const pitch = noteIndex(parsed.root);
+  if (pitch < 0) return 'sharps';
+  // A minor key borrows its relative major's spelling (Dm → F → flats).
+  const major = (((pitch + semitones + (parsed.minor ? 3 : 0)) % 12) + 12) % 12;
+  return FLAT_MAJOR_PITCHES.has(major) ? 'flats' : 'sharps';
+};
+
 /** Transposes a key label, keeping its major/minor quality. */
 export const transposeKey = (
   key: string,
@@ -457,8 +487,10 @@ export const chordToNumber = (token: string, key: string): string => {
   const degree = degreeOf(chord.root, tonic.root);
   if (degree === null) return token;
 
-  const bassDegree = chord.bass ? degreeOf(chord.bass, tonic.root) : null;
-  const bass = bassDegree === null ? '' : `/${NUMBER_DEGREES[bassDegree]}`;
+  const bass = slashText(chord, (note) => {
+    const bassDegree = degreeOf(note, tonic.root);
+    return bassDegree === null ? null : NUMBER_DEGREES[bassDegree] ?? null;
+  });
   return `${NUMBER_DEGREES[degree]}${chord.suffix}${bass}`;
 };
 
@@ -479,8 +511,10 @@ export const chordToNumeral = (token: string, key: string): string => {
   const numeral = minor ? base.toLowerCase() : base;
   const suffix = minor ? chord.suffix.replace(/^m(?!aj)(in)?/, '') : chord.suffix;
 
-  const bassDegree = chord.bass ? degreeOf(chord.bass, tonic.root) : null;
-  const bass = bassDegree === null ? '' : `/${NUMBER_DEGREES[bassDegree]}`;
+  const bass = slashText(chord, (note) => {
+    const bassDegree = degreeOf(note, tonic.root);
+    return bassDegree === null ? null : NUMBER_DEGREES[bassDegree] ?? null;
+  });
   return `${numeral}${suffix}${bass}`;
 };
 
@@ -548,7 +582,13 @@ export const renderChordProChart = (
   let shift = semitones;
   if (targetKey && sourceKey) shift = semitonesBetween(sourceKey, targetKey) ?? 0;
 
-  const prefer = preferredAccidental(targetKey ?? sourceKey);
+  // A shift alone lands on a key nobody named, so spell it the way that key is
+  // conventionally written (G − 2 is F, which takes flats: Bb, not A#).
+  const prefer = targetKey
+    ? preferredAccidental(targetKey)
+    : sourceKey && shift !== 0
+      ? conventionalAccidental(sourceKey, shift)
+      : preferredAccidental(sourceKey);
   const transposed = transposeChordPro(source, shift, prefer);
   const key = targetKey ?? (sourceKey && shift !== 0 ? transposeKey(sourceKey, shift, prefer) : sourceKey);
 

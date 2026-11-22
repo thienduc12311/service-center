@@ -214,6 +214,11 @@ export interface UpdatePlanWithTimesInput extends Omit<ApplyPlanTimesInput, 'tim
   /** The full time list, or null to leave the times alone. */
   times: readonly IdentifiedPlanTime[] | null;
   fields: PlanFieldsPatch;
+  /**
+   * W10-CD-D1: moving people's times into an overlap needs the override
+   * capability and this reason (audited like an assignment override).
+   */
+  conflictOverrideReason: string | null;
 }
 
 /**
@@ -236,6 +241,7 @@ export const updatePlanWithTimes = async (
       p_orphan_resolutions: [...input.orphanResolutions],
       p_notify: input.notify,
       p_effect_key: input.effectKey,
+      p_conflict_override_reason: input.conflictOverrideReason,
     }),
   )) as (PlanTimeChangeResult & { impact?: RawImpact }) | null;
   if (!input.times || !result) return null;

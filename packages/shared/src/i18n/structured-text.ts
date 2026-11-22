@@ -261,6 +261,7 @@ export const templateNoticeText = (notice: TemplatePreviewNotice, context: Struc
     case 'confirmed_kept':
     case 'conflicts':
     case 'arrangement_missing':
+    case 'arrangement_archived':
     case 'times_added':
     case 'already_applied':
       return count !== undefined ? say(context, `templates:notices.${notice.code}`, { count }) : notice.message;

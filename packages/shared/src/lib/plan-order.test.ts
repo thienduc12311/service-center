@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   computePlanSchedule,
+  planItemsTotalSeconds,
   describeItemLeader,
   resolveItemLeader,
   selectServiceTime,
@@ -141,5 +142,19 @@ describe('resolveItemLeader', () => {
     });
     expect(leader).toEqual({ kind: 'person', person_id: 'p1', name: 'Jordan Blake' });
     expect(describeItemLeader(resolveItemLeader({ item: { leader_person_id: null, leader_position_id: null }, assignments: [] }))).toBeNull();
+  });
+});
+
+describe('planItemsTotalSeconds', () => {
+  it('adds every segment and leaves headers out, like the schedule (W10-CD-D3)', () => {
+    const items = [
+      item('h', 999, { item_type: 'header' }),
+      item('pre', 300, { service_segment: 'pre' }),
+      item('a', 600),
+      item('post', 120, { service_segment: 'post' }),
+    ];
+    const schedule = computePlanSchedule({ items, time: null });
+    expect(planItemsTotalSeconds(items)).toBe(1020);
+    expect(schedule.pre_seconds + schedule.service_seconds + schedule.post_seconds).toBe(1020);
   });
 });

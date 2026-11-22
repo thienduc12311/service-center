@@ -142,8 +142,11 @@ export const songScheduleQuerySchema = z.object({
 
 export const chartNotationSchema = z.enum(['chords', 'numbers', 'numerals', 'lyrics']);
 
+/** A key a chart can be transposed to: a root, optional accidental, optional minor (`Bb`, `F#m`). */
+export const chartTargetKey = z.string().trim().regex(/^[A-G](#|b)?m?$/, 'Choose a musical key such as G, Bb or F#m');
+
 export const chartQuerySchema = z.object({
-  to: musicalKey.optional(),
+  to: chartTargetKey.optional(),
   semitones: z.coerce.number().int().min(-11).max(11).optional(),
   notation: chartNotationSchema.default('chords'),
 });
