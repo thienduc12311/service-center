@@ -53,6 +53,8 @@
     "note_stale": "Ghi chú này đã thay đổi kể từ khi bạn mở. Hãy tải phiên bản mới nhất và thử lại.",
     "song_revision_stale": "Bài hát này đã thay đổi kể từ khi bạn mở. Chưa có gì được lưu — hãy tải phiên bản mới nhất và thử lại.",
     "arrangement_revision_stale": "Bản phối này đã thay đổi kể từ khi bạn mở. Chưa có gì được lưu — hãy tải phiên bản mới nhất và thử lại.",
+    "song_in_use": "Bài hát này đang được dùng trong một chương trình nên không thể xóa. Hãy gỡ bài khỏi các chương trình đó hoặc lưu trữ bài hát.",
+    "arrangement_in_use": "Bản phối này đang được dùng trong một chương trình nên không thể xóa. Hãy gỡ bản phối khỏi các chương trình đó trước.",
     "library_changed": "Mục thư viện này đã thay đổi kể từ khi bạn mở. Chưa có gì được lưu — hãy tải lại và thử lại.",
     "attendance_revision_stale": "Người khác đã thay đổi điểm danh cho giờ này. Hãy tải lại để xem điểm danh mới nhất.",
     "audience_changed": "Danh sách người nhận đã thay đổi kể từ lúc xem trước. Chưa có gì được gửi — hãy xem lại.",
