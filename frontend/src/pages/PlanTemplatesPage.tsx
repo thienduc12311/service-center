@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   ApiError,
@@ -14,7 +14,7 @@ import {
   type PlanTimeKind,
 } from '@service-center/shared';
 import { api } from '../lib/api';
-import { useInvalidateOrg, usePeople, usePlanTemplate, usePlanTemplates, useTeams } from '../hooks/queries';
+import { keys, useInvalidateOrg, usePeople, usePlanTemplate, usePlanTemplates, useTeams } from '../hooks/queries';
 import { useUrlBoolean, useUrlPatch } from '../hooks/useUrlState';
 import { groupBy } from '../lib/grouping';
 import { matchesSearch } from '../lib/search';
@@ -95,6 +95,8 @@ const newTemplateTime = (kind: PlanTimeKind): PlanTemplateTime => ({
 const TemplateEditor = ({ template, viewingOld, onOpenTemplate }: TemplateEditorProps) => {
   const { t } = useTranslation(['templates', 'common']);
   const invalidate = useInvalidateOrg();
+  const queryClient = useQueryClient();
+  const { organizationId } = useAuth();
   const names = useTemplateNames();
   const teams = useTeams();
   const people = usePeople();
@@ -130,7 +132,9 @@ const TemplateEditor = ({ template, viewingOld, onOpenTemplate }: TemplateEditor
   });
   const archive = useMutation({
     mutationFn: () => api.archivePlanTemplate(template.id, template.archived_at === null),
-    onSuccess: async () => {
+    onSuccess: async (saved) => {
+      // The open editor turns read-only (or editable again) at once, not after the refetch.
+      queryClient.setQueryData(keys.planTemplate(organizationId, saved.id, null), saved);
       await invalidate();
     },
   });
@@ -150,6 +154,7 @@ const TemplateEditor = ({ template, viewingOld, onOpenTemplate }: TemplateEditor
 
   return (
     <div className="space-y-5">
+      {template.archived_at !== null && !viewingOld && <Notice tone="info">{t('editor.archivedNotice')}</Notice>}
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="template-name">{t('editor.name')}</label>

@@ -321,6 +321,32 @@ describe('authoring content', () => {
   });
 });
 
+describe('archive', () => {
+  it('turns the open editor read-only as soon as the template is archived, and says why', async () => {
+    templates.set('tpl-1', detail('tpl-1', 'Sunday standard', {
+      ...EMPTY,
+      items: [{ item_type: 'item', title: 'Announcements', song_id: null, arrangement_id: null, key_override: null, length_seconds: 60, description: null }],
+    }));
+    vi.mocked(api.archivePlanTemplate).mockImplementation(async (id) => ({ ...templates.get(id)!, archived_at: STAMP }));
+    const user = renderPage('/plans/templates?template=tpl-1');
+    await screen.findByRole('heading', { name: 'Sunday standard' });
+    expect((screen.getByLabelText('Name') as HTMLInputElement).disabled).toBe(false);
+
+    // The reload after archiving never arrives: the editor must not wait for it.
+    vi.mocked(api.planTemplate).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(api.planTemplates).mockImplementation(() => new Promise(() => {}));
+    await user.click(screen.getByRole('button', { name: 'Archive' }));
+
+    expect(await screen.findByText(/This template is archived, so it can’t be changed/)).toBeTruthy();
+    expect(api.archivePlanTemplate).toHaveBeenCalledWith('tpl-1', true);
+    expect((screen.getByLabelText('Name') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Edit Announcements' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Header' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Save/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Restore' })).toBeTruthy();
+  });
+});
+
 describe('duplicate', () => {
   it('copies into another service type, asking before leaving staffing out, then opens the copy', async () => {
     templates.set('tpl-1', detail('tpl-1', 'Sunday standard', { ...EMPTY, needs: [{ position_id: 'pos-keys', needed: 1 }] }, 3));

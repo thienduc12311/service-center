@@ -111,6 +111,7 @@
     "rosterHint": "(becomes prepared, unconfirmed requests)",
     "none": "None.",
     "changedMeanwhile": "Someone saved this template meanwhile. It has been reloaded; make your change again.",
+    "archivedNotice": "This template is archived, so it can’t be changed or used to create plans. Restore it to edit it again.",
     "saveRevision": "Save as revision {{revision}}",
     "saveDetails": "Save details",
     "addTime": "Add time",
