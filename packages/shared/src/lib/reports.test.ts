@@ -239,6 +239,17 @@ describe('formats', () => {
     expect(escapeCsvCell(null)).toBe('');
   });
 
+  it('also neutralises formulas behind leading whitespace, a line break or full-width signs', () => {
+    expect(escapeCsvCell('  =1+1')).toBe("'  =1+1");
+    expect(escapeCsvCell('\n=cmd')).toBe(`"'\n=cmd"`);
+    expect(escapeCsvCell('　@SUM(A1)')).toBe("'　@SUM(A1)");
+    expect(escapeCsvCell('＝1+1')).toBe("'＝1+1");
+    expect(escapeCsvCell('＋1')).toBe("'＋1");
+    // Plain text with a sign later on is left alone.
+    expect(escapeCsvCell('Grace - Sunday')).toBe('Grace - Sunday');
+    expect(escapeCsvCell('  Grace')).toBe('  Grace');
+  });
+
   it('writes filters, timezone, generation time and definitions above the same rows', () => {
     const built = buildSongUsageReport({ filters: filters(), plans, items: [{ plan_id: 'p1', item_id: 'i', song_id: 's', title: '=SUM(A1)', author: null, key: null }] });
     const csv = reportToCsv({
