@@ -1854,6 +1854,11 @@ export type Database = {
         Args: { p_token_hash: string; p_new_user_id: string };
         Returns: AcceptPersonInvitationRow[];
       };
+      /** Service role only: the login whose confirmed email this is, or null. */
+      confirmed_user_id_by_email: {
+        Args: { p_email: string };
+        Returns: string | null;
+      };
       create_guest_person: {
         Args: { p_org: string; p_first_name: string; p_last_name?: string | null; p_email?: string | null };
         Returns: string;
