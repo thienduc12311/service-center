@@ -154,3 +154,19 @@ export const seriesSpanDays = (dates: readonly string[]): number => {
   const sorted = [...dates].sort();
   return localDaysBetween(sorted[0]!, sorted.at(-1)!);
 };
+
+/**
+ * A rule of the chosen frequency, seeded from the first date: weekly every
+ * week, monthly on that date's place ("2nd Sunday"), or on its day of month.
+ * What a form shows when the scheduler switches frequency.
+ */
+export const recurrenceForFrequency = (frequency: PlanSeriesRecurrence['frequency'], startDate: string): PlanSeriesRecurrence => {
+  switch (frequency) {
+    case 'weekly':
+      return { frequency: 'weekly', interval_weeks: 1 };
+    case 'monthly_weekday':
+      return { frequency: 'monthly_weekday', ordinal: ordinalOf(startDate), weekday: weekdayOf(startDate) };
+    case 'monthly_day':
+      return { frequency: 'monthly_day', day_of_month: partsOf(startDate).day, short_month: 'skip' };
+  }
+};

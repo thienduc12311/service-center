@@ -2,10 +2,9 @@ import { useTranslation } from 'react-i18next';
 import {
   MAX_GENERATED_PLANS,
   RECURRENCE_ORDINALS,
-  ordinalOf,
   planSeriesSummaryText,
+  recurrenceForFrequency,
   weekdayNames,
-  weekdayOf,
   type PlanSeriesEnd,
   type PlanSeriesRecurrence,
   type RecurrenceOrdinal,
@@ -32,18 +31,6 @@ export interface RecurrenceFieldsProps {
   /** The service type the default came from, for the hint under the rule. */
   serviceTypeName?: string | null;
 }
-
-/** A rule of a new frequency, seeded from the first date ("2nd Sunday", "day 9"). */
-export const recurrenceFor = (frequency: Frequency, startDate: string): PlanSeriesRecurrence => {
-  switch (frequency) {
-    case 'weekly':
-      return { frequency: 'weekly', interval_weeks: 1 };
-    case 'monthly_weekday':
-      return { frequency: 'monthly_weekday', ordinal: ordinalOf(startDate), weekday: weekdayOf(startDate) };
-    case 'monthly_day':
-      return { frequency: 'monthly_day', day_of_month: Number(startDate.slice(8, 10)), short_month: 'skip' };
-  }
-};
 
 /**
  * How generated plans repeat and when they stop: weekly every 1–8 weeks,
@@ -72,7 +59,7 @@ export const RecurrenceFields = ({
           id="gen-frequency"
           className="input"
           value={recurrence.frequency}
-          onChange={(event) => onRecurrenceChange(recurrenceFor(event.target.value as Frequency, startDate))}
+          onChange={(event) => onRecurrenceChange(recurrenceForFrequency(event.target.value as Frequency, startDate))}
         >
           {FREQUENCIES.map((frequency) => <option key={frequency} value={frequency}>{t(FREQUENCY_LABEL[frequency])}</option>)}
         </select>

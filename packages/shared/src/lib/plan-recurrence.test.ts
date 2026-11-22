@@ -8,6 +8,7 @@ import {
   nthWeekdayOfMonth,
   ordinalOf,
   recurrenceDates,
+  recurrenceForFrequency,
   seriesHorizon,
   seriesRecurrence,
   weekdayOf,
@@ -115,6 +116,12 @@ describe('default recurrence', () => {
     expect(defaultRecurrence('monthly', '2027-05-30')).toEqual({ frequency: 'monthly_weekday', ordinal: 'last', weekday: SUNDAY });
     expect(defaultRecurrence('occasionally', '2027-05-09')).toEqual(weekly(1));
     expect(defaultRecurrence(null, '2027-05-09')).toEqual(weekly(1));
+  });
+
+  it('seeds a newly chosen frequency from the first date', () => {
+    expect(recurrenceForFrequency('weekly', '2027-05-30')).toEqual(weekly(1));
+    expect(recurrenceForFrequency('monthly_weekday', '2027-05-30')).toEqual({ frequency: 'monthly_weekday', ordinal: 'last', weekday: SUNDAY });
+    expect(recurrenceForFrequency('monthly_day', '2027-05-09')).toEqual({ frequency: 'monthly_day', day_of_month: 9, short_month: 'skip' });
   });
 
   it('reads an older weekly request', () => {
