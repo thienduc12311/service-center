@@ -76,7 +76,8 @@
     "join_request_not_pending": "This request was already decided or withdrawn. Reload to see where it stands.",
     "requester_already_member": "This person is already part of the church. Decline the request to clear it.",
     "password_required": "Choose a password to create your account.",
-    "account_unconfirmed": "An account with this email exists but its email address hasn’t been confirmed. Confirm it from the sign-up email, then open this invitation again."
+    "account_unconfirmed": "An account was started with this email but never confirmed. Use “Forgot password” on the sign-in page to take it over, then open this invitation again.",
+    "invitation_sign_in_required": "Sign in with the account for this email, then open this invitation again to join."
   },
   "validation": {
     "required": "This field is required.",

@@ -12,6 +12,12 @@ import request from 'supertest';
 interface CreateUserCall {
   email: string;
   password: string;
+  email_confirm: boolean;
+}
+
+interface ResendCall {
+  type: string;
+  email: string;
 }
 
 interface AcceptCall {
@@ -30,6 +36,10 @@ interface Fixture {
   lookups: string[];
   createUserError: AuthErrorFake | null;
   createUserCalls: CreateUserCall[];
+  /** Access token -> user id the fake Auth server accepts. */
+  sessions: Record<string, string>;
+  resendError: AuthErrorFake | null;
+  resendCalls: ResendCall[];
   acceptCalls: AcceptCall[];
   profileReads: number;
 }
@@ -44,6 +54,9 @@ const fixture = vi.hoisted((): Fixture => {
     lookups: [],
     createUserError: null,
     createUserCalls: [],
+    sessions: {},
+    resendError: null,
+    resendCalls: [],
     acceptCalls: [],
     profileReads: 0,
   };
@@ -91,11 +104,20 @@ vi.mock('../lib/supabase.js', async (importOriginal) => {
     throw new Error(`unexpected rpc ${fn}`);
   };
   const createUser = (input: CreateUserCall) => {
-    fixture.createUserCalls.push({ email: input.email, password: input.password });
+    fixture.createUserCalls.push({ email: input.email, password: input.password, email_confirm: input.email_confirm });
     if (fixture.createUserError) return Promise.resolve({ data: { user: null }, error: fixture.createUserError });
     return Promise.resolve({ data: { user: { id: 'new-user' } }, error: null });
   };
-  return { ...actual, adminDb: { from, rpc, auth: { admin: { createUser } } } };
+  const getUser = (token: string) => {
+    const id = fixture.sessions[token];
+    if (!id) return Promise.resolve({ data: { user: null }, error: { name: 'AuthApiError', status: 401, message: 'bad jwt' } });
+    return Promise.resolve({ data: { user: { id, email: 'whoever@example.test', banned_until: null } }, error: null });
+  };
+  const resend = (input: ResendCall) => {
+    fixture.resendCalls.push({ type: input.type, email: input.email });
+    return Promise.resolve({ data: {}, error: fixture.resendError });
+  };
+  return { ...actual, adminDb: { from, rpc, auth: { getUser, resend, admin: { createUser } } } };
 });
 
 let app: Express;
@@ -114,14 +136,18 @@ beforeEach(() => {
   fixture.lookups = [];
   fixture.createUserError = null;
   fixture.createUserCalls = [];
+  fixture.sessions = {};
+  fixture.resendError = null;
+  fixture.resendCalls = [];
   fixture.acceptCalls = [];
   fixture.profileReads = 0;
 });
 
 describe('POST /api/v1/invitations/:token/accept', () => {
-  it('links the login whose confirmed auth email matches, without reading profiles', async () => {
+  it('links an existing confirmed login only from its own session, without reading profiles', async () => {
     fixture.confirmedUserId = 'existing-user';
-    const res = await request(app).post('/api/v1/invitations/tok/accept').send({});
+    fixture.sessions = { 'existing-token': 'existing-user' };
+    const res = await request(app).post('/api/v1/invitations/tok/accept').set('Authorization', 'Bearer existing-token').send({});
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ email: INVITATION.email, linked_existing_account: true });
     expect(fixture.lookups).toEqual([INVITATION.email]);
@@ -130,13 +156,48 @@ describe('POST /api/v1/invitations/:token/accept', () => {
     expect(fixture.profileReads).toBe(0);
   });
 
-  it('creates a new account when no confirmed login has the email', async () => {
+  // SEC-002: the inviter can see the link, so the token alone must not attach someone's account.
+  it('refuses to link an existing login for a caller who is not signed in to it', async () => {
+    fixture.confirmedUserId = 'existing-user';
+    const res = await request(app).post('/api/v1/invitations/tok/accept').send({ password: 'long-enough-pw' });
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('invitation_sign_in_required');
+    expect(fixture.acceptCalls).toEqual([]);
+    expect(fixture.createUserCalls).toEqual([]);
+  });
+
+  it('refuses to link an existing login for someone signed in as a different account', async () => {
+    fixture.confirmedUserId = 'existing-user';
+    fixture.sessions = { 'inviter-token': 'inviter' };
+    const res = await request(app).post('/api/v1/invitations/tok/accept').set('Authorization', 'Bearer inviter-token').send({});
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('invitation_sign_in_required');
+    expect(fixture.acceptCalls).toEqual([]);
+  });
+
+  it('rejects a stale session instead of treating it as signed out', async () => {
+    fixture.confirmedUserId = 'existing-user';
+    const res = await request(app).post('/api/v1/invitations/tok/accept').set('Authorization', 'Bearer expired').send({});
+    expect(res.status).toBe(401);
+    expect(fixture.acceptCalls).toEqual([]);
+  });
+
+  // SEC-002: an account made from a link must not count as owning the address.
+  it('creates a new account with its email unconfirmed and sends the confirmation email', async () => {
     const res = await request(app).post('/api/v1/invitations/tok/accept').send({ password: 'long-enough-pw' });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ email: INVITATION.email, linked_existing_account: false });
-    expect(fixture.createUserCalls).toEqual([{ email: INVITATION.email, password: 'long-enough-pw' }]);
+    expect(fixture.createUserCalls).toEqual([{ email: INVITATION.email, password: 'long-enough-pw', email_confirm: false }]);
+    expect(fixture.resendCalls).toEqual([{ type: 'signup', email: INVITATION.email }]);
     expect(fixture.acceptCalls.map((call) => call.p_new_user_id)).toEqual(['new-user']);
     expect(fixture.profileReads).toBe(0);
+  });
+
+  it('still joins when the confirmation email could not be sent', async () => {
+    fixture.resendError = { message: 'rate limited', code: 'over_email_send_rate_limit' };
+    const res = await request(app).post('/api/v1/invitations/tok/accept').send({ password: 'long-enough-pw' });
+    expect(res.status).toBe(200);
+    expect(fixture.acceptCalls.map((call) => call.p_new_user_id)).toEqual(['new-user']);
   });
 
   it('asks for a password when there is no confirmed login to link', async () => {
@@ -152,5 +213,6 @@ describe('POST /api/v1/invitations/:token/accept', () => {
     expect(res.status).toBe(409);
     expect(res.body.code).toBe('account_unconfirmed');
     expect(fixture.acceptCalls).toEqual([]);
+    expect(fixture.resendCalls).toEqual([]);
   });
 });

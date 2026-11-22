@@ -7,11 +7,15 @@ import { HttpError } from '../lib/errors.js';
 import { hashInviteToken } from '../services/invitations.js';
 import { findConfirmedUserIdByEmail } from '../services/auth-users.js';
 import { personDisplayName } from '../model/people.js';
+import { optionalSessionUserId } from '../middleware/auth.js';
+import { config } from '../config.js';
 
 /**
- * Fully public — the caller has no session yet. Token possession is the
- * only authorisation check, mirroring how the service-role client is used
- * elsewhere for auth-admin work a signed-in user genuinely can't do itself.
+ * Public — the caller usually has no session yet. The token authorises
+ * joining as the invited Person, but not proof of the inbox: the inviter can
+ * see the link. So an existing login must accept from its own session, and a
+ * login created here keeps its email unconfirmed until the inbox owner
+ * confirms it.
  */
 export const invitationAcceptRouter: Router = Router();
 
@@ -27,6 +31,57 @@ const loadLiveInvitation = async (token: string) => {
     throw new HttpError(410, 'This invitation has expired', 'invitation_expired');
   }
   return invitation;
+};
+
+/** The invitation fields an account is created from. */
+interface InvitationForAccount {
+  email: string;
+  person_id: string;
+}
+
+/**
+ * A new login for the invited address, with its email left **unconfirmed**:
+ * whoever holds the link chose the password, but only the inbox owner can
+ * confirm it (Supabase sends the confirmation email). Until then the account
+ * never counts as owning the address — not for linking later invitations, join
+ * requests or super-admin invitations — and, with confirmations on, it cannot
+ * sign in.
+ */
+const createUnconfirmedAccount = async (invitation: InvitationForAccount, password: string | undefined): Promise<string> => {
+  if (!password) throw new HttpError(422, 'Choose a password to create your account', 'password_required');
+  const person = await unwrapOne(
+    adminDb.from('people').select('first_name, last_name').eq('id', invitation.person_id).single(),
+  );
+  const { data, error } = await adminDb.auth.admin.createUser({
+    email: invitation.email,
+    password,
+    email_confirm: false,
+    user_metadata: { full_name: personDisplayName(person) },
+  });
+  if (error?.code === 'email_exists') {
+    // An unconfirmed signup already holds this address, with a password chosen
+    // by whoever started it. Never link it: the inbox owner takes it over with
+    // a password reset (which also confirms the email), then accepts.
+    throw new HttpError(
+      409,
+      'An account was started with this email but never confirmed. Use “Forgot password” on the sign-in page to take it over, then open this invitation again.',
+      'account_unconfirmed',
+    );
+  }
+  if (error || !data.user) {
+    console.error(`[invite] creating the account failed (${error?.code ?? 'no user'})`);
+    throw new HttpError(502, 'Could not create the account; try again');
+  }
+
+  const { error: mailError } = await adminDb.auth.resend({
+    type: 'signup',
+    email: invitation.email,
+    options: { emailRedirectTo: config.APP_URL },
+  });
+  // The account stays usable for a reset-password confirmation, so a failed
+  // send (rate limit, confirmations off) is logged, not fatal.
+  if (mailError) console.error(`[invite] sending the confirmation email failed (${mailError.code ?? mailError.status ?? 'unknown'})`);
+  return data.user.id;
 };
 
 invitationAcceptRouter.get('/:token', async (req, res) => {
@@ -64,34 +119,20 @@ invitationAcceptRouter.post(
     // email between the preview call and this submission.
     const existingUserId = await findConfirmedUserIdByEmail(invitation.email);
 
-    const userId = existingUserId
-      ? existingUserId
-      : await (async () => {
-          // A new account needs a password; an existing one is only linked.
-          if (!password) throw new HttpError(422, 'Choose a password to create your account', 'password_required');
-          const person = await unwrapOne(
-            adminDb.from('people').select('first_name, last_name').eq('id', invitation.person_id).single(),
-          );
-          const { data, error } = await adminDb.auth.admin.createUser({
-            email: invitation.email,
-            password,
-            email_confirm: true,
-            user_metadata: { full_name: personDisplayName(person) },
-          });
-          if (error?.code === 'email_exists') {
-            // An unconfirmed signup holds this address. Its password was chosen
-            // by whoever signed up, so it is not linked; its owner confirms it first.
-            throw new HttpError(
-              409,
-              'An account with this email exists but its email address hasn’t been confirmed. Confirm it from the sign-up email, then open this invitation again.',
-              'account_unconfirmed',
-            );
-          }
-          if (error || !data.user) {
-            throw new HttpError(502, `Could not create the account: ${error?.message ?? 'unknown error'}`);
-          }
-          return data.user.id;
-        })();
+    // The inviter sees this link too (to share it by text), so holding the
+    // token proves nothing about who owns the account or the inbox. An
+    // existing login joins only from its own session. 403, not 401: the
+    // clients sign out on 401, and a caller signed in as someone else should
+    // not be signed out by opening a link.
+    if (existingUserId && (await optionalSessionUserId(req)) !== existingUserId) {
+      throw new HttpError(
+        403,
+        'Sign in with the account for this email, then open this invitation again to join.',
+        'invitation_sign_in_required',
+      );
+    }
+
+    const userId = existingUserId ?? (await createUnconfirmedAccount(invitation, password));
 
     // Links the login to the invited Person; their existing assignments,
     // answers and respond links follow (same ids). Conflicts stop here.

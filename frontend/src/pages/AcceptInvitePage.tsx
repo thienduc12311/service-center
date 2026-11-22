@@ -18,7 +18,8 @@ type Stage =
   | 'invalid'
   | 'expired'
   | 'already-used'
-  | 'existing-account'
+  | 'sign-in-required'
+  | 'confirm-email'
   | 'success';
 
 type FailedStage = Extract<Stage, 'invalid' | 'expired' | 'already-used'>;
@@ -104,17 +105,24 @@ export const AcceptInvitePage = () => {
     setError(null);
     try {
       const result = await api.acceptInvitation(token, { password });
-      if (result.linked_existing_account) {
-        setStage('existing-account');
-        return;
-      }
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: result.email,
         password,
       });
+      // A login made from an invitation link stays unconfirmed until the inbox
+      // owner opens the confirmation email (SEC-002).
+      if (signInError?.code === 'email_not_confirmed') {
+        setStage('confirm-email');
+        return;
+      }
       if (signInError) throw signInError;
       navigate('/', { replace: true });
     } catch (err) {
+      // The address already has a login: it joins from its own session.
+      if (err instanceof ApiError && err.code === 'invitation_sign_in_required') {
+        setStage('sign-in-required');
+        return;
+      }
       setError(localizeAuthError(err, 'signIn'));
     } finally {
       setBusy(false);
@@ -158,12 +166,29 @@ export const AcceptInvitePage = () => {
         </div>
       )}
 
-      {stage === 'existing-account' && (
+      {stage === 'sign-in-required' && (
+        <div className="card flex flex-col items-center gap-3 p-8 text-center text-sm text-slate-600 dark:text-slate-300">
+          <span className="grid size-11 place-items-center rounded-2xl bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-600/15 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/25">
+            <Icon name="alert" className="size-5" />
+          </span>
+          {t('invite.existingAccount')}
+          {/* Back here after signing in, where the signed-in join button takes over. */}
+          <Button
+            size="lg"
+            className="mt-2 w-full"
+            onClick={() => navigate('/login', { state: { from: `/accept-invite?token=${encodeURIComponent(token ?? '')}` } })}
+          >
+            {t('invite.goToSignIn')}
+          </Button>
+        </div>
+      )}
+
+      {stage === 'confirm-email' && (
         <div className="card flex flex-col items-center gap-3 p-8 text-center text-sm text-slate-600 dark:text-slate-300">
           <span className="grid size-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25">
             <Icon name="check" className="size-5" />
           </span>
-          {preview ? t('invite.joinedExisting', { organization: preview.organization_name }) : t('invite.existingAccount')}
+          {t('invite.confirmEmail', { email: preview?.email ?? '' })}
           <Button size="lg" className="mt-2 w-full" onClick={() => navigate('/login')}>{t('invite.goToSignIn')}</Button>
         </div>
       )}
