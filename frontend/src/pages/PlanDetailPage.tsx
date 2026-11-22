@@ -42,6 +42,7 @@ import { AddItemModal } from '../components/plan/AddItemModal';
 import { SongBrowserPanel } from '../components/plan/SongBrowserPanel';
 import { INSERT_AT_END, advanceInsertPoint, type OrderInsertPoint } from '../components/plan/insertPoint';
 import { EditItemModal } from '../components/plan/EditItemModal';
+import { useOptimisticReorder } from '../components/plan/useOrderMutations';
 import { PrintOrderModal } from '../components/plan/PrintOrderModal';
 import { SchedulePeopleModal } from '../components/plan/SchedulePeopleModal';
 import { EditTimesModal } from '../components/plan/EditTimesModal';
@@ -155,11 +156,8 @@ export const PlanDetailPage = () => {
 
   // F11: order changes carry the revision they were made against; a stale
   // one is refused, and the refreshed order is shown instead.
-  const reorder = useMutation({
-    mutationFn: ({ itemIds, revision }: { itemIds: string[]; revision: number }) =>
-      api.reorderPlanItems(planId!, itemIds, revision),
-    onSettled: invalidate,
-  });
+  // Shown at once and rolled back if the save fails (drag-and-drop and the arrows).
+  const reorder = useOptimisticReorder(planId ?? '');
 
   const removeItem = useMutation({
     mutationFn: ({ itemId, revision }: { itemId: string; revision: number }) =>
@@ -312,6 +310,10 @@ export const PlanDetailPage = () => {
   const move = (index: number, direction: -1 | 1) => {
     const ids = movedItemIds(detail.items.map((item) => item.id), index, direction);
     if (!ids || orderBusy) return;
+    reorder.mutate({ itemIds: ids, revision: detail.content_revision });
+  };
+  const reorderTo = (ids: string[]) => {
+    if (orderBusy) return;
     reorder.mutate({ itemIds: ids, revision: detail.content_revision });
   };
 
@@ -501,6 +503,7 @@ export const PlanDetailPage = () => {
                 insertPoint={songBrowserOpen ? songInsertPoint : null}
                 onEditItem={(item) => setEditingItemId(item.id)}
                 onMoveItem={move}
+                onReorderItems={reorderTo}
                 onRemoveItem={confirmRemove}
                 onPrint={() => setDialog('print-order')}
                 onDiscussItem={(item) => setDiscussingId(item.id)}

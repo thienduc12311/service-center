@@ -111,3 +111,20 @@ export const itemIdsAfterDrop = (ids: readonly string[], activeId: string, overI
   next.splice(to, 0, activeId);
   return next;
 };
+
+/** What `itemsInOrder` needs from an item. */
+export interface OrderedItem {
+  id: string;
+  sort_order: number;
+}
+
+/**
+ * The items rearranged to `ids` with `sort_order` renumbered from 0, for an
+ * optimistic order on screen. Returns the items unchanged when `ids` is not
+ * exactly the same set of items.
+ */
+export const itemsInOrder = <T extends OrderedItem>(items: readonly T[], ids: readonly string[]): T[] => {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  if (ids.length !== items.length || new Set(ids).size !== ids.length || ids.some((id) => !byId.has(id))) return [...items];
+  return ids.map((id, index) => ({ ...byId.get(id)!, sort_order: index }));
+};

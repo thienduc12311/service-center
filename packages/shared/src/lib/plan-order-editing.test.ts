@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createPlanItemSchema } from '../schemas/plan.js';
-import { itemIdsAfterDrop, parseQuickAddLine, quickAddRequest, type QuickAddEntry } from './plan-order-editing.js';
+import { itemIdsAfterDrop, itemsInOrder, parseQuickAddLine, quickAddRequest, type QuickAddEntry } from './plan-order-editing.js';
 
 const item = (title: string, lengthSeconds: number | null): QuickAddEntry => ({ itemType: 'item', title, lengthSeconds });
 
@@ -108,5 +108,27 @@ describe('itemIdsAfterDrop', () => {
   it('does not change the order it was given', () => {
     itemIdsAfterDrop(ids, 'a', 'd');
     expect(ids).toEqual(['a', 'b', 'c', 'd']);
+  });
+});
+
+describe('itemsInOrder', () => {
+  const items = [
+    { id: 'a', sort_order: 0, title: 'A' },
+    { id: 'b', sort_order: 1, title: 'B' },
+    { id: 'c', sort_order: 5, title: 'C' },
+  ];
+
+  it('rearranges the items and renumbers their positions', () => {
+    expect(itemsInOrder(items, ['c', 'a', 'b'])).toEqual([
+      { id: 'c', sort_order: 0, title: 'C' },
+      { id: 'a', sort_order: 1, title: 'A' },
+      { id: 'b', sort_order: 2, title: 'B' },
+    ]);
+  });
+
+  it('keeps the order when the ids are not the same set of items', () => {
+    expect(itemsInOrder(items, ['a', 'b'])).toEqual(items);
+    expect(itemsInOrder(items, ['a', 'b', 'x'])).toEqual(items);
+    expect(itemsInOrder(items, ['a', 'a', 'b'])).toEqual(items);
   });
 });
