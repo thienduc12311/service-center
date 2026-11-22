@@ -71,6 +71,12 @@ export const updatePlanSchema = createPlanSchema
     notify: z.boolean().default(true),
     /** Reused on a retried publish so it never asks twice. */
     idempotency_key: idempotencyKey.optional(),
+    /**
+     * W10-CD-D1: a time change that double-books someone is a 409
+     * `scheduling_conflict` unless the caller may override conflicts and
+     * gives this reason (recorded in assignment_conflict_overrides).
+     */
+    conflict_override_reason: conflictOverrideReason.nullish(),
   });
 
 /** "Same as last week": a new draft plan copied from an existing one. */

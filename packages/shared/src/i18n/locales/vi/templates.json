@@ -32,7 +32,7 @@
     "date_taken": "Đã có một chương trình {{serviceType}} khác vào {{date}}.",
     "date_taken_noType": "Đã có một chương trình khác cùng loại buổi nhóm vào {{date}}.",
     "confirmed_kept_other": "{{count}} câu trả lời đã xác nhận vẫn giữ nguyên cho ngày mới.",
-    "conflicts_other": "Có {{count}} trường hợp trùng giữa người và chương trình ở giờ mới; hệ thống không từ chối.",
+    "conflicts_other": "Có {{count}} trường hợp trùng giữa người và chương trình ở giờ mới. Không thể lưu trừ khi bạn có quyền bỏ qua xung đột và ghi lý do.",
     "itemDiscussionRemoved": {
       "moved_other": "{{count}} mục được chuyển có ghi chú hoặc bình luận; những nội dung này ở lại với mục cũ và bị xóa.",
       "destination_other": "{{count}} mục ở chương trình đích có ghi chú hoặc bình luận sẽ bị xóa cùng với mục.",
