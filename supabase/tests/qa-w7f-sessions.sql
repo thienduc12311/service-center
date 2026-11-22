@@ -4,8 +4,8 @@
 --   B. public.api_pre_request() (PostgREST hook): no-op for a live session or
 --      a session-less token, 401 (PT401) for an ended session.
 --   C. storage.objects: the restrictive "session must be live" policy hides
---      even a publicly readable object from an ended session; a live session
---      and the service role still read it.
+--      even an object the user may read (their church's logo) from an ended
+--      session; a live session and the service role still read it.
 -- Everything rolls back.
 --   docker exec -i supabase_db_service-center psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/qa-w7f-sessions.sql
 begin;
@@ -27,6 +27,12 @@ insert into auth.sessions (id, user_id, created_at, updated_at, not_after)
 select l.id, u.id, now(), now(), now() - interval '1 minute' from sx l, sx u where l.k = 'expired' and u.k = 'user';
 -- 'ended' has no auth.sessions row: that is what a global sign-out leaves.
 
+-- The user belongs to the church whose logo folder this is, so the object is
+-- readable to them (SEC-010 limits logo rows to the folder's members).
+insert into public.organizations (id, name, slug, timezone)
+select id, 'W7F Sessions', 'w7f-sessions-' || left(id::text, 8), 'America/Toronto' from sx where k = 'object';
+insert into public.organization_members (organization_id, user_id, role, status)
+select o.id, u.id, 'member', 'active' from sx o, sx u where o.k = 'object' and u.k = 'user';
 insert into storage.objects (bucket_id, name, owner_id) values ('organization-logos', (select id from sx where k = 'object') || '/logo.png', null);
 
 create or replace function pg_temp.claims_for(p_session text) returns text language sql stable as $$
@@ -74,7 +80,7 @@ select pg_temp.check(true, 'B3 anon passes the hook');
 reset role;
 set local role authenticated;
 select pg_temp.as_session('live');
-select pg_temp.check((select count(*) from storage.objects where bucket_id = 'organization-logos') >= 1, 'C1 live session reads the public logo object');
+select pg_temp.check((select count(*) from storage.objects where bucket_id = 'organization-logos') >= 1, 'C1 live session reads its church''s logo object');
 select pg_temp.as_session('ended');
 select pg_temp.check((select count(*) from storage.objects where bucket_id = 'organization-logos') = 0, 'C2 ended session reads no storage object');
 reset role;
