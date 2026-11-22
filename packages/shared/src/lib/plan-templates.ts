@@ -12,11 +12,9 @@ import type {
   PlanTemplateTime,
   TemplateTimeProblem,
 } from '../types/plan-templates.js';
-import type { AmbiguousTimeChoice, GenerationDateEdit } from '../schemas/plan-templates.js';
+import type { AmbiguousTimeChoice, GenerationDateEdit, PlanSeriesRecurrence } from '../schemas/plan-templates.js';
 import { addLocalDays, localDateAt, localDaysBetween, possibleInstantsForLocalDateTime } from './timezone.js';
-
-/** One generation batch is created in a single transaction, so it stays small. */
-export const MAX_GENERATED_PLANS = 12;
+import { MAX_GENERATED_PLANS, MAX_SERIES_SPAN_DAYS, recurrenceDates, seriesHorizon, seriesSpanDays } from './plan-recurrence.js';
 
 export interface ResolvedTemplateTime {
   starts_at: string;
@@ -88,7 +86,7 @@ export const isAmbiguousLocalTime = (localDate: string, localTime: string, timeZ
 
 export interface PlanSeriesExpansionInput {
   start_date: string;
-  interval_weeks: number;
+  recurrence: PlanSeriesRecurrence;
   count: number;
   end_date?: string | undefined;
   excluded_dates: readonly string[];
@@ -111,11 +109,16 @@ export interface PlanSeriesExpansion {
 }
 
 /**
- * Weekly local dates: `count` occurrences every `interval_weeks` weeks from
- * `start_date`, stopping at `end_date`. Excluded dates (holidays) and skipped
- * dates are listed, not silently dropped, and do not count toward `count`'s
- * cap of {@link MAX_GENERATED_PLANS} created plans. Calendar arithmetic only:
- * a week is seven civil days, never 168 hours.
+ * Local dates of a series (see `recurrenceDates`): `count` plans, stopping
+ * at `end_date`. Excluded dates (holidays) and skipped dates are listed, not
+ * silently dropped, and do not count toward `count`. Calendar arithmetic
+ * only: a week is seven civil days, never 168 hours.
+ *
+ * Bounds are reported as problems rather than silently cut: an end date
+ * that would need more than {@link MAX_GENERATED_PLANS} plans
+ * (`too_many_dates`), a count the two-year range cannot fit
+ * (`series_too_long`), and a move outside that range (`move_out_of_range`).
+ * Proposed dates come back in date order, moves included.
  */
 export const expandPlanSeries = (input: PlanSeriesExpansionInput): PlanSeriesExpansion => {
   const excludedSet = new Set(input.excluded_dates);
@@ -124,10 +127,23 @@ export const expandPlanSeries = (input: PlanSeriesExpansionInput): PlanSeriesExp
   const excluded: GenerationExcludedDate[] = [];
   const problems: GenerationDateProblem[] = [];
   const count = Math.min(input.count, MAX_GENERATED_PLANS);
+  const horizon = seriesHorizon(input.start_date);
+  const last = input.end_date && input.end_date < horizon ? input.end_date : horizon;
+  let full = false;
 
-  for (let step = 0; dates.length < count && step < 104; step += 1) {
-    const seriesDate = addLocalDays(input.start_date, step * input.interval_weeks * 7);
-    if (input.end_date && seriesDate > input.end_date) break;
+  for (const seriesDate of recurrenceDates(input.start_date, input.recurrence, last)) {
+    if (dates.length === count) {
+      full = true;
+      // "Until a date" asks for every date up to it; the cap, not the end date, stopped the list.
+      if (input.end_date && input.count >= MAX_GENERATED_PLANS) {
+        problems.push({
+          local_date: seriesDate,
+          message: `More than ${MAX_GENERATED_PLANS} plans fall before ${input.end_date}. Choose an earlier end date.`,
+          problem: { code: 'too_many_dates', max: MAX_GENERATED_PLANS, local_date: seriesDate, end_date: input.end_date },
+        });
+      }
+      break;
+    }
     if (excludedSet.has(seriesDate)) {
       excluded.push({ local_date: seriesDate, reason: 'excluded' });
       continue;
@@ -142,6 +158,23 @@ export const expandPlanSeries = (input: PlanSeriesExpansionInput): PlanSeriesExp
       local_date: edit?.move_to ?? seriesDate,
       title: edit?.title ?? input.default_title,
     });
+  }
+  if (!full && dates.length < count && (!input.end_date || input.end_date > horizon)) {
+    problems.push({
+      local_date: horizon,
+      message: `Plans must fall within two years of the first date (by ${horizon}). Choose fewer plans.`,
+      problem: { code: 'series_too_long', latest_date: horizon },
+    });
+  }
+  if (seriesSpanDays(dates.map((date) => date.local_date)) > MAX_SERIES_SPAN_DAYS) {
+    for (const date of dates) {
+      if (date.local_date >= input.start_date && date.local_date <= horizon) continue;
+      problems.push({
+        local_date: date.local_date,
+        message: `${date.local_date} is more than two years from the other plans.`,
+        problem: { code: 'move_out_of_range', series_date: date.series_date, local_date: date.local_date },
+      });
+    }
   }
 
   const seen = new Map<string, string>();
@@ -168,6 +201,7 @@ export const expandPlanSeries = (input: PlanSeriesExpansionInput): PlanSeriesExp
   if (dates.length === 0) {
     problems.push({ local_date: input.start_date, message: 'The series produces no dates.', problem: { code: 'no_dates' } });
   }
+  dates.sort((a, b) => (a.local_date < b.local_date ? -1 : a.local_date > b.local_date ? 1 : 0));
   return { dates, excluded, problems };
 };
 

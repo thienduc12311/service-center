@@ -85,6 +85,8 @@ const PT409_HINTS: Record<string, string> = {
   run_control_held: 'run_control_held',
   run_exists: 'run_exists',
   run_state: 'run_state_invalid',
+  // Clearing the order while the plan runs live.
+  live_run_active: 'live_run_active',
   import_changed: 'import_changed',
   library_changed: 'library_changed',
   song_revision_stale: 'song_revision_stale',

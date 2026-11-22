@@ -8,6 +8,11 @@ describe('buildPlanItemPatch', () => {
     expect(buildPlanItemPatch({ key_override: 'D', sequence_override: null }, song)).toEqual({ key_override: 'D', sequence_override: null });
   });
 
+  it('passes details and the service-time list through unchanged', () => {
+    expect(buildPlanItemPatch({ details: '## Cue', time_ids: ['t1'] }, song)).toEqual({ details: '## Cue', time_ids: ['t1'] });
+    expect(buildPlanItemPatch({ details: null, time_ids: [] }, song)).toEqual({ details: null, time_ids: [] });
+  });
+
   it('drops the old song’s arrangement and sequence when the song changes, unless new ones are sent', () => {
     expect(buildPlanItemPatch({ song_id: 's2' }, song)).toEqual({ song_id: 's2', arrangement_id: null, sequence_override: null });
     expect(buildPlanItemPatch({ song_id: 's2', arrangement_id: 'a2' }, song)).toEqual({ song_id: 's2', arrangement_id: 'a2', sequence_override: null });

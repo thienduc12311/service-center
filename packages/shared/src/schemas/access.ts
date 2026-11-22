@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { idempotencyKey, nonEmpty, uuid } from './common.js';
+import { planRecurrenceSchema } from './service-type.js';
 
 export const accessCapabilitySchema = z.enum([
   'plans.edit',
@@ -87,8 +88,16 @@ export const archiveServiceTypeSchema = z.object({ archived: z.boolean() });
 
 export const copyServiceTypeSchema = z.object({
   name: nonEmpty.max(120),
-  /** Copy which teams serve it (never people or grants). */
+  /** Copy which teams serve it (never people or grants). Ignored when `team_ids` is sent. */
   include_teams: z.boolean().default(true),
+  /** Omitted: the source's. Null or blank: no description. */
+  description: z.string().trim().max(500).nullish(),
+  /** Omitted: the source's frequency. */
+  recurrence: planRecurrenceSchema.optional(),
+  /** Omitted: the source's folder. Null: no folder. Another folder is admin-only. */
+  folder_id: uuid.nullish(),
+  /** Exactly the teams that also serve the copy (overrides `include_teams`). */
+  team_ids: z.array(uuid).max(200).optional(),
 });
 
 export const serviceTypeTeamsSchema = z.object({ team_ids: z.array(uuid).max(200) });

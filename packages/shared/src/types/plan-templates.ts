@@ -34,6 +34,8 @@ export interface PlanTemplateItem {
   key_override: string | null;
   length_seconds: number;
   description: string | null;
+  /** A media item's bundle; only media items carry it. */
+  media_id?: string | null;
 }
 
 export interface PlanTemplateNeed {
@@ -148,6 +150,25 @@ export interface PlanTemplateDetail extends PlanTemplateSummary {
 export interface PlanTemplateSaveResult {
   template_id: string;
   revision: number;
+}
+
+/** API error code: a copy would leave out staffing that does not apply to its service type. */
+export const TEMPLATE_COPY_UNAVAILABLE = 'template_copy_unavailable';
+
+/** How many needed positions and roster entries do not apply to a copy's service type. */
+export interface PlanTemplateUnavailableCounts {
+  needs: number;
+  roster: number;
+}
+
+/**
+ * `duplicate_plan_template`: the new template, or (template_id null) nothing
+ * written because `unavailable` entries need the caller's agreement first.
+ */
+export interface PlanTemplateDuplicateResult {
+  template_id: string | null;
+  revision: number | null;
+  unavailable: PlanTemplateUnavailableCounts;
 }
 
 /** Values behind a notice's English `message` (see the notice's `code`). */
@@ -302,6 +323,12 @@ export type TemplateTimeProblem =
   /** An edit names a date the series does not produce. */
   | { code: 'edit_not_in_series'; local_date: string }
   | { code: 'no_dates' }
+  /** "Until a date" would need more than `max` plans; `local_date` is the first one left over. */
+  | { code: 'too_many_dates'; max: number; local_date: string; end_date: string }
+  /** The requested count does not fit within two years of the first date. */
+  | { code: 'series_too_long'; latest_date: string }
+  /** A date was moved more than two years away from the rest of the series. */
+  | { code: 'move_out_of_range'; series_date: string; local_date: string }
   /** Rescheduling: the service time does not exist on the new date. */
   | { code: 'service_time_skipped'; local_date: string; time_zone: string }
   /** Rescheduling: another time of the plan does not exist on the new date. */

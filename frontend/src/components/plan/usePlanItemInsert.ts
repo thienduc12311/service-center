@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
-import { placePlanItem, type CreatePlanItemRequest, type PlanItemRow } from '@service-center/shared';
+import { placePlanItem, type AddedPlanItem, type CreatePlanItemRequest } from '@service-center/shared';
 import { api } from '../../lib/api';
 import type { OrderInsertPoint } from './insertPoint';
 
 /** An added item, and whether it landed where it was asked to go. */
 export interface InsertedPlanItem {
-  item: PlanItemRow & { content_revision: number };
+  item: AddedPlanItem;
   /** Whether the requested placement was confirmed. */
   placed: boolean;
 }

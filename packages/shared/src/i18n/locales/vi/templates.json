@@ -102,8 +102,17 @@
     "rosterHint": "(trở thành các yêu cầu đã chuẩn bị, chưa xác nhận)",
     "none": "Không có.",
     "changedMeanwhile": "Có người vừa lưu mẫu này. Mẫu đã được tải lại; hãy thực hiện lại thay đổi của bạn.",
+    "archivedNotice": "Mẫu này đã được lưu trữ nên không thể thay đổi hoặc dùng để tạo chương trình. Hãy khôi phục để chỉnh sửa lại.",
     "saveRevision": "Lưu thành phiên bản {{revision}}",
-    "saveDetails": "Lưu thông tin"
+    "saveDetails": "Lưu thông tin",
+    "addTime": "Thêm giờ",
+    "newTimeKind": "Loại giờ cần thêm",
+    "editItem": "Sửa {{title}}",
+    "add": {
+      "song": "Bài hát",
+      "item": "Mục",
+      "header": "Tiêu đề"
+    }
   },
   "generate": {
     "noAccess": "Tạo chương trình dành cho người chỉnh sửa chương trình",
@@ -124,6 +133,8 @@
     "everyWeek": "Hằng tuần",
     "everyNWeeks": "Mỗi {{weeks}} tuần",
     "howMany": "Số chương trình",
+    "countRequired": "Nhập số chương trình cần tạo.",
+    "countRange": "Nhập một số nguyên từ 1 đến {{max}}.",
     "stopAfter": "Dừng sau ngày (không bắt buộc)",
     "leaveOutHeading": "Ngày lễ và các ngày bỏ qua",
     "includeAgain": "Thêm lại ngày {{date}}",
@@ -150,7 +161,41 @@
     "conflictReasonPlaceholder": "Lý do vẫn tạo (được lưu cùng mỗi yêu cầu)",
     "noOverride": "Hãy bỏ mẫu phân công, hoặc nhờ người có quyền phân công khi trùng lịch.",
     "previewChanged": "Mẫu hoặc chương trình đã thay đổi. Hãy xem lại.",
-    "createButton_other": "Tạo {{count}} chương trình nháp"
+    "createButton_other": "Tạo {{count}} chương trình nháp",
+    "frequencyLabel": "Lặp lại",
+    "frequencyWeekly": "Hằng tuần",
+    "frequencyMonthlyWeekday": "Hằng tháng theo thứ",
+    "frequencyMonthlyDay": "Hằng tháng theo ngày",
+    "weekOfMonth": "Tuần thứ mấy",
+    "weekday": "Thứ trong tuần",
+    "dayOfMonth": "Ngày trong tháng",
+    "shortMonthLabel": "Với tháng không có ngày này",
+    "shortMonthSkip": "Bỏ qua tháng đó",
+    "shortMonthClamp": "Dùng ngày cuối của tháng",
+    "endsLabel": "Kết thúc",
+    "endsAfterCount": "Sau một số chương trình",
+    "endsOnDate": "Vào một ngày",
+    "lastDate": "Ngày cuối cùng",
+    "followsServiceType": "Bắt đầu theo nhịp thường lệ của {{serviceType}}.",
+    "limitHint": "Tối đa {{max}} chương trình, trong vòng hai năm kể từ ngày đầu tiên.",
+    "seriesSummaryLabel": "Lặp lại"
+  },
+  "recurrence": {
+    "weekly_other": "{{count}} tuần một lần vào {{weekday}}",
+    "monthlyWeekday": "Hằng tháng vào {{weekday}} {{ordinal}}",
+    "monthlyDay": "Ngày {{day}} hằng tháng",
+    "monthlyDaySkip": "Ngày {{day}} hằng tháng, bỏ qua tháng không có ngày này",
+    "monthlyDayClamp": "Ngày {{day}} hằng tháng, hoặc ngày cuối của tháng ngắn hơn",
+    "ordinal": {
+      "first": "thứ nhất",
+      "second": "thứ hai",
+      "third": "thứ ba",
+      "fourth": "thứ tư",
+      "last": "cuối cùng"
+    },
+    "plans_other": "{{count}} chương trình",
+    "until": "đến {{date}}",
+    "summary": "{{rule}}, {{end}}"
   },
   "reschedule": {
     "counts": {
@@ -318,9 +363,73 @@
     "edit_not_in_series": "{{date}} không nằm trong các ngày đề xuất.",
     "no_dates": "Chuỗi lịch này không tạo ra ngày nào.",
     "service_time_skipped": "Giờ nhóm không tồn tại vào {{date}} theo múi giờ {{timeZone}} (đồng hồ được chỉnh nhanh lên).",
-    "moved_time_skipped": "{{time}} không tồn tại sau khi dời sang {{date}} theo múi giờ {{timeZone}}."
+    "moved_time_skipped": "{{time}} không tồn tại sau khi dời sang {{date}} theo múi giờ {{timeZone}}.",
+    "too_many_dates": "Có hơn {{max}} chương trình trước {{date}}. Hãy chọn ngày cuối cùng sớm hơn.",
+    "series_too_long": "Các chương trình phải nằm trong vòng hai năm kể từ ngày đầu tiên (đến {{date}}). Hãy chọn ít chương trình hơn.",
+    "move_out_of_range": "{{date}} cách các chương trình khác hơn hai năm. Hãy dời gần hơn hoặc bỏ qua."
   },
   "picker": {
     "allServiceTypes": "Mọi loại buổi nhóm"
+  },
+  "itemForm": {
+    "addTitle": "Thêm vào chương trình",
+    "editTitle": "Sửa {{title}}",
+    "type": "Loại",
+    "song": "Bài hát:",
+    "noSong": "Chưa chọn",
+    "findSong": "Tìm bài hát",
+    "changeSong": "Đổi bài hát",
+    "closeSearch": "Đóng tìm kiếm",
+    "searchSongs": "Tìm bài hát",
+    "title": "Tiêu đề",
+    "length": "Thời lượng (p:ss)",
+    "description": "Mô tả",
+    "add": "Thêm vào mẫu",
+    "update": "Cập nhật mục",
+    "errors": {
+      "songRequired": "Hãy chọn một bài hát cho mục bài hát.",
+      "titleRequired": "Hãy đặt tiêu đề cho mục.",
+      "length": "Nhập thời lượng như 4:30 (tối đa 10 giờ)."
+    }
+  },
+  "staffing": {
+    "team": "Ban",
+    "chooseTeam": "Chọn ban",
+    "position": "Vị trí",
+    "choosePosition": "Chọn vị trí",
+    "alreadyListed": "{{position}} (đã có trong danh sách)",
+    "count": "Số lượng",
+    "addNeed": "Thêm nhu cầu",
+    "person": "Người",
+    "searchPerson": "Tìm người",
+    "teamMembers": "Trong {{team}}",
+    "everyone": "Mọi người",
+    "inTemplate": "Đã có trong mẫu",
+    "addPerson": "Thêm người",
+    "duplicateEntry": "Người này đã có trong danh sách phân công cho ban và vị trí đó."
+  },
+  "create": {
+    "open": "Mẫu mới",
+    "title": "Mẫu chương trình mới",
+    "name": "Tên",
+    "serviceType": "Loại buổi nhóm",
+    "description": "Mô tả (không bắt buộc)",
+    "hint": "Mẫu bắt đầu trống. Hãy thêm chương trình, giờ, vị trí cần người và nhân sự trong trình chỉnh sửa.",
+    "noScope": "Bạn không có quyền chỉnh sửa chương trình cho loại buổi nhóm nào, nên không thể tạo mẫu.",
+    "submit": "Tạo và chỉnh sửa"
+  },
+  "duplicate": {
+    "open": "Nhân bản",
+    "title": "Nhân bản {{name}}",
+    "description": "Sao chép phiên bản {{revision}} thành một mẫu mới. Mẫu gốc không thay đổi.",
+    "defaultName": "{{name}} (bản sao)",
+    "name": "Tên bản sao",
+    "serviceType": "Loại buổi nhóm",
+    "serviceTypeHint": "Các vị trí cần người và nhân sự được kiểm tra theo các ban phục vụ loại buổi nhóm này.",
+    "unavailable": "Không phải ban nào cũng phục vụ loại buổi nhóm đó: {{needs}} và {{roster}} sẽ bị bỏ ra khỏi bản sao.",
+    "unavailableNeeds_other": "{{count}} vị trí cần người",
+    "unavailableRoster_other": "{{count}} mục phân công",
+    "leaveOut": "Sao chép mà không có chúng",
+    "submit": "Nhân bản"
   }
 }

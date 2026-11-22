@@ -136,15 +136,18 @@ export interface DateTileProps {
   /** Muted styling, for past dates. */
   muted?: boolean;
   className?: string;
+  /** IANA zone to read an instant in (the organization's); the viewer's when absent. */
+  timeZone?: string;
 }
 
 /** A calendar-page tile (month over day) that anchors a dated row or card. */
-export const DateTile = ({ value, muted = false, className = '' }: DateTileProps) => {
+export const DateTile = ({ value, muted = false, className = '', timeZone }: DateTileProps) => {
   const { i18n } = useTranslation();
   const date = new Date(value);
-  const month = new Intl.DateTimeFormat(i18n.language, { month: 'short' }).format(date);
-  const day = new Intl.DateTimeFormat(i18n.language, { day: 'numeric' }).format(date);
-  const weekday = new Intl.DateTimeFormat(i18n.language, { weekday: 'short' }).format(date);
+  const zone = timeZone ? { timeZone } : {};
+  const month = new Intl.DateTimeFormat(i18n.language, { month: 'short', ...zone }).format(date);
+  const day = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', ...zone }).format(date);
+  const weekday = new Intl.DateTimeFormat(i18n.language, { weekday: 'short', ...zone }).format(date);
   return (
     <div
       aria-hidden="true"

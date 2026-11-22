@@ -23,6 +23,7 @@ import { SchedulingPreferences } from '../components/settings/SchedulingPreferen
 import { ScheduleHelp } from '../components/settings/ScheduleHelp';
 import { AcrossOrganizations } from '../components/settings/AcrossOrganizations';
 import { ServiceTypeFilesSettings } from '../components/settings/ServiceTypeFilesSettings';
+import { ServiceTypeSettings } from '../components/settings/ServiceTypeSettings';
 import { LanguageSelect } from '../i18n';
 import { AppearanceSettings } from '../components/settings/AppearanceSettings';
 import { AccountPrivacySettings } from '../components/settings/AccountPrivacySettings';
@@ -216,6 +217,8 @@ export const SettingsPage = () => {
                 <FolderSettings />
               </section>
             )}
+
+            {canAnywhere('plans.edit') && <ServiceTypeSettings />}
 
             {admin && <DeliverySettings />}
 

@@ -3,6 +3,7 @@ import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   formatDuration,
+  planItemCarriesMedia,
   resolveItemLeader,
   resolvePlanItemChartContext,
   type PlanDetail,
@@ -92,6 +93,12 @@ export const PlanOrder = ({
   const styles = useThemedStyles(makeStyles);
   const [movingIndex, setMovingIndex] = useState<number | null>(null);
   const clock = (instant: string): string => format.time(instant, { timeZone });
+  // "Only 9am" for an item limited to some service times (none limited: every time).
+  const timeLabels = new Map(serviceTimes.map((time) => [time.id, time.name ?? clock(time.starts_at)]));
+  const onlyTimesFor = (item: PlanItemDetail): string | null => {
+    const labels = (item.item_times ?? []).flatMap((time) => timeLabels.get(time.plan_time_id) ?? []);
+    return labels.length > 0 ? labels.join(', ') : null;
+  };
   const slots = new Map(schedule.items.map((slot) => [slot.item_id, slot]));
   const overrun = schedule.warnings.find((warning) => warning.code === 'runs_over');
   const misplaced = new Set(schedule.warnings.flatMap((warning) => (warning.code === 'segment_out_of_order' && warning.item_id ? [warning.item_id] : [])));
@@ -183,6 +190,7 @@ export const PlanOrder = ({
                 ordinal={ordinals.get(item.id) ?? null}
                 slot={slots.get(item.id) ?? null}
                 clock={clock}
+                onlyTimes={onlyTimesFor(item)}
                 leader={leaderLine(resolveItemLeader({ item, assignments: plan.assignments, positionNames }), words)}
                 misplaced={misplaced.has(item.id)}
                 canEdit={canEdit}
@@ -310,6 +318,8 @@ interface OrderRowProps {
   ordinal: number | null;
   slot: PlannedItemTime | null;
   clock: (instant: string) => string;
+  /** The service times the item is limited to, as words; null for every time. */
+  onlyTimes: string | null;
   leader: LeaderLine | null;
   misplaced: boolean;
   canEdit: boolean;
@@ -334,6 +344,7 @@ const OrderRow = ({
   ordinal,
   slot,
   clock,
+  onlyTimes,
   leader,
   misplaced,
   canEdit,
@@ -381,7 +392,7 @@ const OrderRow = ({
       ) : null}
     </View>
   ) : null;
-  return <OrderRowBody item={item} ordinal={ordinal} slot={slot} clock={clock} leader={leader} misplaced={misplaced} controls={controls} onOpenSong={onOpenSong} onOpenMedia={onOpenMedia} theme={theme} />;
+  return <OrderRowBody item={item} ordinal={ordinal} slot={slot} clock={clock} onlyTimes={onlyTimes} leader={leader} misplaced={misplaced} controls={controls} onOpenSong={onOpenSong} onOpenMedia={onOpenMedia} theme={theme} />;
 };
 
 interface EditControlsProps {
@@ -405,7 +416,7 @@ const EditControls = ({ item, busy, isFirst, isLast, onEdit, onMedia, onMoveUp, 
   return (
     <>
       <RowAction name="pencil" accessibilityLabel={t('orderTab.editItem', { title: item.title })} onPress={onEdit} />
-      {item.item_type === 'item' ? (
+      {planItemCarriesMedia(item.item_type) ? (
         <RowAction name="image" accessibilityLabel={t('orderTab.mediaFor', { title: item.title })} disabled={busy} onPress={onMedia} />
       ) : null}
       <RowAction name="chevronUp" accessibilityLabel={t('orderTab.moveUp', { title: item.title })} disabled={isFirst || busy} onPress={onMoveUp} />
@@ -448,6 +459,7 @@ interface OrderRowBodyProps {
   ordinal: number | null;
   slot: PlannedItemTime | null;
   clock: (instant: string) => string;
+  onlyTimes: string | null;
   leader: LeaderLine | null;
   misplaced: boolean;
   controls: ReactNode;
@@ -456,7 +468,7 @@ interface OrderRowBodyProps {
   theme: Theme;
 }
 
-const OrderRowBody = ({ item, ordinal, slot, clock, leader, misplaced, controls, onOpenSong, onOpenMedia, theme }: OrderRowBodyProps) => {
+const OrderRowBody = ({ item, ordinal, slot, clock, onlyTimes, leader, misplaced, controls, onOpenSong, onOpenMedia, theme }: OrderRowBodyProps) => {
   const { t } = useTranslation(['plans', 'common']);
   const styles = useThemedStyles(makeStyles);
 
@@ -486,6 +498,11 @@ const OrderRowBody = ({ item, ordinal, slot, clock, leader, misplaced, controls,
         <View style={styles.flex}>
           <View style={styles.titleRow}>
             {isSong ? <Icon name="music" size={14} color={theme.color.brandText} /> : null}
+            {item.item_type === 'media' ? (
+              <View accessible accessibilityLabel={t('itemKind.media')}>
+                <Icon name="image" size={14} color={theme.accent.blue.fg} />
+              </View>
+            ) : null}
             <Text style={[styles.title, item.song ? styles.titleLink : null]}>{item.title}</Text>
           </View>
           {context.status === 'ready' && (context.arrangement || context.sequence.length > 0) ? (
@@ -499,6 +516,7 @@ const OrderRowBody = ({ item, ordinal, slot, clock, leader, misplaced, controls,
             </Text>
           ) : null}
           {item.description ? <Text style={styles.meta}>{item.description}</Text> : null}
+          {onlyTimes ? <Text style={styles.meta}>{t('mobileOrder.onlyTimes', { times: onlyTimes })}</Text> : null}
           {leader ? (
             <View style={styles.leaderRow}>
               <Icon name="person" size={13} color={leader.unfilled ? theme.accent.yellow.fg : theme.color.inkFaint} />

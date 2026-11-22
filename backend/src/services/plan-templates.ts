@@ -1,7 +1,9 @@
 import {
+  TEMPLATE_COPY_UNAVAILABLE,
   MAX_GENERATED_PLANS,
   localDateAt,
   resolveTemplateTimes,
+  seriesRecurrence,
   shiftPlanToDate,
   type RescheduleCommitInput,
   type RescheduleMode,
@@ -11,6 +13,7 @@ import {
   type ShiftedPlan,
   type ApplyTemplateInput,
   type CreatePlanTemplateInput,
+  type DuplicatePlanTemplateInput,
   type GenerationPlanPreview,
   type GeneratePlansInput,
   type ListPlanTemplatesQuery,
@@ -155,6 +158,37 @@ export const archivePlanTemplate = async (
 ): Promise<PlanTemplateDetail> => {
   await unwrap(ctx.db.rpc('set_plan_template_archived', { p_template_id: templateId, p_archived: archived }));
   return getPlanTemplate(ctx, templateId);
+};
+
+/**
+ * A new template from another's current revision. Staffing that does not
+ * apply to the copy's service type is never dropped silently: without
+ * `drop_unavailable` nothing is written and the counts come back as a 409.
+ */
+export const duplicatePlanTemplate = async (
+  ctx: PlanTemplateContext,
+  templateId: string,
+  input: DuplicatePlanTemplateInput,
+): Promise<PlanTemplateDetail> => {
+  const result = required(await unwrap(
+    ctx.db.rpc('duplicate_plan_template', {
+      p_organization_id: ctx.orgId,
+      p_template_id: templateId,
+      p_name: input.name ?? null,
+      p_change_service_type: input.service_type_id !== undefined,
+      p_service_type_id: input.service_type_id ?? null,
+      p_drop_unavailable: input.drop_unavailable,
+    }),
+  ), 'Template not found');
+  if (result.template_id === null) {
+    throw new HttpError(
+      409,
+      'Some needed positions or roster entries do not apply to that service type',
+      TEMPLATE_COPY_UNAVAILABLE,
+      result.unavailable,
+    );
+  }
+  return getPlanTemplate(ctx, result.template_id);
 };
 
 interface RevisionLookup {
@@ -353,6 +387,7 @@ export const generatePlans = async (
       p_idempotency_key: input.idempotency_key,
       p_series: {
         start_date: input.start_date,
+        recurrence: seriesRecurrence(input),
         interval_weeks: input.interval_weeks,
         count: input.count,
         end_date: input.end_date ?? null,

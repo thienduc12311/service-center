@@ -178,6 +178,7 @@ import type {
   OrganizationRow,
   PlanItemRow,
   PlanItemSaveResult,
+  PlanOrderClearResult,
   PlanRow,
   ProfileRow,
   ServiceTypeRow,
@@ -251,6 +252,7 @@ import type {
   UpdateBlockoutInput,
 } from '../schemas/blockout.js';
 import type { CreatePlanItemRequest, UpdatePlanItemRequest, UpdatePlanRequest } from '../schemas/plan.js';
+import type { AddedPlanItem, SavedPlanItem, SongLastUse } from '../types/plan-item-details.js';
 import type { PlanScheduleResponse } from '../types/plan-order.js';
 import type { LivePlanRuns, LiveRunHistory, LiveRunState } from '../types/live.js';
 import type { CorrectLiveRunTimeInput, CreateLiveRunRequest, LiveRunActionInput } from '../schemas/live.js';
@@ -341,6 +343,7 @@ import type {
 import type {
   ApplyTemplateRequest,
   CreatePlanTemplateRequest,
+  DuplicatePlanTemplateRequest,
   GeneratePlansRequest,
   ListPlanTemplatesRequest,
   PlanSeriesRequest,
@@ -967,6 +970,9 @@ export class ServiceCenterApi {
     this.request<PlanTemplateDetail>('PATCH', `/api/v1/plan-templates/${templateId}`, body);
   archivePlanTemplate = (templateId: string, archived: boolean) =>
     this.request<PlanTemplateDetail>('POST', `/api/v1/plan-templates/${templateId}/archive`, { archived });
+  /** A new template from this one's current revision (409 `template_copy_unavailable` asks before leaving staffing out). */
+  duplicatePlanTemplate = (templateId: string, body: DuplicatePlanTemplateRequest) =>
+    this.request<PlanTemplateDetail>('POST', `/api/v1/plan-templates/${templateId}/duplicate`, body);
   planTemplateApplications = (planId: string) =>
     this.request<PlanTemplateApplicationRow[]>('GET', `/api/v1/plans/${planId}/template-applications`);
   previewApplyTemplate = (planId: string, body: PreviewTemplateApplyRequest) =>
@@ -988,18 +994,34 @@ export class ServiceCenterApi {
    * attempt made. The response adds the plan's new revision.
    */
   addPlanItem = (planId: string, body: CreatePlanItemRequest) =>
-    this.request<PlanItemRow & { content_revision: number }>('POST', `/api/v1/plans/${planId}/items`, body);
+    this.request<AddedPlanItem>('POST', `/api/v1/plans/${planId}/items`, body);
+  /**
+   * The song's most recent earlier use in this plan's service type and how
+   * many of its item notes the caller can read; null when it was not used.
+   */
+  songLastUse = (planId: string, songId: string) =>
+    this.request<SongLastUse | null>('GET', `/api/v1/plans/${planId}/songs/${songId}/last-use`);
   /**
    * F11: edits an item in place. Pass `expected_revision` (the plan's
    * `content_revision`) so a competing edit is a 409 rather than overwritten.
    * The response is the saved row plus the plan's new revision.
    */
   updatePlanItem = (planId: string, itemId: string, body: UpdatePlanItemRequest) =>
-    this.request<PlanItemRow & { content_revision: number }>('PATCH', `/api/v1/plans/${planId}/items/${itemId}`, body);
+    this.request<SavedPlanItem>('PATCH', `/api/v1/plans/${planId}/items/${itemId}`, body);
   deletePlanItem = (planId: string, itemId: string, expectedRevision?: number) =>
     this.request<void>(
       'DELETE',
       `/api/v1/plans/${planId}/items/${itemId}${expectedRevision === undefined ? '' : `?expected_revision=${expectedRevision}`}`,
+    );
+  /**
+   * Removes every item in the order in one step (with their notes, comments
+   * and file links). With a revision, a stale order is a 409; while the plan
+   * runs live it is a 409 `live_run_active`.
+   */
+  clearPlanItems = (planId: string, expectedRevision?: number) =>
+    this.request<PlanOrderClearResult>(
+      'DELETE',
+      `/api/v1/plans/${planId}/items${expectedRevision === undefined ? '' : `?expected_revision=${expectedRevision}`}`,
     );
   /** Replaces the staffing need for every position sent; others are left alone. */
   setPlanPositionNeeds = (planId: string, body: SetPlanPositionNeedsInput) =>

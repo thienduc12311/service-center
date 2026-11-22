@@ -59,6 +59,8 @@ export interface SongSearchListProps {
   expandable?: boolean;
   /** Tabs and filters, between the search box and the list. */
   toolbar?: ReactNode;
+  /** More choices in an expanded row, under its arrangements (e.g. bringing notes from last time). */
+  expandedExtra?: (song: SongListItem) => ReactNode;
   autoFocus?: boolean;
   emptyText: string;
   /** "Now" for "last used 3 weeks ago"; injectable for tests. */
@@ -106,6 +108,7 @@ export const SongSearchList = ({
   compact = false,
   expandable = false,
   toolbar,
+  expandedExtra,
   autoFocus = false,
   emptyText,
   now,
@@ -224,7 +227,7 @@ export const SongSearchList = ({
                         className="mt-0.5 inline-grid size-6 shrink-0 place-items-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                         aria-expanded={isExpanded}
                         aria-label={t(isExpanded ? 'songBrowser.collapse' : 'songBrowser.expand', { title: song.title })}
-                        disabled={arrangements.length === 0}
+                        disabled={arrangements.length === 0 && !expandedExtra}
                         onClick={() => setExpanded(isExpanded ? null : song.id)}
                       >
                         <Icon name="chevronDown" className={`size-4 transition ${isExpanded ? '' : '-rotate-90'}`} />
@@ -306,6 +309,7 @@ export const SongSearchList = ({
                           );
                         })}
                       </div>
+                      {expandedExtra?.(song)}
                     </fieldset>
                   )}
                 </li>

@@ -182,7 +182,13 @@ function AddItems({ plan, afterItemId }: AddItemsProps) {
 
   const sendSong = (song: SongListItem) => {
     if (!owner || add.isPending) return;
-    add.mutate({ owner, body: newPlanItemRequest(songAddDraft(song), t('itemKind.song')), title: song.title, songId: song.id });
+    add.mutate({
+      owner,
+      // As on the website, a song brings its notes from its last use in this service type (the server copies only notes this person can read).
+      body: { ...newPlanItemRequest(songAddDraft(song), t('itemKind.song')), carry_notes_from_last_use: true },
+      title: song.title,
+      songId: song.id,
+    });
   };
   const addSong = (song: SongListItem, inPlan: boolean) => {
     if (!inPlan) {

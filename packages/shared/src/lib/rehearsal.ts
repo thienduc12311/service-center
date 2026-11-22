@@ -24,6 +24,7 @@ import type {
   RehearsalTrack,
 } from '../types/rehearsal.js';
 import { renderChartContext, resolvePlanItemChartContext } from './chart-context.js';
+import { planItemCarriesMedia } from './plan-item-draft.js';
 
 /** Re-read the manifest after this long (rights and versions may change). */
 export const REHEARSAL_MANIFEST_TTL_SECONDS = 600;
@@ -208,7 +209,7 @@ export const buildRehearsalManifest = ({
   }
 
   const manifestItems: RehearsalManifestItem[] = items.map((item, position) => {
-    const bundle = item.item_type === 'item' && item.media_id ? (mediaById.get(item.media_id) ?? null) : null;
+    const bundle = planItemCarriesMedia(item.item_type) && item.media_id ? (mediaById.get(item.media_id) ?? null) : null;
     const fromMedia = bundle
       ? mediaFiles
           .filter((file) => file.owner.kind === 'media' && file.owner.id === bundle.id && !file.archived_at)

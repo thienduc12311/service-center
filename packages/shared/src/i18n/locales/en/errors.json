@@ -42,6 +42,7 @@
     "plan_position_exists": "This position is already on the plan.",
     "run_control_held": "Someone else is controlling this live run.",
     "run_control_lost": "You no longer control this live run.",
+    "live_run_active": "This plan is running live. End the live run before clearing the order.",
     "idempotency_key_reused": "This request was already sent with different details. Start again.",
     "invalid_api_key": "That API key is not valid.",
     "insufficient_scope": "This credential does not allow that action.",

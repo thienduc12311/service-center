@@ -3,7 +3,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { LocalizedError, uuid, type MediaSummary, type PlanDetail, type PlanItemDetail, type PlanItemSaveResult } from '@service-center/shared';
+import { LocalizedError, planItemCarriesMedia, uuid, type MediaSummary, type PlanDetail, type PlanItemDetail, type PlanItemSaveResult } from '@service-center/shared';
 import { api } from '../../../src/lib/api';
 import { keepScopedData, queryKeys } from '../../../src/lib/query-keys';
 import { canLinkMedia, linkableMedia, mediaLinkBody, mediaListRequest, mediaSummaryLine } from '../../../src/lib/media-library';
@@ -117,7 +117,7 @@ const LinkMedia = ({ plan, item }: LinkMediaProps) => {
     return (
       <Screen>
         <Stack.Screen options={{ title: t('linkMedia.title', { title: item.title }) }} />
-        <EmptyState icon="alert" title={item.item_type === 'item' ? t('mobileMedia.noAccess') : t('mobileMedia.regularItemsOnly')} />
+        <EmptyState icon="alert" title={planItemCarriesMedia(item.item_type) ? t('mobileMedia.noAccess') : t('mobileMedia.regularItemsOnly')} />
       </Screen>
     );
   }
@@ -166,13 +166,16 @@ const LinkMedia = ({ plan, item }: LinkMediaProps) => {
                 <Text style={styles.body}>
                   {t(item.media.archived ? 'linkMedia.linkedArchived' : 'linkMedia.linked', { title: item.media.title }).replace(/<\/?\d>/g, '')}
                 </Text>
-                <Button
-                  title={t('linkMedia.removeLink')}
-                  variant="secondary"
-                  disabled={save.isPending}
-                  loading={save.isPending && save.variables === null}
-                  onPress={() => save.mutate(null)}
-                />
+                {/* A media item always names its media: it is changed, never cleared. */}
+                {item.item_type !== 'media' ? (
+                  <Button
+                    title={t('linkMedia.removeLink')}
+                    variant="secondary"
+                    disabled={save.isPending}
+                    loading={save.isPending && save.variables === null}
+                    onPress={() => save.mutate(null)}
+                  />
+                ) : null}
               </Card>
             ) : null}
 

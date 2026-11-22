@@ -31,8 +31,10 @@ import {
   type PlanTimeChangeResult,
   type PlanTimeImpact,
   canAccessAnywhere,
+  clearPlanItemsQuerySchema,
   deletePlanItemQuerySchema,
   planScheduleQuerySchema,
+  type ClearPlanItemsQuery,
   type DeletePlanItemQuery,
   type PlanScheduleQuery,
   type ReorderPlanItemsInput,
@@ -54,7 +56,7 @@ import {
   setPlanPositionNeeds,
   shapePlanSummary,
 } from '../services/plans.js';
-import { addPlanItem, deletePlanItem, planScheduleFor, reorderPlanItems, updatePlanItem } from '../services/plan-items.js';
+import { addPlanItem, clearPlanItems, deletePlanItem, planScheduleFor, reorderPlanItems, songLastUse, updatePlanItem } from '../services/plan-items.js';
 import { notifyConfirmedAssignmentsForPlan } from './assignments.js';
 import { identifyPlanTimes, previewPlanTimes, updatePlanWithTimes, type PlanFieldsPatch } from '../services/attendance.js';
 import { deliverEffectNow } from '../services/delivery-worker.js';
@@ -297,7 +299,20 @@ plansRouter.post('/:id/items', requireCapability('plans.edit'), validateBody(cre
     planId: param(req, 'id'),
     input: req.body as CreatePlanItemInput,
   });
-  res.status(result.replayed ? 200 : 201).json({ ...result.item, content_revision: result.content_revision });
+  res.status(result.replayed ? 200 : 201).json({
+    ...result.item,
+    content_revision: result.content_revision,
+    carried_notes: result.carried_notes ?? null,
+  });
+});
+
+/**
+ * What "Bring notes from last time" would copy for a song added to this plan:
+ * the song's most recent earlier use in the plan's service type and how many
+ * of its item notes the caller can read. `null` when it was not used before.
+ */
+plansRouter.get('/:id/songs/:songId/last-use', requireCapability('plans.edit'), async (req, res) => {
+  res.json(await songLastUse({ db: req.db, orgId: req.orgId, planId: param(req, 'id'), songId: param(req, 'songId') }));
 });
 
 /**
@@ -319,6 +334,16 @@ plansRouter.delete('/:id/items/:itemId', requireCapability('plans.edit'), valida
   const { expected_revision } = parsedQuery<DeletePlanItemQuery>(res);
   await deletePlanItem(req.db, param(req, 'id'), param(req, 'itemId'), expected_revision);
   res.status(204).end();
+});
+
+/**
+ * Clears the whole order in one transaction. Same permission as editing the
+ * order (enforced by the database function); 409 `plan_revision_stale` over
+ * a newer order, 409 `live_run_active` while the plan runs live.
+ */
+plansRouter.delete('/:id/items', requireCapability('plans.edit'), validateQuery(clearPlanItemsQuerySchema), async (req, res) => {
+  const { expected_revision } = parsedQuery<ClearPlanItemsQuery>(res);
+  res.json(await clearPlanItems({ db: req.db, planId: param(req, 'id'), expectedRevision: expected_revision }));
 });
 
 /** F11: planned item times for one service time — derived, never stored. */

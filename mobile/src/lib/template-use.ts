@@ -1,10 +1,13 @@
 import {
   ApiError,
+  MAX_GENERATED_PLANS,
   PLAN_TEMPLATE_COMPONENTS,
   type AmbiguousTimeChoice,
   type AttendanceConflict,
   type GenerationDateEdit,
   type PlanGenerationPreview,
+  type PlanSeriesEnd,
+  type PlanSeriesRecurrence,
   type PlanSeriesRequest,
   type PlanTemplateComponent,
   type PlanTemplateSummary,
@@ -82,22 +85,27 @@ export interface SeriesForm {
   template: PlanTemplateSummary;
   components: readonly PlanTemplateComponent[];
   startDate: string;
-  intervalWeeks: number;
-  count: number;
-  endDate: string | null;
+  recurrence: PlanSeriesRecurrence;
+  /** After a number of plans, or on a last date (inclusive). */
+  end: PlanSeriesEnd;
   excludedDates: readonly string[];
   edits: readonly GenerationDateEdit[];
   ambiguous: AmbiguousTimeChoice;
 }
 
-/** Same series request as the website's Create from template page. */
+/**
+ * Same series request as the website's Create from template page. "Until a
+ * date" asks for every date up to it (the cap applies; the server reports a
+ * longer series as a problem).
+ */
 export const seriesRequest = (form: SeriesForm): PlanSeriesRequest => ({
   revision_id: form.template.current_revision_id ?? '',
   components: form.components.filter((component) => component !== 'times'),
   start_date: form.startDate,
-  interval_weeks: form.intervalWeeks,
-  count: form.count,
-  ...(form.endDate ? { end_date: form.endDate } : {}),
+  recurrence: form.recurrence,
+  ...(form.recurrence.frequency === 'weekly' ? { interval_weeks: form.recurrence.interval_weeks } : {}),
+  count: form.end.kind === 'count' ? form.end.count : MAX_GENERATED_PLANS,
+  ...(form.end.kind === 'until' ? { end_date: form.end.until_date } : {}),
   excluded_dates: [...form.excludedDates],
   edits: [...form.edits],
   ambiguous_time: form.ambiguous,

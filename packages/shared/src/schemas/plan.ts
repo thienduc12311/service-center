@@ -3,7 +3,7 @@ import { conflictOverrideReason, idempotencyKey, instantString, musicalKey, zone
 
 export const planStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const planTimeKindSchema = z.enum(['service', 'rehearsal', 'other']);
-export const planItemTypeSchema = z.enum(['song', 'header', 'item']);
+export const planItemTypeSchema = z.enum(['song', 'header', 'item', 'media']);
 
 export const planTimeSchema = z
   .object({
@@ -116,6 +116,21 @@ export const planItemSegmentSchema = z.enum(['pre', 'service', 'post']);
  */
 export const sequenceOverrideSchema = z.array(nonEmpty.max(20)).max(60).nullable();
 
+/** Longest item details (Markdown); the database enforces the same limit. */
+export const PLAN_ITEM_DETAILS_MAX = 20_000;
+/** Most service times one item can be limited to. */
+export const PLAN_ITEM_TIMES_MAX = 50;
+
+/** Long formatted details (Markdown). Blank or null clears them. */
+export const planItemDetailsSchema = z.string().max(PLAN_ITEM_DETAILS_MAX);
+
+/**
+ * The plan's service times an item is limited to, as the full list. An empty
+ * list means every service time. Only service times of the same plan are
+ * accepted (checked by the database).
+ */
+export const planItemTimeIdsSchema = z.array(uuid).max(PLAN_ITEM_TIMES_MAX);
+
 /** Plan-level item fields shared by create and edit. */
 const planItemFields = {
   song_id: uuid.nullish(),
@@ -128,6 +143,8 @@ const planItemFields = {
   /** …or whoever holds this position on the plan. Never both. */
   leader_position_id: uuid.nullish(),
   service_segment: planItemSegmentSchema.optional(),
+  details: planItemDetailsSchema.nullish(),
+  time_ids: planItemTimeIdsSchema.optional(),
 };
 
 const oneLeader = (v: { leader_person_id?: string | null; leader_position_id?: string | null }) =>
@@ -140,6 +157,8 @@ export const createPlanItemSchema = z
     title: nonEmpty.max(200).optional(),
     length_seconds: z.number().int().min(0).max(36_000).default(0),
     sort_order: z.number().int().min(0).optional(),
+    /** The media bundle a `media` item stands for (required there); a regular item may link one too. */
+    media_id: uuid.nullish(),
     /**
      * F11: one key per add the editor reviewed, reused on every retry. The
      * same key returns the item the first attempt made (200, not a second
@@ -147,12 +166,23 @@ export const createPlanItemSchema = z
      * `idempotency_key_reused`. Optional so unkeyed clients keep working.
      */
     idempotency_key: idempotencyKey.optional(),
+    /**
+     * A song only: copy the item notes of the song's most recent earlier use
+     * in this service type (only notes the caller can read), in the same
+     * transaction as the add.
+     */
+    carry_notes_from_last_use: z.boolean().optional(),
   })
   .refine((v) => v.item_type !== 'song' || Boolean(v.song_id), {
     message: 'A song item needs a song_id',
     path: ['song_id'],
   })
-  .refine((v) => v.item_type === 'song' || Boolean(v.title), {
+  .refine((v) => v.item_type !== 'media' || Boolean(v.media_id), {
+    message: 'A media item needs a media_id',
+    path: ['media_id'],
+  })
+  // A song or media item without a title takes its song's or bundle's.
+  .refine((v) => v.item_type === 'song' || v.item_type === 'media' || Boolean(v.title), {
     message: 'Title is required',
     path: ['title'],
   })
@@ -185,6 +215,15 @@ export const reorderPlanItemsSchema = z.object({
 
 /** `DELETE /plans/:id/items/:itemId?expected_revision=` */
 export const deletePlanItemQuerySchema = z.object({
+  expected_revision: z.coerce.number().int().min(0).optional(),
+});
+
+/**
+ * `DELETE /plans/:id/items?expected_revision=` — clears the whole order. A
+ * stale revision is a 409 `plan_revision_stale`; an already empty order is a
+ * success whatever revision is sent, so a retried clear is not a conflict.
+ */
+export const clearPlanItemsQuerySchema = z.object({
   expected_revision: z.coerce.number().int().min(0).optional(),
 });
 
@@ -250,6 +289,7 @@ export type UpdatePlanItemInput = z.infer<typeof updatePlanItemSchema>;
 export type UpdatePlanItemRequest = z.input<typeof updatePlanItemSchema>;
 export type ReorderPlanItemsInput = z.infer<typeof reorderPlanItemsSchema>;
 export type DeletePlanItemQuery = z.infer<typeof deletePlanItemQuerySchema>;
+export type ClearPlanItemsQuery = z.infer<typeof clearPlanItemsQuerySchema>;
 export type PlanScheduleQuery = z.infer<typeof planScheduleQuerySchema>;
 export type SetPlanPositionNeedsInput = z.infer<typeof setPlanPositionNeedsSchema>;
 export type CalendarQuery = z.infer<typeof calendarQuerySchema>;

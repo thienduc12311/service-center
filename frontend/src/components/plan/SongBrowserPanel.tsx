@@ -30,6 +30,7 @@ import {
 } from './songBrowser';
 import { advanceInsertPoint, type OrderInsertPoint } from './insertPoint';
 import { usePlanItemInsert } from './usePlanItemInsert';
+import { CarryNotesOption } from './CarryNotesOption';
 
 export interface SongBrowserPanelProps {
   plan: PlanDetail;
@@ -49,6 +50,8 @@ interface AddedSong {
   itemId: string;
   title: string;
   previousPoint: OrderInsertPoint;
+  /** Notes brought from the song's last use (0 when none). */
+  carriedNotes: number;
 }
 
 /** How long the "Added · Undo" toast stays. */
@@ -96,6 +99,9 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
   const [toast, setToast] = useState<AddedSong | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [notPlaced, setNotPlaced] = useState<string | null>(null);
+  // "Bring notes from last time" per song; checked unless the person unticks it (Planning Center asks the same).
+  const [skipNotes, setSkipNotes] = useState<ReadonlySet<string>>(() => new Set());
+  const carryNotesFor = (songId: string): boolean => !skipNotes.has(songId);
 
   // Adds and undos run one after another; the insert point is read when each runs.
   const chain = useRef<Promise<void>>(Promise.resolve());
@@ -135,18 +141,21 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
       const at = point.current;
       const key = arrangement ? (arrangement.song_key ?? song.default_key) : songDefaults(song).key;
       const body = keyedPlanItemRequest(
-        newPlanItemRequest(
-          {
-            itemType: 'song',
-            title: '',
-            // An arrangement picked in the expanded row is the one the item starts on.
-            song: arrangement ? { ...song, arrangements: [arrangement] } : song,
-            keyOverride: key ?? null,
-            length: '',
-            description: '',
-          },
-          t('itemKind.song'),
-        ),
+        {
+          ...newPlanItemRequest(
+            {
+              itemType: 'song',
+              title: '',
+              // An arrangement picked in the expanded row is the one the item starts on.
+              song: arrangement ? { ...song, arrangements: [arrangement] } : song,
+              keyOverride: key ?? null,
+              length: '',
+              description: '',
+            },
+            t('itemKind.song'),
+          ),
+          carry_notes_from_last_use: carryNotesFor(song.id),
+        },
         pendingBodies.current.get(song.id) ?? null,
         () => crypto.randomUUID(),
       );
@@ -155,7 +164,13 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
         const result = await insert(body, at);
         pendingBodies.current.delete(song.id);
         setPoint(advanceInsertPoint(at, result.item.id));
-        const entry: AddedSong = { songId: song.id, itemId: result.item.id, title: song.title, previousPoint: at };
+        const entry: AddedSong = {
+          songId: song.id,
+          itemId: result.item.id,
+          title: song.title,
+          previousPoint: at,
+          carriedNotes: result.item.carried_notes?.count ?? 0,
+        };
         setAdded((current) => [...current, entry]);
         setToast(entry);
         setError(null);
@@ -322,6 +337,21 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
           rowState={rowState}
           planDate={plan.service_date}
           expandable
+          expandedExtra={(song) => (
+            <CarryNotesOption
+              planId={plan.id}
+              songId={song.id}
+              checked={carryNotesFor(song.id)}
+              onChange={(checked) =>
+                setSkipNotes((current) => {
+                  const next = new Set(current);
+                  if (checked) next.delete(song.id);
+                  else next.add(song.id);
+                  return next;
+                })
+              }
+            />
+          )}
           toolbar={toolbar}
           autoFocus
           emptyText={emptyText}
@@ -340,7 +370,12 @@ export const SongBrowserPanel = ({ plan, insertPoint, onInsertPointChange, onAdd
               role="status"
               className="animate-pop-in pointer-events-auto flex items-center gap-4 rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-white shadow-lg shadow-slate-900/20 dark:bg-slate-100 dark:text-slate-900"
             >
-              <span className="max-w-56 truncate">{t('songBrowser.addedToast', { title: toast.title })}</span>
+              <span className="max-w-56">
+                <span className="block truncate">{t('songBrowser.addedToast', { title: toast.title })}</span>
+                {toast.carriedNotes > 0 && (
+                  <span className="block text-xs opacity-80">{t('songBrowser.notesCarried', { count: toast.carriedNotes })}</span>
+                )}
+              </span>
               <button
                 type="button"
                 onClick={() => undo(toast)}

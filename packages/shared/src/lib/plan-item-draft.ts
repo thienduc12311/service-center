@@ -1,5 +1,7 @@
 import type { CreatePlanItemRequest, UpdatePlanItemRequest } from '../schemas/plan.js';
 import type { ArrangementRow, PlanItemRow, PlanItemSegment, PlanItemType } from '../types/database.js';
+import type { MediaRow } from '../types/media.js';
+import type { PlanItemTimeRef } from '../types/plan-item-details.js';
 import { formatDuration, parseDuration } from './dates.js';
 
 /**
@@ -13,6 +15,17 @@ export type PlanItemLeaderMode = 'none' | 'person' | 'position';
 
 export const PLAN_ITEM_SEGMENTS: readonly PlanItemSegment[] = ['pre', 'service', 'post'];
 export const PLAN_ITEM_TYPES: readonly PlanItemType[] = ['song', 'item', 'header'];
+
+/** F14: regular items may link a media bundle; a media item always names one. */
+export const planItemCarriesMedia = (type: PlanItemType): boolean => type === 'item' || type === 'media';
+
+/**
+ * The types an existing item can be switched to. `media` needs a bundle, so
+ * it is offered only to an item that already has one (a media item, or a
+ * regular item with linked media); new media items come from the media picker.
+ */
+export const editablePlanItemTypes = (item: Pick<PlanItemRow, 'media_id'>): readonly PlanItemType[] =>
+  item.media_id ? [...PLAN_ITEM_TYPES, 'media'] : PLAN_ITEM_TYPES;
 
 /** Everything the editor edits, compared with the saved item to find changes. */
 export interface PlanItemDraft {
@@ -34,6 +47,10 @@ export interface PlanItemDraft {
   leaderPersonId: string;
   leaderPositionId: string;
   segment: PlanItemSegment;
+  /** Long Markdown details; blank is none. */
+  details: string;
+  /** Service times the item is limited to, sorted; empty is every service time. */
+  timeIds: string[];
 }
 
 /** The saved item fields the draft starts from and is compared with. */
@@ -50,7 +67,13 @@ export type PlanItemDraftSource = Pick<
   | 'leader_person_id'
   | 'leader_position_id'
   | 'service_segment'
->;
+  | 'details'
+> & {
+  item_times?: readonly PlanItemTimeRef[] | null;
+};
+
+const sortedTimeIds = (times: readonly PlanItemTimeRef[] | null | undefined): string[] =>
+  (times ?? []).map((time) => time.plan_time_id).sort();
 
 /** Why a draft cannot be saved yet; each is `plans:editItem.errors.<problem>`. */
 export type PlanItemDraftProblem =
@@ -61,7 +84,8 @@ export type PlanItemDraftProblem =
   | 'sequenceTooLong'
   | 'sequenceStepTooLong'
   | 'leaderPersonRequired'
-  | 'leaderPositionRequired';
+  | 'leaderPositionRequired'
+  | 'mediaRequired';
 
 export const MAX_ITEM_LENGTH_SECONDS = 36_000;
 export const MAX_SEQUENCE_STEPS = 60;
@@ -81,6 +105,8 @@ export const planItemDraftFrom = (item: PlanItemDraftSource): PlanItemDraft => (
   leaderPersonId: item.leader_person_id ?? '',
   leaderPositionId: item.leader_position_id ?? '',
   segment: item.service_segment ?? 'service',
+  details: item.details ?? '',
+  timeIds: sortedTimeIds(item.item_times),
 });
 
 /** "Intro, V1 , ,C" → ["Intro", "V1", "C"]. */
@@ -134,6 +160,10 @@ export const planItemChangesFrom = (draft: PlanItemDraft, item: PlanItemDraftSou
   if (person !== item.leader_person_id) changes.leader_person_id = person;
   if (position !== item.leader_position_id) changes.leader_position_id = position;
   if (draft.segment !== (item.service_segment ?? 'service')) changes.service_segment = draft.segment;
+  const details = draft.itemType === 'header' || !draft.details.trim() ? null : draft.details;
+  if (details !== (item.details ?? null)) changes.details = details;
+  const timeIds = [...new Set(draft.timeIds)].sort();
+  if (JSON.stringify(timeIds) !== JSON.stringify(sortedTimeIds(item.item_times))) changes.time_ids = timeIds;
   return changes;
 };
 
@@ -171,6 +201,9 @@ export const editableArrangements = <A extends PickableArrangement>(arrangements
 export const initialArrangementFor = <A extends PickableArrangement>(arrangements: readonly A[]): A | null =>
   arrangements.find((row) => row.is_default && !row.archived_at) ?? arrangements.find((row) => !row.archived_at) ?? null;
 
+/** The media bundle a new media item is made from. */
+export type NewPlanItemMedia = Pick<MediaRow, 'id' | 'title' | 'duration_seconds'>;
+
 /** What the "Add to the order" form holds. */
 export interface NewPlanItemDraft {
   itemType: PlanItemType;
@@ -180,6 +213,8 @@ export interface NewPlanItemDraft {
   keyOverride: string | null;
   length: string;
   description: string;
+  /** A media item's bundle; its title and duration stand in for blank fields. */
+  media?: NewPlanItemMedia | null;
 }
 
 /**
@@ -188,6 +223,16 @@ export interface NewPlanItemDraft {
  * kept for this plan. The server appends it at the end of the order.
  */
 export const newPlanItemRequest = (draft: NewPlanItemDraft, songFallbackTitle: string): CreatePlanItemRequest => {
+  if (draft.itemType === 'media') {
+    return {
+      item_type: 'media',
+      title: draft.title.trim() || draft.media?.title || undefined,
+      media_id: draft.media?.id ?? null,
+      // A bundle longer than an item may be is capped rather than refused.
+      length_seconds: parseDuration(draft.length) ?? Math.min(draft.media?.duration_seconds ?? 0, MAX_ITEM_LENGTH_SECONDS),
+      description: draft.description.trim() || null,
+    };
+  }
   const isSong = draft.itemType === 'song';
   const arrangement = isSong && draft.song ? initialArrangementFor(draft.song.arrangements) : null;
   return {
@@ -221,7 +266,8 @@ export const keyedPlanItemRequest = (
 /** The first problem the add form can catch; null when it can be sent. */
 export const validateNewPlanItemDraft = (draft: NewPlanItemDraft): PlanItemDraftProblem | null => {
   if (draft.itemType === 'song' && !draft.song) return 'songRequired';
-  if (draft.itemType !== 'song' && !draft.title.trim()) return 'titleRequired';
+  if (draft.itemType === 'media' && !draft.media) return 'mediaRequired';
+  if (draft.itemType !== 'song' && draft.itemType !== 'media' && !draft.title.trim()) return 'titleRequired';
   if (draft.itemType === 'header') return null;
   if (draft.length.trim() && parseDuration(draft.length) === null) return 'lengthFormat';
   const length = parseDuration(draft.length) ?? 0;

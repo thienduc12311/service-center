@@ -192,6 +192,12 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
           {active && view.current && (
             <>
               {view.section && <p className="section-label text-brand-600 dark:text-brand-200">{view.section}</p>}
+              {view.current.item_type === 'media' && (
+                <p className="inline-flex items-center gap-1 text-sm font-medium text-sky-700 dark:text-sky-300">
+                  <Icon name="media" className="size-4" />
+                  {t('live.mediaItem')}
+                </p>
+              )}
               <p className="text-2xl font-semibold tracking-tight text-balance text-slate-900 sm:text-3xl dark:text-white">{view.current.title}</p>
               {run.status === 'paused' && <p className="text-sm font-medium text-amber-700 dark:text-amber-300">{t('live.status.paused')}</p>}
               <p className="inline-flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
@@ -336,7 +342,15 @@ export const LiveRunPanel = ({ live, onStage }: LiveRunPanelProps) => {
                 <span className="w-16 shrink-0 tabular-nums text-xs text-slate-500 dark:text-slate-400">
                   {isHeader ? '' : formatters.time(plannedStart.get(item.id) ?? run.time_starts_at)}
                 </span>
-                <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                <span className="min-w-0 flex-1 truncate">
+                  {item.item_type === 'media' && (
+                    <span className="mr-1.5 inline-flex align-[-2px] text-sky-600 dark:text-sky-300">
+                      <Icon name="media" className="size-3.5" />
+                      <span className="sr-only">{t('live.mediaItem')}: </span>
+                    </span>
+                  )}
+                  {item.title}
+                </span>
                 {!isHeader && <span className="tabular-nums text-xs text-slate-500 dark:text-slate-400">{formatLiveDuration(item.length_seconds)}</span>}
                 {jumpable && (
                   <Button variant="ghost" size="sm" onClick={() => live.send({ action: 'jump', target_index: index })}>

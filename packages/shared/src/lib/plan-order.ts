@@ -21,11 +21,18 @@ import type {
   PlanScheduleWarning,
   PlannedItemTime,
 } from '../types/plan-order.js';
+import type { PlanItemTimeRef } from '../types/plan-item-details.js';
 
-/** The item fields timing reads. `service_segment` may be absent on older rows. */
+/** The item fields timing reads. `service_segment` and `item_times` may be absent on older rows. */
 export type ScheduleItem = Pick<PlanItemRow, 'id' | 'item_type' | 'length_seconds'> & {
   service_segment?: PlanItemSegment | null;
+  /** Service times the item is limited to; empty or absent is every time. */
+  item_times?: readonly PlanItemTimeRef[] | null;
 };
+
+/** Whether an item belongs to a service time: it is limited to none, or to that one. */
+export const itemRunsAtTime = (item: Pick<ScheduleItem, 'item_times'>, timeId: string): boolean =>
+  !item.item_times?.length || item.item_times.some((time) => time.plan_time_id === timeId);
 
 /** The time fields timing reads. */
 export type ScheduleTime = Pick<PlanTimeRow, 'id' | 'kind' | 'name' | 'starts_at' | 'ends_at'>;
@@ -67,7 +74,9 @@ export const selectServiceTime = <T extends ScheduleTime>(
   return services[0] ?? null;
 };
 
-export const computePlanSchedule = ({ items, time }: ComputePlanScheduleInput): PlanSchedule => {
+export const computePlanSchedule = ({ items: allItems, time }: ComputePlanScheduleInput): PlanSchedule => {
+  // Items limited to other service times are not part of this time's run.
+  const items = time ? allItems.filter((item) => itemRunsAtTime(item, time.id)) : allItems;
   const warnings: PlanScheduleWarning[] = [];
   const bySegment = (segment: PlanItemSegment) => items.filter((item) => segmentOf(item) === segment);
   const pre = bySegment('pre');

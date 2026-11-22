@@ -114,8 +114,17 @@
     "rosterHint": "(becomes prepared, unconfirmed requests)",
     "none": "None.",
     "changedMeanwhile": "Someone saved this template meanwhile. It has been reloaded; make your change again.",
+    "archivedNotice": "This template is archived, so it can’t be changed or used to create plans. Restore it to edit it again.",
     "saveRevision": "Save as revision {{revision}}",
-    "saveDetails": "Save details"
+    "saveDetails": "Save details",
+    "addTime": "Add time",
+    "newTimeKind": "Kind of time to add",
+    "editItem": "Edit {{title}}",
+    "add": {
+      "song": "Song",
+      "item": "Item",
+      "header": "Header"
+    }
   },
   "generate": {
     "noAccess": "Creating plans is for plan editors",
@@ -136,6 +145,8 @@
     "everyWeek": "Every week",
     "everyNWeeks": "Every {{weeks}} weeks",
     "howMany": "How many plans",
+    "countRequired": "Enter how many plans to create.",
+    "countRange": "Enter a whole number from 1 to {{max}}.",
     "stopAfter": "Stop after (optional)",
     "leaveOutHeading": "Holidays and dates to leave out",
     "includeAgain": "Include {{date}} again",
@@ -164,7 +175,43 @@
     "noOverride": "Leave out the roster pattern, or ask someone who may schedule over conflicts.",
     "previewChanged": "The template or plans changed. Review again.",
     "createButton_one": "Create {{count}} draft plan",
-    "createButton_other": "Create {{count}} draft plans"
+    "createButton_other": "Create {{count}} draft plans",
+    "frequencyLabel": "Repeats",
+    "frequencyWeekly": "Weekly",
+    "frequencyMonthlyWeekday": "Monthly on a weekday",
+    "frequencyMonthlyDay": "Monthly on a date",
+    "weekOfMonth": "Which week",
+    "weekday": "Day of the week",
+    "dayOfMonth": "Day of the month",
+    "shortMonthLabel": "In months without that day",
+    "shortMonthSkip": "Skip that month",
+    "shortMonthClamp": "Use the month’s last day",
+    "endsLabel": "Ends",
+    "endsAfterCount": "After a number of plans",
+    "endsOnDate": "On a date",
+    "lastDate": "Last date",
+    "followsServiceType": "Starts with {{serviceType}}’s usual rhythm.",
+    "limitHint": "Up to {{max}} plans, within two years of the first date.",
+    "seriesSummaryLabel": "Repeats"
+  },
+  "recurrence": {
+    "weekly_one": "Every {{weekday}}",
+    "weekly_other": "Every {{count}} weeks on {{weekday}}",
+    "monthlyWeekday": "Monthly on the {{ordinal}} {{weekday}}",
+    "monthlyDay": "Monthly on day {{day}}",
+    "monthlyDaySkip": "Monthly on day {{day}}, skipping months without it",
+    "monthlyDayClamp": "Monthly on day {{day}}, or the last day of shorter months",
+    "ordinal": {
+      "first": "1st",
+      "second": "2nd",
+      "third": "3rd",
+      "fourth": "4th",
+      "last": "last"
+    },
+    "plans_one": "{{count}} plan",
+    "plans_other": "{{count}} plans",
+    "until": "until {{date}}",
+    "summary": "{{rule}}, {{end}}"
   },
   "reschedule": {
     "counts": {
@@ -350,9 +397,75 @@
     "edit_not_in_series": "{{date}} is not one of the proposed dates.",
     "no_dates": "The series produces no dates.",
     "service_time_skipped": "The service time does not exist on {{date}} in {{timeZone}} (clocks move forward).",
-    "moved_time_skipped": "{{time}} does not exist after moving to {{date}} in {{timeZone}}."
+    "moved_time_skipped": "{{time}} does not exist after moving to {{date}} in {{timeZone}}.",
+    "too_many_dates": "More than {{max}} plans fall before {{date}}. Choose an earlier last date.",
+    "series_too_long": "Plans must fall within two years of the first date (by {{date}}). Choose fewer plans.",
+    "move_out_of_range": "{{date}} is more than two years from the other plans. Move it closer or skip it."
   },
   "picker": {
     "allServiceTypes": "All service types"
+  },
+  "itemForm": {
+    "addTitle": "Add to the order",
+    "editTitle": "Edit {{title}}",
+    "type": "Type",
+    "song": "Song:",
+    "noSong": "None chosen",
+    "findSong": "Find a song",
+    "changeSong": "Change song",
+    "closeSearch": "Close search",
+    "searchSongs": "Search songs",
+    "title": "Title",
+    "length": "Length (m:ss)",
+    "description": "Description",
+    "add": "Add to template",
+    "update": "Update item",
+    "errors": {
+      "songRequired": "Choose a song for a song item.",
+      "titleRequired": "Give the item a title.",
+      "length": "Enter a length like 4:30 (at most 10 hours)."
+    }
+  },
+  "staffing": {
+    "team": "Team",
+    "chooseTeam": "Choose a team",
+    "position": "Position",
+    "choosePosition": "Choose a position",
+    "alreadyListed": "{{position}} (already listed)",
+    "count": "How many",
+    "addNeed": "Add need",
+    "person": "Person",
+    "searchPerson": "Search people",
+    "teamMembers": "On {{team}}",
+    "everyone": "Everyone",
+    "inTemplate": "In this template",
+    "addPerson": "Add person",
+    "duplicateEntry": "This person is already in the roster for that team and position."
+  },
+  "create": {
+    "open": "New template",
+    "title": "New plan template",
+    "name": "Name",
+    "serviceType": "Service type",
+    "description": "Description (optional)",
+    "hint": "The template starts empty. Add its order, times, needed positions and people in the editor.",
+    "noScope": "You do not edit plans for any service type, so you cannot create a template.",
+    "submit": "Create and edit"
+  },
+  "duplicate": {
+    "open": "Duplicate",
+    "title": "Duplicate {{name}}",
+    "description": "Copies revision {{revision}} into a new template. The original does not change.",
+    "defaultName": "{{name}} (copy)",
+    "name": "Name of the copy",
+    "serviceType": "Service type",
+    "serviceTypeHint": "Needed positions and people are checked against the teams that serve this service type.",
+    "unavailable": "Not every team serves that service type: {{needs}} and {{roster}} would be left out of the copy.",
+    "unavailableNeeds_one": "{{count}} needed position",
+    "unavailableNeeds_other": "{{count}} needed positions",
+    "unavailableRoster_one": "{{count}} roster entry",
+    "unavailableRoster_other": "{{count}} roster entries",
+    "leaveOut": "Copy without them",
+    "submit": "Duplicate"
   }
 }

@@ -4,11 +4,14 @@ import { useTranslation } from 'react-i18next';
 import {
   ApiError,
   LocalizedError,
+  PLAN_ITEM_DETAILS_MAX,
   PLAN_ITEM_SEGMENTS,
   appendSequenceStep,
   editableArrangements,
+  editablePlanItemTypes,
   parseChordPro,
   planItemChangesFrom,
+  serviceTimesOf,
   planItemDraftFrom,
   validatePlanItemDraft,
   withInheritSequence,
@@ -28,7 +31,11 @@ import { KeySelect } from '../KeySelect';
 import { SearchCombobox } from '../SearchCombobox';
 import { SearchableSelect } from '../SearchableSelect';
 import { SongSearchList, songListSource } from './SongSearchList';
+import { EditItemMediaField } from './EditItemMediaField';
 import { leaderPersonChoices, leaderPositionChoices, type LeaderChoiceLabels, type PickerChoices } from './leaderChoices';
+import { ItemDetailsEditor } from './ItemDetailsEditor';
+import { ItemTimesPicker, type ItemTimeChoice, type ItemTimesMode } from './ItemTimesPicker';
+import { useFormatters } from '../../i18n';
 
 /** Rows per page in "Change song". */
 const CHANGE_SONG_PAGE_SIZE = 10;
@@ -38,6 +45,8 @@ export interface EditItemModalProps {
   item: PlanItemDetail;
   teams: readonly TeamWithPositions[];
   onClose: () => void;
+  /** The organization's IANA zone, for naming service times. */
+  timeZone?: string;
 }
 
 /**
@@ -46,12 +55,20 @@ export interface EditItemModalProps {
  * arrangement is never changed. Saving checks the plan revision the editor
  * opened with, so someone else's change is shown instead of overwritten.
  */
-export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps) => {
+export const EditItemModal = ({ plan, item, teams, onClose, timeZone }: EditItemModalProps) => {
   const { t } = useTranslation(['plans', 'common']);
   const queryClient = useQueryClient();
   const { organizationId, user } = useAuth();
   const [draft, setDraft] = useState<PlanItemDraft>(() => planItemDraftFrom(item));
+  // "All service times" sends an empty list; the checklist keeps its ticks while switching.
+  const [timesMode, setTimesMode] = useState<ItemTimesMode>(() => (draft.timeIds.length > 0 ? 'some' : 'all'));
+  const format = useFormatters();
+  const serviceTimes = useMemo(() => serviceTimesOf(plan.times), [plan.times]);
+  const describeTime = (time: ItemTimeChoice): string =>
+    [time.name ?? t('timeKind.service'), format.time(time.starts_at, timeZone ? { timeZone } : {})].join(' · ');
   const [baseRevision, setBaseRevision] = useState(plan.content_revision);
+  // A media change saves at once, so "No changes yet" would be untrue after one.
+  const [mediaSaved, setMediaSaved] = useState(false);
   const [songQuery, setSongQuery] = useState('');
   const [changingSong, setChangingSong] = useState(false);
   const [formError, setFormError] = useState<LocalizedError | null>(null);
@@ -78,8 +95,12 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
     queryFn: () => api.getArrangementMaterials(effectiveArrangementId!),
     enabled: draft.itemType === 'song' && !!effectiveArrangementId,
   });
-  const changes = useMemo(() => planItemChangesFrom(draft, item), [draft, item]);
-  const dirty = Object.keys(changes).length > 0;
+  const changes = useMemo(
+    () => planItemChangesFrom({ ...draft, timeIds: timesMode === 'all' ? [] : draft.timeIds }, item),
+    [draft, item, timesMode],
+  );
+  // Ticking "Only these" with nothing chosen is an unfinished change: Save explains it.
+  const dirty = Object.keys(changes).length > 0 || (timesMode === 'some' && draft.timeIds.length === 0);
   const planChanged = plan.content_revision !== baseRevision;
 
   const arrangements = editableArrangements(song.data?.arrangements ?? [], item.arrangement_id);
@@ -130,7 +151,10 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const problemKey = validatePlanItemDraft(draft);
+    const problemKey =
+      validatePlanItemDraft(draft) ??
+      (timesMode === 'some' && draft.timeIds.length === 0 ? 'timesRequired' : null) ??
+      (draft.details.length > PLAN_ITEM_DETAILS_MAX ? 'detailsTooLong' : null);
     const problem = problemKey ? new LocalizedError({ key: `plans:editItem.errors.${problemKey}` }) : null;
     setFormError(problem);
     if (problem || !dirty) return;
@@ -154,7 +178,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
         <fieldset>
           <legend className="label">{t('editItem.type')}</legend>
           <div className="flex flex-wrap gap-2">
-            {(['song', 'item', 'header'] as const).map((value) => (
+            {editablePlanItemTypes(item).map((value) => (
               <label key={value} className={`cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium ${draft.itemType === value ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                 <input type="radio" name="item-type" value={value} checked={draft.itemType === value} onChange={() => set('itemType', value)} className="sr-only" />
                 {t(`itemKind.${value}`)}
@@ -170,6 +194,21 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
           <label className="label" htmlFor="edit-item-title">{t('editItem.fieldTitle')}</label>
           <input id="edit-item-title" className="input" value={draft.title} onChange={(event) => set('title', event.target.value)} maxLength={200} />
         </div>
+
+        {item.item_type === 'media' && draft.itemType === 'media' && (
+          <EditItemMediaField
+            plan={plan}
+            item={item}
+            baseRevision={baseRevision}
+            onSaved={(revision) => {
+              setBaseRevision(revision);
+              setMediaSaved(true);
+            }}
+            draftTitle={draft.title}
+            draftLength={draft.length}
+            onUseMediaDetails={(details) => setDraft((current) => ({ ...current, title: details.title, length: details.length ?? current.length }))}
+          />
+        )}
 
         {draft.itemType === 'song' && (
           <div className="space-y-3 rounded-xl border border-app-border p-3">
@@ -309,6 +348,19 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
         )}
 
         {draft.itemType !== 'header' && (
+          <ItemDetailsEditor value={draft.details} onChange={(value) => set('details', value)} />
+        )}
+
+        <ItemTimesPicker
+          times={serviceTimes}
+          mode={timesMode}
+          onModeChange={setTimesMode}
+          selected={draft.timeIds}
+          onSelectedChange={(ids) => set('timeIds', ids)}
+          describe={describeTime}
+        />
+
+        {draft.itemType !== 'header' && (
           <fieldset>
             <legend className="label">{t('editItem.leader')}</legend>
             <div className="flex flex-wrap gap-4 text-sm">
@@ -367,7 +419,7 @@ export const EditItemModal = ({ plan, item, teams, onClose }: EditItemModalProps
         )}
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          {!dirty && <span className="mr-auto text-xs text-slate-500 dark:text-slate-400">{t('editItem.noChanges')}</span>}
+          {!dirty && <span className="mr-auto text-xs text-slate-500 dark:text-slate-400">{t(mediaSaved ? 'editItem.mediaSavedNoOtherChanges' : 'editItem.noChanges')}</span>}
           <Button type="button" variant="secondary" onClick={close}>{t('common:actions.cancel')}</Button>
           <Button type="submit" loading={save.isPending} disabled={!dirty || stale}>{t('common:actions.saveChanges')}</Button>
         </div>

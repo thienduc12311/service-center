@@ -42,12 +42,14 @@ import { AddItemModal } from '../components/plan/AddItemModal';
 import { SongBrowserPanel } from '../components/plan/SongBrowserPanel';
 import { INSERT_AT_END, advanceInsertPoint, type OrderInsertPoint } from '../components/plan/insertPoint';
 import { EditItemModal } from '../components/plan/EditItemModal';
+import { useOptimisticReorder } from '../components/plan/useOrderMutations';
 import { PrintOrderModal } from '../components/plan/PrintOrderModal';
 import { SchedulePeopleModal } from '../components/plan/SchedulePeopleModal';
 import { EditTimesModal } from '../components/plan/EditTimesModal';
 import { AssignmentTimesModal } from '../components/plan/AssignmentTimesModal';
 import { ItemDiscussionModal } from '../components/collaboration/ItemDiscussionModal';
 import { ImportTemplateModal } from '../components/plan/ImportTemplateModal';
+import { CopyPlanModal } from '../components/plan/CopyPlanModal';
 import { ApplyTemplateModal } from '../components/templates/ApplyTemplateModal';
 import { SaveTemplateModal } from '../components/templates/SaveTemplateModal';
 import { DeliveryOutcomeNotice } from '../components/plan/DeliveryOutcomeNotice';
@@ -65,7 +67,7 @@ const SONG_BROWSER_ROOM = 'xl:pr-[max(0px,calc(25rem_-_max(0px,calc((100vw_-_96r
 const PLAN_CHAT_RESTRICTED = new LocalizedError({ key: 'plans:planDetail.errors.planChatRestricted' });
 
 /** Which dialog, if any, is on top of the workspace. */
-type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'import-template' | 'apply-template' | 'save-template' | 'print-order' | 'publish';
+type PlanDialog = 'add-item' | 'schedule-people' | 'edit-times' | 'import-template' | 'apply-template' | 'save-template' | 'print-order' | 'publish' | 'copy-plan';
 
 export const PlanDetailPage = () => {
   const { planId } = useParams<{ planId: string }>();
@@ -155,11 +157,8 @@ export const PlanDetailPage = () => {
 
   // F11: order changes carry the revision they were made against; a stale
   // one is refused, and the refreshed order is shown instead.
-  const reorder = useMutation({
-    mutationFn: ({ itemIds, revision }: { itemIds: string[]; revision: number }) =>
-      api.reorderPlanItems(planId!, itemIds, revision),
-    onSettled: invalidate,
-  });
+  // Shown at once and rolled back if the save fails (drag-and-drop and the arrows).
+  const reorder = useOptimisticReorder(planId ?? '');
 
   const removeItem = useMutation({
     mutationFn: ({ itemId, revision }: { itemId: string; revision: number }) =>
@@ -314,6 +313,10 @@ export const PlanDetailPage = () => {
     if (!ids || orderBusy) return;
     reorder.mutate({ itemIds: ids, revision: detail.content_revision });
   };
+  const reorderTo = (ids: string[]) => {
+    if (orderBusy) return;
+    reorder.mutate({ itemIds: ids, revision: detail.content_revision });
+  };
 
   const confirmRemove = (item: PlanItemDetail) => {
     const notesOnItem = itemNoteCounts.get(item.id) ?? 0;
@@ -368,6 +371,7 @@ export const PlanDetailPage = () => {
           else setDialog('publish');
         }}
         onNotify={() => notify.mutate(crypto.randomUUID())}
+        onCopy={() => setDialog('copy-plan')}
         deleting={removePlan.isPending}
         onDelete={() => {
           if (removePlan.isPending) return;
@@ -501,6 +505,7 @@ export const PlanDetailPage = () => {
                 insertPoint={songBrowserOpen ? songInsertPoint : null}
                 onEditItem={(item) => setEditingItemId(item.id)}
                 onMoveItem={move}
+                onReorderItems={reorderTo}
                 onRemoveItem={confirmRemove}
                 onPrint={() => setDialog('print-order')}
                 onDiscussItem={(item) => setDiscussingId(item.id)}
@@ -550,6 +555,7 @@ export const PlanDetailPage = () => {
           item={editingItem}
           teams={teams.data ?? []}
           onClose={() => setEditingItemId(null)}
+          timeZone={timeZone}
         />
       )}
       {dialog === 'print-order' && (
@@ -625,6 +631,7 @@ export const PlanDetailPage = () => {
         onClose={() => setDialog(null)}
       />
       {dialog === 'apply-template' && <ApplyTemplateModal plan={detail} onClose={() => setDialog(null)} />}
+      {dialog === 'copy-plan' && canEditPlan && <CopyPlanModal plan={detail} onClose={() => setDialog(null)} />}
       {dialog === 'save-template' && (
         <SaveTemplateModal
           plan={detail}

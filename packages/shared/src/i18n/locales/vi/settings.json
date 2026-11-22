@@ -340,6 +340,38 @@
     "loses": "{{name}} mất quyền “{{permission}}” trên {{serviceType}}",
     "moveAnyway": "Vẫn di chuyển"
   },
+  "serviceTypes": {
+    "title": "Loại buổi nhóm",
+    "description": "Sao chép một loại buổi nhóm để bắt đầu loại tương tự, hoặc lưu trữ loại bạn không còn lên chương trình.",
+    "empty": "Chưa có loại buổi nhóm nào.",
+    "copyOne": "Sao chép {{name}}",
+    "archiveOne": "Lưu trữ {{name}}",
+    "restoreOne": "Khôi phục {{name}}",
+    "archived": "Đã lưu trữ",
+    "archivedOn": "Đã lưu trữ ngày {{date}}",
+    "archiveTitle": "Lưu trữ {{name}}?",
+    "archiveEffect": "Lưu trữ chỉ ẩn loại buổi nhóm này. Không có gì bị xóa.",
+    "archiveHidden": "Loại này sẽ không còn trong các danh sách và bộ chọn loại buổi nhóm: chương trình mới, bộ lọc chương trình, báo cáo, lịch và phần cài đặt.",
+    "archiveKept": "Các chương trình, ban và quyền của loại này vẫn giữ nguyên, và các chương trình vẫn mở được.",
+    "archiveRestore": "Bạn có thể khôi phục bất cứ lúc nào từ danh sách Đã lưu trữ.",
+    "archiveConfirm": "Lưu trữ",
+    "copy": {
+      "title": "Sao chép {{name}}",
+      "defaultName": "{{name}} (bản sao)",
+      "name": "Tên",
+      "nameRequired": "Hãy đặt tên cho bản sao.",
+      "recurrence": "Chương trình lặp lại",
+      "folder": "Thư mục",
+      "folderAdminOnly": "Bản sao ở lại thư mục này. Chỉ quản trị viên mới có thể chọn thư mục khác.",
+      "description": "Mô tả",
+      "teams": "Các ban cũng phục vụ bản sao",
+      "teamsHint": "Mỗi ban giữ một danh sách thành viên chung cho mọi loại buổi nhóm mà ban phục vụ.",
+      "noTeams": "Chưa có ban nào.",
+      "notCopied": "Không sao chép người, quyền, chương trình, mẫu và tệp mặc định. Hãy cấp quyền cho bản sao và thêm chương trình đầu tiên sau đó.",
+      "denied": "Bạn không thể sao chép loại buổi nhóm này. Cần quyền chỉnh sửa chương trình trên toàn tổ chức.",
+      "submit": "Sao chép loại buổi nhóm"
+    }
+  },
   "identity": {
     "title": "Thành viên có thể bị trùng",
     "description": "Chúng tôi không bao giờ gộp thành viên chỉ vì thông tin giống nhau. Hãy quyết định tại đây hai hồ sơ có phải cùng một người không.",

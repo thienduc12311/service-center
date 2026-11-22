@@ -1,3 +1,4 @@
+import type { PlanItemNotesCarried, PlanItemTimeRef, SongLastUse } from './plan-item-details.js';
 import type { LabeledKey } from '../schemas/arrangement-curation.js';
 import type { ImportJob, ImportJobRow } from '../schemas/imports.js';
 import type { SongBulkPreview, SongCurationEventRow } from './song-curation.js';
@@ -75,6 +76,7 @@ import type {
   PlanTemplateRevisionRow,
   PlanTemplateRow,
   PlanTemplateSaveResult,
+  PlanTemplateDuplicateResult,
   TemplateApplyCommit,
   TemplateApplyPreviewResult,
   ReschedulePreview,
@@ -203,7 +205,8 @@ export type OrgRole = 'owner' | 'admin' | 'scheduler' | 'member';
 export type MemberStatus = 'invited' | 'active' | 'inactive' | 'suspended';
 export type PlanStatus = 'draft' | 'published' | 'archived';
 export type PlanTimeKind = 'service' | 'rehearsal' | 'other';
-export type PlanItemType = 'song' | 'header' | 'item';
+/** `media`: the item is one bundle from the media library (and always names it). */
+export type PlanItemType = 'song' | 'header' | 'item' | 'media';
 /** How often plans for a service type come round. Drives the suggested next service date. */
 export type PlanRecurrence = 'weekly' | 'biweekly' | 'monthly' | 'occasionally';
 export type AssignmentStatus = 'unconfirmed' | 'confirmed' | 'declined';
@@ -664,25 +667,47 @@ export type PlanItemRow = {
   leader_position_id: string | null;
   /** F11: before, during or after the service time. */
   service_segment: PlanItemSegment;
-  /** F14: a reusable media bundle linked to a regular item (absent from older responses). */
+  /**
+   * F14: a reusable media bundle linked to a regular item, or the bundle a
+   * `media` item stands for (always set there). Absent from older responses.
+   */
   media_id?: string | null;
+  /** Long Markdown details, separate from the short description (absent from older responses). */
+  details?: string | null;
   created_at: string;
   updated_at: string;
 }
 
+/** One service time an item is limited to; an item with none belongs to every time. */
+export type PlanItemTimeRow = {
+  plan_id: string;
+  plan_item_id: string;
+  plan_time_id: string;
+  created_at: string;
+};
+
 /** F11: an item edit and the plan's content revision after it. */
 export interface PlanItemSaveResult {
-  item: PlanItemRow;
+  /** The saved row, with the service times it is limited to when the save returns them. */
+  item: PlanItemRow & { item_times?: PlanItemTimeRef[] };
   content_revision: number;
 }
 
 /** F11: an added item; `replayed` when an earlier attempt with the same key made it. */
 export interface PlanItemCreateResult extends PlanItemSaveResult {
   replayed: boolean;
+  /** Notes brought from the song's last use; null when none were asked for or found. */
+  carried_notes?: PlanItemNotesCarried | null;
 }
 
 /** F11: the plan's content revision after a reorder or removal. */
 export interface PlanOrderSaveResult {
+  content_revision: number;
+}
+
+/** The whole order cleared: how many items went and the plan's revision after. */
+export interface PlanOrderClearResult {
+  removed: number;
   content_revision: number;
 }
 
@@ -1260,6 +1285,7 @@ export type Database = {
       plans: Table<PlanRow>;
       plan_times: Table<PlanTimeRow>;
       plan_items: Table<PlanItemRow>;
+      plan_item_times: Table<PlanItemTimeRow>;
       plan_position_needs: Table<PlanPositionNeedRow>;
       assignments: Table<AssignmentRow>;
       assignment_attendance_times: Table<AssignmentAttendanceTimeRow>;
@@ -1610,6 +1636,17 @@ export type Database = {
         Args: { p_service_type: string; p_name: string; p_include_teams?: boolean };
         Returns: string;
       };
+      copy_service_type_as: {
+        Args: {
+          p_service_type: string;
+          p_name: string;
+          p_description: string | null;
+          p_recurrence: PlanRecurrence | null;
+          p_folder: string | null;
+          p_team_ids: string[];
+        };
+        Returns: string;
+      };
       team_candidates: {
         Args: { p_team: string };
         Returns: Array<{ person_id: string | null; profile_id: string | null; display_name: string | null; source: 'membership' | 'tag'; eligible: boolean }>;
@@ -1921,6 +1958,17 @@ export type Database = {
         Args: { p_template_id: string; p_archived: boolean };
         Returns: undefined;
       };
+      duplicate_plan_template: {
+        Args: {
+          p_organization_id: string;
+          p_template_id: string;
+          p_name?: string | null;
+          p_change_service_type?: boolean;
+          p_service_type_id?: string | null;
+          p_drop_unavailable?: boolean;
+        };
+        Returns: PlanTemplateDuplicateResult;
+      };
       preview_plan_template_apply: {
         Args: {
           p_plan_id: string;
@@ -1940,6 +1988,18 @@ export type Database = {
         Args: { p_plan_id: string; p_item_id: string; p_patch: unknown; p_expected_revision?: number | null };
         Returns: PlanItemSaveResult;
       };
+      add_plan_item_with_details: {
+        Args: { p_plan_id: string; p_item: unknown; p_idempotency_key?: string | null };
+        Returns: PlanItemCreateResult;
+      };
+      update_plan_item_with_details: {
+        Args: { p_plan_id: string; p_item_id: string; p_patch: unknown; p_expected_revision?: number | null };
+        Returns: PlanItemSaveResult;
+      };
+      song_last_use: {
+        Args: { p_plan_id: string; p_song_id: string };
+        Returns: SongLastUse | null;
+      };
       reorder_plan_items: {
         Args: { p_plan_id: string; p_item_ids: string[]; p_expected_revision?: number | null };
         Returns: PlanOrderSaveResult;
@@ -1947,6 +2007,10 @@ export type Database = {
       delete_plan_item: {
         Args: { p_plan_id: string; p_item_id: string; p_expected_revision?: number | null };
         Returns: PlanOrderSaveResult;
+      };
+      clear_plan_items: {
+        Args: { p_plan_id: string; p_expected_revision?: number | null };
+        Returns: PlanOrderClearResult;
       };
       create_file_upload_intent: {
         Args: {
