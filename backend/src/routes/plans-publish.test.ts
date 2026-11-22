@@ -52,6 +52,8 @@ const store = vi.hoisted(() => ({
   assignments: [] as StoredAssignment[],
   effects: [] as StoredEffect[],
   fieldUpdates: [] as Record<string, unknown>[],
+  /** Simulates a publish committing between the route's plan read and its RPC. */
+  publishBeforeSchedule: false,
   deliverEffectNow: vi.fn(async (_effectId: string | null) => undefined),
   notifyPlanAssignments: vi.fn(),
 }));
@@ -136,6 +138,7 @@ const rpc = (name: string, args: RpcArgs): { data: unknown; error: { code: strin
     };
   }
   if (name === 'schedule_plan_assignments') {
+    if (store.publishBeforeSchedule) plan.status = 'published';
     const created = (args.p_assignments ?? []).map((a, index) => ({
       id: `new-${index}`, plan_id: plan.id, person_id: a.person_id ?? NEW_PERSON, team_id: a.team_id,
       visibility: a.visibility ?? 'released', status: 'unconfirmed',
@@ -219,6 +222,7 @@ describe('ADR-0006: draft plans are quiet; publishing notifies', () => {
     ];
     store.effects = [];
     store.fieldUpdates = [];
+    store.publishBeforeSchedule = false;
     store.deliverEffectNow.mockClear();
     store.notifyPlanAssignments.mockClear();
   });
@@ -238,6 +242,16 @@ describe('ADR-0006: draft plans are quiet; publishing notifies', () => {
 
   it('scheduling on a published plan still notifies right away', async () => {
     store.plan = { ...store.plan!, status: 'published' };
+    const res = await request(app)
+      .post(`/api/v1/plans/${PLAN}/assignments`)
+      .send({ assignments: [{ person_id: NEW_PERSON, team_id: BAND }], notify: true });
+    expect(res.status).toBe(201);
+    expect(res.body.held_until_publish).toBeUndefined();
+    expect(store.deliverEffectNow).toHaveBeenCalledWith('effect-1');
+  });
+
+  it('scheduling while a publish commits is sent in the request, not held (W10-MAIL-D2)', async () => {
+    store.publishBeforeSchedule = true;
     const res = await request(app)
       .post(`/api/v1/plans/${PLAN}/assignments`)
       .send({ assignments: [{ person_id: NEW_PERSON, team_id: BAND }], notify: true });
