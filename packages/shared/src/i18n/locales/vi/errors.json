@@ -42,6 +42,7 @@
     "plan_position_exists": "Vị trí này đã có trong chương trình.",
     "run_control_held": "Một người khác đang điều khiển buổi trực tiếp này.",
     "run_control_lost": "Bạn không còn điều khiển buổi trực tiếp này.",
+    "live_run_active": "Chương trình này đang chạy trực tiếp. Hãy kết thúc buổi trực tiếp trước khi xóa toàn bộ thứ tự.",
     "idempotency_key_reused": "Yêu cầu này đã được gửi với thông tin khác. Hãy bắt đầu lại.",
     "invalid_api_key": "Khóa API không hợp lệ.",
     "insufficient_scope": "Thông tin xác thực này không cho phép thao tác đó.",
