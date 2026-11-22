@@ -101,7 +101,15 @@
     "none": "Không có.",
     "changedMeanwhile": "Có người vừa lưu mẫu này. Mẫu đã được tải lại; hãy thực hiện lại thay đổi của bạn.",
     "saveRevision": "Lưu thành phiên bản {{revision}}",
-    "saveDetails": "Lưu thông tin"
+    "saveDetails": "Lưu thông tin",
+    "addTime": "Thêm giờ",
+    "newTimeKind": "Loại giờ cần thêm",
+    "editItem": "Sửa {{title}}",
+    "add": {
+      "song": "Bài hát",
+      "item": "Mục",
+      "header": "Tiêu đề"
+    }
   },
   "generate": {
     "noAccess": "Tạo chương trình dành cho người chỉnh sửa chương trình",
@@ -320,5 +328,66 @@
   },
   "picker": {
     "allServiceTypes": "Mọi loại buổi nhóm"
+  },
+  "itemForm": {
+    "addTitle": "Thêm vào chương trình",
+    "editTitle": "Sửa {{title}}",
+    "type": "Loại",
+    "song": "Bài hát:",
+    "noSong": "Chưa chọn",
+    "findSong": "Tìm bài hát",
+    "changeSong": "Đổi bài hát",
+    "closeSearch": "Đóng tìm kiếm",
+    "searchSongs": "Tìm bài hát",
+    "title": "Tiêu đề",
+    "length": "Thời lượng (p:ss)",
+    "description": "Mô tả",
+    "add": "Thêm vào mẫu",
+    "update": "Cập nhật mục",
+    "errors": {
+      "songRequired": "Hãy chọn một bài hát cho mục bài hát.",
+      "titleRequired": "Hãy đặt tiêu đề cho mục.",
+      "length": "Nhập thời lượng như 4:30 (tối đa 10 giờ)."
+    }
+  },
+  "staffing": {
+    "team": "Ban",
+    "chooseTeam": "Chọn ban",
+    "position": "Vị trí",
+    "choosePosition": "Chọn vị trí",
+    "alreadyListed": "{{position}} (đã có trong danh sách)",
+    "count": "Số lượng",
+    "addNeed": "Thêm nhu cầu",
+    "person": "Người",
+    "searchPerson": "Tìm người",
+    "teamMembers": "Trong {{team}}",
+    "everyone": "Mọi người",
+    "inTemplate": "Đã có trong mẫu",
+    "addPerson": "Thêm người",
+    "duplicateEntry": "Người này đã có trong danh sách phân công cho ban và vị trí đó."
+  },
+  "create": {
+    "open": "Mẫu mới",
+    "title": "Mẫu chương trình mới",
+    "name": "Tên",
+    "serviceType": "Loại buổi nhóm",
+    "description": "Mô tả (không bắt buộc)",
+    "hint": "Mẫu bắt đầu trống. Hãy thêm chương trình, giờ, vị trí cần người và nhân sự trong trình chỉnh sửa.",
+    "noScope": "Bạn không có quyền chỉnh sửa chương trình cho loại buổi nhóm nào, nên không thể tạo mẫu.",
+    "submit": "Tạo và chỉnh sửa"
+  },
+  "duplicate": {
+    "open": "Nhân bản",
+    "title": "Nhân bản {{name}}",
+    "description": "Sao chép phiên bản {{revision}} thành một mẫu mới. Mẫu gốc không thay đổi.",
+    "defaultName": "{{name}} (bản sao)",
+    "name": "Tên bản sao",
+    "serviceType": "Loại buổi nhóm",
+    "serviceTypeHint": "Các vị trí cần người và nhân sự được kiểm tra theo các ban phục vụ loại buổi nhóm này.",
+    "unavailable": "Không phải ban nào cũng phục vụ loại buổi nhóm đó: {{needs}} và {{roster}} sẽ bị bỏ ra khỏi bản sao.",
+    "unavailableNeeds_other": "{{count}} vị trí cần người",
+    "unavailableRoster_other": "{{count}} mục phân công",
+    "leaveOut": "Sao chép mà không có chúng",
+    "submit": "Nhân bản"
   }
 }
