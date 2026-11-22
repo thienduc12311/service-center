@@ -4,6 +4,7 @@ import {
   applyTemplateSchema,
   archivePlanTemplateSchema,
   createPlanTemplateSchema,
+  duplicatePlanTemplateSchema,
   generatePlansSchema,
   listPlanTemplatesQuerySchema,
   planSeriesSchema,
@@ -14,6 +15,7 @@ import {
   type ApplyTemplateInput,
   type ArchivePlanTemplateInput,
   type CreatePlanTemplateInput,
+  type DuplicatePlanTemplateInput,
   type GeneratePlansInput,
   type ListPlanTemplatesQuery,
   type PlanSeriesInput,
@@ -29,6 +31,7 @@ import {
   applyTemplate,
   archivePlanTemplate,
   createPlanTemplate,
+  duplicatePlanTemplate,
   generatePlans,
   getPlanTemplate,
   listPlanTemplates,
@@ -73,6 +76,11 @@ planTemplatesRouter.patch('/:id', validateBody(updatePlanTemplateSchema), async 
 planTemplatesRouter.post('/:id/archive', validateBody(archivePlanTemplateSchema), async (req, res) => {
   const { archived } = req.body as ArchivePlanTemplateInput;
   res.json(await archivePlanTemplate(context(req), param(req, 'id'), archived));
+});
+
+/** Copies the current revision into a new template; the source never changes. */
+planTemplatesRouter.post('/:id/duplicate', validateBody(duplicatePlanTemplateSchema), async (req, res) => {
+  res.status(201).json(await duplicatePlanTemplate(context(req), param(req, 'id'), req.body as DuplicatePlanTemplateInput));
 });
 
 /**

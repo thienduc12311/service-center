@@ -75,6 +75,7 @@ import type {
   PlanTemplateRevisionRow,
   PlanTemplateRow,
   PlanTemplateSaveResult,
+  PlanTemplateDuplicateResult,
   TemplateApplyCommit,
   TemplateApplyPreviewResult,
   ReschedulePreview,
@@ -1934,6 +1935,17 @@ export type Database = {
       set_plan_template_archived: {
         Args: { p_template_id: string; p_archived: boolean };
         Returns: undefined;
+      };
+      duplicate_plan_template: {
+        Args: {
+          p_organization_id: string;
+          p_template_id: string;
+          p_name?: string | null;
+          p_change_service_type?: boolean;
+          p_service_type_id?: string | null;
+          p_drop_unavailable?: boolean;
+        };
+        Returns: PlanTemplateDuplicateResult;
       };
       preview_plan_template_apply: {
         Args: {

@@ -232,3 +232,20 @@ export type ReschedulePreviewInput = z.infer<typeof reschedulePreviewSchema>;
 export type ReschedulePreviewRequest = z.input<typeof reschedulePreviewSchema>;
 export type RescheduleCommitInput = z.infer<typeof rescheduleCommitSchema>;
 export type RescheduleCommitRequest = z.input<typeof rescheduleCommitSchema>;
+
+// ------------------------------------------------ template authoring: copy --
+
+/**
+ * Copy a template's current revision into a new template. `service_type_id`
+ * omitted keeps the source's service type; null makes the copy available to
+ * every service type. Needed positions and roster entries that do not apply
+ * to the target are only left out when `drop_unavailable` is true.
+ */
+export const duplicatePlanTemplateSchema = z.object({
+  name: nonEmpty.max(120).optional(),
+  service_type_id: uuid.nullish(),
+  drop_unavailable: z.boolean().default(false),
+});
+
+export type DuplicatePlanTemplateInput = z.infer<typeof duplicatePlanTemplateSchema>;
+export type DuplicatePlanTemplateRequest = z.input<typeof duplicatePlanTemplateSchema>;

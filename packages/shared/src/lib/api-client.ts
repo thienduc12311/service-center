@@ -342,6 +342,7 @@ import type {
 import type {
   ApplyTemplateRequest,
   CreatePlanTemplateRequest,
+  DuplicatePlanTemplateRequest,
   GeneratePlansRequest,
   ListPlanTemplatesRequest,
   PlanSeriesRequest,
@@ -968,6 +969,9 @@ export class ServiceCenterApi {
     this.request<PlanTemplateDetail>('PATCH', `/api/v1/plan-templates/${templateId}`, body);
   archivePlanTemplate = (templateId: string, archived: boolean) =>
     this.request<PlanTemplateDetail>('POST', `/api/v1/plan-templates/${templateId}/archive`, { archived });
+  /** A new template from this one's current revision (409 `template_copy_unavailable` asks before leaving staffing out). */
+  duplicatePlanTemplate = (templateId: string, body: DuplicatePlanTemplateRequest) =>
+    this.request<PlanTemplateDetail>('POST', `/api/v1/plan-templates/${templateId}/duplicate`, body);
   planTemplateApplications = (planId: string) =>
     this.request<PlanTemplateApplicationRow[]>('GET', `/api/v1/plans/${planId}/template-applications`);
   previewApplyTemplate = (planId: string, body: PreviewTemplateApplyRequest) =>

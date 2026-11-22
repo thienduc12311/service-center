@@ -152,6 +152,25 @@ export interface PlanTemplateSaveResult {
   revision: number;
 }
 
+/** API error code: a copy would leave out staffing that does not apply to its service type. */
+export const TEMPLATE_COPY_UNAVAILABLE = 'template_copy_unavailable';
+
+/** How many needed positions and roster entries do not apply to a copy's service type. */
+export interface PlanTemplateUnavailableCounts {
+  needs: number;
+  roster: number;
+}
+
+/**
+ * `duplicate_plan_template`: the new template, or (template_id null) nothing
+ * written because `unavailable` entries need the caller's agreement first.
+ */
+export interface PlanTemplateDuplicateResult {
+  template_id: string | null;
+  revision: number | null;
+  unavailable: PlanTemplateUnavailableCounts;
+}
+
 /** Values behind a notice's English `message` (see the notice's `code`). */
 export interface TemplateNoticeParams {
   count?: number;

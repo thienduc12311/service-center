@@ -112,7 +112,15 @@
     "none": "None.",
     "changedMeanwhile": "Someone saved this template meanwhile. It has been reloaded; make your change again.",
     "saveRevision": "Save as revision {{revision}}",
-    "saveDetails": "Save details"
+    "saveDetails": "Save details",
+    "addTime": "Add time",
+    "newTimeKind": "Kind of time to add",
+    "editItem": "Edit {{title}}",
+    "add": {
+      "song": "Song",
+      "item": "Item",
+      "header": "Header"
+    }
   },
   "generate": {
     "noAccess": "Creating plans is for plan editors",
@@ -351,5 +359,68 @@
   },
   "picker": {
     "allServiceTypes": "All service types"
+  },
+  "itemForm": {
+    "addTitle": "Add to the order",
+    "editTitle": "Edit {{title}}",
+    "type": "Type",
+    "song": "Song:",
+    "noSong": "None chosen",
+    "findSong": "Find a song",
+    "changeSong": "Change song",
+    "closeSearch": "Close search",
+    "searchSongs": "Search songs",
+    "title": "Title",
+    "length": "Length (m:ss)",
+    "description": "Description",
+    "add": "Add to template",
+    "update": "Update item",
+    "errors": {
+      "songRequired": "Choose a song for a song item.",
+      "titleRequired": "Give the item a title.",
+      "length": "Enter a length like 4:30 (at most 10 hours)."
+    }
+  },
+  "staffing": {
+    "team": "Team",
+    "chooseTeam": "Choose a team",
+    "position": "Position",
+    "choosePosition": "Choose a position",
+    "alreadyListed": "{{position}} (already listed)",
+    "count": "How many",
+    "addNeed": "Add need",
+    "person": "Person",
+    "searchPerson": "Search people",
+    "teamMembers": "On {{team}}",
+    "everyone": "Everyone",
+    "inTemplate": "In this template",
+    "addPerson": "Add person",
+    "duplicateEntry": "This person is already in the roster for that team and position."
+  },
+  "create": {
+    "open": "New template",
+    "title": "New plan template",
+    "name": "Name",
+    "serviceType": "Service type",
+    "description": "Description (optional)",
+    "hint": "The template starts empty. Add its order, times, needed positions and people in the editor.",
+    "noScope": "You do not edit plans for any service type, so you cannot create a template.",
+    "submit": "Create and edit"
+  },
+  "duplicate": {
+    "open": "Duplicate",
+    "title": "Duplicate {{name}}",
+    "description": "Copies revision {{revision}} into a new template. The original does not change.",
+    "defaultName": "{{name}} (copy)",
+    "name": "Name of the copy",
+    "serviceType": "Service type",
+    "serviceTypeHint": "Needed positions and people are checked against the teams that serve this service type.",
+    "unavailable": "Not every team serves that service type: {{needs}} and {{roster}} would be left out of the copy.",
+    "unavailableNeeds_one": "{{count}} needed position",
+    "unavailableNeeds_other": "{{count}} needed positions",
+    "unavailableRoster_one": "{{count}} roster entry",
+    "unavailableRoster_other": "{{count}} roster entries",
+    "leaveOut": "Copy without them",
+    "submit": "Duplicate"
   }
 }
