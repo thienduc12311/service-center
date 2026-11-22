@@ -22,6 +22,7 @@ import {
   useSensor,
   useSensors,
   type Announcements,
+  type AutoScrollOptions,
   type DragEndEvent,
   type UniqueIdentifier,
 } from '@dnd-kit/core';
@@ -37,7 +38,7 @@ import { INSERT_AT_END, type OrderInsertPoint } from './insertPoint';
 import { QuickAddLine } from './QuickAddLine';
 import { ClearOrderDialog } from './ClearOrderDialog';
 import { OrderShortcutsDialog } from './OrderShortcutsDialog';
-import { isActivatableTarget, isTextEntryTarget, orderShortcutFor } from './orderShortcuts';
+import { isActivatableTarget, isTextEntryTarget, orderShortcutFor, shortcutScopeOf } from './orderShortcuts';
 
 export interface OrderTabProps {
   plan: PlanDetail;
@@ -96,6 +97,13 @@ const describeLeader = (t: TFunction<['plans', 'common']>, list: (items: readonl
     }
   }
 };
+
+/**
+ * Scroll the page only when the pointer is right at the window's edge, and
+ * gently: dnd-kit's default (the outer 20% of the window, fast) runs a drag
+ * near the bottom of a laptop screen to the end of the list.
+ */
+const ORDER_AUTO_SCROLL = { threshold: { x: 0, y: 0.06 }, acceleration: 3 } as const satisfies AutoScrollOptions;
 
 export const OrderTab = ({
   plan,
@@ -257,6 +265,7 @@ export const OrderTab = ({
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            autoScroll={ORDER_AUTO_SCROLL}
             accessibility={{ announcements, screenReaderInstructions: { draggable: t('orderTab.drag.instructions') } }}
             onDragStart={() => order.setDragging(true)}
             onDragCancel={() => order.setDragging(false)}
@@ -303,7 +312,7 @@ export const OrderTab = ({
         {mediaItem && <LinkMediaModal plan={plan} item={mediaItem} onClose={() => setMediaItem(null)} />}
       </div>
       <p role="status" aria-live="polite" className="sr-only">{order.announcement}</p>
-      <OrderShortcutsDialog open={order.helpOpen} onClose={() => order.setHelpOpen(false)} />
+      <OrderShortcutsDialog open={order.helpOpen} canManage={canManage} onClose={() => order.setHelpOpen(false)} />
       {clearing && <ClearOrderDialog open plan={plan} onClose={() => setClearing(false)} />}
     </div>
   );
@@ -403,8 +412,9 @@ const useOrderKeyboard = ({ plan, canManage, busy, onEditItem, onMoveItem, onRem
       if (event.defaultPrevented || event.isComposing || dragging.current) return;
       const target = event.target;
       const container = containerRef.current;
-      const onPage = target === document.body || target === document.documentElement;
-      if (!container || (!onPage && !(target instanceof Node && container.contains(target)))) return;
+      const scope = container ? shortcutScopeOf(target, container) : null;
+      if (!scope) return;
+      const onPage = scope === 'page';
       if (isTextEntryTarget(target) || document.querySelector('[aria-modal="true"]')) return;
       const shortcut = orderShortcutFor(event);
       if (!shortcut) return;
@@ -590,7 +600,8 @@ const OrderRow = ({ item, index, selected, onSelect, rowRef, slot, clock, leader
     <Badge tone="bg-violet-50 text-violet-700 ring-violet-600/20">{t('orderTab.onlyTimes', { times: format.list(limitedTo) })}</Badge>
   );
   const hasDetails = item.item_type !== 'header' && Boolean(item.details?.trim());
-  const insertButtons = canManage && (
+  // No "+" while any row is being dragged: they would sit over the rows' captions.
+  const insertButtons = canManage && !sortable.active && (
     <>
       {onInsertBefore && <InsertButton edge="inside-top" label={t('orderTab.insertAtStart')} onClick={onInsertBefore} />}
       <InsertButton edge={isLast ? 'inside-bottom' : 'bottom'} label={t('orderTab.insertAfter', { title: item.title })} onClick={onInsertAfter} />

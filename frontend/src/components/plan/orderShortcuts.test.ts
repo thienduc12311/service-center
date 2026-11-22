@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isTextEntryTarget, orderShortcutFor, type ShortcutKeyEvent } from './orderShortcuts';
+import { ORDER_SHORTCUT_HELP, isTextEntryTarget, orderShortcutFor, orderShortcutHelpFor, shortcutScopeOf, type ShortcutKeyEvent } from './orderShortcuts';
 
 const press = (key: string, modifiers: Partial<ShortcutKeyEvent> = {}): ShortcutKeyEvent => ({
   key,
@@ -57,5 +57,36 @@ describe('isTextEntryTarget', () => {
     expect(isTextEntryTarget(document.createElement('button'))).toBe(false);
     expect(isTextEntryTarget(document.createElement('li'))).toBe(false);
     expect(isTextEntryTarget(null)).toBe(false);
+  });
+});
+
+describe('orderShortcutHelpFor', () => {
+  it('lists every shortcut for an editor', () => {
+    expect(orderShortcutHelpFor(true)).toEqual(ORDER_SHORTCUT_HELP);
+  });
+
+  it('lists only selecting and help for someone who cannot edit', () => {
+    expect(orderShortcutHelpFor(false).map((row) => row.shortcut)).toEqual(['select-next', 'select-previous', 'deselect', 'help']);
+  });
+});
+
+describe('shortcutScopeOf', () => {
+  it('is the order inside the list, the page on the body or a button or link elsewhere, and nothing otherwise', () => {
+    const container = document.createElement('div');
+    const row = document.createElement('li');
+    container.append(row);
+    const toolbarButton = document.createElement('button');
+    const link = document.createElement('a');
+    link.href = '/songs';
+    const plain = document.createElement('section');
+    document.body.append(container, toolbarButton, link, plain);
+
+    expect(shortcutScopeOf(row, container)).toBe('order');
+    expect(shortcutScopeOf(document.body, container)).toBe('page');
+    expect(shortcutScopeOf(toolbarButton, container)).toBe('page');
+    expect(shortcutScopeOf(link, container)).toBe('page');
+    expect(shortcutScopeOf(plain, container)).toBeNull();
+    expect(shortcutScopeOf(null, container)).toBeNull();
+    document.body.replaceChildren();
   });
 });

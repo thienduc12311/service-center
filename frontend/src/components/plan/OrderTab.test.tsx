@@ -174,6 +174,22 @@ it('drags an item to a new position with the keyboard and saves the whole order 
   expect(props.onMoveItem).not.toHaveBeenCalled();
 });
 
+it('hides the insert + handles while a row is dragged', async () => {
+  layOutRows();
+  renderOrder({ plan: planOfThree });
+  const handle = await screen.findByRole('button', { name: 'Drag to reorder Welcome' });
+  expect(screen.getByRole('button', { name: 'Add here, after Sermon' })).toBeTruthy();
+  handle.focus();
+
+  fireEvent.keyDown(handle, { key: ' ', code: 'Space' });
+  await settle();
+  expect(screen.queryByRole('button', { name: /Add here/ })).toBeNull();
+
+  fireEvent.keyDown(handle, { key: 'Escape', code: 'Escape' });
+  await settle();
+  expect(screen.getByRole('button', { name: 'Add here, after Sermon' })).toBeTruthy();
+});
+
 it('sends nothing when a drag is cancelled or dropped where it started', async () => {
   layOutRows();
   const { props } = renderOrder({ plan: planOfThree });
@@ -343,6 +359,32 @@ it('focuses quick add with n and opens the shortcut help with ?', async () => {
   // With the dialog open the order's shortcuts are off.
   fireEvent.keyDown(document.body, { key: 'j' });
   expect(document.querySelector('[aria-current="true"]')).toBeNull();
+});
+
+it('keeps the shortcuts working once the help closes and focus is back on its button', async () => {
+  const { user } = renderOrder({ plan: planOfThree });
+  const helpButton = await screen.findByRole('button', { name: 'Keyboard shortcuts' });
+  await user.click(helpButton);
+  await screen.findByRole('dialog', { name: 'Keyboard shortcuts' });
+  await user.keyboard('{Escape}');
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  helpButton.focus();
+
+  fireEvent.keyDown(helpButton, { key: 'j' });
+  expect(screen.getByText('Welcome').closest('li')!.getAttribute('aria-current')).toEqual('true');
+});
+
+it('shows someone who cannot edit only the shortcuts that work for them', async () => {
+  renderOrder({ canManage: false });
+  await screen.findByText('Welcome');
+  fireEvent.keyDown(document.body, { key: '?', shiftKey: true });
+  const dialog = await screen.findByRole('dialog', { name: 'Keyboard shortcuts' });
+  expect(within(dialog).getByText('Select the next item')).toBeTruthy();
+  expect(within(dialog).getByText('Show these shortcuts')).toBeTruthy();
+  expect(within(dialog).queryByText('Move the selected item down')).toBeNull();
+  expect(within(dialog).queryByText('Edit the selected item')).toBeNull();
+  expect(within(dialog).queryByText('Remove the selected item (asks first)')).toBeNull();
+  expect(within(dialog).queryByText('Go to quick add')).toBeNull();
 });
 
 it('does not move, edit or remove from the keyboard for someone who cannot edit', async () => {

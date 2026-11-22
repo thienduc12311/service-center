@@ -43,6 +43,13 @@ export const ORDER_SHORTCUT_HELP: readonly OrderShortcutHelpRow[] = [
   { keys: ['?'], shortcut: 'help' },
 ];
 
+/** Shortcuts that only read the order: the ones someone who cannot edit it can use. */
+const READ_ONLY_SHORTCUTS: ReadonlySet<OrderShortcut> = new Set<OrderShortcut>(['select-next', 'select-previous', 'deselect', 'help']);
+
+/** The help rows that work for this reader: all of them for an editor, selection and help otherwise. */
+export const orderShortcutHelpFor = (canManage: boolean): readonly OrderShortcutHelpRow[] =>
+  canManage ? ORDER_SHORTCUT_HELP : ORDER_SHORTCUT_HELP.filter((row) => READ_ONLY_SHORTCUTS.has(row.shortcut));
+
 /** Which shortcut a key press means; null when it is not one. */
 export const orderShortcutFor = (event: ShortcutKeyEvent): OrderShortcut | null => {
   if (event.ctrlKey || event.metaKey) return null;
@@ -88,3 +95,17 @@ export const isTextEntryTarget = (target: EventTarget | null): boolean => {
 /** Whether Enter on `target` already does something of its own (a button or link). */
 export const isActivatableTarget = (target: EventTarget | null): boolean =>
   target instanceof HTMLElement && target.closest('button, a[href], summary, [role="button"]') !== null;
+
+/**
+ * Where a key press happened, for the order's shortcuts: `order` inside the
+ * order list, `page` on the page itself or on a button or link elsewhere
+ * (such as the toolbar's "?" after its dialog closes), null anywhere else.
+ * Enter on a button keeps its own meaning; the edit shortcut checks that.
+ */
+export type ShortcutScope = 'order' | 'page';
+
+export const shortcutScopeOf = (target: EventTarget | null, container: Element): ShortcutScope | null => {
+  if (target instanceof Node && container.contains(target)) return 'order';
+  if (target === document.body || target === document.documentElement) return 'page';
+  return isActivatableTarget(target) ? 'page' : null;
+};
