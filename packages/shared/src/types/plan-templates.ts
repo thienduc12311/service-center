@@ -192,7 +192,7 @@ export interface TemplatePreviewNotice {
   params?: TemplateNoticeParams;
 }
 
-export type TemplateItemSkipReason = 'song_missing';
+export type TemplateItemSkipReason = 'song_missing' | 'song_archived';
 export type TemplateNeedSkipReason = 'position_missing';
 export type TemplateRosterSkipReason = 'person_unavailable' | 'position_missing' | 'not_permitted';
 

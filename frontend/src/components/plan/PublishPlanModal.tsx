@@ -27,6 +27,13 @@ export const PublishPlanModal = ({ open, planId, publishing, error, onClose, onP
   const { organizationId } = useAuth();
   const { list } = useFormatters();
   const [notify, setNotify] = useState(true);
+  // The dialog stays mounted between opens: tick "Notify people" again each
+  // time it opens, so an earlier Cancel never makes the next publish quiet.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setNotify(true);
+  }
   const preview = useQuery({
     queryKey: keys.planPublishPreview(organizationId, planId),
     queryFn: () => api.planPublishPreview(planId),

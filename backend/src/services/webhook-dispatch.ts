@@ -4,7 +4,7 @@ import type { LookupFunction } from 'node:net';
 import { EXTERNAL_API_VERSION, type WebhookAttemptOutcome, type WebhookClaimRpcRow, type WebhookEventPayload, type WebhookWorkerResult } from '@service-center/shared';
 import { config } from '../config.js';
 import { DestinationError, resolveDestination, type ResolvedDestination } from '../lib/destination-guard.js';
-import { openSecret } from '../lib/secret-box.js';
+import { openSecret, secretBoxAvailable } from '../lib/secret-box.js';
 import { adminDb, unwrap } from '../lib/supabase.js';
 import { webhookHeaders } from '../lib/webhook-signature.js';
 
@@ -152,7 +152,18 @@ export const runWebhookDeliveries = async (
   return result;
 };
 
+/**
+ * Null when the step did not run. Without INTEGRATION_SECRET_KEY no payload
+ * can be signed, so nothing is claimed: due deliveries stay queued and their
+ * endpoints enabled until a correctly configured run sends them (W10-MAIL-D5).
+ * `secret_unavailable` stays reserved for a key that cannot open a stored
+ * secret (rotated key, tampered value).
+ */
 export const runWebhookDeliveriesSafely = async (): Promise<WebhookWorkerResult | null> => {
+  if (!secretBoxAvailable()) {
+    console.warn('[webhooks] skipped: INTEGRATION_SECRET_KEY is not configured; due webhook deliveries stay queued');
+    return null;
+  }
   try {
     return await runWebhookDeliveries();
   } catch (error) {

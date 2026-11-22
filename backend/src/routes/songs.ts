@@ -23,7 +23,7 @@ import {
 } from '@service-center/shared';
 import { parsedQuery, validateBody, validateQuery } from '../lib/validate.js';
 import { requireCapability } from '../middleware/organization.js';
-import { raw, unwrap, unwrapOne, unwrapDeleted } from '../lib/supabase.js';
+import { raw, unwrap, unwrapOne, unwrapDeleted, type InUseError } from '../lib/supabase.js';
 import { HttpError } from '../lib/errors.js';
 import {
   SONG_SELECT,
@@ -31,6 +31,15 @@ import {
   loadArrangementChart,
   loadSongSchedule,
 } from '../services/songs.js';
+
+const SONG_IN_USE: InUseError = {
+  code: 'song_in_use',
+  message: 'This song is still used in a plan or a song book, so it cannot be deleted. Remove it from those first, or archive it instead.',
+};
+const ARRANGEMENT_IN_USE: InUseError = {
+  code: 'arrangement_in_use',
+  message: 'This arrangement is used in a plan, so it cannot be deleted. Remove it from those plans first.',
+};
 
 export const songsRouter: Router = Router();
 export const arrangementsRouter: Router = Router();
@@ -154,6 +163,17 @@ songsRouter.post('/', requireCapability('songs.manage'), validateBody(createSong
 songsRouter.patch('/:id', requireCapability('songs.manage'), validateBody(updateSongSchema), async (req, res) => {
   const { expected_revision: expectedRevision, ...changes } = req.body as UpdateSongInput;
   const id = param(req, 'id');
+  // Nothing to change (W10-FGH-D1): PostgREST matches no row for an empty
+  // update, so answer with the song as it stands instead of a false 404.
+  if (Object.keys(changes).length === 0) {
+    const current = await unwrap(req.db.from('songs').select('*').eq('id', id).eq('organization_id', req.orgId).maybeSingle());
+    if (!current) throw HttpError.notFound('Song not found');
+    if (expectedRevision !== undefined && current.revision !== expectedRevision) {
+      throw new HttpError(409, 'This song changed since it was opened', 'song_revision_stale');
+    }
+    res.json(current);
+    return;
+  }
   let update = req.db.from('songs').update(changes).eq('id', id).eq('organization_id', req.orgId);
   if (expectedRevision !== undefined) update = update.eq('revision', expectedRevision);
   const updated = await unwrap(update.select('*').maybeSingle());
@@ -171,6 +191,7 @@ songsRouter.delete('/:id', requireCapability('songs.manage'), async (req, res) =
   await unwrapDeleted(
     req.db.from('songs').delete().eq('id', param(req, 'id')).eq('organization_id', req.orgId).select('id'),
     'Song not found',
+    SONG_IN_USE,
   );
   res.status(204).end();
 });
@@ -202,6 +223,15 @@ songsRouter.post(
 arrangementsRouter.patch('/:id', requireCapability('songs.manage'), validateBody(updateArrangementSchema), async (req, res) => {
   const { expected_revision: expectedRevision, ...changes } = req.body as UpdateArrangementInput;
   const id = param(req, 'id');
+  if (Object.keys(changes).length === 0) {
+    const current = await unwrap(req.db.from('arrangements').select('*').eq('id', id).maybeSingle());
+    if (!current) throw HttpError.notFound('Arrangement not found');
+    if (expectedRevision !== undefined && current.revision !== expectedRevision) {
+      throw new HttpError(409, 'This arrangement changed since it was opened', 'arrangement_revision_stale');
+    }
+    res.json(current);
+    return;
+  }
   let update = req.db.from('arrangements').update(changes).eq('id', id);
   if (expectedRevision !== undefined) update = update.eq('revision', expectedRevision);
   const updated = await unwrap(update.select('*').maybeSingle());
@@ -216,7 +246,7 @@ arrangementsRouter.patch('/:id', requireCapability('songs.manage'), validateBody
 });
 
 arrangementsRouter.delete('/:id', requireCapability('songs.manage'), async (req, res) => {
-  await unwrapDeleted(req.db.from('arrangements').delete().eq('id', param(req, 'id')).select('id'), 'Arrangement not found');
+  await unwrapDeleted(req.db.from('arrangements').delete().eq('id', param(req, 'id')).select('id'), 'Arrangement not found', ARRANGEMENT_IN_USE);
   res.status(204).end();
 });
 

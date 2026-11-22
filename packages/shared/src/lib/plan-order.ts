@@ -48,6 +48,13 @@ const durationOf = (item: ScheduleItem): number =>
   item.item_type === 'header' ? 0 : Math.max(0, Math.trunc(item.length_seconds));
 const iso = (ms: number): string => new Date(ms).toISOString();
 
+/**
+ * The programmed length of a plan's items: what the running-order schedule
+ * adds up across every segment (headers take no time, whatever length they hold).
+ */
+export const planItemsTotalSeconds = (items: readonly ScheduleItem[]): number =>
+  items.reduce((sum, item) => sum + durationOf(item), 0);
+
 /** Service times in start order; rehearsals and other times are not timed against. */
 export const serviceTimesOf = <T extends ScheduleTime>(times: readonly T[]): T[] =>
   times
@@ -75,10 +82,9 @@ export const computePlanSchedule = ({ items: allItems, time }: ComputePlanSchedu
   const pre = bySegment('pre');
   const service = bySegment('service');
   const post = bySegment('post');
-  const total = (list: readonly ScheduleItem[]) => list.reduce((sum, item) => sum + durationOf(item), 0);
-  const preSeconds = total(pre);
-  const serviceSeconds = total(service);
-  const postSeconds = total(post);
+  const preSeconds = planItemsTotalSeconds(pre);
+  const serviceSeconds = planItemsTotalSeconds(service);
+  const postSeconds = planItemsTotalSeconds(post);
 
   // A before item listed after the first service item (or an after item
   // before the last one) still times by its segment; flag the listing.

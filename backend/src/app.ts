@@ -2,7 +2,7 @@ import express, { type Express, type ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { redactTokenPath } from './lib/redact.js';
+import { redactReferrer, redactTokenPath } from './lib/redact.js';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { EXTERNAL_API_PREFIX } from '@service-center/shared';
@@ -122,7 +122,9 @@ export const createApp = (): Express => {
   app.use(express.json());
   if (!config.isTest) {
     // Bearer-token paths (response links, invitations, feeds) are logged by shape only.
+    // The query string is dropped and the Referer cut to its origin (W10-SEC-D3).
     morgan.token<express.Request>('url', (req) => redactTokenPath(req.originalUrl ?? req.url ?? ''));
+    morgan.token<express.Request>('referrer', (req) => redactReferrer(req.get('referer')));
     app.use(morgan(config.isProduction ? 'combined' : 'dev'));
   }
 

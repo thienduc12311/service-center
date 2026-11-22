@@ -1396,6 +1396,8 @@ export type Database = {
       people_owner_search: { Row: PeopleOwnerSearchRow; Relationships: [] };
     };
     Functions: {
+      rotate_calendar_feed_token: { Args: { p_org: string }; Returns: string };
+      revoke_calendar_feed_token: { Args: { p_org: string }; Returns: boolean };
       my_received_messages: {
         Args: { p_organization_id: string };
         Returns: OperationalMessageView[];
@@ -1890,6 +1892,11 @@ export type Database = {
       accept_person_invitation: {
         Args: { p_token_hash: string; p_new_user_id: string };
         Returns: AcceptPersonInvitationRow[];
+      };
+      /** Service role only: whether any login (confirmed or not) holds this email. Never for linking. */
+      auth_email_registered: {
+        Args: { p_email: string };
+        Returns: boolean;
       };
       /** Service role only: the login whose confirmed email this is, or null. */
       confirmed_user_id_by_email: {

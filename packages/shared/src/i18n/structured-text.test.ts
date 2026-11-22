@@ -183,6 +183,10 @@ describe('template notices', () => {
     expect(templateNoticeText({ code: 'date_taken', message: 'x', params: { service_type: 'Sunday Morning', date: '2026-11-08' } }, en))
       .toBe('Another Sunday Morning plan is already on Nov 8, 2026.');
     expect(templateNoticeText({ code: 'older_revision', message: 'x', params: { revision: 2, latest: 4 } }, vi)).toContain('2');
+    // W10-CD-D4: an archived arrangement in a template is reported like a missing one.
+    expect(templateNoticeText({ code: 'arrangement_archived', message: 'x', params: { count: 1 } }, en))
+      .toBe('1 item uses an archived arrangement; it keeps the song default.');
+    expect(templateNoticeText({ code: 'arrangement_archived', message: 'x', params: { count: 2 } }, vi)).toContain('2 mục');
   });
 
   it('keeps notices without params, or with unknown codes, as the server wrote them', () => {

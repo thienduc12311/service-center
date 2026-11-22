@@ -32,6 +32,8 @@ interface StoredRow {
 interface FakeState {
   tables: Record<'songs' | 'arrangements', StoredRow[]>;
   writes: { table: string; values: Record<string, unknown>; filters: Record<string, unknown> }[];
+  /** What a delete answers with, e.g. the 23503 a plan item's restricting FK raises. */
+  deleteError?: { code: string; message: string };
 }
 
 type Filters = Record<string, unknown>;
@@ -42,11 +44,21 @@ const matches = (row: StoredRow, filters: Filters): boolean =>
 const fakeDb = (state: FakeState): Db => {
   const from = (table: 'songs' | 'arrangements') => {
     const rows = state.tables[table];
-    const reader = (filters: Filters) => ({
-      eq: (column: string, value: unknown) => reader({ ...filters, [column]: value }),
+    const reader = (columns: string, filters: Filters) => ({
+      eq: (column: string, value: unknown) => reader(columns, { ...filters, [column]: value }),
       maybeSingle: () => {
         const row = rows.find((candidate) => matches(candidate, filters));
-        return Promise.resolve({ data: row ? { id: row.id } : null, error: null });
+        if (!row) return Promise.resolve({ data: null, error: null });
+        return Promise.resolve({ data: columns === '*' ? { ...row } : { id: row.id }, error: null });
+      },
+    });
+    const deleter = (filters: Filters) => ({
+      eq: (column: string, value: unknown) => deleter({ ...filters, [column]: value }),
+      select: () => {
+        if (state.deleteError) return Promise.resolve({ data: null, error: state.deleteError });
+        const removed = rows.filter((candidate) => matches(candidate, filters));
+        state.tables[table] = rows.filter((candidate) => !removed.includes(candidate));
+        return Promise.resolve({ data: removed.map((row) => ({ id: row.id })), error: null });
       },
     });
     const updater = (values: Record<string, unknown>, filters: Filters) => ({
@@ -62,8 +74,9 @@ const fakeDb = (state: FakeState): Db => {
       }),
     });
     return {
-      select: () => reader({}),
+      select: (columns: string) => reader(columns, {}),
       update: (values: Record<string, unknown>) => updater(values, {}),
+      delete: () => deleter({}),
     };
   };
   return { from } as unknown as Db;
@@ -165,5 +178,43 @@ describe('revisioned song and arrangement edits', () => {
     const res = await request(app).patch(`/api/v1/songs/${SONG}`).send({ title: 'Anything', expected_revision: 4 });
     expect(res.status).toBe(403);
     expect(state.writes).toEqual([]);
+  });
+  it('answers an empty song edit with the unchanged song, never 404 (W10-FGH-D1)', async () => {
+    const res = await request(app).patch(`/api/v1/songs/${SONG}`).send({});
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: SONG, title: 'Amazing Grace', revision: 4 });
+    expect(state.writes).toEqual([]);
+
+    const atRevision = await request(app).patch(`/api/v1/songs/${SONG}`).send({ expected_revision: 4 });
+    expect(atRevision.status).toBe(200);
+    const stale = await request(app).patch(`/api/v1/songs/${SONG}`).send({ expected_revision: 3 });
+    expect(stale.status).toBe(409);
+    expect(stale.body.code).toBe('song_revision_stale');
+
+    state.tables.songs = [];
+    expect((await request(app).patch(`/api/v1/songs/${SONG}`).send({})).status).toBe(404);
+  });
+
+  it('answers an empty arrangement edit with the unchanged arrangement', async () => {
+    const res = await request(app).patch(`/api/v1/arrangements/${ARRANGEMENT}`).send({});
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: ARRANGEMENT, song_key: 'G', revision: 2 });
+    expect(state.writes).toEqual([]);
+  });
+
+  it('refuses deleting a song or arrangement a plan uses with 409 in use (W10-FGH-D2)', async () => {
+    state.deleteError = { code: '23503', message: 'update or delete on table "arrangements" violates foreign key constraint' };
+    const song = await request(app).delete(`/api/v1/songs/${SONG}`);
+    expect(song.status).toBe(409);
+    expect(song.body.code).toBe('song_in_use');
+    const arrangement = await request(app).delete(`/api/v1/arrangements/${ARRANGEMENT}`);
+    expect(arrangement.status).toBe(409);
+    expect(arrangement.body.code).toBe('arrangement_in_use');
+    expect(JSON.stringify([song.body, arrangement.body])).not.toContain('Referenced record does not exist');
+  });
+
+  it('still deletes an unused song and 404s a missing one', async () => {
+    expect((await request(app).delete(`/api/v1/songs/${SONG}`)).status).toBe(204);
+    expect((await request(app).delete(`/api/v1/songs/${SONG}`)).status).toBe(404);
   });
 });

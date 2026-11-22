@@ -78,14 +78,30 @@ export const unwrapOne = async <T>(query: PromiseLike<PostgrestLike<T>>): Promis
   return data as NonNullable<T>;
 };
 
+/** How a delete refused by a restricting foreign key (23503) is reported. */
+export interface InUseError {
+  /** Stable API code clients localize (e.g. `song_in_use`). */
+  code: string;
+  message: string;
+}
+
 /**
  * For `.delete()...select('id')`. A delete that matches nothing (wrong id,
  * another organization, or hidden by RLS) is a 404, never a silent 204.
+ *
+ * On a delete, 23503 means another row still points at this one: with
+ * `inUse` that answers 409 with its code instead of the insert-side reading
+ * "Referenced record does not exist" (W10-FGH-D2).
  */
 export const unwrapDeleted = async (
   query: PromiseLike<PostgrestLike<readonly unknown[] | null>>,
   notFoundMessage = 'Not found',
+  inUse?: InUseError,
 ): Promise<void> => {
-  const deleted = await unwrap(query);
+  const { data: deleted, error } = await query;
+  if (error) {
+    if (inUse && error.code === '23503') throw new HttpError(409, inUse.message, inUse.code);
+    throw fromPostgrestError(error);
+  }
   if (!deleted || deleted.length === 0) throw HttpError.notFound(notFoundMessage);
 };

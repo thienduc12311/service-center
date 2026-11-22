@@ -286,6 +286,21 @@ describe('renderChordProChart', () => {
     expect(chart.chordpro).toContain('[Bb7]');
   });
 
+  it('spells a semitone shift that lands on a flat key with flats (W10-FGH-D3)', () => {
+    const chart = renderChordProChart('[G]a [C]b [D/F#]c', { sourceKey: 'G', semitones: -2 });
+    expect(chart.key).toBe('F');
+    expect(chart.chordpro).toBe('[F]a [Bb]b [C/E]c');
+    expect(renderChordProChart('[Am]a [F]b', { sourceKey: 'Am', semitones: 5 }).chordpro).toBe('[Dm]a [Bb]b');
+    expect(renderChordProChart('[G]a [C]b', { sourceKey: 'G', semitones: -1 }).key).toBe('F#');
+  });
+
+  it('keeps slash bass text: a bass note moves, unknown text stays (W10-FGH-D3)', () => {
+    expect(renderChordProChart('[G#m7b9#11/Q]x', { sourceKey: 'G', targetKey: 'A' }).chordpro).toBe('[A#m7b9#11/Q]x');
+    expect(renderChordProChart('[G/B]x [C/Bb7]y', { sourceKey: 'G', targetKey: 'A' }).chordpro).toBe('[A/C#]x [D/C7]y');
+    expect(transposeChord('C/E/G', 2)).toBe('D/F#/G');
+    expect(renderChordProChart('[D/Q]x', { sourceKey: 'G', notation: 'numbers' }).chordpro).toBe('[5/Q]x');
+  });
+
   it('renames the key when shifting by semitones alone', () => {
     const chart = renderChordProChart(source, { sourceKey: 'G', semitones: 2 });
     expect(chart.key).toBe('A');

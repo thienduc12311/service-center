@@ -72,6 +72,7 @@
     "empty": "Nothing here yet",
     "noResults": "No results",
     "offline": "You are offline",
+    "offlineList": "You're offline. This list will load when you reconnect.",
     "required": "Required",
     "optional": "Optional",
     "none": "None",

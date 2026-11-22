@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { conflictOverrideReason, idempotencyKey, instantString, musicalKey, nonEmpty, paginationSchema, uuid } from './common.js';
+import { conflictOverrideReason, idempotencyKey, instantString, musicalKey, zonedInstantString, nonEmpty, paginationSchema, uuid } from './common.js';
 
 export const planStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const planTimeKindSchema = z.enum(['service', 'rehearsal', 'other']);
@@ -11,8 +11,8 @@ export const planTimeSchema = z
     id: uuid.optional(),
     kind: planTimeKindSchema.default('service'),
     name: z.string().trim().max(120).nullish(),
-    starts_at: instantString,
-    ends_at: instantString,
+    starts_at: zonedInstantString,
+    ends_at: zonedInstantString,
     sort_order: z.number().int().min(0).optional(),
   })
   .refine((v) => new Date(v.starts_at) < new Date(v.ends_at), {
@@ -23,7 +23,7 @@ export const planTimeSchema = z
 export const createPlanSchema = z.object({
   title: nonEmpty.max(200),
   service_type_id: uuid.nullish(),
-  service_date: instantString,
+  service_date: zonedInstantString,
   location: z.string().trim().max(200).nullish(),
   status: planStatusSchema.default('draft'),
   notes: z.string().trim().max(8000).nullish(),
@@ -71,11 +71,17 @@ export const updatePlanSchema = createPlanSchema
     notify: z.boolean().default(true),
     /** Reused on a retried publish so it never asks twice. */
     idempotency_key: idempotencyKey.optional(),
+    /**
+     * W10-CD-D1: a time change that double-books someone is a 409
+     * `scheduling_conflict` unless the caller may override conflicts and
+     * gives this reason (recorded in assignment_conflict_overrides).
+     */
+    conflict_override_reason: conflictOverrideReason.nullish(),
   });
 
 /** "Same as last week": a new draft plan copied from an existing one. */
 export const duplicatePlanSchema = z.object({
-  service_date: instantString,
+  service_date: zonedInstantString,
   title: z.string().trim().min(1).max(200).optional(),
   copy_assignments: z.boolean().default(true),
   idempotency_key: idempotencyKey.optional(),

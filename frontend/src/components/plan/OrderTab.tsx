@@ -234,10 +234,10 @@ export const OrderTab = ({
         </p>
       )}
 
-      <div ref={order.containerRef} className="card overflow-hidden">
+      <div ref={order.containerRef} className="card @container overflow-hidden">
         <div className={`${ROW_GRID} items-center border-b border-app-border bg-slate-50/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:bg-slate-900/40 dark:text-slate-500`}>
           <span>{t('orderTab.columnStart')}</span>
-          <span className="hidden sm:block">{t('orderTab.columnLength')}</span>
+          <span className="hidden @xl:block">{t('orderTab.columnLength')}</span>
           <span>{t('orderTab.columnTitle')}</span>
           <span />
         </div>
@@ -564,11 +564,14 @@ const InsertButton = ({ edge, label, onClick }: InsertButtonProps) => (
 );
 
 /**
- * Start · length · title · controls on sm+. On a phone the length column folds
- * under the start time and the controls drop to their own line under the title.
+ * Start · length · title · controls once the order card is wide enough (a
+ * container query, not the viewport: beside the plan sidebar at 1024 px the
+ * card is phone-narrow). Narrower, the length column folds under the start
+ * time and the controls drop to their own line under the title, so they never
+ * sit on top of it.
  */
 const ROW_GRID =
-  'grid grid-cols-[3.75rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 sm:grid-cols-[4.5rem_3.5rem_minmax(0,1fr)_auto]';
+  'grid grid-cols-[3.75rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 @xl:grid-cols-[4.5rem_3.5rem_minmax(0,1fr)_auto]';
 
 const controlClass =
   'inline-grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200';
@@ -622,7 +625,7 @@ const OrderRow = ({ item, index, selected, onSelect, rowRef, slot, clock, leader
     </button>
   );
   const controls = (
-    <div className="col-start-2 -ml-1.5 flex shrink-0 flex-wrap items-center gap-0.5 sm:col-start-auto sm:ml-0">
+    <div className="col-start-2 -ml-1.5 flex shrink-0 flex-wrap items-center gap-0.5 @xl:col-start-auto @xl:ml-0">
       {item.item_type !== 'header' && discuss}
       {canManage && <>
         <button
@@ -663,7 +666,7 @@ const OrderRow = ({ item, index, selected, onSelect, rowRef, slot, clock, leader
       <li {...rowProps} className={`${ROW_GRID} group relative items-center bg-slate-50 px-4 py-2 dark:bg-slate-900/50 ${rowState}`}>
         {insertButtons}
         <span />
-        <span className="hidden sm:block" />
+        <span className="hidden @xl:block" />
         <h3 className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">
           {item.title}
           {timesBadge}
@@ -681,12 +684,12 @@ const OrderRow = ({ item, index, selected, onSelect, rowRef, slot, clock, leader
       {insertButtons}
       <span className="pt-0.5 text-sm font-medium tabular-nums text-slate-700 dark:text-slate-200">
         {slot ? clock(slot.starts_at) : '—'}
-        <span className="block text-xs font-normal text-slate-400 sm:hidden">{formatDuration(item.length_seconds)}</span>
+        <span className="block text-xs font-normal text-slate-400 @xl:hidden">{formatDuration(item.length_seconds)}</span>
       </span>
-      <span className="hidden pt-0.5 text-sm tabular-nums text-slate-400 sm:block dark:text-slate-500">
+      <span className="hidden pt-0.5 text-sm tabular-nums text-slate-400 @xl:block dark:text-slate-500">
         {formatDuration(item.length_seconds)}
       </span>
-      <div className="min-w-0">
+      <div className="min-w-0 wrap-anywhere">
         <div className="flex flex-wrap items-center gap-2">
           {item.song ? (
             <Link to={`/songs/${item.song.id}`} className="inline-flex items-center gap-1.5 font-medium text-slate-900 hover:text-brand-700 hover:underline dark:text-white dark:hover:text-brand-200">
