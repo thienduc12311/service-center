@@ -3,6 +3,7 @@ import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   formatDuration,
+  planItemCarriesMedia,
   resolveItemLeader,
   resolvePlanItemChartContext,
   type PlanDetail,
@@ -405,7 +406,7 @@ const EditControls = ({ item, busy, isFirst, isLast, onEdit, onMedia, onMoveUp, 
   return (
     <>
       <RowAction name="pencil" accessibilityLabel={t('orderTab.editItem', { title: item.title })} onPress={onEdit} />
-      {item.item_type === 'item' ? (
+      {planItemCarriesMedia(item.item_type) ? (
         <RowAction name="image" accessibilityLabel={t('orderTab.mediaFor', { title: item.title })} disabled={busy} onPress={onMedia} />
       ) : null}
       <RowAction name="chevronUp" accessibilityLabel={t('orderTab.moveUp', { title: item.title })} disabled={isFirst || busy} onPress={onMoveUp} />
@@ -486,6 +487,11 @@ const OrderRowBody = ({ item, ordinal, slot, clock, leader, misplaced, controls,
         <View style={styles.flex}>
           <View style={styles.titleRow}>
             {isSong ? <Icon name="music" size={14} color={theme.color.brandText} /> : null}
+            {item.item_type === 'media' ? (
+              <View accessible accessibilityLabel={t('itemKind.media')}>
+                <Icon name="image" size={14} color={theme.accent.blue.fg} />
+              </View>
+            ) : null}
             <Text style={[styles.title, item.song ? styles.titleLink : null]}>{item.title}</Text>
           </View>
           {context.status === 'ready' && (context.arrangement || context.sequence.length > 0) ? (
