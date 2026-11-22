@@ -52,6 +52,12 @@ const envSchema = z.object({
   /** The super-admin dashboard (admin.graceaogchurch.com), linked from application emails. */
   ADMIN_APP_URL: z.string().url().default('http://localhost:5174'),
   API_URL: z.string().url().default('http://localhost:4000'),
+  /**
+   * Store listings for the mobile app, linked from invitation emails. Unset
+   * (or empty): the badge shows as "Coming soon" and links nowhere.
+   */
+  IOS_APP_STORE_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
+  ANDROID_PLAY_STORE_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
 
   /** Send real push notifications through Expo. Off by default: local runs log instead. */
   PUSH_ENABLED: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
