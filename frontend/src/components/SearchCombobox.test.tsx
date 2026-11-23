@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LanguageProvider } from '../i18n/LanguageProvider';
 import { SearchCombobox, type SearchComboboxAsync, type SearchComboboxOption } from './SearchCombobox';
@@ -179,6 +179,33 @@ describe('SearchCombobox', () => {
     render(<Harness async={{ query: 'a', onQueryChange: vi.fn(), hasMore: true }} />);
     await user.click(await screen.findByRole('combobox', { name: 'Leader' }));
     expect(screen.getByText('Showing the first 4 — refine your search to see others')).toBeTruthy();
+  });
+
+  it('scrolls the highlighted row into view for the keyboard but not for the pointer', async () => {
+    const scrollIntoView = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    onTestFinished(() => {
+      Element.prototype.scrollIntoView = original;
+    });
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(await screen.findByRole('combobox', { name: 'Leader' }));
+    const [, , third, fourth] = screen.getAllByRole('option');
+
+    // Pointing at rows highlights them without scrolling the list under the user.
+    fireEvent.mouseMove(third!, { clientX: 10, clientY: 60 });
+    fireEvent.mouseMove(fourth!, { clientX: 10, clientY: 80 });
+    expect(fourth!.getAttribute('aria-selected')).toBe('true');
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    await user.keyboard('{ArrowUp}');
+    expect(third!.getAttribute('aria-selected')).toBe('true');
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+
+    // The list scrolled, so another row is now under the still pointer: it keeps the keyboard's choice.
+    fireEvent.mouseMove(fourth!, { clientX: 10, clientY: 80 });
+    expect(third!.getAttribute('aria-selected')).toBe('true');
   });
 });
 

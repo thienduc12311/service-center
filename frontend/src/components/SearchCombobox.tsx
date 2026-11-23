@@ -83,6 +83,12 @@ export const SEARCH_COMBOBOX_MAX_RESULTS = 50;
 
 const NO_OPTIONS: readonly SearchComboboxOption[] = [];
 
+/** Where the pointer last was, to tell a real move from rows scrolling under it. */
+interface PointerPosition {
+  x: number;
+  y: number;
+}
+
 interface ComboboxSection {
   key: string;
   heading: string | null;
@@ -135,6 +141,11 @@ export const SearchCombobox = ({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [highlight, setHighlight] = useState(0);
+  // Only a keyboard move scrolls the highlighted row into view, and only a real pointer
+  // move highlights the row under it. Scrolling slides rows under a still pointer; reacting
+  // to that would make the list fight the user's own scroll (or their arrow keys) and jump.
+  const scrollToHighlightRef = useRef(false);
+  const lastPointerRef = useRef<PointerPosition | null>(null);
   const [focusTarget, setFocusTarget] = useState<'input' | 'change' | null>(null);
 
   const query = async ? async.query : localQuery;
@@ -200,8 +211,15 @@ export const SearchCombobox = ({
   }, [focusTarget]);
 
   useEffect(() => {
-    if (open) document.getElementById(`${baseId}-opt-${active}`)?.scrollIntoView?.({ block: 'nearest' });
+    if (!open || !scrollToHighlightRef.current) return;
+    scrollToHighlightRef.current = false;
+    document.getElementById(`${baseId}-opt-${active}`)?.scrollIntoView?.({ block: 'nearest' });
   }, [active, open, baseId]);
+
+  const moveHighlight = (index: number) => {
+    scrollToHighlightRef.current = true;
+    setHighlight(index);
+  };
 
   const close = () => {
     setOpen(false);
@@ -227,10 +245,10 @@ export const SearchCombobox = ({
         setOpen(true);
         return;
       }
-      setHighlight(Math.min(active + 1, Math.max(flat.length - 1, 0)));
+      moveHighlight(Math.min(active + 1, Math.max(flat.length - 1, 0)));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      setHighlight(Math.max(active - 1, 0));
+      moveHighlight(Math.max(active - 1, 0));
     } else if (event.key === 'Enter' && open) {
       const option = flat[active];
       if (option) {
@@ -342,7 +360,7 @@ export const SearchCombobox = ({
           // Keep focus in the input so a click (or a scrollbar drag) lands before blur closes the list.
           onMouseDown={(event) => event.preventDefault()}
         >
-          <div id={listId} role="listbox" aria-label={label} className="max-h-72 overflow-y-auto py-1">
+          <div id={listId} role="listbox" aria-label={label} className="max-h-72 overflow-y-auto overscroll-contain py-1">
             {flat.length === 0 ? (
               <p className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
                 {async?.loading ? t('states.loading') : (noMatchesText ?? t('combobox.noMatches'))}
@@ -362,7 +380,14 @@ export const SearchCombobox = ({
                       className={`flex cursor-pointer items-center gap-2.5 px-3 py-1.5 text-sm ${
                         index === active ? 'bg-brand-50 dark:bg-brand-500/15' : ''
                       }`}
-                      onMouseEnter={() => setHighlight(index)}
+                      onMouseMove={(event) => {
+                        const last = lastPointerRef.current;
+                        if (last && last.x === event.clientX && last.y === event.clientY) return;
+                        lastPointerRef.current = { x: event.clientX, y: event.clientY };
+                        if (index === active) return;
+                        scrollToHighlightRef.current = false;
+                        setHighlight(index);
+                      }}
                       onClick={() => choose(option)}
                     >
                       {option.avatar && <Avatar name={option.avatar.name} url={option.avatar.url} size="sm" />}
