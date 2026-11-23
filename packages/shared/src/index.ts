@@ -27,6 +27,7 @@ export * from './lib/timezone.js';
 export * from './lib/availability.js';
 export * from './lib/chordpro.js';
 export * from './lib/chart-html.js';
+export * from './lib/chart-codes.js';
 export * from './lib/chart-context.js';
 export * from './lib/service-song-book.js';
 export * from './lib/assignment-responses.js';

@@ -27,6 +27,10 @@ export type ChartPdfFontFamily = 'courier' | 'helvetica' | 'times';
 export interface ChartPdfTextStyle {
   family: ChartPdfFontFamily;
   bold: boolean;
+  /** Set by a chart note or an `<i>` run; absent means upright. */
+  italic?: boolean;
+  /** Set by a `<u>` run; the writer rules a line under the text. */
+  underline?: boolean;
   /** Size in points. */
   size: number;
   color: RgbColor;

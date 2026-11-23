@@ -29,7 +29,13 @@
 import { translatorFor } from '../i18n/engine.js';
 import type { SupportedLocale } from '../i18n/locales.js';
 import type { ChartColumns } from '../types/database.js';
-import { parseChordPro, renderLineAsText, type ChordProSection } from './chordpro.js';
+import {
+  parseChordPro,
+  renderLineAsText,
+  styledLyricRuns,
+  type ChordProLine,
+  type ChordProSection,
+} from './chordpro.js';
 import { isChartFont } from './constants.js';
 
 /** Presentation settings for one chart. Null means "use the template default". */
@@ -243,19 +249,34 @@ const breakColumn = (line: ChartLineRows, limit: number): number => {
  * continuation gives up the indentation it inherited from the middle of the
  * line it was cut out of.
  */
-export const wrapChartLine = (line: ChartLineRows, maxCharacters: number): ChartLineRows[] => {
-  const wrapped: ChartLineRows[] = [];
+export const wrapChartLine = (line: ChartLineRows, maxCharacters: number): ChartLineRows[] =>
+  wrapChartLineAt(line, maxCharacters).map(({ chordRow, lyricRow }) => ({ chordRow, lyricRow }));
+
+/** A wrapped line, and where its lyric row starts in the unwrapped lyrics. */
+interface WrappedChartLine extends ChartLineRows {
+  lyricStart: number;
+}
+
+/** `wrapChartLine`, keeping track of each piece's offset so its formatting can follow it. */
+const wrapChartLineAt = (line: ChartLineRows, maxCharacters: number): WrappedChartLine[] => {
+  const wrapped: WrappedChartLine[] = [];
   let { chordRow, lyricRow } = line;
+  let consumed = 0;
 
   const overflows = (): boolean =>
     Math.max(chordRow.trimEnd().length, lyricRow.trimEnd().length) > maxCharacters;
 
   while (overflows()) {
     const at = breakColumn({ chordRow, lyricRow }, maxCharacters);
-    wrapped.push({ chordRow: chordRow.slice(0, at).trimEnd(), lyricRow: lyricRow.slice(0, at).trimEnd() });
+    wrapped.push({
+      chordRow: chordRow.slice(0, at).trimEnd(),
+      lyricRow: lyricRow.slice(0, at).trimEnd(),
+      lyricStart: consumed,
+    });
 
     chordRow = chordRow.slice(at);
     lyricRow = lyricRow.slice(at);
+    consumed += at;
 
     // Shared indentation only: a chord standing over a word that has moved to
     // the front of the line has to move with it, and no further.
@@ -263,11 +284,25 @@ export const wrapChartLine = (line: ChartLineRows, maxCharacters: number): Chart
     const indent = indents.length ? Math.min(...indents) : 0;
     chordRow = chordRow.slice(indent);
     lyricRow = lyricRow.slice(indent);
+    consumed += indent;
   }
 
-  wrapped.push({ chordRow: chordRow.trimEnd(), lyricRow: lyricRow.trimEnd() });
+  wrapped.push({ chordRow: chordRow.trimEnd(), lyricRow: lyricRow.trimEnd(), lyricStart: consumed });
   return wrapped;
 };
+
+/**
+ * One wrapped lyric row as markup, each formatted run in a span whose classes
+ * carry all of its styles — one element per run, so whatever reads the
+ * rendered page back (the PDF writer) finds every style on the text's parent.
+ */
+const lyricRowHtml = (line: ChordProLine, start: number, length: number): string =>
+  styledLyricRuns(line, start, start + length)
+    .map(({ text, bold, italic, underline }) => {
+      const classes = [bold && 'm-b', italic && 'm-i', underline && 'm-u'].filter(Boolean).join(' ');
+      return classes ? `<span class="${classes}">${escapeHtml(text)}</span>` : escapeHtml(text);
+    })
+    .join('');
 
 /**
  * A section becomes a heading plus its lines, each line a chord row above a
@@ -282,15 +317,24 @@ const renderSection = (section: ChordProSection, maxCharacters: number): string 
     section.label ?? (section.type === 'none' ? null : section.type.replace(/_/g, ' '));
 
   const lines = section.lines
-    .flatMap((line) => wrapChartLine(renderLineAsText(line), maxCharacters))
-    .map(({ chordRow, lyricRow }) => {
+    .flatMap((line) =>
+      wrapChartLineAt(renderLineAsText(line), maxCharacters).map((rows) => ({ line, ...rows })),
+    )
+    .map(({ line, chordRow, lyricRow, lyricStart }) => {
+      const text = lyricRowHtml(line, lyricStart, lyricRow.length);
+      if (line.kind === 'note') return `<div class="row"><div class="note">${text || '&nbsp;'}</div></div>`;
       const chords = chordRow ? `<div class="chords">${escapeHtml(chordRow)}</div>` : '';
       // A blank lyric row still occupies a line: it is the gap the writer typed.
-      return `<div class="row">${chords}<div class="lyrics">${escapeHtml(lyricRow) || '&nbsp;'}</div></div>`;
+      return `<div class="row">${chords}<div class="lyrics">${text || '&nbsp;'}</div></div>`;
     })
     .join('\n        ');
 
-  return `<section class="chart-section">
+  // A break is its own block, so pagination can act on it before the section.
+  const breakBefore = section.breakBefore
+    ? `<div class="chart-break" data-break="${section.breakBefore}"></div>\n      `
+    : '';
+
+  return `${breakBefore}<section class="chart-section">
         ${heading ? `<h2 class="section-label">${escapeHtml(heading)}</h2>\n        ` : ''}${lines}
       </section>`;
 };
@@ -417,6 +461,20 @@ export const chartPageStyles = (): string => {
       font-weight: 700;
       color: var(--chart-chord-color);
     }
+
+    .note {
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+      margin: 0;
+      font-style: italic;
+      color: #404040;
+    }
+
+    .m-b { font-weight: 700; }
+    .m-i { font-style: italic; }
+    .m-u { text-decoration: underline; }
+
+    .chart-break { display: none; }
 
     footer.page-footer {
       flex: none;
@@ -614,7 +672,27 @@ const PAGINATION_SCRIPT = `
     }
   }
 
+  function pageIsEmpty() {
+    for (var i = 0; i < columnsOnPage.length; i += 1) {
+      if (columnsOnPage[i].firstChild) return false;
+    }
+    return true;
+  }
+
+  /** COLUMN_BREAK moves on a column (and is moot in one column); PAGE_BREAK, a page. */
+  function breakAt(block) {
+    if (block.getAttribute('data-break') === 'page') {
+      if (!pageIsEmpty()) addPage();
+    } else if (COLUMNS > 1 && columnsOnPage[columnIndex].firstChild) {
+      advance();
+    }
+  }
+
   function place(block) {
+    if (block.className === 'chart-break') {
+      breakAt(block);
+      return;
+    }
     for (;;) {
       var column = columnsOnPage[columnIndex];
       column.appendChild(block);
@@ -661,7 +739,7 @@ const PAGINATION_SCRIPT = `
 `;
 
 /** Base64 SHA-256 of `PAGINATION_SCRIPT`, for the document's CSP. */
-export const CHART_PAGINATION_SCRIPT_SHA256 = 'XUz6XafIsSGCW4HaT601qPcZgqpnxS7lJ+jA44Q0V8o=';
+export const CHART_PAGINATION_SCRIPT_SHA256 = 'JAMnMVDdceV19/xXUEbeqx1hz7GG7K2V+HlHerd/Fc0=';
 
 /**
  * Renders one chart as a complete, standalone HTML document.

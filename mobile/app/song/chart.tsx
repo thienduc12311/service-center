@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
 import {
   CHART_CHORD_COLORS,
+  CHART_CODE_REFERENCE,
   CHART_FONT_OPTIONS,
   CHART_FONT_SIZES,
   DEFAULT_ARRANGEMENT_NAME_KEY,
@@ -184,6 +185,7 @@ const ChartEditor = ({ song, arrangement, title }: ChartEditorProps) => {
   const [baseRevision, setBaseRevision] = useState<number>(() => restored?.baseRevision ?? arrangement.revision);
   const [sequenceText, setSequenceText] = useState(() => formatChartSequence(form.sequence));
   const [showRestored, setShowRestored] = useState(Boolean(restored));
+  const [showCodes, setShowCodes] = useState(false);
   const [mode, setMode] = useState<ChartEditorMode>('edit');
   const [view, setView] = useState<ChartViewSelection>(ORIGINAL_CHART_VIEW);
   const [problem, setProblem] = useState<LocalizedError | null>(null);
@@ -362,6 +364,24 @@ const ChartEditor = ({ song, arrangement, title }: ChartEditorProps) => {
               <Text style={styles.muted}>
                 <Trans t={t} i18nKey="songs:chartEditor.sourceHelp" components={[<Text key="example" style={styles.code} />]} />
               </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showCodes }}
+                onPress={() => setShowCodes((shown) => !shown)}
+              >
+                <Text style={styles.codesToggle}>
+                  {showCodes ? '▾ ' : '▸ '}
+                  {t('chartEditor.codesTitle')}
+                </Text>
+              </Pressable>
+              {showCodes
+                ? CHART_CODE_REFERENCE.map(({ id, code }) => (
+                    <View key={id} style={styles.codeRow}>
+                      <Text style={styles.code}>{code}</Text>
+                      <Text style={styles.muted}>{t(`chartEditor.codes.${id}`)}</Text>
+                    </View>
+                  ))
+                : null}
             </View>
 
             <Card>
@@ -491,6 +511,8 @@ const makeStyles = (theme: Theme) =>
       minHeight: 240,
     },
     code: { ...theme.type.code, color: theme.color.ink },
+    codesToggle: { ...theme.type.label, color: theme.color.brandText },
+    codeRow: { gap: 2 },
     muted: { ...theme.type.bodySmall, color: theme.color.inkMuted },
     warning: {
       ...theme.type.bodySmall,

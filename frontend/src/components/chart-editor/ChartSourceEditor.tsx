@@ -1,4 +1,5 @@
 import { Trans, useTranslation } from 'react-i18next';
+import { CHART_CODE_REFERENCE } from '@service-center/shared';
 import { KeySelect } from '../KeySelect';
 import type { ChartEditorFormValues } from './types';
 
@@ -105,6 +106,21 @@ export const ChartSourceEditor = ({
           components={[<code key="example" className="rounded bg-slate-100 px-1 dark:bg-slate-800" />]}
         />
       </p>
+      <details className="mt-1.5 text-xs text-slate-500">
+        <summary className="cursor-pointer select-none font-medium text-slate-600 dark:text-slate-300">
+          {t('chartEditor.codesTitle')}
+        </summary>
+        <dl className="mt-2 grid gap-x-3 gap-y-1.5 sm:grid-cols-[minmax(0,auto)_1fr]">
+          {CHART_CODE_REFERENCE.map(({ id, code }) => (
+            <div key={id} className="contents">
+              <dt>
+                <code className="whitespace-pre-wrap break-words rounded bg-slate-100 px-1 dark:bg-slate-800">{code}</code>
+              </dt>
+              <dd className="mb-1 sm:mb-0">{t(`chartEditor.codes.${id}`)}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
     </div>
   </div>
   );

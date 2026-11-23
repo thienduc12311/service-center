@@ -159,6 +159,38 @@ describe('renderChartHtml', () => {
     expect(html).toContain('color: #1d4ed8;');
   });
 
+  it('prints headings, notes and formatting written into the chart', () => {
+    const html = renderChartHtml(doc({ chordpro: 'VERSE 1\n<b>Ho[G]ly</b> <i>One</i>\n{ Repeat 2x }\n{{ Build }}' }));
+
+    expect(html).toContain('<h2 class="section-label">VERSE 1</h2>');
+    expect(html).toContain('<span class="m-b">Holy</span> <span class="m-i">One</span>');
+    expect(html).toContain('<div class="note">Repeat 2x</div>');
+    expect(html).toContain('<div class="note">Build</div>');
+  });
+
+  it('escapes formatted text and notes', () => {
+    const html = renderChartHtml(doc({ chordpro: '<b><img src=x></b>\n{ <script> }' }));
+
+    expect(html).not.toContain('<img');
+    expect(html).toContain('<span class="m-b">&lt;img src=x&gt;</span>');
+    expect(html).toContain('<div class="note">&lt;script&gt;</div>');
+  });
+
+  it('keeps formatting on the right words once a line is wrapped', () => {
+    const narrow = { ...DEFAULT_CHART_FORMATTING, fontSize: 40 };
+    const html = renderChartHtml(doc({ chordpro: `${'a '.repeat(30)}<u>end</u>`, formatting: narrow }));
+
+    expect(html).toContain('<span class="m-u">end</span>');
+    expect(html.match(/m-u/g)).toHaveLength(2); // the stylesheet rule and the one run
+  });
+
+  it('marks column and page breaks for pagination', () => {
+    const html = renderChartHtml(doc({ chordpro: 'VERSE\na\nCOLUMN_BREAK\nCHORUS\nb\nPAGE_BREAK\nTAG\nc' }));
+
+    expect(html).toContain('<div class="chart-break" data-break="column"></div>');
+    expect(html).toContain('<div class="chart-break" data-break="page"></div>');
+  });
+
   it('renders an empty chart without throwing', () => {
     expect(() => renderChartHtml(doc({ chordpro: '' }))).not.toThrow();
   });

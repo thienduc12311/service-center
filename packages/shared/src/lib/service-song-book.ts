@@ -480,7 +480,26 @@ const PAGINATION_SCRIPT = `
       }
     }
 
+    function pageIsEmpty() {
+      for (var i = 0; i < columnsOnPage.length; i += 1) {
+        if (columnsOnPage[i].firstChild) return false;
+      }
+      return true;
+    }
+
+    function breakAt(block) {
+      if (block.getAttribute('data-break') === 'page') {
+        if (!pageIsEmpty()) addPage();
+      } else if (columns > 1 && columnsOnPage[columnIndex].firstChild) {
+        advance();
+      }
+    }
+
     function place(block) {
+      if (block.className === 'chart-break') {
+        breakAt(block);
+        return;
+      }
       for (;;) {
         var column = columnsOnPage[columnIndex];
         column.appendChild(block);
@@ -524,7 +543,7 @@ const PAGINATION_SCRIPT = `
 `;
 
 /** Base64 SHA-256 of `PAGINATION_SCRIPT`, for the document's CSP. */
-export const SONG_BOOK_PAGINATION_SCRIPT_SHA256 = 'dlw6FogToNISM0GWKU7K0NSchVvsC+2EyDVmaU0Rz6o=';
+export const SONG_BOOK_PAGINATION_SCRIPT_SHA256 = '1LzqBzYZhNqvfQW6h5PrD5dFEmf2cuOxlFzviGvEmDM=';
 
 /** Renders the cover and all charts as one standalone printable document. */
 export const renderServiceSongBookHtml = (doc: ServiceSongBookDocument): string => {

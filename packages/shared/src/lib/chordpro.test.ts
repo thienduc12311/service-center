@@ -14,6 +14,8 @@ import {
   isChordLine,
   mergeChordAndLyricLine,
   parseChordPro,
+  parseKeyChange,
+  styledLyricRuns,
   semitonesBetween,
   transposeChord,
   transposeChordPro,
@@ -43,6 +45,10 @@ describe('mergeChordAndLyricLine', () => {
     expect(mergeChordAndLyricLine(chords, lyrics)).toBe(
       '[G]Amazing grace[C] how swee[G]t the sound',
     );
+  });
+
+  it('counts columns by printed characters, skipping formatting tags', () => {
+    expect(mergeChordAndLyricLine('  G     C', '<b>Holy</b> holy')).toBe('<b>Ho[G]ly</b> hol[C]y');
   });
 
   it('appends chords that run past the end of the lyric', () => {
@@ -75,7 +81,7 @@ describe('chordLinesToChordPro', () => {
 
     expect(out).toContain('{start_of_verse: Verse 1}');
     expect(out).toContain('{start_of_chorus: Chorus}');
-    expect(out).toContain('{start_of_part: Pre-Chorus}');
+    expect(out).toContain('{start_of_pre_chorus: Pre-Chorus}');
     expect(out).toContain('{start_of_verse: verse}');
     expect(out).not.toContain('Bridge 2:}');
   });
@@ -163,6 +169,224 @@ describe('parseChordPro', () => {
     parseChordPro(`{${' '.repeat(50_000)}x${' '.repeat(50_000)}:${' '.repeat(50_000)}`);
 
     expect(performance.now() - started).toBeLessThan(500);
+  });
+});
+
+describe('section headings', () => {
+  const outline = (source: string) =>
+    parseChordPro(source).sections.map((section) => ({
+      type: section.type,
+      label: section.label,
+      lines: section.lines.map((line) => line.lyrics),
+    }));
+
+  it('starts a section at a VERSE / CHORUS / BRIDGE / TAG line in an inline chart', () => {
+    const chart = 'VERSE 1\n[G]Amazing [C]grace\n\nCHORUS\n[D]My chains\n\nBRIDGE\nla\n\nTAG\nlo';
+
+    expect(outline(chart)).toEqual([
+      { type: 'verse', label: 'VERSE 1', lines: ['Amazing grace'] },
+      { type: 'chorus', label: 'CHORUS', lines: ['My chains'] },
+      { type: 'bridge', label: 'BRIDGE', lines: ['la'] },
+      { type: 'tag', label: 'TAG', lines: ['lo'] },
+    ]);
+  });
+
+  it('recognises headings in a lyrics-only chart', () => {
+    expect(outline('Verse 1\nla\nChorus\nlo').map((s) => s.label)).toEqual(['Verse 1', 'Chorus']);
+  });
+
+  it('reads a bracketed heading as a heading, not a chord', () => {
+    const [section] = parseChordPro('[Bridge]\n[G]la').sections;
+
+    expect(section?.type).toBe('bridge');
+    expect(section?.label).toBe('Bridge');
+    expect(section?.lines).toEqual([{ lyrics: 'la', chords: [{ index: 0, chord: 'G' }] }]);
+  });
+
+  it('accepts colons, numbers, letters and repeat markers', () => {
+    const chart = ['Verse 2:', 'a', 'PRE-CHORUS', 'b', 'Chorus 2x', 'c', 'Tag (x3)', 'd', 'Verse 1a', 'e', 'Intro', 'f'].join('\n');
+
+    expect(outline(chart).map(({ type, label }) => [type, label])).toEqual([
+      ['verse', 'Verse 2'],
+      ['pre_chorus', 'PRE-CHORUS'],
+      ['chorus', 'Chorus 2x'],
+      ['tag', 'Tag (x3)'],
+      ['verse', 'Verse 1a'],
+      ['intro', 'Intro'],
+    ]);
+  });
+
+  it('treats a {comment: …} heading as a section, as SongSelect files write it', () => {
+    expect(outline('{c: Verse 1}\nla\n{comment: Chorus}\nlo').map((s) => s.label)).toEqual(['Verse 1', 'Chorus']);
+  });
+
+  it('leaves lyrics that merely start with a section word alone', () => {
+    expect(outline('Chorus of angels singing\nVerse by verse')).toEqual([
+      { type: 'none', label: null, lines: ['Chorus of angels singing', 'Verse by verse'] },
+    ]);
+  });
+
+  it('treats any all-caps line opening a stanza as a heading', () => {
+    const chart = 'SPONTANEOUS\n[G]Holy are You Lord\n\nĐIỆP KHÚC\nHa-le-lu-ia';
+
+    expect(outline(chart).map(({ type, label }) => [type, label])).toEqual([
+      ['part', 'SPONTANEOUS'],
+      ['part', 'ĐIỆP KHÚC'],
+    ]);
+  });
+
+  it('does not turn a song typed in capitals into headings', () => {
+    const chart = 'AMAZING GRACE HOW SWEET\nTHAT SAVED A WRETCH\n\nHOLY, HOLY, HOLY!\nlord';
+
+    expect(outline(chart)).toHaveLength(1);
+    expect(outline(chart)[0]?.type).toBe('none');
+  });
+
+  it('does not read a row of chords as an all-caps heading', () => {
+    expect(outline('G C D\nla')[0]?.type).toBe('none');
+  });
+
+  it('keeps heading-like lines inside a tab block verbatim', () => {
+    expect(outline('{start_of_tab}\nChorus\n{end_of_tab}')[0]?.lines).toEqual(['Chorus']);
+  });
+
+  it('still honours explicit start_of / end_of sections', () => {
+    expect(outline('{start_of_chorus: Chorus}\nla\n{end_of_chorus}')).toEqual([
+      { type: 'chorus', label: 'Chorus', lines: ['la'] },
+    ]);
+  });
+
+  it('scans a hostile heading-like line in linear time', () => {
+    const started = performance.now();
+    parseChordPro(`verse${' '.repeat(50_000)}1`);
+    parseChordPro(`${'1'.repeat(50_000)}x`);
+
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+});
+
+describe('chart codes', () => {
+  const lines = (source: string) => parseChordPro(source).sections.flatMap((section) => section.lines);
+
+  it('reads a { note } as a note, keeping its brackets as text', () => {
+    const [note] = lines('{ Repeat 2x, then [G] }');
+
+    expect(note).toEqual({ lyrics: 'Repeat 2x, then [G]', chords: [], kind: 'note' });
+  });
+
+  it('keeps a known directive out of the chart', () => {
+    const song = parseChordPro('{title: Grace}\n{capo: 2}\n{x_custom: y}\nla');
+
+    expect(song.directives).toEqual({ title: 'Grace', capo: '2', x_custom: 'y' });
+    expect(song.sections.flatMap((s) => s.lines).map((l) => l.lyrics)).toEqual(['la']);
+  });
+
+  it('prints a non-heading {comment} as a note', () => {
+    expect(lines('{c: Softly}')).toEqual([{ lyrics: 'Softly', chords: [], kind: 'note' }]);
+  });
+
+  it('marks a {{ note }} as charts-only, and the lyrics sheet drops it', () => {
+    expect(lines('{{ Build }}')).toEqual([{ lyrics: 'Build', chords: [], kind: 'note', chartsOnly: true }]);
+    expect(stripChords('{{ Build }}\n{ Softly }\n[G]la')).toBe('{ Softly }\nla');
+  });
+
+  it('starts the next section in a new column or on a new page', () => {
+    const song = parseChordPro('VERSE 1\na\nCOLUMN_BREAK\nCHORUS\nb\npage_break\nc\n{{ PAGE_BREAK }}\n{new_page}\nTAG\nd');
+
+    expect(song.sections.map((s) => [s.label, s.breakBefore])).toEqual([
+      ['VERSE 1', undefined],
+      ['CHORUS', 'column'],
+      [null, 'page'],
+      ['TAG', 'page'],
+    ]);
+  });
+
+  it('drops a break with nothing after it', () => {
+    expect(parseChordPro('la\nPAGE_BREAK\n').sections).toHaveLength(1);
+  });
+
+  it('reads <b>, <i> and <u> as formatting that takes no room in the lyrics', () => {
+    const [line] = lines('<b>Ho[G]ly</b> is <i><u>the</u> Lord</i>');
+
+    expect(line?.lyrics).toBe('Holy is the Lord');
+    expect(line?.chords).toEqual([{ index: 2, chord: 'G' }]);
+    expect(line?.marks).toEqual([
+      { start: 0, end: 4, style: 'bold' },
+      { start: 8, end: 11, style: 'underline' },
+      { start: 8, end: 16, style: 'italic' },
+    ]);
+    expect(styledLyricRuns(line!).map((r) => [r.text, r.bold, r.italic, r.underline])).toEqual([
+      ['Holy', true, false, false],
+      [' is ', false, false, false],
+      ['the', false, true, true],
+      [' Lord', false, true, false],
+    ]);
+  });
+
+  it('closes formatting left open at the end of the line', () => {
+    expect(lines('<b>loud')[0]?.marks).toEqual([{ start: 0, end: 4, style: 'bold' }]);
+  });
+
+  it('prints <t>[text]</t> as written, never as a chord', () => {
+    const [line] = lines('Eu <t>[Em]</t> [G]Ti');
+
+    expect(line?.lyrics).toBe('Eu [Em] Ti');
+    expect(line?.chords).toEqual([{ index: 8, chord: 'G' }]);
+    expect(transposeChordPro('<t>[Em]</t> [G]Ti', 2)).toBe('<t>[Em]</t> [A]Ti');
+    expect(stripChords('<t>[Em]</t> [G]Ti')).toBe('<t>[Em]</t> Ti');
+  });
+
+  it('recognises a formatted heading', () => {
+    expect(parseChordPro('<b>CHORUS</b>\nla').sections[0]?.label).toBe('CHORUS');
+  });
+
+  it('reads TRANSPOSE KEY and REDEFINE KEY lines, and never prints them', () => {
+    expect(parseKeyChange('TRANSPOSE KEY +2')).toEqual({ kind: 'transpose', semitones: 2 });
+    expect(parseKeyChange('redefine key -1')).toEqual({ kind: 'redefine', semitones: -1 });
+    expect(parseKeyChange('TRANSPOSE KEY')).toBeNull();
+    expect(lines('[G]a\nTRANSPOSE KEY +2\n[G]b').map((l) => l.lyrics)).toEqual(['a', 'b']);
+  });
+});
+
+describe('bracketed headings under every view', () => {
+  const chart = '[Bridge]\n[Em]Holy';
+
+  it('keeps [Bridge] a heading when transposed, numbered or read as lyrics', () => {
+    for (const view of [{ targetKey: 'A' }, { notation: 'numbers' as const }, { notation: 'numerals' as const }, { notation: 'lyrics' as const }]) {
+      const out = renderChordProChart(chart, { sourceKey: 'G', ...view }).chordpro;
+      expect(out.split('\n')[0]).toBe('[Bridge]');
+      expect(parseChordPro(out).sections[0]?.label).toBe('Bridge');
+    }
+  });
+});
+
+describe('renderChordProChart key changes', () => {
+  it('prints the chords after TRANSPOSE KEY higher, and drops the line', () => {
+    const out = renderChordProChart('[G]a\nTRANSPOSE KEY +2\n[G]b', { sourceKey: 'G' }).chordpro;
+
+    expect(out).toBe('[G]a\n[A]b');
+  });
+
+  it('adds a key change to the transposition asked for', () => {
+    const out = renderChordProChart('[G]a\nTRANSPOSE KEY +1\n[G]b', { sourceKey: 'G', targetKey: 'A' }).chordpro;
+
+    expect(out).toBe('[A]a\n[Bb]b');
+  });
+
+  it('leaves the chords after REDEFINE KEY as written', () => {
+    expect(renderChordProChart('[G]a\nREDEFINE KEY +2\n[A]b', { sourceKey: 'G' }).chordpro).toBe('[G]a\n[A]b');
+  });
+
+  it('numbers the chords after REDEFINE KEY from the new key', () => {
+    const out = renderChordProChart('[G]a\nREDEFINE KEY +2\n[A]b [D]c', { sourceKey: 'G', notation: 'numbers' }).chordpro;
+
+    expect(out).toBe('[1]a\n[1]b [4]c');
+  });
+
+  it('keeps numbers steady across TRANSPOSE KEY, which moves the key too', () => {
+    const out = renderChordProChart('[G]a\nTRANSPOSE KEY +2\n[G]b', { sourceKey: 'G', notation: 'numbers' }).chordpro;
+
+    expect(out).toBe('[1]a\n[1]b');
   });
 });
 
@@ -343,6 +567,13 @@ describe('renderChordProChart minor keys', () => {
 });
 
 describe('toChordPro', () => {
+  it('keeps section headings when folding a chords-above-lyrics chart', () => {
+    const out = toChordPro('TAG\nG      C\nAmazing grace');
+
+    expect(out).toContain('{start_of_tag: TAG}');
+    expect(out).toContain('{end_of_tag}');
+  });
+
   it('leaves an inline ChordPro chart exactly as typed', () => {
     const source = '[G]Amazing [C]grace';
     expect(toChordPro(source)).toBe(source);

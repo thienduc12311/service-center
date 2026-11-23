@@ -27,16 +27,43 @@ export interface ChordPosition {
   chord: string;
 }
 
+/** Inline text formatting a chart can ask for with `<b>`, `<i>` and `<u>`. */
+export type ChordProTextStyle = 'bold' | 'italic' | 'underline';
+
+/** One formatted stretch of a line's lyrics, as `[start, end)` character offsets. */
+export interface ChordProTextMark {
+  start: number;
+  end: number;
+  style: ChordProTextStyle;
+}
+
 export interface ChordProLine {
   lyrics: string;
   chords: ChordPosition[];
+  /** Formatted stretches of `lyrics`; absent when the line is plain. */
+  marks?: ChordProTextMark[];
+  /**
+   * `note` for a `{ note }` / `{{ note }}` line: an instruction to the band,
+   * printed as written — its brackets are not lifted into a chord row.
+   */
+  kind?: 'note';
+  /** A `{{ … }}` note: printed on chord charts, left off the lyrics sheet. */
+  chartsOnly?: boolean;
 }
 
+/** Where a `COLUMN_BREAK` or `PAGE_BREAK` asked the printed chart to move on. */
+export type ChordProBreak = 'column' | 'page';
+
 export interface ChordProSection {
-  /** `verse`, `chorus`, `bridge`, `tab`, or `none` for loose lines. */
+  /**
+   * `verse`, `chorus`, `bridge`, `tab`, any other `start_of_*` name, a heading
+   * line's type (`pre_chorus`, `tag`, `intro`, …), or `none` for loose lines.
+   */
   type: string;
   label: string | null;
   lines: ChordProLine[];
+  /** The printed chart starts this section in a new column or on a new page. */
+  breakBefore?: ChordProBreak;
 }
 
 export interface ChordProSong {
@@ -123,11 +150,39 @@ export const transposeChordPro = (
     const transposed = transposeChord(key, semitones, prefer);
     return transposed === key ? match : `{${head}${transposed}${tail}}`;
   });
-  return withKey.replace(/\[([^\]]+)\]/g, (match, token: string) => {
-    const transposed = transposeChord(token, semitones, prefer);
-    return transposed === token ? match : `[${transposed}]`;
-  });
+  return mapChords(withKey, (token) => transposeChord(token, semitones, prefer));
 };
+
+/**
+ * Rewrites each `[chord]` with `map`, skipping text inside `<t>…</t>`, which
+ * is printed as written. `map` returning the token keeps it exactly as typed;
+ * returning null removes it.
+ */
+const mapChords = (source: string, map: (token: string) => string | null): string =>
+  source
+    .split(/(\r?\n)/)
+    .map((line) => (isBracketedHeading(line) ? line : mapLineChords(line, map)))
+    .join('');
+
+/** A `[Bridge]` heading line: its brackets mark a section, not a chord. */
+const isBracketedHeading = (line: string): boolean => {
+  const text = withoutFormatting(line).trim();
+  return text.startsWith('[') && parseSectionHeading(text) !== null;
+};
+
+const mapLineChords = (source: string, map: (token: string) => string | null): string =>
+  source
+    .split(/(<t>.*?<\/t>)/i)
+    .map((part, index) =>
+      index % 2 === 1
+        ? part
+        : part.replace(/\[([^\]]+)\]/g, (match, token: string) => {
+            const next = map(token);
+            if (next === null) return '';
+            return next === token ? match : `[${next}]`;
+          }),
+    )
+    .join('');
 
 const SECTION_ALIASES: Record<string, string> = {
   soc: 'chorus',
@@ -140,24 +195,104 @@ const SECTION_ALIASES: Record<string, string> = {
   eot: 'tab',
 };
 
+/** The formatting tags a line may carry; `<t>` marks text that is never a chord. */
+const FORMAT_TAG_RE = /^<(\/?)(b|strong|i|em|u|t)>/i;
+
+const TAG_STYLES: Record<string, ChordProTextStyle | 'literal'> = {
+  b: 'bold',
+  strong: 'bold',
+  i: 'italic',
+  em: 'italic',
+  u: 'underline',
+  t: 'literal',
+};
+
+/**
+ * Splits one line into its lyrics, the chords sitting in them and any
+ * formatting. Tags take no room in the lyrics, so chord offsets still count
+ * only the characters that are printed; inside `<t>…</t>` a `[` is just text.
+ */
 const parseLine = (raw: string): ChordProLine => {
   const chords: ChordPosition[] = [];
+  const marks: ChordProTextMark[] = [];
+  const open: Partial<Record<ChordProTextStyle, number>> = {};
+  let literal = false;
   let lyrics = '';
   let i = 0;
+
+  const close = (style: ChordProTextStyle) => {
+    const start = open[style];
+    if (start === undefined) return;
+    if (lyrics.length > start) marks.push({ start, end: lyrics.length, style });
+    delete open[style];
+  };
+
   while (i < raw.length) {
     const ch = raw[i];
-    if (ch === '[') {
-      const close = raw.indexOf(']', i);
-      if (close > i) {
-        chords.push({ index: lyrics.length, chord: raw.slice(i + 1, close) });
-        i = close + 1;
+    if (ch === '<') {
+      const tag = FORMAT_TAG_RE.exec(raw.slice(i, i + 9));
+      const style = tag ? TAG_STYLES[tag[2]!.toLowerCase()] : undefined;
+      if (tag && style) {
+        const closing = tag[1] === '/';
+        if (style === 'literal') literal = !closing;
+        else if (closing) close(style);
+        else if (open[style] === undefined) open[style] = lyrics.length;
+        i += tag[0].length;
+        continue;
+      }
+    }
+    if (ch === '[' && !literal) {
+      const end = raw.indexOf(']', i);
+      if (end > i) {
+        chords.push({ index: lyrics.length, chord: raw.slice(i + 1, end) });
+        i = end + 1;
         continue;
       }
     }
     lyrics += ch;
     i += 1;
   }
-  return { lyrics, chords };
+  (['bold', 'italic', 'underline'] as const).forEach(close);
+
+  if (marks.length === 0) return { lyrics, chords };
+  marks.sort((a, b) => a.start - b.start);
+  return { lyrics, chords, marks };
+};
+
+/** A line's text with its formatting tags removed, for recognising what it is. */
+const withoutFormatting = (line: string): string => line.replace(/<\/?(?:b|strong|i|em|u|t)>/gi, '');
+
+/** One run of lyrics that shares a single combination of styles. */
+export interface StyledLyricRun {
+  text: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+}
+
+/**
+ * The lyrics between `start` and `end`, cut into runs of the same formatting,
+ * for a renderer to wrap each run in the right style. A line with no marks is
+ * one plain run.
+ */
+export const styledLyricRuns = (
+  line: Pick<ChordProLine, 'lyrics' | 'marks'>,
+  start = 0,
+  end = line.lyrics.length,
+): StyledLyricRun[] => {
+  const runs: StyledLyricRun[] = [];
+  const marks = line.marks ?? [];
+  for (let at = start; at < end; at += 1) {
+    const has = (style: ChordProTextStyle) => marks.some((m) => m.style === style && m.start <= at && at < m.end);
+    const bold = has('bold');
+    const italic = has('italic');
+    const underline = has('underline');
+    const last = runs[runs.length - 1];
+    const char = line.lyrics[at] ?? '';
+    if (last && last.bold === bold && last.italic === italic && last.underline === underline) last.text += char;
+    else runs.push({ text: char, bold, italic, underline });
+  }
+  return runs;
 };
 
 /** A `{name}` or `{name: value}` line, split into its trimmed parts. */
@@ -180,41 +315,296 @@ const parseDirective = (line: string): ChordProDirective | null => {
   return { name, value: colon === -1 ? '' : body.slice(colon + 1).trim() };
 };
 
+// ------------------------------------------------------ section headings ----
+
+/**
+ * Section names a heading line may use, in the forms charts are written with
+ * (`VERSE 1`, `Pre-Chorus`, `Tag:`, `[Bridge]`). Each maps to the section
+ * type it starts; the label shown is always the heading as written.
+ */
+const SECTION_NAMES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/^pre[- ]?chorus$/, 'pre_chorus'],
+  [/^post[- ]?chorus$/, 'post_chorus'],
+  [/^chorus$/, 'chorus'],
+  [/^refrain$/, 'chorus'],
+  [/^verse$/, 'verse'],
+  [/^bridge$/, 'bridge'],
+  [/^tag$/, 'tag'],
+  [/^intro$/, 'intro'],
+  [/^outro$/, 'outro'],
+  [/^ending$/, 'ending'],
+  [/^coda$/, 'ending'],
+  [/^instrumental$/, 'instrumental'],
+  [/^interlude$/, 'interlude'],
+  [/^turnaround$/, 'turnaround'],
+  [/^vamp$/, 'vamp'],
+  [/^break$/, 'break'],
+];
+
+/** A heading is a short line; anything longer is a lyric that starts with "verse". */
+const MAX_HEADING_LENGTH = 40;
+
+/** `VERSE 1`, `Chorus 2`, `Verse 3a`, `CHORUS 2x`, `Tag (x3)` — name, number, repeat. */
+const HEADING_RE = /^([a-z]+(?:[- ][a-z]+)?)(?:\s*\d{1,2}[a-z]?)?(?:\s*\(?(?:x\s?\d{1,2}|\d{1,2}\s?x)\)?)?$/i;
+
+/** A heading line's label and the section type it starts. */
+export interface SectionHeading {
+  /** The heading as written, minus brackets and a trailing colon. */
+  label: string;
+  /** `verse`, `chorus`, `pre_chorus`, `tag`, … */
+  type: string;
+}
+
+/**
+ * Reads a `VERSE 1`, `Chorus:`, `[Bridge]` or `Tag (2x)` heading line, or
+ * null when the line is anything else. Brackets and the colon are peeled off
+ * first and the line is length-capped, so the one regex that remains has
+ * nothing to backtrack across (it used to hang on `verse` + 50 000 spaces).
+ */
+export const parseSectionHeading = (line: string): SectionHeading | null => {
+  let text = line.trim();
+  if (text.length > MAX_HEADING_LENGTH + 4) return null;
+  if (text.endsWith(':')) text = text.slice(0, -1).trimEnd();
+  if (text.startsWith('[')) text = text.slice(1).trimStart();
+  if (text.endsWith(']')) text = text.slice(0, -1).trimEnd();
+  if (text.endsWith(':')) text = text.slice(0, -1).trimEnd();
+  if (!text || text.length > MAX_HEADING_LENGTH) return null;
+
+  const match = HEADING_RE.exec(text);
+  const name = match?.[1]?.toLowerCase();
+  if (!name) return null;
+  const entry = SECTION_NAMES.find(([re]) => re.test(name));
+  return entry ? { label: text, type: entry[1] } : null;
+};
+
+/**
+ * A short all-caps line that is not a row of chords is a heading even when its
+ * name is not one we know (`SPONTANEOUS`, `ĐIỆP KHÚC`). Letters, digits,
+ * spaces and `-&'()` only, so a shouted lyric with punctuation
+ * (`HOLY, HOLY, HOLY!`) is not mistaken for one.
+ */
+const ALL_CAPS_HEADING_RE = /^[\p{Lu}\p{N}][\p{Lu}\p{M}\p{N} '&()\-]*$/u;
+
+const isAllCapsLine = (line: string): boolean => {
+  const text = line.trim();
+  return (
+    text.length <= MAX_HEADING_LENGTH &&
+    /\p{Lu}/u.test(text) &&
+    ALL_CAPS_HEADING_RE.test(text) &&
+    !isChordLine(text)
+  );
+};
+
+/** A custom all-caps heading, labelled as written. */
+const customHeading = (line: string): SectionHeading => {
+  const label = line.trim();
+  return parseSectionHeading(label) ?? { label, type: 'part' };
+};
+
+/** `{comment: …}` and its short and styled forms, which charts often use as headings. */
+const COMMENT_DIRECTIVES = new Set(['comment', 'c', 'comment_italic', 'ci', 'comment_box', 'cb', 'highlight']);
+
+/** Explicit sections whose lines are verbatim, so a heading-like line inside stays a line. */
+const VERBATIM_SECTIONS = new Set(['tab', 'grid']);
+
+/**
+ * ChordPro directives this app reads or knows to keep out of the printed chart.
+ * A brace line naming anything else is a note to the band: `{ Repeat 2x }`.
+ */
+const KNOWN_DIRECTIVES = new Set([
+  'title', 't', 'subtitle', 'st', 'artist', 'composer', 'lyricist', 'arranger', 'author',
+  'copyright', 'album', 'year', 'key', 'k', 'time', 'tempo', 'duration', 'capo', 'meta',
+  'ccli', 'ccli_license', 'sorttitle', 'columns', 'col', 'pagetype', 'diagrams', 'grid', 'g',
+  'no_grid', 'ng', 'titles', 'chordfont', 'chordsize', 'chordcolour', 'chordcolor',
+  'textfont', 'textsize', 'textcolour', 'textcolor', 'define', 'chord', 'transpose', 'new_song', 'ns',
+]);
+
+const isKnownDirective = (name: string): boolean =>
+  KNOWN_DIRECTIVES.has(name) ||
+  COMMENT_DIRECTIVES.has(name) ||
+  name in SECTION_ALIASES ||
+  name.startsWith('start_of_') ||
+  name.startsWith('end_of_') ||
+  name.startsWith('x_') ||
+  BREAK_DIRECTIVES[name] !== undefined;
+
+/** The ChordPro spellings of a column or page break. */
+const BREAK_DIRECTIVES: Record<string, ChordProBreak> = {
+  column_break: 'column',
+  colb: 'column',
+  new_page: 'page',
+  np: 'page',
+  new_physical_page: 'page',
+  npp: 'page',
+};
+
+/** `COLUMN_BREAK` or `PAGE_BREAK` on a line of its own, in any case. */
+const breakLine = (text: string): ChordProBreak | null => {
+  const upper = text.trim().toUpperCase();
+  if (upper === 'COLUMN_BREAK') return 'column';
+  if (upper === 'PAGE_BREAK') return 'page';
+  return null;
+};
+
+/** A `{{ … }}` line's inner text, or null. Read by slicing, like `parseDirective`. */
+const chartsOnlyBody = (line: string): string | null =>
+  line.length >= 4 && line.startsWith('{{') && line.endsWith('}}') ? line.slice(2, -2).trim() : null;
+
+/** A key change partway through a song. */
+export interface ChordProKeyChange {
+  /**
+   * `transpose`: the chords below are written in the song's key and are
+   * printed this many semitones higher. `redefine`: the chords below are
+   * already written in the new key; numbers and numerals count from it.
+   */
+  kind: 'transpose' | 'redefine';
+  semitones: number;
+}
+
+/** `TRANSPOSE KEY +2`, `REDEFINE KEY -1`: the line on its own, any case. */
+const KEY_CHANGE_RE = /^(transpose|redefine)\s+key\s*([+-])\s*(\d{1,2})$/i;
+
+export const parseKeyChange = (line: string): ChordProKeyChange | null => {
+  const text = line.trim();
+  if (text.length > 30) return null;
+  const match = KEY_CHANGE_RE.exec(text);
+  if (!match) return null;
+  const amount = Number(match[3]) * (match[2] === '-' ? -1 : 1);
+  return { kind: match[1]!.toLowerCase() === 'transpose' ? 'transpose' : 'redefine', semitones: amount };
+};
+
+/**
+ * Lines that steer the chart rather than being printed in it — directives,
+ * notes, breaks and key changes. A custom heading may follow one.
+ */
+const isControlLine = (text: string): boolean =>
+  parseDirective(text) !== null || chartsOnlyBody(text) !== null || breakLine(text) !== null || parseKeyChange(text) !== null;
+
+/**
+ * Whether the line at `index` is an all-caps custom heading. It has to open a
+ * stanza (first line, or after a blank line, a control line or another
+ * heading) and be followed by something that is not more all-caps text —
+ * otherwise a song typed entirely in capitals would turn every stanza's first
+ * line into a heading.
+ */
+const isCustomHeadingAt = (lines: readonly string[], index: number): boolean => {
+  const line = withoutFormatting(lines[index] ?? '');
+  if (!isAllCapsLine(line)) return false;
+
+  const previous = (lines[index - 1] ?? '').trim();
+  if (previous && !isControlLine(previous) && !parseSectionHeading(withoutFormatting(previous))) return false;
+
+  for (let next = index + 1; next < lines.length; next += 1) {
+    const text = (lines[next] ?? '').trim();
+    if (!text || isControlLine(text)) continue;
+    // Chords, inline or on their own row, are the section's body.
+    if (parseSectionHeading(withoutFormatting(text))) return true;
+    const lyric = parseLine(text).lyrics.trim();
+    return !lyric || !isAllCapsLine(lyric) || isChordLine(text);
+  }
+  return true;
+};
+
+/** A note line: its text kept exactly as typed, brackets and all. */
+const noteLine = (text: string, chartsOnly: boolean): ChordProLine => {
+  const { lyrics, marks } = parseLine(text.replace(/\[/g, '<t>[').replace(/\]/g, ']</t>'));
+  return { lyrics, chords: [], ...(marks ? { marks } : {}), kind: 'note', ...(chartsOnly ? { chartsOnly } : {}) };
+};
+
 export const parseChordPro = (source: string): ChordProSong => {
   const directives: Record<string, string> = {};
   const sections: ChordProSection[] = [];
   let current: ChordProSection = { type: 'none', label: null, lines: [] };
+  let pendingBreak: ChordProBreak | null = null;
 
   const pushCurrent = () => {
+    // The blank lines around a section only separate it from its neighbours.
+    const isBlank = (l: ChordProLine) => !l.lyrics.trim() && l.chords.length === 0 && l.kind !== 'note';
+    let start = 0;
+    let end = current.lines.length;
+    while (start < end && isBlank(current.lines[start]!)) start += 1;
+    while (end > start && isBlank(current.lines[end - 1]!)) end -= 1;
+    current.lines = current.lines.slice(start, end);
     if (current.lines.length > 0 || current.type !== 'none') sections.push(current);
+    // A break in front of nothing waits for whatever comes next.
+    else if (current.breakBefore) pendingBreak = current.breakBefore;
   };
 
-  for (const rawLine of source.split(/\r?\n/)) {
-    const line = rawLine.trimEnd();
-    const directive = parseDirective(line.trim());
+  const startSection = (type: string, label: string | null) => {
+    pushCurrent();
+    current = { type, label, lines: [], ...(pendingBreak ? { breakBefore: pendingBreak } : {}) };
+    pendingBreak = null;
+  };
 
+  /** A break ends the section here; what follows carries on without a heading. */
+  const breakHere = (kind: ChordProBreak) => {
+    pushCurrent();
+    // Two breaks in a row: a page break outranks a column break.
+    const breakBefore: ChordProBreak = pendingBreak === 'page' ? 'page' : kind;
+    current = { type: 'none', label: null, lines: [], breakBefore };
+    pendingBreak = null;
+  };
+
+  const rawLines = source.split(/\r?\n/);
+  for (let i = 0; i < rawLines.length; i += 1) {
+    const line = (rawLines[i] ?? '').trimEnd();
+    const trimmed = line.trim();
+
+    // `{{ note }}` and `{{ PAGE_BREAK }}` belong to chord charts only.
+    const chartsOnly = chartsOnlyBody(trimmed);
+    if (chartsOnly !== null) {
+      const kind = breakLine(chartsOnly);
+      if (kind) breakHere(kind);
+      else if (chartsOnly) current.lines.push(noteLine(chartsOnly, true));
+      continue;
+    }
+
+    const directive = parseDirective(trimmed);
     if (directive) {
       const rawName = directive.name.toLowerCase();
       const { value } = directive;
       const name = SECTION_ALIASES[rawName] ?? rawName;
 
       if (rawName.startsWith('start_of_') || rawName === 'soc' || rawName === 'sov' || rawName === 'sob' || rawName === 'sot') {
-        pushCurrent();
-        current = {
-          type: rawName.startsWith('start_of_') ? rawName.replace('start_of_', '') : name,
-          label: value || null,
-          lines: [],
-        };
+        startSection(rawName.startsWith('start_of_') ? rawName.replace('start_of_', '') : name, value || null);
       } else if (rawName.startsWith('end_of_') || rawName === 'eoc' || rawName === 'eov' || rawName === 'eob' || rawName === 'eot') {
-        pushCurrent();
-        current = { type: 'none', label: null, lines: [] };
-      } else {
+        startSection('none', null);
+      } else if (BREAK_DIRECTIVES[rawName]) {
+        breakHere(BREAK_DIRECTIVES[rawName]);
+      } else if (COMMENT_DIRECTIVES.has(rawName)) {
+        // `{c: Verse 1}` is how SongSelect and most ChordPro files mark a
+        // section; any other comment is a note printed in the chart.
+        const heading = parseSectionHeading(value);
+        if (heading) startSection(heading.type, heading.label);
+        else if (value) current.lines.push(noteLine(value, false));
+      } else if (isKnownDirective(rawName)) {
         directives[rawName] = value;
+      } else {
+        current.lines.push(noteLine(trimmed.slice(1, -1).trim(), false));
       }
       continue;
     }
 
     if (line.startsWith('#')) continue; // comment
+
+    const kind = breakLine(trimmed);
+    if (kind) {
+      breakHere(kind);
+      continue;
+    }
+    // Applied by `renderChordProChart`; never printed.
+    if (parseKeyChange(trimmed)) continue;
+
+    // A `VERSE 1` / `CHORUS` / `[Tag]` line on its own starts a section.
+    const plain = withoutFormatting(line);
+    const heading = VERBATIM_SECTIONS.has(current.type)
+      ? null
+      : (parseSectionHeading(plain) ?? (isCustomHeadingAt(rawLines, i) ? customHeading(plain) : null));
+    if (heading) {
+      startSection(heading.type, heading.label);
+      continue;
+    }
+
     current.lines.push(parseLine(line));
   }
   pushCurrent();
@@ -225,7 +615,9 @@ export const parseChordPro = (source: string): ChordProSong => {
     title: directives.title ?? directives.t ?? null,
     key: directives.key ?? null,
     tempo: Number.isFinite(tempo) && tempo > 0 ? tempo : null,
-    sections: sections.filter((s) => s.lines.some((l) => l.lyrics.trim() || l.chords.length) || s.type !== 'none'),
+    sections: sections.filter(
+      (s) => s.lines.some((l) => l.lyrics.trim() || l.chords.length || l.kind === 'note') || s.type !== 'none',
+    ),
   };
 };
 
@@ -258,23 +650,6 @@ export const isChordLine = (line: string): boolean => {
   return chords > 0;
 };
 
-const SECTION_NAME_RE =
-  /^(?:intro|verse|pre[- ]?chorus|chorus|bridge|tag|outro|instrumental|interlude|refrain|ending|turnaround)(?:\s*\d+)?$/i;
-
-/**
- * The label of a `[Verse 1]`, `Chorus:` or `[Bridge] :` heading line, or null.
- * Brackets and the colon are peeled off first so the one remaining regex has
- * no adjacent whitespace quantifiers to backtrack across (it used to hang on
- * `verse` followed by thousands of spaces).
- */
-const sectionHeading = (line: string): string | null => {
-  let text = line.trim();
-  if (text.endsWith(':')) text = text.slice(0, -1).trimEnd();
-  if (text.startsWith('[')) text = text.slice(1).trimStart();
-  if (text.endsWith(']')) text = text.slice(0, -1).trimEnd();
-  return SECTION_NAME_RE.test(text) ? text : null;
-};
-
 /**
  * Converts a plain "chords above lyrics" chart — the shape most charts are
  * copied from — into inline ChordPro, preserving each chord's column.
@@ -303,18 +678,11 @@ export const chordLinesToChordPro = (
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i] ?? '';
 
-    const label = sectionHeading(line);
-    if (label) {
+    const heading = parseSectionHeading(line) ?? (isCustomHeadingAt(lines, i) ? customHeading(line) : null);
+    if (heading) {
       closeSection();
-      const type = /chorus/i.test(label) && !/pre/i.test(label)
-        ? 'chorus'
-        : /bridge/i.test(label)
-          ? 'bridge'
-          : /verse/i.test(label)
-            ? 'verse'
-            : 'part';
-      openSection = type;
-      out.push(`{start_of_${type}: ${label}}`);
+      openSection = heading.type;
+      out.push(`{start_of_${heading.type}: ${heading.label}}`);
       continue;
     }
 
@@ -326,7 +694,7 @@ export const chordLinesToChordPro = (
     if (isChordLine(line)) {
       const next = lines[i + 1] ?? '';
       // A chord line followed by lyrics merges into one inline line.
-      if (next.trim() && !isChordLine(next) && sectionHeading(next) === null) {
+      if (next.trim() && !isChordLine(next) && parseSectionHeading(next) === null) {
         out.push(mergeChordAndLyricLine(line, next));
         i += 1;
       } else {
@@ -360,15 +728,35 @@ export const mergeChordAndLyricLine = (chordLine: string, lyricLine: string): st
   }
 
   const lyrics = lyricLine.replace(/\s+$/, '');
+  // Formatting tags take no room on the page, so a chord's column counts only
+  // the characters that are printed: `<b>Holy</b>` puts column 2 at `l`.
+  const printed = printedOffsets(lyrics);
+  const rawAt = (column: number): number => printed[column] ?? lyrics.length;
+
   let result = '';
   let cursor = 0;
   for (const { index, chord } of placements) {
-    const at = Math.min(Math.max(index, cursor), lyrics.length);
+    const at = Math.max(rawAt(index), cursor);
     result += lyrics.slice(cursor, at) + `[${chord}]`;
     cursor = at;
   }
   result += lyrics.slice(cursor);
   return result;
+};
+
+/** The offset in `line` of each character that is printed, skipping formatting tags. */
+const printedOffsets = (line: string): number[] => {
+  const offsets: number[] = [];
+  for (let i = 0; i < line.length; ) {
+    const tag = line[i] === '<' ? FORMAT_TAG_RE.exec(line.slice(i, i + 9)) : null;
+    if (tag) {
+      i += tag[0].length;
+      continue;
+    }
+    offsets.push(i);
+    i += 1;
+  }
+  return offsets;
 };
 
 /**
@@ -518,11 +906,15 @@ export const chordToNumeral = (token: string, key: string): string => {
   return `${numeral}${suffix}${bass}`;
 };
 
-/** Removes every `[chord]` from a document, leaving the lyrics and directives. */
+/**
+ * Removes every `[chord]` from a document, leaving the lyrics and directives.
+ * `{{ … }}` lines are for chord charts only, so the lyrics sheet drops them.
+ */
 export const stripChords = (source: string): string =>
   source
     .split(/\r?\n/)
-    .map((line) => (/^\s*\{.*\}\s*$/.test(line) ? line : line.replace(/\[[^\]]*\]/g, '')))
+    .filter((line) => chartsOnlyBody(line.trim()) === null)
+    .map((line) => (/^\s*\{.*\}\s*$/.test(line) ? line : mapChords(line.replace(/\[\]/g, ''), () => null)))
     .join('\n');
 
 /** Rewrites every `[chord]` into the requested notation. */
@@ -534,10 +926,35 @@ export const convertChordProNotation = (
   if (notation === 'chords') return source;
   if (notation === 'lyrics') return stripChords(source);
   const convert = notation === 'numbers' ? chordToNumber : chordToNumeral;
-  return source.replace(/\[([^\]]+)\]/g, (match, token: string) => {
-    const converted = convert(token, key);
-    return converted === token ? match : `[${converted}]`;
-  });
+  return mapChords(source, (token) => convert(token, key));
+};
+
+/** A stretch of a chart between key changes, and where those changes left it. */
+interface KeyedLines {
+  /** Semitones its chords are printed above how they are written (`TRANSPOSE KEY`). */
+  transpose: number;
+  /** Semitones its chords are written above the song's key (`REDEFINE KEY`). */
+  redefine: number;
+  lines: string[];
+}
+
+/** Cuts a chart at its `TRANSPOSE KEY` / `REDEFINE KEY` lines, dropping them. */
+const splitAtKeyChanges = (source: string): KeyedLines[] => {
+  const runs: KeyedLines[] = [{ transpose: 0, redefine: 0, lines: [] }];
+  for (const line of source.split(/\r?\n/)) {
+    const change = parseKeyChange(line);
+    const last = runs[runs.length - 1]!;
+    if (!change) {
+      last.lines.push(line);
+      continue;
+    }
+    runs.push({
+      transpose: last.transpose + (change.kind === 'transpose' ? change.semitones : 0),
+      redefine: last.redefine + (change.kind === 'redefine' ? change.semitones : 0),
+      lines: [],
+    });
+  }
+  return runs;
 };
 
 /** Applies the source key's major/minor quality to a bare target root. */
@@ -589,7 +1006,17 @@ export const renderChordProChart = (
     : sourceKey && shift !== 0
       ? conventionalAccidental(sourceKey, shift)
       : preferredAccidental(sourceKey);
-  const transposed = transposeChordPro(source, shift, prefer);
+  // Key changes are applied here and then dropped, so the chart that comes out
+  // is final: rendering it again cannot apply them twice.
+  const runs = splitAtKeyChanges(source);
+  const transposed = runs
+    .map((run) => {
+      const offset = shift + run.transpose;
+      const keyChanged = run.transpose !== 0 || run.redefine !== 0;
+      const runPrefer = keyChanged && sourceKey ? conventionalAccidental(sourceKey, offset + run.redefine) : prefer;
+      return transposeChordPro(run.lines.join('\n'), offset, runPrefer);
+    })
+    .join('\n');
   const key = targetKey ?? (sourceKey && shift !== 0 ? transposeKey(sourceKey, shift, prefer) : sourceKey);
 
   if (notation === 'chords' || notation === 'lyrics') {
@@ -603,9 +1030,13 @@ export const renderChordProChart = (
 
   // Numbers and numerals are relative to the key, so transposing first would
   // be a no-op — read them off the source key instead.
-  if (!sourceKey) return { chordpro: source, key: null, semitones: 0, notation };
+  // A `TRANSPOSE KEY` moves the chords and the key together, so their numbers
+  // stay put; after a `REDEFINE KEY` they count from the new key.
+  if (!sourceKey) return { chordpro: runs.map((run) => run.lines.join('\n')).join('\n'), key: null, semitones: 0, notation };
   return {
-    chordpro: convertChordProNotation(source, sourceKey, notation),
+    chordpro: runs
+      .map((run) => convertChordProNotation(run.lines.join('\n'), run.redefine ? transposeKey(sourceKey, run.redefine) : sourceKey, notation))
+      .join('\n'),
     key: null,
     semitones: 0,
     notation,

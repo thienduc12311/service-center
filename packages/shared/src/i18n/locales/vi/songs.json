@@ -91,7 +91,18 @@
     "addSequence": "Thêm trình tự",
     "lyricsAndChords": "Lời và hợp âm",
     "sourcePlaceholder": "C            G\nƠn lạ lùng thay Chúa đã ban",
-    "sourceHelp": "Đặt hợp âm trên một dòng riêng phía trên lời, hoặc viết ChordPro ngay trong lời — <0>Ơn [G]lạ lùng</0>. Cách nào cũng được lưu dưới dạng ChordPro."
+    "sourceHelp": "Đặt hợp âm trên một dòng riêng phía trên lời, hoặc viết ChordPro ngay trong lời — <0>Ơn [G]lạ lùng</0>. Cách nào cũng được lưu dưới dạng ChordPro.",
+    "codesTitle": "Mã trong bảng hợp âm",
+    "codes": {
+      "heading": "Tiêu đề đoạn trên một dòng riêng. Bất kỳ dòng ngắn nào viết hoa toàn bộ cũng được xem là tiêu đề.",
+      "note": "Ghi chú cho ban nhạc, in đúng như đã viết trên bảng hợp âm và bản lời.",
+      "chartNote": "Ghi chú chỉ in trên bảng hợp âm.",
+      "breaks": "Sang cột mới hoặc trang mới trong bảng in. Đứng riêng một dòng thì ngắt cả bảng hợp âm lẫn bản lời; đặt trong cặp ngoặc nhọn kép thì chỉ ngắt bảng hợp âm.",
+      "formatting": "Chữ đậm, nghiêng hoặc gạch chân.",
+      "literal": "In đúng như đã viết, để chữ trong ngoặc vuông không bị hiểu là hợp âm.",
+      "transpose": "Các hợp âm bên dưới viết theo tông của bài và được in cao lên số nửa cung này.",
+      "redefine": "Các hợp âm bên dưới đã viết theo tông mới, nên số và số La Mã được tính từ tông đó."
+    }
   },
   "errors": {
     "chooseDocument": "Hãy chọn một tài liệu PDF, Word hoặc văn bản.",

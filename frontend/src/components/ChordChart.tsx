@@ -4,7 +4,9 @@ import {
   parseChordPro,
   renderChordProChart,
   renderLineAsText,
+  styledLyricRuns,
   type ChartNotation,
+  type ChordProLine,
 } from '@service-center/shared';
 
 export interface ChordChartProps {
@@ -15,6 +17,28 @@ export interface ChordChartProps {
   targetKey?: string | null;
   notation?: ChartNotation;
 }
+
+export interface ChordChartLyricsProps {
+  line: ChordProLine;
+}
+
+/** A line's words, with any `<b>`, `<i>` or `<u>` formatting applied. */
+const ChordChartLyrics = ({ line }: ChordChartLyricsProps) => {
+  if (!line.lyrics) return <> </>;
+  if (!line.marks) return <>{line.lyrics}</>;
+  return (
+    <>
+      {styledLyricRuns(line).map((run, index) => (
+        <span
+          key={index}
+          className={[run.bold && 'font-bold', run.italic && 'italic', run.underline && 'underline'].filter(Boolean).join(' ')}
+        >
+          {run.text}
+        </span>
+      ))}
+    </>
+  );
+};
 
 /**
  * Renders ChordPro as chords-above-lyrics. Column alignment is what makes a
@@ -50,11 +74,20 @@ export const ChordChart = ({
           )}
           <div className="chord-chart">
             {section.lines.map((line, lineIndex) => {
-              const { chordRow, lyricRow } = renderLineAsText(line);
+              if (line.kind === 'note') {
+                return (
+                  <div key={lineIndex} className="font-sans italic text-slate-500 dark:text-slate-400">
+                    <ChordChartLyrics line={line} />
+                  </div>
+                );
+              }
+              const { chordRow } = renderLineAsText(line);
               return (
                 <div key={lineIndex}>
                   {chordRow && <div className="font-semibold text-brand-700">{chordRow}</div>}
-                  <div className="text-slate-800">{lyricRow || ' '}</div>
+                  <div className="text-slate-800">
+                    <ChordChartLyrics line={line} />
+                  </div>
                 </div>
               );
             })}
