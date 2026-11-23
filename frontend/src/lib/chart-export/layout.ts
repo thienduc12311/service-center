@@ -291,6 +291,8 @@ const readPage = ({ view, doc, baselines }: PageReader, page: Element): ChartPdf
     const style: ChartPdfTextStyle = {
       family: pdfFontFamily(run.style.fontFamily),
       bold: isBold(run.style.fontWeight),
+      italic: run.style.fontStyle === 'italic' || run.style.fontStyle.startsWith('oblique'),
+      underline: run.style.textDecorationLine.includes('underline'),
       size: toPt(size),
       color,
     };

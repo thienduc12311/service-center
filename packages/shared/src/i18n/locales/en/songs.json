@@ -95,7 +95,18 @@
     "addSequence": "Add a sequence",
     "lyricsAndChords": "Lyrics and Chords",
     "sourcePlaceholder": "C                 G\n Amazing grace how sweet the sound",
-    "sourceHelp": "Put the chords on their own line above the words, or write ChordPro inline — <0>A[G]mazing grace</0>. Either way it is saved as ChordPro."
+    "sourceHelp": "Put the chords on their own line above the words, or write ChordPro inline — <0>A[G]mazing grace</0>. Either way it is saved as ChordPro.",
+    "codesTitle": "Chart codes",
+    "codes": {
+      "heading": "A section heading on a line of its own. Any short line typed in capitals works as a heading too.",
+      "note": "A note to the band, printed as written on chord charts and lyric sheets.",
+      "chartNote": "A note printed on chord charts only.",
+      "breaks": "Starts a new column or a new page in the printed chart. On its own line it breaks chord charts and lyric sheets; inside double braces it breaks chord charts only.",
+      "formatting": "Bold, italic or underlined words.",
+      "literal": "Prints the text as written, so a word in brackets is not read as a chord.",
+      "transpose": "The chords below are written in the song's key and printed this many semitones higher.",
+      "redefine": "The chords below are already written in the new key, so numbers and numerals count from it."
+    }
   },
   "errors": {
     "chooseDocument": "Choose a PDF, Word, or text document.",

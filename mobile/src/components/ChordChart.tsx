@@ -1,11 +1,37 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { renderLineAsText, type ChordProSong } from '@service-center/shared';
+import { renderLineAsText, styledLyricRuns, type ChordProLine, type ChordProSong } from '@service-center/shared';
 import type { Theme } from '../lib/theme';
 import { useThemedStyles } from '../lib/useTheme';
 
 export interface ChordChartProps {
   chart: ChordProSong;
 }
+
+export interface ChordChartLyricsProps {
+  line: ChordProLine;
+}
+
+/** A line's words as nested runs, so `<b>`, `<i>` and `<u>` formatting shows. */
+const ChordChartLyrics = ({ line }: ChordChartLyricsProps) => {
+  if (!line.lyrics) return <>{' '}</>;
+  if (!line.marks) return <>{line.lyrics}</>;
+  return (
+    <>
+      {styledLyricRuns(line).map((run, index) => (
+        <Text
+          key={index}
+          style={{
+            ...(run.bold ? { fontWeight: '700' as const } : null),
+            ...(run.italic ? { fontStyle: 'italic' as const } : null),
+            ...(run.underline ? { textDecorationLine: 'underline' as const } : null),
+          }}
+        >
+          {run.text}
+        </Text>
+      ))}
+    </>
+  );
+};
 
 /**
  * A chord sheet reads like a typewritten document, so it is set in the
@@ -28,11 +54,20 @@ export const ChordChart = ({ chart }: ChordChartProps) => {
               </View>
             ) : null}
             {section.lines.map((line, lineIndex) => {
-              const { chordRow, lyricRow } = renderLineAsText(line);
+              if (line.kind === 'note') {
+                return (
+                  <Text key={lineIndex} style={styles.note}>
+                    <ChordChartLyrics line={line} />
+                  </Text>
+                );
+              }
+              const { chordRow } = renderLineAsText(line);
               return (
                 <View key={lineIndex}>
                   {chordRow ? <Text style={styles.chordRow}>{chordRow}</Text> : null}
-                  <Text style={styles.lyricRow}>{lyricRow || ' '}</Text>
+                  <Text style={styles.lyricRow}>
+                    <ChordChartLyrics line={line} />
+                  </Text>
                 </View>
               );
             })}
@@ -64,4 +99,5 @@ const makeStyles = (theme: Theme) =>
     sectionLabel: { ...theme.type.eyebrow, fontSize: 11, lineHeight: 15, color: theme.color.brandText },
     chordRow: { ...theme.type.code, fontSize: 14.5, lineHeight: 20, fontWeight: '700', color: theme.color.brandText },
     lyricRow: { ...theme.type.code, fontSize: 14.5, lineHeight: 22, color: theme.color.ink },
+    note: { fontSize: 13.5, lineHeight: 20, fontStyle: 'italic', color: theme.color.inkMuted },
   });

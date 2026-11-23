@@ -42,6 +42,21 @@ const fitCharSpace = (doc: jsPDF, run: ChartPdfText): number => {
   return difference / run.text.length;
 };
 
+/** Where an underline sits below the baseline, and how thick it is, as fractions of the font size. */
+const UNDERLINE_OFFSET = 0.12;
+const UNDERLINE_THICKNESS = 0.05;
+
+/**
+ * The jsPDF style for a run. The built-in families come in all four styles;
+ * an embedded Unicode face is fetched in regular and bold only, so it keeps
+ * its weight and sets italic upright rather than failing to draw.
+ */
+const fontStyleOf = (run: ChartPdfText, embedded: boolean): string => {
+  const { bold, italic } = run.style;
+  if (embedded || !italic) return bold ? 'bold' : 'normal';
+  return bold ? 'bolditalic' : 'italic';
+};
+
 /**
  * Registers the fallback faces and reports which family each one now answers
  * for. A family with no fallback keeps the built-in font of the same name.
@@ -95,11 +110,20 @@ export const writeChartPdf = (
     }
 
     for (const run of page.texts) {
-      doc.setFont(embedded.get(run.style.family) ?? run.style.family, run.style.bold ? 'bold' : 'normal');
+      const face = embedded.get(run.style.family);
+      doc.setFont(face ?? run.style.family, fontStyleOf(run, face !== undefined));
       doc.setFontSize(run.style.size);
       doc.setTextColor(run.style.color.r, run.style.color.g, run.style.color.b);
       doc.setCharSpace(fitCharSpace(doc, run));
       doc.text(run.text, run.x, run.baseline, { baseline: 'alphabetic' });
+
+      if (run.style.underline) {
+        const { r, g, b } = run.style.color;
+        doc.setDrawColor(r, g, b);
+        doc.setLineWidth(run.style.size * UNDERLINE_THICKNESS);
+        const y = run.baseline + run.style.size * UNDERLINE_OFFSET;
+        doc.line(run.x, y, run.x + run.width, y);
+      }
     }
   });
 
