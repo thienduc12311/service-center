@@ -617,7 +617,7 @@
       "forward": "+{{seconds}} giây",
       "backLabel": "Lùi {{seconds}} giây",
       "forwardLabel": "Tới {{seconds}} giây",
-      "backgroundNote": "Vẫn phát khi khóa màn hình hoặc chuyển ứng dụng. Màn hình khóa và tai nghe có thể phát, tạm dừng và tua {{seconds}} giây; chọn bài khác tại đây. Rời màn hình này sẽ dừng phát.",
+      "backgroundNote": "Tạm dừng phát khi khóa màn hình hoặc chuyển ứng dụng. Tua lùi hoặc tới {{seconds}} giây và chọn bài khác tại đây. Rời màn hình này sẽ dừng phát.",
       "endOfList": "Đã hết danh sách.",
       "nowPlaying": "Đang phát"
     },

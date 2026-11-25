@@ -17,7 +17,6 @@ import {
   followItemIndex,
   isRehearsalAccessLoss,
   linkFailureKey,
-  lockScreenMetadata,
   nativeTrackMode,
   nextRepeatMode,
   playerErrorAction,
@@ -198,13 +197,6 @@ describe('MOB-024 signed links, errors and stale state', () => {
     expect(clampSeek(250, 200)).toBe(200);
     expect(clampSeek(Number.NaN, 200)).toBe(0);
   });
-
-  it('the lock screen shows the plan item, its author and the plan', () => {
-    const [a] = rehearsalPlaylist(ORDER);
-    const songItem = { song: { id: 's', title: 'Song A', author: 'Writer' } };
-    expect(lockScreenMetadata(a!, songItem, 'Sunday')).toEqual({ title: 'Song A', artist: 'Writer', albumTitle: 'Sunday' });
-    expect(lockScreenMetadata(a!, null, 'Sunday')).toEqual({ title: 'Song A', albumTitle: 'Sunday' });
-  });
 });
 
 describe('MOB-024 source contract', () => {
@@ -240,12 +232,11 @@ describe('MOB-024 source contract', () => {
     expect(hook).toMatch(/const local = localSource\?\.\(target\) \?\? null;/);
   });
 
-  it('plays in the background with lock-screen controls and releases everything on leave', () => {
-    expect(hook).toMatch(/shouldPlayInBackground: true, interruptionMode: 'doNotMix'/);
-    expect(hook).toContain('setActiveForLockScreen(true');
-    expect(hook).toContain('player.clearLockScreenControls()');
+  it('plays in the foreground only (no iOS audio background mode) and releases everything on leave', () => {
+    expect(hook).toMatch(/shouldPlayInBackground: false, interruptionMode: 'doNotMix'/);
+    expect(hook).not.toMatch(/setActiveForLockScreen|LockScreen/);
     expect(hook).toContain('player.remove()');
-    expect(config).toMatch(/'expo-audio', \{ microphonePermission: false, recordAudioAndroid: false, enableBackgroundPlayback: true \}/);
+    expect(config).toMatch(/'expo-audio', \{ microphonePermission: false, recordAudioAndroid: false, enableBackgroundPlayback: false \}/);
   });
 
   it('stops on a second failure with Try again instead of moving on', () => {

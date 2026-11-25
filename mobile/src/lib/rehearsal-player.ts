@@ -2,7 +2,6 @@ import type { PitchCorrectionQuality } from 'expo-audio';
 import {
   ApiError,
   isInlineTrack,
-  type RehearsalManifestItem,
   type RehearsalRepeatMode,
   type RehearsalTrack,
 } from '@service-center/shared';
@@ -137,23 +136,6 @@ const REPEAT_ORDER: readonly RehearsalRepeatMode[] = ['off', 'all', 'one'];
 
 export const nextRepeatMode = (current: RehearsalRepeatMode): RehearsalRepeatMode =>
   REPEAT_ORDER[(REPEAT_ORDER.indexOf(current) + 1) % REPEAT_ORDER.length]!;
-
-/** Lock-screen / Control Center text: the plan item, the recording, the plan. */
-export interface RehearsalLockScreenMetadata {
-  title: string;
-  artist?: string;
-  albumTitle: string;
-}
-
-export const lockScreenMetadata = (
-  track: RehearsalTrack,
-  item: Pick<RehearsalManifestItem, 'song'> | null,
-  planTitle: string,
-): RehearsalLockScreenMetadata => ({
-  title: track.title,
-  ...(item?.song?.author ? { artist: item.song.author } : {}),
-  albumTitle: planTitle,
-});
 
 /**
  * MOB-027 practice speed keeps the recording's pitch (and so its key). On iOS
