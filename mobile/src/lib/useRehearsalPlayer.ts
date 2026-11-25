@@ -17,7 +17,6 @@ import {
   clampSeek,
   followItemIndex,
   linkFailureKey,
-  lockScreenMetadata,
   nativeTrackMode,
   nextRepeatMode,
   playerErrorAction,
@@ -89,11 +88,12 @@ export type RehearsalLocalSource = (track: RehearsalTrack) => string | null;
 const platform: NativeAudioPlatform = Platform.OS === 'android' ? 'android' : 'ios';
 
 /**
- * Background playback with lock-screen controls. `doNotMix` is required for
- * the lock screen, and makes a call or another app's audio pause this player
- * (the module resumes it when the system says so).
+ * Foreground-only playback: the app does not declare the iOS `audio`
+ * background mode (App Review 2.5.4), so the system pauses the player when the
+ * app is backgrounded or the phone locks. `doNotMix` makes a call or another
+ * app's audio pause this player (the module resumes it when the system says so).
  */
-const PLAYBACK_MODE = { playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: 'doNotMix' } as const;
+const PLAYBACK_MODE = { playsInSilentMode: true, shouldPlayInBackground: false, interruptionMode: 'doNotMix' } as const;
 
 /** The one player that may be sounding in this app (a second screen pauses the first). */
 let soundingPlayer: AudioPlayer | null = null;
@@ -133,7 +133,6 @@ export const useRehearsalPlayer = (
   const pendingSeek = useRef<number | null>(null);
   /** The key renewed after an error, and where playback resumed; cleared once it plays past that point. */
   const renewed = useRef<{ key: string; at: number } | null>(null);
-  const lockScreenActive = useRef(false);
   const audioModeSet = useRef(false);
   const currentItem = useRef<string | null>(null);
   /** The stop the load effect last started; a failed one is retried only by "Try again". */
@@ -142,16 +141,6 @@ export const useRehearsalPlayer = (
   const track = tracks[index] ?? null;
   const key = track ? rehearsalTrackKey(track) : null;
   const mode = track ? nativeTrackMode(track, platform) : null;
-
-  const metadataFor = useCallback(
-    (target: RehearsalTrack) =>
-      lockScreenMetadata(
-        target,
-        manifest?.items.find((item) => item.item_id === target.item_id) ?? null,
-        manifest?.plan_title ?? '',
-      ),
-    [manifest],
-  );
 
   /**
    * MOB-027: the practice speed, with pitch correction, on the loaded item.
@@ -173,10 +162,6 @@ export const useRehearsalPlayer = (
     source.current = null;
     pendingSeek.current = null;
     player.pause();
-    if (lockScreenActive.current) {
-      player.clearLockScreenControls();
-      lockScreenActive.current = false;
-    }
     if (soundingPlayer === player) soundingPlayer = null;
   }, [player]);
 
@@ -218,13 +203,6 @@ export const useRehearsalPlayer = (
         pendingSeek.current = at && at > 0 ? at : null;
         player.replace({ uri });
         applyRate();
-        const metadata = metadataFor(target);
-        if (lockScreenActive.current) {
-          player.updateLockScreenMetadata(metadata);
-        } else {
-          player.setActiveForLockScreen(true, metadata, { showSeekBackward: true, showSeekForward: true });
-          lockScreenActive.current = true;
-        }
         if (play) {
           if (soundingPlayer && soundingPlayer !== player) soundingPlayer.pause();
           soundingPlayer = player;
@@ -239,7 +217,7 @@ export const useRehearsalPlayer = (
         setFailure(linkFailureKey(cause));
       }
     },
-    [applyRate, generation, isCurrentGeneration, localSource, metadataFor, player, silence],
+    [applyRate, generation, isCurrentGeneration, localSource, player, silence],
   );
 
   const move = useCallback(
@@ -356,17 +334,13 @@ export const useRehearsalPlayer = (
     setStatus('idle');
   }, [generation, silence]);
 
-  // Leaving the screen releases the player and the background audio session.
+  // Leaving the screen releases the player.
   useEffect(
     () => () => {
       request.current += 1;
-      if (lockScreenActive.current) player.clearLockScreenControls();
       if (soundingPlayer === player) soundingPlayer = null;
       player.pause();
       player.remove();
-      void setAudioModeAsync({ shouldPlayInBackground: false }).catch((cause: unknown) => {
-        console.warn('[rehearsal] could not reset the audio session', cause);
-      });
     },
     [player],
   );

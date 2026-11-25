@@ -629,7 +629,7 @@
       "forward": "+{{seconds}} s",
       "backLabel": "Back {{seconds}} seconds",
       "forwardLabel": "Forward {{seconds}} seconds",
-      "backgroundNote": "Keeps playing when the phone locks or you switch apps. The lock screen and headphones can play, pause and skip {{seconds}} seconds; choose another song here. Leaving this screen stops playback.",
+      "backgroundNote": "Playback pauses when the phone locks or you switch apps. Skip back or forward {{seconds}} seconds and choose another song here. Leaving this screen stops playback.",
       "endOfList": "End of the list.",
       "nowPlaying": "Now playing"
     },
